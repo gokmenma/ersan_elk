@@ -339,9 +339,19 @@ try {
                 ];
             }
 
+            $isKep = (($row->kaynak_tipi ?? '') === 'kep' || !empty($row->kep_mesaj_id) || ($row->gonderim_kanali ?? '') === 'kep');
+            $isUets = (($row->kaynak_tipi ?? '') === 'uets' || !empty($row->uets_mesaj_id));
+
             $items[] = [
                 'id' => $encId,
                 'raw_id' => $id,
+                'is_kep' => $isKep,
+                'is_uets' => $isUets,
+                'gonderim_kanali' => (string) ($row->gonderim_kanali ?? 'normal'),
+                'kaynak_tipi' => (string) ($row->kaynak_tipi ?? 'manuel'),
+                'kep_mesaj_id' => (string) ($row->kep_mesaj_id ?? ''),
+                'alici_kep' => (string) ($row->alici_kep ?? ''),
+                'uets_mesaj_id' => (string) ($row->uets_mesaj_id ?? ''),
                 'evrak_tipi' => (string) $row->evrak_tipi,
                 'evrak_no' => (string) ($row->evrak_no ?: '-'),
                 'tarih' => (string) $row->tarih,
@@ -553,9 +563,19 @@ try {
         }
 
         $encId = Security::encrypt($id);
+        $isKep = (($evrak->kaynak_tipi ?? '') === 'kep' || !empty($evrak->kep_mesaj_id) || ($evrak->gonderim_kanali ?? '') === 'kep');
+        $isUets = (($evrak->kaynak_tipi ?? '') === 'uets' || !empty($evrak->uets_mesaj_id));
+
         $data = [
             'id' => $encId,
             'raw_id' => $id,
+            'is_kep' => $isKep,
+            'is_uets' => $isUets,
+            'gonderim_kanali' => (string) ($evrak->gonderim_kanali ?? 'normal'),
+            'kaynak_tipi' => (string) ($evrak->kaynak_tipi ?? 'manuel'),
+            'kep_mesaj_id' => (string) ($evrak->kep_mesaj_id ?? ''),
+            'alici_kep' => (string) ($evrak->alici_kep ?? ''),
+            'uets_mesaj_id' => (string) ($evrak->uets_mesaj_id ?? ''),
             'evrak_tipi' => (string) $evrak->evrak_tipi,
             'evrak_no' => (string) ($evrak->evrak_no ?: ''),
             'tarih' => (string) $evrak->tarih,
@@ -594,6 +614,266 @@ try {
         ];
 
         evrakApiResponse(['success' => true, 'data' => $data]);
+    }
+
+    // -------------------------------------------------------------
+    // 5.1. KEP İLETİSİ VE DELİL DETAYI (GET/POST kep-detail)
+    // -------------------------------------------------------------
+    if ($action === 'kep-detail') {
+        $evrakIdRaw = trim((string) ($_GET['id'] ?? $_POST['id'] ?? ''));
+        $kepId = trim((string) ($_GET['kep_id'] ?? $_POST['kep_id'] ?? ''));
+
+        $evrak = null;
+        $evrakId = 0;
+        if ($evrakIdRaw !== '') {
+            $evrakId = $decryptId($evrakIdRaw);
+            if ($evrakId <= 0 && is_numeric($evrakIdRaw)) {
+                $evrakId = (int) $evrakIdRaw;
+            }
+            if ($evrakId > 0) {
+                $evrak = $EvrakModel->getById($evrakId);
+            }
+        }
+
+        $kepMesajModel = new \App\Model\KepMesajModel();
+        $mesaj = null;
+        if ($evrakId > 0) {
+            $mesaj = $kepMesajModel->getByEvrakId($firmaId, $evrakId);
+        }
+        if (!$mesaj && $kepId !== '') {
+            $mesaj = $kepMesajModel->getByKepId($firmaId, $kepId);
+        }
+        if (!$mesaj && $evrak && !empty($evrak->kep_mesaj_id)) {
+            $mesaj = $kepMesajModel->getByKepId($firmaId, $evrak->kep_mesaj_id);
+        }
+        if ($mesaj && !$evrak && !empty($mesaj['evrak_id'])) {
+            $evrak = $EvrakModel->getById((int) $mesaj['evrak_id']);
+        }
+
+        if (!$mesaj && !$evrak) {
+            evrakApiResponse(['success' => false, 'message' => 'KEP iletisi veya evrak kaydı bulunamadı.'], 404);
+        }
+
+        // Live delil senkronizasyonu
+        $targetKepId = $mesaj['kep_id'] ?? $evrak->kep_mesaj_id ?? '';
+        if ($targetKepId !== '') {
+            try {
+                $kepService = new \App\Service\KepService();
+                $syncRes = $kepService->syncEvidences($firmaId, $targetKepId);
+                if (!empty($syncRes['mesaj'])) {
+                    $mesaj = $syncRes['mesaj'];
+                }
+            } catch (\Throwable $e) {
+                error_log('Mobile KEP live sync notice: ' . $e->getMessage());
+            }
+        }
+
+        $delilModel = new \App\Model\KepDelilModel();
+        $deliller = $mesaj ? $delilModel->getDelillerByMesajId((int) $mesaj['id']) : [];
+        $formatliDeliller = [];
+        foreach ($deliller as $delil) {
+            $turId = (int) ($delil['delil_tur_id'] ?? 0);
+            $turBilgisi = match ($turId) {
+                10 => ['ad' => 'Kabul Delili (Submission Acceptance)', 'badge' => 'success', 'icon' => 'CheckCircle'],
+                20 => ['ad' => 'KEPHS Aktarım Delili (Relay)', 'badge' => 'info', 'icon' => 'ArrowRightLeft'],
+                30 => ['ad' => 'Alıcı Sunucuya İletim (Relay To Recipient)', 'badge' => 'primary', 'icon' => 'Send'],
+                40 => ['ad' => 'Alıcı Posta Kutusuna Teslim Delili (Delivery To Recipient)', 'badge' => 'primary', 'icon' => 'MailCheck'],
+                50 => ['ad' => 'Teslim Edilemedi Delili (Non-Delivery)', 'badge' => 'danger', 'icon' => 'AlertTriangle'],
+                60 => ['ad' => 'Alıcı Tarafından Açıldı / Okundu Delili (Retrieval)', 'badge' => 'info', 'icon' => 'MailOpen'],
+                70 => ['ad' => 'Alıcı Tarafından İndirildi (Download)', 'badge' => 'success', 'icon' => 'Download'],
+                default => ['ad' => 'PTT Delili (' . $turId . ')', 'badge' => 'secondary', 'icon' => 'FileText'],
+            };
+
+            $hasXml = !empty($delil['delil_xml_yolu']) && file_exists($projectRoot . '/' . ltrim((string) $delil['delil_xml_yolu'], '/'));
+
+            $formatliDeliller[] = [
+                'id' => (int) $delil['id'],
+                'delil_id' => (string) $delil['delil_id'],
+                'delil_tur_id' => $turId,
+                'tur_adi' => $turBilgisi['ad'],
+                'badge' => $turBilgisi['badge'],
+                'icon' => $turBilgisi['icon'],
+                'aciklama' => (string) ($delil['delil_aciklama'] ?? ''),
+                'olay_zamani' => !empty($delil['olay_zamani']) ? date('d.m.Y H:i:s', strtotime((string) $delil['olay_zamani'])) : '-',
+                'kephs' => (string) ($delil['kephs'] ?: 'PTT KEPHS'),
+                'has_xml' => $hasXml,
+                'xml_url' => '/api/evrak.php?action=kep-delil-indir&delil_id=' . urlencode((string) $delil['delil_id']),
+            ];
+        }
+
+        // Attachments
+        $ekListesi = [];
+        if ($evrak && !empty($evrak->id)) {
+            $attachmentMap = $EvrakModel->getAttachmentMap([(int) $evrak->id]);
+            $evrakFiles = $attachmentMap[(int) $evrak->id] ?? [];
+
+            // Self-healing from encrypted package if needed
+            if (empty($evrakFiles) && !empty($mesaj['ham_paket_yolu'])) {
+                $encPath = $projectRoot . '/' . ltrim((string) $mesaj['ham_paket_yolu'], '/');
+                if (is_file($encPath)) {
+                    try {
+                        $rawDec = Security::decryptFile(file_get_contents($encPath));
+                        $pkg = json_decode((string) $rawDec, true);
+                        if (!empty($pkg['files']) && is_array($pkg['files'])) {
+                            $attDir = $projectRoot . '/uploads/evrak-takip/ekler/';
+                            if (!is_dir($attDir)) {
+                                @mkdir($attDir, 0777, true);
+                            }
+                            foreach ($pkg['files'] as $pIdx => $pf) {
+                                $pName = (string) ($pf['name'] ?? 'belge.pdf');
+                                $pExt = strtolower(pathinfo($pName, PATHINFO_EXTENSION));
+                                $storedName = 'ek_' . $evrak->id . '_' . bin2hex(random_bytes(8)) . ($pExt !== '' ? '.' . $pExt : '');
+                                $storedFullPath = $attDir . $storedName;
+                                if (!empty($pf['content'])) {
+                                    file_put_contents($storedFullPath, base64_decode($pf['content']));
+                                    $EvrakModel->saveAttachment((int) $evrak->id, [
+                                        'dosya_adi' => $pName,
+                                        'dosya_yolu' => 'uploads/evrak-takip/ekler/' . $storedName,
+                                        'mime_tipi' => (string) ($pf['mime'] ?? 'application/octet-stream'),
+                                        'dosya_boyutu' => (int) ($pf['size'] ?? strlen(base64_decode($pf['content']))),
+                                        'sira' => $pIdx + 1,
+                                    ]);
+                                }
+                            }
+                            $attachmentMap = $EvrakModel->getAttachmentMap([(int) $evrak->id]);
+                            $evrakFiles = $attachmentMap[(int) $evrak->id] ?? [];
+                        }
+                    } catch (\Throwable $e) {}
+                }
+            }
+
+            if (!empty($evrak->dosya_yolu) && !array_filter($evrakFiles, static fn(object $f): bool => ltrim((string) $f->dosya_yolu, '/') === ltrim((string) $evrak->dosya_yolu, '/'))) {
+                array_unshift($evrakFiles, (object) [
+                    'id' => 0,
+                    'dosya_adi' => basename((string) $evrak->dosya_yolu),
+                    'dosya_yolu' => $evrak->dosya_yolu,
+                ]);
+            }
+
+            foreach ($evrakFiles as $ef) {
+                $fullPath = $projectRoot . '/' . ltrim((string) $ef->dosya_yolu, '/');
+                $attEncId = !empty($ef->id) ? Security::encrypt((int) $ef->id) : '';
+                $streamUrl = !empty($attEncId)
+                    ? '/api/evrak.php?action=stream-file&id=' . urlencode($attEncId)
+                    : '/api/evrak.php?action=stream-file&path=' . urlencode((string) $ef->dosya_yolu);
+
+                $ekListesi[] = [
+                    'id' => $attEncId,
+                    'name' => (string) $ef->dosya_adi,
+                    'path' => (string) $ef->dosya_yolu,
+                    'size' => is_file($fullPath) ? (int) filesize($fullPath) : (int) ($ef->dosya_boyutu ?? 0),
+                    'url' => $streamUrl,
+                ];
+            }
+        }
+
+        $icerik = '';
+        if ($mesaj && !empty($mesaj['icerik'])) {
+            $icerik = (string) $mesaj['icerik'];
+        } elseif ($evrak && !empty($evrak->kep_mesaj_metni)) {
+            $icerik = (string) $evrak->kep_mesaj_metni;
+        } elseif ($evrak && !empty($evrak->aciklama)) {
+            $icerik = (string) $evrak->aciklama;
+        }
+
+        $rawAlicilar = $mesaj['alici_kep'] ?? $evrak->kep_alicilar ?? $evrak->alici_kep ?? '';
+        $aliciListesi = array_values(array_filter(array_map('trim', preg_split('/[;,\n\r]+/', (string) $rawAlicilar))));
+
+        $durum = (string) ($mesaj['durum'] ?? $evrak->islem_durumu ?? 'gonderildi');
+        $durumMetni = 'KEP İletisi Sevk Edildi';
+        $durumTheme = 'primary';
+        if (!empty($formatliDeliller)) {
+            $sonDelil = end($formatliDeliller);
+            if ($sonDelil['delil_tur_id'] === 60) {
+                $durumMetni = 'Alıcı Tarafından Açıldı / Okundu';
+                $durumTheme = 'info';
+            } elseif ($sonDelil['delil_tur_id'] === 40) {
+                $durumMetni = 'Alıcı Posta Kutusuna Teslim Edildi';
+                $durumTheme = 'success';
+            }
+        }
+
+        $encId = $evrak ? Security::encrypt((int) $evrak->id) : '';
+
+        evrakApiResponse([
+            'success' => true,
+            'data' => [
+                'evrak_id' => $encId,
+                'raw_id' => $evrak ? (int) $evrak->id : null,
+                'evrak_no' => $evrak ? (string) ($evrak->evrak_no ?: '-') : '-',
+                'kep_id' => (string) ($mesaj['kep_id'] ?? $evrak->kep_mesaj_id ?? '-'),
+                'gonderen_kep' => (string) ($mesaj['gonderen_kep'] ?? '-'),
+                'alici_kep' => (string) ($mesaj['alici_kep'] ?? $rawAlicilar),
+                'alici_unvan' => (string) ($mesaj['alici_unvan'] ?? $evrak->kurum_adi ?? ''),
+                'alici_listesi' => $aliciListesi,
+                'konu' => (string) ($mesaj['konu'] ?? $evrak->konu ?? '-'),
+                'icerik' => $icerik,
+                'paket_turu' => (string) ($mesaj['paket_turu'] ?? $evrak->kep_paket_turu ?? 'Standart'),
+                'ileti_tipi' => (string) ($evrak->kep_ileti_tipi ?? 'standart'),
+                'durum' => $durum,
+                'durum_metni' => $durumMetni,
+                'durum_theme' => $durumTheme,
+                'delil_sayisi' => count($formatliDeliller),
+                'tarih' => !empty($mesaj['created_at']) ? date('d.m.Y H:i', strtotime((string) $mesaj['created_at'])) : (!empty($evrak->olusturma_tarihi) ? date('d.m.Y H:i', strtotime((string) $evrak->olusturma_tarihi)) : '-'),
+                'ekler' => $ekListesi,
+                'deliller' => $formatliDeliller,
+                'pdf_url' => $encId ? '/api/evrak.php?action=pdf&id=' . urlencode($encId) : null,
+            ],
+        ]);
+    }
+
+    // -------------------------------------------------------------
+    // 5.2. PTT'DEN DELİLLERİ SENKRONİZE ET (POST kep-sync-delil)
+    // -------------------------------------------------------------
+    if ($method === 'POST' && $action === 'kep-sync-delil') {
+        verifyCsrfToken();
+        $evrakIdRaw = trim((string) ($_POST['id'] ?? ''));
+        $kepId = trim((string) ($_POST['kep_id'] ?? ''));
+        $evrakId = $decryptId($evrakIdRaw);
+        if ($evrakId <= 0 && is_numeric($evrakIdRaw)) {
+            $evrakId = (int) $evrakIdRaw;
+        }
+
+        $targetKepId = $kepId;
+        if ($targetKepId === '' && $evrakId > 0) {
+            $ev = $EvrakModel->getById($evrakId);
+            $targetKepId = (string) ($ev->kep_mesaj_id ?? '');
+        }
+
+        if ($targetKepId === '') {
+            evrakApiResponse(['success' => false, 'message' => 'PTT KEP Id bulunamadı.'], 400);
+        }
+
+        $kepService = new \App\Service\KepService();
+        $res = $kepService->syncEvidences($firmaId, $targetKepId);
+
+        evrakApiResponse([
+            'success' => true,
+            'message' => 'PTT KEP yasal delilleri başarıyla güncellendi.',
+            'synced_count' => (int) ($res['synced_count'] ?? 0),
+        ]);
+    }
+
+    // -------------------------------------------------------------
+    // 5.3. KEP DELİL XML İNDİR (GET kep-delil-indir)
+    // -------------------------------------------------------------
+    if ($action === 'kep-delil-indir') {
+        $delilId = trim((string) ($_GET['delil_id'] ?? $_POST['delil_id'] ?? ''));
+        if ($delilId === '') {
+            evrakApiResponse(['success' => false, 'message' => 'Delil kimliği belirtilmedi.'], 400);
+        }
+        $kepService = new \App\Service\KepService();
+        $res = $kepService->downloadEvidenceXml($firmaId, $delilId);
+
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+        header('Content-Type: application/xml; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $res['filename'] . '"');
+        header('Content-Length: ' . strlen((string) $res['xml']));
+        header('Cache-Control: no-cache, no-store, must-revalidate');
+        echo $res['xml'];
+        exit;
     }
 
     // -------------------------------------------------------------

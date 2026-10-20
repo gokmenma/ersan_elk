@@ -8,11 +8,13 @@ use App\Model\FirmaModel;
 use App\Model\PersonelModel;
 use App\Model\SettingsModel;
 use App\Service\IcraUstYaziService;
+use App\Service\Gate;
 
 $Evrak = new EvrakTakipModel();
 $Personel = new PersonelModel();
 $Settings = new SettingsModel();
 $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
+$canSendKep = Gate::allows('evrak-takip/kep');
 $firma = (new FirmaModel())->find($firmaId);
 $settings = (object) $Settings->getAllSettingsAsKeyValue($firmaId);
 $personeller = $Personel->all(false, 'all_with_external');
@@ -603,7 +605,7 @@ $kepAlicilarValue = (string) ($value('kep_alicilar', '') ?: $value('alici_kep', 
                             <?php endif; ?>
                             <?php if ($record && $onayDurumu === 'onaylandi'): ?>
                                 <li><hr class="dropdown-divider"></li>
-                                <?php if ($gonderimKanali === 'kep' && empty($record->kep_mesaj_id) && empty($kepMesaj)): ?>
+                                <?php if ($canSendKep && empty($record->kep_mesaj_id) && empty($kepMesaj)): ?>
                                     <li>
                                         <button type="button" class="dropdown-item d-flex align-items-start gap-2 py-2" id="btnGidenKepIslemlerGonder">
                                             <i class="bx bx-mail-send font-size-18 text-info mt-1"></i>
@@ -628,8 +630,8 @@ $kepAlicilarValue = (string) ($value('kep_alicilar', '') ?: $value('alici_kep', 
                     </div>
                 <?php endif; ?>
                 <?php if ($record && $onayDurumu === 'onaylandi'): ?>
-                    <?php if (empty($record->kep_mesaj_id) && empty($kepMesaj)): ?>
-                        <button type="button" id="btnGidenKepHizliGonder" class="btn btn-info text-white px-4 me-2 <?php echo $gonderimKanali === 'kep' ? '' : 'd-none'; ?>">
+                    <?php if ($canSendKep && empty($record->kep_mesaj_id) && empty($kepMesaj)): ?>
+                        <button type="button" id="btnGidenKepHizliGonder" class="btn btn-info text-white px-4 me-2">
                             <i class="bx bx-mail-send font-size-16 align-middle me-1"></i> KEP ile Gönder
                         </button>
                     <?php else: ?>
@@ -679,8 +681,10 @@ window.gidenExistingAttachments = <?php echo json_encode($existingAttachments, J
 window.gidenGelenEvraklarMap = <?php echo json_encode($gelenEvrakMap, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 window.gidenSigningUsersList = <?php echo json_encode($signingUsersList, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 window.gidenInitialSelectedSigners = <?php echo json_encode($initialSelectedSigners, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
-window.gidenKepSettings = <?php echo json_encode($kepSettings ? ['has_settings' => true, 'kep_adresi' => $kepSettings['kep_adresi']] : ['has_settings' => false], JSON_UNESCAPED_UNICODE); ?>;
+window.gidenKepSettings = <?php echo json_encode($kepSettings ? ['has_settings' => !empty($kepSettings['has_user_credentials']), 'kep_adresi' => $kepSettings['kep_adresi']] : ['has_settings' => false], JSON_UNESCAPED_UNICODE); ?>;
 window.gidenKepMesaj = <?php echo json_encode($kepMesaj ? ['kep_id' => $kepMesaj['kep_id'], 'durum' => $kepMesaj['durum']] : null, JSON_UNESCAPED_UNICODE); ?>;
+window.gidenKepCanSendApproved = <?php echo $record && $onayDurumu === 'onaylandi' && $canSendKep && empty($kepMesaj) && empty($record->kep_mesaj_id) ? 'true' : 'false'; ?>;
+window.gidenKepAutoStart = <?php echo $canSendKep && (string) ($_GET['kep_gonder'] ?? '') === '1' ? 'true' : 'false'; ?>;
 </script>
 
 <div class="modal fade" id="evrakSablonModal" tabindex="-1" aria-hidden="true">

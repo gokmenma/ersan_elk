@@ -10,15 +10,21 @@ import {
   Calendar,
   Car,
   Check,
+  CheckCircle,
   CheckCircle2,
   ChevronRight,
   Clock,
+  Copy,
   Download,
+  ExternalLink,
   Eye,
   FileCheck,
   FilePlus,
   FileText,
   Lock,
+  Mail,
+  MailCheck,
+  MailOpen,
   Paperclip,
   Pencil,
   Plus,
@@ -26,6 +32,7 @@ import {
   RotateCcw,
   Search,
   Send,
+  ShieldCheck,
   Trash2,
   Undo2,
   User,
@@ -160,6 +167,88 @@ function formatMoney(amount) {
       maximumFractionDigits: 2,
     }).format(val) + ' ₺'
   )
+}
+
+// Giden KEP Önizleme Durumu
+const isKepPreviewOpen = ref(false)
+const kepLoading = ref(false)
+const kepSyncing = ref(false)
+const kepDetailData = ref(null)
+const kepActiveTab = ref('message') // 'message' | 'evidence'
+const kepError = ref('')
+const copiedKepField = ref('')
+let copiedTimer = null
+
+async function openKepPreview(doc) {
+  isKepPreviewOpen.value = true
+  kepLoading.value = true
+  kepError.value = ''
+  kepDetailData.value = null
+  kepActiveTab.value = 'message'
+
+  try {
+    const res = await evrakApi.kepDetail(doc.id, doc.kep_mesaj_id || '')
+    kepDetailData.value = res.data
+  } catch (err) {
+    kepError.value = err.message || 'KEP iletisi detayları yüklenemedi.'
+  } finally {
+    kepLoading.value = false
+  }
+}
+
+async function handleSyncKepDelil() {
+  if (kepSyncing.value || !kepDetailData.value) return
+  kepSyncing.value = true
+  try {
+    const res = await evrakApi.syncKepDelil(
+      kepDetailData.value.evrak_id,
+      kepDetailData.value.kep_id,
+      auth.state.csrfToken
+    )
+    showToast(res.message || 'PTT delilleri güncellendi.')
+    const fresh = await evrakApi.kepDetail(
+      kepDetailData.value.evrak_id,
+      kepDetailData.value.kep_id
+    )
+    kepDetailData.value = fresh.data
+  } catch (err) {
+    showToast(err.message || 'PTT delilleri güncellenirken hata oluştu.', 'error')
+  } finally {
+    kepSyncing.value = false
+  }
+}
+
+function copyToClipboard(text, fieldName) {
+  if (!text) return
+  if (navigator?.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      copiedKepField.value = fieldName
+      showToast('Panoya kopyalandı.')
+      if (copiedTimer) clearTimeout(copiedTimer)
+      copiedTimer = setTimeout(() => {
+        copiedKepField.value = ''
+      }, 2000)
+    }).catch(() => {
+      showToast('Kopyalama başarısız oldu.', 'error')
+    })
+  } else {
+    const ta = document.createElement('textarea')
+    ta.value = text
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand('copy')
+    document.body.removeChild(ta)
+    copiedKepField.value = fieldName
+    showToast('Panoya kopyalandı.')
+  }
+}
+
+function handleCardClick(item) {
+  if (item.is_kep) {
+    openKepPreview(item)
+  } else {
+    openDetail(item)
+  }
 }
 
 // Dosya Boyutu Formatlayıcı
@@ -841,7 +930,8 @@ onMounted(() => {
           v-for="item in items"
           :key="item.id"
           class="bento-card bento-card--white evrak-card"
-          @click="openDetail(item)"
+          :class="{ 'evrak-card--kep': item.is_kep }"
+          @click="handleCardClick(item)"
         >
           <!-- Kart Üst Barı -->
           <div class="evrak-card-head">
@@ -856,6 +946,14 @@ onMounted(() => {
                   :size="14"
                 />
                 {{ item.evrak_tipi === 'gelen' ? 'GELEN' : 'GİDEN' }}
+              </span>
+
+              <!-- KEP / UETS Rozeti -->
+              <span v-if="item.is_kep" class="evrak-type-badge evrak-type-badge--kep">
+                <Send :size="11" /> KEP
+              </span>
+              <span v-else-if="item.is_uets" class="evrak-type-badge evrak-type-badge--uets">
+                <Mail :size="11" /> UETS
               </span>
 
               <!-- Evrak No -->
@@ -899,9 +997,12 @@ onMounted(() => {
           </h3>
 
           <!-- Kurum / Muhatap Bilgisi -->
-          <div class="evrak-card-info-row">
-            <Building2 :size="16" class="text-muted" />
-            <span class="evrak-card-org">{{ item.kurum_adi }}</span>
+          <div class="evrak-card-info-row" :class="{ 'is-kep-info': item.is_kep }">
+            <Send v-if="item.is_kep" :size="15" class="text-primary flex-shrink-0" />
+            <Building2 v-else :size="16" class="text-muted flex-shrink-0" />
+            <span class="evrak-card-org" :class="{ 'font-monospace text-primary fw-bold': item.is_kep }">
+              {{ item.alici_kep || item.kurum_adi }}
+            </span>
             <span v-if="item.muhatap_alt_birim" class="evrak-card-subunit">
               / {{ item.muhatap_alt_birim }}
             </span>
@@ -938,10 +1039,24 @@ onMounted(() => {
                 <span>{{ item.attachments_count }} Ek</span>
               </button>
 
+              <!-- KEP Gönderisi ise Giden KEP Önizlemesi Aç -->
               <button
-                v-if="item.evrak_tipi === 'giden'"
+                v-if="item.is_kep"
+                type="button"
+                class="evrak-preview-pill evrak-preview-pill--kep"
+                title="Giden KEP İletisi ve Delilleri Önizle"
+                @click="openKepPreview(item)"
+              >
+                <Send :size="13" />
+                <span>KEP Önizle</span>
+              </button>
+
+              <!-- Normal Giden Evrak ise Resmi Yazı PDF Önizle -->
+              <button
+                v-else-if="item.evrak_tipi === 'giden'"
                 type="button"
                 class="evrak-preview-pill"
+                title="Resmi Yazı PDF Önizleme"
                 @click="openGidenEvrakPdf(item)"
               >
                 <FileText :size="14" />
@@ -1316,9 +1431,20 @@ onMounted(() => {
               </button>
             </template>
 
-            <!-- Giden Evrak İse Özel Sayfasına Yönlendir -->
+            <!-- KEP Gönderisi ise KEP Önizlemesi Aç -->
             <button
-              v-if="selectedDetail.evrak_tipi === 'giden'"
+              v-if="selectedDetail.is_kep"
+              type="button"
+              class="evrak-btn evrak-btn--primary"
+              @click="isDetailOpen = false; openKepPreview(selectedDetail)"
+            >
+              <Send :size="16" />
+              <span>Giden KEP Önizlemesi</span>
+            </button>
+
+            <!-- Giden Evrak İse Özel Sayfasına Yönlendir (KEP Değilse) -->
+            <button
+              v-else-if="selectedDetail.evrak_tipi === 'giden'"
               type="button"
               class="evrak-btn evrak-btn--primary"
               @click="isDetailOpen = false; router.push({ path: '/giden-evrak', query: { id: selectedDetail.id } })"
@@ -1343,6 +1469,293 @@ onMounted(() => {
               type="button"
               class="evrak-btn evrak-btn--outline"
               @click="isDetailOpen = false"
+            >
+              Kapat
+            </button>
+          </footer>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- ======================================================== -->
+    <!-- GİDEN KEP ÖNİZLEME ÇEKMECESİ (KEP PREVIEW BOTTOM SHEET)   -->
+    <!-- ======================================================== -->
+    <Transition name="drawer">
+      <div v-if="isKepPreviewOpen" class="evrak-drawer-layer" @click.self="isKepPreviewOpen = false">
+        <div class="evrak-drawer-sheet evrak-drawer-sheet--kep">
+          <!-- Başlık Çubuğu -->
+          <div class="evrak-drawer-handle" @click="isKepPreviewOpen = false"></div>
+          <header class="evrak-drawer-header">
+            <div class="evrak-drawer-title-group">
+              <div class="kep-header-badge-row">
+                <span class="evrak-type-badge evrak-type-badge--kep">
+                  <Send :size="11" /> KEP GÖNDERİSİ
+                </span>
+                <span
+                  v-if="kepDetailData?.durum_metni"
+                  class="kep-status-pill"
+                  :class="`kep-status-pill--${kepDetailData.durum_theme || 'primary'}`"
+                >
+                  <span class="bento-status-dot"></span>
+                  {{ kepDetailData.durum_metni }}
+                </span>
+              </div>
+              <h2>{{ kepDetailData?.konu || 'KEP İletisi Yükleniyor...' }}</h2>
+              <span class="evrak-drawer-subtitle">
+                No: {{ kepDetailData?.evrak_no || '-' }} • {{ kepDetailData?.tarih || '-' }} • PTT KEP Gönderisi
+              </span>
+            </div>
+            <button
+              type="button"
+              class="clay-circle-btn evrak-drawer-close"
+              aria-label="Kapat"
+              @click="isKepPreviewOpen = false"
+            >
+              <X :size="18" />
+            </button>
+          </header>
+
+          <!-- Çekmece İçeriği -->
+          <div class="evrak-drawer-body">
+            <!-- Yükleniyor İskeleti -->
+            <div v-if="kepLoading" class="clay-skeleton-grid">
+              <div class="clay-skeleton-card clay-skeleton-card--sm"></div>
+              <div class="clay-skeleton-card clay-skeleton-card--md"></div>
+            </div>
+
+            <!-- Hata Kartı -->
+            <div v-else-if="kepError" class="clay-state-card" role="alert">
+              <AlertCircle :size="24" class="text-coral" />
+              <strong>KEP Verisi Alınamadı</strong>
+              <p>{{ kepError }}</p>
+              <button
+                type="button"
+                class="clay-retry-btn"
+                @click="openKepPreview(selectedDetail || { id: activeDocId })"
+              >
+                Tekrar dene
+              </button>
+            </div>
+
+            <!-- KEP İçeriği -->
+            <template v-else-if="kepDetailData">
+              <!-- Bento KEP Bilgi Kartı -->
+              <div class="kep-hero-tile">
+                <div class="kep-meta-grid">
+                  <div class="kep-meta-item">
+                    <span class="kep-meta-label"><User :size="12" /> Gönderen KEP:</span>
+                    <strong class="font-monospace text-xs">{{ kepDetailData.gonderen_kep || '-' }}</strong>
+                  </div>
+                  <div class="kep-meta-item">
+                    <span class="kep-meta-label"><Send :size="12" /> Alıcı KEP:</span>
+                    <div class="kep-copyable-val">
+                      <strong class="font-monospace text-xs text-primary">{{ kepDetailData.alici_kep || '-' }}</strong>
+                      <button
+                        type="button"
+                        class="kep-mini-copy-btn"
+                        title="Alıcı KEP kopyala"
+                        @click="copyToClipboard(kepDetailData.alici_kep, 'alici_kep')"
+                      >
+                        <Check v-if="copiedKepField === 'alici_kep'" :size="12" class="text-emerald" />
+                        <Copy v-else :size="12" />
+                      </button>
+                    </div>
+                  </div>
+                  <div class="kep-meta-item kep-meta-item--full">
+                    <span class="kep-meta-label"><FileCheck :size="12" /> PTT Takip Kodu (KepId):</span>
+                    <div class="kep-copyable-val">
+                      <span class="font-monospace text-xs text-truncate">{{ kepDetailData.kep_id || '-' }}</span>
+                      <button
+                        type="button"
+                        class="kep-mini-copy-btn"
+                        title="KepId kopyala"
+                        @click="copyToClipboard(kepDetailData.kep_id, 'kep_id')"
+                      >
+                        <Check v-if="copiedKepField === 'kep_id'" :size="12" class="text-emerald" />
+                        <Copy v-else :size="12" />
+                      </button>
+                    </div>
+                  </div>
+                  <div class="kep-meta-item">
+                    <span class="kep-meta-label"><Calendar :size="12" /> Gönderim Tarihi:</span>
+                    <span class="text-xs fw-semibold">{{ kepDetailData.tarih }}</span>
+                  </div>
+                  <div class="kep-meta-item">
+                    <span class="kep-meta-label"><Zap :size="12" /> Paket / İleti Türü:</span>
+                    <span class="badge bg-slate-100 text-slate-700 text-xs">{{ kepDetailData.paket_turu || 'Standart' }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Sekme Seçici (Clay Tabs) -->
+              <div class="clay-tabs-wrap">
+                <button
+                  type="button"
+                  class="clay-tab-pill"
+                  :class="{ 'is-active': kepActiveTab === 'message' }"
+                  @click="kepActiveTab = 'message'"
+                >
+                  <FileText :size="13" />
+                  <span>İleti Metni & Ekler</span>
+                  <span v-if="kepDetailData.ekler?.length" class="clay-tab-count">
+                    {{ kepDetailData.ekler.length }}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  class="clay-tab-pill"
+                  :class="{ 'is-active': kepActiveTab === 'evidence' }"
+                  @click="kepActiveTab = 'evidence'"
+                >
+                  <ShieldCheck :size="13" />
+                  <span>PTT Yasal Delilleri</span>
+                  <span class="clay-tab-count clay-tab-count--accent">
+                    {{ kepDetailData.delil_sayisi || 0 }}
+                  </span>
+                </button>
+              </div>
+
+              <!-- 1. Sekme: İleti Metni & Ekler -->
+              <div v-if="kepActiveTab === 'message'" class="kep-tab-body">
+                <!-- Konu -->
+                <div class="kep-subject-card">
+                  <span class="evrak-section-label">İLETİ KONUSU</span>
+                  <strong class="text-sm block text-slate-800">{{ kepDetailData.konu }}</strong>
+                </div>
+
+                <!-- İleti İçeriği -->
+                <div class="kep-body-card">
+                  <span class="evrak-section-label mb-2 block">İLETİ İÇERİĞİ</span>
+                  <div
+                    class="kep-body-render"
+                    v-html="kepDetailData.icerik || '<p class=\'text-muted text-xs\'>İleti metni bulunmuyor.</p>'"
+                  ></div>
+                </div>
+
+                <!-- Ekli Dosyalar -->
+                <div class="kep-attachments-card">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="evrak-section-label">EKLİ DOSYALAR ({{ kepDetailData.ekler?.length || 0 }})</span>
+                  </div>
+
+                  <div v-if="kepDetailData.ekler?.length" class="kep-files-list">
+                    <div
+                      v-for="(ek, idx) in kepDetailData.ekler"
+                      :key="idx"
+                      class="kep-file-tile"
+                    >
+                      <div class="kep-file-icon">
+                        <FileText :size="18" />
+                      </div>
+                      <div class="kep-file-info">
+                        <strong>{{ ek.name || 'Ek Belge' }}</strong>
+                        <span v-if="ek.size">{{ formatFileSize(ek.size) }}</span>
+                      </div>
+                      <div class="kep-file-actions">
+                        <button
+                          type="button"
+                          class="clay-circle-btn clay-circle-btn--sm"
+                          title="Görüntüle"
+                          @click="openFilePreview({ url: ek.url, name: ek.name, isPdf: true })"
+                        >
+                          <Eye :size="13" />
+                        </button>
+                        <a
+                          :href="`${ek.url}&download=1`"
+                          class="clay-circle-btn clay-circle-btn--sm"
+                          download
+                          title="İndir"
+                        >
+                          <Download :size="13" />
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                  <div v-else class="text-xs text-muted text-center py-2">
+                    Bu KEP iletisine iliştirilmiş ek dosya bulunmuyor.
+                  </div>
+                </div>
+              </div>
+
+              <!-- 2. Sekme: PTT Yasal Delilleri -->
+              <div v-else-if="kepActiveTab === 'evidence'" class="kep-tab-body">
+                <!-- PTT Bilgilendirme ve Canlı Senkronize Butonu -->
+                <div class="kep-evidence-banner">
+                  <div class="kep-evidence-banner-text">
+                    <ShieldCheck :size="18" class="text-primary flex-shrink-0" />
+                    <span>PTT KEP yasal delilleri ETSI TS 02640 ve REM standardında zaman damgalı resmi ispat belgeleridir.</span>
+                  </div>
+                  <button
+                    type="button"
+                    class="clay-pill-btn clay-pill-btn--sm"
+                    :disabled="kepSyncing"
+                    @click="handleSyncKepDelil"
+                  >
+                    <RefreshCw :size="12" :class="{ 'clay-spin-icon': kepSyncing }" />
+                    <span>{{ kepSyncing ? 'Sorgulanıyor...' : 'PTT\'den Güncelle' }}</span>
+                  </button>
+                </div>
+
+                <!-- Delil Zaman Çizelgesi (Timeline) -->
+                <div v-if="kepDetailData.deliller?.length" class="kep-timeline">
+                  <div
+                    v-for="delil in kepDetailData.deliller"
+                    :key="delil.id"
+                    class="kep-timeline-item"
+                    :class="`kep-timeline-item--${delil.badge || 'primary'}`"
+                  >
+                    <div class="kep-timeline-dot">
+                      <CheckCircle v-if="delil.delil_tur_id === 10 || delil.delil_tur_id === 40 || delil.delil_tur_id === 60" :size="14" />
+                      <FileCheck v-else :size="14" />
+                    </div>
+                    <div class="kep-timeline-content">
+                      <div class="kep-timeline-header">
+                        <strong class="kep-timeline-title">{{ delil.tur_adi }}</strong>
+                        <span class="kep-timeline-time">{{ delil.olay_zamani }}</span>
+                      </div>
+                      <p v-if="delil.aciklama" class="kep-timeline-desc">
+                        {{ delil.aciklama }}
+                      </p>
+                      <div class="kep-timeline-meta">
+                        <span class="kep-meta-tag">{{ delil.kephs }}</span>
+                        <a
+                          v-if="delil.xml_url"
+                          :href="delil.xml_url"
+                          class="kep-xml-link"
+                          download
+                          title="ETSI XML İndir"
+                        >
+                          <Download :size="11" />
+                          <span>Delil XML</span>
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div v-else class="text-xs text-muted text-center py-4">
+                  Kayıtlı PTT delili bulunmuyor. "PTT'den Güncelle" butonuna basarak kontrol edebilirsiniz.
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <!-- Çekmece Alt Barı -->
+          <footer v-if="kepDetailData" class="evrak-drawer-footer justify-between">
+            <button
+              v-if="kepDetailData.pdf_url"
+              type="button"
+              class="evrak-btn evrak-btn--subtle"
+              @click="openGidenEvrakPdf(kepDetailData)"
+            >
+              <FileText :size="15" />
+              <span>Resmi Evrak PDF</span>
+            </button>
+            <div v-else></div>
+
+            <button
+              type="button"
+              class="evrak-btn evrak-btn--outline"
+              @click="isKepPreviewOpen = false"
             >
               Kapat
             </button>
@@ -3029,5 +3442,363 @@ onMounted(() => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+/* ======================================================== */
+/* KEP GÖNDERİSİ KART VE ROZET STİLLERİ                     */
+/* ======================================================== */
+.evrak-card--kep {
+  border-left: 4px solid var(--ds-blue, #0284c7) !important;
+}
+
+.evrak-type-badge--kep {
+  background: rgba(2, 132, 199, 0.12) !important;
+  color: #0284c7 !important;
+  border: 1px solid rgba(2, 132, 199, 0.3) !important;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.evrak-type-badge--uets {
+  background: rgba(99, 102, 241, 0.12) !important;
+  color: #6366f1 !important;
+  border: 1px solid rgba(99, 102, 241, 0.3) !important;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.is-kep-info {
+  background: rgba(2, 132, 199, 0.05);
+  padding: 4px 8px;
+  border-radius: var(--ds-radius-sm);
+  margin-top: 2px;
+}
+
+.evrak-preview-pill--kep {
+  background: rgba(2, 132, 199, 0.1) !important;
+  color: #0284c7 !important;
+  border-color: rgba(2, 132, 199, 0.3) !important;
+  font-weight: 700;
+}
+.evrak-preview-pill--kep:active {
+  background: rgba(2, 132, 199, 0.22) !important;
+}
+
+/* ======================================================== */
+/* GİDEN KEP ÖNİZLEME ÇEKMECESİ STİLLERİ                   */
+/* ======================================================== */
+.evrak-drawer-sheet--kep {
+  max-height: 92svh;
+}
+
+.kep-header-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.kep-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: var(--ds-radius-pill);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.kep-status-pill--primary {
+  background: rgba(2, 132, 199, 0.12);
+  color: #0284c7;
+  border: 1px solid rgba(2, 132, 199, 0.25);
+}
+.kep-status-pill--success {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+.kep-status-pill--info {
+  background: rgba(99, 102, 241, 0.12);
+  color: #4f46e5;
+  border: 1px solid rgba(99, 102, 241, 0.25);
+}
+.kep-status-pill--danger {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.kep-hero-tile {
+  background: #ffffff;
+  border: 1px solid var(--ds-border-subtle);
+  border-radius: var(--ds-radius-card, 24px);
+  padding: 14px 16px;
+  box-shadow: var(--ds-shadow-bento);
+}
+
+.kep-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.kep-meta-item--full {
+  grid-column: 1 / -1;
+}
+
+.kep-meta-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ds-muted);
+  margin-bottom: 2px;
+}
+
+.kep-copyable-val {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+.kep-mini-copy-btn {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid var(--ds-border-subtle);
+  background: var(--ds-surface-subtle);
+  color: var(--ds-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+.kep-mini-copy-btn:active {
+  background: #e2e8f0;
+  color: var(--ds-ink);
+}
+
+.kep-tab-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.kep-subject-card,
+.kep-body-card,
+.kep-attachments-card {
+  background: #ffffff;
+  border: 1px solid var(--ds-border-subtle);
+  border-radius: var(--ds-radius-tile);
+  padding: 14px 16px;
+  box-shadow: var(--ds-shadow-tile);
+}
+
+.kep-body-render {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ds-ink);
+  max-height: 280px;
+  overflow-y: auto;
+  word-break: break-word;
+}
+.kep-body-render p {
+  margin-bottom: 8px;
+}
+
+.kep-files-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kep-file-tile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--ds-surface-subtle);
+  border: 1px solid var(--ds-border-subtle);
+  border-radius: var(--ds-radius-sm);
+}
+
+.kep-file-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #ffffff;
+  display: grid;
+  place-items: center;
+  color: var(--ds-blue, #0284c7);
+  flex-shrink: 0;
+}
+
+.kep-file-info {
+  flex: 1;
+  min-width: 0;
+}
+.kep-file-info strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ds-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.kep-file-info span {
+  font-size: 10.5px;
+  color: var(--ds-muted);
+}
+
+.kep-file-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.clay-circle-btn--sm {
+  width: 30px;
+  height: 30px;
+}
+
+.kep-evidence-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #eff6ff;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: var(--ds-radius-tile);
+  padding: 12px 14px;
+}
+.kep-evidence-banner-text {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 11.5px;
+  color: #1e40af;
+  line-height: 1.45;
+}
+
+.kep-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  padding-left: 10px;
+}
+.kep-timeline::before {
+  content: '';
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 19px;
+  width: 2px;
+  background: #e2e8f0;
+}
+
+.kep-timeline-item {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.kep-timeline-dot {
+  position: relative;
+  z-index: 2;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #0284c7;
+  display: grid;
+  place-items: center;
+  color: #0284c7;
+  flex-shrink: 0;
+}
+.kep-timeline-item--success .kep-timeline-dot {
+  border-color: #10b981;
+  color: #10b981;
+}
+.kep-timeline-item--info .kep-timeline-dot {
+  border-color: #6366f1;
+  color: #6366f1;
+}
+.kep-timeline-item--danger .kep-timeline-dot {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.kep-timeline-content {
+  flex: 1;
+  background: #ffffff;
+  border: 1px solid var(--ds-border-subtle);
+  border-radius: var(--ds-radius-tile);
+  padding: 10px 12px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+}
+
+.kep-timeline-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.kep-timeline-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ds-ink);
+  line-height: 1.25;
+}
+.kep-timeline-time {
+  font-size: 10.5px;
+  color: var(--ds-muted);
+  white-space: nowrap;
+}
+
+.kep-timeline-desc {
+  font-size: 11px;
+  color: #475569;
+  line-height: 1.4;
+  margin: 4px 0 6px;
+}
+
+.kep-timeline-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.kep-meta-tag {
+  font-size: 10px;
+  color: var(--ds-muted);
+  font-weight: 600;
+}
+
+.kep-xml-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--ds-blue, #0284c7);
+  text-decoration: none;
+  background: rgba(2, 132, 199, 0.08);
+  padding: 2px 7px;
+  border-radius: var(--ds-radius-pill);
 }
 </style>

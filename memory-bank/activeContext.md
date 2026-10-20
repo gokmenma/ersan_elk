@@ -1,5 +1,26 @@
 # Active Context
 
+## Mobil SPA Evrak Takip — KEP Gönderisi Belirteçleri ve Giden KEP Önizlemesi (2026-10-20)
+- **Kullanıcı Talebi**: Mobil SPA evrak takip listesinde evrakın KEP gönderisi olduğunun belirgin olması ve "Önizle" butonuna tıklandığında resmi evrak PDF'i yerine masaüstündeki gibi Giden KEP Önizlemesinin (ileti metni, alıcı/gönderen bilgileri, PTT takip kodu ve PTT resmi delilleri) açılması.
+- **Uygulanan Çözüm**:
+  1. `mobile-spa/public/api/evrak.php`:
+     - `list` ve `detail` yanıtlarına `is_kep`, `is_uets`, `gonderim_kanali`, `kaynak_tipi`, `kep_mesaj_id`, `alici_kep` alanları eklendi.
+     - Yeni API aksiyonları eklendi:
+       - `action === 'kep-detail'`: `KepMesajModel` ve `KepDelilModel` üzerinden ileti metni, gönderen/alıcı KEP adresleri, PTT KepId takip kodu, ekli dosyalar ve PTT resmi delillerini (10, 40, 60 delil timeline'ı) döner.
+       - `action === 'kep-sync-delil'`: PTT web servisinden (`KepService::syncEvidences`) güncel delilleri canlı sorgulayıp senkronize eder.
+       - `action === 'kep-delil-indir'`: ETSI XML delilini doğrudan indirir.
+  2. `mobile-spa/src/services/evrak.js`:
+     - `kepDetail()`, `syncKepDelil()`, `getKepDelilXmlUrl()` metodları eklendi.
+  3. `mobile-spa/src/views/EvrakView.vue`:
+     - Kart Başlığı: KEP evrakları için belirgin `KEP` badge'i (`.evrak-type-badge--kep`) ve sol kenarlık vurgusu (`.evrak-card--kep`) eklendi.
+     - Muhatap Satırı: KEP evraklarında bina simgesi yerine `Send` simgesi ve monospace yazı tipiyle KEP adresi gösterildi.
+     - Aksiyon Butonu: KEP evrakları için `Önizle` butonu `KEP Önizle` olarak özelleştirildi; tıklandığında veya karta dokunulduğunda özel **Giden KEP Önizleme Çekmecesi** açılıyor.
+     - Giden KEP Önizleme Çekmecesi (`isKepPreviewOpen`):
+       - Üstte gönderen, alıcı (tek dokunuşla kopyalama), PTT Takip Kodu (kopyalama), gönderim tarihi, paket türü ve canlı teslimat durumu (örn: "Alıcı Tarafından Açıldı / Okundu").
+       - Sekmeli yapı: 1. Sekmede "İleti Metni & Ekler" (görüntüleme/indirme butonlarıyla), 2. Sekmede "PTT Yasal Delilleri" (zaman damgalı delil timeline'ı, XML indirme ve PTT'den canlı güncelle butonu).
+       - Alt barda isteğe bağlı resmi evrak PDF'ini açma butonu ve Kapat butonu.
+  4. `npm run build` ile `mobile-spa/dist` derlendi.
+
 ## Mobil SPA Ana Sayfa — Personel & Araç Metrik Kutularının Çerçevelenmesi ve Hizalanması (2026-10-20)
 - **Kullanıcı Talebi**: Mobil SPA ana sayfasındaki "Personel Durumu" ve "Araç & Filo" kartları altındaki 3'erli metrik verilerinin (Sahada, İzinli, Geç Kalan ve Sahada, Serviste, Boşta) çerçeve içine alınması ve içeriklerinin (etiket, durum noktası ve sayısal değer) ortalanması.
 - **Uygulanan Değişiklikler**:
@@ -2575,3 +2596,13 @@
 - Evrak Takip server-side listesine `İşlem Yapan Personel` kolonu eklendi. Gelen evrakta kaydı oluşturan, giden/KEP evrakında işlemi başlatan uygulama kullanıcısının adı gösteriliyor; ad yoksa kullanıcı adı kullanılıyor.
 - Otomatik alınmış ve kullanıcı bağı bulunmayan UETS evrakları `Sistem / UETS` olarak etiketleniyor.
 - Yeni kolon genel arama, canlı kolon filtresi ve sunucu taraflı sıralamaya dahil edildi; DataTables kolon indeksleri güncellendi. PHP/JavaScript sözdizimi ve gerçek veride 10 satırlık Model yanıtı doğrulandı.
+
+# 2026-10-20 — Onaylanmış normal giden evrakın KEP ile gönderimi
+
+- Normal gönderim kanalıyla hazırlanıp e-imza süreci tamamlanan giden evraklar, sonradan KEP üzerinden sevk edilebilir hale getirildi. Evrak listesindeki KEP yetkisine bağlı gönderim ikonu detay sayfasına yönlendirmeden mevcut KEP modalını açıyor; detay sayfasında da `KEP ile Gönder` aksiyonu bulunuyor.
+- Liste modalında alıcı KEP adresleri alınıyor; konu/içerik kilitleniyor, yeni dosya ekleme kapatılıyor ve onaylı üst yazı PDF'i ile kayıtlı ekler değiştirilmeden mevcut yerel CAdES-BES imza ajanı akışına veriliyor.
+- API'deki eski `gonderim_kanali = kep` zorunluluğu kaldırıldı; bunun yerine giden evrak, tamamlanmış onay, firma izolasyonu, KEP yetkisi ve daha önce gönderilmemiş olma kontrolleri uygulanıyor.
+- KEP taslakları oturum kullanıcısına bağlandı ve 30 dakika ile sınırlandı. MIME hazırlama, sunucu fallback gönderimi ve tamamlamada mükerrer sevk kontrolü eklendi.
+- PHP/JavaScript sözdizimi, onaysız evrak engeli ve önceden KEP gönderilmiş evrakın tekrar sevk engeli gerçek veride doğrulandı.
+- Onaylı evrak modalından ilk gönderim denemesinde oluşan `strlen(): SoapVar given` hatasının, KEP boyut sınırı kontrolünde SOAP ek nesnelerine `strlen()` uygulanmasından kaynaklandığı doğrulandı. Hem yerel ajan MIME hazırlama hem sunucu fallback yolunda toplam artık PDF/EYP/ek dosyalarının ham byte içerikleri üzerinden hesaplanıyor; okunamayan dosyalar açıklayıcı hatayla durduruluyor.
+- Onaylı giden evrakın yazı içeriğinin KEP ileti gövdesine tekrar basılması kaldırıldı. Onaylı PDF zaten ek olarak gönderildiği için hem yerel ajan hem sunucu fallback yolunda KEP gövdesi sunucu tarafında değiştirilemez biçimde `İlgili yazı ektedir.` standart metnine sabitlendi; yeni KEP kayıtlarında konu ve bu standart gövde ayrıca saklanıyor.

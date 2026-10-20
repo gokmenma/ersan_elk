@@ -118,4 +118,16 @@ export const evrakApi = {
   getPdfUrl(id) {
     return `/api/evrak.php?action=pdf&id=${encodeURIComponent(id)}`
   },
+  kepDetail(id, kepId = '') {
+    return request('kep-detail', { params: { id, kep_id: kepId } })
+  },
+  syncKepDelil(id, kepId = '', csrfToken = '') {
+    const fd = new FormData()
+    fd.append('id', id)
+    if (kepId) fd.append('kep_id', kepId)
+    return request('kep-sync-delil', { method: 'POST', body: fd, csrfToken })
+  },
+  getKepDelilXmlUrl(delilId) {
+    return `/api/evrak.php?action=kep-delil-indir&delil_id=${encodeURIComponent(delilId)}`
+  },
 }

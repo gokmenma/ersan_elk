@@ -1001,6 +1001,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $attachmentMap = $Model->getAttachmentMap($ids);
                 $approvalMap = $Model->getApprovalSummaryMap($currentUserId, $ids);
                 $approvalDetailMap = $Model->getApprovalDetailMap($ids);
+                $canSendKep = Gate::allows('evrak-takip/kep');
                 $esc = static fn($value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
                 $dataRows = [];
                 foreach ($result['rows'] as $offset => $evrak) {
@@ -1051,6 +1052,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $actions .= '<button type="button" class="btn btn-subtle-primary table-action-btn btn-kep-onizle" data-id="' . $esc($encryptedId) . '" title="KEP İletisi ve Delil Önizleme"><i class="bx bx-mail-send"></i></button>';
                     } elseif ($type === 'giden') {
                         $actions .= '<button type="button" class="btn btn-subtle-info table-action-btn evrak-pdf-goruntule" data-id="' . $esc($encryptedId) . '" title="PDF Önizleme"><i class="bx bx-file-blank"></i></button><a href="index?p=evrak-takip/giden-evrak&amp;id=' . $esc($encryptedId) . '" class="btn ' . ($locked ? 'btn-subtle-secondary' : 'btn-subtle-warning') . ' table-action-btn"><i class="bx ' . ($locked ? 'bx-show' : 'bx-edit-alt') . '"></i></a>';
+                        if ($canSendKep && $approvalStatus === 'onaylandi' && empty($evrak->kep_mesaj_id)) {
+                            $actions .= '<button type="button" class="btn btn-subtle-primary table-action-btn btn-approved-kep-send" data-id="' . $esc($encryptedId) . '" data-subject="' . $esc($evrak->konu ?: 'Resmî Yazı') . '" title="Onaylı Evrakı KEP ile Gönder"><i class="bx bx-mail-send"></i></button>';
+                        }
                     } else {
                         $actions .= '<button type="button" class="btn btn-subtle-primary table-action-btn evrak-duzenle" data-id="' . $esc($encryptedId) . '" title="Düzenle"><i class="bx bx-edit-alt"></i></button>';
                     }
@@ -1636,14 +1640,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 $evrak = $Model->getById($evrakId);
-                if (!$evrak || ($evrak->gonderim_kanali ?? 'normal') !== 'kep') {
-                    throw new Exception('Bu evrak KEP gönderimi için hazırlanmamış.');
+                if (!$evrak || ($evrak->evrak_tipi ?? '') !== 'giden') {
+                    throw new Exception('Giden evrak bulunamadı.');
+                }
+                if (($evrak->onay_durumu ?? '') !== 'onaylandi') {
+                    throw new Exception('Yalnızca e-imza onayı tamamlanmış giden evraklar KEP ile gönderilebilir.');
                 }
                 if (!empty($evrak->kep_mesaj_id) || (new KepMesajModel())->getByEvrakId($firmaId, $evrakId)) {
                     throw new Exception('Bu evrak daha önce KEP üzerinden gönderilmiş.');
                 }
 
-                $aliciKep = trim((string) ($evrak->kep_alicilar ?: $evrak->alici_kep));
+                $aliciKep = trim((string) ($_POST['alici_kep'] ?? ($evrak->kep_alicilar ?: $evrak->alici_kep)));
                 if ($aliciKep === '') throw new Exception('Kayıtlı alıcı KEP adresi bulunamadı.');
                 foreach (array_filter(array_map('trim', explode(';', $aliciKep))) as $address) {
                     if (!filter_var($address, FILTER_VALIDATE_EMAIL)) throw new Exception('Kayıtlı alıcı KEP adresi geçersiz.');
@@ -1655,7 +1662,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $kepService = new KepService();
                 $sendRes = $kepService->sendOutgoingKep($firmaId, $evrakId, [
                     'alici_kep' => $aliciKep,
-                    'paket_turu' => (string) ($evrak->kep_paket_turu ?? 'Standart'),
+                    'paket_turu' => ($_POST['paket_turu'] ?? '') === 'EYazisma' ? 'EYazisma' : (string) ($evrak->kep_paket_turu ?? 'Standart'),
                     'konu' => (string) ($evrak->konu ?? ''),
                     'icerik' => (string) ($evrak->kep_mesaj_metni ?: $evrak->aciklama),
                     'eimza_pin' => $pin,

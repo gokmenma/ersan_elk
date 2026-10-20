@@ -499,6 +499,9 @@ class KepService
         if (($evrak->onay_durumu ?? '') !== 'onaylandi') {
             throw new Exception('Evrakın KEP ile sevk edilebilmesi için e-imza onay sürecinin tamamlanmış olması gerekir.');
         }
+        if (!empty($evrak->kep_mesaj_id) || $this->mesajModel->getByEvrakId($firmId, $evrakId)) {
+            throw new Exception('Bu evrak daha önce KEP üzerinden gönderilmiş.');
+        }
 
         $recipientKep = trim((string) ($options['alici_kep'] ?? ''));
         $recipientAddresses = array_values(array_filter(array_map('trim', preg_split('/[;,\r\n]+/', $recipientKep) ?: [])));
@@ -568,6 +571,7 @@ class KepService
 
         // 3. Paket Türüne göre dosya hazırlığı (EYazisma ise .eyp oluştur)
         $soapAttachments = [];
+        $totalPayloadBytes = 0;
         if ($paketTuru === 'EYazisma') {
             if (!$hasCoverLetter || !$tmpPdfPath || !is_file($tmpPdfPath)) {
                 throw new Exception('E-Yazışma paketi için resmî üst yazı gereklidir. Yalnızca ek gönderiminde Standart KEP paketini seçiniz.');
@@ -580,18 +584,24 @@ class KepService
             ];
             $eypResult = $this->eypService->createPackage($tmpPdfPath, $attachments, null, $meta);
             $eypBytes = file_get_contents($eypResult['path']);
+            if ($eypBytes === false) throw new Exception('E-Yazışma paketi okunamadı.');
+            $totalPayloadBytes += strlen($eypBytes);
             $xmlFragment = '<ns1:ekler xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmime:contentType="application/zip" xmime:fileName="paket.eyp" name="paket.eyp" filename="paket.eyp">' . base64_encode($eypBytes) . '</ns1:ekler>';
             $soapAttachments[] = new \SoapVar($xmlFragment, XSD_ANYXML);
         } else {
             // Standart KEP: PDF üst yazı + ek belgeler doğrudan ek olarak verilir
             if ($hasCoverLetter && $tmpPdfPath && is_file($tmpPdfPath)) {
                 $pdfBytes = file_get_contents($tmpPdfPath);
+                if ($pdfBytes === false) throw new Exception('Onaylı üst yazı PDF dosyası okunamadı.');
+                $totalPayloadBytes += strlen($pdfBytes);
                 $coverSafeName = $this->normalizeKepAttachmentName(($evrak->evrak_no ?: 'ust_yazi') . '.pdf', 'application/pdf');
                 $xmlFragment = '<ns1:ekler xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmime:contentType="application/pdf" xmime:fileName="' . htmlspecialchars($coverSafeName, ENT_QUOTES, 'UTF-8') . '" name="' . htmlspecialchars($coverSafeName, ENT_QUOTES, 'UTF-8') . '" filename="' . htmlspecialchars($coverSafeName, ENT_QUOTES, 'UTF-8') . '">' . base64_encode($pdfBytes) . '</ns1:ekler>';
                 $soapAttachments[] = new \SoapVar($xmlFragment, XSD_ANYXML);
             }
             foreach ($attachments as $att) {
                 $attBytes = file_get_contents($att['path']);
+                if ($attBytes === false) throw new Exception('KEP eki okunamadı: ' . ($att['name'] ?? 'Belge'));
+                $totalPayloadBytes += strlen($attBytes);
                 $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($att['path']) ?: 'application/octet-stream';
                 $attSafeName = $this->normalizeKepAttachmentName((string) ($att['name'] ?: 'ek_belge'), $mime);
                 $xmlFragment = '<ns1:ekler xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmime:contentType="' . htmlspecialchars($mime, ENT_QUOTES, 'UTF-8') . '" xmime:fileName="' . htmlspecialchars($attSafeName, ENT_QUOTES, 'UTF-8') . '" name="' . htmlspecialchars($attSafeName, ENT_QUOTES, 'UTF-8') . '" filename="' . htmlspecialchars($attSafeName, ENT_QUOTES, 'UTF-8') . '">' . base64_encode($attBytes) . '</ns1:ekler>';
@@ -599,7 +609,6 @@ class KepService
             }
         }
 
-        $totalPayloadBytes = array_sum(array_map('strlen', $soapAttachments));
         $allPttRecipients = array_reduce($recipientAddresses, static function (bool $carry, string $address): bool {
             return $carry && (bool) preg_match('/@hs01\.kep\.tr$/i', $address);
         }, true);
@@ -610,10 +619,10 @@ class KepService
 
         // 4. PTT KEP Gönderimi: MimeYap ve SmimeGonder / Yukle
         $konu = !empty($options['konu']) ? trim((string) $options['konu']) : (string) ($evrak->konu ?: 'Resmî Yazı');
-        $rawIcerik = !empty($options['icerik']) ? (string) $options['icerik'] : (string) ($evrak->aciklama ?: 'Saygılarımızla, bilgilerinize sunarız.');
-        $isHtml = strip_tags($rawIcerik) !== $rawIcerik;
-        $icerik = $isHtml ? base64_encode($rawIcerik) : $rawIcerik;
-        $eIcerikTur = $isHtml ? 'HTML' : 'TEXT';
+        // Onaylı resmî yazının tam içeriği imzalı PDF olarak ektedir; KEP gövdesinde tekrarlanmaz.
+        $rawIcerik = 'İlgili yazı ektedir.';
+        $icerik = $rawIcerik;
+        $eIcerikTur = 'TEXT';
 
         // PTT MimeYap çağrısı
         $mimeRes = $client->mimeYap([
@@ -748,6 +757,9 @@ class KepService
         if (($evrak->onay_durumu ?? '') !== 'onaylandi') {
             throw new Exception('Evrakın KEP ile sevk edilebilmesi için e-imza onay sürecinin tamamlanmış olması gerekir.');
         }
+        if (!empty($evrak->kep_mesaj_id) || $this->mesajModel->getByEvrakId($firmId, $evrakId)) {
+            throw new Exception('Bu evrak daha önce KEP üzerinden gönderilmiş.');
+        }
 
         $recipientKep = trim((string) ($options['alici_kep'] ?? ''));
         $recipientAddresses = array_values(array_filter(array_map('trim', preg_split('/[;,\r\n]+/', $recipientKep) ?: [])));
@@ -823,6 +835,7 @@ class KepService
         }
 
         $soapAttachments = [];
+        $totalPayloadBytes = 0;
         if ($paketTuru === 'EYazisma') {
             if (!$hasCoverLetter || !$tmpPdfPath || !is_file($tmpPdfPath)) {
                 throw new Exception('E-Yazışma paketi için resmî üst yazı gereklidir.');
@@ -835,17 +848,23 @@ class KepService
             ];
             $eypResult = $this->eypService->createPackage($tmpPdfPath, $attachments, null, $meta);
             $eypBytes = file_get_contents($eypResult['path']);
+            if ($eypBytes === false) throw new Exception('E-Yazışma paketi okunamadı.');
+            $totalPayloadBytes += strlen($eypBytes);
             $xmlFragment = '<ns1:ekler xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmime:contentType="application/zip" xmime:fileName="paket.eyp" name="paket.eyp" filename="paket.eyp">' . base64_encode($eypBytes) . '</ns1:ekler>';
             $soapAttachments[] = new \SoapVar($xmlFragment, XSD_ANYXML);
         } else {
             if ($hasCoverLetter && $tmpPdfPath && is_file($tmpPdfPath)) {
                 $pdfBytes = file_get_contents($tmpPdfPath);
+                if ($pdfBytes === false) throw new Exception('Onaylı üst yazı PDF dosyası okunamadı.');
+                $totalPayloadBytes += strlen($pdfBytes);
                 $coverSafeName = $this->normalizeKepAttachmentName(($evrak->evrak_no ?: 'ust_yazi') . '.pdf', 'application/pdf');
                 $xmlFragment = '<ns1:ekler xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmime:contentType="application/pdf" xmime:fileName="' . htmlspecialchars($coverSafeName, ENT_QUOTES, 'UTF-8') . '" name="' . htmlspecialchars($coverSafeName, ENT_QUOTES, 'UTF-8') . '" filename="' . htmlspecialchars($coverSafeName, ENT_QUOTES, 'UTF-8') . '">' . base64_encode($pdfBytes) . '</ns1:ekler>';
                 $soapAttachments[] = new \SoapVar($xmlFragment, XSD_ANYXML);
             }
             foreach ($attachments as $att) {
                 $attBytes = file_get_contents($att['path']);
+                if ($attBytes === false) throw new Exception('KEP eki okunamadı: ' . ($att['name'] ?? 'Belge'));
+                $totalPayloadBytes += strlen($attBytes);
                 $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($att['path']) ?: 'application/octet-stream';
                 $attSafeName = $this->normalizeKepAttachmentName((string) ($att['name'] ?: 'ek_belge'), $mime);
                 $xmlFragment = '<ns1:ekler xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmime:contentType="' . htmlspecialchars($mime, ENT_QUOTES, 'UTF-8') . '" xmime:fileName="' . htmlspecialchars($attSafeName, ENT_QUOTES, 'UTF-8') . '" name="' . htmlspecialchars($attSafeName, ENT_QUOTES, 'UTF-8') . '" filename="' . htmlspecialchars($attSafeName, ENT_QUOTES, 'UTF-8') . '">' . base64_encode($attBytes) . '</ns1:ekler>';
@@ -854,17 +873,16 @@ class KepService
         }
 
         $allPttRecipients = array_reduce($recipientAddresses, static fn(bool $carry, string $address): bool => $carry && (bool) preg_match('/@hs01\.kep\.tr$/i', $address), true);
-        $totalPayloadBytes = array_sum(array_map('strlen', $soapAttachments));
         $maxPayloadBytes = ($allPttRecipients ? 100 : 25) * 1024 * 1024;
         if ($totalPayloadBytes > $maxPayloadBytes) {
             throw new Exception('KEP eklerinin toplam boyutu alıcı sınırını aşıyor: ' . ($allPttRecipients ? '100 MB' : '25 MB') . '.');
         }
 
         $konu = !empty($options['konu']) ? trim((string) $options['konu']) : (string) ($evrak->konu ?: 'Resmî Yazı');
-        $rawIcerik = !empty($options['icerik']) ? (string) $options['icerik'] : (string) ($evrak->aciklama ?: 'Saygılarımızla, bilgilerinize sunarız.');
-        $isHtml = strip_tags($rawIcerik) !== $rawIcerik;
-        $icerik = $isHtml ? base64_encode($rawIcerik) : $rawIcerik;
-        $eIcerikTur = $isHtml ? 'HTML' : 'TEXT';
+        // Onaylı resmî yazının tam içeriği imzalı PDF olarak ektedir; KEP gövdesinde tekrarlanmaz.
+        $rawIcerik = 'İlgili yazı ektedir.';
+        $icerik = $rawIcerik;
+        $eIcerikTur = 'TEXT';
 
         $mimeRes = $client->mimeYap([
             'ePaketTur' => $paketTuru,
@@ -893,6 +911,8 @@ class KepService
             'eHash' => $eHash,
             'recipientKep' => $recipientKep,
             'paketTuru' => $paketTuru,
+            'subject' => $konu,
+            'message' => $rawIcerik,
             'tmpPdfPath' => $tmpPdfPath,
             'attachments' => $attachments,
             'created_at' => time(),
@@ -925,14 +945,28 @@ class KepService
         if (!$draft || (int) ($draft['firm_id'] ?? 0) !== $firmId) {
             throw new Exception('Evrak KEP taslağı bulunamadı veya süresi doldu. Lütfen tekrar deneyiniz.');
         }
+        $currentUserId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
+        if ((int) ($draft['user_id'] ?? 0) !== $currentUserId || (int) ($draft['created_at'] ?? 0) < time() - 1800) {
+            throw new Exception('KEP taslağı bu kullanıcıya ait değil veya süresi dolmuş. Lütfen yeniden hazırlayınız.');
+        }
 
         $mesajId = (string) $draft['mesajid'];
         $evrakId = (int) $draft['evrak_id'];
         $recipientKep = (string) $draft['recipientKep'];
         $paketTuru = (string) $draft['paketTuru'];
+        $subject = (string) ($draft['subject'] ?? '');
+        $message = (string) ($draft['message'] ?? 'İlgili yazı ektedir.');
         $tmpPdfPath = $draft['tmpPdfPath'] ?? null;
         $attachments = $draft['attachments'] ?? [];
         $userId = (int) ($draft['user_id'] ?? ($_SESSION['user_id'] ?? 0));
+
+        $evrak = $this->evrakModel->getById($evrakId);
+        if (!$evrak || ($evrak->onay_durumu ?? '') !== 'onaylandi') {
+            throw new Exception('Evrak artık KEP gönderimine uygun değil. Sayfayı yenileyiniz.');
+        }
+        if (!empty($evrak->kep_mesaj_id) || $this->mesajModel->getByEvrakId($firmId, $evrakId)) {
+            throw new Exception('Bu evrak daha önce KEP üzerinden gönderilmiş.');
+        }
 
         $rawSignature = base64_decode($cadesSignature, true);
         if ($rawSignature === false || strlen($rawSignature) < 100) {
@@ -966,8 +1000,8 @@ class KepService
             'gonderen_kep' => $settings['kep_adresi'],
             'alici_kep' => $recipientKep,
             'alici_unvan' => '',
-            'konu' => '',
-            'icerik' => '',
+            'konu' => $subject,
+            'icerik' => $message,
             'paket_turu' => $paketTuru,
             'durum' => 'gonderildi',
             'delil_sayisi' => 1,

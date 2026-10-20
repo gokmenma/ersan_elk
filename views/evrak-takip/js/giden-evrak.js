@@ -736,7 +736,7 @@ $(document).ready(function () {
     $("#gonderim_kanali").val(channel);
     $(".gonderim-channel-card").removeClass("active").filter(`[data-channel="${channel}"]`).addClass("active");
     $("#kepComposerPanel").toggleClass("d-none", channel !== "kep");
-    $("#btnGidenKepHizliGonder").toggleClass("d-none", channel !== "kep");
+    $("#btnGidenKepHizliGonder").toggleClass("d-none", channel !== "kep" && !window.gidenKepCanSendApproved);
     if (!window.gidenKepMesaj) $("#accordionItemKep").toggleClass("d-none", channel !== "kep");
     updateKepPackageSummary();
     adjustGidenEvrakLayout();
@@ -1368,24 +1368,50 @@ $(document).ready(function () {
   });
 
   // 2. Sayfa İçi KEP ile Gönder (Hızlı Buton ve İşlemler Menüsü)
-  function gidenKepGonderimiBaslat() {
+  function gidenKepGonderimiBaslat(aliciOverride, paketOverride) {
     const $aliciKep = $("#kep_alicilar");
-    const aliciAddress = parseKepRecipients().join("; ");
+    const aliciAddress = String(aliciOverride || parseKepRecipients().join("; ")).trim();
     const evrakIdEnc = $('input[name="id"]').val() || "";
 
+    if (!window.gidenKepSettings || !window.gidenKepSettings.has_settings) {
+      Swal.fire("KEP Kullanıcı Bilgileri Eksik", "KEP gönderimi için Evrak Takip → İşlemler → UETS / KEP Ayarları bölümünden kendi TCKN, parola ve web servis şifrenizi kaydediniz.", "warning");
+      return;
+    }
+
     if (!aliciAddress) {
-      $("#collapseGidenKep").collapse("show");
-      $aliciKep.focus();
       Swal.fire({
-        icon: "warning",
-        title: "Alıcı KEP Adresi Gerekli",
-        text: "Lütfen sağ paneldeki KEP / Gönderim Bilgileri bölümünden muhatabın KEP adresini giriniz.",
-        confirmButtonText: "Tamam"
+        title: "Onaylı Evrakı KEP ile Gönder",
+        html: `<div class="text-start">
+          <label for="swalGidenKepAlici" class="form-label fw-semibold">Alıcı KEP Adresi</label>
+          <input id="swalGidenKepAlici" class="form-control font-monospace" placeholder="kurum@hs01.kep.tr" autocomplete="off">
+          <div class="form-text mb-3">Birden fazla adresi noktalı virgülle ayırabilirsiniz.</div>
+          <label for="swalGidenKepPaket" class="form-label fw-semibold">Paket Türü</label>
+          <select id="swalGidenKepPaket" class="form-select">
+            <option value="Standart">Standart KEP İletisi</option>
+            <option value="EYazisma">E-Yazışma (EYP Paketi)</option>
+          </select>
+          <div class="alert alert-info py-2 px-3 mt-3 mb-0 font-size-12"><i class="bx bx-info-circle me-1"></i> Onaylı üst yazı PDF’i ve kayıtlı ekler değiştirilmeden gönderilir.</div>
+        </div>`,
+        icon: "info",
+        showCancelButton: true,
+        confirmButtonText: '<i class="bx bx-mail-send me-1"></i> Devam Et',
+        cancelButtonText: "Vazgeç",
+        preConfirm: () => {
+          const address = String($("#swalGidenKepAlici").val() || "").trim();
+          const addresses = address.split(/[;,\n\r]+/).map(item => item.trim()).filter(Boolean);
+          if (!addresses.length || addresses.some(item => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(item))) {
+            Swal.showValidationMessage("Geçerli bir alıcı KEP adresi giriniz.");
+            return false;
+          }
+          return { address: addresses.join("; "), packageType: $("#swalGidenKepPaket").val() || "Standart" };
+        }
+      }).then(result => {
+        if (result.isConfirmed) gidenKepGonderimiBaslat(result.value.address, result.value.packageType);
       });
       return;
     }
 
-    const paketTuru = $("#kep_paket_turu").val() || "Standart";
+    const paketTuru = paketOverride || $("#kep_paket_turu").val() || "Standart";
     const paketTuruAd = paketTuru === "EYazisma" ? "E-Yazışma (EYP Paketi)" : "Standart KEP İletisi";
 
     Swal.fire({
@@ -1575,7 +1601,6 @@ $(document).ready(function () {
           .catch(() => {
             legacySend(pin);
           });
-        });
       }
     });
   }
@@ -1584,6 +1609,10 @@ $(document).ready(function () {
     e.preventDefault();
     gidenKepGonderimiBaslat();
   });
+
+  if (window.gidenKepAutoStart && !window.gidenKepMesaj) {
+    setTimeout(() => gidenKepGonderimiBaslat(), 350);
+  }
 
   // 3. Delilleri Yenile / Güncelle Butonu
   $(document).on("click", "#btnKepDelilGuncelle", function () {

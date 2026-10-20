@@ -43,8 +43,8 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
                 </div>
                 <div class="modal-body p-4">
-                    <?php if (!$kepSettings || empty($kepSettings['kep_adresi'])): ?>
-                        <div class="alert alert-warning d-flex align-items-center"><i class="bx bx-error-circle fs-4 me-2"></i><div><strong>Firma KEP ayarları eksik.</strong><div class="small">Gönderimden önce İşlemler → UETS / KEP Ayarları bölümünü tamamlayın.</div></div></div>
+                    <?php if (!$kepSettings || empty($kepSettings['kep_adresi']) || empty($kepSettings['has_user_credentials'])): ?>
+                        <div class="alert alert-warning d-flex align-items-center"><i class="bx bx-error-circle fs-4 me-2"></i><div><strong>KEP kullanıcı ayarları eksik.</strong><div class="small">Gönderimden önce İşlemler → UETS / KEP Ayarları bölümünden kendi KEP giriş bilgilerinizi tamamlayın.</div></div></div>
                     <?php endif; ?>
 
                     <section class="kep-compose-card">
@@ -107,7 +107,7 @@
                     </div>
                     <div class="d-flex align-items-center gap-2 ms-auto">
                         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Vazgeç</button>
-                        <button type="submit" class="btn btn-success px-4" id="btnModalKepGonder" data-settings-ready="<?php echo ($kepSettings && !empty($kepSettings['kep_adresi'])) ? '1' : '0'; ?>" disabled><i class="bx bx-paper-plane me-1"></i> İmzala ve Gönder</button>
+                        <button type="submit" class="btn btn-success px-4" id="btnModalKepGonder" data-settings-ready="<?php echo ($kepSettings && !empty($kepSettings['kep_adresi']) && !empty($kepSettings['has_user_credentials'])) ? '1' : '0'; ?>" disabled><i class="bx bx-paper-plane me-1"></i> İmzala ve Gönder</button>
                     </div>
                 </div>
             </form>

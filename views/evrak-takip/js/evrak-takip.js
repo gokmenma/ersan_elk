@@ -1621,10 +1621,39 @@ $(document).ready(function () {
     });
   }
 
+  let approvedKepEvrakId = "";
+
+  $(document).on("click", ".btn-approved-kep-send", function (event) {
+    event.preventDefault();
+    event.stopPropagation();
+    approvedKepEvrakId = String($(this).data("id") || "");
+    if (!approvedKepEvrakId) return;
+    $("#btnYeniKepGonderisi").trigger("click");
+    const subject = String($(this).data("subject") || "Resmî Yazı");
+    $("#modalKepGonderisiLabel").text("Onaylı Evrakı KEP ile Gönder");
+    $("#modalKepGonderisiLabel").next("div").text("Onaylı üst yazı PDF’i ve kayıtlı ekler değişmeden gönderilir");
+    $("#modal_kep_konu").val(subject).prop("readonly", true);
+    $("#modal_kep_ileti_detayi").val("Onaylı giden evrak").prop("readonly", true);
+    if ($.fn.summernote && $("#modal_kep_icerik").next(".note-editor").length) {
+      $("#modal_kep_icerik").summernote("code", "İlgili yazı ektedir.");
+      $("#modal_kep_icerik").summernote("disable");
+    } else {
+      $("#modal_kep_icerik").val("İlgili yazı ektedir.").prop("readonly", true);
+    }
+    $("#modal_kep_ekler").closest(".border").addClass("d-none");
+    $("#modalKepEkOzeti").text("Onaylı evrak dosyaları");
+  });
+
   $("#btnYeniKepGonderisi").on("click", function () {
     const form = $("#formKepGonderisi")[0];
     if (!form) return;
     form.reset();
+    if (!approvedKepEvrakId) {
+      $("#modalKepGonderisiLabel").text("KEP İletisi Oluştur");
+      $("#modalKepGonderisiLabel").next("div").text("PTT KEP üzerinden doğrudan güvenli ileti gönderin");
+      $("#modal_kep_konu, #modal_kep_ileti_detayi, #modal_kep_icerik").prop("readonly", false);
+      $("#modal_kep_ekler").closest(".border").removeClass("d-none");
+    }
     $("#modalKepDogrulamaSonuc").empty();
     $("#modalKepEkOzeti").text("0 dosya · 0 KB");
     $("#modal_kep_ileti_tipi").val("standart");
@@ -1782,13 +1811,19 @@ $(document).ready(function () {
 
         const mimeData = new FormData();
         mimeData.append("action", "kep-mime-hazirla");
-        mimeData.append("kep_alicilar", addresses.join(";"));
+        if (approvedKepEvrakId) {
+          mimeData.append("evrak_id", approvedKepEvrakId);
+          mimeData.append("alici_kep", addresses.join(";"));
+          mimeData.append("paket_turu", "Standart");
+        } else {
+          mimeData.append("kep_alicilar", addresses.join(";"));
+        }
         mimeData.append("kep_konu", subject);
         mimeData.append("kep_icerik", content);
         mimeData.append("kep_ileti_tipi", $("#modal_kep_ileti_tipi").val() || "standart");
         mimeData.append("kep_ileti_detayi", $("#modal_kep_ileti_detayi").val() || "");
         mimeData.append("kep_paket_turu", "Standart");
-        Array.from($("#modal_kep_ekler")[0].files || []).forEach(file => mimeData.append("kep_ekler[]", file, file.name));
+        if (!approvedKepEvrakId) Array.from($("#modal_kep_ekler")[0].files || []).forEach(file => mimeData.append("kep_ekler[]", file, file.name));
 
         // 1. Adım: MIME paketi hazırla
         $.ajax({
@@ -1901,10 +1936,13 @@ $(document).ready(function () {
       } else {
         // Fallback: Yerel ajan bağlı değilse sunucu üzerinden klasik gönderim
         const data = new FormData();
-        data.append("action", "kep-dogrudan-gonder"); data.append("kep_alicilar", addresses.join(";")); data.append("kep_konu", subject); data.append("kep_icerik", content);
+        data.append("action", approvedKepEvrakId ? "kep-gonder" : "kep-dogrudan-gonder");
+        if (approvedKepEvrakId) { data.append("evrak_id", approvedKepEvrakId); data.append("alici_kep", addresses.join(";")); data.append("paket_turu", "Standart"); }
+        else data.append("kep_alicilar", addresses.join(";"));
+        data.append("kep_konu", subject); data.append("kep_icerik", content);
         data.append("kep_ileti_tipi", $("#modal_kep_ileti_tipi").val() || "standart"); data.append("kep_ileti_detayi", $("#modal_kep_ileti_detayi").val() || ""); data.append("kep_paket_turu", "Standart");
         data.append("eimza_pin", pin);
-        Array.from($("#modal_kep_ekler")[0].files || []).forEach(file => data.append("kep_ekler[]", file, file.name));
+        if (!approvedKepEvrakId) Array.from($("#modal_kep_ekler")[0].files || []).forEach(file => data.append("kep_ekler[]", file, file.name));
         $.ajax({ url: api_url, type: "POST", data, contentType: false, processData: false, dataType: "json" })
           .done(response => {
             if (response.status !== "success") return Swal.fire("Gönderim Hatası", response.message || "KEP gönderilemedi.", "error");
@@ -1923,6 +1961,13 @@ $(document).ready(function () {
           .always(() => sendButton.prop("disabled", false).html('<i class="bx bx-paper-plane me-1"></i> İmzala ve Gönder'));
       }
     });
+  });
+
+  kepModal.on("hidden.bs.modal", function () {
+    approvedKepEvrakId = "";
+    $("#modal_kep_konu, #modal_kep_ileti_detayi, #modal_kep_icerik").prop("readonly", false);
+    if ($.fn.summernote && $("#modal_kep_icerik").next(".note-editor").length) $("#modal_kep_icerik").summernote("enable");
+    $("#modal_kep_ekler").closest(".border").removeClass("d-none");
   });
 
   const SUMMARY_STATE_KEY = "evrak_summary_cards_state";

@@ -1,5 +1,12 @@
 # Progress
 
+## 2026-10-20: Mobil SPA Evrak Takip — KEP Gönderisi Belirteçleri ve Giden KEP Önizlemesi
+- [x] Mobil API (`mobile-spa/public/api/evrak.php`) üzerinde `is_kep`, `is_uets`, `kep_mesaj_id`, `alici_kep` alanları ve `kep-detail`, `kep-sync-delil`, `kep-delil-indir` aksiyonları uygulandı.
+- [x] Evrak kartlarında belirgin `KEP` rozeti, sol kenarlık vurgusu ve KEP alıcı adresi için `Send` simgeli monospaced formatlama sağlandı.
+- [x] KEP evrakları için `Önizle` butonu `KEP Önizle` olarak uyarlandı; tıklandığında resmi evrak PDF'i yerine zengin **Giden KEP Önizleme Çekmecesi** açılması sağlandı.
+- [x] Giden KEP Önizleme Çekmecesi; gönderen/alıcı adresleri (kopyalama özellikli), PTT KepId kodu, teslimat durum rozeti, ileti metni, ekler ve PTT Resmi Yasal Delil Çizelgesi (10, 40, 60 delil akışı + canlı güncelleme) ile tamamlandı.
+- [x] `mobile-spa` üzerinde `npm run build` başarıyla tamamlandı.
+
 ## 2026-10-20: Mobil SPA Ana Sayfa — Personel & Araç Metrik Kutularının Çerçevelenmesi ve Hizalanması
 - [x] Personel Durumu (Koyu Bento Kartı) altındaki Sahada, İzinli ve Geç Kalan metrikleri için saydam koyu cam zeminli (`rgba(255, 255, 255, 0.05)`), `1px solid rgba(255, 255, 255, 0.1)` çerçeveli ve `16px` kavisli bağımsız kutular oluşturuldu.
 - [x] Araç & Filo (Beyaz Bento Kartı) altındaki Sahada, Serviste ve Boşta metrikleri için açık zeminli (`var(--ds-surface-subtle)`), `1px solid var(--ds-border-subtle)` çerçeveli ve `16px` kavisli bağımsız kutular oluşturuldu; sağ kenarlık sütun ayırıcıları kaldırıldı.
@@ -1455,3 +1462,12 @@
 - [x] Evrak Takip listesine gelen kaydını oluşturan veya giden evrak işlemini yapan kullanıcıyı gösteren kolon eklendi.
 - [x] İşlem yapan kişi alanı global arama, kolon filtresi ve sıralamaya bağlandı; otomatik UETS kayıtlarına sistem etiketi eklendi.
 - [x] Server-side DataTables kolon eşleşmeleri ile PHP/JavaScript sözdizimi ve gerçek Model yanıtı doğrulandı.
+
+# 2026-10-20 — Onaylı normal giden evraktan KEP sevki
+
+- [x] Onaylanmış ve henüz KEP ile gönderilmemiş normal giden evraklara liste ve detay sayfasında yetki kontrollü KEP gönderim aksiyonu eklendi; liste aksiyonu sayfa yönlendirmeden mevcut KEP modalını açıyor.
+- [x] Alıcı/paket seçimi, onaylı PDF ve eklerin hazırlanması, yerel e-imza ajanı ve PTT KEP sevki mevcut güvenli akışa bağlandı.
+- [x] Sunucuda onay durumu, mükerrer gönderim, kullanıcıya bağlı geçici taslak ve 30 dakikalık taslak süresi kontrolleri eklendi.
+- [x] Sözdizimi ile onaysız/mükerrer gönderim regresyon kontrolleri geçti.
+- [x] Onaylı evrak KEP gönderimindeki `SoapVar`/`strlen()` MIME boyut hesabı hatası iki gönderim yolunda da gerçek dosya byte toplamı kullanılarak giderildi.
+- [x] Onaylı evrak KEP gövdesinde üst yazı içeriğinin tekrarlanması kaldırıldı; ileti metni iki gönderim yolunda da `İlgili yazı ektedir.` olarak standartlaştırıldı.
