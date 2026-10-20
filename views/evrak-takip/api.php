@@ -1636,6 +1636,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 $pin = trim((string) ($_POST['eimza_pin'] ?? $_POST['pin'] ?? ''));
+                $signature = trim((string) ($_POST['signature'] ?? $_POST['imza_b64'] ?? ''));
 
                 $kepService = new KepService();
                 $sendRes = $kepService->sendOutgoingKep($firmaId, $evrakId, [
@@ -1644,9 +1645,88 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'konu' => (string) ($evrak->konu ?? ''),
                     'icerik' => (string) ($evrak->kep_mesaj_metni ?: $evrak->aciklama),
                     'eimza_pin' => $pin,
+                    'imza_b64' => $signature,
                 ]);
 
                 echo json_encode($sendRes, JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'kep-mime-hazirla':
+                $firmaId = (int) $_SESSION['firma_id'];
+                $evrakIdRaw = (string) ($_POST['evrak_id'] ?? '');
+                $evrakId = $decryptId($evrakIdRaw);
+                if ($evrakId <= 0 && is_numeric($evrakIdRaw)) {
+                    $evrakId = (int) $evrakIdRaw;
+                }
+
+                $kepService = new KepService();
+                if ($evrakId > 0) {
+                    $res = $kepService->prepareOutgoingKepMime($firmaId, $evrakId, $_POST);
+                } else {
+                    $recipients = trim((string) ($_POST['kep_alicilar'] ?? ''));
+                    $subject = trim((string) ($_POST['kep_konu'] ?? ''));
+                    $content = (string) ($_POST['kep_icerik'] ?? '');
+                    $detail = mb_substr(trim((string) ($_POST['kep_ileti_detayi'] ?? '')), 0, 500);
+                    $messageType = in_array(($_POST['kep_ileti_tipi'] ?? ''), ['resmi', 'standart'], true) ? $_POST['kep_ileti_tipi'] : 'standart';
+                    $packageType = ($_POST['kep_paket_turu'] ?? 'Standart') === 'EYazisma' ? 'EYazisma' : 'Standart';
+
+                    $uploadedFiles = [];
+                    $allowedExtensions = ['pdf','jpg','jpeg','png','webp','doc','docx','xls','xlsx','odt','ods','zip','eyp'];
+                    if (!empty($_FILES['kep_ekler']['name']) && is_array($_FILES['kep_ekler']['name'])) {
+                        if (count($_FILES['kep_ekler']['name']) > 20) throw new Exception('Bir KEP iletisine en fazla 20 dosya eklenebilir.');
+                        foreach ($_FILES['kep_ekler']['name'] as $index => $originalName) {
+                            $error = (int) ($_FILES['kep_ekler']['error'][$index] ?? UPLOAD_ERR_NO_FILE);
+                            if ($error === UPLOAD_ERR_NO_FILE) continue;
+                            if ($error !== UPLOAD_ERR_OK) throw new Exception('KEP eki yüklenemedi: ' . basename((string) $originalName));
+                            $tmpPath = (string) ($_FILES['kep_ekler']['tmp_name'][$index] ?? '');
+                            $size = (int) ($_FILES['kep_ekler']['size'][$index] ?? 0);
+                            $extension = strtolower(pathinfo((string) $originalName, PATHINFO_EXTENSION));
+                            if (!is_uploaded_file($tmpPath) || $size <= 0 || !in_array($extension, $allowedExtensions, true)) throw new Exception('Geçersiz KEP eki: ' . basename((string) $originalName));
+                            $uploadedFiles[] = ['path' => $tmpPath, 'name' => basename((string) $originalName), 'mime' => (new finfo(FILEINFO_MIME_TYPE))->file($tmpPath) ?: 'application/octet-stream', 'size' => $size];
+                        }
+                    }
+
+                    $res = $kepService->prepareStandaloneKepMime($firmaId, [
+                        'alici_kep' => $recipients,
+                        'konu' => $subject,
+                        'icerik' => $content,
+                        'ileti_detayi' => $detail,
+                        'ileti_tipi' => $messageType,
+                        'paket_turu' => $packageType,
+                    ], $uploadedFiles);
+                }
+                echo json_encode($res, JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'kep-smime-sevk':
+                $firmaId = (int) $_SESSION['firma_id'];
+                $tempId = trim((string) ($_POST['temp_id'] ?? ''));
+                $signature = trim((string) ($_POST['signature'] ?? $_POST['imza_b64'] ?? ''));
+                if ($tempId === '' || $signature === '') {
+                    throw new Exception('Taslak belirteci (temp_id) ve e-imza verisi (signature) zorunludur.');
+                }
+
+                $draft = $_SESSION['kep_draft_' . $tempId] ?? null;
+                if (!$draft) {
+                    $draftFile = dirname(__DIR__, 2) . '/uploads/evrak-takip/tmp/draft_' . $tempId . '.json';
+                    $draftEvrakFile = dirname(__DIR__, 2) . '/uploads/evrak-takip/tmp/draft_evrak_' . $tempId . '.json';
+                    if (file_exists($draftFile)) {
+                        $draft = json_decode(file_get_contents($draftFile), true);
+                    } elseif (file_exists($draftEvrakFile)) {
+                        $draft = json_decode(file_get_contents($draftEvrakFile), true);
+                    }
+                }
+
+                $kepService = new KepService();
+                if (($draft['type'] ?? '') === 'evrak') {
+                    $res = $kepService->completeOutgoingKepSend($firmaId, $tempId, $signature);
+                } else {
+                    $res = $kepService->completeStandaloneKepSend($firmaId, $tempId, $signature);
+                    if (($res['status'] ?? '') === 'success' && !empty($draft['recipients'])) {
+                        (new KepAdresDefteriModel())->markUsed($firmaId, $draft['recipients']);
+                    }
+                }
+                echo json_encode($res, JSON_UNESCAPED_UNICODE);
                 break;
 
             case 'kep-dogrudan-gonder':
@@ -1675,12 +1755,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 $pin = trim((string) ($_POST['eimza_pin'] ?? $_POST['pin'] ?? ''));
+                $signature = trim((string) ($_POST['signature'] ?? $_POST['imza_b64'] ?? ''));
 
                 $result = (new KepService())->sendStandaloneKep($firmaId, [
                     'alici_kep' => $recipients, 'konu' => $subject,
                     'icerik' => $content, 'ileti_detayi' => $detail,
                     'ileti_tipi' => $messageType, 'paket_turu' => $packageType,
                     'eimza_pin' => $pin,
+                    'imza_b64' => $signature,
                 ], $uploadedFiles);
                 if (($result['status'] ?? '') === 'success') {
                     (new KepAdresDefteriModel())->markUsed(

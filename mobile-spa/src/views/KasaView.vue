@@ -95,18 +95,18 @@ const isDeleteConfirmOpen = ref(false)
 const itemToDelete = ref(null)
 const deleteLoading = ref(false)
 
-// Yıl seçenekleri (Son 4 yıl)
+// Yıl seçenekleri (Tüm zamanlar + son 4 yıl)
 const yearOptions = computed(() => {
-  const years = []
+  const years = [{ value: '', label: 'Tüm Zamanlar' }]
   for (let y = currentYear; y >= currentYear - 3; y--) {
-    years.push(String(y))
+    years.push({ value: String(y), label: `${y} Yılı` })
   }
   return years
 })
 
 // Ay seçenekleri
 const monthOptions = [
-  { value: '', label: 'Tüm Yıl' },
+  { value: '', label: 'Tüm Aylar' },
   { value: '1', label: 'Ocak' },
   { value: '2', label: 'Şubat' },
   { value: '3', label: 'Mart' },
@@ -223,6 +223,12 @@ async function loadMeta() {
     // Sessiz hata
   }
 }
+
+watch(selectedYear, (year) => {
+  if (year === '' && selectedMonth.value !== '') {
+    selectedMonth.value = ''
+  }
+})
 
 watch([selectedYear, selectedMonth, activeFilter], () => {
   loadKasa(true)
@@ -516,7 +522,7 @@ onMounted(() => {
         <div class="kasa-period-pill">
           <Calendar :size="14" class="period-icon" />
           <select v-model="selectedYear" class="period-select" aria-label="Yıl Seçin">
-            <option v-for="y in yearOptions" :key="y" :value="y">{{ y }} Yılı</option>
+            <option v-for="y in yearOptions" :key="y.value || 'all'" :value="y.value">{{ y.label }}</option>
           </select>
         </div>
 

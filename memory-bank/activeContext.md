@@ -1,5 +1,9 @@
 # Active Context
 
+## Mobil SPA Kasa Takibi — Tüm Zamanlar Filtresi (2026-10-20)
+- Kasa Takibi yıl seçicisine `Tüm Zamanlar` seçeneği eklendi; boş yıl değeri mevcut API akışında tarih kısıtı olmadan liste ve özet verilerini getiriyor.
+- `Tüm Zamanlar` seçildiğinde çelişkili ay filtresi otomatik temizleniyor; ay seçicisinin varsayılan etiketi `Tüm Aylar` olarak düzeltildi.
+
 ## PTT KEP Web Servisi: Ek Dosya Adı (xmime:fileName), Önizleme Modalı ve Sunucu Python Bağımsızlığı (2026-10-19)
 - **Kullanıcı Talepleri**:
   1. KEP iletisindeki dosyanın karşı tarafın PTT KEP WebMail gelen kutusunda uzantısız (`1116395xxx`, `231052xxx`) olarak inmesi ve açılmak istendiğinde Windows tarafından Not Defteri ile açılıp bozuk/şifreli gibi görünmesi sorununun çözülmesi ("bu yine uzantısız geldi, bu sorunu nasıl çözeriz").
@@ -2451,6 +2455,12 @@
 - Kullanıcı kararıyla cari detayındaki Hesap Hareketleri listesi ve hareket detay penceresinde yön işaretleri geri getirildi: Aldım `-`, Verdim `+` olarak gösteriliyor.
 - Mobil cari detayındaki `Top. Aldım` ve `Top. Verdim` özetleri dokunulabilir filtrelere dönüştürüldü; seçili özete yeniden dokunmak tüm hareketleri geri getiriyor.
 - Masaüstü cari hesap hareketlerinde de giriş/çıkış özet kartlarının tamamı DataTables sunucu filtresini çalıştırıyor; fare ve klavye etkileşimi ile aktif durum göstergesi eklendi.
+
+# 2026-10-20 — Ana sayfa kesme/açma karşılaştırma toplamı
+
+- Günlük Kesme/Açma kartının aylık değeri tüm ücretli kesme sonuçlarını içerirken karşılaştırma kartının varsayılan olarak yalnız `olumlu` sonuçları göstermesi nedeniyle oluşan 9.860 / 9.857 farkı tespit edildi; üç kayıt olumlu filtre dışında kalıyor.
+- Kesme/Açma Karşılaştırma kartının Bölge ve Personel detay tablolarına, aktif sonuç filtresine göre her dönemi ve değişim oranını hesaplayan belirgin `TOPLAM` satırı eklendi.
+- `views/home.php` PHP sözdizimi doğrulandı.
 
 ## 2026-10-18 — Cari ekstre PDF ve toplu yedek
 

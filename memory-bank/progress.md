@@ -1288,6 +1288,8 @@
 - Ad sıralamasındaki `data-order` korundu. PHP sözdizimi, Türkçe baş harf örnekleri ve Chromium üzerinde fotoğraf hata fallback/boyut kontrolü geçti.
 # Zimmet sayfası performans analizi
 
+- [x] Mobil SPA Kasa Takibi yıl filtresine `Tüm Zamanlar` eklendi; bu seçimde ay filtresi temizleniyor ve tüm dönem liste/özet API sorgusu kullanılıyor. (2026-10-20)
+
 - [x] PHP hazırlığı ve DataTables AJAX süresi ayrı ölçüldü; gecikmenin 5,8–8,5 saniyelik liste veri sorgusundan kaynaklandığı belirlendi.
 - [x] SQL profiling ve EXPLAIN ile tam tarama, block nested loop, geçici tablo ve filesort doğrulandı.
 - [x] Join sırası karşılaştırmasında temel sorgunun yaklaşık 1 ms seviyesine inebildiği görüldü; uygulanacak optimizasyon sırası belirlendi.
@@ -1376,6 +1378,8 @@
 - [x] Evrak Takip'te ikinci belge eklenince eski ana belgenin kaybolmuş görünmesine yol açan ana dosya/ek tablosu ayrımı giderildi; liste ve düzenleme modalı iki kaynağı birlikte ve tekilleştirerek gösteriyor. PHP/JavaScript sözdizimi doğrulandı. (2026-10-19)
 - [x] Evrak Takip listesi server-side DataTables yapısına taşındı; `ajaxList()` ve sayfa-kapsamlı toplu ek/onay sorguları eklendi, tüm kayıtların ilk istekte render edilmesi kaldırıldı. Hızlı filtreler ve imza filtresi SQL tarafına alındı. Birleşik liste/onay indeksleri `2026_10_19_optimize_evrak_takip_list_indexes.sql` ile oluşturulup aktif veritabanına uygulandı. 32 kayıt üzerinde 10 satırlık AJAX yanıtı, filtre sonuçları, PHP/JavaScript sözdizimi ve indeksler doğrulandı. (2026-10-19)
 - [x] Evrak server-side DataTables sonrasında verilerin görünmemesine neden olan çift istemci/sunucu filtreleme çakışması giderildi. Merkezi filtre modülü server-side tabloda yalnız API araması üretiyor; Model gelişmiş filtre öneklerini ve çoklu seçimleri yorumluyor. `06.08.2026` filtresiyle 2/2 satır döndüğü doğrulandı. (2026-10-19)
+- [x] Ana sayfa Kesme/Açma Karşılaştırma bölge/personel detay tablolarına aktif filtreyle uyumlu dönem toplamları ve toplam değişim satırı eklendi; 9.860 / 9.857 farkının tüm sonuçlar ile varsayılan Olumlu filtresi arasındaki üç kayıttan doğduğu doğrulandı. (2026-10-20)
+
 ## 2026-10-19: Giden Evrakta Dinamik Normal / KEP Kanalı
 - [x] Tek sayfada kart tabanlı Normal/Harici ve KEP gönderim kanalı seçimi eklendi.
 - [x] KEP oluşturma alanları dar sağ akordeondan geniş ana alana taşındı; çoklu alıcı doğrulaması, ileti seçenekleri, mesaj ve ek özeti eklendi.

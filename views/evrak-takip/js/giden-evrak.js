@@ -1444,45 +1444,137 @@ $(document).ready(function () {
       if (result.isConfirmed) {
         const pin = result.value;
 
-        Swal.fire({
-          title: "PTT KEP Sistemine İletiliyor...",
-          html: `<div class="p-2"><i class="bx bx-loader-alt bx-spin font-size-24 text-primary mb-2 d-block"></i>SafeNet akıllı kart üzerinde CAdES-BES imzası üretiliyor ve PTT KEP ağına sevk ediliyor.<br><small class="text-muted">Lütfen bekleyiniz...</small></div>`,
-          allowOutsideClick: false,
-          showConfirmButton: false,
-          didOpen: () => { Swal.showLoading(); }
-        });
+        const legacySend = (pinCode) => {
+          Swal.fire({
+            title: "PTT KEP Sistemine İletiliyor...",
+            html: `<div class="p-2"><i class="bx bx-loader-alt bx-spin font-size-24 text-primary mb-2 d-block"></i>SafeNet akıllı kart üzerinde CAdES-BES imzası üretiliyor ve PTT KEP ağına sevk ediliyor.<br><small class="text-muted">Lütfen bekleyiniz...</small></div>`,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            didOpen: () => { Swal.showLoading(); }
+          });
 
-        const postData = {
-          action: "kep-gonder",
-          evrak_id: evrakIdEnc,
-          alici_kep: aliciAddress,
-          paket_turu: paketTuru,
-          eimza_pin: pin
+          const postData = {
+            action: "kep-gonder",
+            evrak_id: evrakIdEnc,
+            alici_kep: aliciAddress,
+            paket_turu: paketTuru,
+            eimza_pin: pinCode
+          };
+
+          $.ajax({
+            url: "views/evrak-takip/api.php",
+            type: "POST",
+            data: postData,
+            dataType: "json",
+            success: function (res) {
+              if (res.status === "success") {
+                Swal.fire({
+                  icon: "success",
+                  title: "KEP İletisi Başarıyla Gönderildi!",
+                  html: `<strong>PTT Takip Kodu (KepId):</strong><br><span class="font-monospace font-size-14 text-primary">${res.kep_id}</span><div class="mt-2 text-success small"><i class="bx bx-check-double"></i> Resmi e-imza doğrulandı, PTT tarafından kabul edildi.</div>`,
+                  confirmButtonText: "Tamam"
+                }).then(() => {
+                  window.location.reload();
+                });
+              } else {
+                Swal.fire("KEP Gönderim Hatası", res.message || "İleti sevk edilemedi.", "error");
+              }
+            },
+            error: function (xhr) {
+              const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : "PTT KEP servisine bağlanılamadı.";
+              Swal.fire("Gönderim Hatası", msg, "error");
+            }
+          });
         };
 
-        $.ajax({
-          url: "views/evrak-takip/api.php",
-          type: "POST",
-          data: postData,
-          dataType: "json",
-          success: function (res) {
-            if (res.status === "success") {
+        // Seçenek B: Kullanıcının yerel e-imza ajanını kontrol et
+        fetch("http://127.0.0.1:9191/status", { method: "GET", mode: "cors" })
+          .then(r => r.json())
+          .then(agentStatus => {
+            if (agentStatus && agentStatus.status === "success") {
+              // 1. Adım: MimeYap
               Swal.fire({
-                icon: "success",
-                title: "KEP İletisi Başarıyla Gönderildi!",
-                html: `<strong>PTT Takip Kodu (KepId):</strong><br><span class="font-monospace font-size-14 text-primary">${res.kep_id}</span><div class="mt-2 text-success small"><i class="bx bx-check-double"></i> Resmi e-imza doğrulandı, PTT tarafından kabul edildi.</div>`,
-                confirmButtonText: "Tamam"
-              }).then(() => {
-                window.location.reload();
+                title: "PTT KEP İletisi Hazırlanıyor...",
+                html: `<div class="p-2"><i class="bx bx-loader-alt bx-spin font-size-24 text-primary mb-2 d-block"></i>1/3: PTT KEP MIME paketi oluşturuluyor...<br><small class="text-muted">Lütfen bekleyiniz...</small></div>`,
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                didOpen: () => Swal.showLoading()
+              });
+
+              $.ajax({
+                url: "views/evrak-takip/api.php",
+                type: "POST",
+                data: { action: "kep-mime-hazirla", evrak_id: evrakIdEnc, alici_kep: aliciAddress, paket_turu: paketTuru },
+                dataType: "json"
+              }).done(mimeRes => {
+                if (mimeRes.status !== "success" || !mimeRes.eHash || !mimeRes.temp_id) {
+                  Swal.fire("MIME Hazırlama Hatası", mimeRes.message || "PTT paketi oluşturulamadı.", "error");
+                  return;
+                }
+
+                // 2. Adım: Ajan ile imzala
+                Swal.fire({
+                  title: "E-İmza Üretiliyor...",
+                  html: `<div class="p-2"><i class="bx bx-loader-alt bx-spin font-size-24 text-primary mb-2 d-block"></i>2/3: Akıllı kart üzerinden CAdES-BES imzası alınıyor...<br><small class="text-muted">${agentStatus.owner_name || ''} (${agentStatus.device_type || ''})</small></div>`,
+                  allowOutsideClick: false,
+                  showConfirmButton: false,
+                  didOpen: () => Swal.showLoading()
+                });
+
+                fetch("http://127.0.0.1:9191/sign", {
+                  method: "POST",
+                  mode: "cors",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ hash: mimeRes.eHash, pin: pin })
+                })
+                .then(r => r.json())
+                .then(signRes => {
+                  if (signRes.status !== "success" || !signRes.signature) {
+                    Swal.fire("E-İmza Hatası", signRes.message || "Kart imzalamayı reddetti.", "error");
+                    return;
+                  }
+
+                  // 3. Adım: PTT'ye sevk et
+                  Swal.fire({
+                    title: "PTT KEP Sistemine Sevk Ediliyor...",
+                    html: `<div class="p-2"><i class="bx bx-loader-alt bx-spin font-size-24 text-primary mb-2 d-block"></i>3/3: İmzalı paket PTT KEP ağına iletiliyor...<br><small class="text-muted">Lütfen bekleyiniz...</small></div>`,
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    didOpen: () => Swal.showLoading()
+                  });
+
+                  $.ajax({
+                    url: "views/evrak-takip/api.php",
+                    type: "POST",
+                    data: { action: "kep-smime-sevk", temp_id: mimeRes.temp_id, mesajid: mimeRes.mesajid, signature: signRes.signature },
+                    dataType: "json"
+                  }).done(sendRes => {
+                    if (sendRes.status === "success") {
+                      Swal.fire({
+                        icon: "success",
+                        title: "KEP İletisi Başarıyla Gönderildi!",
+                        html: `<strong>PTT Takip Kodu (KepId):</strong><br><span class="font-monospace font-size-14 text-primary">${sendRes.kep_id}</span><div class="mt-2 text-success small"><i class="bx bx-check-double"></i> Resmi CAdES-BES imzanız doğrulandı, PTT tarafından kabul edildi.</div>`,
+                        confirmButtonText: "Tamam"
+                      }).then(() => location.reload());
+                    } else {
+                      Swal.fire("KEP Gönderim Hatası", sendRes.message || "İleti sevk edilemedi.", "error");
+                    }
+                  }).fail(xhr => {
+                    Swal.fire("Gönderim Hatası", xhr.responseJSON?.message || "PTT KEP servisine bağlanılamadı.", "error");
+                  });
+                }).catch(err => {
+                  Swal.fire("Yerel Ajan Hatası", "Yerel E-İmza Ajanı ile iletişim hatası: " + err.message, "error");
+                });
+              }).fail(xhr => {
+                Swal.fire("MIME Hazırlama Hatası", xhr.responseJSON?.message || "PTT KEP servisine bağlanılamadı.", "error");
               });
             } else {
-              Swal.fire("KEP Gönderim Hatası", res.message || "İleti sevk edilemedi.", "error");
+              legacySend(pin);
             }
-          },
-          error: function (xhr) {
-            const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : "PTT KEP servisine bağlanılamadı.";
-            Swal.fire("Gönderim Hatası", msg, "error");
-          }
+          })
+          .catch(() => {
+            legacySend(pin);
+          });
         });
       }
     });

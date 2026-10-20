@@ -92,11 +92,69 @@
                     </section>
                     <input type="hidden" data-form-name="kep_paket_turu" value="Standart">
                 </div>
-                <div class="modal-footer border-top">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Vazgeç</button>
-                    <button type="submit" class="btn btn-success px-4" id="btnModalKepGonder" data-settings-ready="<?php echo ($kepSettings && !empty($kepSettings['kep_adresi'])) ? '1' : '0'; ?>" disabled><i class="bx bx-paper-plane me-1"></i> İmzala ve Gönder</button>
+                <div class="modal-footer border-top d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div id="modalKepAgentStatusWrapper" class="d-flex align-items-center gap-2">
+                        <span id="modalKepAgentBadge" class="badge bg-secondary-subtle text-secondary border font-size-11 py-1 px-2">
+                            <i class="bx bx-loader-alt bx-spin me-1"></i> E-İmza Ajanı Kontrol Ediliyor...
+                        </span>
+                        <span id="modalKepAgentDetails" class="small text-muted font-size-11 d-none d-sm-inline"></span>
+                        <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 font-size-11 rounded-pill" id="btnAgentHelpModal" style="display:none;">
+                            <i class="bx bx-help-circle me-1"></i>Ajanı Başlat
+                        </button>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 ms-auto">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Vazgeç</button>
+                        <button type="submit" class="btn btn-success px-4" id="btnModalKepGonder" data-settings-ready="<?php echo ($kepSettings && !empty($kepSettings['kep_adresi'])) ? '1' : '0'; ?>" disabled><i class="bx bx-paper-plane me-1"></i> İmzala ve Gönder</button>
+                    </div>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- E-İmza Yerel Ajanı Yardım Modalı -->
+<div class="modal fade" id="modalEimzaAgentHelp" tabindex="-1" aria-labelledby="modalEimzaAgentHelpLabel" aria-hidden="true" style="z-index: 1065;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-light">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="d-grid place-items-center bg-primary-subtle text-primary rounded-circle" style="width:36px;height:36px">
+                        <i class="bx bx-chip fs-5"></i>
+                    </span>
+                    <h6 class="modal-title fw-bold mb-0" id="modalEimzaAgentHelpLabel">E-İmza Yerel Köprü Ajanı</h6>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body p-3">
+                <div class="alert alert-info py-2 px-3 small mb-3">
+                    <i class="bx bx-info-circle me-1"></i>
+                    Tarayıcınızın USB E-İmza kartınızla (SafeNet, Akis, E-Tuğra vb.) güvenli iletişim kurabilmesi için UYAP ve e-Devlet sistemlerinde olduğu gibi Java imza köprüsü çalışmalıdır.
+                </div>
+
+                <div class="text-center my-3">
+                    <a href="downloads/ErsanEImza.jar" download class="btn btn-primary btn-lg w-100 shadow-sm py-2">
+                        <i class="bx bxs-download me-2 fs-5 align-middle"></i><strong>Ersan E-İmza Java Uygulamasını İndir</strong>
+                        <div class="font-size-11 opacity-75 mt-1">ErsanEImza.jar (Çift tıklayarak çalıştırın)</div>
+                    </a>
+                </div>
+                
+                <h6 class="fw-semibold font-size-13 mb-2"><i class="bx bx-check-shield text-success me-1"></i>Kullanım Adımları:</h6>
+                <ol class="small text-muted ps-3 mb-3">
+                    <li class="mb-2">USB E-İmza cihazınızın bilgisayarınıza takılı olduğunu doğrulayın.</li>
+                    <li class="mb-2">Yukarıdaki butondan <strong>ErsanEImza.jar</strong> dosyasını indirin ve <strong>çift tıklayarak açın</strong>.</li>
+                    <li class="mb-1">Uygulama arka planda sessizce başlayacak ve web sayfamız e-imza kartınızı otomatik algılayacaktır.</li>
+                </ol>
+
+                <div class="p-2 bg-light rounded text-center small text-muted">
+                    <i class="bx bx-chip me-1"></i>Uyumlu Cihazlar: SafeNet (TÜRKKEP / E-GÜVEN), AKİS (KamuSM), E-Tuğra
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2">
+                <button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal">Kapat</button>
+                <button type="button" class="btn btn-sm btn-primary" id="btnCheckAgentAgain">
+                    <i class="bx bx-refresh me-1"></i>Bağlantıyı Yeniden Kontrol Et
+                </button>
+            </div>
         </div>
     </div>
 </div>

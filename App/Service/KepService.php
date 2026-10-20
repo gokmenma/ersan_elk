@@ -160,7 +160,13 @@ class KepService
         $kepId = (string) $mimeResult['mesajid'];
         $authorizedTc = $settings['yetkili_tcno_decrypted'] ?? ($settings['yetkili_tcno'] ?? '');
         $pin = !empty($data['eimza_pin']) ? (string) $data['eimza_pin'] : (!empty($data['pin']) ? (string) $data['pin'] : null);
-        $signature = $this->createCadesSignature((string) $authorizedTc, (string) ($mimeResult['eHash'] ?? $kepId), $pin);
+        if (!empty($data['imza_b64']) || !empty($data['signature'])) {
+            $sigVal = (string) (!empty($data['imza_b64']) ? $data['imza_b64'] : $data['signature']);
+            $rawSig = base64_decode($sigVal, true);
+            $signature = ($rawSig !== false && strlen($rawSig) >= 100) ? $rawSig : $sigVal;
+        } else {
+            $signature = $this->createCadesSignature((string) $authorizedTc, (string) ($mimeResult['eHash'] ?? $kepId), $pin);
+        }
         $sendResult = $client->smimeGonder($kepId, $signature);
         if (($sendResult['status'] ?? '') !== 'success') throw new Exception($sendResult['message'] ?? 'PTT KEP sevki başarısız.');
 
@@ -223,6 +229,228 @@ class KepService
             'kep_id' => $kepId,
             'takip_kodu' => $kepId,
             'message' => 'KEP iletisi başarıyla gönderildi.',
+        ];
+    }
+
+    /**
+     * İstemci tabanlı (Seçenek B) E-İmza akışı için 1. Aşama:
+     * PTT MimeYap çağrısını yapar, imzalanacak eHash özetini ve mesajid üretir.
+     */
+    public function prepareStandaloneKepMime(int $firmId, array $data, array $files): array
+    {
+        $this->currentFirmId = $firmId;
+        $recipients = array_values(array_unique(array_filter(array_map('trim', preg_split('/[;,\r\n]+/', (string) ($data['alici_kep'] ?? '')) ?: []))));
+        if ($recipients === []) throw new Exception('En az bir alıcı KEP adresi girilmelidir.');
+        foreach ($recipients as $recipient) {
+            if (!filter_var($recipient, FILTER_VALIDATE_EMAIL)) throw new Exception('Geçersiz KEP adresi: ' . $recipient);
+        }
+
+        $subject = trim((string) ($data['konu'] ?? ''));
+        if ($subject === '' || mb_strlen($subject) > 255) throw new Exception('Konu zorunludur ve en fazla 255 karakter olabilir.');
+        $message = RichTextSanitizer::sanitize((string) ($data['icerik'] ?? ''));
+        if (trim(strip_tags($message)) === '') throw new Exception('İleti metni boş bırakılamaz.');
+
+        $settings = $this->settingsModel->getSettings($firmId);
+        if (!$settings || empty($settings['kep_adresi'])) throw new Exception('Firma KEP ayarları yapılandırılmamış.');
+
+        $tempId = bin2hex(random_bytes(16));
+        $tmpDir = dirname(__DIR__, 2) . '/uploads/evrak-takip/tmp';
+        if (!is_dir($tmpDir)) {
+            @mkdir($tmpDir, 0777, true);
+        }
+
+        $attachments = [];
+        $archiveFiles = [];
+        foreach ($files as $idx => $file) {
+            $path = (string) ($file['path'] ?? '');
+            if ($path === '' || !is_file($path)) continue;
+            $mime = (string) ($file['mime'] ?? 'application/octet-stream');
+            $safeName = $this->normalizeKepAttachmentName((string) ($file['name'] ?? 'belge'), $mime);
+
+            $tmpSavedPath = $tmpDir . '/draft_' . $tempId . '_' . $idx . '_' . $safeName;
+            if (is_uploaded_file($path)) {
+                move_uploaded_file($path, $tmpSavedPath);
+            } else {
+                copy($path, $tmpSavedPath);
+            }
+
+            $bytes = file_get_contents($tmpSavedPath);
+            if ($bytes === false) throw new Exception('KEP eki okunamadı: ' . $safeName);
+
+            $xmlFragment = '<ns1:ekler xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmime:contentType="' . htmlspecialchars($mime, ENT_QUOTES, 'UTF-8') . '" xmime:fileName="' . htmlspecialchars($safeName, ENT_QUOTES, 'UTF-8') . '" name="' . htmlspecialchars($safeName, ENT_QUOTES, 'UTF-8') . '" filename="' . htmlspecialchars($safeName, ENT_QUOTES, 'UTF-8') . '">' . base64_encode($bytes) . '</ns1:ekler>';
+            $attachments[] = new \SoapVar($xmlFragment, XSD_ANYXML);
+
+            $archiveFiles[] = [
+                'name' => $safeName,
+                'original_name' => (string) ($file['name'] ?? $safeName),
+                'mime' => $mime,
+                'path' => $tmpSavedPath,
+                'size' => strlen($bytes),
+                'content' => base64_encode($bytes),
+            ];
+        }
+
+        $allPttRecipients = array_reduce($recipients, static fn(bool $carry, string $address): bool => $carry && (bool) preg_match('/@hs01\.kep\.tr$/i', $address), true);
+        $totalBytes = array_sum(array_column($archiveFiles, 'size'));
+        $maxBytes = ($allPttRecipients ? 100 : 25) * 1024 * 1024;
+        if ($totalBytes > $maxBytes) throw new Exception('Eklerin toplam boyutu alıcı sınırını aşıyor: ' . ($allPttRecipients ? '100 MB' : '25 MB') . '.');
+
+        $recipientString = implode(';', $recipients);
+        if (mb_strlen($recipientString) > 255) throw new Exception('Alıcı KEP adreslerinin toplam uzunluğu 255 karakteri aşamaz.');
+        $isHtml = strip_tags($message) !== $message;
+        $client = $this->getClient($firmId);
+        $mimeResult = $client->mimeYap([
+            'ePaketTur' => 'Standart',
+            'ePaketId' => 'KEP_' . date('YmdHis') . '_' . bin2hex(random_bytes(4)),
+            'kime' => $recipientString,
+            'konu' => $subject,
+            'icerik' => $isHtml ? base64_encode($message) : $message,
+            'eIcerikTur' => $isHtml ? 'HTML' : 'TEXT',
+            'ekler' => $attachments,
+            'eOzetAlg' => 'SHA256',
+        ]);
+        if (($mimeResult['status'] ?? '') !== 'success' || empty($mimeResult['mesajid'])) {
+            throw new Exception($mimeResult['message'] ?? 'PTT KEP MIME paketi hazırlanamadı.');
+        }
+
+        $kepId = (string) $mimeResult['mesajid'];
+        $eHash = (string) ($mimeResult['eHash'] ?? '');
+
+        $draftMeta = [
+            'type' => 'standalone',
+            'firm_id' => $firmId,
+            'user_id' => (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0),
+            'kep_id' => $kepId,
+            'eHash' => $eHash,
+            'recipients' => $recipients,
+            'recipient_string' => $recipientString,
+            'subject' => $subject,
+            'message' => $message,
+            'ileti_tipi' => (string) ($data['ileti_tipi'] ?? 'standart'),
+            'ileti_detayi' => (string) ($data['ileti_detayi'] ?? ''),
+            'archive_files' => $archiveFiles,
+            'created_at' => time(),
+        ];
+
+        file_put_contents($tmpDir . '/draft_' . $tempId . '.json', json_encode($draftMeta, JSON_UNESCAPED_UNICODE));
+        $_SESSION['kep_draft_' . $tempId] = $draftMeta;
+
+        return [
+            'status' => 'success',
+            'temp_id' => $tempId,
+            'mesajid' => $kepId,
+            'eHash' => $eHash,
+        ];
+    }
+
+    /**
+     * İstemci tabanlı (Seçenek B) E-İmza akışı için 2. Aşama:
+     * İstemcideki yerel USB token'dan üretilen CAdES-BES imzasını PTT SmimeGonder ile iletir.
+     */
+    public function completeStandaloneKepSend(int $firmId, string $tempId, string $cadesSignature): array
+    {
+        $this->currentFirmId = $firmId;
+        $tmpDir = dirname(__DIR__, 2) . '/uploads/evrak-takip/tmp';
+        $draftFile = $tmpDir . '/draft_' . $tempId . '.json';
+
+        $draft = $_SESSION['kep_draft_' . $tempId] ?? null;
+        if (!$draft && file_exists($draftFile)) {
+            $draft = json_decode(file_get_contents($draftFile), true);
+        }
+        if (!$draft || (int) ($draft['firm_id'] ?? 0) !== $firmId) {
+            throw new Exception('Hazırlanan KEP taslağı bulunamadı veya oturum süresi doldu. Lütfen tekrar deneyiniz.');
+        }
+
+        $kepId = (string) $draft['kep_id'];
+        $recipientString = (string) $draft['recipient_string'];
+        $recipients = $draft['recipients'] ?? [];
+        $subject = (string) $draft['subject'];
+        $message = (string) $draft['message'];
+        $detail = (string) ($draft['ileti_detayi'] ?? '');
+        $archiveFiles = $draft['archive_files'] ?? [];
+        $userId = (int) ($draft['user_id'] ?? ($_SESSION['user_id'] ?? 0));
+
+        $rawSignature = base64_decode($cadesSignature, true);
+        if ($rawSignature === false || strlen($rawSignature) < 100) {
+            $rawSignature = $cadesSignature;
+        }
+
+        $client = $this->getClient($firmId);
+        $sendResult = $client->smimeGonder($kepId, $rawSignature);
+        if (($sendResult['status'] ?? '') !== 'success') {
+            throw new Exception($sendResult['message'] ?? 'PTT KEP sevki başarısız.');
+        }
+
+        $settings = $this->settingsModel->getSettings($firmId);
+        $archiveDirectory = dirname(__DIR__, 2) . '/uploads/evrak-takip/kep';
+        if (!is_dir($archiveDirectory)) @mkdir($archiveDirectory, 0755, true);
+        $archiveName = 'kep_ileti_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $kepId) . '.json.enc';
+        $archivePayload = json_encode(['recipients' => $recipients, 'subject' => $subject, 'content' => $message, 'detail' => $detail, 'files' => $archiveFiles], JSON_UNESCAPED_UNICODE);
+        file_put_contents($archiveDirectory . '/' . $archiveName, Security::encryptFile($archivePayload));
+
+        $db = $this->evrakModel->getDb();
+        $db->beginTransaction();
+        try {
+            $evrakId = $this->evrakModel->createStandaloneKep($firmId, $userId, [
+                'kep_id' => $kepId,
+                'konu' => $subject,
+                'alici_kep' => $recipientString,
+                'icerik' => $message,
+                'ileti_tipi' => (string) ($draft['ileti_tipi'] ?? 'standart'),
+                'ileti_detayi' => $detail,
+            ]);
+
+            $attachmentDir = dirname(__DIR__, 2) . '/uploads/evrak-takip/ekler/';
+            if (!is_dir($attachmentDir)) {
+                @mkdir($attachmentDir, 0777, true);
+            }
+            foreach ($archiveFiles as $idx => $af) {
+                $ext = strtolower(pathinfo($af['name'], PATHINFO_EXTENSION));
+                $storedName = 'ek_' . $evrakId . '_' . bin2hex(random_bytes(8)) . ($ext !== '' ? '.' . $ext : '');
+                $storedFullPath = $attachmentDir . $storedName;
+                if (!empty($af['path']) && is_file($af['path'])) {
+                    @copy($af['path'], $storedFullPath);
+                    @unlink($af['path']);
+                } elseif (!empty($af['content'])) {
+                    file_put_contents($storedFullPath, base64_decode($af['content']));
+                }
+                $this->evrakModel->saveAttachment($evrakId, [
+                    'dosya_adi' => $af['name'],
+                    'dosya_yolu' => 'uploads/evrak-takip/ekler/' . $storedName,
+                    'mime_tipi' => $af['mime'],
+                    'dosya_boyutu' => (int) ($af['size'] ?? 0),
+                    'sira' => $idx + 1,
+                ]);
+            }
+
+            $messageId = $this->mesajModel->saveOutgoing($firmId, [
+                'evrak_id' => $evrakId, 'kep_id' => $kepId, 'org_mesaj_id' => $kepId,
+                'gonderen_kep' => $settings['kep_adresi'], 'alici_kep' => $recipientString,
+                'alici_unvan' => mb_substr(trim($detail), 0, 255),
+                'konu' => $subject, 'icerik' => $message, 'paket_turu' => 'Standart',
+                'durum' => 'gonderildi', 'delil_sayisi' => 1,
+                'son_delil_durumu' => 'Kephs tarafından kabul edildi (Submission)',
+                'yerel_dosya_yolu' => null, 'ham_paket_yolu' => 'uploads/evrak-takip/kep/' . $archiveName,
+            ]);
+            $this->delilModel->upsertDelil($messageId, ['delil_id' => 'SUB_' . $kepId . '_' . time(), 'delil_tur_id' => 10, 'delil_aciklama' => 'S/MIME paketi Kephs tarafından kabul edildi (Submission Acceptance)', 'tarih' => date('Y-m-d H:i:s'), 'kephs' => 'PTT KEPHS']);
+            $db->commit();
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            throw $e;
+        }
+
+        @unlink($draftFile);
+        unset($_SESSION['kep_draft_' . $tempId]);
+
+        try {
+            (new SystemLogModel())->logAction($userId, 'Bağımsız KEP Gönderimi', "KEP iletisi {$recipientString} adresine başarıyla imzalanıp gönderildi. PTT KepId: {$kepId}", SystemLogModel::LEVEL_IMPORTANT);
+        } catch (Throwable $e) {}
+
+        return [
+            'status' => 'success',
+            'kep_id' => $kepId,
+            'takip_kodu' => $kepId,
+            'message' => 'KEP iletisi e-imzanızla başarıyla imzalandı ve PTT KEP ağına sevk edildi.',
         ];
     }
 
@@ -407,7 +635,13 @@ class KepService
             // PTT KEP spesifikasyonuna uygun CAdES-BES (PKCS#7) imza verisi oluşturma
             $pin = !empty($options['eimza_pin']) ? (string) $options['eimza_pin'] : (!empty($options['pin']) ? (string) $options['pin'] : null);
             $yetkiliTcno = $settings['yetkili_tcno_decrypted'] ?? ($settings['yetkili_tcno'] ?? '');
-            $cadesSignature = $this->createCadesSignature($yetkiliTcno, $eHash ?: $mesajId, $pin);
+            if (!empty($options['imza_b64']) || !empty($options['signature'])) {
+                $sigVal = (string) (!empty($options['imza_b64']) ? $options['imza_b64'] : $options['signature']);
+                $rawSig = base64_decode($sigVal, true);
+                $cadesSignature = ($rawSig !== false && strlen($rawSig) >= 100) ? $rawSig : $sigVal;
+            } else {
+                $cadesSignature = $this->createCadesSignature($yetkiliTcno, $eHash ?: $mesajId, $pin);
+            }
 
             $sendRes = $client->smimeGonder($mesajId, $cadesSignature);
             if ($sendRes['status'] === 'success') {
@@ -497,6 +731,287 @@ class KepService
             'status' => 'success',
             'kep_id' => $kepId,
             'message' => "Evrak PTT KEP üzerinden başarıyla sevk edildi. PTT Takip Kodu: {$kepId}",
+        ];
+    }
+
+    /**
+     * Giden evrak için 1. Aşama: MimeYap çağrısını yapar ve eHash/mesajid döner.
+     */
+    public function prepareOutgoingKepMime(int $firmId, int $evrakId, array $options = []): array
+    {
+        $this->currentFirmId = $firmId;
+        $evrak = $this->evrakModel->getById($evrakId);
+        if (!$evrak || $evrak->evrak_tipi !== 'giden') {
+            throw new Exception('Giden evrak bulunamadı.');
+        }
+
+        if (($evrak->onay_durumu ?? '') !== 'onaylandi') {
+            throw new Exception('Evrakın KEP ile sevk edilebilmesi için e-imza onay sürecinin tamamlanmış olması gerekir.');
+        }
+
+        $recipientKep = trim((string) ($options['alici_kep'] ?? ''));
+        $recipientAddresses = array_values(array_filter(array_map('trim', preg_split('/[;,\r\n]+/', $recipientKep) ?: [])));
+        if ($recipientAddresses === []) {
+            throw new Exception('Geçerli bir alıcı KEP adresi girilmelidir.');
+        }
+        foreach ($recipientAddresses as $recipientAddress) {
+            if (!filter_var($recipientAddress, FILTER_VALIDATE_EMAIL)) {
+                throw new Exception('Geçersiz alıcı KEP adresi: ' . $recipientAddress);
+            }
+        }
+        $recipientKep = implode(';', $recipientAddresses);
+
+        $settings = $this->settingsModel->getSettings($firmId);
+        if (!$settings || empty($settings['kep_adresi'])) {
+            throw new Exception('Firma KEP ayarları yapılandırılmamış.');
+        }
+
+        $client = $this->getClient($firmId);
+        $paketTuru = ($options['paket_turu'] ?? 'Standart') === 'EYazisma' ? 'EYazisma' : 'Standart';
+
+        $tempId = bin2hex(random_bytes(16));
+        $tmpDir = dirname(__DIR__, 2) . '/uploads/evrak-takip/tmp';
+        if (!is_dir($tmpDir)) {
+            @mkdir($tmpDir, 0777, true);
+        }
+
+        $tmpPdfPath = null;
+        $hasCoverLetter = empty($evrak->ust_yazi_gerekli_degil);
+        if ($hasCoverLetter && !empty($evrak->dosya_yolu)) {
+            $candidatePath = dirname(__DIR__, 2) . '/' . ltrim((string) $evrak->dosya_yolu, '/');
+            if (file_exists($candidatePath)) {
+                $rawBytes = file_get_contents($candidatePath);
+                try {
+                    $decryptedBytes = Security::decryptFile($rawBytes);
+                } catch (Throwable $e) {
+                    $decryptedBytes = $rawBytes;
+                }
+                $tmpPdfPath = $tmpDir . '/tmp_pdf_' . $tempId . '.pdf';
+                file_put_contents($tmpPdfPath, $decryptedBytes);
+            }
+        }
+
+        if ($hasCoverLetter && (!$tmpPdfPath || !file_exists($tmpPdfPath))) {
+            $pdfService = new EvrakPdfService();
+            $genPdf = $pdfService->generateTempPdf($evrakId);
+            $tmpPdfPath = $tmpDir . '/tmp_pdf_' . $tempId . '.pdf';
+            copy($genPdf, $tmpPdfPath);
+            @unlink($genPdf);
+        }
+
+        $attachments = [];
+        $evrakEkleri = $this->evrakModel->getAttachments($evrakId);
+        foreach ($evrakEkleri as $ek) {
+            $ekPath = dirname(__DIR__, 2) . '/' . ltrim((string) $ek->dosya_yolu, '/');
+            if (file_exists($ekPath)) {
+                $ekRaw = file_get_contents($ekPath);
+                try {
+                    $ekDec = Security::decryptFile($ekRaw);
+                } catch (Throwable $e) {
+                    $ekDec = $ekRaw;
+                }
+                $tmpEkPath = $tmpDir . '/tmp_ek_' . $tempId . '_' . preg_replace('/[^a-zA-Z0-9_.-]/', '_', $ek->dosya_adi);
+                file_put_contents($tmpEkPath, $ekDec);
+                $attachments[] = [
+                    'path' => $tmpEkPath,
+                    'name' => $ek->dosya_adi,
+                ];
+            }
+        }
+        if (!$hasCoverLetter && $attachments === []) {
+            throw new Exception('Yalnızca eklerle KEP gönderiminde en az bir belge bulunmalıdır.');
+        }
+
+        $soapAttachments = [];
+        if ($paketTuru === 'EYazisma') {
+            if (!$hasCoverLetter || !$tmpPdfPath || !is_file($tmpPdfPath)) {
+                throw new Exception('E-Yazışma paketi için resmî üst yazı gereklidir.');
+            }
+            $meta = [
+                'evrak_no' => $evrak->evrak_no,
+                'konu' => $options['konu'] ?? $evrak->konu,
+                'gonderen' => $settings['kep_adresi'],
+                'alici' => $recipientKep,
+            ];
+            $eypResult = $this->eypService->createPackage($tmpPdfPath, $attachments, null, $meta);
+            $eypBytes = file_get_contents($eypResult['path']);
+            $xmlFragment = '<ns1:ekler xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmime:contentType="application/zip" xmime:fileName="paket.eyp" name="paket.eyp" filename="paket.eyp">' . base64_encode($eypBytes) . '</ns1:ekler>';
+            $soapAttachments[] = new \SoapVar($xmlFragment, XSD_ANYXML);
+        } else {
+            if ($hasCoverLetter && $tmpPdfPath && is_file($tmpPdfPath)) {
+                $pdfBytes = file_get_contents($tmpPdfPath);
+                $coverSafeName = $this->normalizeKepAttachmentName(($evrak->evrak_no ?: 'ust_yazi') . '.pdf', 'application/pdf');
+                $xmlFragment = '<ns1:ekler xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmime:contentType="application/pdf" xmime:fileName="' . htmlspecialchars($coverSafeName, ENT_QUOTES, 'UTF-8') . '" name="' . htmlspecialchars($coverSafeName, ENT_QUOTES, 'UTF-8') . '" filename="' . htmlspecialchars($coverSafeName, ENT_QUOTES, 'UTF-8') . '">' . base64_encode($pdfBytes) . '</ns1:ekler>';
+                $soapAttachments[] = new \SoapVar($xmlFragment, XSD_ANYXML);
+            }
+            foreach ($attachments as $att) {
+                $attBytes = file_get_contents($att['path']);
+                $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($att['path']) ?: 'application/octet-stream';
+                $attSafeName = $this->normalizeKepAttachmentName((string) ($att['name'] ?: 'ek_belge'), $mime);
+                $xmlFragment = '<ns1:ekler xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmime:contentType="' . htmlspecialchars($mime, ENT_QUOTES, 'UTF-8') . '" xmime:fileName="' . htmlspecialchars($attSafeName, ENT_QUOTES, 'UTF-8') . '" name="' . htmlspecialchars($attSafeName, ENT_QUOTES, 'UTF-8') . '" filename="' . htmlspecialchars($attSafeName, ENT_QUOTES, 'UTF-8') . '">' . base64_encode($attBytes) . '</ns1:ekler>';
+                $soapAttachments[] = new \SoapVar($xmlFragment, XSD_ANYXML);
+            }
+        }
+
+        $allPttRecipients = array_reduce($recipientAddresses, static fn(bool $carry, string $address): bool => $carry && (bool) preg_match('/@hs01\.kep\.tr$/i', $address), true);
+        $totalPayloadBytes = array_sum(array_map('strlen', $soapAttachments));
+        $maxPayloadBytes = ($allPttRecipients ? 100 : 25) * 1024 * 1024;
+        if ($totalPayloadBytes > $maxPayloadBytes) {
+            throw new Exception('KEP eklerinin toplam boyutu alıcı sınırını aşıyor: ' . ($allPttRecipients ? '100 MB' : '25 MB') . '.');
+        }
+
+        $konu = !empty($options['konu']) ? trim((string) $options['konu']) : (string) ($evrak->konu ?: 'Resmî Yazı');
+        $rawIcerik = !empty($options['icerik']) ? (string) $options['icerik'] : (string) ($evrak->aciklama ?: 'Saygılarımızla, bilgilerinize sunarız.');
+        $isHtml = strip_tags($rawIcerik) !== $rawIcerik;
+        $icerik = $isHtml ? base64_encode($rawIcerik) : $rawIcerik;
+        $eIcerikTur = $isHtml ? 'HTML' : 'TEXT';
+
+        $mimeRes = $client->mimeYap([
+            'ePaketTur' => $paketTuru,
+            'ePaketId' => (string) ($evrak->evrak_no ?: ('EVR_' . $evrakId)),
+            'kime' => $recipientKep,
+            'konu' => $konu,
+            'icerik' => $icerik,
+            'eIcerikTur' => $eIcerikTur,
+            'ekler' => $soapAttachments,
+            'eOzetAlg' => 'SHA256',
+        ]);
+
+        if (($mimeRes['status'] ?? '') !== 'success' || empty($mimeRes['mesajid'])) {
+            throw new Exception($mimeRes['message'] ?: 'PTT KEP MIME paketi hazırlanamadı.');
+        }
+
+        $mesajId = (string) $mimeRes['mesajid'];
+        $eHash = (string) ($mimeRes['eHash'] ?? '');
+
+        $draftMeta = [
+            'type' => 'evrak',
+            'firm_id' => $firmId,
+            'evrak_id' => $evrakId,
+            'user_id' => (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0),
+            'mesajid' => $mesajId,
+            'eHash' => $eHash,
+            'recipientKep' => $recipientKep,
+            'paketTuru' => $paketTuru,
+            'tmpPdfPath' => $tmpPdfPath,
+            'attachments' => $attachments,
+            'created_at' => time(),
+        ];
+
+        file_put_contents($tmpDir . '/draft_evrak_' . $tempId . '.json', json_encode($draftMeta, JSON_UNESCAPED_UNICODE));
+        $_SESSION['kep_draft_' . $tempId] = $draftMeta;
+
+        return [
+            'status' => 'success',
+            'temp_id' => $tempId,
+            'mesajid' => $mesajId,
+            'eHash' => $eHash,
+        ];
+    }
+
+    /**
+     * Giden evrak için 2. Aşama: CAdES-BES imzasını PTT SmimeGonder ile iletir.
+     */
+    public function completeOutgoingKepSend(int $firmId, string $tempId, string $cadesSignature): array
+    {
+        $this->currentFirmId = $firmId;
+        $tmpDir = dirname(__DIR__, 2) . '/uploads/evrak-takip/tmp';
+        $draftFile = $tmpDir . '/draft_evrak_' . $tempId . '.json';
+
+        $draft = $_SESSION['kep_draft_' . $tempId] ?? null;
+        if (!$draft && file_exists($draftFile)) {
+            $draft = json_decode(file_get_contents($draftFile), true);
+        }
+        if (!$draft || (int) ($draft['firm_id'] ?? 0) !== $firmId) {
+            throw new Exception('Evrak KEP taslağı bulunamadı veya süresi doldu. Lütfen tekrar deneyiniz.');
+        }
+
+        $mesajId = (string) $draft['mesajid'];
+        $evrakId = (int) $draft['evrak_id'];
+        $recipientKep = (string) $draft['recipientKep'];
+        $paketTuru = (string) $draft['paketTuru'];
+        $tmpPdfPath = $draft['tmpPdfPath'] ?? null;
+        $attachments = $draft['attachments'] ?? [];
+        $userId = (int) ($draft['user_id'] ?? ($_SESSION['user_id'] ?? 0));
+
+        $rawSignature = base64_decode($cadesSignature, true);
+        if ($rawSignature === false || strlen($rawSignature) < 100) {
+            $rawSignature = $cadesSignature;
+        }
+
+        $client = $this->getClient($firmId);
+        $sendRes = $client->smimeGonder($mesajId, $rawSignature);
+        if (($sendRes['status'] ?? '') !== 'success') {
+            throw new Exception($sendRes['message'] ?: 'PTT KEP ileti sevk işlemi başarısız.');
+        }
+
+        $uploadBaseDir = dirname(__DIR__, 2) . '/uploads/evrak-takip/kep';
+        if (!is_dir($uploadBaseDir)) @mkdir($uploadBaseDir, 0755, true);
+
+        $encPdfPath = null;
+        if ($tmpPdfPath && file_exists($tmpPdfPath)) {
+            $rawPdf = file_get_contents($tmpPdfPath);
+            $encPdf = Security::encryptFile($rawPdf);
+            $cleanKepId = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $mesajId);
+            $pdfFilename = "kep_ustyazi_{$cleanKepId}.pdf.enc";
+            file_put_contents("{$uploadBaseDir}/{$pdfFilename}", $encPdf);
+            $encPdfPath = "uploads/evrak-takip/kep/{$pdfFilename}";
+        }
+
+        $settings = $this->settingsModel->getSettings($firmId);
+        $localMsgId = $this->mesajModel->saveOutgoing($firmId, [
+            'evrak_id' => $evrakId,
+            'kep_id' => $mesajId,
+            'org_mesaj_id' => $mesajId,
+            'gonderen_kep' => $settings['kep_adresi'],
+            'alici_kep' => $recipientKep,
+            'alici_unvan' => '',
+            'konu' => '',
+            'icerik' => '',
+            'paket_turu' => $paketTuru,
+            'durum' => 'gonderildi',
+            'delil_sayisi' => 1,
+            'son_delil_durumu' => 'Kephs tarafından kabul edildi (Submission)',
+            'yerel_dosya_yolu' => $encPdfPath,
+            'ham_paket_yolu' => null,
+        ]);
+
+        $this->delilModel->upsertDelil($localMsgId, [
+            'delil_id' => "SUB_{$mesajId}_" . time(),
+            'delil_tur_id' => 10,
+            'delil_aciklama' => 'S/MIME paketi Kephs tarafından kabul edildi (Submission Acceptance)',
+            'tarih' => date('Y-m-d H:i:s'),
+            'kephs' => 'PTT KEPHS',
+        ]);
+
+        $db = (new \App\Model\Model())->db;
+        $stmt = $db->prepare("UPDATE evrak_takip SET kaynak_tipi = 'kep', kep_mesaj_id = :kep_id WHERE id = :id AND firma_id = :firma_id");
+        $stmt->execute([
+            'kep_id' => $mesajId,
+            'id' => $evrakId,
+            'firma_id' => $firmId,
+        ]);
+
+        try {
+            (new SystemLogModel())->logAction(
+                $userId,
+                'KEP Gönderimi',
+                "Evrak ID: {$evrakId} KEP üzerinden {$recipientKep} adresine sevk edildi. PTT KepId: {$mesajId}",
+                SystemLogModel::LEVEL_IMPORTANT
+            );
+        } catch (Throwable $e) {}
+
+        @unlink($draftFile);
+        unset($_SESSION['kep_draft_' . $tempId]);
+        if ($tmpPdfPath && is_file($tmpPdfPath)) @unlink($tmpPdfPath);
+        foreach ($attachments as $att) {
+            if (!empty($att['path']) && is_file($att['path'])) @unlink($att['path']);
+        }
+
+        return [
+            'status' => 'success',
+            'kep_id' => $mesajId,
+            'message' => "Evrak PTT KEP üzerinden başarıyla sevk edildi. PTT Takip Kodu: {$mesajId}",
         ];
     }
 

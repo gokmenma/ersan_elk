@@ -1428,29 +1428,124 @@ $(document).ready(function () {
 
   // ---------- Özet kartlarını gizle/göster (Standardized) ----------
   const kepModal = $("#modalKepGonderisi");
+  const LOCAL_EIMZA_AGENT_URL = "http://127.0.0.1:9191";
+  let localEimzaAgentState = {
+    available: false,
+    cardDetected: false,
+    data: null
+  };
+
+  function checkLocalEimzaAgent(onComplete) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1500);
+
+    fetch(LOCAL_EIMZA_AGENT_URL + "/status", { method: "GET", mode: "cors", signal: controller.signal })
+      .then(res => res.json())
+      .then(data => {
+        clearTimeout(timeoutId);
+        if (data && data.status === "success") {
+          localEimzaAgentState = { available: true, cardDetected: true, data: data };
+        } else {
+          localEimzaAgentState = { available: true, cardDetected: false, data: data };
+        }
+        if (typeof onComplete === "function") onComplete(localEimzaAgentState);
+      })
+      .catch(() => {
+        clearTimeout(timeoutId);
+        localEimzaAgentState = { available: false, cardDetected: false, data: null };
+        if (typeof onComplete === "function") onComplete(localEimzaAgentState);
+      });
+  }
+
+  function updateKepAgentUI() {
+    const $badge = $("#modalKepAgentBadge");
+    const $details = $("#modalKepAgentDetails");
+    const $btnHelp = $("#btnAgentHelpModal");
+
+    $badge.removeClass("bg-success-subtle text-success bg-warning-subtle text-warning bg-secondary-subtle text-secondary border-success-subtle border-warning-subtle")
+      .addClass("bg-secondary-subtle text-secondary border")
+      .html('<i class="bx bx-loader-alt bx-spin me-1"></i> E-İmza Ajanı Kontrol Ediliyor...');
+
+    checkLocalEimzaAgent(state => {
+      if (state.available && state.cardDetected) {
+        $badge.removeClass("bg-secondary-subtle text-secondary bg-warning-subtle text-warning")
+          .addClass("bg-success-subtle text-success border-success-subtle")
+          .html('<i class="bx bx-check-circle me-1"></i> E-İmza Ajanı Aktif');
+        $details.html(`<strong>${escapeEvrakHtml(state.data.owner_name || '')}</strong> <span class="text-muted font-size-11">(${escapeEvrakHtml(state.data.device_type || 'Akıllı Kart')})</span>`);
+        $btnHelp.hide();
+      } else if (state.available && !state.cardDetected) {
+        $badge.removeClass("bg-secondary-subtle text-secondary bg-success-subtle text-success")
+          .addClass("bg-warning-subtle text-warning border-warning-subtle")
+          .html('<i class="bx bx-error-circle me-1"></i> Kart Algılanmadı');
+        $details.text(state.data?.message || 'USB E-İmza kartınızı bilgisayarınıza takınız.');
+        $btnHelp.hide();
+      } else {
+        $badge.removeClass("bg-success-subtle text-success bg-warning-subtle text-warning border-success-subtle border-warning-subtle")
+          .addClass("bg-secondary-subtle text-secondary border")
+          .html('<i class="bx bx-unlink me-1"></i> Yerel Ajan Bağlı Değil');
+        $details.text('Bilgisayarınızda yerel köprü bekleniyor.');
+        $btnHelp.show();
+      }
+    });
+  }
+
+  $("#btnAgentHelpModal, #btnCheckAgentAgain").on("click", function (e) {
+    e.preventDefault();
+    if ($(this).attr("id") === "btnCheckAgentAgain") {
+      updateKepAgentUI();
+      $(this).html('<i class="bx bx-loader-alt bx-spin me-1"></i>Kontrol Ediliyor...');
+      setTimeout(() => {
+        $(this).html('<i class="bx bx-refresh me-1"></i>Bağlantıyı Yeniden Kontrol Et');
+        if (localEimzaAgentState.available && localEimzaAgentState.cardDetected) {
+          $("#modalEimzaAgentHelp").modal("hide");
+        }
+      }, 1000);
+    } else {
+      $("#modalEimzaAgentHelp").modal("show");
+    }
+  });
 
   function scanKepEimzaCard($badge, $sub) {
     $badge.removeClass("bg-success-subtle text-success border-success-subtle bg-warning-subtle text-warning border-warning-subtle")
       .addClass("bg-info-subtle text-info border-info-subtle")
       .html('<i class="bx bx-loader-alt bx-spin me-1"></i> E-İmza Taranıyor...');
 
-    $.ajax({ url: api_url, type: "POST", data: { action: "eimza-kart-bilgisi" }, dataType: "json" }).done(function (card) {
-      if (card && card.status === "success") {
-        $badge.removeClass("bg-info-subtle text-info border-info-subtle")
+    // 1. Önce yerel ajanı kontrol et (Seçenek B)
+    checkLocalEimzaAgent(state => {
+      if (state.available && state.cardDetected) {
+        $badge.removeClass("bg-info-subtle text-info border-info-subtle bg-warning-subtle text-warning border-warning-subtle")
           .addClass("bg-success-subtle text-success border-success-subtle")
-          .html(`<i class="bx bx-chip me-1"></i> ${escapeEvrakHtml(card.device_type || 'Akıllı Kart')} Takılı`);
-        $sub.html(`<strong>${escapeEvrakHtml(card.owner_name || '')}</strong> <span class="text-muted font-monospace font-size-11">(TC: ${escapeEvrakHtml(card.tcno || '')})</span> adına ait sertifika ile imzalanır.`);
-      } else {
+          .html(`<i class="bx bx-chip me-1"></i> ${escapeEvrakHtml(state.data.device_type || 'Akıllı Kart')} (Yerel)`);
+        $sub.html(`<strong>${escapeEvrakHtml(state.data.owner_name || '')}</strong> <span class="text-muted font-monospace font-size-11">(TC: ${escapeEvrakHtml(state.data.tcno || '')})</span> adına ait sertifika ile imzalanır.`);
+        return;
+      }
+
+      // 2. Yerel ajanda kart yoksa veya ajan kapalıysa sunucuyu sorgula
+      $.ajax({ url: api_url, type: "POST", data: { action: "eimza-kart-bilgisi" }, dataType: "json" }).done(function (card) {
+        if (card && card.status === "success") {
+          $badge.removeClass("bg-info-subtle text-info border-info-subtle")
+            .addClass("bg-success-subtle text-success border-success-subtle")
+            .html(`<i class="bx bx-chip me-1"></i> ${escapeEvrakHtml(card.device_type || 'Akıllı Kart')} Takılı`);
+          $sub.html(`<strong>${escapeEvrakHtml(card.owner_name || '')}</strong> <span class="text-muted font-monospace font-size-11">(TC: ${escapeEvrakHtml(card.tcno || '')})</span> adına ait sertifika ile imzalanır.`);
+        } else {
+          $badge.removeClass("bg-info-subtle text-info border-info-subtle")
+            .addClass("bg-warning-subtle text-warning border-warning-subtle")
+            .html('<i class="bx bx-error-circle me-1"></i> Cihaz Bulunamadı');
+          if (state.available) {
+            $sub.text(state.data?.message || 'Lütfen USB E-İmza cihazınızı bilgisayarınıza takınız.');
+          } else {
+            $sub.html('Yerel E-İmza Ajanı (127.0.0.1:9191) bulunamadı. <a href="javascript:void(0)" id="linkOpenAgentHelpInSwal" class="text-primary fw-semibold">Nasıl başlatılır?</a>');
+            $("#linkOpenAgentHelpInSwal").on("click", function () {
+              $("#modalEimzaAgentHelp").modal("show");
+            });
+          }
+        }
+      }).fail(function (xhr) {
         $badge.removeClass("bg-info-subtle text-info border-info-subtle")
           .addClass("bg-warning-subtle text-warning border-warning-subtle")
-          .html('<i class="bx bx-error-circle me-1"></i> Cihaz Bulunamadı');
-        $sub.text(card?.message || 'Lütfen E-İmza USB cihazınızı takınız.');
-      }
-    }).fail(function (xhr) {
-      $badge.removeClass("bg-info-subtle text-info border-info-subtle")
-        .addClass("bg-warning-subtle text-warning border-warning-subtle")
-        .html('<i class="bx bx-error-circle me-1"></i> Cihaz Kontrol Edilemedi');
-      $sub.text(xhr.responseJSON?.message || "E-imza cihazı sorgulanamadı.");
+          .html('<i class="bx bx-error-circle me-1"></i> Cihaz Kontrol Edilemedi');
+        $sub.text(xhr.responseJSON?.message || "E-imza cihazı sorgulanamadı.");
+      });
     });
   }
 
@@ -1494,6 +1589,7 @@ $(document).ready(function () {
       }
     }
     kepModal.modal("show");
+    updateKepAgentUI();
     const balanceBadge = $("#modalKepBalanceBadge");
     const sendButton = $("#btnModalKepGonder").prop("disabled", true).html('<i class="bx bx-paper-plane me-1"></i> İmzala ve Gönder');
     if (sendButton.data("settings-ready") === 1 || String(sendButton.data("settings-ready")) === "1") {
@@ -1603,28 +1699,166 @@ $(document).ready(function () {
       },
     }).then(answer => {
       if (!answer.isConfirmed) return;
-      const data = new FormData();
-      data.append("action", "kep-dogrudan-gonder"); data.append("kep_alicilar", addresses.join(";")); data.append("kep_konu", subject); data.append("kep_icerik", content);
-      data.append("kep_ileti_tipi", $("#modal_kep_ileti_tipi").val() || "standart"); data.append("kep_ileti_detayi", $("#modal_kep_ileti_detayi").val() || ""); data.append("kep_paket_turu", "Standart");
-      data.append("eimza_pin", answer.value || "");
-      Array.from($("#modal_kep_ekler")[0].files || []).forEach(file => data.append("kep_ekler[]", file, file.name));
-      const sendButton = $("#btnModalKepGonder").prop("disabled", true).html('<span class="spinner-border spinner-border-sm me-1"></span>Gönderiliyor');
-      $.ajax({ url: api_url, type: "POST", data, contentType: false, processData: false, dataType: "json" })
-        .done(response => {
-          if (response.status !== "success") return Swal.fire("Gönderim Hatası", response.message || "KEP gönderilemedi.", "error");
-          const trackingCode = String(response.kep_id || response.takip_kodu || "").trim();
-          kepModal.modal("hide");
+      const pin = answer.value || "";
+      const sendButton = $("#btnModalKepGonder").prop("disabled", true).html('<span class="spinner-border spinner-border-sm me-1"></span>Gönderiliyor...');
+
+      // Seçenek B: Yerel E-İmza Ajanı üzerinden imzalama
+      if (localEimzaAgentState.available && localEimzaAgentState.cardDetected) {
+        Swal.fire({
+          target: document.getElementById("modalKepGonderisi"),
+          title: "PTT KEP İletisi Gönderiliyor",
+          html: `<div class="p-3 text-center">
+                   <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+                   <div id="kepAgentFlowStep" class="fw-semibold font-size-14 mb-1">1/3: PTT KEP MIME paketi hazırlanıyor...</div>
+                   <div class="small text-muted" id="kepAgentFlowSub">İleti içeriği ve ekler PTT sunucusuna aktarılıyor</div>
+                 </div>`,
+          allowOutsideClick: false,
+          showConfirmButton: false,
+          didOpen: () => Swal.showLoading()
+        });
+
+        const mimeData = new FormData();
+        mimeData.append("action", "kep-mime-hazirla");
+        mimeData.append("kep_alicilar", addresses.join(";"));
+        mimeData.append("kep_konu", subject);
+        mimeData.append("kep_icerik", content);
+        mimeData.append("kep_ileti_tipi", $("#modal_kep_ileti_tipi").val() || "standart");
+        mimeData.append("kep_ileti_detayi", $("#modal_kep_ileti_detayi").val() || "");
+        mimeData.append("kep_paket_turu", "Standart");
+        Array.from($("#modal_kep_ekler")[0].files || []).forEach(file => mimeData.append("kep_ekler[]", file, file.name));
+
+        // 1. Adım: MIME paketi hazırla
+        $.ajax({
+          url: api_url,
+          type: "POST",
+          data: mimeData,
+          contentType: false,
+          processData: false,
+          dataType: "json"
+        }).done(mimeRes => {
+          if (mimeRes.status !== "success" || !mimeRes.eHash || !mimeRes.temp_id) {
+            Swal.fire({
+              target: document.getElementById("modalKepGonderisi"),
+              icon: "error",
+              title: "MIME Paketi Hatası",
+              text: mimeRes.message || "PTT KEP paketi hazırlanamadı."
+            });
+            sendButton.prop("disabled", false).html('<i class="bx bx-paper-plane me-1"></i> İmzala ve Gönder');
+            return;
+          }
+
+          // 2. Adım: Yerel USB Token'dan CAdES-BES imzası al
+          $("#kepAgentFlowStep").text("2/3: Akıllı kart üzerinde CAdES-BES imzası üretiliyor...");
+          $("#kepAgentFlowSub").text("SafeNet / Akis / E-Tuğra cihazınız PIN ile imzayı üretiyor...");
+
+          fetch(LOCAL_EIMZA_AGENT_URL + "/sign", {
+            method: "POST",
+            mode: "cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ hash: mimeRes.eHash, pin: pin })
+          })
+          .then(res => res.json())
+          .then(signRes => {
+            if (signRes.status !== "success" || !signRes.signature) {
+              Swal.fire({
+                target: document.getElementById("modalKepGonderisi"),
+                icon: "error",
+                title: "E-İmza Hatası",
+                text: signRes.message || "Akıllı kart imzalamayı reddetti."
+              });
+              sendButton.prop("disabled", false).html('<i class="bx bx-paper-plane me-1"></i> İmzala ve Gönder');
+              return;
+            }
+
+            // 3. Adım: İmzalı paketi PTT KEP'e sevk et
+            $("#kepAgentFlowStep").text("3/3: İmzalı paket PTT KEP ağına sevk ediliyor...");
+            $("#kepAgentFlowSub").text("PTT alıcı sunucusuna teslimat yapılıyor...");
+
+            $.ajax({
+              url: api_url,
+              type: "POST",
+              data: {
+                action: "kep-smime-sevk",
+                temp_id: mimeRes.temp_id,
+                mesajid: mimeRes.mesajid,
+                signature: signRes.signature
+              },
+              dataType: "json"
+            }).done(sendRes => {
+              if (sendRes.status !== "success") {
+                Swal.fire({
+                  target: document.getElementById("modalKepGonderisi"),
+                  icon: "error",
+                  title: "PTT KEP Gönderim Hatası",
+                  text: sendRes.message || "İleti PTT KEP servisi tarafından kabul edilmedi."
+                });
+                sendButton.prop("disabled", false).html('<i class="bx bx-paper-plane me-1"></i> İmzala ve Gönder');
+                return;
+              }
+
+              const trackingCode = String(sendRes.kep_id || sendRes.takip_kodu || "").trim();
+              kepModal.modal("hide");
+              Swal.fire({
+                title: "KEP İletisi Başarıyla Gönderildi!",
+                icon: "success",
+                html: trackingCode
+                  ? '<div class="text-muted mb-2">PTT Takip Kodu (KepId)</div><code class="d-block p-2 bg-light rounded text-primary text-break font-monospace">' + escapeEvrakHtml(trackingCode) + '</code><div class="mt-2 text-success small"><i class="bx bx-check-double me-1"></i> Resmi CAdES-BES imzası doğrulandı, PTT tarafından kabul edildi.</div>'
+                  : '<div class="text-warning">Gönderim tamamlandı; takip kodu kayda işlendi.</div>',
+                confirmButtonText: "Tamam"
+              }).then(() => location.reload());
+            }).fail(xhr => {
+              Swal.fire({
+                target: document.getElementById("modalKepGonderisi"),
+                icon: "error",
+                title: "Gönderim Hatası",
+                text: xhr.responseJSON?.message || "PTT KEP servisine bağlanılamadı."
+              });
+              sendButton.prop("disabled", false).html('<i class="bx bx-paper-plane me-1"></i> İmzala ve Gönder');
+            });
+          })
+          .catch(err => {
+            Swal.fire({
+              target: document.getElementById("modalKepGonderisi"),
+              icon: "error",
+              title: "Yerel Ajan Hatası",
+              text: "Yerel E-İmza Ajanı ile iletişim kurulamadı: " + err.message
+            });
+            sendButton.prop("disabled", false).html('<i class="bx bx-paper-plane me-1"></i> İmzala ve Gönder');
+          });
+        }).fail(xhr => {
           Swal.fire({
-            title: "Gönderildi",
-            icon: "success",
-            html: trackingCode
-              ? '<div class="text-muted mb-2">PTT Takip Kodu</div><code class="d-block p-2 bg-light rounded text-primary text-break">' + escapeEvrakHtml(trackingCode) + "</code>"
-              : '<div class="text-warning">Gönderim tamamlandı; takip kodu kayda işlendi.</div>',
-            confirmButtonText: "Tamam",
-          }).then(() => location.reload());
-        })
-        .fail(xhr => Swal.fire("Gönderim Hatası", xhr.responseJSON?.message || "PTT KEP servisine bağlanılamadı.", "error"))
-        .always(() => sendButton.prop("disabled", false).html('<i class="bx bx-paper-plane me-1"></i> İmzala ve Gönder'));
+            target: document.getElementById("modalKepGonderisi"),
+            icon: "error",
+            title: "MIME Hazırlama Hatası",
+            text: xhr.responseJSON?.message || "PTT KEP servisine bağlanılamadı."
+          });
+          sendButton.prop("disabled", false).html('<i class="bx bx-paper-plane me-1"></i> İmzala ve Gönder');
+        });
+
+      } else {
+        // Fallback: Yerel ajan bağlı değilse sunucu üzerinden klasik gönderim
+        const data = new FormData();
+        data.append("action", "kep-dogrudan-gonder"); data.append("kep_alicilar", addresses.join(";")); data.append("kep_konu", subject); data.append("kep_icerik", content);
+        data.append("kep_ileti_tipi", $("#modal_kep_ileti_tipi").val() || "standart"); data.append("kep_ileti_detayi", $("#modal_kep_ileti_detayi").val() || ""); data.append("kep_paket_turu", "Standart");
+        data.append("eimza_pin", pin);
+        Array.from($("#modal_kep_ekler")[0].files || []).forEach(file => data.append("kep_ekler[]", file, file.name));
+        $.ajax({ url: api_url, type: "POST", data, contentType: false, processData: false, dataType: "json" })
+          .done(response => {
+            if (response.status !== "success") return Swal.fire("Gönderim Hatası", response.message || "KEP gönderilemedi.", "error");
+            const trackingCode = String(response.kep_id || response.takip_kodu || "").trim();
+            kepModal.modal("hide");
+            Swal.fire({
+              title: "Gönderildi",
+              icon: "success",
+              html: trackingCode
+                ? '<div class="text-muted mb-2">PTT Takip Kodu</div><code class="d-block p-2 bg-light rounded text-primary text-break">' + escapeEvrakHtml(trackingCode) + "</code>"
+                : '<div class="text-warning">Gönderim tamamlandı; takip kodu kayda işlendi.</div>',
+              confirmButtonText: "Tamam",
+            }).then(() => location.reload());
+          })
+          .fail(xhr => Swal.fire("Gönderim Hatası", xhr.responseJSON?.message || "PTT KEP servisine bağlanılamadı.", "error"))
+          .always(() => sendButton.prop("disabled", false).html('<i class="bx bx-paper-plane me-1"></i> İmzala ve Gönder'));
+      }
     });
   });
 

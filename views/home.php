@@ -6156,6 +6156,10 @@ if (Gate::allows("ana_sayfa")) {
                         const entries = entriesFor(view, currentType);
                         const periods = rootComparisonData.periods || [];
                         const max = Math.max(...entries.map(item => item.last), 1);
+                        const periodTotals = periods.map((period, index) => entries.reduce((sum, entry) => sum + Number(entry.values[index] || 0), 0));
+                        const totalCurrent = periodTotals[periodTotals.length - 1] || 0;
+                        const totalPrevious = periodTotals[periodTotals.length - 2] || 0;
+                        const totalTrend = trend(totalCurrent, totalPrevious);
                         const detailId = 'kesme-' + view + '-detail';
                         const detailLabel = view === 'bolge' ? 'Bölge' : 'Personel';
                         let html = overview(entries) + `<button type="button" class="comparison-detail-toggle" data-detail-target="${detailId}" aria-expanded="false"><i class="bx bx-chevron-down"></i><span>${detailLabel} detaylarını göster</span></button><div id="${detailId}" class="comparison-collapsible-detail"><div class="table-responsive" style="max-height:520px;overflow:auto"><table class="table table-nowrap align-middle mb-0"><thead class="kesme-table-head"><tr><th style="padding:12px 16px">` + (view === 'bolge' ? 'BÖLGE' : 'PERSONEL / EKİP') + '</th>';
@@ -6171,6 +6175,10 @@ if (Gate::allows("ana_sayfa")) {
                                 entry.values.forEach((value,index) => html += `<td class="text-center" style="padding:10px;background:${periods[index].is_current?'rgba(225,29,72,.045)':'transparent'}"><span class="fw-bold">${format(value)}</span><div class="kesme-bar"><span style="width:${value/max*100}%"></span></div></td>`);
                                 html += `<td class="text-center"><span class="badge rounded-pill" style="padding:5px 10px;background:${entry.trend.color}16;color:${entry.trend.color};border:1px solid ${entry.trend.color}35"><i class="bx ${entry.trend.icon} me-1"></i>${entry.trend.text}</span><div class="text-muted mt-1" style="font-size:9px">${entry.last-entry.previous >= 0 ? '+' : ''}${format(entry.last-entry.previous)} iş</div></td></tr>`;
                             });
+
+                            html += '<tr class="kesme-total-row" style="background:rgba(15,23,42,.045);border-top:2px solid rgba(225,29,72,.25)"><td style="padding:12px 16px"><div class="fw-bold text-uppercase" style="font-size:11px;letter-spacing:.04em">TOPLAM</div><div class="text-muted" style="font-size:9px">Gösterilen ' + (view === 'bolge' ? 'bölgeler' : 'personeller') + '</div></td>';
+                            periodTotals.forEach((value, index) => html += `<td class="text-center" style="padding:12px;background:${periods[index].is_current?'rgba(225,29,72,.09)':'transparent'}"><span class="fw-bold" style="font-size:13px">${format(value)}</span></td>`);
+                            html += `<td class="text-center"><span class="badge rounded-pill" style="padding:5px 10px;background:${totalTrend.color}16;color:${totalTrend.color};border:1px solid ${totalTrend.color}35"><i class="bx ${totalTrend.icon} me-1"></i>${totalTrend.text}</span><div class="text-muted mt-1" style="font-size:9px">${totalCurrent-totalPrevious >= 0 ? '+' : ''}${format(totalCurrent-totalPrevious)} iş</div></td></tr>`;
                         }
                         html += '</tbody></table></div><div class="d-flex align-items-center px-3 py-2 border-top bg-light-subtle"><span class="text-muted" style="font-size:10px"><i class="bx bx-info-circle me-1"></i>Ayların aynı gün aralıkları karşılaştırılır.</span><a href="index.php?p=puantaj/raporlar&tab=karsilastirma" class="btn btn-sm btn-danger ms-auto rounded-pill px-3">Detaylı Rapor</a></div></div>';
                         $('#kesmeComp' + (view === 'bolge' ? 'Bolge' : 'Personel')).html(html);
