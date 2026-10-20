@@ -84,6 +84,48 @@ class KepDelilModel extends Model
     }
 
     /**
+     * Evrak listesi için her evrakın zaman bakımından son KEP delilini döndürür.
+     * Sonuç evrak ID'si ile anahtarlanır ve firma sınırı sunucu tarafında uygulanır.
+     */
+    public function getLatestByEvrakIds(array $evrakIds, int $firmId): array
+    {
+        $evrakIds = array_values(array_unique(array_filter(array_map('intval', $evrakIds), static fn(int $id): bool => $id > 0)));
+        if ($evrakIds === []) {
+            return [];
+        }
+
+        $placeholders = [];
+        $bindings = ['firm_id' => $firmId];
+        foreach ($evrakIds as $index => $evrakId) {
+            $key = 'evrak_id_' . $index;
+            $placeholders[] = ':' . $key;
+            $bindings[$key] = $evrakId;
+        }
+
+        $stmt = $this->db->prepare(
+            "SELECT km.evrak_id, kd.delil_tur_id, kd.delil_aciklama, kd.olay_zamani
+             FROM kep_mesajlar km
+             INNER JOIN {$this->table} kd ON kd.kep_mesaj_id = km.id
+             WHERE km.firm_id = :firm_id
+               AND km.deleted_at IS NULL
+               AND km.yon = 'giden'
+               AND km.evrak_id IN (" . implode(',', $placeholders) . ")
+             ORDER BY km.evrak_id ASC, kd.olay_zamani DESC, kd.id DESC"
+        );
+        $stmt->execute($bindings);
+
+        $latest = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $evrakId = (int) $row['evrak_id'];
+            if (!isset($latest[$evrakId])) {
+                $latest[$evrakId] = $row;
+            }
+        }
+
+        return $latest;
+    }
+
+    /**
      * İndirilen XML dosya yolunu günceller
      */
     public function updateDelilXmlPath(string $delilId, string $filePath): bool

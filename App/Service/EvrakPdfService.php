@@ -209,11 +209,11 @@ final class EvrakPdfService
             .content table{width:100%;border-collapse:collapse;margin:3mm 0}.content td,.content th{border:0.3mm solid #000;padding:1.5mm;font-size:10pt}
             .content h1,.content h2,.content h3,.content h4{font-size:12pt;margin:3mm 0;font-weight:bold}
             .signatures{width:100%;border-collapse:collapse;margin-top:14mm}.signatures td{border:0;text-align:center;vertical-align:top;line-height:1.25}.signature-name{font-weight:normal}.attachments{margin-top:8mm}
-            .record-info{font-size:10pt;line-height:1.2;margin-bottom:4mm}.footer,.footer td,.footer div,.footer span{font-size:10px!important;line-height:1.2}.footer{border-top:0.2mm solid #e53935;padding-top:1.2mm}
-            .footer-eimza-panel{border:0;border-bottom:0.6mm solid #e53935;padding:1.2mm 2mm 1.5mm;margin-bottom:1.5mm;color:#111;background:#fff}
-            .footer-eimza-title{font-size:9px!important;color:#e53935;text-align:center;font-weight:bold;line-height:1.2;padding-bottom:1mm}
-            .footer-eimza-meta{width:100%;border-collapse:collapse;table-layout:fixed}.footer-eimza-meta td{border:0;font-size:8px!important;line-height:1.2;padding:.4mm 0;vertical-align:top}.footer-eimza-tracking{text-align:right}
-            .footer-eimza-alt{font-size:12px;color:#a0a0a0;text-align:left;line-height:1.2;padding-top:1.2mm}.footer-table{width:100%;table-layout:fixed;border-collapse:collapse}.footer-table td{width:50%;border:0;vertical-align:top;overflow-wrap:break-word}.footer-left{text-align:left;padding-right:4mm}.footer-right{text-align:right;padding-left:4mm}
+            .record-info{font-size:10pt;line-height:1.2;margin-bottom:4mm}.footer,.footer td,.footer div,.footer span{font-size:8px!important;line-height:1.25}.footer{border-top:0.6mm solid #e53935;padding-top:1.5mm}
+            .footer-eimza-panel{border:0;padding:0 0 1.1mm;margin:0;color:#111;background:#fff}
+            .footer-eimza-title{font-size:8px!important;color:#e53935;text-align:center;font-weight:bold;line-height:1.2;padding:0 0 1.2mm}
+            .footer-eimza-meta{width:100%;border-collapse:collapse;table-layout:fixed}.footer-eimza-meta td{border:0;font-size:8px!important;line-height:1.2;padding:0;vertical-align:bottom}.footer-eimza-tracking{text-align:right}
+            .footer-eimza-alt{font-size:10px;color:#a0a0a0;text-align:left;line-height:1.2;padding-top:2mm}.footer-table{width:100%;table-layout:fixed;border-collapse:collapse}.footer-table td{width:50%;border:0;vertical-align:top;overflow-wrap:break-word}.footer-left{text-align:left;padding-right:4mm}.footer-right{text-align:right;padding-left:4mm}
         </style></head><body>
         ' . $recordInfoHtml . '
         <table class="letterhead"><tr>

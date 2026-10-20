@@ -909,24 +909,24 @@ $(document).ready(function () {
           data.signature_only = imzaFiltresiAktif ? 1 : 0;
         }
       },
-      order: [[2, "desc"]],
+      order: [[3, "desc"]],
       drawCallback: function () {
         document.querySelectorAll("#evrakTable [data-onay-akis]").forEach(function (element) {
           if (!bootstrap.Popover.getInstance(element)) new bootstrap.Popover(element, {container: "body", html: true, trigger: "hover focus", placement: "left", customClass: "onay-akis-popover", title: "E-İmza Onay Akışı", content: element.getAttribute("data-onay-akis")});
         });
       },
       columnDefs: [
-        { targets: 2, type: "date" },
-        { targets: [0, 1, 8, 9, 10, 11], orderable: false }
+        { targets: 3, type: "date" },
+        { targets: [0, 1, 2, 9, 10, 11, 12], orderable: false }
       ]
     }) : {
       processing: true,
       serverSide: true,
       ajax: { url: api_url, type: "POST", data: function (data) { data.action = "evrak-listesi"; data.quick_filter = activeQuickFilter; data.signature_only = imzaFiltresiAktif ? 1 : 0; } },
-      order: [[2, "desc"]],
+      order: [[3, "desc"]],
       columnDefs: [
-        { targets: 2, type: "date" },
-        { targets: [0, 1, 8, 9, 10, 11], orderable: false }
+        { targets: 3, type: "date" },
+        { targets: [0, 1, 2, 9, 10, 11, 12], orderable: false }
       ],
       language: { url: "assets/libs/datatables.net/js/tr.json" }
     };
@@ -2349,6 +2349,9 @@ $(document).ready(function () {
       if (res.status === "success" && res.data) {
         renderKepPreview(res.data);
         $("#tabKepDeliller-tab").tab("show");
+        if (evrakDataTable) {
+          evrakDataTable.ajax.reload(null, false);
+        }
         Swal.fire({ toast: true, position: "top-end", icon: "success", title: "PTT delil kayıtları güncellendi", showConfirmButton: false, timer: 2000 });
       } else {
         Swal.fire("Uyarı", res.message || "Delil güncellemesi yapılamadı.", "warning");

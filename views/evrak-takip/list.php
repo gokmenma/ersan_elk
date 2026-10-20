@@ -288,6 +288,7 @@ $title = "Evrak Listesi";
                         <tr>
                             <th class="text-center" style="width: 45px;" data-filter="none">#</th>
                             <th class="text-center" style="width: 80px;" data-filter="select">TİP</th>
+                            <th class="text-center" style="width: 105px;" data-filter="none">KEP DURUMU</th>
                             <th style="width: 100px;" data-filter="date">TARİH</th>
                             <th data-filter="string">KONU / EVRAK NO</th>
                             <th data-filter="string">GELEN/GİDEN KURUM</th>
@@ -349,6 +350,7 @@ $title = "Evrak Listesi";
                                         </div>
                                     <?php endif; ?>
                                 </td>
+                                <td class="text-center"><span class="text-muted small">-</span></td>
                                 <?php
                                 $tarihRaw = !empty($evrak->tarih) ? (string) $evrak->tarih : '1970-01-01';
                                 $saatRaw = !empty($evrak->olusturma_tarihi)

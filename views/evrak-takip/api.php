@@ -1053,6 +1053,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $attachmentMap = $Model->getAttachmentMap($ids);
                 $approvalMap = $Model->getApprovalSummaryMap($currentUserId, $ids);
                 $approvalDetailMap = $Model->getApprovalDetailMap($ids);
+                $latestKepEvidenceMap = (new KepDelilModel())->getLatestByEvrakIds($ids, (int) $_SESSION['firma_id']);
                 $canSendKep = Gate::allows('evrak-takip/kep');
                 $esc = static fn($value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
                 $dataRows = [];
@@ -1072,6 +1073,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             : '<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold"><i class="bx bx-up-arrow-alt"></i> GİDEN</span>');
                     if (($evrak->kaynak_tipi ?? '') === 'uets' || !empty($evrak->uets_mesaj_id)) $typeHtml .= '<div class="mt-1"><span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 font-size-10"><i class="bx bx-envelope"></i> UETS</span></div>';
                     if ($type === 'gelen' && $isKep) $typeHtml .= '<div class="mt-1"><span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 font-size-10"><i class="bx bx-mail-send"></i> KEP</span></div>';
+                    $kepStatusHtml = '<span class="text-muted small">-</span>';
+                    if ($type === 'giden' && $isKep && isset($latestKepEvidenceMap[(int) $evrak->id])) {
+                        $latestEvidence = $latestKepEvidenceMap[(int) $evrak->id];
+                        $evidenceStatus = match ((int) $latestEvidence['delil_tur_id']) {
+                            10 => ['label' => 'KABUL EDİLDİ', 'class' => 'bg-success-subtle text-success border-success-subtle', 'icon' => 'bx-check-circle'],
+                            20 => ['label' => 'KEPHS\'E AKTARILDI', 'class' => 'bg-info-subtle text-info border-info-subtle', 'icon' => 'bx-transfer'],
+                            30 => ['label' => 'İLETİLDİ', 'class' => 'bg-primary-subtle text-primary border-primary-subtle', 'icon' => 'bx-send'],
+                            40 => ['label' => 'TESLİM EDİLDİ', 'class' => 'bg-primary-subtle text-primary border-primary-subtle', 'icon' => 'bx-mail-send'],
+                            41, 50 => ['label' => 'TESLİM EDİLEMEDİ', 'class' => 'bg-danger-subtle text-danger border-danger-subtle', 'icon' => 'bx-x-circle'],
+                            60 => ['label' => 'OKUNDU', 'class' => 'bg-info-subtle text-info border-info-subtle', 'icon' => 'bx-envelope-open'],
+                            70 => ['label' => 'İNDİRİLDİ', 'class' => 'bg-success-subtle text-success border-success-subtle', 'icon' => 'bx-download'],
+                            default => ['label' => 'DELİL ALINDI', 'class' => 'bg-secondary-subtle text-secondary border-secondary-subtle', 'icon' => 'bx-shield-quarter'],
+                        };
+                        $evidenceTime = !empty($latestEvidence['olay_zamani'])
+                            ? date('d.m.Y H:i', strtotime((string) $latestEvidence['olay_zamani']))
+                            : '';
+                        $kepStatusHtml = '<span class="badge ' . $evidenceStatus['class'] . ' border rounded-pill px-2 py-1 font-size-10 fw-semibold" title="Son KEP durumu' . ($evidenceTime !== '' ? ': ' . $esc($evidenceTime) : '') . '"><i class="bx ' . $evidenceStatus['icon'] . '"></i> ' . $evidenceStatus['label'] . '</span>';
+                    }
                     $detailUrl = ($type === 'gelen' || $isKep) ? 'javascript:void(0);' : 'index?p=evrak-takip/giden-evrak&amp;id=' . $esc($encryptedId);
                     $detailClass = $isKep ? ' btn-kep-onizle' : ($type === 'gelen' ? ' evrak-duzenle' : '');
                     $subjectHtml = '<div class="d-flex flex-column"><a href="' . $detailUrl . '" class="fw-bold text-dark font-size-13 text-decoration-none evrak-konu-text' . $detailClass . '" data-id="' . $esc($encryptedId) . '">' . $esc($evrak->konu ?: '-') . '</a><span class="text-muted font-size-11"><i class="bx bx-hash"></i> ' . $esc($evrak->evrak_no ?: '-') . '</span></div>';
@@ -1129,7 +1148,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         ? '<div class="d-flex align-items-center gap-2"><span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary-subtle text-primary flex-shrink-0" style="width:26px;height:26px"><i class="bx bx-user"></i></span><span class="fw-semibold text-dark font-size-12">' . $esc($operatorName) . '</span></div>'
                         : '<span class="text-muted small">-</span>';
                     $dataRows[] = [
-                        '<span class="fw-bold text-muted">' . ($result['start'] + $offset + 1) . '</span>', $typeHtml,
+                        '<span class="fw-bold text-muted">' . ($result['start'] + $offset + 1) . '</span>', $typeHtml, $kepStatusHtml,
                         '<div class="d-flex flex-column"><span class="fw-semibold text-dark font-size-12">' . date('d.m.Y', strtotime((string) $evrak->tarih)) . '</span><span class="text-muted font-size-11">' . $createdTime . '</span></div>',
                         $subjectHtml, '<span class="fw-semibold text-dark font-size-12">' . $esc($evrak->kurum_adi ?: '-') . '</span>', $operatorHtml,
                         $personHtml($evrak->personel_adi, $evrak->personel_id, 'personel', $evrak->son_bildirim_tarihi_personel ?? '', $encryptedId, $esc),

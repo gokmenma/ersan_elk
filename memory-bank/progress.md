@@ -1515,3 +1515,5 @@
 - [x] PIN alanı imza modalına taşındı; işlem sırasında alanlar disable edilerek PAdES/KEP aşamaları ve yüzdelik ilerleme aynı panelde canlı gösterilir hale getirildi.
 - [x] E-imza doğrulama alanındaki tam çerçeve kaldırılarak yalnız alt kalın kırmızı çizgi bırakıldı.
 - [x] E-imza alt bilgisinde doğrulama kodu/PIN sol tarafa, belge takip adresi sağ tarafa yerleştirildi; elektronik imzalayan bilgisi kaldırıldı.
+- [x] E-imza alt bilgisi özgün referansa yaklaştırıldı; çift kırmızı ayraç tek çizgiye indirildi ve alt bilgi tipografi/boşluk oranları sıkılaştırıldı.
+- [x] Giden KEP evraklarının en son PTT delil durumu, Evrak Takip listesinde Tip alanından ayrılarak bağımsız `KEP Durumu` kolonunda gösterildi; firma izolasyonlu toplu Model sorgusu kullanıldı.
