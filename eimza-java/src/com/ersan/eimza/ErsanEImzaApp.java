@@ -4,6 +4,9 @@ import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import javax.swing.*;
 
 public class ErsanEImzaApp {
@@ -12,10 +15,11 @@ public class ErsanEImzaApp {
     private static JLabel lblStatus;
     private static JLabel lblCard;
     private static ErsanHttpServer server;
+    private static TrayIcon trayIcon;
 
     public static void main(String[] args) {
         System.out.println("=================================================");
-        System.out.println("  Ersan E-İmza Yerel Köprü Servisi (Java v1.1.4) ");
+        System.out.println("  Ersan E-İmza Yerel Köprü Servisi (Java v1.1.6) ");
         System.out.println("  Dinleme Adresi: http://127.0.0.1:9191          ");
         System.out.println("=================================================");
 
@@ -24,8 +28,11 @@ public class ErsanEImzaApp {
             server = new ErsanHttpServer();
             server.start();
         } catch (Exception e) {
-            System.err.println("HTTP Sunucusu başlatılamadı: " + e.getMessage());
-            e.printStackTrace();
+            if (requestExistingInstanceToShow()) {
+                System.out.println("Çalışan Ersan E-İmza ajanı bulundu; penceresi açıldı.");
+                return;
+            }
+            showStartupError(e);
             System.exit(1);
         }
 
@@ -49,7 +56,7 @@ public class ErsanEImzaApp {
         } catch (Throwable ignored) {}
 
         mainFrame = new JFrame("Ersan E-İmza Servisi");
-        mainFrame.setSize(440, 240);
+        mainFrame.setSize(520, 280);
         mainFrame.setLocationRelativeTo(null);
         mainFrame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
         mainFrame.setLayout(new BorderLayout(15, 15));
@@ -57,7 +64,7 @@ public class ErsanEImzaApp {
         JPanel pnlCenter = new JPanel(new GridLayout(3, 1, 8, 8));
         pnlCenter.setBorder(BorderFactory.createEmptyBorder(15, 20, 10, 20));
 
-        JLabel lblTitle = new JLabel("Ersan E-İmza Yerel Ajanı (v1.1.4 Portable)", JLabel.LEFT);
+        JLabel lblTitle = new JLabel("Ersan E-İmza Yerel Ajanı (v1.1.6 Portable)", JLabel.LEFT);
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
         lblTitle.setForeground(new Color(33, 37, 41));
 
@@ -81,8 +88,16 @@ public class ErsanEImzaApp {
         JButton btnMinimize = new JButton("Arka Plana Al");
         btnMinimize.addActionListener(e -> mainFrame.setVisible(false));
 
+        JButton btnRestart = new JButton("Ajanı Yeniden Başlat");
+        btnRestart.addActionListener(e -> restartAgent());
+
+        JButton btnExit = new JButton("Tamamen Kapat");
+        btnExit.addActionListener(e -> exitAgent());
+
         pnlBottom.add(btnRefresh);
+        pnlBottom.add(btnRestart);
         pnlBottom.add(btnMinimize);
+        pnlBottom.add(btnExit);
         mainFrame.add(pnlBottom, BorderLayout.SOUTH);
 
         // Sistem Tepsisi (System Tray) Kur
@@ -114,37 +129,105 @@ public class ErsanEImzaApp {
         Image image = createTrayIconImage();
 
         PopupMenu popup = new PopupMenu();
-        MenuItem itemOpen = new MenuItem("Pencereyi Göster");
-        itemOpen.addActionListener(e -> {
-            mainFrame.setVisible(true);
-            mainFrame.toFront();
-        });
+        MenuItem itemOpen = new MenuItem("Durum Penceresini Aç");
+        itemOpen.addActionListener(e -> showMainWindow());
 
         MenuItem itemRefresh = new MenuItem("Kartı Yeniden Tara");
         itemRefresh.addActionListener(e -> refreshCardStatus());
 
-        MenuItem itemExit = new MenuItem("Çıkış");
-        itemExit.addActionListener(e -> {
-            server.stop();
-            System.exit(0);
-        });
+        MenuItem itemRestart = new MenuItem("Ajanı Yeniden Başlat");
+        itemRestart.addActionListener(e -> restartAgent());
+
+        MenuItem itemExit = new MenuItem("Tamamen Kapat");
+        itemExit.addActionListener(e -> exitAgent());
 
         popup.add(itemOpen);
         popup.add(itemRefresh);
         popup.addSeparator();
+        popup.add(itemRestart);
         popup.add(itemExit);
 
-        TrayIcon trayIcon = new TrayIcon(image, "Ersan E-İmza Servisi", popup);
+        trayIcon = new TrayIcon(image, "Ersan E-İmza Servisi", popup);
         trayIcon.setImageAutoSize(true);
-        trayIcon.addActionListener(e -> {
-            mainFrame.setVisible(true);
-            mainFrame.toFront();
-        });
+        trayIcon.addActionListener(e -> showMainWindow());
 
         try {
             tray.add(trayIcon);
         } catch (AWTException e) {
             System.err.println("TrayIcon eklenemedi: " + e.getMessage());
+        }
+    }
+
+    public static void showMainWindow() {
+        if (GraphicsEnvironment.isHeadless()) return;
+        SwingUtilities.invokeLater(() -> {
+            if (mainFrame == null) return;
+            mainFrame.setVisible(true);
+            mainFrame.setState(Frame.NORMAL);
+            mainFrame.toFront();
+            mainFrame.requestFocus();
+        });
+    }
+
+    private static void restartAgent() {
+        if (lblStatus != null) {
+            lblStatus.setText("● Ajan yeniden başlatılıyor...");
+            lblStatus.setForeground(new Color(255, 152, 0));
+        }
+        new Thread(() -> {
+            try {
+                if (server != null) server.stop();
+                TokenManager.clearCache();
+                server = new ErsanHttpServer();
+                server.start();
+                SwingUtilities.invokeLater(() -> {
+                    lblStatus.setText("● Servis Aktif (http://127.0.0.1:9191)");
+                    lblStatus.setForeground(new Color(25, 135, 84));
+                    refreshCardStatus();
+                });
+                if (trayIcon != null) {
+                    trayIcon.displayMessage("Ersan E-İmza", "Ajan başarıyla yeniden başlatıldı.", TrayIcon.MessageType.INFO);
+                }
+            } catch (Exception ex) {
+                SwingUtilities.invokeLater(() -> {
+                    lblStatus.setText("● Servis başlatılamadı: " + ex.getMessage());
+                    lblStatus.setForeground(new Color(220, 53, 69));
+                });
+            }
+        }, "ersan-agent-restart").start();
+    }
+
+    private static void exitAgent() {
+        if (server != null) server.stop();
+        if (trayIcon != null && SystemTray.isSupported()) {
+            SystemTray.getSystemTray().remove(trayIcon);
+            trayIcon = null;
+        }
+        if (mainFrame != null) mainFrame.dispose();
+        System.exit(0);
+    }
+
+    private static boolean requestExistingInstanceToShow() {
+        try {
+            HttpURLConnection connection = (HttpURLConnection) new URL("http://127.0.0.1:9191/show").openConnection();
+            connection.setRequestMethod("POST");
+            connection.setConnectTimeout(1000);
+            connection.setReadTimeout(1000);
+            connection.setDoOutput(true);
+            try (OutputStream output = connection.getOutputStream()) {
+                output.write(new byte[0]);
+            }
+            return connection.getResponseCode() == 200;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private static void showStartupError(Exception error) {
+        String message = "Ersan E-İmza ajanı başlatılamadı.\n\n" + error.getMessage();
+        System.err.println(message);
+        if (!GraphicsEnvironment.isHeadless()) {
+            JOptionPane.showMessageDialog(null, message, "Ersan E-İmza", JOptionPane.ERROR_MESSAGE);
         }
     }
 

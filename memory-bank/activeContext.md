@@ -2542,6 +2542,8 @@
 - Kartta birden fazla sertifika/anahtar bulunduğunda oluşan `Karttan sertifika okunamadı` hatası giderildi. Ajan PIN ile nesneleri listeliyor, özel imza anahtarıyla aynı CKA_ID değerine sahip sertifikayı seçiyor ve her iki işlemde bu ID'yi kullanıyor; sürüm `1.1.2` oldu.
 - PTT KEP'in `S/MIME formatı geçersiz veya bozuk` reddinin nedeni, CMS `CertificateSet [0] IMPLICIT` alanının primitive `0x80` yerine constructed `0xA0` olması gerekirken yanlış kodlanmasıydı. DER etiketi düzeltildi ve ajan `1.1.3` olarak paketlendi. Üretilen detached CAdES-BES örneği OpenSSL CMS doğrulamasından başarıyla geçti.
 - `1.1.3` çıktısının PTT test ortamında yine reddedilmesi üzerine kullanıcı tarafından sağlanan `files/wsdl_doc.pdf` ile akış yeniden doğrulandı. SHA-256 CMS `AlgorithmIdentifier` parametresi RFC 5754/OpenSSL uyumlu olarak `NULL` yerine tamamen kaldırıldı. Karttan dönen gerçek RSA imzasının sertifikanın açık anahtarıyla ajan içinde doğrulanması eklendi ve sürüm `1.1.4` oldu.
+- Linux kullanıcılarının terminal komutuna ihtiyaç duymaması için ajan penceresine ve sistem tepsisi menüsüne `Ajanı Yeniden Başlat` ile `Tamamen Kapat` eylemleri eklendi. Kapatma tepsi ikonunu açıkça kaldırıyor; JAR ikinci kez açılırsa yeni süreç hata vermek yerine çalışan ajanın penceresini öne getiriyor. Sürüm `1.1.5` oldu.
+- Linux kart sürücüsünde sertifika ve özel anahtar CKA_ID değerlerinin farklı olabilmesi nedeniyle oluşan `özel imza anahtarıyla eşleşen sertifika bulunamadı` hatası giderildi. ID metin ayrıştırması genişletildi; doğrudan ID eşleşmesi yoksa karttaki özel anahtarlarla deneme imzası üretilip sertifikaların açık anahtarıyla doğrulanarak gerçek çift seçiliyor. Ajan sürümü `1.1.6` oldu.
 
 # 2026-10-20 — Cari hesap hareketleri Excel dışa aktarımı
 

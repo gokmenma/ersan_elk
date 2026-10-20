@@ -331,14 +331,14 @@ public class TokenManager {
         if (toolBin == null) {
             throw new RuntimeException("Taşınabilir OpenSC imza motoru hazırlanamadı. E-İmza uygulamasını yeniden indirip çalıştırınız.");
         }
-        String signingObjectId = findSigningObjectId(toolBin, modulePath, pin);
+        SigningObjects signingObjects = findSigningObjects(toolBin, modulePath, pin);
         File certFile = File.createTempFile("cert_", ".der");
         certFile.deleteOnExit();
 
         // 1. Imza anahtariyla ayni CKA_ID degerine sahip sertifikayi oku.
         ToolResult certResult = runTool(new String[]{
                 toolBin, "--module", modulePath, "--login", "--pin", pin,
-                "--read-object", "--type", "cert", "--id", signingObjectId,
+                "--read-object", "--type", "cert", "--id", signingObjects.certificateId,
                 "--output-file", certFile.getAbsolutePath()
         });
         if (certResult.exitCode != 0 || !certFile.isFile() || certFile.length() == 0) {
@@ -360,7 +360,7 @@ public class TokenManager {
         // 3. İmzala
         ToolResult signResult = runTool(new String[]{
                 toolBin, "--module", modulePath, "--login", "--pin", pin,
-                "--sign", "--id", signingObjectId, "-m", "SHA256-RSA-PKCS",
+                "--sign", "--id", signingObjects.privateKeyId, "-m", "SHA256-RSA-PKCS",
                 "--input-file", inData.getAbsolutePath(),
                 "--output-file", outData.getAbsolutePath()
         });
@@ -398,7 +398,7 @@ public class TokenManager {
         }
     }
 
-    private static String findSigningObjectId(String toolBin, String modulePath, String pin) throws Exception {
+    private static SigningObjects findSigningObjects(String toolBin, String modulePath, String pin) throws Exception {
         ToolResult listResult = runTool(new String[]{
                 toolBin, "--module", modulePath, "--login", "--pin", pin, "--list-objects"
         });
@@ -417,16 +417,86 @@ public class TokenManager {
         Set<String> certificateIds = extractObjectIds(output, "Certificate Object");
         Set<String> privateKeyIds = extractObjectIds(output, "Private Key Object");
         for (String privateKeyId : privateKeyIds) {
-            if (certificateIds.contains(privateKeyId)) return privateKeyId;
+            if (certificateIds.contains(privateKeyId)) {
+                return new SigningObjects(privateKeyId, privateKeyId);
+            }
         }
-        if (!certificateIds.isEmpty() && privateKeyIds.isEmpty()) return certificateIds.iterator().next();
+
+        // Bazı Linux PKCS#11 sürücülerinde sertifika ile özel anahtarın CKA_ID
+        // değerleri farklıdır. Sabit bir deneme verisini her özel anahtarla
+        // imzalayıp karttaki sertifikaların açık anahtarıyla doğrulayarak gerçek
+        // anahtar/sertifika çiftini güvenli biçimde bul.
+        SigningObjects verifiedPair = findPairByCryptographicMatch(
+                toolBin, modulePath, pin, privateKeyIds, certificateIds
+        );
+        if (verifiedPair != null) return verifiedPair;
+
+        if (certificateIds.isEmpty()) {
+            throw new RuntimeException("Kartta okunabilir imza sertifikası bulunamadı.");
+        }
+        if (privateKeyIds.isEmpty()) {
+            throw new RuntimeException("Kartta kullanılabilir özel imza anahtarı bulunamadı.");
+        }
         throw new RuntimeException("Kartta özel imza anahtarıyla eşleşen sertifika bulunamadı.");
+    }
+
+    private static SigningObjects findPairByCryptographicMatch(
+            String toolBin,
+            String modulePath,
+            String pin,
+            Set<String> privateKeyIds,
+            Set<String> certificateIds
+    ) {
+        byte[] probe = "Ersan-EImza-Key-Match-v1".getBytes(StandardCharsets.UTF_8);
+        for (String privateKeyId : privateKeyIds) {
+            File probeInput = null;
+            File probeSignature = null;
+            try {
+                probeInput = File.createTempFile("ersan_key_probe_", ".bin");
+                probeSignature = File.createTempFile("ersan_key_sig_", ".bin");
+                Files.write(probeInput.toPath(), probe);
+                ToolResult signResult = runTool(new String[]{
+                        toolBin, "--module", modulePath, "--login", "--pin", pin,
+                        "--sign", "--id", privateKeyId, "-m", "SHA256-RSA-PKCS",
+                        "--input-file", probeInput.getAbsolutePath(),
+                        "--output-file", probeSignature.getAbsolutePath()
+                });
+                if (signResult.exitCode != 0 || probeSignature.length() == 0) continue;
+                byte[] signature = Files.readAllBytes(probeSignature.toPath());
+
+                for (String certificateId : certificateIds) {
+                    File certificateFile = null;
+                    try {
+                        certificateFile = File.createTempFile("ersan_cert_probe_", ".der");
+                        ToolResult certResult = runTool(new String[]{
+                                toolBin, "--module", modulePath, "--login", "--pin", pin,
+                                "--read-object", "--type", "cert", "--id", certificateId,
+                                "--output-file", certificateFile.getAbsolutePath()
+                        });
+                        if (certResult.exitCode != 0 || certificateFile.length() == 0) continue;
+                        byte[] certDer = Files.readAllBytes(certificateFile.toPath());
+                        verifyCardSignature(certDer, probe, signature);
+                        return new SigningObjects(privateKeyId, certificateId);
+                    } catch (Exception ignored) {
+                        // Bu sertifika ilgili özel anahtara ait değil; sıradakini dene.
+                    } finally {
+                        if (certificateFile != null) certificateFile.delete();
+                    }
+                }
+            } catch (Exception ignored) {
+                // Bu özel anahtar imzalama için kullanılamıyor; sıradakini dene.
+            } finally {
+                if (probeInput != null) probeInput.delete();
+                if (probeSignature != null) probeSignature.delete();
+            }
+        }
+        return null;
     }
 
     private static Set<String> extractObjectIds(String output, String objectHeading) {
         Set<String> ids = new LinkedHashSet<>();
         boolean matchingObject = false;
-        Pattern idPattern = Pattern.compile("^ID\\s*:\\s*([0-9a-fA-F ]+)$", Pattern.CASE_INSENSITIVE);
+        Pattern idPattern = Pattern.compile("^ID\\s*:\\s*(?:0x)?([0-9a-fA-F][0-9a-fA-F :.-]*)$", Pattern.CASE_INSENSITIVE);
         for (String rawLine : output.split("\\r?\\n")) {
             String line = rawLine.trim();
             if (line.toLowerCase(Locale.ROOT).contains(" object")) {
@@ -436,10 +506,20 @@ public class TokenManager {
             if (!matchingObject) continue;
             Matcher idMatcher = idPattern.matcher(line);
             if (!idMatcher.matches()) continue;
-            String id = idMatcher.group(1).replaceAll("\\s+", "").toLowerCase(Locale.ROOT);
+            String id = idMatcher.group(1).replaceAll("[^0-9a-fA-F]", "").toLowerCase(Locale.ROOT);
             if (!id.isEmpty()) ids.add(id);
         }
         return ids;
+    }
+
+    private static class SigningObjects {
+        final String privateKeyId;
+        final String certificateId;
+
+        SigningObjects(String privateKeyId, String certificateId) {
+            this.privateKeyId = privateKeyId;
+            this.certificateId = certificateId;
+        }
     }
 
     private static ToolResult runTool(String[] command) throws Exception {
