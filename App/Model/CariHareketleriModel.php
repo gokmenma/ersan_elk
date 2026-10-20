@@ -27,8 +27,23 @@ class CariHareketleriModel extends Model
     }
 
     /** Hesap ekstresi için hareketleri, ekleyen kullanıcı ve yürüyen bakiye ile getirir. */
-    public function getEkstreHareketleri(int $cariId): array
+    public function getEkstreHareketleri(int $cariId, string $filterType = 'all', string $search = ''): array
     {
+        $where = 'h.cari_id = :cari_id AND h.silinme_tarihi IS NULL';
+        $params = ['cari_id' => $cariId];
+
+        if ($filterType === 'aldim') {
+            $where .= ' AND h.borc > 0';
+        } elseif ($filterType === 'verdim') {
+            $where .= ' AND h.alacak > 0';
+        }
+
+        $search = trim($search);
+        if ($search !== '') {
+            $where .= ' AND (h.aciklama LIKE :search OR h.belge_no LIKE :search)';
+            $params['search'] = '%' . $search . '%';
+        }
+
         $sql = "SELECT h.*, u.adi_soyadi AS ekleyen_adi,
                        (SELECT ROUND(SUM(ch.alacak - ch.borc), 2)
                           FROM {$this->table} ch
@@ -37,10 +52,10 @@ class CariHareketleriModel extends Model
                                 OR (ch.islem_tarihi = h.islem_tarihi AND ch.id <= h.id))) AS yuruyen_bakiye
                   FROM {$this->table} h
              LEFT JOIN users u ON u.id = h.ekleyen_kullanici
-                 WHERE h.cari_id = :cari_id AND h.silinme_tarihi IS NULL
+                 WHERE {$where}
               ORDER BY h.islem_tarihi DESC, h.id DESC";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute(['cari_id' => $cariId]);
+        $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 

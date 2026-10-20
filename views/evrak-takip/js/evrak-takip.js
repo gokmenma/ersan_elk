@@ -1432,27 +1432,32 @@ $(document).ready(function () {
   let localEimzaAgentState = {
     available: false,
     cardDetected: false,
-    data: null
+    data: null,
+    timestamp: 0
   };
 
   function checkLocalEimzaAgent(onComplete) {
+    if (localEimzaAgentState.available && localEimzaAgentState.cardDetected && (Date.now() - (localEimzaAgentState.timestamp || 0) < 8000)) {
+      if (typeof onComplete === "function") onComplete(localEimzaAgentState);
+      return;
+    }
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1500);
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
 
     fetch(LOCAL_EIMZA_AGENT_URL + "/status", { method: "GET", mode: "cors", signal: controller.signal })
       .then(res => res.json())
       .then(data => {
         clearTimeout(timeoutId);
         if (data && data.status === "success") {
-          localEimzaAgentState = { available: true, cardDetected: true, data: data };
+          localEimzaAgentState = { available: true, cardDetected: true, data: data, timestamp: Date.now() };
         } else {
-          localEimzaAgentState = { available: true, cardDetected: false, data: data };
+          localEimzaAgentState = { available: true, cardDetected: false, data: data, timestamp: Date.now() };
         }
         if (typeof onComplete === "function") onComplete(localEimzaAgentState);
       })
       .catch(() => {
         clearTimeout(timeoutId);
-        localEimzaAgentState = { available: false, cardDetected: false, data: null };
+        localEimzaAgentState = { available: false, cardDetected: false, data: null, timestamp: Date.now() };
         if (typeof onComplete === "function") onComplete(localEimzaAgentState);
       });
   }
@@ -1577,7 +1582,7 @@ $(document).ready(function () {
           if (state.available) {
             $sub.text(state.data?.message || 'Lütfen USB E-İmza cihazınızı bilgisayarınıza takınız.');
           } else {
-            $sub.html('E-İmza cihazı bulunamadı. <a href="downloads/ErsanEImza.jar?v=1.1.0" download="ErsanEImza.jar" class="text-primary fw-semibold"><i class="bx bxs-download me-1"></i>Uygulamayı İndir (.jar)</a> veya <a href="javascript:void(0)" id="linkOpenAgentHelpInSwal" class="text-primary fw-semibold">Nasıl başlatılır?</a>');
+            $sub.html('E-İmza cihazı bulunamadı. <a href="downloads/ErsanEImza.jar" download class="text-primary fw-semibold"><i class="bx bxs-download me-1"></i>Uygulamayı İndir (.jar)</a> veya <a href="javascript:void(0)" id="linkOpenAgentHelpInSwal" class="text-primary fw-semibold">Nasıl başlatılır?</a>');
             $("#linkOpenAgentHelpInSwal").on("click", function () {
               $("#modalEimzaAgentHelp").modal("show");
             });

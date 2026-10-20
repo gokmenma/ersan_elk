@@ -2533,3 +2533,10 @@
 - Windows kullanıcısının ayrıca OpenSC kurmasına gerek bırakmamak için resmi OpenSC 0.27.1 Light x64 `pkcs11-tool.exe` ve `opensc.dll` dosyaları ajan JAR'ına gömüldü.
 - Ajan dosyaları ilk kullanımda `%LOCALAPPDATA%\\ErsanEImza\\runtime\\opensc-0.27.1-x64` dizinine çıkarıyor, SHA-256 bütünlüğünü doğruluyor ve sistem PATH'i ya da yönetici yetkisi gerektirmeden kullanıyor.
 - LGPL-2.1 lisans metni ve kaynak bildirimi pakete dahil edildi; ajan sürümü `1.1.0 (Portable OpenSC)` olarak güncellendi.
+- Windows kart sürücüsünün aynı JVM içindeki SunPKCS11 imzasında ajanı tamamen düşürme riski giderildi. Windows imzası gömülü `pkcs11-tool.exe` alt sürecine izole edildi ve ajan sürümü `1.1.1` yapıldı.
+
+# 2026-10-20 — Cari hesap hareketleri Excel dışa aktarımı
+
+- Hesap Hareketleri sayfasındaki iki Excel aksiyonunun yalnız `window.open()` kullanan JavaScript olayına bağlı olması nedeniyle sunucuya hiç istek gitmediği tespit edildi.
+- Dropdown ve tablo başlığı Excel aksiyonları doğrudan export endpoint'ine bağlı gerçek bağlantılara dönüştürüldü; JavaScript aktif filtre ve genel aramayı bağlantı adresine eklemeye devam ediyor.
+- Excel verisi doğrudan view içinde sorgulanmak yerine parametrik PDO kullanan `CariHareketleriModel::getEkstreHareketleri()` üzerinden alınacak şekilde düzenlendi.

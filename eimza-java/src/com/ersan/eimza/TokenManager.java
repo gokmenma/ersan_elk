@@ -268,6 +268,13 @@ public class TokenManager {
             throw new RuntimeException("E-İmza cihazı bulunamadı. Lütfen USB kartınızı takınız.");
         }
 
+        // Windows kart suruculerinin bazilari SunPKCS11 cagrisinda JVM'i native olarak
+        // sonlandirabiliyor. Gomulu OpenSC araci ayri bir surecte calistigi icin bir
+        // surucu hatasi yerel HTTP ajanini ve 9191 baglantisini dusurmez.
+        if (System.getProperty("os.name", "").toLowerCase().contains("win")) {
+            return signWithPkcs11Tool(pin, rawDigest, token.modulePath);
+        }
+
         // 1. Önce SunPKCS11 Java motoru ile dene
         try {
             String safeName = "Sign_" + System.currentTimeMillis();

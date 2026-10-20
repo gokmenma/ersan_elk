@@ -90,7 +90,9 @@ $(document).ready(function () {
     $('#btnExportExcel, #btnHeaderExportExcel').on('click', function () {
         const searchVal = table.search();
         const url = `views/cari/export-hareketler-excel.php?id=${encodeURIComponent(global_cari_id)}&filter_type=${currentFilterType}&search=${encodeURIComponent(searchVal)}`;
-        window.open(url, '_blank');
+        // Bağlantının doğal indirme davranışını kullan. Böylece tarayıcının yeni
+        // pencere engelleyicisi veya JS'in geç yüklenmesi ihracı durdurmaz.
+        $(this).attr('href', url);
     });
 
     // Yazdır Butonu

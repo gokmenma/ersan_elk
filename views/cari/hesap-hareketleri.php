@@ -82,9 +82,10 @@ $bakiye = (float)($ozet->bakiye ?? 0);
                     <i class="bx bx-cog font-size-16 text-primary"></i> İşlemler
                 </button>
                 <div class="dropdown-menu dropdown-menu-end shadow-lg border-0">
-                    <button type="button" class="dropdown-item d-flex align-items-center" id="btnExportExcel">
+                    <a class="dropdown-item d-flex align-items-center" id="btnExportExcel"
+                       href="views/cari/export-hareketler-excel.php?id=<?= urlencode($cari_id_enc) ?>">
                         <i class="bx bx-file me-2 font-size-16 text-success"></i> Excel'e Aktar
-                    </button>
+                    </a>
                     <a class="dropdown-item d-flex align-items-center" href="views/cari/export-ekstre-pdf.php?id=<?= urlencode($cari_id_enc) ?>" target="_blank">
                         <i class="bx bx-file-blank me-2 font-size-16 text-danger"></i> PDF Ekstre İndir
                     </a>
@@ -232,9 +233,10 @@ $bakiye = (float)($ozet->bakiye ?? 0);
 
             <!-- Sağ Araç Çubuğu -->
             <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
-                <button type="button" class="btn btn-sm btn-subtle-success px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderExportExcel" title="Excel'e Aktar">
+                <a class="btn btn-sm btn-subtle-success px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderExportExcel" title="Excel'e Aktar"
+                   href="views/cari/export-hareketler-excel.php?id=<?= urlencode($cari_id_enc) ?>">
                     <i class="bx bx-file font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Excel</span>
-                </button>
+                </a>
                 <button type="button" class="btn btn-sm btn-subtle-secondary px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderPrint" title="Tabloyu Yazdır">
                     <i class="bx bx-printer font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Yazdır</span>
                 </button>

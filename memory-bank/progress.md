@@ -1416,3 +1416,11 @@
 
 - [x] OpenSC 0.27.1 x64 çalışma dosyaları lisans ve SHA-256 doğrulamasıyla JAR içine alındı; kullanıcı tarafında ek OpenSC kurulumu ve yönetici yetkisi ihtiyacı kaldırıldı.
 - [x] Java 8 uyumlu ajan yeniden derlendi; JAR kaynak içeriği, otomatik çıkarma, dosya hash'leri ve Windows executable çalışması doğrulandı.
+- [x] Windows'ta imza anında native PKCS#11 sürücüsünün Java ajanını düşürmesini önlemek için imzalama gömülü OpenSC alt sürecine izole edildi; 9191 servisinin sürücü hatasından etkilenmemesi sağlandı.
+
+# 2026-10-20 — Cari hesap hareketleri Excel dışa aktarımı
+
+- [x] Excel aksiyonları popup/JavaScript bağımlılığından çıkarılıp doğrudan indirme bağlantısına dönüştürüldü.
+- [x] Aktif Aldım/Verdim filtresi ve DataTables genel araması Excel isteğine aktarılmaya devam edecek şekilde korundu.
+- [x] Excel veri sorgusu Model katmanına taşındı ve tüm dinamik değerler PDO parametrik binding ile bağlandı.
+- [x] İlgili PHP dosyaları, JavaScript ve diff kontrolleri geçti; örnek cari için Model sorgusu 45 satırla başarıyla çalıştı.

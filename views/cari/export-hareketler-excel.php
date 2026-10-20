@@ -28,40 +28,13 @@ if (!$cariData) {
     die("Cari bulunamadı");
 }
 
-$filter_type = $_GET['filter_type'] ?? 'all';
-$search = $_GET['search'] ?? '';
+$filter_type = in_array(($_GET['filter_type'] ?? 'all'), ['all', 'aldim', 'verdim'], true)
+    ? $_GET['filter_type']
+    : 'all';
+$search = trim((string) ($_GET['search'] ?? ''));
 
-// Verileri Çek
-$db = $Cari->getDb();
-$where = "cari_id = :cari_id AND silinme_tarihi IS NULL";
-$params = ['cari_id' => $cari_id];
-
-if ($filter_type == 'aldim') {
-    $where .= " AND borc > 0";
-} elseif ($filter_type == 'verdim') {
-    $where .= " AND alacak > 0";
-}
-
-if ($search) {
-    $where .= " AND (aciklama LIKE :search OR belge_no LIKE :search)";
-    $params['search'] = "%$search%";
-}
-
-// Yürüyen bakiye ile çekmek için SQL
-$sql = "SELECT h.*, u.adi_soyadi as ekleyen_adi,
-        (SELECT SUM(alacak - borc) 
-         FROM cari_hareketleri h2 
-         WHERE h2.cari_id = h.cari_id 
-           AND h2.silinme_tarihi IS NULL 
-           AND (h2.islem_tarihi < h.islem_tarihi OR (h2.islem_tarihi = h.islem_tarihi AND h2.id <= h.id))) as yuruyen_bakiye
-        FROM cari_hareketleri h
-        LEFT JOIN users u ON u.id = h.ekleyen_kullanici
-        WHERE $where 
-        ORDER BY h.islem_tarihi ASC, h.id ASC";
-
-$stmt = $db->prepare($sql);
-$stmt->execute($params);
-$data = $stmt->fetchAll(PDO::FETCH_OBJ);
+// Veritabanı erişimi Model katmanından yürütülür.
+$data = (new CariHareketleriModel())->getEkstreHareketleri((int) $cari_id, $filter_type, $search);
 
 // Spreadsheet Oluştur
 $spreadsheet = new Spreadsheet();
