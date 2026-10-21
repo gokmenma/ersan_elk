@@ -3004,3 +3004,27 @@
 - Pazar HTÇ modalı açıldığında seçili ayda bugünü aşmayan en son Pazar varsayılan seçilir; geçmiş aylarda ayın son Pazarı, henüz tamamlanmış Pazar bulunmayan dönemlerde ilk Pazar kullanılır.
 - Modalda `HTÇ mevcut` görünen otomatik kaydın puantaj takviminde görünmemesi giderildi: takvim sorgusu onay değerinin Türkçe/ASCII varyantlarını kabul ediyor, otomatik kaynak/kural bilgisini taşıyor ve HTÇ hücresini kilitli gösteriyor. Atama sonrası ilgili bekleyen istemci hücreleri temizlenip modal kapatılarak takvim doğrudan yenileniyor.
 - Son Pazar varsayılanında kapsam dışındaki `formatLocalDate` çağrısı kaldırıldı; yerel tarih modal açma fonksiyonu içinde doğrudan üretilerek `ReferenceError` giderildi.
+# 2026-10-21 — Mobil SPA log kaynak ayrımı
+
+- Mobil SPA'nın aynı-origin `/api/` istekleri artık `X-Client-Source: mobile-spa` başlığı taşıyor; `SystemLogModel` mobil API işlem açıklamalarını merkezi olarak `[Mobil SPA]` etiketiyle kaydediyor ve eski `Mobil SPA -` başlangıçlarını tek biçime dönüştürüyor.
+- Vue rota geçişleri, kimliği doğrulanmış ve firma seçmiş kullanıcılarda CSRF korumalı `auth.php?action=page-view` isteğiyle loglanıyor. Sunucu istemciden gelen serbest sayfa metnini kullanmıyor; izinli rota adlarını kendi sabit sayfa adlarına eşleyerek `[Mobil SPA] ... sayfası görüntülendi.` kaydı oluşturuyor.
+- PHP lint, Vite production build, public/dist API eşleşmesi ve diff whitespace kontrolü uygulandı.
+
+# 2026-10-21 — Personel PWA loglarında personel adı
+
+- Personel PWA `users` hesabı yerine personel oturumuyla çalıştığı için `user_id=0` olan logların Kullanıcı alanında `Sistem` görünmesi giderildi.
+- `SystemLogModel`, `[Personel PWA] Ad Soyad ...` açıklamalarındaki aktörü ortak SQL ifadesiyle çözümleyerek hem masaüstü birleşik log listesinde hem Mobil SPA log ekranında personel adını gösteriyor. Ayrı sayfa ziyareti API'sindeki eski `PWA Personel` fallback'i de gerçek adı çıkaracak şekilde güncellendi.
+- Canlı veride BERKE ER kayıtlarıyla birleşik liste ve mobil log sorgusu doğrulandı; geçmiş kayıtlar da veritabanı migrasyonu olmadan geriye dönük düzeldi.
+
+# 2026-10-21 — Sistem Logları sunucu taraflı kolon sıralaması
+
+- Birleşik log DataTable'ının gönderdiği kolon ve yön bilgisi `views/logs/api.php` içinde altı kolonluk whitelist ile Model filtresine aktarıldı.
+- `SystemLogModel::getUnifiedActivities()` tarih, kullanıcı, işlem türü, modül, detay ve ilgili kayıt alanlarını yalnızca sabit SQL eşlemeleriyle `ASC/DESC` sıralıyor. Varsayılan tarih-azalan dışında aday-kayıt limiti uygulanmayarak tüm seçili kapsamın doğru sıralanması sağlandı.
+- Altı kolonun iki yönü de gerçek veritabanında çalıştırıldı; PHP lint ve diff kontrolü geçti.
+
+# 2026-10-21 — Aktivite Dashboard detaylandırması
+
+- Sistem Logları dashboard'una bugünkü sayfa ziyareti, son 30 gün aktif ziyaretçi, benzersiz sayfa ve Personel PWA trafiği KPI kartları eklendi.
+- Son 30 gün için en aktif sekiz personel/kullanıcı; toplam ziyaret, farklı sayfa, son ziyaret ve en sık kullandığı beş sayfayla birlikte gösteriliyor. Personel PWA aktörleri gerçek personel adıyla gruplanıyor.
+- En çok ziyaret edilen sekiz sayfa, benzersiz ziyaretçi sayıları, Masaüstü/Mobil SPA/Personel PWA/Mobil Panel platform dağılımı ve son altı kritik olay ayrı panellerde sunuluyor.
+- Tüm sorgular firma kapsamında, PDO prepare/execute ile Model katmanında çalışıyor. Dashboard veri sözleşmesi gerçek veride, PHP lint ve diff kontrolüyle doğrulandı.

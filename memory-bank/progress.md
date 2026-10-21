@@ -1765,3 +1765,31 @@
 - [x] Ana menü sürüklenirken bağlı alt menülerin aynı blokta kalması sağlandı.
 - [x] İçeri alma işlemi açık hedef ebeveynle güncellendi ve üçüncü seviye hiyerarşi engellendi.
 - [x] JavaScript sözdizimi ve diff kontrolleri tamamlandı.
+# 2026-10-21 — Mobil SPA log kaynak ayrımı
+
+- [x] Mobil SPA API isteklerine merkezi istemci kaynak başlığı eklendi.
+- [x] Mobil API işlem logları `SystemLogModel` katmanında `[Mobil SPA]` etiketiyle standartlaştırıldı.
+- [x] Yetkili Vue rota ziyaretleri CSRF korumalı ve sunucu whitelist'li sayfa ziyaret loguna bağlandı.
+- [x] PHP lint, production build ve public/dist eşleşmesi doğrulandı.
+
+# 2026-10-21 — Personel PWA log aktör adı
+
+- [x] `user_id=0` Personel PWA loglarındaki personel adı Kullanıcı sütununa geriye dönük yansıtıldı.
+- [x] Birleşik masaüstü log listesi, Mobil SPA log listesi ve sayfa ziyareti API fallback'i aynı davranışa getirildi.
+- [x] PHP lint, diff kontrolü ve gerçek veride iki liste sorgusu başarıyla doğrulandı.
+
+# 2026-10-21 — Sistem Logları kolon sıralaması
+
+- [x] DataTables `order` parametresi API'de güvenli kolon/yön whitelist'iyle işlenir hale getirildi.
+- [x] Birleşik Model sorgusu altı görünür kolonda gerçek server-side `ASC/DESC` sıralama yapacak şekilde güncellendi.
+- [x] Varsayılan tarih sıralaması optimizasyonu korundu; diğer sıralamalarda eksik aday kümesi sorunu engellendi.
+- [x] On iki kolon/yön kombinasyonu canlı sorguyla, dosyalar PHP lint ve diff kontrolüyle doğrulandı.
+
+# 2026-10-21 — Aktivite Dashboard detaylandırması
+
+- [x] Dört yeni trafik ve ziyaretçi KPI kartı eklendi.
+- [x] Personel/kullanıcı bazlı ziyaret edilen sayfalar, ziyaret sayıları ve son hareket bilgisi eklendi.
+- [x] Popüler sayfalar, benzersiz ziyaretçiler ve platform dağılımı panelleri eklendi.
+- [x] Son kritik olaylar paneli ve tüm kritik kayıtlara geçiş eklendi.
+- [x] Firma kapsamı, parametrik Model sorguları, HTML escaping, responsive/dark tema stilleri ve boş durumlar uygulandı.
+- [x] Gerçek veride dashboard sözleşmesi, PHP lint ve diff kontrolü başarıyla doğrulandı.

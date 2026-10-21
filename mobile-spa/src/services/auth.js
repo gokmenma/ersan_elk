@@ -64,6 +64,13 @@ export const auth = {
     })
     applySession(payload)
   },
+  async logPageView(routeName) {
+    return request('page-view', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': state.csrfToken },
+      body: JSON.stringify({ route_name: routeName }),
+    })
+  },
   async logout() {
     await request('logout', {
       method: 'POST',

@@ -53,6 +53,9 @@ try {
     switch ($action) {
         case 'get-unified-logs':
             $draw = (int) ($_POST['draw'] ?? 1);
+            $orderColumns = ['date', 'user', 'type', 'module', 'detail', 'related'];
+            $orderIndex = (int) ($_POST['order'][0]['column'] ?? 0);
+            $orderDirection = strtolower((string) ($_POST['order'][0]['dir'] ?? 'desc'));
             $filters = [
                 'limit' => (int) ($_POST['length'] ?? 25),
                 'offset' => (int) ($_POST['start'] ?? 0),
@@ -66,6 +69,8 @@ try {
                 'detail' => $getColumnFilter(4),
                 'related' => $getColumnFilter(5),
                 'include_ai' => Gate::allows('ai_is_ajani_arac_takip'),
+                'sort' => $orderColumns[$orderIndex] ?? 'date',
+                'direction' => $orderDirection === 'asc' ? 'asc' : 'desc',
             ];
             $logs = $systemLogModel->getUnifiedActivities($filters);
             $totalRecords = $systemLogModel->getUnifiedActivitiesCount(['include_ai' => $filters['include_ai'], 'scope' => $filters['scope']]);
@@ -457,8 +462,8 @@ try {
             foreach ($logs as $log) {
                 $displayName = $log->adi_soyadi;
                 if (!$displayName && $log->user_id == 0) {
-                    if (strpos($log->description, '[Personel PWA]') !== false) {
-                        $displayName = 'PWA Personel';
+                    if (preg_match('/^\[Personel PWA\]\s+(.+?)\s+tarafından\s+/u', (string) $log->description, $matches)) {
+                        $displayName = trim($matches[1]);
                     } else {
                         $displayName = 'Sistem';
                     }

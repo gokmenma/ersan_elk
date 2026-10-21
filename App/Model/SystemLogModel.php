@@ -20,6 +20,47 @@ class SystemLogModel extends Model
     const LEVEL_CRITICAL = 2; // Kritik (toplu silme, güvenlik olayları)
     const LEVEL_PAGE_VIEW = 3; // Sayfa görüntüleme logları
 
+    /**
+     * Personel PWA, users hesabı yerine personel oturumuyla çalışır ve
+     * user_id=0 kaydeder. Açıklamadaki aktör adını mevcut ve yeni loglarda
+     * Kullanıcı alanına taşıyan ortak SQL ifadesi.
+     */
+    private function systemLogActorNameSql(string $logAlias = 'l', string $userAlias = 'u'): string
+    {
+        return "CASE
+                    WHEN {$logAlias}.user_id = 0
+                         AND {$logAlias}.description LIKE '[Personel PWA] %'
+                    THEN NULLIF(TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(SUBSTRING_INDEX(
+                        SUBSTRING({$logAlias}.description, CHAR_LENGTH('[Personel PWA] ') + 1),
+                        ' tarafından ', 1), ' (ID:', 1), ' #', 1)), '')
+                    ELSE NULL
+                END";
+    }
+
+    private function systemLogPageNameSql(string $logAlias = 'l'): string
+    {
+        return "CASE
+                    WHEN {$logAlias}.description LIKE '[Personel PWA] % tarafından % sayfası görüntülendi.%'
+                    THEN TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX({$logAlias}.description, ' tarafından ', -1), ' sayfası görüntülendi.', 1))
+                    WHEN LOCATE('] ', {$logAlias}.description) > 0
+                         AND {$logAlias}.description LIKE '% sayfası görüntülendi.%'
+                    THEN TRIM(SUBSTRING_INDEX(SUBSTRING({$logAlias}.description, LOCATE('] ', {$logAlias}.description) + 2), ' sayfası görüntülendi.', 1))
+                    ELSE COALESCE(NULLIF({$logAlias}.description, ''), 'Bilinmeyen Sayfa')
+                END";
+    }
+
+    private function systemLogPlatformSql(string $logAlias = 'l'): string
+    {
+        return "CASE
+                    WHEN {$logAlias}.description LIKE '[Personel PWA]%' THEN 'Personel PWA'
+                    WHEN {$logAlias}.description LIKE '[Mobil SPA]%' THEN 'Mobil SPA'
+                    WHEN {$logAlias}.description LIKE '[Mobile]%' THEN 'Mobil Panel'
+                    WHEN {$logAlias}.description LIKE '[KASKİ Portal]%' THEN 'KASKİ Portal'
+                    WHEN {$logAlias}.description LIKE '[Desktop]%' THEN 'Masaüstü'
+                    ELSE 'Diğer'
+                END";
+    }
+
     public function __construct()
     {
         parent::__construct($this->table);
@@ -55,7 +96,7 @@ class SystemLogModel extends Model
             'user_id' => $userId,
             'firma_id' => $_SESSION['firma_id'] ?? 0,
             'action_type' => $actionType,
-            'description' => $description,
+            'description' => $this->withClientSource((string) $description),
             'level' => $level
         ]);
     }
@@ -66,9 +107,31 @@ class SystemLogModel extends Model
             'user_id' => max(0, $userId),
             'firma_id' => max(0, $firmId),
             'action_type' => $actionType,
-            'description' => $description,
+            'description' => $this->withClientSource($description),
             'level' => $level,
         ]);
+    }
+
+    /**
+     * Mobil SPA, aynı API ve oturum altyapısını masaüstüyle paylaştığı için
+     * istemci kaynağını log açıklamasında merkezi ve tutarlı biçimde işaretler.
+     */
+    private function withClientSource(string $description): string
+    {
+        $source = strtolower(trim((string) ($_SERVER['HTTP_X_CLIENT_SOURCE'] ?? '')));
+        if ($source !== 'mobile-spa') {
+            return $description;
+        }
+
+        if (str_starts_with($description, '[Mobil SPA]')) {
+            return $description;
+        }
+
+        if (str_starts_with($description, 'Mobil SPA -')) {
+            $description = ltrim(substr($description, strlen('Mobil SPA -')));
+        }
+
+        return '[Mobil SPA] ' . $description;
     }
 
     /**
@@ -313,12 +376,18 @@ class SystemLogModel extends Model
                 COUNT(*) AS total,
                 SUM(CASE WHEN DATE(created_at) = CURDATE() AND COALESCE(level, 0) <> :page_level_1 THEN 1 ELSE 0 END) AS today_operations,
                 SUM(CASE WHEN DATE(created_at) = CURDATE() AND action_type = 'Başarılı Giriş' THEN 1 ELSE 0 END) AS today_logins,
-                SUM(CASE WHEN DATE(created_at) = CURDATE() AND COALESCE(level, 0) = :critical_level THEN 1 ELSE 0 END) AS today_critical
+                SUM(CASE WHEN DATE(created_at) = CURDATE() AND COALESCE(level, 0) = :critical_level THEN 1 ELSE 0 END) AS today_critical,
+                SUM(CASE WHEN DATE(created_at) = CURDATE() AND COALESCE(level, 0) = :page_level_2 THEN 1 ELSE 0 END) AS today_views,
+                SUM(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) AND COALESCE(level, 0) = :page_level_3 THEN 1 ELSE 0 END) AS month_views,
+                SUM(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) AND COALESCE(level, 0) = :page_level_4 AND description LIKE '[Personel PWA]%' THEN 1 ELSE 0 END) AS month_pwa_views
             FROM {$this->table}
             WHERE firma_id = :firma_id";
         $summaryStmt = $this->db->prepare($summarySql);
         $summaryStmt->execute([
             ':page_level_1' => self::LEVEL_PAGE_VIEW,
+            ':page_level_2' => self::LEVEL_PAGE_VIEW,
+            ':page_level_3' => self::LEVEL_PAGE_VIEW,
+            ':page_level_4' => self::LEVEL_PAGE_VIEW,
             ':critical_level' => self::LEVEL_CRITICAL,
             ':firma_id' => $firmaId,
         ]);
@@ -354,11 +423,110 @@ class SystemLogModel extends Model
             $trend['logins'][] = (int) ($row['login_count'] ?? 0);
         }
 
+        $actorNameSql = $this->systemLogActorNameSql('l', 'u');
+        $pageNameSql = $this->systemLogPageNameSql('l');
+        $platformSql = $this->systemLogPlatformSql('l');
+        $pageActivitySql = "SELECT
+                COALESCE(NULLIF(u.adi_soyadi, ''), {$actorNameSql}, 'Sistem') AS actor_name,
+                {$pageNameSql} AS page_name,
+                {$platformSql} AS platform_name,
+                l.created_at
+            FROM {$this->table} l
+            LEFT JOIN users u ON u.id = l.user_id
+            WHERE l.firma_id = :firma_id
+              AND l.level = :page_level
+              AND l.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
+
+        $topVisitorsStmt = $this->db->prepare("SELECT actor_name, COUNT(*) AS visit_count,
+                COUNT(DISTINCT page_name) AS page_count, MAX(created_at) AS last_visit
+            FROM ({$pageActivitySql}) page_activity
+            GROUP BY actor_name
+            ORDER BY visit_count DESC, last_visit DESC
+            LIMIT 8");
+        $topVisitorsStmt->execute([':firma_id' => $firmaId, ':page_level' => self::LEVEL_PAGE_VIEW]);
+        $topVisitors = $topVisitorsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $visitorPages = [];
+        $visitorNames = array_values(array_filter(array_column($topVisitors, 'actor_name'), 'strlen'));
+        if ($visitorNames) {
+            $placeholders = [];
+            $visitorParams = [':firma_id' => $firmaId, ':page_level' => self::LEVEL_PAGE_VIEW];
+            foreach ($visitorNames as $index => $visitorName) {
+                $key = ':actor_' . $index;
+                $placeholders[] = $key;
+                $visitorParams[$key] = $visitorName;
+            }
+            $visitorPagesStmt = $this->db->prepare("SELECT actor_name, page_name, COUNT(*) AS visit_count
+                FROM ({$pageActivitySql}) page_activity
+                WHERE actor_name IN (" . implode(', ', $placeholders) . ")
+                GROUP BY actor_name, page_name
+                ORDER BY actor_name, visit_count DESC, page_name
+            ");
+            $visitorPagesStmt->execute($visitorParams);
+            foreach ($visitorPagesStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $visitorPages[(string) $row['actor_name']][] = [
+                    'name' => (string) $row['page_name'],
+                    'visits' => (int) $row['visit_count'],
+                ];
+            }
+        }
+        foreach ($topVisitors as &$visitor) {
+            $visitor['visit_count'] = (int) $visitor['visit_count'];
+            $visitor['page_count'] = (int) $visitor['page_count'];
+            $visitor['pages'] = array_slice($visitorPages[(string) $visitor['actor_name']] ?? [], 0, 5);
+        }
+        unset($visitor);
+
+        $topPagesStmt = $this->db->prepare("SELECT page_name, COUNT(*) AS visit_count,
+                COUNT(DISTINCT actor_name) AS visitor_count, MAX(created_at) AS last_visit
+            FROM ({$pageActivitySql}) page_activity
+            GROUP BY page_name
+            ORDER BY visit_count DESC, last_visit DESC
+            LIMIT 8");
+        $topPagesStmt->execute([':firma_id' => $firmaId, ':page_level' => self::LEVEL_PAGE_VIEW]);
+        $topPages = $topPagesStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $platformStmt = $this->db->prepare("SELECT platform_name, COUNT(*) AS visit_count
+            FROM ({$pageActivitySql}) page_activity
+            GROUP BY platform_name
+            ORDER BY visit_count DESC");
+        $platformStmt->execute([':firma_id' => $firmaId, ':page_level' => self::LEVEL_PAGE_VIEW]);
+        $platforms = $platformStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $criticalStmt = $this->db->prepare("SELECT l.created_at,
+                COALESCE(NULLIF(u.adi_soyadi, ''), {$actorNameSql}, 'Sistem') AS actor_name,
+                COALESCE(NULLIF(l.action_type, ''), 'Sistem Olayı') AS action_type,
+                COALESCE(l.description, '') AS description
+            FROM {$this->table} l
+            LEFT JOIN users u ON u.id = l.user_id
+            WHERE l.firma_id = :firma_id AND l.level = :critical_level
+            ORDER BY l.created_at DESC, l.id DESC
+            LIMIT 6");
+        $criticalStmt->execute([':firma_id' => $firmaId, ':critical_level' => self::LEVEL_CRITICAL]);
+        $recentCritical = $criticalStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $activeVisitorsStmt = $this->db->prepare("SELECT COUNT(DISTINCT actor_name) FROM ({$pageActivitySql}) page_activity");
+        $activeVisitorsStmt->execute([':firma_id' => $firmaId, ':page_level' => self::LEVEL_PAGE_VIEW]);
+        $activeVisitors = (int) $activeVisitorsStmt->fetchColumn();
+
+        $uniquePagesStmt = $this->db->prepare("SELECT COUNT(DISTINCT page_name) FROM ({$pageActivitySql}) page_activity");
+        $uniquePagesStmt->execute([':firma_id' => $firmaId, ':page_level' => self::LEVEL_PAGE_VIEW]);
+        $uniquePages = (int) $uniquePagesStmt->fetchColumn();
+
         return [
             'total' => (int) ($summary['total'] ?? 0),
             'today_operations' => (int) ($summary['today_operations'] ?? 0),
             'today_logins' => (int) ($summary['today_logins'] ?? 0),
             'today_critical' => (int) ($summary['today_critical'] ?? 0),
+            'today_views' => (int) ($summary['today_views'] ?? 0),
+            'month_views' => (int) ($summary['month_views'] ?? 0),
+            'month_pwa_views' => (int) ($summary['month_pwa_views'] ?? 0),
+            'active_visitors' => $activeVisitors,
+            'unique_pages' => $uniquePages,
+            'top_visitors' => $topVisitors,
+            'top_pages' => $topPages,
+            'platforms' => $platforms,
+            'recent_critical' => $recentCritical,
             'trend' => $trend,
         ];
     }
@@ -369,7 +537,17 @@ class SystemLogModel extends Model
     public function getUnifiedActivities(array $filters = []): array
     {
         [$sql, $params] = $this->buildUnifiedActivityQuery($filters, false);
-        $sql .= ' ORDER BY activity_date DESC LIMIT :limit OFFSET :offset';
+        $sortColumns = [
+            'date' => 'activity_date',
+            'user' => 'user_name',
+            'type' => 'event_type',
+            'module' => 'module_name',
+            'detail' => 'detail',
+            'related' => 'related_record',
+        ];
+        $sortColumn = $sortColumns[(string) ($filters['sort'] ?? 'date')] ?? 'activity_date';
+        $sortDirection = strtolower((string) ($filters['direction'] ?? 'desc')) === 'asc' ? 'ASC' : 'DESC';
+        $sql .= " ORDER BY activity.{$sortColumn} {$sortDirection}, activity.activity_date DESC, activity.id DESC LIMIT :limit OFFSET :offset";
         $stmt = $this->db->prepare($sql);
         foreach ($params as $key => $value) {
             $stmt->bindValue($key, $value);
@@ -501,9 +679,10 @@ class SystemLogModel extends Model
         $personnelScope = $includePersonnel ? $this->activityScope($filters, 'pg', 'giris_tarihi', 'personel', $params) : '';
         $aiScope = $includeAi ? $this->activityScope($filters, 'a', 'created_at', 'ai', $params) : '';
         if ($includeSystem) {
+            $actorNameSql = $this->systemLogActorNameSql('l', 'u');
             $parts[] = "
             SELECT l.id, l.created_at AS activity_date,
-                   COALESCE(NULLIF(u.adi_soyadi, ''), 'Sistem') AS user_name,
+                   COALESCE(NULLIF(u.adi_soyadi, ''), {$actorNameSql}, 'Sistem') AS user_name,
                    CASE
                        WHEN l.level = 3 THEN 'Sayfa Ziyareti'
                        WHEN l.action_type = 'Başarılı Giriş' THEN 'Yönetici Girişi'
@@ -546,7 +725,9 @@ class SystemLogModel extends Model
                 break;
             }
         }
-        if (!$countOnly && !$hasOuterFilter) {
+        $isDefaultSort = ($filters['sort'] ?? 'date') === 'date'
+            && strtolower((string) ($filters['direction'] ?? 'desc')) === 'desc';
+        if (!$countOnly && !$hasOuterFilter && $isDefaultSort) {
             $candidateLimit = max(1, (int) ($filters['offset'] ?? 0) + (int) ($filters['limit'] ?? 25));
             $parts = array_map(
                 static fn(string $part): string => '(' . $part . ' ORDER BY 2 DESC LIMIT ' . $candidateLimit . ')',
@@ -851,8 +1032,9 @@ class SystemLogModel extends Model
         $limit = max(1, min(100, (int) ($filters['limit'] ?? 30)));
         $offset = max(0, (int) ($filters['offset'] ?? 0));
 
+        $actorNameSql = $this->systemLogActorNameSql('l', 'u');
         $sql = "SELECT l.id, l.firma_id, l.user_id, l.action_type, l.description, l.level, l.created_at,
-                       COALESCE(NULLIF(u.adi_soyadi, ''), 'Sistem') AS user_name,
+                       COALESCE(NULLIF(u.adi_soyadi, ''), {$actorNameSql}, 'Sistem') AS user_name,
                        u.user_name AS username
                 FROM {$this->table} l
                 LEFT JOIN users u ON l.user_id = u.id

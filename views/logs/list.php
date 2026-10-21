@@ -44,6 +44,23 @@ if (Gate::allows("log_kayitlari")) {
             .audit-kpi-foot { border-top:1px solid #edf1f6; margin-top:20px; padding-top:11px; color:#6b7280; font-size:11px; }
             .audit-panel { padding:20px 24px; margin-bottom:20px; }
             .audit-panel-title { color:var(--audit-orange); font-size:15px; font-weight:700; }
+            .audit-insight-grid { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px; }
+            .audit-insight-card { background:linear-gradient(145deg,#fff,#f8fbff);border:1px solid var(--audit-border);border-radius:14px;padding:16px 18px;display:flex;align-items:center;gap:13px;min-height:92px; }
+            .audit-insight-icon { width:42px;height:42px;flex:0 0 42px;border-radius:12px;display:grid;place-items:center;font-size:20px;background:#eaf2ff;color:#2563eb; }
+            .audit-insight-icon.purple{background:#f2edff;color:#7c3aed}.audit-insight-icon.orange{background:#fff3df;color:#e67800}.audit-insight-icon.green{background:#e8faf3;color:#059669}
+            .audit-insight-card small{display:block;color:#718096;font-size:10px;text-transform:uppercase;letter-spacing:.035em}.audit-insight-card strong{display:block;color:#172033;font-size:21px;line-height:1.15;margin-top:4px}.audit-insight-card span{display:block;color:#7c8aa0;font-size:10px;margin-top:3px}
+            .audit-detail-grid { display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,.75fr);gap:16px;margin-bottom:20px; }
+            .audit-stack { display:grid;gap:16px; }
+            .audit-ranking-list { display:grid;gap:10px;margin-top:16px; }
+            .audit-ranking-row { display:grid;grid-template-columns:38px minmax(150px,1fr) auto;align-items:center;gap:11px;padding:11px 12px;border:1px solid #e7edf4;border-radius:11px;background:#fbfdff; }
+            .audit-rank-avatar { width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:#e8edff;color:#4f46e5;font-size:12px;font-weight:750; }
+            .audit-rank-main { min-width:0; }.audit-rank-main strong{font-size:12px;color:#263247}.audit-rank-main small{display:block;color:#7b8798;font-size:10px;margin-top:2px}
+            .audit-page-chips { display:flex;gap:5px;flex-wrap:wrap;margin-top:7px }.audit-page-chip{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:#f1f5f9;color:#526173;border:1px solid #e1e8f0;border-radius:999px;padding:3px 7px;font-size:9px}
+            .audit-rank-value{text-align:right}.audit-rank-value strong{display:block;color:#e67800;font-size:16px}.audit-rank-value small{color:#8792a3;font-size:9px}
+            .audit-popular-row { display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:10px 0;border-bottom:1px solid #edf1f5; }.audit-popular-row:last-child{border-bottom:0}.audit-popular-name{font-size:11px;font-weight:650;color:#334155;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.audit-popular-meta{font-size:9px;color:#8a96a7;margin-top:3px}.audit-popular-count{font-size:13px;font-weight:750;color:#2563eb;white-space:nowrap}
+            .audit-platform-row{margin-top:13px}.audit-platform-head{display:flex;justify-content:space-between;font-size:10px;color:#526173;margin-bottom:5px}.audit-platform-track{height:7px;border-radius:99px;background:#edf2f7;overflow:hidden}.audit-platform-fill{height:100%;border-radius:inherit;background:linear-gradient(90deg,#3b82f6,#7c3aed)}
+            .audit-critical-row{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #edf1f5}.audit-critical-row:last-child{border-bottom:0}.audit-critical-dot{width:8px;height:8px;border-radius:50%;background:#ef4444;box-shadow:0 0 0 4px #fee2e2;margin-top:5px;flex:0 0 8px}.audit-critical-body{min-width:0}.audit-critical-body strong{display:block;font-size:11px;color:#334155}.audit-critical-body p{font-size:10px;color:#67758a;margin:3px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.audit-critical-body small{font-size:9px;color:#94a3b8}
+            .audit-empty{padding:24px 12px;text-align:center;color:#94a3b8;font-size:11px}
             #activityTrendChart { min-height:330px; }
             .audit-log-area { display:none; }
             .audit-log-area.active,.audit-dashboard-area.active { display:block; }
@@ -64,12 +81,13 @@ if (Gate::allows("log_kayitlari")) {
             .audit-badge-view{background:#66758c;color:#fff}.audit-badge-login{background:#e8fbf3;color:#07875d;border-color:#c6f1df}.audit-badge-critical,.audit-badge-delete{background:#fff0f1;color:#dc3545;border-color:#ffd5d9}.audit-badge-ai{background:#f0ecff;color:#6941c6;border-color:#dfd5ff}.audit-badge-operation{background:#eaf2ff;color:#2563eb;border-color:#cfdef8}
             .audit-module-badge{background:#f8fafc;color:#475569;border-color:#dbe4ef}.audit-related-badge{background:#f1f5f9;color:#475569;border-color:#dbe4ef;font-family:monospace;font-weight:500}
             .audit-detail-btn{display:inline-flex;align-items:center;gap:4px;background:#fff;color:#0878ff;border:1px solid #1682ff;border-radius:6px;padding:4px 8px;font-size:10px;margin-right:8px}.audit-detail-text{font-size:11px;color:#334155}
-            @media(max-width:991px){.audit-kpi-grid{grid-template-columns:repeat(2,1fr)}.audit-view-switch{margin-top:14px}.audit-hero{text-align:left}}
-            @media(max-width:575px){.audit-kpi-grid{grid-template-columns:1fr}.audit-hero{padding:18px}.audit-switch-btn{padding:8px 9px}.audit-quick{align-items:stretch}.audit-filter{flex:1}}
+            @media(max-width:991px){.audit-kpi-grid,.audit-insight-grid{grid-template-columns:repeat(2,1fr)}.audit-detail-grid{grid-template-columns:1fr}.audit-view-switch{margin-top:14px}.audit-hero{text-align:left}}
+            @media(max-width:575px){.audit-kpi-grid,.audit-insight-grid{grid-template-columns:1fr}.audit-hero{padding:18px}.audit-switch-btn{padding:8px 9px}.audit-quick{align-items:stretch}.audit-filter{flex:1}.audit-ranking-row{grid-template-columns:34px minmax(0,1fr)}.audit-rank-value{grid-column:2;text-align:left}}
             [data-bs-theme="dark"] .audit-hero,[data-bs-theme="dark"] .audit-kpi,[data-bs-theme="dark"] .audit-panel { --audit-border:#36404a; }
             [data-bs-theme="dark"] .audit-title,[data-bs-theme="dark"] .audit-kpi-value { color:#f1f5f9; }
             [data-bs-theme="dark"] .audit-chip,[data-bs-theme="dark"] .audit-filter { background:#171d23;color:#cbd5e1;border-color:#36404a; }
             [data-bs-theme="dark"] .audit-table-card { background:#222830;border-color:#36404a !important; }
+            [data-bs-theme="dark"] .audit-insight-card,[data-bs-theme="dark"] .audit-ranking-row{background:#222830;border-color:#36404a}[data-bs-theme="dark"] .audit-insight-card strong,[data-bs-theme="dark"] .audit-rank-main strong,[data-bs-theme="dark"] .audit-popular-name,[data-bs-theme="dark"] .audit-critical-body strong{color:#e2e8f0}[data-bs-theme="dark"] .audit-page-chip{background:#191f26;border-color:#3a4551;color:#bdc7d4}[data-bs-theme="dark"] .audit-popular-row,[data-bs-theme="dark"] .audit-critical-row{border-color:#35404b}
         </style>
 
         <div class="activity-audit-page">
@@ -112,9 +130,71 @@ if (Gate::allows("log_kayitlari")) {
             </div>
 
             <div class="audit-dashboard-area active">
+                <div class="audit-insight-grid">
+                    <div class="audit-insight-card"><span class="audit-insight-icon"><i class="bx bx-show"></i></span><div><small>Bugünkü Sayfa Ziyareti</small><strong><?= number_format($dashboardData['today_views'], 0, ',', '.') ?></strong><span>Bugün oluşan görüntülemeler</span></div></div>
+                    <div class="audit-insight-card"><span class="audit-insight-icon purple"><i class="bx bx-user-check"></i></span><div><small>Aktif Ziyaretçi</small><strong><?= number_format($dashboardData['active_visitors'], 0, ',', '.') ?></strong><span>Son 30 günde benzersiz kullanıcı</span></div></div>
+                    <div class="audit-insight-card"><span class="audit-insight-icon orange"><i class="bx bx-window-open"></i></span><div><small>Ziyaret Edilen Sayfa</small><strong><?= number_format($dashboardData['unique_pages'], 0, ',', '.') ?></strong><span>Son 30 günde benzersiz rota</span></div></div>
+                    <div class="audit-insight-card"><span class="audit-insight-icon green"><i class="bx bx-mobile-alt"></i></span><div><small>Personel PWA Trafiği</small><strong><?= number_format($dashboardData['month_pwa_views'], 0, ',', '.') ?></strong><span>Son 30 gün / <?= number_format($dashboardData['month_views'], 0, ',', '.') ?> toplam ziyaret</span></div></div>
+                </div>
+
+                <div class="audit-detail-grid">
+                    <section class="audit-panel mb-0">
+                        <div class="d-flex justify-content-between align-items-start"><div><div class="audit-panel-title"><i class="bx bx-user-voice me-1"></i> Personel &amp; Kullanıcı Sayfa Hareketleri</div><small class="text-muted">Son 30 günde kim, hangi sayfaları ne kadar ziyaret etti?</small></div><span class="badge bg-soft-primary text-primary">En Aktif 8</span></div>
+                        <div class="audit-ranking-list">
+                            <?php foreach ($dashboardData['top_visitors'] as $index => $visitor):
+                                $visitorName = (string) $visitor['actor_name']; ?>
+                                <div class="audit-ranking-row">
+                                    <span class="audit-rank-avatar"><?= htmlspecialchars(mb_substr($visitorName, 0, 1, 'UTF-8'), ENT_QUOTES, 'UTF-8') ?></span>
+                                    <div class="audit-rank-main">
+                                        <strong><?= htmlspecialchars($visitorName, ENT_QUOTES, 'UTF-8') ?></strong>
+                                        <small><?= number_format((int) $visitor['page_count'], 0, ',', '.') ?> farklı sayfa · Son ziyaret <?= date('d.m.Y H:i', strtotime((string) $visitor['last_visit'])) ?></small>
+                                        <div class="audit-page-chips">
+                                            <?php foreach ($visitor['pages'] as $page): ?>
+                                                <span class="audit-page-chip" title="<?= htmlspecialchars((string) $page['name'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars((string) $page['name'], ENT_QUOTES, 'UTF-8') ?> · <?= number_format((int) $page['visits'], 0, ',', '.') ?></span>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+                                    <div class="audit-rank-value"><strong><?= number_format((int) $visitor['visit_count'], 0, ',', '.') ?></strong><small>ziyaret</small></div>
+                                </div>
+                            <?php endforeach; ?>
+                            <?php if (!$dashboardData['top_visitors']): ?><div class="audit-empty"><i class="bx bx-info-circle me-1"></i>Son 30 günde sayfa ziyareti bulunamadı.</div><?php endif; ?>
+                        </div>
+                    </section>
+
+                    <div class="audit-stack">
+                        <section class="audit-panel mb-0">
+                            <div class="audit-panel-title"><i class="bx bx-bar-chart-square me-1"></i> En Çok Ziyaret Edilen Sayfalar</div>
+                            <small class="text-muted">Son 30 günlük yoğunluk</small>
+                            <div class="mt-2">
+                                <?php foreach ($dashboardData['top_pages'] as $page): ?>
+                                    <div class="audit-popular-row"><div><div class="audit-popular-name" title="<?= htmlspecialchars((string) $page['page_name'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars((string) $page['page_name'], ENT_QUOTES, 'UTF-8') ?></div><div class="audit-popular-meta"><?= number_format((int) $page['visitor_count'], 0, ',', '.') ?> benzersiz ziyaretçi</div></div><span class="audit-popular-count"><?= number_format((int) $page['visit_count'], 0, ',', '.') ?></span></div>
+                                <?php endforeach; ?>
+                            </div>
+                        </section>
+
+                        <section class="audit-panel mb-0">
+                            <div class="audit-panel-title"><i class="bx bx-devices me-1"></i> Platform Dağılımı</div>
+                            <?php $platformTotal = max(1, array_sum(array_map(static fn($row) => (int) $row['visit_count'], $dashboardData['platforms']))); ?>
+                            <?php foreach ($dashboardData['platforms'] as $platform): $platformRate = ((int) $platform['visit_count'] / $platformTotal) * 100; ?>
+                                <div class="audit-platform-row"><div class="audit-platform-head"><span><?= htmlspecialchars((string) $platform['platform_name'], ENT_QUOTES, 'UTF-8') ?></span><strong><?= number_format((int) $platform['visit_count'], 0, ',', '.') ?> · %<?= number_format($platformRate, 1, ',', '.') ?></strong></div><div class="audit-platform-track"><div class="audit-platform-fill" style="width:<?= min(100, max(0, $platformRate)) ?>%"></div></div></div>
+                            <?php endforeach; ?>
+                        </section>
+                    </div>
+                </div>
+
                 <section class="audit-panel">
                     <div class="d-flex justify-content-between align-items-center mb-3"><div><div class="audit-panel-title"><i class="bx bx-line-chart me-1"></i> Son 14 Günlük Aktivite Trendi</div><small class="text-muted">Operasyonel işlemler, sayfa trafiği ve oturum açma hacmi</small></div><span class="badge bg-primary"><i class="bx bx-calendar me-1"></i> Son 14 Gün</span></div>
                     <div id="activityTrendChart"></div>
+                </section>
+
+                <section class="audit-panel">
+                    <div class="d-flex justify-content-between align-items-start"><div><div class="audit-panel-title"><i class="bx bx-error-circle me-1"></i> Son Kritik Olaylar</div><small class="text-muted">Hızlı inceleme gerektirebilecek en yeni kayıtlar</small></div><button type="button" class="btn btn-sm btn-outline-danger audit-filter" data-category="critical">Tüm Kritik Kayıtlar</button></div>
+                    <div class="mt-2">
+                        <?php foreach ($dashboardData['recent_critical'] as $critical): ?>
+                            <div class="audit-critical-row"><span class="audit-critical-dot"></span><div class="audit-critical-body"><strong><?= htmlspecialchars((string) $critical['action_type'], ENT_QUOTES, 'UTF-8') ?> · <?= htmlspecialchars((string) $critical['actor_name'], ENT_QUOTES, 'UTF-8') ?></strong><p title="<?= htmlspecialchars((string) $critical['description'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars((string) $critical['description'], ENT_QUOTES, 'UTF-8') ?></p><small><?= date('d.m.Y H:i:s', strtotime((string) $critical['created_at'])) ?></small></div></div>
+                        <?php endforeach; ?>
+                        <?php if (!$dashboardData['recent_critical']): ?><div class="audit-empty"><i class="bx bx-check-circle me-1"></i>Kritik olay kaydı bulunmuyor.</div><?php endif; ?>
+                    </div>
                 </section>
             </div>
 

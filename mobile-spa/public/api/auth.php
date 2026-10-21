@@ -368,6 +368,50 @@ try {
         respond(['success' => true, ...sessionPayload()]);
     }
 
+    if ($action === 'page-view') {
+        $user = $_SESSION['user'] ?? null;
+        if (!$user || empty($user->id) || empty($_SESSION['firma_id'])) {
+            respond(['success' => false, 'message' => 'Oturum veya çalışma alanı bulunamadı.'], 401);
+        }
+
+        $routeNames = [
+            'home' => 'ana-sayfa',
+            'evrak-takip' => 'evrak-takip',
+            'giden-evrak' => 'giden-evrak',
+            'arac-takip' => 'arac-takip',
+            'km-onaylari' => 'km-onaylari',
+            'tasks' => 'gorevler',
+            'reports' => 'raporlar',
+            'requests' => 'talepler',
+            'profile' => 'profil',
+            'personnel' => 'personel/list',
+            'personnel-detail' => 'personel/detay',
+            'personnel-section' => 'personel/bolum',
+            'personnel-create' => 'personel/yeni',
+            'personnel-edit' => 'personel/duzenle',
+            'cari-list' => 'cari/list',
+            'cari-detail' => 'cari/detay',
+            'fatura' => 'fatura',
+            'kasa' => 'kasa',
+            'payroll' => 'bordro',
+            'sozlesme-hakedis' => 'sozlesme-hakedis',
+            'sozlesme-detail' => 'sozlesme/detay',
+            'hakedis-detail' => 'hakedis/detay',
+            'puantaj' => 'personel/puantaj',
+            'kacak-kontrol' => 'kacak-kontrol',
+            'nobet-onay' => 'nobet-onay',
+            'ihbar' => 'ihbar',
+            'logs' => 'logs/list',
+        ];
+        $routeName = trim((string) ($data['route_name'] ?? ''));
+        if (!isset($routeNames[$routeName])) {
+            respond(['success' => false, 'message' => 'Geçersiz sayfa bilgisi.'], 422);
+        }
+
+        (new SystemLogModel())->logPageView((int) $user->id, $routeNames[$routeName], 'Mobil SPA');
+        respond(['success' => true]);
+    }
+
     if ($action === 'logout') {
         session_unset();
         session_destroy();
