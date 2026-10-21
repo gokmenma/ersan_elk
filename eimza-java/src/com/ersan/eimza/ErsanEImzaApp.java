@@ -19,7 +19,7 @@ public class ErsanEImzaApp {
 
     public static void main(String[] args) {
         System.out.println("=================================================");
-        System.out.println("  Ersan E-İmza Yerel Köprü Servisi (Java v1.2.0) ");
+        System.out.println("  Ersan E-İmza Yerel Köprü Servisi (Java v1.2.2) ");
         System.out.println("  Dinleme Adresi: http://127.0.0.1:9191          ");
         System.out.println("=================================================");
 
@@ -64,7 +64,7 @@ public class ErsanEImzaApp {
         JPanel pnlCenter = new JPanel(new GridLayout(3, 1, 8, 8));
         pnlCenter.setBorder(BorderFactory.createEmptyBorder(15, 20, 10, 20));
 
-        JLabel lblTitle = new JLabel("Ersan E-İmza Yerel Ajanı (v1.2.0 PAdES)", JLabel.LEFT);
+        JLabel lblTitle = new JLabel("Ersan E-İmza Yerel Ajanı (v1.2.2 PAdES)", JLabel.LEFT);
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
         lblTitle.setForeground(new Color(33, 37, 41));
 
@@ -88,7 +88,7 @@ public class ErsanEImzaApp {
         JButton btnMinimize = new JButton("Arka Plana Al");
         btnMinimize.addActionListener(e -> mainFrame.setVisible(false));
 
-        JButton btnRestart = new JButton("Ajanı Yeniden Başlat");
+        JButton btnRestart = new JButton("Bağlantıyı Yenile");
         btnRestart.addActionListener(e -> restartAgent());
 
         JButton btnExit = new JButton("Tamamen Kapat");
@@ -112,15 +112,7 @@ public class ErsanEImzaApp {
     private static void refreshCardStatus() {
         new Thread(() -> {
             TokenManager.TokenStatus ts = TokenManager.detectActiveToken();
-            SwingUtilities.invokeLater(() -> {
-                if (ts.success) {
-                    lblCard.setText("✓ " + ts.ownerName + " (" + ts.deviceType + ")");
-                    lblCard.setForeground(new Color(25, 135, 84));
-                } else {
-                    lblCard.setText("! USB E-İmza Kartı Takılı Değil");
-                    lblCard.setForeground(new Color(220, 53, 69));
-                }
-            });
+            SwingUtilities.invokeLater(() -> updateCardStatus(ts));
         }).start();
     }
 
@@ -135,7 +127,7 @@ public class ErsanEImzaApp {
         MenuItem itemRefresh = new MenuItem("Kartı Yeniden Tara");
         itemRefresh.addActionListener(e -> refreshCardStatus());
 
-        MenuItem itemRestart = new MenuItem("Ajanı Yeniden Başlat");
+        MenuItem itemRestart = new MenuItem("Bağlantıyı Yenile");
         itemRestart.addActionListener(e -> restartAgent());
 
         MenuItem itemExit = new MenuItem("Tamamen Kapat");
@@ -171,22 +163,23 @@ public class ErsanEImzaApp {
 
     private static void restartAgent() {
         if (lblStatus != null) {
-            lblStatus.setText("● Ajan yeniden başlatılıyor...");
+            lblStatus.setText("● Bağlantı ve kart bilgisi yenileniyor...");
             lblStatus.setForeground(new Color(255, 152, 0));
         }
         new Thread(() -> {
             try {
-                if (server != null) server.stop();
+                // 9191 servisini kapatıp aynı porta yeniden bağlanmak bazı kurumsal
+                // Windows güvenlik ürünlerinde askıda kalabiliyor. Servis çalışırken
+                // yalnız kart önbelleğini yenilemek güvenli ve yeterlidir.
                 TokenManager.clearCache();
-                server = new ErsanHttpServer();
-                server.start();
+                TokenManager.TokenStatus tokenStatus = TokenManager.detectActiveToken();
                 SwingUtilities.invokeLater(() -> {
                     lblStatus.setText("● Servis Aktif (http://127.0.0.1:9191)");
                     lblStatus.setForeground(new Color(25, 135, 84));
-                    refreshCardStatus();
+                    updateCardStatus(tokenStatus);
                 });
                 if (trayIcon != null) {
-                    trayIcon.displayMessage("Ersan E-İmza", "Ajan başarıyla yeniden başlatıldı.", TrayIcon.MessageType.INFO);
+                    trayIcon.displayMessage("Ersan E-İmza", "Bağlantı ve kart bilgisi yenilendi.", TrayIcon.MessageType.INFO);
                 }
             } catch (Exception ex) {
                 SwingUtilities.invokeLater(() -> {
@@ -195,6 +188,17 @@ public class ErsanEImzaApp {
                 });
             }
         }, "ersan-agent-restart").start();
+    }
+
+    private static void updateCardStatus(TokenManager.TokenStatus ts) {
+        if (lblCard == null) return;
+        if (ts.success) {
+            lblCard.setText("✓ " + ts.ownerName + " (" + ts.deviceType + ")");
+            lblCard.setForeground(new Color(25, 135, 84));
+        } else {
+            lblCard.setText("! USB E-İmza Kartı Takılı Değil");
+            lblCard.setForeground(new Color(220, 53, 69));
+        }
     }
 
     private static void exitAgent() {

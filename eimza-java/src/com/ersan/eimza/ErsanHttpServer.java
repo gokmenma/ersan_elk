@@ -13,20 +13,28 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Base64;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class ErsanHttpServer {
 
     public static final int PORT = 9191;
-    public static final String VERSION = "1.2.0 (PAdES + Portable OpenSC)";
+    public static final String VERSION = "1.2.2 (PAdES + AKİS EC/RSA)";
 
     private HttpServer server;
+    private ExecutorService executor;
 
     public void start() throws IOException {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", PORT), 0);
         server.createContext("/", new MainHandler());
-        server.setExecutor(null);
+        executor = Executors.newFixedThreadPool(4, runnable -> {
+            Thread thread = new Thread(runnable, "ersan-http-worker");
+            thread.setDaemon(true);
+            return thread;
+        });
+        server.setExecutor(executor);
         server.start();
         System.out.println("Ersan E-İmza Java Servisi http://127.0.0.1:" + PORT + " üzerinde başlatıldı.");
     }
@@ -34,6 +42,11 @@ public class ErsanHttpServer {
     public void stop() {
         if (server != null) {
             server.stop(0);
+            server = null;
+        }
+        if (executor != null) {
+            executor.shutdownNow();
+            executor = null;
         }
     }
 

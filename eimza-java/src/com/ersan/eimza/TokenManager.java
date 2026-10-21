@@ -65,6 +65,9 @@ public class TokenManager {
             list.add("/usr/lib/libeToken.so");           // SafeNet
             list.add("/usr/lib64/libeToken.so");
             list.add("/usr/lib/x86_64-linux-gnu/libeToken.so");
+            list.add("/opt/Akia/libakisp11.so");             // AKİS akia-bin varsayılan kurulumu
+            list.add("/opt/arksigner/drivers/akis/x64/libakisp11.so");
+            list.add("/usr/lib/jvm/java-8-openjdk/jre/lib/amd64/libakisp11.so");
             list.add("/usr/lib/libakisp11.so");          // AKİS
             list.add("/usr/lib64/libakisp11.so");
             list.add("/usr/lib/opensc-pkcs11.so");
@@ -303,14 +306,15 @@ public class TokenManager {
                 Date now = new Date();
                 byte[] signedAttrsDer = Asn1Der.buildCadesSignedAttrs(rawDigest, certDer, now);
 
-                Signature rsa = Signature.getInstance("SHA256withRSA", p);
-                rsa.initSign(privKey);
-                rsa.update(signedAttrsDer);
-                byte[] rsaSigBytes = rsa.sign();
+                String keyAlgorithm = signerCert.getPublicKey().getAlgorithm();
+                Signature signer = Signature.getInstance(signatureName(keyAlgorithm), p);
+                signer.initSign(privKey);
+                signer.update(signedAttrsDer);
+                byte[] signatureBytes = signer.sign();
 
-                verifyCardSignature(certDer, signedAttrsDer, rsaSigBytes);
+                verifyCardSignature(certDer, signedAttrsDer, signatureBytes);
 
-                return Asn1Der.buildCmsSignedData(rawDigest, certDer, signedAttrsDer, rsaSigBytes);
+                return Asn1Der.buildCmsSignedData(rawDigest, certDer, signedAttrsDer, signatureBytes, keyAlgorithm);
             }
         } catch (Throwable t) {
             String err = t.getMessage() != null ? t.getMessage() : "";
@@ -346,6 +350,8 @@ public class TokenManager {
         }
         byte[] certDer = Files.readAllBytes(certFile.toPath());
         certFile.delete();
+        X509Certificate signingCertificate = readCertificate(certDer);
+        String keyAlgorithm = signingCertificate.getPublicKey().getAlgorithm();
 
         // 2. CAdES SignedAttributes hazırla
         Date now = new Date();
@@ -355,12 +361,16 @@ public class TokenManager {
         File outData = File.createTempFile("sign_out_", ".bin");
         inData.deleteOnExit();
         outData.deleteOnExit();
-        Files.write(inData.toPath(), signedAttrsDer);
+        byte[] tokenInput = isEcAlgorithm(keyAlgorithm)
+                ? MessageDigest.getInstance("SHA-256").digest(signedAttrsDer)
+                : signedAttrsDer;
+        Files.write(inData.toPath(), tokenInput);
 
         // 3. İmzala
         ToolResult signResult = runTool(new String[]{
                 toolBin, "--module", modulePath, "--login", "--pin", pin,
-                "--sign", "--id", signingObjects.privateKeyId, "-m", "SHA256-RSA-PKCS",
+                "--sign", "--id", signingObjects.privateKeyId, "-m",
+                isEcAlgorithm(keyAlgorithm) ? "ECDSA" : "SHA256-RSA-PKCS",
                 "--input-file", inData.getAbsolutePath(),
                 "--output-file", outData.getAbsolutePath()
         });
@@ -377,25 +387,60 @@ public class TokenManager {
             throw new RuntimeException("Token imzalama hatası: " + summarizeToolError(err));
         }
 
-        byte[] rsaSigBytes = Files.readAllBytes(outData.toPath());
+        byte[] signatureBytes = Files.readAllBytes(outData.toPath());
         outData.delete();
 
-        verifyCardSignature(certDer, signedAttrsDer, rsaSigBytes);
+        if (isEcAlgorithm(keyAlgorithm)) {
+            signatureBytes = ecdsaRawToDer(signatureBytes);
+        }
 
-        return Asn1Der.buildCmsSignedData(rawDigest, certDer, signedAttrsDer, rsaSigBytes);
+        verifyCardSignature(certDer, signedAttrsDer, signatureBytes);
+
+        return Asn1Der.buildCmsSignedData(rawDigest, certDer, signedAttrsDer, signatureBytes, keyAlgorithm);
     }
 
     private static void verifyCardSignature(byte[] certDer, byte[] signedAttrsDer, byte[] rsaSigBytes) throws Exception {
-        CertificateFactory factory = CertificateFactory.getInstance("X.509");
-        X509Certificate certificate = (X509Certificate) factory.generateCertificate(
-                new ByteArrayInputStream(certDer)
-        );
-        Signature verifier = Signature.getInstance("SHA256withRSA");
+        X509Certificate certificate = readCertificate(certDer);
+        Signature verifier = Signature.getInstance(signatureName(certificate.getPublicKey().getAlgorithm()));
         verifier.initVerify(certificate.getPublicKey());
         verifier.update(signedAttrsDer);
         if (!verifier.verify(rsaSigBytes)) {
             throw new RuntimeException("Kartın ürettiği elektronik imza doğrulanamadı. Lütfen kartı çıkarıp yeniden takınız.");
         }
+    }
+
+    private static X509Certificate readCertificate(byte[] certDer) throws Exception {
+        CertificateFactory factory = CertificateFactory.getInstance("X.509");
+        return (X509Certificate) factory.generateCertificate(new ByteArrayInputStream(certDer));
+    }
+
+    private static boolean isEcAlgorithm(String algorithm) {
+        return algorithm != null && (algorithm.equalsIgnoreCase("EC") || algorithm.toUpperCase(Locale.ROOT).contains("ECDSA"));
+    }
+
+    private static String signatureName(String keyAlgorithm) {
+        return isEcAlgorithm(keyAlgorithm) ? "SHA256withECDSA" : "SHA256withRSA";
+    }
+
+    /** PKCS#11 CKM_ECDSA r||s çıktısını CMS'in beklediği ASN.1 DER SEQUENCE biçimine çevirir. */
+    private static byte[] ecdsaRawToDer(byte[] raw) throws IOException {
+        if (raw == null || raw.length == 0 || (raw.length & 1) != 0) {
+            throw new IOException("Kart geçersiz ECDSA imza verisi üretti.");
+        }
+        int half = raw.length / 2;
+        byte[] r = unsignedDerInteger(Arrays.copyOfRange(raw, 0, half));
+        byte[] s = unsignedDerInteger(Arrays.copyOfRange(raw, half, raw.length));
+        return Asn1Der.sequence(Asn1Der.encodeTlv(0x02, r), Asn1Der.encodeTlv(0x02, s));
+    }
+
+    private static byte[] unsignedDerInteger(byte[] value) {
+        int start = 0;
+        while (start < value.length - 1 && value[start] == 0) start++;
+        byte[] normalized = Arrays.copyOfRange(value, start, value.length);
+        if ((normalized[0] & 0x80) == 0) return normalized;
+        byte[] positive = new byte[normalized.length + 1];
+        System.arraycopy(normalized, 0, positive, 1, normalized.length);
+        return positive;
     }
 
     private static SigningObjects findSigningObjects(String toolBin, String modulePath, String pin) throws Exception {

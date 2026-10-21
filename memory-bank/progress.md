@@ -1458,6 +1458,8 @@
 - [x] Sağlanan PTT WSDL dokümanına göre `MimeYap eHash → detached CAdES-BES → SmimeGonder` akışı teyit edildi; SHA-256 algoritma parametresi strict CMS uyumu için absent kodlandı ve donanımsal RSA çıktısına ajan içi doğrulama eklendi. `1.1.4` paketi OpenSSL detached CMS doğrulamasından geçti.
 - [x] Linux/masaüstü kullanımında terminal gereksinimi kaldırıldı: ana pencere ve tepsi menüsüne yeniden başlatma/tam kapatma eylemleri, tepsi ikonunu temizleme ve ikinci JAR açılışında mevcut pencereyi gösterme davranışı eklendi; `1.1.5` JAR derlemesi doğrulandı.
 - [x] Linux/OpenSC kartlarında farklı CKA_ID kullanan özel anahtar ve sertifika, sabit deneme verisi üzerinde gerçek RSA imza doğrulamasıyla eşleştirilecek şekilde ajan geliştirildi; `1.1.6` Java 8 uyumlu paket derlendi.
+- [x] Kurumsal Windows ortamında ajanı yeniden başlatma sırasında 9191 portunun askıda kalma riski kaldırıldı; eylem `Bağlantıyı Yenile` olarak kart önbelleği yenilemesine çevrildi ve HTTP servisinde dört daemon worker kullanıldı. `1.2.1` paketi derlenip sürüm içeriği doğrulandı.
+- [x] Linux `akia-bin` AKİS sürücüsü `/opt/Akia/libakisp11.so` adaylarına eklendi; gerçek ATR19 kart/sertifika algılaması başarıyla doğrulandı. Aynı kartın EC anahtarı için PKCS#11 ECDSA imzalama, DER kodlama/doğrulama ve CMS algoritma desteği eklenerek `1.2.2` JAR üretildi.
 
 # 2026-10-20 — Cari hesap hareketleri Excel dışa aktarımı
 

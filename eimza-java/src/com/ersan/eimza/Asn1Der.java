@@ -16,6 +16,7 @@ public class Asn1Der {
     public static final String OID_ID_SIGNED_DATA = "1.2.840.113549.1.7.2";
     public static final String OID_SHA256 = "2.16.840.1.101.3.4.2.1";
     public static final String OID_RSA_ENCRYPTION = "1.2.840.113549.1.1.1";
+    public static final String OID_ECDSA_WITH_SHA256 = "1.2.840.10045.4.3.2";
 
     public static final String OID_CONTENT_TYPE = "1.2.840.113549.1.9.3";
     public static final String OID_MESSAGE_DIGEST = "1.2.840.113549.1.9.4";
@@ -224,6 +225,10 @@ public class Asn1Der {
     }
 
     public static byte[] buildCmsSignedData(byte[] rawDigest, byte[] certDer, byte[] signedAttrsDer, byte[] rsaSigBytes) throws Exception {
+        return buildCmsSignedData(rawDigest, certDer, signedAttrsDer, rsaSigBytes, "RSA");
+    }
+
+    public static byte[] buildCmsSignedData(byte[] rawDigest, byte[] certDer, byte[] signedAttrsDer, byte[] signatureBytes, String keyAlgorithm) throws Exception {
         CertInfo ci = extractCertInfo(certDer);
 
         // RFC 5754: SHA-256 AlgorithmIdentifier parametreleri MUST be absent.
@@ -237,8 +242,11 @@ public class Asn1Der {
         byte[] certificates = encodeTlv(0xA0, certDer);
 
         byte[] sid = sequence(ci.issuerDer, ci.serialDer);
-        byte[] sigAlg = sequence(oid(OID_RSA_ENCRYPTION), nullVal());
-        byte[] sigVal = octetString(rsaSigBytes);
+        boolean ec = keyAlgorithm != null && (keyAlgorithm.equalsIgnoreCase("EC") || keyAlgorithm.toUpperCase(Locale.ROOT).contains("ECDSA"));
+        byte[] sigAlg = ec
+                ? sequence(oid(OID_ECDSA_WITH_SHA256))
+                : sequence(oid(OID_RSA_ENCRYPTION), nullVal());
+        byte[] sigVal = octetString(signatureBytes);
 
         // AuthenticatedAttributes in SignerInfo is tagged [0] IMPLICIT
         // Skip the initial SET tag (0x31) and length header
