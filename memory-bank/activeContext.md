@@ -1,5 +1,15 @@
 # Active Context
 
+## Mobil SPA — Personel Zimmetler ve İş Takip Açılış Performansı (2026-10-21)
+- Bazı personellerde çok yüksek zimmet geçmişi bulunduğu doğrulandı; örnek personel 155 için 8.840 demirbaş zimmeti tek yanıtta yükleniyor ve Vue tarafından karta dönüştürülüyordu.
+- Mobil zimmet listesi son 100 kayıtla sınırlandı; toplam/aktif/iade/kategori özetleri ayrı toplu sorguyla tüm kayıtlar üzerinden eksiksiz hesaplanıyor. Zimmet sorgusuna firma izolasyonu eklendi.
+- `sql/2026_10_21_optimize_mobile_personnel_assets.sql` oluşturulup uygulandı; personel/durum/tarih zimmet erişimi için birleşik indeks eklendi.
+- Demirbaş seçenekleri bölüm açılışından çıkarıldı ve yalnız “Yeni Zimmet” modalı açıldığında yükleniyor.
+- Personel hızlı seçim listesi alt bölüm açılışından çıkarıldı ve yalnız personel seçici açıldığında ayrı `quick_list` aksiyonundan yükleniyor.
+- İş takip bölümünün ilk listesi son 50 kayıtla sınırlandı; mevcut tarih filtreli yenileme aksiyonu ayrıntılı sorgulamayı koruyor.
+- Yoğun örnekte zimmet metodu yaklaşık 440 ms / 8.840 karttan yaklaşık 71 ms / 103 karta (100 demirbaş + 3 araç), iş takip yanıtı 50 karta ve yaklaşık 22 KB'a indirildi.
+- PHP lint, Vite production build, public/dist API eşitliği ve SQL tekrar çalıştırma kontrolleri geçti.
+
 ## Mobil SPA — Ana Sayfa Performans Kontrolü (2026-10-21)
 - `HomeView`, `dashboard.js`, `dashboard.php` ve `MobileDashboardModel` salt okunur olarak incelendi.
 - Personel detayındaki ağır eager-load sorunu ana sayfada aynı ölçekte yok. Yetkili tüm kart metotları firma 1 gerçek verisiyle toplam yaklaşık **82,87 ms**, birleşik model JSON'u yaklaşık **1,4 KB** üretti.
@@ -2959,3 +2969,4 @@
 - HTÇ modalındaki seçim kutuları 22px özel durumlu modern checkbox tasarımına geçirildi; toplu seçim için checked/indeterminate durumları senkronize edildi. Modal viewport yüksekliğine sınırlandı, tablo gövdesi dokunmatik destekli bağımsız scroll ve sabit kolon başlığı kazandı.
 - Pazar HTÇ modalı açıldığında seçili ayda bugünü aşmayan en son Pazar varsayılan seçilir; geçmiş aylarda ayın son Pazarı, henüz tamamlanmış Pazar bulunmayan dönemlerde ilk Pazar kullanılır.
 - Modalda `HTÇ mevcut` görünen otomatik kaydın puantaj takviminde görünmemesi giderildi: takvim sorgusu onay değerinin Türkçe/ASCII varyantlarını kabul ediyor, otomatik kaynak/kural bilgisini taşıyor ve HTÇ hücresini kilitli gösteriyor. Atama sonrası ilgili bekleyen istemci hücreleri temizlenip modal kapatılarak takvim doğrudan yenileniyor.
+- Son Pazar varsayılanında kapsam dışındaki `formatLocalDate` çağrısı kaldırıldı; yerel tarih modal açma fonksiyonu içinde doğrudan üretilerek `ReferenceError` giderildi.

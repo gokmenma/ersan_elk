@@ -1903,8 +1903,23 @@ class MobilePersonelModel extends Model
         $zimmetModel = new \App\Model\DemirbasZimmetModel();
         $aracZimmetModel = new \App\Model\AracZimmetModel();
 
-        $rawZimmetler = $zimmetModel->getByPersonel($personelId) ?: [];
+        // Mobil listede binlerce geçmiş kaydın tek istekte taşınmasını ve DOM'a
+        // basılmasını engelle; özet değerler aşağıdaki toplu sorgudan tam alınır.
+        $listLimit = 100;
+        $rawZimmetler = $zimmetModel->getByPersonel($personelId, $firmaId, $listLimit) ?: [];
         $rawAracZimmetler = $aracZimmetModel->getHistoryByPersonel($personelId) ?: [];
+
+        $summaryStmt = $this->db->prepare("SELECT
+                z.durum,
+                COALESCE(NULLIF(TRIM(k.tur_adi), ''), 'Genel') AS kategori_adi,
+                COUNT(*) AS adet
+            FROM demirbas_zimmet z
+            INNER JOIN demirbas d ON d.id = z.demirbas_id AND d.firma_id = :firma_id
+            LEFT JOIN tanimlamalar k ON k.id = d.kategori_id AND k.grup = 'demirbas_kategorisi'
+            WHERE z.personel_id = :personel_id
+            GROUP BY z.durum, COALESCE(NULLIF(TRIM(k.tur_adi), ''), 'Genel')");
+        $summaryStmt->execute([':firma_id' => $firmaId, ':personel_id' => $personelId]);
+        $demirbasSummaryRows = $summaryStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         $items = [];
         $toplamZimmet = 0;
@@ -1912,6 +1927,18 @@ class MobilePersonelModel extends Model
         $iadeZimmet = 0;
         $aracZimmet = 0;
         $kategoriSayilari = [];
+
+        foreach ($demirbasSummaryRows as $summaryRow) {
+            $adet = (int) ($summaryRow['adet'] ?? 0);
+            $kategori = (string) ($summaryRow['kategori_adi'] ?? 'Genel');
+            $toplamZimmet += $adet;
+            if (($summaryRow['durum'] ?? '') === 'teslim') {
+                $aktifZimmet += $adet;
+            } else {
+                $iadeZimmet += $adet;
+            }
+            $kategoriSayilari[$kategori] = ($kategoriSayilari[$kategori] ?? 0) + $adet;
+        }
 
         foreach ($rawZimmetler as $z) {
             $encId = \App\Helper\Security::encrypt((string) $z->id);
@@ -1921,14 +1948,6 @@ class MobilePersonelModel extends Model
             }
             $durum = (string) ($z->durum ?? 'teslim');
             $isTeslim = ($durum === 'teslim');
-
-            $toplamZimmet++;
-            if ($isTeslim) {
-                $aktifZimmet++;
-            } else {
-                $iadeZimmet++;
-            }
-            $kategoriSayilari[$kat] = ($kategoriSayilari[$kat] ?? 0) + 1;
 
             $items[] = [
                 'id' => $encId,
@@ -2014,6 +2033,8 @@ class MobilePersonelModel extends Model
                 'iade_zimmet' => $iadeZimmet,
                 'arac_zimmet' => $aracZimmet,
                 'kategori_sayilari' => $kategoriSayilari,
+                'liste_sinirli' => $toplamZimmet > count($items),
+                'liste_limiti' => $listLimit,
             ],
         ];
     }

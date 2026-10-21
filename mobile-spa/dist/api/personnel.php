@@ -146,7 +146,7 @@ try {
         }
 
         $work = $section === 'calisma' ? $model->getWorkDetails($personelId, $firmaId) : [];
-        $quickList = $model->mobileDirectoryQuickList($firmaId);
+        $quickList = $section === 'profile' ? $model->mobileDirectoryQuickList($firmaId) : [];
         $payload = [
             'success' => true,
             'can_edit' => $canEdit,
@@ -175,13 +175,17 @@ try {
             $payload += ['icralar' => $data['items'], 'icra_ozet' => $data['summary'], 'icra_daireleri' => $data['icra_daireleri']];
         } elseif ($section === 'zimmetler') {
             $data = $model->getZimmetDetails($personelId, $firmaId);
-            $payload += ['zimmetler' => $data['items'], 'zimmet_ozet' => $data['summary'], 'demirbas_options' => $model->getDemirbasOptions($firmaId)];
+            $payload += ['zimmetler' => $data['items'], 'zimmet_ozet' => $data['summary']];
         } elseif ($section === 'puantaj') {
-            $data = $model->getPuantajIsTakipDetails($personelId, $firmaId);
+            $data = $model->getPuantajIsTakipDetails($personelId, $firmaId, ['limit' => 50]);
             $payload += ['puantaj_items' => $data['items'], 'puantaj_ozet' => $data['summary'], 'puantaj_work_types' => $data['work_types'], 'puantaj_work_results' => $data['work_results']];
         }
 
         personnelResponse($payload);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && $action === 'quick_list') {
+        personnelResponse(['success' => true, 'items' => $model->mobileDirectoryQuickList($firmaId)]);
     }
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'save_general') {

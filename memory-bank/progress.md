@@ -1,5 +1,12 @@
 # Progress
 
+## 2026-10-21 — Personel Zimmetler ve İş Takip Performans Düzeltmesi
+- [x] Binlerce zimmet kaydının tek yanıtta ve DOM'da yüklenmesi engellendi; tam özet + son 100 kayıt modeli uygulandı.
+- [x] Zimmet sorgusuna firma izolasyonu ve birleşik performans indeksi eklendi.
+- [x] Demirbaş seçenekleri ve personel hızlı listesi kullanıcı aksiyonuna kadar lazy-load edildi.
+- [x] İş takip ilk yükü son 50 kayıtla sınırlandı.
+- [x] Yoğun veri, PHP lint, production build, public/dist eşitliği ve tekrarlanabilir SQL testleri tamamlandı.
+
 ## 2026-10-21 — Mobil SPA Ana Sayfa Performans Kontrolü
 - [x] Ana sayfa istemci yükleme akışı, dashboard API ve tüm model kart metotları incelendi.
 - [x] Gerçek veride tüm kartlar toplam ~82,87 ms ve ~1,4 KB olarak ölçüldü.
@@ -1731,3 +1738,4 @@
 - [x] Modal checkbox UI'ı yenilendi; toplu seçim ara durumu, sabit tablo başlığı ve bağımsız masaüstü/mobil scroll düzeltildi.
 - [x] HTÇ kontrol modalının varsayılan tarihi seçili dönemdeki son tamamlanmış Pazar olarak ayarlandı.
 - [x] Otomatik HTÇ kayıtlarının modalda mevcut olup takvimde görünmemesi düzeltildi; onay varyantları, otomatik kayıt kilidi ve atama sonrası takvim yenilemesi tamamlandı.
+- [x] Pazar HTÇ modalını açarken oluşan `formatLocalDate is not defined` JavaScript hatası giderildi.

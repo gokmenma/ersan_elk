@@ -20,6 +20,9 @@ export const personnelApi = {
   detail(id, section = 'profile') {
     return get('detail', { id, section })
   },
+  quickList() {
+    return get('quick_list')
+  },
   async save(data, csrfToken) {
     const response = await fetch('/api/personnel.php?action=save', {
       method: 'POST',

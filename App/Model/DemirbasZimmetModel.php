@@ -41,7 +41,7 @@ class DemirbasZimmetModel extends Model
             return null;
 
         $sql = $this->db->prepare("
-            SELECT 
+            SELECT
                 " . $this->getZimmetCols() . ",
                 " . $this->getProcessedAmountSubquery() . " as iade_miktar,
                 " . $this->getProcessedDateSubquery() . " as iade_tarihi,
@@ -82,7 +82,7 @@ class DemirbasZimmetModel extends Model
 
         try {
             // Check for deducted amount (sarf/kayip) to restore global miktar (Done via dynamic formula now, but we still need to manage durum)
-            
+
             // If it's active (teslim), manage durum correctly
             if ($zimmet->durum === 'teslim') {
                 $this->db->prepare("UPDATE demirbas SET durum = 'aktif' WHERE id = ? AND durum IN ('Personelde', 'pasif')")->execute([$zimmet->demirbas_id]);
@@ -115,7 +115,7 @@ class DemirbasZimmetModel extends Model
     public function getAllWithDetails()
     {
         $sql = $this->db->prepare("
-            SELECT 
+            SELECT
                 " . $this->getZimmetCols() . ",
                 " . $this->getProcessedAmountSubquery() . " as iade_miktar,
                 " . $this->getProcessedDateSubquery() . " as iade_tarihi,
@@ -141,10 +141,12 @@ class DemirbasZimmetModel extends Model
     /**
      * Personele ait zimmetleri getirir
      */
-    public function getByPersonel($personel_id)
+    public function getByPersonel($personel_id, ?int $firmaId = null, ?int $limit = null)
     {
+        $firmaId = $firmaId ?: (int) ($_SESSION['firma_id'] ?? 0);
+        $limitSql = $limit !== null ? ' LIMIT :limit' : '';
         $sql = $this->db->prepare("
-            SELECT 
+            SELECT
                 " . $this->getZimmetCols() . ",
                 " . $this->getProcessedAmountSubquery() . " as iade_miktar,
                 " . $this->getProcessedDateSubquery() . " as iade_tarihi,
@@ -157,10 +159,17 @@ class DemirbasZimmetModel extends Model
             FROM {$this->table} z
             LEFT JOIN demirbas d ON z.demirbas_id = d.id
             LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
-            WHERE z.personel_id = ?
+            WHERE z.personel_id = :personel_id
+              AND d.firma_id = :firma_id
             ORDER BY z.teslim_tarihi DESC
+            {$limitSql}
         ");
-        $sql->execute([$personel_id]);
+        $sql->bindValue(':personel_id', (int) $personel_id, PDO::PARAM_INT);
+        $sql->bindValue(':firma_id', $firmaId, PDO::PARAM_INT);
+        if ($limit !== null) {
+            $sql->bindValue(':limit', max(1, min(500, $limit)), PDO::PARAM_INT);
+        }
+        $sql->execute();
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
@@ -170,7 +179,7 @@ class DemirbasZimmetModel extends Model
     public function getByDemirbas($demirbas_id)
     {
         $sql = $this->db->prepare("
-            SELECT 
+            SELECT
                 " . $this->getZimmetCols() . ",
                 " . $this->getProcessedAmountSubquery() . " as iade_miktar,
                 " . $this->getProcessedDateSubquery() . " as iade_tarihi,
@@ -191,7 +200,7 @@ class DemirbasZimmetModel extends Model
     public function getActiveZimmetler()
     {
         $sql = $this->db->prepare("
-            SELECT 
+            SELECT
                 " . $this->getZimmetCols() . ",
                 " . $this->getProcessedAmountSubquery() . " as iade_miktar,
                 " . $this->getProcessedDateSubquery() . " as iade_tarihi,
@@ -228,7 +237,7 @@ class DemirbasZimmetModel extends Model
         try {
             // Demirbaş stok kontrolü
             $demirbas = $this->db->prepare("
-                SELECT *, 
+                SELECT *,
                 (COALESCE(miktar, 1) - COALESCE((SELECT SUM(z2.teslim_miktar - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.zimmet_id = z2.id AND h2.hareket_tipi IN ('iade', 'sarf', 'kayip') AND h2.silinme_tarihi IS NULL), 0)) FROM demirbas_zimmet z2 WHERE z2.demirbas_id = demirbas.id AND z2.durum = 'teslim' AND z2.silinme_tarihi IS NULL), 0)) as kalan_miktar
                 FROM demirbas WHERE id = ?
                 FOR UPDATE
@@ -283,7 +292,7 @@ class DemirbasZimmetModel extends Model
 
             // Zimmet kaydı oluştur (eski tablo - geriye uyumluluk)
             $insertSql = $this->db->prepare("
-                INSERT INTO {$this->table} 
+                INSERT INTO {$this->table}
                 (demirbas_id, personel_id, teslim_tarihi, teslim_miktar, durum, aciklama, teslim_eden_id)
                 VALUES (?, ?, ?, ?, 'teslim', ?, ?)
             ");
@@ -440,7 +449,7 @@ class DemirbasZimmetModel extends Model
     public function getStats()
     {
         $sql = $this->db->prepare("
-            SELECT 
+            SELECT
                 COUNT(CASE WHEN z.durum = 'teslim' THEN 1 END) as aktif_zimmet,
                 COUNT(CASE WHEN z.durum = 'iade' THEN 1 END) as iade_edilen,
                 COUNT(CASE WHEN z.durum = 'kayip' THEN 1 END) as kayip,
@@ -459,7 +468,7 @@ class DemirbasZimmetModel extends Model
     public function getTableRow($id)
     {
         $sql = $this->db->prepare("
-            SELECT 
+            SELECT
                 " . $this->getZimmetCols() . ",
                 " . $this->getProcessedAmountSubquery() . " as iade_miktar,
                 " . $this->getProcessedDateSubquery() . " as iade_tarihi,
@@ -546,7 +555,7 @@ class DemirbasZimmetModel extends Model
 
     public function filter($term = null, $colSearches = [])
     {
-        $sql = "SELECT 
+        $sql = "SELECT
                     " . $this->getZimmetCols() . ",
                     " . $this->getProcessedAmountSubquery() . " as iade_miktar,
                     " . $this->getProcessedDateSubquery() . " as iade_tarihi,
@@ -649,9 +658,9 @@ class DemirbasZimmetModel extends Model
         // Global Arama
         $searchWhere = "";
         if (!empty($search)) {
-            $searchWhere .= " AND (d.demirbas_no LIKE :search 
-                            OR d.demirbas_adi LIKE :search 
-                            OR p.adi_soyadi LIKE :search 
+            $searchWhere .= " AND (d.demirbas_no LIKE :search
+                            OR d.demirbas_adi LIKE :search
+                            OR p.adi_soyadi LIKE :search
                             OR k.tur_adi LIKE :search
                             OR d.marka LIKE :search
                             OR d.model LIKE :search
@@ -933,8 +942,8 @@ class DemirbasZimmetModel extends Model
 
             // Zimmet durumunu güncelle (eski tablo - geriye uyumluluk)
             $sql = $this->db->prepare("
-                UPDATE {$this->table} 
-                SET durum = ?, 
+                UPDATE {$this->table}
+                SET durum = ?,
                     aciklama = CONCAT(COALESCE(aciklama, ''), '\n', ?)
                 WHERE id = ?
             ");
@@ -998,8 +1007,8 @@ class DemirbasZimmetModel extends Model
 
             // Zimmet durumunu güncelle
             $sql = $this->db->prepare("
-                UPDATE {$this->table} 
-                SET durum = ?, 
+                UPDATE {$this->table}
+                SET durum = ?,
                     aciklama = CONCAT(COALESCE(aciklama, ''), '\n', ?)
                 WHERE id = ?
             ");
@@ -1045,7 +1054,7 @@ class DemirbasZimmetModel extends Model
 
     /**
      * İş emri sonucuna göre otomatik zimmet/iade işlemlerini kontrol eder ve yürütür
-     * 
+     *
      * APARAT KATEGORİSİ İÇİN ÖZEL DAVRANIŞ:
      * - Aparatlar depodan personele MANUEL olarak verilir
      * - otomatik_zimmet_is_emri_id geldiğinde: Personelin mevcut zimmetindeki aparatı "tüketildi" olarak işaretler
@@ -1060,7 +1069,7 @@ class DemirbasZimmetModel extends Model
         // Tetikleyicileri bir kez çek ve cache'le (Performans için) - ID bazlı
         if (self::$_autoTriggers === null) {
             $sql = $this->db->prepare("
-                SELECT d.id, d.demirbas_adi, d.otomatik_zimmet_is_emri_ids, d.otomatik_iade_is_emri_ids, 
+                SELECT d.id, d.demirbas_adi, d.otomatik_zimmet_is_emri_ids, d.otomatik_iade_is_emri_ids,
                        d.otomatik_zimmetten_dus_is_emri_ids, d.kategori_id,
                        COALESCE(k.tur_adi, '') as kategori_adi,
                        d.otomatik_zimmet_is_emri, d.otomatik_iade_is_emri
@@ -1393,7 +1402,7 @@ class DemirbasZimmetModel extends Model
                     INNER JOIN demirbas d ON z.demirbas_id = d.id
                     LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
                     WHERE d.id IN ($iadePlaceholders)
-                    AND z.personel_id = ? 
+                    AND z.personel_id = ?
                     AND z.durum = 'teslim'
                     ORDER BY z.teslim_tarihi ASC
                 ");
@@ -1428,7 +1437,7 @@ class DemirbasZimmetModel extends Model
 
                             $yeniHurdaAdi = "Sökülen Hurda / " . $z->demirbas_adi;
                             $sqlHurdaInsert = $this->db->prepare("
-                                INSERT INTO demirbas 
+                                INSERT INTO demirbas
                                 (firma_id, kategori_id, demirbas_adi, miktar, kalan_miktar, durum, aciklama, kayit_yapan)
                                 VALUES (?, ?, ?, ?, ?, 'hurda', ?, ?)
                             ");
@@ -1576,7 +1585,7 @@ class DemirbasZimmetModel extends Model
             $yeniDurum = ($processed < (int) $z->teslim_miktar) ? 'teslim' : 'iade';
 
             $sqlUpZimmet = $this->db->prepare("
-                UPDATE {$this->table} 
+                UPDATE {$this->table}
                 SET durum = ?
                 WHERE id = ?
             ");

@@ -1223,9 +1223,17 @@ const quickPersonnelList = ref([])
 const isPersonSheetOpen = ref(false)
 const personSheetSearch = ref('')
 
-function openPersonSheet() {
+async function openPersonSheet() {
   personSheetSearch.value = ''
   isPersonSheetOpen.value = true
+  if (quickPersonnelList.value.length === 0) {
+    try {
+      const result = await personnelApi.quickList()
+      quickPersonnelList.value = result.items || []
+    } catch (err) {
+      showToast(err.message || 'Personel listesi alınamadı.')
+    }
+  }
 }
 
 function closePersonSheet() {
@@ -1761,13 +1769,21 @@ const zimmetIadeRatio = computed(() => {
   return 100 - zimmetAktifRatio.value
 })
 
-function openNewZimmetModal() {
+async function openNewZimmetModal() {
   zimmetFormError.value = ''
   zimmetForm.demirbas_id = ''
   zimmetForm.teslim_miktar = 1
   zimmetForm.teslim_tarihi = new Date().toISOString().slice(0, 10)
   zimmetForm.aciklama = ''
   isZimmetModalOpen.value = true
+  if (demirbasOptions.value.length === 0) {
+    try {
+      const result = await personnelApi.searchDemirbas('')
+      demirbasOptions.value = result.options || []
+    } catch (err) {
+      zimmetFormError.value = err.message || 'Demirbaş seçenekleri alınamadı.'
+    }
+  }
 }
 
 function closeNewZimmetModal() {

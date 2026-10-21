@@ -2338,7 +2338,8 @@ $(document).ready(function () {
     const dates = sundayDatesForSelectedMonth();
     const $select = $("#sunday-htc-date").empty();
     dates.forEach((date) => $select.append(new Option(new Date(date + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric", weekday: "long" }), date)));
-    const today = formatLocalDate(new Date());
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     const completedSundays = dates.filter((date) => date <= today);
     const defaultSunday = completedSundays.length
       ? completedSundays[completedSundays.length - 1]
