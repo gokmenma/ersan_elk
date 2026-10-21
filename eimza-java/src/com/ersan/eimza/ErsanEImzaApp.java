@@ -19,7 +19,7 @@ public class ErsanEImzaApp {
 
     public static void main(String[] args) {
         System.out.println("=================================================");
-        System.out.println("  Ersan E-İmza Yerel Köprü Servisi (Java v1.2.5) ");
+        System.out.println("  Ersan E-İmza Yerel Köprü Servisi (Java v1.2.6) ");
         System.out.println("  Dinleme Adresi: http://127.0.0.1:9191          ");
         System.out.println("=================================================");
 
@@ -56,7 +56,7 @@ public class ErsanEImzaApp {
         } catch (Throwable ignored) {}
 
         mainFrame = new JFrame("Ersan E-İmza Servisi");
-        mainFrame.setSize(650, 290);
+        mainFrame.setSize(730, 300);
         mainFrame.setLocationRelativeTo(null);
         mainFrame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
         mainFrame.setLayout(new BorderLayout(15, 15));
@@ -64,7 +64,7 @@ public class ErsanEImzaApp {
         JPanel pnlCenter = new JPanel(new GridLayout(3, 1, 8, 8));
         pnlCenter.setBorder(BorderFactory.createEmptyBorder(15, 20, 10, 20));
 
-        JLabel lblTitle = new JLabel("Ersan E-İmza Yerel Ajanı (v1.2.5 PAdES)", JLabel.LEFT);
+        JLabel lblTitle = new JLabel("Ersan E-İmza Yerel Ajanı (v1.2.6 PAdES)", JLabel.LEFT);
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
         lblTitle.setForeground(new Color(33, 37, 41));
 
@@ -94,11 +94,15 @@ public class ErsanEImzaApp {
         JButton btnDriver = new JButton("Sürücü DLL Seç");
         btnDriver.addActionListener(e -> choosePkcs11Driver());
 
+        JButton btnDiagnostic = new JButton("Tanılama");
+        btnDiagnostic.addActionListener(e -> showDiagnostic());
+
         JButton btnExit = new JButton("Tamamen Kapat");
         btnExit.addActionListener(e -> exitAgent());
 
         pnlBottom.add(btnRefresh);
         pnlBottom.add(btnDriver);
+        pnlBottom.add(btnDiagnostic);
         pnlBottom.add(btnRestart);
         pnlBottom.add(btnMinimize);
         pnlBottom.add(btnExit);
@@ -143,12 +147,16 @@ public class ErsanEImzaApp {
         MenuItem itemDriver = new MenuItem("Sürücü DLL Seç");
         itemDriver.addActionListener(e -> choosePkcs11Driver());
 
+        MenuItem itemDiagnostic = new MenuItem("Tanılama");
+        itemDiagnostic.addActionListener(e -> showDiagnostic());
+
         MenuItem itemExit = new MenuItem("Tamamen Kapat");
         itemExit.addActionListener(e -> exitAgent());
 
         popup.add(itemOpen);
         popup.add(itemRefresh);
         popup.add(itemDriver);
+        popup.add(itemDiagnostic);
         popup.addSeparator();
         popup.add(itemRestart);
         popup.add(itemExit);
@@ -234,6 +242,16 @@ public class ErsanEImzaApp {
         lblStatus.setText("● Seçilen sürücü kontrol ediliyor...");
         lblStatus.setForeground(new Color(255, 152, 0));
         refreshCardStatus();
+    }
+
+    private static void showDiagnostic() {
+        JTextArea details = new JTextArea(TokenManager.getDiagnosticReport(), 14, 70);
+        details.setEditable(false);
+        details.setLineWrap(true);
+        details.setWrapStyleWord(true);
+        details.setCaretPosition(0);
+        JScrollPane scroll = new JScrollPane(details);
+        JOptionPane.showMessageDialog(mainFrame, scroll, "E-İmza Sürücü Tanılaması", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private static void exitAgent() {

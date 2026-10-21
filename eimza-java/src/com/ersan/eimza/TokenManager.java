@@ -25,6 +25,7 @@ public class TokenManager {
 
     private static TokenStatus cachedStatus = null;
     private static long lastCacheTime = 0;
+    private static volatile String lastDiagnostic = "Henüz sürücü kontrolü yapılmadı.";
     private static final long CACHE_DURATION_MS = 5 * 60 * 1000L;
     private static final long LAST_GOOD_GRACE_MS = 30 * 60 * 1000L;
 
@@ -273,6 +274,7 @@ public class TokenManager {
             // YÖNTEM A: pkcs11-tool ile nesneleri sorgula (hızlı ve PIN sormaz)
             if (pkcsTool != null) try {
                 ToolResult objectResult = runTool(new String[]{pkcsTool, "--module", mod, "-O"});
+                lastDiagnostic = "Sürücü: " + mod + "\nNesne sorgusu çıkış kodu: " + objectResult.exitCode + "\n" + summarizeToolError(objectResult.output);
                 BufferedReader r = new BufferedReader(new StringReader(objectResult.output));
                 String line;
                 String owner = "";
@@ -306,6 +308,15 @@ public class TokenManager {
                 }
             } catch (Throwable ignored) {}
 
+            if (windows && pkcsTool != null) {
+                TokenStatus slotDetected = detectWindowsTokenSlot(pkcsTool, mod, devType);
+                if (slotDetected != null) {
+                    cachedStatus = slotDetected;
+                    lastCacheTime = now;
+                    return slotDetected;
+                }
+            }
+
             // Taşınabilir pkcs11-tool 64-bit'tir. Kurum bilgisayarında yalnız
             // 32-bit AKİS sürücüsü varsa çalışan Java'nın kendi mimarisiyle
             // sertifikayı okuyarak güvenli fallback uygula. Yalnız sağlayıcının
@@ -334,6 +345,49 @@ public class TokenManager {
         status.success = false;
         status.message = "Sistemde takılı aktif bir e-imza cihazı bulunamadı. Lütfen USB kartınızı takınız.";
         return status;
+    }
+
+    private static TokenStatus detectWindowsTokenSlot(String pkcsTool, String modulePath, String deviceType) {
+        try {
+            ToolResult slots = runTool(new String[]{pkcsTool, "--module", modulePath, "--list-slots"});
+            String output = slots.output == null ? "" : slots.output;
+            lastDiagnostic = "Sürücü: " + modulePath
+                    + "\nJava mimarisi: " + System.getProperty("os.arch", "bilinmiyor")
+                    + "\nSlot sorgusu çıkış kodu: " + slots.exitCode + "\n"
+                    + summarizeToolError(output);
+            String lower = output.toLowerCase(Locale.ROOT);
+            boolean hasTokenLabel = lower.contains("token label") && !lower.contains("token label        :");
+            if (!hasTokenLabel) {
+                Matcher labelMatcher = Pattern.compile("token label\\s*:\\s*(\\S.+)", Pattern.CASE_INSENSITIVE).matcher(output);
+                hasTokenLabel = labelMatcher.find() && !labelMatcher.group(1).trim().isEmpty();
+            }
+            boolean unavailable = lower.contains("failed to load") || lower.contains("no slots")
+                    || (lower.contains("token not recognized") && !hasTokenLabel);
+            if (slots.exitCode != 0 || !hasTokenLabel || unavailable) return null;
+
+            TokenStatus found = new TokenStatus();
+            found.success = true;
+            found.modulePath = modulePath;
+            found.deviceType = deviceType;
+            found.tokenLabel = "E-İmza Donanımı";
+            found.ownerName = "E-İmza Kartı Takılı";
+            found.tcno = "";
+            found.subject = "";
+            return found;
+        } catch (Throwable error) {
+            lastDiagnostic = "Sürücü: " + modulePath + "\nSlot sorgusu çalıştırılamadı: " + error.getMessage();
+            return null;
+        }
+    }
+
+    public static String getDiagnosticReport() {
+        String custom = getCustomModulePath();
+        return "Ersan E-İmza sürücü tanılaması"
+                + "\nİşletim sistemi: " + System.getProperty("os.name", "bilinmiyor")
+                + "\nJava: " + System.getProperty("java.version", "bilinmiyor")
+                + " (" + System.getProperty("os.arch", "bilinmiyor") + ")"
+                + "\nSeçili sürücü: " + (custom.isEmpty() ? "Otomatik" : custom)
+                + "\n\nSon kontrol:\n" + lastDiagnostic;
     }
 
     private static TokenStatus detectWithJavaPkcs11(String modulePath, String deviceType) {

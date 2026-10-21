@@ -2612,6 +2612,7 @@
 - AKİS'in `wsm.sessionDeactivated` hatasının güvenlik duvarı değil, arka arkaya PKCS#11 sağlayıcı oturumları açılmasından kaynaklandığı belirlendi. Kart sonucu 5 dakika, son başarılı ayrıntılı kimlik sonucu geçici WSM hataları için 30 dakika korunuyor; algılama sırasında ikinci SunPKCS11 oturumu açılmıyor ve tarayıcı sorgu önbelleği 60 saniyeye çıkarıldı. Sürüm `1.2.3` oldu.
 - Windows'ta AKİS kartının görülmemesi için `akia_pkcs11.dll`, Program Files AKİA/E-Tuğra yolları ve Java işlem mimarisiyle çalışan gerçek X.509 sertifika kontrollü SunPKCS11 fallback eklendi. Böylece 32-bit Java/AKİS veya 64-bit AKİS kurulumları destekleniyor; yalnız DLL yüklenmesi kart var sayılmıyor. Tarayıcıdaki eski yeşil kart durumu kaldırılarak her UI kontrolü ajan önbelleğinden güncel sonucu alıyor. Sürüm `1.2.4` oldu.
 - Windows kurum bilgisayarlarında standart dışı PKCS#11 kurulumu için ajana `Sürücü DLL Seç` arayüzü eklendi. Seçilen DLL kullanıcı tercihlerinde kalıcı saklanıyor ve sonraki açılışlarda ilk aday olarak deneniyor; AKİA/E-Tuğra ile System32/SysWOW64 yollarında sınırlı otomatik keşif de yapılıyor. Sürüm `1.2.5` oldu.
+- Windows AKİS sürücüsünün sertifika nesnelerini PIN'siz listelememesi halinde kartın yok sayılması giderildi. Ajan artık seçili DLL üzerinde PKCS#11 slot/token varlığını doğrulayıp kartı hazır kabul ediyor; sertifika PIN aşamasında okunuyor. Arayüze Java mimarisi, seçilen DLL, çıkış kodu ve sürücü çıktısını gösteren `Tanılama` penceresi eklendi. Sürüm `1.2.6` oldu.
 
 # 2026-10-20 — Cari hesap hareketleri Excel dışa aktarımı
 

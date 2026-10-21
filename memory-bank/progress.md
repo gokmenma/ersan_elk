@@ -1463,6 +1463,7 @@
 - [x] AKİS ikinci sorgusunda görülen `wsm.sessionDeactivated` için kart algılama tek oturumlu hale getirildi; ayrıntılı kimlik sonucu ajan/tarayıcı tarafında önbelleklendi ve yalnız modül yükleyerek üretilen T.C.'siz yalancı başarı kaldırıldı. `1.2.3` paketi derlendi.
 - [x] Windows AKİS algılamasına alternatif `akia_pkcs11.dll`/Program Files yolları ve 32/64-bit Java uyumlu sertifika doğrulamalı fallback eklendi; tarayıcı–ajan durum çelişkisine yol açan istemci önbelleği kaldırıldı. `1.2.4` JAR derlendi ve sürüm içeriği doğrulandı.
 - [x] Windows'ta kart sürücüsü standart dizinde değilse kullanıcıya terminal gerektirmeden PKCS#11 DLL seçtiren ve seçimi kalıcı saklayan arayüz eklendi; yaygın AKİA dizinleri otomatik taranıyor. `1.2.5` Java 8 uyumlu JAR üretildi.
+- [x] Windows'ta PIN öncesi sertifika listesini kapatan AKİS sürümleri için slot/token tabanlı kart algılama ve kullanıcıya kopyalanabilir sürücü tanılaması eklendi; `1.2.6` JAR derlendi.
 
 # 2026-10-20 — Cari hesap hareketleri Excel dışa aktarımı
 
