@@ -72,7 +72,7 @@ $araclar_list = $Evrak->getActiveVehicles();
                         </div>
 
                         <!-- Sağ Kolon: Atama ve İşlem -->
-                        <div class="col-md-6 text-dark">
+                        <div class="col-md-6">
                             <div class="d-flex align-items-center mb-3">
                                 <span class="badge bg-success-subtle text-success p-1 rounded-pill me-2">
                                     <i data-feather="user-check" style="width: 14px; height: 14px;"></i>
@@ -174,10 +174,10 @@ $araclar_list = $Evrak->getActiveVehicles();
 
                             <!-- Gelen Evrak için Cevap Alanı -->
                             <div id="gelenCevapSection">
-                                <div class="mb-3 px-3 d-flex align-items-center justify-content-between bg-dark-subtle rounded-3 py-2 border">
+                                <div class="mb-3 px-3 d-flex align-items-center justify-content-between rounded-3 py-2 border evrak-cevap-kutu">
                                     <div class="d-flex align-items-center">
                                         <i data-feather="message-circle" class="text-primary me-2" style="width: 18px;"></i>
-                                        <span class="small fw-bold text-dark">Cevap Verildi mi?</span>
+                                        <span class="small fw-bold">Cevap Verildi mi?</span>
                                     </div>
                                     <div class="form-check form-switch">
                                         <input class="form-check-input" type="checkbox" name="cevap_verildi_mi" value="1" id="cevap_verildi">
@@ -221,9 +221,9 @@ $araclar_list = $Evrak->getActiveVehicles();
                     </div>
                 </form>
             </div>
-            <div class="modal-footer bg-light border-top-0 p-3 px-4">
+            <div class="modal-footer border-top p-3 px-4">
                 <button type="button" class="btn btn-link text-muted fw-bold text-decoration-none px-3" data-bs-dismiss="modal">Vazgeç</button>
-                <button type="submit" form="evrakForm" id="btnEvrakKaydet" class="btn btn-dark px-5 shadow-sm fw-bold rounded-pill">
+                <button type="submit" form="evrakForm" id="btnEvrakKaydet" class="btn btn-primary px-5 shadow-sm fw-bold rounded-pill">
                      Bilgileri Kaydet
                 </button>
             </div>
@@ -299,3 +299,45 @@ $araclar_list = $Evrak->getActiveVehicles();
         </div>
     </div>
 </div>
+
+<style>
+/* Gelen Evrak Modalı Koyu Mod Uyumluluğu */
+[data-bs-theme="dark"] #evrakModal .modal-content,
+html[data-theme-preset="macos-dark"] #evrakModal .modal-content,
+body[data-layout-mode="dark"] #evrakModal .modal-content {
+    background-color: #1a1c22 !important;
+    color: #e2e8f0 !important;
+}
+[data-bs-theme="dark"] #evrakModal .modal-footer,
+html[data-theme-preset="macos-dark"] #evrakModal .modal-footer,
+body[data-layout-mode="dark"] #evrakModal .modal-footer {
+    background-color: rgba(22, 24, 29, 0.95) !important;
+    border-top-color: rgba(255, 255, 255, 0.08) !important;
+}
+[data-bs-theme="dark"] #bildirimContainer,
+html[data-theme-preset="macos-dark"] #bildirimContainer,
+body[data-layout-mode="dark"] #bildirimContainer {
+    background-color: rgba(255, 255, 255, 0.04) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+[data-bs-theme="dark"] #trafficFineSection,
+html[data-theme-preset="macos-dark"] #trafficFineSection,
+body[data-layout-mode="dark"] #trafficFineSection {
+    background-color: rgba(59, 130, 246, 0.06) !important;
+}
+[data-bs-theme="dark"] #trafficFineSection .bg-light,
+html[data-theme-preset="macos-dark"] #trafficFineSection .bg-light,
+body[data-layout-mode="dark"] #trafficFineSection .bg-light {
+    background-color: rgba(255, 255, 255, 0.04) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+.evrak-cevap-kutu {
+    background-color: rgba(0, 0, 0, 0.03);
+}
+[data-bs-theme="dark"] .evrak-cevap-kutu,
+html[data-theme-preset="macos-dark"] .evrak-cevap-kutu,
+body[data-layout-mode="dark"] .evrak-cevap-kutu {
+    background-color: rgba(255, 255, 255, 0.04) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+</style>

@@ -638,6 +638,71 @@ if ($canSendKep || $gonderimKanali === 'kep') {
 #gidenDigerAlanlarAccordion .accordion-button:not(.collapsed) .accordion-icon{transform:rotate(45deg)}
 @media(min-width:992px){html,body{overflow:hidden!important}.page-content{padding-bottom:70px!important}}
 @media(max-width:991.98px){.giden-action-bar{left:0}html,body{overflow:auto!important}}
+
+/* Giden Evrak Koyu Tema Uyumu */
+[data-bs-theme="dark"] #gidenEvrakForm .card-header,
+html[data-theme-preset="macos-dark"] #gidenEvrakForm .card-header,
+body[data-layout-mode="dark"] #gidenEvrakForm .card-header {
+    background-color: #1a1c22 !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+[data-bs-theme="dark"] .col-xl-4.bg-light-subtle,
+html[data-theme-preset="macos-dark"] .col-xl-4.bg-light-subtle,
+body[data-layout-mode="dark"] .col-xl-4.bg-light-subtle {
+    background-color: #16181d !important;
+}
+[data-bs-theme="dark"] .ek-dosya-satiri,
+html[data-theme-preset="macos-dark"] .ek-dosya-satiri,
+body[data-layout-mode="dark"] .ek-dosya-satiri {
+    background-color: #1a1c22 !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+[data-bs-theme="dark"] #gidenDigerAlanlarAccordion .accordion-button,
+html[data-theme-preset="macos-dark"] #gidenDigerAlanlarAccordion .accordion-button,
+body[data-layout-mode="dark"] #gidenDigerAlanlarAccordion .accordion-button {
+    background-color: #1e2025 !important;
+    color: #f1f3f9 !important;
+}
+[data-bs-theme="dark"] #gidenDigerAlanlarAccordion .accordion-button:not(.collapsed),
+html[data-theme-preset="macos-dark"] #gidenDigerAlanlarAccordion .accordion-button:not(.collapsed),
+body[data-layout-mode="dark"] #gidenDigerAlanlarAccordion .accordion-button:not(.collapsed) {
+    background-color: rgba(59, 130, 246, 0.1) !important;
+    color: #60a5fa !important;
+}
+[data-bs-theme="dark"] #gidenEvrakForm.evrak-kilitli .note-editable,
+html[data-theme-preset="macos-dark"] #gidenEvrakForm.evrak-kilitli .note-editable,
+body[data-layout-mode="dark"] #gidenEvrakForm.evrak-kilitli .note-editable {
+    background-color: #181a1f !important;
+    color: #e2e8f0 !important;
+}
+[data-bs-theme="dark"] .giden-action-bar,
+html[data-theme-preset="macos-dark"] .giden-action-bar,
+body[data-layout-mode="dark"] .giden-action-bar {
+    background-color: #181a1f !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+[data-bs-theme="dark"] #evrakAiContextMenu,
+html[data-theme-preset="macos-dark"] #evrakAiContextMenu,
+body[data-layout-mode="dark"] #evrakAiContextMenu {
+    background-color: #1e2025 !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+[data-bs-theme="dark"] #evrakAiContextMenu .dropdown-item,
+html[data-theme-preset="macos-dark"] #evrakAiContextMenu .dropdown-item,
+body[data-layout-mode="dark"] #evrakAiContextMenu .dropdown-item {
+    color: #f1f3f9 !important;
+}
+[data-bs-theme="dark"] #evrakAiContextMenu .dropdown-item:hover,
+html[data-theme-preset="macos-dark"] #evrakAiContextMenu .dropdown-item:hover,
+body[data-layout-mode="dark"] #evrakAiContextMenu .dropdown-item:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+}
+[data-bs-theme="dark"] .modal-content,
+html[data-theme-preset="macos-dark"] .modal-content,
+body[data-layout-mode="dark"] .modal-content {
+    background-color: #1a1c22 !important;
+    color: #e2e8f0 !important;
+}
 </style>
 
 <script>

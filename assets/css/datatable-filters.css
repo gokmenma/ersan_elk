@@ -724,7 +724,13 @@ table[id] thead tr:first-child > th[data-filter]:not([data-filter="none"]),
 [data-bs-theme="dark"] table[id] thead tr:first-child > th.sorting,
 [data-bs-theme="dark"] .datatable-premium-shell table.dataTable thead tr:first-child > th.sorting,
 [data-bs-theme="dark"] .table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th.sorting,
-[data-bs-theme="dark"] .dataTables_wrapper table.dataTable thead tr:first-child > th.sorting {
+[data-bs-theme="dark"] .dataTables_wrapper table.dataTable thead tr:first-child > th.sorting,
+html[data-theme-preset="macos-dark"] table.dataTable thead tr:first-child > th.sorting,
+html[data-theme-preset="macos-dark"] table[id].dataTable thead tr:first-child > th.sorting,
+html[data-theme-preset="macos-dark"] table[id] thead tr:first-child > th.sorting,
+html[data-theme-preset="macos-dark"] .datatable-premium-shell table.dataTable thead tr:first-child > th.sorting,
+html[data-theme-preset="macos-dark"] .table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th.sorting,
+html[data-theme-preset="macos-dark"] .dataTables_wrapper table.dataTable thead tr:first-child > th.sorting {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8M17 4v16M13 16L17 20L21 16'/%3E%3C/svg%3E") !important;
   background-repeat: no-repeat !important;
   background-position: left 8px center !important;
@@ -738,7 +744,13 @@ table[id] thead tr:first-child > th[data-filter]:not([data-filter="none"]),
 [data-bs-theme="dark"] table[id] thead tr:first-child > th.sorting:hover,
 [data-bs-theme="dark"] .datatable-premium-shell table.dataTable thead tr:first-child > th.sorting:hover,
 [data-bs-theme="dark"] .table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th.sorting:hover,
-[data-bs-theme="dark"] .dataTables_wrapper table.dataTable thead tr:first-child > th.sorting:hover {
+[data-bs-theme="dark"] .dataTables_wrapper table.dataTable thead tr:first-child > th.sorting:hover,
+html[data-theme-preset="macos-dark"] table.dataTable thead tr:first-child > th.sorting:hover,
+html[data-theme-preset="macos-dark"] table[id].dataTable thead tr:first-child > th.sorting:hover,
+html[data-theme-preset="macos-dark"] table[id] thead tr:first-child > th.sorting:hover,
+html[data-theme-preset="macos-dark"] .datatable-premium-shell table.dataTable thead tr:first-child > th.sorting:hover,
+html[data-theme-preset="macos-dark"] .table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th.sorting:hover,
+html[data-theme-preset="macos-dark"] .dataTables_wrapper table.dataTable thead tr:first-child > th.sorting:hover {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8M17 4v16M13 16L17 20L21 16'/%3E%3C/svg%3E") !important;
   background-repeat: no-repeat !important;
   background-position: left 8px center !important;
@@ -751,7 +763,13 @@ table[id] thead tr:first-child > th[data-filter]:not([data-filter="none"]),
 [data-bs-theme="dark"] table[id] thead tr:first-child > th.sorting_asc,
 [data-bs-theme="dark"] .datatable-premium-shell table.dataTable thead tr:first-child > th.sorting_asc,
 [data-bs-theme="dark"] .table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th.sorting_asc,
-[data-bs-theme="dark"] .dataTables_wrapper table.dataTable thead tr:first-child > th.sorting_asc {
+[data-bs-theme="dark"] .dataTables_wrapper table.dataTable thead tr:first-child > th.sorting_asc,
+html[data-theme-preset="macos-dark"] table.dataTable thead tr:first-child > th.sorting_asc,
+html[data-theme-preset="macos-dark"] table[id].dataTable thead tr:first-child > th.sorting_asc,
+html[data-theme-preset="macos-dark"] table[id] thead tr:first-child > th.sorting_asc,
+html[data-theme-preset="macos-dark"] .datatable-premium-shell table.dataTable thead tr:first-child > th.sorting_asc,
+html[data-theme-preset="macos-dark"] .table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th.sorting_asc,
+html[data-theme-preset="macos-dark"] .dataTables_wrapper table.dataTable thead tr:first-child > th.sorting_asc {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8' stroke='%2360a5fa' stroke-width='2.8'/%3E%3Cpath d='M17 4v16M13 16L17 20L21 16' stroke='%2364748b' stroke-width='1.8' opacity='0.4'/%3E%3C/svg%3E") !important;
   background-repeat: no-repeat !important;
   background-position: left 8px center !important;
@@ -766,7 +784,13 @@ table[id] thead tr:first-child > th[data-filter]:not([data-filter="none"]),
 [data-bs-theme="dark"] table[id] thead tr:first-child > th.sorting_desc,
 [data-bs-theme="dark"] .datatable-premium-shell table.dataTable thead tr:first-child > th.sorting_desc,
 [data-bs-theme="dark"] .table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th.sorting_desc,
-[data-bs-theme="dark"] .dataTables_wrapper table.dataTable thead tr:first-child > th.sorting_desc {
+[data-bs-theme="dark"] .dataTables_wrapper table.dataTable thead tr:first-child > th.sorting_desc,
+html[data-theme-preset="macos-dark"] table.dataTable thead tr:first-child > th.sorting_desc,
+html[data-theme-preset="macos-dark"] table[id].dataTable thead tr:first-child > th.sorting_desc,
+html[data-theme-preset="macos-dark"] table[id] thead tr:first-child > th.sorting_desc,
+html[data-theme-preset="macos-dark"] .datatable-premium-shell table.dataTable thead tr:first-child > th.sorting_desc,
+html[data-theme-preset="macos-dark"] .table-responsive:has(> table.dataTable) table.dataTable thead tr:first-child > th.sorting_desc,
+html[data-theme-preset="macos-dark"] .dataTables_wrapper table.dataTable thead tr:first-child > th.sorting_desc {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8' stroke='%2364748b' stroke-width='1.8' opacity='0.4'/%3E%3Cpath d='M17 4v16M13 16L17 20L21 16' stroke='%2360a5fa' stroke-width='2.8'/%3E%3C/svg%3E") !important;
   background-repeat: no-repeat !important;
   background-position: left 8px center !important;

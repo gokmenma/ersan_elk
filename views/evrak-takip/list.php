@@ -282,7 +282,7 @@ $title = "Evrak Listesi";
         <div class="card-body p-3 pt-0">
             <div class="table-responsive" style="overflow-x: auto !important;">
                 <table id="evrakTable" class="table table-bordered table-hover nowrap align-middle w-100 mb-0">
-                    <thead class="table-light">
+                    <thead>
                         <tr>
                             <th class="text-center" style="width: 45px;" data-filter="none">#</th>
                             <th class="text-center" style="width: 80px;" data-filter="select">TİP</th>
@@ -593,22 +593,23 @@ $title = "Evrak Listesi";
 </div>
 
 <style>
-/* Tablo Tipografi ve Okunabilirlik İyileştirmeleri */
+/* Tablo Tipografi ve Temel Stiller */
 #evrakTable {
     font-size: 13px !important;
 }
 #evrakTable thead th {
     font-size: 11.5px !important;
     font-weight: 700 !important;
-    color: #334155 !important;
     letter-spacing: 0.3px;
-    background-color: #f8fafc !important;
     vertical-align: middle !important;
+}
+html:not([data-theme-preset="macos-dark"]):not([data-bs-theme="dark"]) body:not([data-layout-mode="dark"]) #evrakTable thead th {
+    color: #334155;
+    background-color: #f8fafc;
 }
 #evrakTable tbody td {
     padding: 8px 12px !important;
     vertical-align: middle !important;
-    color: #0f172a !important;
 }
 
 /* Tablo Butonları Standartları */
@@ -712,6 +713,307 @@ $title = "Evrak Listesi";
 
 .evrak-dosya-menu .dropdown-item .text-truncate {
     max-width: 260px;
+}
+
+/* ========================================================
+   macOS Koyu Tema & Dark Mod Uyumluluğu
+   ======================================================== */
+[data-bs-theme="dark"] #evrakTable,
+html[data-theme-preset="macos-dark"] #evrakTable,
+body[data-layout-mode="dark"] #evrakTable,
+[data-theme-mode="dark"] #evrakTable {
+    --bs-border-color: rgba(255, 255, 255, 0.11) !important;
+    --bs-table-border-color: rgba(255, 255, 255, 0.11) !important;
+    border: 1px solid rgba(255, 255, 255, 0.11) !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+}
+
+[data-bs-theme="dark"] #evrakTable th,
+[data-bs-theme="dark"] #evrakTable td,
+html[data-theme-preset="macos-dark"] #evrakTable th,
+html[data-theme-preset="macos-dark"] #evrakTable td,
+body[data-layout-mode="dark"] #evrakTable th,
+body[data-layout-mode="dark"] #evrakTable td,
+[data-theme-mode="dark"] #evrakTable th,
+[data-theme-mode="dark"] #evrakTable td {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-bs-theme="dark"] #evrakTable thead tr:first-child > th,
+html[data-theme-preset="macos-dark"] #evrakTable thead tr:first-child > th,
+body[data-layout-mode="dark"] #evrakTable thead tr:first-child > th,
+[data-theme-mode="dark"] #evrakTable thead tr:first-child > th {
+    background-color: #1e222d !important;
+    color: #f1f5f9 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14) !important;
+    --bs-table-bg: #1e222d !important;
+    --bs-table-color: #f1f5f9 !important;
+}
+
+[data-bs-theme="dark"] #evrakTable thead .dt-filter-row th,
+html[data-theme-preset="macos-dark"] #evrakTable thead .dt-filter-row th,
+body[data-layout-mode="dark"] #evrakTable thead .dt-filter-row th,
+[data-theme-mode="dark"] #evrakTable thead .dt-filter-row th {
+    background-color: #171922 !important;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.18) !important;
+    --bs-table-bg: #171922 !important;
+}
+
+[data-bs-theme="dark"] #evrakTable thead .dt-filter-row input,
+[data-bs-theme="dark"] #evrakTable thead .dt-filter-row select,
+html[data-theme-preset="macos-dark"] #evrakTable thead .dt-filter-row input,
+html[data-theme-preset="macos-dark"] #evrakTable thead .dt-filter-row select,
+body[data-layout-mode="dark"] #evrakTable thead .dt-filter-row input,
+body[data-layout-mode="dark"] #evrakTable thead .dt-filter-row select {
+    background-color: #0f1117 !important;
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    color: #f8fafc !important;
+    border-radius: 6px !important;
+}
+[data-bs-theme="dark"] #evrakTable thead .dt-filter-row input:focus,
+[data-bs-theme="dark"] #evrakTable thead .dt-filter-row select:focus,
+html[data-theme-preset="macos-dark"] #evrakTable thead .dt-filter-row input:focus,
+html[data-theme-preset="macos-dark"] #evrakTable thead .dt-filter-row select:focus {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25) !important;
+    outline: none !important;
+}
+
+[data-bs-theme="dark"] #evrakTable tbody td,
+html[data-theme-preset="macos-dark"] #evrakTable tbody td,
+body[data-layout-mode="dark"] #evrakTable tbody td,
+[data-theme-mode="dark"] #evrakTable tbody td {
+    background-color: #15171f !important;
+    color: rgba(235, 238, 245, 0.9) !important;
+    --bs-table-bg: #15171f !important;
+    --bs-table-color: rgba(235, 238, 245, 0.9) !important;
+}
+
+[data-bs-theme="dark"] #evrakTable tbody tr:nth-child(even) td,
+html[data-theme-preset="macos-dark"] #evrakTable tbody tr:nth-child(even) td,
+body[data-layout-mode="dark"] #evrakTable tbody tr:nth-child(even) td,
+[data-theme-mode="dark"] #evrakTable tbody tr:nth-child(even) td {
+    background-color: #12141a !important;
+    --bs-table-bg: #12141a !important;
+}
+
+[data-bs-theme="dark"] #evrakTable tbody tr:hover td,
+html[data-theme-preset="macos-dark"] #evrakTable tbody tr:hover td,
+body[data-layout-mode="dark"] #evrakTable tbody tr:hover td,
+[data-theme-mode="dark"] #evrakTable tbody tr:hover td {
+    background-color: rgba(59, 130, 246, 0.12) !important;
+    --bs-table-hover-bg: rgba(59, 130, 246, 0.12) !important;
+}
+
+/* Sıralama İkonları - Koyu Mod */
+html[data-theme-preset="macos-dark"] #evrakTable thead tr:first-child > th.sorting,
+[data-bs-theme="dark"] #evrakTable thead tr:first-child > th.sorting {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8M17 4v16M13 16L17 20L21 16'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: left 8px center !important;
+    background-size: 13px 13px !important;
+    padding-left: 28px !important;
+}
+html[data-theme-preset="macos-dark"] #evrakTable thead tr:first-child > th.sorting:hover,
+[data-bs-theme="dark"] #evrakTable thead tr:first-child > th.sorting:hover {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8M17 4v16M13 16L17 20L21 16'/%3E%3C/svg%3E") !important;
+}
+html[data-theme-preset="macos-dark"] #evrakTable thead tr:first-child > th.sorting_asc,
+[data-bs-theme="dark"] #evrakTable thead tr:first-child > th.sorting_asc {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8' stroke='%2360a5fa' stroke-width='2.8'/%3E%3Cpath d='M17 4v16M13 16L17 20L21 16' stroke='%2364748b' stroke-width='1.8' opacity='0.4'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: left 8px center !important;
+    background-size: 13px 13px !important;
+    padding-left: 28px !important;
+}
+html[data-theme-preset="macos-dark"] #evrakTable thead tr:first-child > th.sorting_desc,
+[data-bs-theme="dark"] #evrakTable thead tr:first-child > th.sorting_desc {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 20V4M3 8L7 4L11 8' stroke='%2364748b' stroke-width='1.8' opacity='0.4'/%3E%3Cpath d='M17 4v16M13 16L17 20L21 16' stroke='%2360a5fa' stroke-width='2.8'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: left 8px center !important;
+    background-size: 13px 13px !important;
+    padding-left: 28px !important;
+}
+
+/* Başlıklar ve Metin Kontrastı */
+[data-bs-theme="dark"] #evrakTable .text-dark,
+html[data-theme-preset="macos-dark"] #evrakTable .text-dark,
+body[data-layout-mode="dark"] #evrakTable .text-dark,
+[data-theme-mode="dark"] #evrakTable .text-dark,
+[data-bs-theme="dark"] h4.text-dark,
+[data-bs-theme="dark"] h5.text-dark,
+html[data-theme-preset="macos-dark"] h4.text-dark,
+html[data-theme-preset="macos-dark"] h5.text-dark,
+body[data-layout-mode="dark"] h4.text-dark,
+body[data-layout-mode="dark"] h5.text-dark {
+    color: rgba(240, 242, 246, 0.95) !important;
+}
+
+[data-bs-theme="dark"] .evrak-konu-text,
+html[data-theme-preset="macos-dark"] .evrak-konu-text,
+body[data-layout-mode="dark"] .evrak-konu-text {
+    color: rgba(240, 242, 246, 0.92) !important;
+}
+[data-bs-theme="dark"] .evrak-konu-text:hover,
+html[data-theme-preset="macos-dark"] .evrak-konu-text:hover,
+body[data-layout-mode="dark"] .evrak-konu-text:hover {
+    color: #60a5fa !important;
+}
+
+/* Üst Araç Çubuğu ve Tablo İşlem Butonları */
+[data-bs-theme="dark"] .top-action-btn.bg-white,
+[data-bs-theme="dark"] .top-icon-btn.bg-white,
+html[data-theme-preset="macos-dark"] .top-action-btn.bg-white,
+html[data-theme-preset="macos-dark"] .top-icon-btn.bg-white,
+body[data-layout-mode="dark"] .top-action-btn.bg-white,
+body[data-layout-mode="dark"] .top-icon-btn.bg-white,
+[data-bs-theme="dark"] #evrakTable .action-btn-group .btn.bg-white,
+html[data-theme-preset="macos-dark"] #evrakTable .action-btn-group .btn.bg-white,
+body[data-layout-mode="dark"] #evrakTable .action-btn-group .btn.bg-white {
+    background-color: rgba(35, 36, 42, 0.8) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    color: rgba(235, 238, 245, 0.88) !important;
+    box-shadow: none !important;
+}
+[data-bs-theme="dark"] .top-action-btn.bg-white:hover,
+[data-bs-theme="dark"] .top-icon-btn.bg-white:hover,
+html[data-theme-preset="macos-dark"] .top-action-btn.bg-white:hover,
+html[data-theme-preset="macos-dark"] .top-icon-btn.bg-white:hover,
+[data-bs-theme="dark"] #evrakTable .action-btn-group .btn.bg-white:hover,
+html[data-theme-preset="macos-dark"] #evrakTable .action-btn-group .btn.bg-white:hover {
+    background-color: rgba(50, 52, 60, 0.9) !important;
+    color: #ffffff !important;
+}
+
+/* Özet KPI Kartları */
+[data-bs-theme="dark"] .summary-kpi-card,
+html[data-theme-preset="macos-dark"] .summary-kpi-card,
+body[data-layout-mode="dark"] .summary-kpi-card {
+    background: rgba(28, 30, 38, 0.72) !important;
+    border-color: rgba(255, 255, 255, 0.09) !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45) !important;
+}
+[data-bs-theme="dark"] .summary-kpi-value,
+html[data-theme-preset="macos-dark"] .summary-kpi-value,
+body[data-layout-mode="dark"] .summary-kpi-value {
+    color: #f3f4f8 !important;
+}
+[data-bs-theme="dark"] .summary-kpi-label,
+html[data-theme-preset="macos-dark"] .summary-kpi-label,
+body[data-layout-mode="dark"] .summary-kpi-label {
+    color: rgba(200, 205, 218, 0.65) !important;
+}
+[data-bs-theme="dark"] .summary-kpi-subtext,
+html[data-theme-preset="macos-dark"] .summary-kpi-subtext,
+body[data-layout-mode="dark"] .summary-kpi-subtext {
+    color: rgba(200, 205, 218, 0.6) !important;
+}
+
+/* İmza Bekleyen Bildirim Bandı */
+[data-bs-theme="dark"] #imzaBekleyenUyari,
+html[data-theme-preset="macos-dark"] #imzaBekleyenUyari,
+body[data-layout-mode="dark"] #imzaBekleyenUyari {
+    background-color: rgba(245, 158, 11, 0.12) !important;
+    border: 1px solid rgba(245, 158, 11, 0.28) !important;
+    color: #fef3c7 !important;
+}
+[data-bs-theme="dark"] #imzaBekleyenUyari .text-muted,
+html[data-theme-preset="macos-dark"] #imzaBekleyenUyari .text-muted,
+body[data-layout-mode="dark"] #imzaBekleyenUyari .text-muted {
+    color: rgba(254, 243, 199, 0.75) !important;
+}
+
+/* Dropdown Menüler & Popover */
+[data-bs-theme="dark"] .dropdown-menu,
+html[data-theme-preset="macos-dark"] .dropdown-menu,
+body[data-layout-mode="dark"] .dropdown-menu {
+    background-color: #1e2025 !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    color: rgba(235, 238, 245, 0.88) !important;
+}
+[data-bs-theme="dark"] .dropdown-item,
+html[data-theme-preset="macos-dark"] .dropdown-item,
+body[data-layout-mode="dark"] .dropdown-item {
+    color: rgba(235, 238, 245, 0.88) !important;
+}
+[data-bs-theme="dark"] .dropdown-item:hover,
+html[data-theme-preset="macos-dark"] .dropdown-item:hover,
+body[data-layout-mode="dark"] .dropdown-item:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    color: #ffffff !important;
+}
+[data-bs-theme="dark"] .dropdown-divider,
+html[data-theme-preset="macos-dark"] .dropdown-divider,
+body[data-layout-mode="dark"] .dropdown-divider {
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-bs-theme="dark"] .onay-akis-popover,
+html[data-theme-preset="macos-dark"] .onay-akis-popover,
+body[data-layout-mode="dark"] .onay-akis-popover {
+    background-color: #1e2025 !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+[data-bs-theme="dark"] .onay-akis-popover .popover-header,
+html[data-theme-preset="macos-dark"] .onay-akis-popover .popover-header,
+body[data-layout-mode="dark"] .onay-akis-popover .popover-header {
+    background-color: rgba(35, 37, 44, 0.95) !important;
+    color: #f1f3f9 !important;
+    border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+}
+[data-bs-theme="dark"] .onay-akis-popover .popover-body,
+html[data-theme-preset="macos-dark"] .onay-akis-popover .popover-body,
+body[data-layout-mode="dark"] .onay-akis-popover .popover-body {
+    color: rgba(235, 238, 245, 0.85) !important;
+}
+[data-bs-theme="dark"] .onay-akis-popover .onay-akis-satir,
+html[data-theme-preset="macos-dark"] .onay-akis-popover .onay-akis-satir,
+body[data-layout-mode="dark"] .onay-akis-popover .onay-akis-satir {
+    border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* PDF Önizleme Modalı */
+[data-bs-theme="dark"] #evrakPdfModal .modal-content,
+html[data-theme-preset="macos-dark"] #evrakPdfModal .modal-content,
+body[data-layout-mode="dark"] #evrakPdfModal .modal-content {
+    background-color: #181a1f !important;
+    color: #e2e8f0 !important;
+}
+[data-bs-theme="dark"] #evrakPdfModal .modal-header,
+html[data-theme-preset="macos-dark"] #evrakPdfModal .modal-header,
+body[data-layout-mode="dark"] #evrakPdfModal .modal-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+[data-bs-theme="dark"] #evrakPdfLoader,
+html[data-theme-preset="macos-dark"] #evrakPdfLoader,
+body[data-layout-mode="dark"] #evrakPdfLoader {
+    background-color: #181a1f !important;
+}
+[data-bs-theme="dark"] #evrakImzaPanel,
+html[data-theme-preset="macos-dark"] #evrakImzaPanel,
+body[data-layout-mode="dark"] #evrakImzaPanel {
+    background-color: #1c1e24 !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+[data-bs-theme="dark"] #evrakImzaPanel .bg-white,
+html[data-theme-preset="macos-dark"] #evrakImzaPanel .bg-white,
+body[data-layout-mode="dark"] #evrakImzaPanel .bg-white {
+    background-color: #1c1e24 !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+[data-bs-theme="dark"] #evrakImzaBelgeBaslik,
+html[data-theme-preset="macos-dark"] #evrakImzaBelgeBaslik,
+body[data-layout-mode="dark"] #evrakImzaBelgeBaslik {
+    color: #f1f3f9 !important;
+}
+[data-bs-theme="dark"] #evrakImzaOnayAction,
+html[data-theme-preset="macos-dark"] #evrakImzaOnayAction,
+body[data-layout-mode="dark"] #evrakImzaOnayAction {
+    background-color: #1c1e24 !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
 }
 </style>
 

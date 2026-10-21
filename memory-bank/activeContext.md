@@ -1,5 +1,32 @@
 # Active Context
 
+## Menü Yönetimi — Sürükle/Bırakta Hiyerarşi Koruması (2026-10-21)
+- Menü sıralaması kaydedilirken `parent_id` değerlerinin DOM sırasındaki son ana menüye göre yeniden üretilmesi, taşınan ana menülerin alt menülerini yanlış ebeveyne bağlıyordu.
+- Sürükle/bırak artık yalnız sıralamayı değiştiriyor; mevcut ebeveyn bağları `data-parent-id` üzerinden aynen korunuyor.
+- Bir ana menü sürüklendiğinde ona bağlı alt menüler de aynı blok içinde ana menünün arkasına taşınıyor.
+- Alt menü yapma işlemi hedef ebeveyni açıkça kaydediyor; mevcut alt menüsü bulunan ana menünün desteklenmeyen üçüncü seviye hiyerarşi oluşturması engelleniyor.
+
+## Evrak Takip Modülü — Koyu Mod (Dark Theme) Düzeltmeleri (2026-10-21)
+- Kullanıcının ilettiği ekran görüntülerinde tespit edilen koyu mod kontrast, renk uyumu ve kenarlık (border) sorunları giderildi.
+- **Kök Neden**: `views/evrak-takip/list.php` içerisinde yer alan inline CSS'te `#evrakTable thead th` için `background-color: #f8fafc !important;` ve `color: #334155 !important;` ile `#evrakTable tbody td` için `color: #0f172a !important;` tanımlanmıştı. Ayrıca `table-bordered` çizgileri ve renkleri koyu kart zeminiyle kontrast oluşturmayıp silikleşiyor ve sıralama ikonları `macos-dark` seçicisi eksikliği nedeniyle açık mod SVG'si çekiyordu.
+- **Yapılan İyileştirmeler**:
+  1. `views/evrak-takip/list.php`:
+     - `<thead class="table-light">` kaldırılarak standart `<thead>` yapısına dönüldü.
+     - **Kenarlıklar (Borders)**: Tablo dış çerçevesi `border: 1px solid rgba(255, 255, 255, 0.11)`, köşe yuvarlama `border-radius: 8px` ve `border-collapse: separate` ile jilet gibi sınırlandırıldı. Sütunlar ve satırlar arası dikey-yatay kenarlıklar (`border: 1px solid rgba(255, 255, 255, 0.1)`) belirgin, temiz ve zarif hale getirildi. Üst başlık satırı altına `1px solid rgba(255, 255, 255, 0.14)`, filtre satırı altına ise tablo gövdesiyle ayrımı sağlayan `2px solid rgba(255, 255, 255, 0.18)` çizgi çekildi.
+     - **Tablo Renkleri & Kart Uyumu**: Tablo başlığı kartın lacivert-antrasit tonuyla tam uyumlu `#1e222d`, filtre satırı `#171922`, filtre input kutuları derin net `#0f1117`, tablo satırları `#15171f` ve zebra çift satırları `#12141a` olarak kademelendirildi. Satır hover durumu modern mavi ışık `rgba(59, 130, 246, 0.12)` ile belirginleştirildi.
+     - Filtre inputları kenarlıkları `1px solid rgba(255, 255, 255, 0.16)` ile belirginleştirildi, odaklanıldığında mavi halka efekti eklendi.
+     - `assets/css/datatable-filters.css` içine `html[data-theme-preset="macos-dark"]` sıralama ikonu (sorting SVG) seçicileri dahil edilerek okların koyu temada açık renkli vektörel SVG olarak görünmesi sağlandı.
+     - Tablo içerisindeki `.text-dark` sınıflı metinler ve başlıklar (`h4.text-dark`, `h5.text-dark`) koyu temada açık renge dönüştürüldü.
+     - Üst araç çubuğundaki ve tablo işlem butonlarındaki `.bg-white` butonlar koyu mod paletine uyarlandı.
+     - Özet KPI kartları (`.summary-kpi-card`), sarı imza uyarı bandı (`#imzaBekleyenUyari`), dosya açılır menüleri ve onay akışı popover bileşenleri koyu mod standartlarına tam entegre edildi.
+  2. `views/evrak-takip/modal/evrak-modal.php`:
+     - Sağ kolondaki `text-dark` zorlaması kaldırıldı.
+     - Cevap kutusu, bildirim switch kutusu ve trafik cezası detay kutusu koyu tema ile uyumlu hale getirildi.
+     - Modal footer'daki `bg-light` kaldırılıp koyu tema stilleri tanımlandı, kaydet butonu `btn btn-primary` standardına çekildi.
+  3. `views/evrak-takip/giden-evrak.php`:
+     - Üst başlık kartı, ek dosya satırları, akordiyon butonları, Summernote kilitli editör ve yapay zekâ context menüsü koyu temaya uyarlandı.
+- **Doğrulama**: `/opt/lampp/bin/php -l` ile sözdizimi doğrulamaları yapıldı; hata alınmadı.
+
 ## Mobil SPA — Personel Adından Detaya Geçişin Hafifletilmesi (2026-10-21)
 - Personel ana detay isteğinde sekme verilerinin bölüm bazlı lazy-load edilmesi korunurken kalan son toplu yük olan `personnel_quick_list` de ilk istekten çıkarıldı.
 - Personel değiştirme listesi artık kullanıcı profil başlığındaki personel seçiciyi açtığında `quick_list` aksiyonundan yükleniyor; modal içerisinde yüklenme durumu gösteriliyor.

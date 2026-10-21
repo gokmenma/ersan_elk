@@ -1,5 +1,18 @@
 # Progress
 
+## 2026-10-21 — Evrak Takip Modülü Koyu Mod (Dark Theme) Düzeltmeleri
+- [x] `views/evrak-takip/list.php` sayfasında koyu modda tablo thead'inin açık/beyaz kalmasına neden olan inline CSS ve `table-light` sınıfı kaldırıldı.
+- [x] `#evrakTable thead th` ve `#evrakTable thead .dt-filter-row th` hücreleri koyu tema zemin ve açık yazı renkleriyle entegre edildi.
+- [x] Tablo renkleri kartın koyu lacivert-antrasit tonuyla tam uyumlu hale getirildi (`#1e222d`, `#171922`, `#15171f`, `#12141a`); zebra satır ve mavi hover yansıması eklendi.
+- [x] Tablo kenarlıkları (borders) `border: 1px solid rgba(255, 255, 255, 0.11)` ve hücre kenarlıkları `rgba(255, 255, 255, 0.1)` olarak belirginleştirildi; başlık ve filtre satırları altına ayrım çizgileri çekildi.
+- [x] Filtre arama inputlarının kenarlıkları ve focus halkaları iyileştirildi; `assets/css/datatable-filters.css`'e `html[data-theme-preset="macos-dark"]` sıralama SVG kuralları eklendi.
+- [x] Tablo gövdesinde metin rengini siyah yapan `#evrakTable tbody td { color: #0f172a !important; }` kaldırıldı ve koyu mod paleti sağlandı.
+- [x] Tablodaki ve başlıklardaki `.text-dark` sınıflı elemanlar (`h4`, `h5`, evrak konuları, kurum ve personel adları) koyu modda açık renge uyarlandı.
+- [x] Üst araç çubuğu ve işlem butonlarındaki `.bg-white` butonları koyu tema zeminine çekildi.
+- [x] Özet KPI kartları (`.summary-kpi-card`), sarı bildirim bandı (`#imzaBekleyenUyari`), dropdownlar ve popover stilleri koyu moda uyarlandı.
+- [x] `modal/evrak-modal.php` ve `giden-evrak.php` sayfalarındaki koyu mod kontrast ve bileşen uyumsuzlukları giderildi.
+- [x] `/opt/lampp/bin/php -l` kontrolleri başarıyla geçti.
+
 ## 2026-10-21 — Personel Detaya Geçiş Lazy-load Tamamlama
 - [x] Hızlı personel seçici listesi ilk profil isteğinden çıkarıldı.
 - [x] Liste yalnız personel seçici açıldığında ayrı API aksiyonundan yüklenir hale getirildi.
@@ -1745,3 +1758,10 @@
 - [x] HTÇ kontrol modalının varsayılan tarihi seçili dönemdeki son tamamlanmış Pazar olarak ayarlandı.
 - [x] Otomatik HTÇ kayıtlarının modalda mevcut olup takvimde görünmemesi düzeltildi; onay varyantları, otomatik kayıt kilidi ve atama sonrası takvim yenilemesi tamamlandı.
 - [x] Pazar HTÇ modalını açarken oluşan `formatLocalDate is not defined` JavaScript hatası giderildi.
+
+# 2026-10-21 — Menü yönetimi sürükle/bırak hiyerarşi düzeltmesi
+
+- [x] Sıralama kaydında mevcut `parent_id` bağlarının yanlışlıkla yeniden hesaplanması kaldırıldı.
+- [x] Ana menü sürüklenirken bağlı alt menülerin aynı blokta kalması sağlandı.
+- [x] İçeri alma işlemi açık hedef ebeveynle güncellendi ve üçüncü seviye hiyerarşi engellendi.
+- [x] JavaScript sözdizimi ve diff kontrolleri tamamlandı.

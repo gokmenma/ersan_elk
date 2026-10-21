@@ -8,6 +8,7 @@ $(document).ready(function () {
     let allMenusData = [];
     let sortableInstance = null;
     let allExpanded = false;
+    let draggedParentChildIds = [];
 
     function safeFeatherReplace() {
         if (typeof feather !== "undefined") {
@@ -273,7 +274,32 @@ $(document).ready(function () {
             handle: '.menu-drag-handle',
             ghostClass: 'sortable-ghost',
             chosenClass: 'sortable-chosen',
-            onEnd: function () {
+            onStart: function (evt) {
+                const draggedCard = $(evt.item);
+                draggedParentChildIds = [];
+
+                if (draggedCard.hasClass('is-parent')) {
+                    const parentId = draggedCard.attr('data-id');
+                    draggedParentChildIds = $(`#menuTreeContainer .menu-item-card[data-parent-id="${parentId}"]`)
+                        .map(function () { return $(this).attr('data-id'); })
+                        .get();
+                }
+            },
+            onEnd: function (evt) {
+                // Sortable yalnız sürüklenen kartı taşır. Ana menünün çocuklarını da
+                // hemen arkasına alarak ekrandaki hiyerarşik bloğu birlikte koru.
+                if (draggedParentChildIds.length > 0) {
+                    let insertAfter = $(evt.item);
+                    draggedParentChildIds.forEach(function (childId) {
+                        const childCard = $(`#menuTreeContainer .menu-item-card[data-id="${childId}"]`);
+                        if (childCard.length) {
+                            childCard.insertAfter(insertAfter);
+                            insertAfter = childCard;
+                        }
+                    });
+                }
+
+                draggedParentChildIds = [];
                 autoSaveHierarchy(false);
             }
         });
@@ -315,27 +341,17 @@ $(document).ready(function () {
         });
     }
 
-    // Extract current hierarchy from DOM and save to backend
+    // Extract the current order from DOM while preserving explicit parent links.
+    // Drag/drop changes order only; hierarchy changes solely via indent/outdent.
     function autoSaveHierarchy(silent = false) {
         const cards = $("#menuTreeContainer .menu-item-card");
         const itemsToSave = [];
-        let currentParentId = 0;
         let orderIndex = 1;
 
         cards.each(function () {
             const card = $(this);
             const id = parseInt(card.attr('data-id'), 10);
-            const isChild = card.hasClass('is-child');
-            let parentId = 0;
-
-            if (isChild && currentParentId > 0) {
-                parentId = currentParentId;
-            } else {
-                currentParentId = id;
-                parentId = 0;
-            }
-
-            card.attr('data-parent-id', parentId);
+            const parentId = Math.max(0, parseInt(card.attr('data-parent-id'), 10) || 0);
 
             const groupName = card.attr('data-group') || '';
             
@@ -438,9 +454,28 @@ $(document).ready(function () {
             return;
         }
 
+        const existingChildren = $(`#menuTreeContainer .menu-item-card[data-parent-id="${card.attr('data-id')}"]`);
+        if (existingChildren.length > 0) {
+            Toastify({
+                text: "Alt menüsü bulunan bir ana menü başka bir menünün altına alınamaz.",
+                duration: 3000,
+                backgroundColor: "#f59e0b"
+            }).showToast();
+            return;
+        }
+
+        const targetParentId = prevCard.hasClass('is-child')
+            ? parseInt(prevCard.attr('data-parent-id'), 10)
+            : parseInt(prevCard.attr('data-id'), 10);
+
+        if (!targetParentId) {
+            return;
+        }
+
         // Make it child
         card.removeClass('is-parent children-collapsed').addClass('is-child');
         card.css('display', '');
+        card.attr('data-parent-id', targetParentId);
         card.find('.menu-icon-box').removeClass('parent-icon').addClass('child-icon');
         card.find('.item-type-badge').removeClass('menu-tag-parent').addClass('menu-tag-child').text('Alt Menü');
         
