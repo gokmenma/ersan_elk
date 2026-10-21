@@ -2315,7 +2315,7 @@ $(document).ready(function () {
           : row.blocked ? `<span class="badge bg-warning-subtle text-warning">${escapeHtcHtml(row.block_reason)}</span>`
           : row.qualified ? '<span class="badge bg-info-subtle text-info">Eşiği geçti</span>' : '<span class="badge bg-secondary-subtle text-secondary">Manuel seçim</span>';
         return `<tr>
-          <td class="text-center"><input type="checkbox" class="form-check-input sunday-htc-person" value="${row.id}" ${selectable && row.qualified ? "checked" : ""} ${selectable ? "" : "disabled"}></td>
+          <td class="text-center"><input type="checkbox" class="htc-check sunday-htc-person" aria-label="${escapeHtcHtml(row.adi_soyadi)} için HTÇ seç" value="${row.id}" ${selectable && row.qualified ? "checked" : ""} ${selectable ? "" : "disabled"}></td>
           <td><div class="fw-semibold">${escapeHtcHtml(row.adi_soyadi)}</div><small class="text-muted">Ekip ${escapeHtcHtml(row.ekip_no || "-")}</small></td>
           <td>${escapeHtcHtml(row.departman || "-")}<br><small class="text-muted">${escapeHtcHtml(row.ekip_bolge || "-")}</small></td>
           <td class="text-center fw-semibold">${Number(t.okuma || 0).toLocaleString("tr-TR")}</td>
@@ -2325,7 +2325,9 @@ $(document).ready(function () {
           <td class="text-center"><span class="badge bg-light text-dark border">${escapeHtcHtml(row.current_code)}</span></td><td>${status}</td></tr>`;
       }).join(""));
       $("#sunday-htc-summary").text(`${rows.length} çalışan · ${rows.filter(r => r.qualified).length} eşik üstü`);
-      $("#sunday-htc-select-all").prop("checked", false);
+      const selectableCount = $(".sunday-htc-person:not(:disabled)").length;
+      const checkedCount = $(".sunday-htc-person:checked").length;
+      $("#sunday-htc-select-all").prop("checked", selectableCount > 0 && checkedCount === selectableCount).prop("indeterminate", checkedCount > 0 && checkedCount < selectableCount);
       $("#btn-assign-sunday-htc").prop("disabled", !$(".sunday-htc-person:checked").length);
     }, "json").fail((xhr) => {
       $body.html(`<tr><td colspan="9" class="text-center text-danger py-5">${escapeHtcHtml(xhr.responseJSON?.message || "Kontrol sırasında hata oluştu.")}</td></tr>`);
@@ -2341,7 +2343,12 @@ $(document).ready(function () {
     loadSundayHtcPreview();
   });
   $("#sunday-htc-date").on("change", loadSundayHtcPreview);
-  $(document).on("change", ".sunday-htc-person", function () { $("#btn-assign-sunday-htc").prop("disabled", !$(".sunday-htc-person:checked").length); });
+  $(document).on("change", ".sunday-htc-person", function () {
+    const total = $(".sunday-htc-person:not(:disabled)").length;
+    const checked = $(".sunday-htc-person:checked").length;
+    $("#sunday-htc-select-all").prop("checked", total > 0 && checked === total).prop("indeterminate", checked > 0 && checked < total);
+    $("#btn-assign-sunday-htc").prop("disabled", checked === 0);
+  });
   $("#sunday-htc-select-all").on("change", function () { $(".sunday-htc-person:not(:disabled)").prop("checked", this.checked).trigger("change"); });
   $("#btn-assign-sunday-htc").on("click", function () {
     const ids = $(".sunday-htc-person:checked").map((_, el) => parseInt(el.value, 10)).get();

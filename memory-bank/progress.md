@@ -1,5 +1,10 @@
 # Progress
 
+## 2026-10-21 — Mobil SPA Ana Sayfa Performans Kontrolü
+- [x] Ana sayfa istemci yükleme akışı, dashboard API ve tüm model kart metotları incelendi.
+- [x] Gerçek veride tüm kartlar toplam ~82,87 ms ve ~1,4 KB olarak ölçüldü.
+- [x] Personel detayındaki düzeyde ağır eager-load problemi bulunmadı; üç düşük öncelikli optimizasyon fırsatı kaydedildi.
+
 ## 2026-10-21 — Mobil SPA Personel Detay Performans Analizi
 - Personel detay ve bölüm ekranlarının Vue yükleme akışı, ortak API endpoint'i ve `MobilePersonelModel` sorguları incelendi.
 - Gerçek veritabanı üzerinde metot bazlı süre ve yaklaşık JSON boyutu ölçüldü; ana darboğazın kullanılmayan bölüm verilerinin eager-load edilmesi ve özellikle puantaj sorguları olduğu doğrulandı.
@@ -1722,3 +1727,5 @@
 - [x] Personel bazında dört operasyon sayısı, eşik durumu, mevcut puantaj ve seçim engeli gösterildi.
 - [x] Seçili personellere HTÇ atama; firma kapsamı, Gate yetkisi, manuel kayıt koruması, transaction, mükerrer kayıt önleme ve sistem loguyla tamamlandı.
 - [x] PHP/JavaScript sözdizimi, `git diff --check`, salt okunur 18 Ekim önizlemesi ve 5 test/13 doğrulamalı HTÇ servis testleri geçti.
+- [x] HTÇ atamasındaki eksik `personel_izinleri.onaylayan_id` sütunu hatası giderildi ve INSERT işlemi rollback testiyle doğrulandı.
+- [x] Modal checkbox UI'ı yenilendi; toplu seçim ara durumu, sabit tablo başlığı ve bağımsız masaüstü/mobil scroll düzeltildi.

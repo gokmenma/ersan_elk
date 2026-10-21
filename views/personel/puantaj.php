@@ -60,6 +60,60 @@ use App\Service\Gate;
         #puantaj-full-container > .row { row-gap: 8px; }
         #puantaj-full-container > .row > .col-12 > .card { margin-bottom: 0 !important; }
 
+        #sundayHtcModal .htc-check {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            margin: 0;
+            border: 2px solid #cbd5e1;
+            border-radius: 7px;
+            background: #fff;
+            display: inline-grid;
+            place-content: center;
+            cursor: pointer;
+            transition: border-color .18s ease, background-color .18s ease, box-shadow .18s ease, transform .12s ease;
+            vertical-align: middle;
+        }
+        #sundayHtcModal .htc-check::before {
+            content: "";
+            width: 10px;
+            height: 6px;
+            border-left: 2px solid #fff;
+            border-bottom: 2px solid #fff;
+            transform: rotate(-45deg) scale(0);
+            margin-top: -2px;
+            transition: transform .14s ease;
+        }
+        #sundayHtcModal .htc-check:hover:not(:disabled) { border-color: #6366f1; transform: translateY(-1px); }
+        #sundayHtcModal .htc-check:focus-visible { outline: 0; box-shadow: 0 0 0 4px rgba(79, 70, 229, .16); }
+        #sundayHtcModal .htc-check:checked { background: linear-gradient(135deg, #6366f1, #4f46e5); border-color: #4f46e5; box-shadow: 0 4px 10px rgba(79, 70, 229, .24); }
+        #sundayHtcModal .htc-check:checked::before { transform: rotate(-45deg) scale(1); }
+        #sundayHtcModal .htc-check:indeterminate { background: #6366f1; border-color: #6366f1; }
+        #sundayHtcModal .htc-check:indeterminate::before { width: 10px; height: 0; border: 0; border-bottom: 2px solid #fff; transform: scale(1); margin: 0; }
+        #sundayHtcModal .htc-check:disabled { background: #f1f5f9; border-color: #e2e8f0; cursor: not-allowed; opacity: .65; }
+        [data-theme-preset="macos-dark"] #sundayHtcModal .htc-check { background: rgba(31, 41, 55, .9); border-color: rgba(148, 163, 184, .5); }
+        [data-theme-preset="macos-dark"] #sundayHtcModal .htc-check:checked { background: linear-gradient(135deg, #818cf8, #6366f1); border-color: #818cf8; }
+        #sundayHtcModal .modal-dialog { height: calc(100dvh - 32px); max-height: calc(100dvh - 32px); margin-top: 16px; margin-bottom: 16px; }
+        #sundayHtcModal .modal-content { height: 100%; max-height: 100%; overflow: hidden; display: flex; flex-direction: column; }
+        #sundayHtcModal .modal-header,
+        #sundayHtcModal .modal-footer { flex: 0 0 auto; }
+        #sundayHtcModal .modal-body { min-height: 0; overflow: hidden !important; display: flex; flex-direction: column; }
+        #sunday-htc-table-scroll {
+            min-height: 180px;
+            flex: 1 1 auto;
+            overflow: auto !important;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+        }
+        #sunday-htc-table thead { position: sticky; top: 0; z-index: 3; }
+        #sunday-htc-table thead th { background: #f8fafc; box-shadow: inset 0 -1px 0 #e2e8f0; }
+        @media (max-width: 767.98px) {
+            #sundayHtcModal .modal-dialog { height: calc(100dvh - 12px); max-height: calc(100dvh - 12px); margin: 6px; }
+            #sundayHtcModal .modal-body { padding: 12px; }
+        }
+
         /* Üst Filtre Kartı */
         .puantaj-table-header {
             overflow: visible;
@@ -1979,10 +2033,10 @@ use App\Service\Gate;
                         <span class="badge bg-primary-subtle text-primary border border-primary-subtle" id="sunday-htc-summary">Tarih seçiniz</span>
                     </div>
                 </div>
-                <div class="table-responsive border rounded">
+                <div class="table-responsive border rounded" id="sunday-htc-table-scroll">
                     <table class="table table-hover align-middle mb-0" id="sunday-htc-table">
                         <thead class="table-light"><tr>
-                            <th class="text-center" style="width:48px"><input type="checkbox" class="form-check-input" id="sunday-htc-select-all"></th>
+                            <th class="text-center" style="width:56px"><input type="checkbox" class="htc-check" id="sunday-htc-select-all" aria-label="Tüm uygun personelleri seç"></th>
                             <th>Personel</th><th>Departman / Bölge</th>
                             <th class="text-center">Endeks</th><th class="text-center">Kaçak</th>
                             <th class="text-center">Sökme-Takma</th><th class="text-center">Mühürleme</th>

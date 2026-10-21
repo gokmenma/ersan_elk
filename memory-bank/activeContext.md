@@ -1,5 +1,12 @@
 # Active Context
 
+## Mobil SPA — Ana Sayfa Performans Kontrolü (2026-10-21)
+- `HomeView`, `dashboard.js`, `dashboard.php` ve `MobileDashboardModel` salt okunur olarak incelendi.
+- Personel detayındaki ağır eager-load sorunu ana sayfada aynı ölçekte yok. Yetkili tüm kart metotları firma 1 gerçek verisiyle toplam yaklaşık **82,87 ms**, birleşik model JSON'u yaklaşık **1,4 KB** üretti.
+- En maliyetli kart personel özeti oldu (~36,56 ms); diğer kartlar yaklaşık 1–8 ms aralığında çalıştı.
+- Küçük optimizasyon fırsatları: kullanıcı arayüzde kartı gizlese dahi sunucu yetkili kartı hesaplıyor; `operationalTimestamps()` hem `readings()` hem `workOperations()` içinde çağrılarak aynı sorgu iki kez çalışıyor; her rota öncesindeki `auth.bootstrap(true)` ana sayfaya geçişte de ek seri ağ isteği oluşturuyor.
+- Ana sayfa için acil/veri tabanı kaynaklı bir performans sorunu doğrulanmadı; bu kontrolde uygulama kodu değiştirilmedi.
+
 ## Mobil SPA — Personel Detay Yavaşlık Analizi (2026-10-21)
 - `PersonnelDetailView` yalnız temel profil ve hızlı personel listesini kullandığı halde ortak `personnel.php?action=detail` endpoint'i çalışma bilgileri, izinler, ek ödemeler, kesintiler, evraklar, icralar, zimmetler, tüm demirbaş seçenekleri ve puantaj verilerini seri biçimde yüklüyor.
 - Yerel gerçek veri ölçümünde (firma 1, personel 75) model çağrıları toplam yaklaşık **505 ms** sürdü ve birleşik JSON yaklaşık **56 KB** oldu. Tek başına `getPuantajIsTakipDetails` yaklaşık **378 ms**, `getDemirbasOptions` yaklaşık **58 ms** üretti.
@@ -2948,3 +2955,5 @@
 - Personel Puantaj sayfasındaki İşlemler menüsüne `Pazar HTÇ Kontrolü` eklendi. Seçili ayın Pazarları modalda seçilir; Endeks, Kaçak, Sökme-Takma ve Mühürleme sayıları personel bazında birlikte gösterilir.
 - Firma eşiklerini geçen, HTÇ'si bulunmayan ve manuel puantajla çakışmayan personeller varsayılan seçilir. Eşik altındaki Pazar çalışanları kullanıcı tarafından ayrıca seçilebilir; manuel kilitli, başka kodlu veya zaten HTÇ bulunan satırlar korunur.
 - Seçilen kişiler merkezi HTÇ servisi üzerinden transaction içinde, idempotent biçimde atanır. API hem `personel/puantaj` Gate yetkisini hem firma kapsamını doğrular ve işlem sistem loguna yazılır.
+- Canlı şemada `personel_izinleri.onaylayan_id` bulunmadığı için otomatik HTÇ INSERT sorgusundaki hatalı alan kaldırıldı; onay durumu mevcut `onay_durumu` alanında korunuyor. Sorgu gerçek PDO transaction içinde insert + rollback ile doğrulandı.
+- HTÇ modalındaki seçim kutuları 22px özel durumlu modern checkbox tasarımına geçirildi; toplu seçim için checked/indeterminate durumları senkronize edildi. Modal viewport yüksekliğine sınırlandı, tablo gövdesi dokunmatik destekli bağımsız scroll ve sabit kolon başlığı kazandı.

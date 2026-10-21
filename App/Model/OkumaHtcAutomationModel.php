@@ -206,9 +206,9 @@ class OkumaHtcAutomationModel extends Model
     {
         $stmt = $this->db->prepare("INSERT INTO personel_izinleri
             (personel_id, izin_tipi_id, baslangic_tarihi, bitis_tarihi, toplam_gun, yillik_izne_etki,
-             aciklama, onay_durumu, onaylayan_id, olusturma_tarihi, kaynak, manuel_kilit,
+             aciklama, onay_durumu, olusturma_tarihi, kaynak, manuel_kilit,
              otomatik_kural, otomatik_okuma_sayisi)
-            VALUES (?, ?, ?, ?, 1, 0, ?, 'Onaylandı', '0', NOW(), 'otomatik', 0, ?, ?)");
+            VALUES (?, ?, ?, ?, 1, 0, ?, 'Onaylandı', NOW(), 'otomatik', 0, ?, ?)");
         $stmt->execute([$personelId, $htcId, $date, $date, $description, $rule, $readingCount]);
     }
 
