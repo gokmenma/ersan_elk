@@ -297,10 +297,12 @@ try {
         // Puantaj ve İzin verilerini getir
         // 1. Tüm personellerin izinlerini tek seferde çek
         $izin_stmt = $PersonelIzinleri->db->prepare("
-            SELECT pi.personel_id, pi.id, pi.baslangic_tarihi, pi.bitis_tarihi, pi.izin_tipi_id, t.tur_adi, t.kisa_kod, t.renk 
+            SELECT pi.personel_id, pi.id, pi.baslangic_tarihi, pi.bitis_tarihi, pi.izin_tipi_id,
+                   pi.kaynak, pi.otomatik_kural, t.tur_adi, t.kisa_kod, t.renk
             FROM personel_izinleri pi
             JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
-            WHERE pi.silinme_tarihi IS NULL AND pi.onay_durumu = 'Onaylandı'
+            WHERE pi.silinme_tarihi IS NULL
+            AND LOWER(TRIM(pi.onay_durumu)) IN ('onaylandı', 'onaylandi')
             AND pi.personel_id IN (SELECT id FROM personel WHERE firma_id = ? AND silinme_tarihi IS NULL)
             AND (
                 (pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ?)
@@ -367,7 +369,10 @@ try {
                             'tip_id' => $izin->izin_tipi_id,
                             'name' => $izin->tur_adi,
                             'kisa_kod' => $izin->kisa_kod,
-                            'color' => $izin->renk ?: '#34c38f'
+                            'color' => $izin->renk ?: '#34c38f',
+                            'source' => $izin->kaynak ?? null,
+                            'locked' => ($izin->kaynak ?? '') === 'otomatik'
+                                && ($izin->otomatik_kural ?? '') === OkumaHtcAutomationService::RULE
                         ];
                         $mevcut_gunler[$date_str] = true;
                     }

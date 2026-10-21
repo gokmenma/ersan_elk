@@ -1729,3 +1729,5 @@
 - [x] PHP/JavaScript sözdizimi, `git diff --check`, salt okunur 18 Ekim önizlemesi ve 5 test/13 doğrulamalı HTÇ servis testleri geçti.
 - [x] HTÇ atamasındaki eksik `personel_izinleri.onaylayan_id` sütunu hatası giderildi ve INSERT işlemi rollback testiyle doğrulandı.
 - [x] Modal checkbox UI'ı yenilendi; toplu seçim ara durumu, sabit tablo başlığı ve bağımsız masaüstü/mobil scroll düzeltildi.
+- [x] HTÇ kontrol modalının varsayılan tarihi seçili dönemdeki son tamamlanmış Pazar olarak ayarlandı.
+- [x] Otomatik HTÇ kayıtlarının modalda mevcut olup takvimde görünmemesi düzeltildi; onay varyantları, otomatik kayıt kilidi ve atama sonrası takvim yenilemesi tamamlandı.

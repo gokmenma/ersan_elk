@@ -166,7 +166,7 @@ class OkumaHtcAutomationService
         if (empty($ids['HT']) || !$htcId) throw new RuntimeException('Aktif HT ve HTÇ tanımları bulunmalıdır.');
         $workTotals = $this->model->operationTotals($firmaId, $date);
         foreach ($this->model->eligibleReadingTotals($firmaId, $date) as $pid => $total) $workTotals[$pid]['okuma'] = $total;
-        $result = ['created' => 0, 'unchanged' => 0, 'skipped' => []];
+        $result = ['created' => 0, 'created_ids' => [], 'unchanged' => 0, 'unchanged_ids' => [], 'skipped' => []];
         $this->model->begin();
         try {
             foreach ($personelIds as $personelId) {
@@ -181,10 +181,15 @@ class OkumaHtcAutomationService
                     $result['skipped'][] = ['personel_id' => $personelId, 'reason' => 'Mevcut manuel puantaj kodu korunmuştur.']; continue;
                 }
                 $description = 'Pazar çalışması kontrol ekranından seçilerek HTÇ oluşturuldu.';
-                if ($classification['automatic_htc'] !== null) { $result['unchanged']++; continue; }
+                if ($classification['automatic_htc'] !== null) {
+                    $result['unchanged']++;
+                    $result['unchanged_ids'][] = $personelId;
+                    continue;
+                }
                 foreach ($classification['convertible_ht'] as $record) $this->model->softDeleteAutomatic((int) $record['id'], 'Pazar HTÇ kontrol ekranından HTÇ koduna dönüştürüldü.');
                 $this->model->insertAutomatic($personelId, $htcId, $date, $description, self::RULE, max(array_map('floatval', $workTotals[$personelId])));
                 $result['created']++;
+                $result['created_ids'][] = $personelId;
             }
             $this->model->commit();
         } catch (\Throwable $e) { if ($this->model->inTransaction()) $this->model->rollBack(); throw $e; }

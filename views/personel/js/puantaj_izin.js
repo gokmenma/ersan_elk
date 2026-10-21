@@ -2338,6 +2338,12 @@ $(document).ready(function () {
     const dates = sundayDatesForSelectedMonth();
     const $select = $("#sunday-htc-date").empty();
     dates.forEach((date) => $select.append(new Option(new Date(date + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric", weekday: "long" }), date)));
+    const today = formatLocalDate(new Date());
+    const completedSundays = dates.filter((date) => date <= today);
+    const defaultSunday = completedSundays.length
+      ? completedSundays[completedSundays.length - 1]
+      : (dates[0] || "");
+    $select.val(defaultSunday);
     $select.select2({ dropdownParent: $("#sundayHtcModal"), width: "100%" });
     bootstrap.Modal.getOrCreateInstance(document.getElementById("sundayHtcModal")).show();
     loadSundayHtcPreview();
@@ -2356,7 +2362,12 @@ $(document).ready(function () {
     const $btn = $(this).prop("disabled", true);
     $.post(API_URL, { action: "assign-selected-sunday-htc", date, personel_ids: JSON.stringify(ids) }, function (res) {
       if (res.status !== "success") return Swal.fire("Hata", res.message || "HTÇ eklenemedi.", "error");
-      Swal.fire("Tamamlandı", res.message, "success"); loadSundayHtcPreview(); renderTable();
+      const affectedIds = [...(res.data?.created_ids || []), ...(res.data?.unchanged_ids || [])];
+      affectedIds.forEach((personelId) => delete unsavedChanges[`${personelId}-${date}`]);
+      const modal = bootstrap.Modal.getInstance(document.getElementById("sundayHtcModal"));
+      if (modal) modal.hide();
+      renderTable();
+      Swal.fire("Tamamlandı", `${res.message} Puantaj tablosu yenilendi.`, "success");
     }, "json").fail((xhr) => Swal.fire("Hata", xhr.responseJSON?.message || "HTÇ eklenemedi.", "error")).always(() => $btn.prop("disabled", false));
   });
 });
