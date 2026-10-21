@@ -1,5 +1,17 @@
 # Progress
 
+## 2026-10-21 — Mobil SPA Personel Detay Performans Analizi
+- Personel detay ve bölüm ekranlarının Vue yükleme akışı, ortak API endpoint'i ve `MobilePersonelModel` sorguları incelendi.
+- Gerçek veritabanı üzerinde metot bazlı süre ve yaklaşık JSON boyutu ölçüldü; ana darboğazın kullanılmayan bölüm verilerinin eager-load edilmesi ve özellikle puantaj sorguları olduğu doğrulandı.
+- Kod değişikliği yapılmadı; düzeltme öncelikleri ve gerekli indeks/mimari ayrıştırma adımları belirlendi.
+
+## 2026-10-21 — Mobil SPA Personel Detay Performans Düzeltmesi
+- [x] Ortak personel detay endpoint'i profil/bölüm kapsamlarına ayrıldı.
+- [x] Alt bölüm ekranı yalnız aktif bölümün verisini isteyecek şekilde güncellendi.
+- [x] Üç performans indeksi tekrarlanabilir ayrı SQL scriptiyle oluşturuldu ve uygulandı.
+- [x] Profil model süresi yaklaşık 505 ms'den 4,79 ms'ye indirildi; puantaj sorgularının yeni indeksleri kullandığı doğrulandı.
+- [x] PHP lint, Vite production build, public/dist eşitliği, SQL tekrar çalıştırma ve diff kontrolleri geçti.
+
 ## 2026-10-21: Mobil SPA — Personel Detay Sayfasında İş ve Puantaj (İş Takip / Saha Operasyonları) Modülü
 - [x] Model Katmanı (`App/Model/MobilePersonelModel.php`):
   - `getPuantajIsTakipDetails`: `yapilan_isler`, `endeks_okuma` ve `kacak_kontrol` kayıtlarını ortak standart veri şemasında birleştiren, özet metrikleri (`toplam_kayit`, `toplam_is`, `sonuclanan_is`, `acik_is`, `endeks_sayisi`, `kacak_sayisi`, `tamamlanma_orani`) ve dinamik iş tipi/sonuç seçeneklerini üreten metot yazıldı.
@@ -1681,3 +1693,32 @@
 - [x] E-imza alt bilgisi özgün referansa yaklaştırıldı; çift kırmızı ayraç tek çizgiye indirildi ve alt bilgi tipografi/boşluk oranları sıkılaştırıldı.
 - [x] Giden KEP evraklarının en son PTT delil durumu, Evrak Takip listesinde Tip alanından ayrılarak bağımsız `KEP Durumu` kolonunda gösterildi; firma izolasyonlu toplu Model sorgusu kullanıldı.
 - [x] `tests/integration` / `tests/Integration` yol çakışması giderildi ve Linux için Git büyük/küçük harf duyarlılığı etkinleştirildi.
+# 2026-10-21 — Mobil SPA yetki erişimi denetimi
+
+- [x] Tüm Vue rotalarının `requiresAuth`, `requiresCompany` ve modül `permission` meta kontrolleri incelendi.
+- [x] Oturum API'sinin sunucu kaynaklı yetki haritası ile navbar/“Diğer” filtreleri karşılaştırıldı.
+- [x] Mobil modül API'lerinin başlangıç Gate/403 kontrolleri tarandı.
+- [x] Doğrulanmış doğrudan yetkisiz sayfa erişimi bulunmadı; üç savunma derinliği/tutarlılık riski raporlandı, kod değişikliği yapılmadı.
+- [x] `burakkafadar` Sistem Logları görünürlük hatası canlı rol/yetki kayıtlarıyla doğrulandı: yetki ataması yok, eski/tanımsız `views/logs/list.php` linkinin fail-open menü kontrolü yanlış `logs=true` üretiyor.
+- [x] Tanımsız menü/yetki eşleşmeleri fail-closed hale getirildi; mobil sayfa, menü, dashboard ve API erişimleri masaüstü permission anahtarlarıyla eşitlendi.
+- [x] `burakkafadar` doğrulamasında Araç Takip, KM Onayları, Puantaj ve Kaçak Kontrol izinli; Sistem Logları ve tanımsız bağlantılar reddedildi. PHP lint, üretim build’i ve public/dist eşitliği geçti.
+- [x] Mobil alt navigasyonda `Diğer` butonu daima en sağda olacak şekilde sıralama düzeltildi.
+- [x] Personel Puantaj mobil erişimi masaüstündeki `personel/puantaj` yetkisine bağlandı; `puantaj/raporlar` yetkisinin bu sayfayı açması engellendi.
+- [x] Mobil SPA'nın tüm Vue rotaları, menü/hızlı işlem öğeleri ve modül API girişleri masaüstü yetkileriyle yeniden denetlendi.
+- [x] Giden/Gelen Evrak, Nöbet Onay, Personel düzenleme/alt bölümler ve E-Fatura alt sekmelerindeki geniş yetki eşlemeleri ayrıştırıldı.
+- [x] Açık oturumda kaldırılan yetkinin sonraki rota geçişinde etkili olması için oturum yetki haritası ve Gate önbelleği tazelenir hale getirildi.
+- [x] Personel detay ve fatura detay API yanıtlarındaki yetkisiz veri alanları sunucu tarafında kapatıldı.
+- [x] Tüm mobil PHP API dosyaları lint kontrolünden, Vue production build’i, `git diff --check` ve public/dist eşitlik kontrolünden geçti.
+- [x] Puantaj/Raporlar dağılım detayındaki 500 hatası giderildi; `reports.php` ortak PDO bağlantısı geri eklendi ve Ekim 2026 `okuma` dağılım çağrısı gerçek kullanıcı oturumuyla doğrulandı.
+# 2026-10-21 — Bağımsız Pazar HTÇ telafisi
+
+- [x] `cron/okuma_htc_telafi.php` tarih/firma parametreli, yalnız CLI erişimli ve tekrar çalıştırılabilir telafi komutu olarak eklendi.
+- [x] Migration ön koşulu ve aktif firma seçimi `OkumaHtcAutomationModel` içindeki parametrik PDO metotlarıyla doğrulandı.
+- [x] Geçersiz gün doğrulaması, yardım çıktısı, PHP lint, `git diff --check` ve 18 Ekim 2026 idempotent çalışma testi geçti.
+
+# 2026-10-21 — Puantaj Pazar HTÇ kontrolü
+
+- [x] İşlemler menüsüne Pazar HTÇ Kontrolü ve Select2 tarih seçicili detay modalı eklendi.
+- [x] Personel bazında dört operasyon sayısı, eşik durumu, mevcut puantaj ve seçim engeli gösterildi.
+- [x] Seçili personellere HTÇ atama; firma kapsamı, Gate yetkisi, manuel kayıt koruması, transaction, mükerrer kayıt önleme ve sistem loguyla tamamlandı.
+- [x] PHP/JavaScript sözdizimi, `git diff --check`, salt okunur 18 Ekim önizlemesi ve 5 test/13 doğrulamalı HTÇ servis testleri geçti.

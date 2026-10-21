@@ -36,14 +36,14 @@ const router = createRouter({
     { path: '/firma-secimi', name: 'company-select', component: CompanySelectView, meta: { requiresAuth: true, chrome: false } },
     { path: '/', name: 'home', component: HomeView, meta: { requiresAuth: true, requiresCompany: true } },
     { path: '/evrak-takip', name: 'evrak-takip', component: EvrakView, meta: { requiresAuth: true, requiresCompany: true, permission: 'documents' } },
-    { path: '/giden-evrak', name: 'giden-evrak', component: GidenEvrakView, meta: { requiresAuth: true, requiresCompany: true, permission: 'documents' } },
+    { path: '/giden-evrak', name: 'giden-evrak', component: GidenEvrakView, meta: { requiresAuth: true, requiresCompany: true, permission: 'outgoing_documents' } },
     { path: '/giden-evraklar', redirect: '/giden-evrak' },
     { path: '/evrak', redirect: '/evrak-takip' },
     { path: '/evraklar', redirect: '/evrak-takip' },
     { path: '/arac-takip', name: 'arac-takip', component: AracView, meta: { requiresAuth: true, requiresCompany: true, permission: 'vehicles' } },
     { path: '/arac-dashboard', redirect: '/arac-takip' },
     { path: '/arac', redirect: '/arac-takip' },
-    { path: '/km-onaylari', name: 'km-onaylari', component: KmOnaylariView, meta: { requiresAuth: true, requiresCompany: true, permission: 'vehicles' } },
+    { path: '/km-onaylari', name: 'km-onaylari', component: KmOnaylariView, meta: { requiresAuth: true, requiresCompany: true, permission: 'km_approvals' } },
     { path: '/km-onay', redirect: '/km-onaylari' },
     { path: '/gorevler', name: 'tasks', component: TasksView, meta: { requiresAuth: true, requiresCompany: true, permission: 'tasks' } },
     { path: '/raporlar', name: 'reports', component: ReportsView, meta: { requiresAuth: true, requiresCompany: true, permission: 'reports' } },
@@ -52,8 +52,8 @@ const router = createRouter({
     { path: '/personel', name: 'personnel', component: PersonnelView, meta: { requiresAuth: true, requiresCompany: true, permission: 'personnel' } },
     { path: '/personel/:id', name: 'personnel-detail', component: PersonnelDetailView, meta: { requiresAuth: true, requiresCompany: true, permission: 'personnel' } },
     { path: '/personel/:id/bolum/:section', name: 'personnel-section', component: PersonnelSectionView, meta: { requiresAuth: true, requiresCompany: true, permission: 'personnel' } },
-    { path: '/personel/yeni', name: 'personnel-create', component: PersonnelFormView, meta: { requiresAuth: true, requiresCompany: true, permission: 'personnel', chrome: false } },
-    { path: '/personel/:id/duzenle', name: 'personnel-edit', component: PersonnelFormView, meta: { requiresAuth: true, requiresCompany: true, permission: 'personnel', chrome: false } },
+    { path: '/personel/yeni', name: 'personnel-create', component: PersonnelFormView, meta: { requiresAuth: true, requiresCompany: true, permission: 'personnel_edit', chrome: false } },
+    { path: '/personel/:id/duzenle', name: 'personnel-edit', component: PersonnelFormView, meta: { requiresAuth: true, requiresCompany: true, permission: 'personnel_edit', chrome: false } },
     { path: '/cari-takip', name: 'cari-list', component: CariView, meta: { requiresAuth: true, requiresCompany: true, permission: 'current_accounts' } },
     { path: '/cari-takip/:id', name: 'cari-detail', component: CariDetailView, meta: { requiresAuth: true, requiresCompany: true, permission: 'current_accounts' } },
     { path: '/fatura', name: 'fatura', component: FaturaView, meta: { requiresAuth: true, requiresCompany: true, permission: 'invoices' } },
@@ -70,7 +70,7 @@ const router = createRouter({
     { path: '/sozlesmeler', redirect: '/sozlesme-hakedis' },
     { path: '/hakedis', redirect: '/sozlesme-hakedis' },
     { path: '/hakedisler', redirect: '/sozlesme-hakedis' },
-    { path: '/puantaj', name: 'puantaj', component: PuantajView, meta: { requiresAuth: true, requiresCompany: true, permission: 'reports' } },
+    { path: '/puantaj', name: 'puantaj', component: PuantajView, meta: { requiresAuth: true, requiresCompany: true, permission: 'puantaj' } },
     { path: '/puantaj-takip', redirect: '/puantaj' },
     { path: '/kacak-kontrol', name: 'kacak-kontrol', component: KacakView, meta: { requiresAuth: true, requiresCompany: true, permission: 'illegal' } },
     { path: '/kacak', redirect: '/kacak-kontrol' },
@@ -90,14 +90,16 @@ const router = createRouter({
 
 router.beforeEach(async (to) => {
   try {
-    await auth.bootstrap()
+    await auth.bootstrap(true)
   } catch {
     if (to.name !== 'login') return { name: 'login' }
   }
   if (to.meta.guest && auth.state.authenticated) return auth.state.company ? { name: 'home' } : { name: 'company-select' }
   if (to.meta.requiresAuth && !auth.state.authenticated) return { name: 'login' }
   if (to.meta.requiresCompany && !auth.state.company) return { name: 'company-select' }
-  if (to.meta.permission && !auth.state.permissions[to.meta.permission] && !(to.name === 'km-onaylari' && auth.state.permissions.km_approvals)) return { name: 'home' }
+  if (to.meta.permission && !auth.state.permissions[to.meta.permission]) return { name: 'home' }
+  if (to.name === 'personnel-section' && !auth.state.permissions.personnel_edit) return { name: 'personnel-detail', params: { id: to.params.id } }
+  if (to.name === 'personnel-section' && to.params.section === 'evraklar' && !auth.state.permissions.personnel_documents) return { name: 'personnel-detail', params: { id: to.params.id } }
 })
 
 export default router

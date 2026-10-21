@@ -16,6 +16,51 @@ class OkumaHtcAutomationModel extends Model
     public function rollBack(): bool { return $this->db->rollBack(); }
     public function inTransaction(): bool { return $this->db->inTransaction(); }
 
+    /** Otomasyon migration'ının hedef veritabanında eksiksiz olduğunu doğrular. */
+    public function automationSchemaStatus(): array
+    {
+        $requiredColumns = ['kaynak', 'manuel_kilit', 'otomatik_kural', 'otomatik_okuma_sayisi'];
+        $stmt = $this->db->prepare("SELECT COLUMN_NAME FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'personel_izinleri'
+              AND COLUMN_NAME IN ('kaynak', 'manuel_kilit', 'otomatik_kural', 'otomatik_okuma_sayisi')");
+        $stmt->execute();
+        $presentColumns = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        $tableStmt = $this->db->prepare("SELECT COUNT(*) FROM information_schema.TABLES
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'puantaj_otomasyon_kilitleri'");
+        $tableStmt->execute();
+
+        return [
+            'ready' => count(array_diff($requiredColumns, $presentColumns)) === 0
+                && (int) $tableStmt->fetchColumn() === 1,
+            'missing_columns' => array_values(array_diff($requiredColumns, $presentColumns)),
+            'missing_lock_table' => (int) $this->tableExists('puantaj_otomasyon_kilitleri') === 0,
+        ];
+    }
+
+    /** @return int[] */
+    public function activeFirmIds(?int $firmaId = null): array
+    {
+        $sql = "SELECT id FROM firmalar WHERE silinme_tarihi IS NULL";
+        $params = [];
+        if ($firmaId !== null) {
+            $sql .= " AND id = ?";
+            $params[] = $firmaId;
+        }
+        $sql .= " ORDER BY id ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    }
+
+    private function tableExists(string $table): bool
+    {
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM information_schema.TABLES
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?");
+        $stmt->execute([$table]);
+        return (int) $stmt->fetchColumn() > 0;
+    }
+
     public function definitionIds(int $firmaId): array
     {
         $stmt = $this->db->prepare("SELECT id, UPPER(TRIM(kisa_kod)) AS code, firma_id FROM tanimlamalar
@@ -94,6 +139,31 @@ class OkumaHtcAutomationModel extends Model
         }
 
         return $totals;
+    }
+
+    public function personnelSummaries(int $firmaId, array $personelIds): array
+    {
+        $personelIds = array_values(array_unique(array_filter(array_map('intval', $personelIds))));
+        if (!$personelIds) return [];
+        $placeholders = implode(',', array_fill(0, count($personelIds), '?'));
+        $stmt = $this->db->prepare("SELECT id, adi_soyadi, departman, ekip_no, ekip_bolge
+            FROM personel WHERE firma_id = ? AND silinme_tarihi IS NULL AND id IN ($placeholders)
+            ORDER BY adi_soyadi ASC");
+        $stmt->execute(array_merge([$firmaId], $personelIds));
+        $rows = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) $rows[(int) $row['id']] = $row;
+        return $rows;
+    }
+
+    public function activeRecords(int $personelId, string $date): array
+    {
+        $stmt = $this->db->prepare("SELECT pi.id, pi.izin_tipi_id, pi.baslangic_tarihi, pi.bitis_tarihi,
+                pi.kaynak, pi.manuel_kilit, pi.otomatik_kural, t.kisa_kod
+            FROM personel_izinleri pi LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
+            WHERE pi.personel_id = ? AND pi.silinme_tarihi IS NULL
+              AND pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ? ORDER BY pi.id ASC");
+        $stmt->execute([$personelId, $date, $date]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function automaticPersonnelIds(int $firmaId, string $date, string $rule): array

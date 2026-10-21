@@ -61,6 +61,20 @@ function verifyCsrfToken(): void
     }
 }
 
+function requireInvoiceViewAccess(array $invoice): void
+{
+    $direction = strtoupper((string) ($invoice['yon'] ?? ''));
+    $status = strtoupper((string) ($invoice['entegrator_durum_kodu'] ?? ''));
+    $allowed = $direction === 'GELEN'
+        ? Gate::allows('efatura/gelen-list')
+        : ($status === 'TASLAK'
+            ? Gate::allowsAny(['efatura/taslak-list', 'efatura/olustur'])
+            : Gate::allows('efatura/giden-list'));
+    if (!$allowed) {
+        faturaApiResponse(['success' => false, 'message' => 'Bu faturayı görüntüleme yetkiniz bulunmuyor.'], 403);
+    }
+}
+
 checkFaturaAuth();
 
 $action = (string) ($_GET['action'] ?? $_POST['action'] ?? 'dashboard');
@@ -75,7 +89,7 @@ $malHizmetModel = new EFaturaMalHizmetModel();
 try {
     // 1. DASHBOARD & FINANS OZETI
     if ($method === 'GET' && $action === 'dashboard') {
-        if (!Gate::allows('efatura/dashboard') && !Gate::allows('efatura/giden-list') && !Gate::allows('efatura/gelen-list')) {
+        if (!Gate::allows('efatura/dashboard')) {
             faturaApiResponse(['success' => false, 'message' => 'Dashboard görüntüleme yetkiniz bulunmuyor.'], 403);
         }
 
@@ -201,6 +215,7 @@ try {
         if (!$invoice) {
             faturaApiResponse(['success' => false, 'message' => 'Fatura kaydı bulunamadı.'], 404);
         }
+        requireInvoiceViewAccess($invoice);
 
         $invoice['encrypted_id'] = $encId;
 
@@ -220,6 +235,11 @@ try {
             faturaApiResponse(['success' => false, 'message' => 'Geçersiz fatura kimliği.'], 400);
         }
 
+        $invoice = $invoiceModel->getInvoiceById($invoiceId, $firmId);
+        if (!$invoice) {
+            faturaApiResponse(['success' => false, 'message' => 'Fatura kaydı bulunamadı.'], 404);
+        }
+        requireInvoiceViewAccess($invoice);
         $html = $invoiceService->renderHtmlPreview($invoiceId, $firmId);
         faturaApiResponse([
             'success' => true,
@@ -238,6 +258,13 @@ try {
             exit('Geçersiz fatura kimliği.');
         }
 
+        $invoice = $invoiceModel->getInvoiceById($invoiceId, $firmId);
+        if (!$invoice) {
+            http_response_code(404);
+            exit('Fatura kaydı bulunamadı.');
+        }
+        requireInvoiceViewAccess($invoice);
+
         if ($action === 'show_html') {
             $html = $invoiceService->renderHtmlPreview($invoiceId, $firmId);
             header('Content-Type: text/html; charset=utf-8');
@@ -248,7 +275,6 @@ try {
         if ($action === 'download_pdf') {
             try {
                 $pdf = $invoiceService->downloadPdf($invoiceId, $firmId);
-                $invoice = $invoiceModel->getInvoiceById($invoiceId, $firmId);
                 $filename = preg_replace('/[^A-Za-z0-9_-]/', '', ($invoice['fatura_no'] ?? '') ?: ($invoice['ettn'] ?? 'fatura')) . '.pdf';
                 header('Content-Type: application/pdf');
                 header('X-Content-Type-Options: nosniff');

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Helper\Security;
 use App\Model\FirmaModel;
-use App\Model\MenuModel;
 use App\Model\SozlesmeDonemModel;
 use App\Model\SystemLogModel;
 use App\Model\UserModel;
@@ -62,16 +61,9 @@ function requireCsrf(array $data): void
     }
 }
 
-function mobileCan(array $permissionKeys, array $menuLinks = []): bool
+function mobileCan(array $permissionKeys): bool
 {
-    if (Gate::allowsAny($permissionKeys)) return true;
-    $userId = (int) ($_SESSION['user_id'] ?? 0);
-    if ($userId <= 0) return false;
-    $menus = new MenuModel();
-    foreach ($menuLinks as $link) {
-        if ($menus->userCanAccessMenuLink($userId, $link)) return true;
-    }
-    return false;
+    return Gate::allowsAny($permissionKeys);
 }
 
 function publicUser(object $user): array
@@ -209,6 +201,10 @@ function sessionPayload(): array
 
     $_SESSION['user'] = $freshUser;
 
+    // Rol/yetki değişiklikleri açık mobil oturuma bir sonraki rota geçişinde
+    // yansısın; eski Gate oturum önbelleği yetkisiz sayfayı görünür tutmasın.
+    unset($_SESSION['permission_cache'][(int) $freshUser->id]);
+
     // Firma seçili değilse varsayılan firmayı otomatik bağla
     if (empty($_SESSION['firma_id'])) {
         $defaultCompany = resolveDefaultCompany($freshUser);
@@ -218,26 +214,37 @@ function sessionPayload(): array
     }
 
     $permissions = [
-        'personnel' => mobileCan(['personel_listesi'], ['personel/list']),
-        'tasks' => mobileCan(['gorevler'], ['gorevler/list']),
-        'reports' => mobileCan(['puantaj_raporlama', 'puantaj_yonetim', 'puantaj/raporlar', 'puantaj/list'], ['puantaj/raporlar', 'puantaj/list']),
-        'requests' => mobileCan(['talepler'], ['talepler/list']),
-        'vehicles' => mobileCan(['arac_takip_yonetim'], ['arac-takip/list']),
-        'km_approvals' => mobileCan(['arac_takip_yonetim', 'onaylikm_duzenle', 'arac-takip/km-onaylari'], ['arac-takip/km-onaylari', 'arac-takip/list']),
-        'invoices' => mobileCan(['efatura/dashboard', 'efatura/giden-list', 'efatura/gelen-list', 'efatura/olustur'], ['efatura/dashboard', 'efatura/giden-list', 'efatura/gelen-list']),
-        'cash' => mobileCan(['gelir_gider_takibi', 'gelir-gider/list', 'kasa/list', 'legacy.permission.13'], ['gelir-gider/list', 'gelir-gider', 'kasa/list']),
-        'current_accounts' => mobileCan(['cari/list'], ['cari/list']),
-        'documents' => mobileCan(['evrak-takip/list'], ['evrak-takip/list']),
-        'shifts' => mobileCan(['nobet/onay-islemleri', 'yonetici_onayi', 'nobet/list'], ['nobet/onay-islemleri', 'nobet/list']),
-        'payroll' => mobileCan(['bordro/list'], ['bordro/list']),
-        'contracts' => mobileCan(['hakedis', 'hakedisler/index'], ['hakedisler/index', 'hakedisler/sozlesme-detay', 'hakedisler/hakedis-detay']),
-        'notices' => mobileCan(['ihbar/list'], ['ihbar/list']),
-        'illegal' => mobileCan(['kacak_islemleri', 'kacak/list'], ['kacak/list']),
+        'personnel' => mobileCan(['personel_listesi']),
+        'personnel_edit' => Gate::allows('personel_listesi') && Gate::allows('personel_duzenle'),
+        'personnel_documents' => Gate::allows('personel_duzenle') && Gate::allows('evrak_bilgileri_sekmesi'),
+        'tasks' => mobileCan(['gorevler']),
+        'reports' => mobileCan(['puantaj/raporlar']),
+        'puantaj' => mobileCan(['personel/puantaj']),
+        'requests' => mobileCan(['talepler', 'avans_talepleri', 'izin_talepleri', 'ariza_talepleri']),
+        'vehicles' => mobileCan(['arac_takip']),
+        'km_approvals' => mobileCan(['arac_km_onaylari']),
+        'invoices' => mobileCan(['efatura/dashboard', 'efatura/giden-list', 'efatura/gelen-list', 'efatura/taslak-list']),
+        'invoice_dashboard' => mobileCan(['efatura/dashboard']),
+        'invoice_outgoing' => mobileCan(['efatura/giden-list']),
+        'invoice_incoming' => mobileCan(['efatura/gelen-list']),
+        'invoice_drafts' => mobileCan(['efatura/taslak-list']),
+        'invoice_create' => mobileCan(['efatura/olustur']),
+        'cash' => mobileCan(['gelir_gider_takibi']),
+        'current_accounts' => mobileCan(['cari_takibi']),
+        'documents' => mobileCan(['evrak-takip/list']),
+        'incoming_documents' => mobileCan(['evrak-takip/gelen-evrak']),
+        'outgoing_documents' => mobileCan(['evrak-takip/giden-evrak']),
+        'shifts' => mobileCan(['yonetici_onayi']),
+        'shift_schedule' => mobileCan(['nobet/list']),
+        'payroll' => mobileCan(['bordro/list']),
+        'contracts' => mobileCan(['hakedis']),
+        'notices' => mobileCan(['ihbar/list']),
+        'illegal' => mobileCan(['kacak_islemleri']),
         'illegal_approve' => Gate::allows('kacak_onay') || Gate::isSuperAdmin(),
         'illegal_cancel' => Gate::allows('kacak_iptal_ekle') || Gate::isSuperAdmin(),
         'illegal_revert_cancel' => Gate::allows('kacak_iptal') || Gate::isSuperAdmin(),
-        'support' => mobileCan(['yardim/list', 'yardim/user-list'], ['yardim/list', 'yardim/user-list']),
-        'logs' => mobileCan(['log_kayitlari'], ['views/logs/list.php', 'log_kayitlari']) || Gate::isSuperAdmin(),
+        'support' => mobileCan(['admin_destek_talebi', 'Destek Taleplerim (Kullanıcı)']),
+        'logs' => mobileCan(['log_kayitlari']),
     ];
     return [
         'authenticated' => true,

@@ -63,6 +63,14 @@ import TopBar from '../components/TopBar.vue'
 const router = useRouter()
 const route = useRoute()
 
+const invoiceTabPermissions = computed(() => ({
+  ozet: Boolean(auth.state.permissions.invoice_dashboard),
+  giden: Boolean(auth.state.permissions.invoice_outgoing),
+  gelen: Boolean(auth.state.permissions.invoice_incoming),
+  taslak: Boolean(auth.state.permissions.invoice_drafts),
+}))
+const firstAllowedInvoiceTab = () => ['ozet', 'giden', 'gelen', 'taslak'].find(tab => invoiceTabPermissions.value[tab]) || 'ozet'
+
 // 1. Ana Durumlar & Sekmeler
 const activeTab = ref(route.query.tab || faturaState.activeTab || 'ozet') // ozet, giden, gelen, taslak
 
@@ -480,6 +488,7 @@ function loadCurrentTab(reset = true) {
 }
 
 function switchTab(tab) {
+  if (!invoiceTabPermissions.value[tab]) return
   activeTab.value = tab
   if (faturaState.activeTab !== tab) {
     faturaState.activeTab = tab
@@ -1151,10 +1160,11 @@ async function saveWizardInvoice(sendDirect = false) {
 onMounted(() => {
   openFaturaDrawer()
   window.addEventListener('resize', onWindowResize)
-  if (route.query.tab && ['ozet', 'giden', 'gelen', 'taslak'].includes(route.query.tab)) {
+  if (route.query.tab && invoiceTabPermissions.value[route.query.tab]) {
     faturaState.activeTab = route.query.tab
     activeTab.value = route.query.tab
   } else {
+    activeTab.value = invoiceTabPermissions.value[activeTab.value] ? activeTab.value : firstAllowedInvoiceTab()
     faturaState.activeTab = activeTab.value
   }
   initDatesForPeriod('this_month')
@@ -1199,6 +1209,7 @@ onBeforeUnmount(() => {
           <RefreshCw :size="17" />
         </button>
         <button
+          v-if="auth.state.permissions.invoice_create"
           type="button"
           class="clay-circle-btn"
           title="Fatura Kes"

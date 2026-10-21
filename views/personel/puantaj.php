@@ -1695,6 +1695,11 @@ use App\Service\Gate;
                                                     id="btn-open-excel-modal">
                                                     <i class="mdi mdi-file-import-outline text-primary me-2"></i>
                                                     Excelden Yükle</a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item py-2" href="javascript:void(0);"
+                                                    id="btn-open-sunday-htc-modal">
+                                                    <i class="mdi mdi-calendar-check text-purple me-2"></i>
+                                                    Pazar HTÇ Kontrolü</a></li>
                                         </ul>
                                     </div>
 
@@ -1949,6 +1954,49 @@ use App\Service\Gate;
                         <i class="mdi mdi-check me-1"></i> Kaydet
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pazar Çalışması / HTÇ Kontrol Modalı -->
+<div class="modal fade" id="sundayHtcModal" tabindex="-1" aria-labelledby="sundayHtcModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <div>
+                    <h5 class="modal-title text-white" id="sundayHtcModalLabel">Pazar Çalışması — HTÇ Kontrolü</h5>
+                    <div class="font-size-11 opacity-75">Operasyon sayılarını kontrol edin, HTÇ eklenecek personelleri seçin.</div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row align-items-end g-3 mb-3">
+                    <div class="col-md-5">
+                        <?php echo Form::FormSelect2('sunday-htc-date', ['' => 'Pazar günü seçiniz'], '', 'Pazar Tarihi', 'calendar', 'key', '', 'form-control select2'); ?>
+                    </div>
+                    <div class="col-md-7 text-md-end">
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle" id="sunday-htc-summary">Tarih seçiniz</span>
+                    </div>
+                </div>
+                <div class="table-responsive border rounded">
+                    <table class="table table-hover align-middle mb-0" id="sunday-htc-table">
+                        <thead class="table-light"><tr>
+                            <th class="text-center" style="width:48px"><input type="checkbox" class="form-check-input" id="sunday-htc-select-all"></th>
+                            <th>Personel</th><th>Departman / Bölge</th>
+                            <th class="text-center">Endeks</th><th class="text-center">Kaçak</th>
+                            <th class="text-center">Sökme-Takma</th><th class="text-center">Mühürleme</th>
+                            <th class="text-center">Puantaj</th><th>Durum</th>
+                        </tr></thead>
+                        <tbody><tr><td colspan="9" class="text-center text-muted py-5">Pazar günü seçiniz.</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="button" class="btn btn-primary" id="btn-assign-sunday-htc" disabled>
+                    <i class="mdi mdi-calendar-check me-1"></i> Seçilenlere HTÇ Ekle
+                </button>
             </div>
         </div>
     </div>

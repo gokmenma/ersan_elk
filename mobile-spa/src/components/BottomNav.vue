@@ -208,9 +208,9 @@ function handleCenterNavClick() {
 const items = [
   { to: '/', label: 'Ana Sayfa', icon: Home },
   { to: '/personel', label: 'Personel', icon: UsersRound, permission: 'personnel' },
-  { label: 'Diğer', icon: LayoutGrid, center: true },
   { to: '/raporlar', label: 'Raporlar', icon: ChartNoAxesCombined, permission: 'reports' },
   { to: '/talepler', label: 'Talepler', icon: ClipboardList, permission: 'requests' },
+  { label: 'Diğer', icon: LayoutGrid, center: true },
 ]
 const visibleItems = computed(() => items.filter(item => !item.permission || auth.state.permissions[item.permission]))
 
@@ -285,7 +285,7 @@ const operationGroups = [
         to: '/arac-takip',
       },
       {
-        permission: 'vehicles',
+        permission: 'km_approvals',
         label: 'KM Onayları',
         eyebrow: 'SAHA DENETİMİ',
         subtitle: 'Personel sayaç bildirimleri ve onay kuyruğu',
@@ -344,7 +344,7 @@ const operationGroups = [
         to: '/nobet-onay',
       },
       {
-        permission: 'reports',
+        permission: 'puantaj',
         label: 'Puantaj',
         eyebrow: 'MESAİ & ÇALIŞMA',
         subtitle: 'Personel devam ve fiili çalışma saatleri',
@@ -637,6 +637,7 @@ async function handleLogout() {
         <div v-if="showFaturaDrawer" class="bottom-nav__tabs fatura-nav-tabs" style="--nav-count: 5;">
           <!-- 1. Özet & KDV -->
           <button
+            v-if="auth.state.permissions.invoice_dashboard"
             type="button"
             class="nav-link"
             :class="{ 'is-active': faturaState.activeTab === 'ozet' }"
@@ -651,6 +652,7 @@ async function handleLogout() {
 
           <!-- 2. Giden -->
           <button
+            v-if="auth.state.permissions.invoice_outgoing"
             type="button"
             class="nav-link"
             :class="{ 'is-active': faturaState.activeTab === 'giden' }"
@@ -668,6 +670,7 @@ async function handleLogout() {
 
           <!-- 3. Gelen -->
           <button
+            v-if="auth.state.permissions.invoice_incoming"
             type="button"
             class="nav-link"
             :class="{ 'is-active': faturaState.activeTab === 'gelen' }"
@@ -685,6 +688,7 @@ async function handleLogout() {
 
           <!-- 4. Taslaklar -->
           <button
+            v-if="auth.state.permissions.invoice_drafts"
             type="button"
             class="nav-link"
             :class="{ 'is-active': faturaState.activeTab === 'taslak' }"

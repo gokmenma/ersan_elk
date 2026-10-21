@@ -2149,7 +2149,7 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const result = await personnelApi.detail(route.params.id)
+    const result = await personnelApi.detail(route.params.id, route.params.section)
     person.value = result.personnel
     if (result.personnel?.id) {
       localStorage.setItem('ersan_last_personnel_id', String(result.personnel.id))

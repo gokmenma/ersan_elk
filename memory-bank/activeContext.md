@@ -1,5 +1,19 @@
 # Active Context
 
+## Mobil SPA — Personel Detay Yavaşlık Analizi (2026-10-21)
+- `PersonnelDetailView` yalnız temel profil ve hızlı personel listesini kullandığı halde ortak `personnel.php?action=detail` endpoint'i çalışma bilgileri, izinler, ek ödemeler, kesintiler, evraklar, icralar, zimmetler, tüm demirbaş seçenekleri ve puantaj verilerini seri biçimde yüklüyor.
+- Yerel gerçek veri ölçümünde (firma 1, personel 75) model çağrıları toplam yaklaşık **505 ms** sürdü ve birleşik JSON yaklaşık **56 KB** oldu. Tek başına `getPuantajIsTakipDetails` yaklaşık **378 ms**, `getDemirbasOptions` yaklaşık **58 ms** üretti.
+- Puantaj sorgularında varsayılan 150 kayıt okunuyor; `yapilan_isler` ve `endeks_okuma` şemalarında kullanılan `(personel_id, firma_id, silinme_tarihi, tarih)` erişimine uygun birleşik indeks yok. Kaçak sorgusunda virgülle tutulan `personel_ids` üzerinde `FIND_IN_SET` kullanılıyor ve indekslenemiyor.
+- Her SPA rota geçişinde router guard `auth.bootstrap(true)` ile oturum API'sini zorunlu yenilediğinden personel detay isteğinden önce ilave seri ağ gecikmesi oluşuyor.
+- Önerilen çözüm: profil özeti ve bölüm verilerini ayırmak; `detail` endpoint'ini hafifletmek; bölüm bazlı lazy-load endpoint'leri kullanmak; hızlı personel listesini ayrı/cache'li sunmak; ilgili birleşik indeksleri ayrı SQL migration ile eklemek; `FIND_IN_SET` ilişkisinin normalize edilmesini planlamak.
+
+## Mobil SPA — Personel Detay Performans İyileştirmesi (2026-10-21)
+- `personnel.php?action=detail` isteğine `section` kapsamı eklendi. Profil isteği artık yalnız temel personel ve hızlı personel listesini; alt bölüm isteği yalnız açık bölümün verisini hazırlıyor.
+- `PersonnelSectionView` aktif rota bölümünü servise gönderiyor; diğer sekmelerin izin, finans, evrak, zimmet, demirbaş ve puantaj verileri eager-load edilmiyor.
+- `sql/2026_10_21_optimize_mobile_personnel_detail.sql` oluşturuldu ve canlı yerel veritabanına uygulandı. `yapilan_isler`, `endeks_okuma` ve `kacak_kontrol` için sorgu desenine uygun birleşik indeksler eklendi. Script ikinci çalıştırmada da güvenle tamamlandı.
+- Gerçek veri ölçümünde profil çekirdeği yaklaşık **505 ms'den ortalama 4,79 ms'ye** indi. Puantaj bölümü ilk indeks ısınmasından sonra yaklaşık **7 ms** seviyesinde çalıştı; `EXPLAIN` iki büyük tabloda yeni indekslerin seçildiğini doğruladı.
+- Mobil üretim derlemesi, public/dist API eşitliği, PHP lint ve `git diff --check` başarıyla tamamlandı.
+
 ## Mobil SPA — Personel Detay Sayfasında İş ve Puantaj (İş Takip / Saha Operasyonları) Modülü (2026-10-21)
 - **Kullanıcı Talebi**: Mobil SPA (`mobile-spa`) personel detay sayfasındaki (`/personel/:id/bolum/puantaj`) geçiş/taslak ekranı yerine tam fonksiyonel saha iş takip, görev ve operasyonel puantaj yönetim sayfasının yapılması.
 - **Uygulanan Mimari & Değişiklikler**:
@@ -2909,3 +2923,28 @@
 - Avans Ayarları sekmesi görünmesine rağmen kaydetme isteğinin merkezi API politika katmanında 403 ile reddedildiği tespit edildi.
 - Canlı veritabanında `avans_ayarlari_sekmesi` yetkisinin ve `ayarlar/api / save_avans_ayarlari` politikasının eksik olduğu doğrulandı.
 - Tekrarlanabilir düzeltme scripti `sql/2026_10_21_fix_avans_ayarlari_permission.sql` oluşturuldu; yetki, API politikası ve yalnızca Süper Admin/Firma Sahibi kapsamındaki rol atamaları tanımlandı.
+# 2026-10-21 — Mobil SPA yetkisiz sayfa erişimi denetimi
+
+- Mobil SPA rota koruması, oturum yetki haritası, alt menü/“Diğer” görünürlüğü ve `public/api` Gate kontrolleri salt okunur olarak incelendi.
+- Doğrudan URL ile yetkisiz modül sayfası açılmasını sağlayan doğrulanmış bir yol bulunmadı; router kullanıcıyı ana sayfaya döndürüyor ve modül API'leri ayrıca 403 üretiyor.
+- Takip edilmesi gereken tutarsızlıklar belirlendi: yetki haritası oturum boyunca yenileniyor ve bazı modüllerde görüntüleme yetkisi yazma aksiyonlarını da kapsıyor.
+- `burakkafadar` için görünen Sistem Logları menüsünün kök nedeni doğrulandı: kullanıcının aktif 12 ve 13 numaralı rollerinde `log_kayitlari` yetkisi yok; `auth.php` eski `views/logs/list.php` bağlantısını sorguluyor ve `MenuModel::userCanAccessMenuLink()` tanımsız menü + tanımsız yetki durumunda fail-open biçimde `true` döndürüyor. Böylece istemci `logs=true` alıp menüyü çiziyor; `logs.php` API Gate kontrolü ise erişimi 403 ile reddediyor.
+- Tanımsız menü/yetki sorguları fail-closed yapıldı. Mobil oturum haritası, dashboard kartları, rotalar ve ilgili API giriş kontrolleri masaüstündeki aktif `permission_key` değerleriyle eşitlendi; sabit rapor yetki ID kontrolü kaldırıldı. Araç Takip ile KM Onayları ayrı masaüstü yetkilerine bağlandı.
+- Mobil SPA alt navigasyonundaki `Diğer` öğesi, kullanıcının görünür menü sayısından bağımsız olarak daima en sağda olacak şekilde son sıraya taşındı.
+- Mobil `Personel Puantaj` sayfasının yanlış `puantaj/raporlar` eşlemesi ayrıştırıldı; menü, hızlı işlem, rota ve API artık masaüstündeki `personel/puantaj` yetkisini birlikte kullanıyor.
+- Mobil SPA genel yetki denetimi tamamlandı. Giden/Gelen Evrak, Nöbet Onay, Personel Ekle-Düzenle ve personel alt bölümleri ayrı masaüstü yetkilerine bağlandı; her rota geçişinde sunucu yetki haritası tazeleniyor.
+- E-Fatura birleşik mobil ekranındaki Özet, Giden, Gelen, Taslak ve Oluştur aksiyonları ayrı yetkilere ayrıldı. Yetkisiz sekmeler çizilmiyor; fatura detay/önizleme/PDF API'leri kaydın yönü ve taslak durumuna göre aynı Gate yetkisini doğruluyor.
+- Personel liste yetkisiyle detay API'sinden finansal, izin, evrak, icra, zimmet ve puantaj kırılımlarının dönmesi engellendi. Alt bölümler `personel_duzenle`, evrak bölümü ayrıca `evrak_bilgileri_sekmesi` gerektiriyor.
+- Kullanıcının kaydettiği dahili hızlı erişim bağlantıları da hedef sayfanın sunucu kaynaklı yetkisi yoksa ana ekranda çizilmiyor.
+- Mobil Puantaj/Raporlar ekranındaki dağılım detayının 500 vermesine, `reports.php` içindeki ortak PDO bağlantısının yetki düzenlemesi sırasında kaldırılmış olması neden oluyordu. Ortak bağlantı Gate kontrolünün ardından yeniden oluşturuldu; bildirilen `distribution/okuma` isteği `burakkafadar` oturumuyla başarılı JSON yanıtı verecek şekilde doğrulandı.
+# 2026-10-21 — Bağımsız Pazar HTÇ telafi çalıştırıcısı
+
+- Pazar operasyonlarından otomatik HTÇ uzlaştırması, ana endeks cronunun saat/son çalışma kilidinden ayrılarak `cron/okuma_htc_telafi.php` CLI dosyasına taşınabilir bağımsız bir çalışma yolu kazandı.
+- Çalıştırıcı açık web erişimini reddeder; `--date=YYYY-MM-DD` ve isteğe bağlı `--firma-id=ID` kabul eder. Tarih verilmezse son tamamlanmış Pazar gününü kullanır ve Pazartesi 08:10 için ayrı cron örneği içerir.
+- Çalışmadan önce `2026_10_18_add_okuma_htc_automation.sql` şemasını Model üzerinden doğrular; firma bazlı otomasyon ve eşik ayarlarını kullanır. Merkezi idempotent `OkumaHtcAutomationService` değişmeden kullanıldığı için tekrar çalıştırma çift HTÇ üretmez, manuel kilitleri korur.
+
+# 2026-10-21 — Puantaj Pazar HTÇ kontrol modalı
+
+- Personel Puantaj sayfasındaki İşlemler menüsüne `Pazar HTÇ Kontrolü` eklendi. Seçili ayın Pazarları modalda seçilir; Endeks, Kaçak, Sökme-Takma ve Mühürleme sayıları personel bazında birlikte gösterilir.
+- Firma eşiklerini geçen, HTÇ'si bulunmayan ve manuel puantajla çakışmayan personeller varsayılan seçilir. Eşik altındaki Pazar çalışanları kullanıcı tarafından ayrıca seçilebilir; manuel kilitli, başka kodlu veya zaten HTÇ bulunan satırlar korunur.
+- Seçilen kişiler merkezi HTÇ servisi üzerinden transaction içinde, idempotent biçimde atanır. API hem `personel/puantaj` Gate yetkisini hem firma kapsamını doğrular ve işlem sistem loguna yazılır.

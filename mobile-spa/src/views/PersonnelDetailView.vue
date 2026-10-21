@@ -8,6 +8,7 @@ import {
 } from '@lucide/vue'
 import { personnelApi } from '../services/personnel.js'
 import TopBar from '../components/TopBar.vue'
+import { auth } from '../services/auth.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -63,17 +64,17 @@ const filteredQuickPersonnelList = computed(() => {
   )
 })
 
-const modules = [
+const modules = computed(() => [
   { tab: 'genel', label: 'Genel bilgiler', meta: 'İletişim, kimlik ve giriş bilgileri', icon: UserRoundCheck, color: '#181c24' },
   { tab: 'calisma', label: 'Çalışma bilgileri', meta: 'Görev, ekip ve çalışma geçmişi', icon: BriefcaseBusiness, color: '#0284c7' },
   { tab: 'izinler', label: 'İzin ve raporlar', meta: 'Hak ediş ve izin geçmişi', icon: CalendarDays, color: '#059669' },
   { tab: 'zimmetler', label: 'Zimmetler', meta: 'Araç, cihaz ve demirbaşlar', icon: PackageCheck, color: '#d97706' },
   { tab: 'ek_odemeler', label: 'Ek ödemeler', meta: 'Prim, ikramiye, kira ve yardımlar', icon: BadgeDollarSign, color: '#059669' },
   { tab: 'kesintiler', label: 'Kesintiler', meta: 'Dönemsel, sürekli ve diğer kesintiler', icon: Receipt, color: '#dc2626' },
-  { tab: 'evraklar', label: 'Personel evrakları', meta: 'Belgeler ve dijital arşiv', icon: FileText, color: '#e11d48' },
+  ...(auth.state.permissions.personnel_documents ? [{ tab: 'evraklar', label: 'Personel evrakları', meta: 'Belgeler ve dijital arşiv', icon: FileText, color: '#e11d48' }] : []),
   { tab: 'icralar', label: 'İcra dosyaları', meta: 'Borç ve kesinti takibi', icon: Gavel, color: '#f97316' },
   { tab: 'puantaj', label: 'İş ve puantaj', meta: 'Çalışma ve görev kayıtları', icon: CalendarCheck, color: '#0891b2' },
-]
+].filter(() => auth.state.permissions.personnel_edit))
 
 function phoneHref(value) {
   return `tel:${String(value || '').replace(/[^+\d]/g, '')}`

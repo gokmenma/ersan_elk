@@ -2280,4 +2280,76 @@ $(document).ready(function () {
       });
     }
   }
+  function sundayDatesForSelectedMonth() {
+    const year = parseInt($("#select-yil").val(), 10);
+    const month = parseInt($("#select-ay").val(), 10);
+    const dates = [];
+    for (let day = 1; day <= getDaysInMonth(month, year); day++) {
+      const date = new Date(year, month - 1, day);
+      if (date.getDay() === 0) dates.push(`${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`);
+    }
+    return dates;
+  }
+
+  function escapeHtcHtml(value) {
+    return $("<div>").text(value == null ? "" : String(value)).html();
+  }
+
+  function loadSundayHtcPreview() {
+    const date = $("#sunday-htc-date").val();
+    if (!date) return;
+    const $body = $("#sunday-htc-table tbody").html('<tr><td colspan="9" class="text-center py-5"><span class="spinner-border spinner-border-sm me-2"></span>Çalışmalar kontrol ediliyor...</td></tr>');
+    $("#btn-assign-sunday-htc").prop("disabled", true);
+    $.post(API_URL, { action: "get-sunday-work-preview", date }, function (res) {
+      if (res.status !== "success") throw new Error(res.message || "Veriler alınamadı.");
+      const rows = res.data.rows || [];
+      if (!rows.length) {
+        $body.html('<tr><td colspan="9" class="text-center text-muted py-5">Bu Pazar için operasyon kaydı bulunamadı.</td></tr>');
+        $("#sunday-htc-summary").text("0 personel"); return;
+      }
+      $body.html(rows.map((row) => {
+        const t = row.totals || {};
+        const selectable = !row.blocked && !row.already_htc;
+        const status = row.already_htc
+          ? '<span class="badge bg-success-subtle text-success">HTÇ mevcut</span>'
+          : row.blocked ? `<span class="badge bg-warning-subtle text-warning">${escapeHtcHtml(row.block_reason)}</span>`
+          : row.qualified ? '<span class="badge bg-info-subtle text-info">Eşiği geçti</span>' : '<span class="badge bg-secondary-subtle text-secondary">Manuel seçim</span>';
+        return `<tr>
+          <td class="text-center"><input type="checkbox" class="form-check-input sunday-htc-person" value="${row.id}" ${selectable && row.qualified ? "checked" : ""} ${selectable ? "" : "disabled"}></td>
+          <td><div class="fw-semibold">${escapeHtcHtml(row.adi_soyadi)}</div><small class="text-muted">Ekip ${escapeHtcHtml(row.ekip_no || "-")}</small></td>
+          <td>${escapeHtcHtml(row.departman || "-")}<br><small class="text-muted">${escapeHtcHtml(row.ekip_bolge || "-")}</small></td>
+          <td class="text-center fw-semibold">${Number(t.okuma || 0).toLocaleString("tr-TR")}</td>
+          <td class="text-center">${Number(t.kacak || 0).toLocaleString("tr-TR")}</td>
+          <td class="text-center">${Number(t.sokme_takma || 0).toLocaleString("tr-TR")}</td>
+          <td class="text-center">${Number(t.muhurleme || 0).toLocaleString("tr-TR")}</td>
+          <td class="text-center"><span class="badge bg-light text-dark border">${escapeHtcHtml(row.current_code)}</span></td><td>${status}</td></tr>`;
+      }).join(""));
+      $("#sunday-htc-summary").text(`${rows.length} çalışan · ${rows.filter(r => r.qualified).length} eşik üstü`);
+      $("#sunday-htc-select-all").prop("checked", false);
+      $("#btn-assign-sunday-htc").prop("disabled", !$(".sunday-htc-person:checked").length);
+    }, "json").fail((xhr) => {
+      $body.html(`<tr><td colspan="9" class="text-center text-danger py-5">${escapeHtcHtml(xhr.responseJSON?.message || "Kontrol sırasında hata oluştu.")}</td></tr>`);
+    });
+  }
+
+  $("#btn-open-sunday-htc-modal").on("click", function () {
+    const dates = sundayDatesForSelectedMonth();
+    const $select = $("#sunday-htc-date").empty();
+    dates.forEach((date) => $select.append(new Option(new Date(date + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric", weekday: "long" }), date)));
+    $select.select2({ dropdownParent: $("#sundayHtcModal"), width: "100%" });
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("sundayHtcModal")).show();
+    loadSundayHtcPreview();
+  });
+  $("#sunday-htc-date").on("change", loadSundayHtcPreview);
+  $(document).on("change", ".sunday-htc-person", function () { $("#btn-assign-sunday-htc").prop("disabled", !$(".sunday-htc-person:checked").length); });
+  $("#sunday-htc-select-all").on("change", function () { $(".sunday-htc-person:not(:disabled)").prop("checked", this.checked).trigger("change"); });
+  $("#btn-assign-sunday-htc").on("click", function () {
+    const ids = $(".sunday-htc-person:checked").map((_, el) => parseInt(el.value, 10)).get();
+    const date = $("#sunday-htc-date").val();
+    const $btn = $(this).prop("disabled", true);
+    $.post(API_URL, { action: "assign-selected-sunday-htc", date, personel_ids: JSON.stringify(ids) }, function (res) {
+      if (res.status !== "success") return Swal.fire("Hata", res.message || "HTÇ eklenemedi.", "error");
+      Swal.fire("Tamamlandı", res.message, "success"); loadSundayHtcPreview(); renderTable();
+    }, "json").fail((xhr) => Swal.fire("Hata", xhr.responseJSON?.message || "HTÇ eklenemedi.", "error")).always(() => $btn.prop("disabled", false));
+  });
 });

@@ -43,11 +43,7 @@ function checkEvrakAuth(): void
         evrakApiResponse(['success' => false, 'message' => 'Lütfen önce aktif firma seçimi yapınız.'], 400);
     }
 
-    $canAccess = Gate::allowsAny(['evrak-takip/list', 'documents']);
-    if (!$canAccess) {
-        $menuModel = new \App\Model\MenuModel();
-        $canAccess = $menuModel->userCanAccessMenuLink($userId, 'evrak-takip/list');
-    }
+    $canAccess = Gate::allowsAny(['evrak-takip/list', 'evrak-takip/gelen-evrak', 'evrak-takip/giden-evrak']);
 
     if (!$canAccess) {
         evrakApiResponse(['success' => false, 'message' => 'Evrak takip modülünü görüntüleme yetkiniz bulunmuyor.'], 403);
@@ -182,6 +178,9 @@ try {
     // 3. EVRAK LİSTESİ VE ÖZET İSTATİSTİKLER (GET list)
     // -------------------------------------------------------------
     if ($method === 'GET' && $action === 'list') {
+        if (!Gate::allows('evrak-takip/list')) {
+            evrakApiResponse(['success' => false, 'message' => 'Evrak listesini görüntüleme yetkiniz bulunmuyor.'], 403);
+        }
         $filter = trim((string) ($_GET['filter'] ?? 'all'));
         $search = trim((string) ($_GET['search'] ?? ''));
         $page = max(1, (int) ($_GET['page'] ?? 1));
@@ -922,6 +921,12 @@ try {
         }
 
         $evrakTipi = (($_POST['evrak_tipi'] ?? 'gelen') === 'giden') ? 'giden' : 'gelen';
+        if ($evrakTipi === 'giden' && !Gate::allows('evrak-takip/giden-evrak')) {
+            evrakApiResponse(['success' => false, 'message' => 'Giden evrak oluşturma veya düzenleme yetkiniz bulunmuyor.'], 403);
+        }
+        if ($evrakTipi === 'gelen' && !Gate::allows('evrak-takip/gelen-evrak')) {
+            evrakApiResponse(['success' => false, 'message' => 'Gelen evrak oluşturma veya düzenleme yetkiniz bulunmuyor.'], 403);
+        }
         $konu = trim((string) ($_POST['konu'] ?? ''));
         $kurumAdi = trim((string) ($_POST['kurum_adi'] ?? ''));
 

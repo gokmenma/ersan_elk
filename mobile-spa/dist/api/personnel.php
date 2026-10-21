@@ -131,49 +131,57 @@ try {
         if (!$row) {
             personnelResponse(['success' => false, 'message' => 'Personel bulunamadı veya erişim yetkiniz yok.'], 404);
         }
-        $work = $model->getWorkDetails($personelId, $firmaId);
-        $options = $model->getWorkOptions($firmaId);
-        $leaveData = $model->getLeaveDetails($personelId, $firmaId);
-        $ekOdemelerData = $model->getEkOdemelerDetails($personelId, $firmaId);
-        $kesintilerData = $model->getKesintilerDetails($personelId, $firmaId);
-        $evrakData = $model->getEvrakDetails($personelId, $firmaId);
-        $icraData = $model->getIcraDetails($personelId, $firmaId);
-        $zimmetData = $model->getZimmetDetails($personelId, $firmaId);
-        $demirbasOptions = $model->getDemirbasOptions($firmaId);
-        $puantajData = $model->getPuantajIsTakipDetails($personelId, $firmaId);
+        $canEdit = Gate::allows('personel_duzenle');
+        $canViewDocuments = $canEdit && Gate::allows('evrak_bilgileri_sekmesi');
+        $section = (string) ($_GET['section'] ?? 'profile');
+        $allowedSections = ['profile', 'genel', 'calisma', 'izinler', 'ek_odemeler', 'kesintiler', 'evraklar', 'icralar', 'zimmetler', 'puantaj'];
+        if (!in_array($section, $allowedSections, true)) {
+            personnelResponse(['success' => false, 'message' => 'Geçersiz personel bölümü.'], 422);
+        }
+        if ($section !== 'profile' && !$canEdit) {
+            personnelResponse(['success' => false, 'message' => 'Personel bölümünü görüntüleme yetkiniz bulunmuyor.'], 403);
+        }
+        if ($section === 'evraklar' && !$canViewDocuments) {
+            personnelResponse(['success' => false, 'message' => 'Personel evraklarını görüntüleme yetkiniz bulunmuyor.'], 403);
+        }
+
+        $work = $section === 'calisma' ? $model->getWorkDetails($personelId, $firmaId) : [];
         $quickList = $model->mobileDirectoryQuickList($firmaId);
-        personnelResponse([
+        $payload = [
             'success' => true,
-            'can_edit' => Gate::allows('personel_duzenle'),
+            'can_edit' => $canEdit,
+            'can_view_documents' => $canViewDocuments,
             'personel_id_raw' => $personelId,
             'personnel' => personnelPublicRow($row, $work),
             'personnel_quick_list' => $quickList,
-            'work_options' => $options,
-            'leaves' => $leaveData['leaves'],
-            'entitlement' => $leaveData['entitlement'],
-            'leave_types' => $leaveData['leave_types'],
-            'ek_odemeler' => $ekOdemelerData['items'],
-            'ek_odeme_ozet' => $ekOdemelerData['summary'],
-            'gelir_parametreleri' => $ekOdemelerData['gelir_parametreleri'],
-            'bordro_donemleri' => $ekOdemelerData['donemler'],
-            'kesintiler' => $kesintilerData['items'],
-            'kesinti_ozet' => $kesintilerData['summary'],
-            'kesinti_parametreleri' => $kesintilerData['kesinti_parametreleri'],
-            'icra_dosyalari' => $kesintilerData['icralar'],
-            'evraklar' => $evrakData['items'],
-            'evrak_ozet' => $evrakData['summary'],
-            'evrak_turleri' => \App\Helper\Helper::EVRAK_TURLERI,
-            'icralar' => $icraData['items'],
-            'icra_ozet' => $icraData['summary'],
-            'icra_daireleri' => $icraData['icra_daireleri'],
-            'zimmetler' => $zimmetData['items'],
-            'zimmet_ozet' => $zimmetData['summary'],
-            'demirbas_options' => $demirbasOptions,
-            'puantaj_items' => $puantajData['items'],
-            'puantaj_ozet' => $puantajData['summary'],
-            'puantaj_work_types' => $puantajData['work_types'],
-            'puantaj_work_results' => $puantajData['work_results'],
-        ]);
+        ];
+
+        if ($section === 'calisma') {
+            $payload['work_options'] = $model->getWorkOptions($firmaId);
+        } elseif ($section === 'izinler') {
+            $data = $model->getLeaveDetails($personelId, $firmaId);
+            $payload += ['leaves' => $data['leaves'], 'entitlement' => $data['entitlement'], 'leave_types' => $data['leave_types']];
+        } elseif ($section === 'ek_odemeler') {
+            $data = $model->getEkOdemelerDetails($personelId, $firmaId);
+            $payload += ['ek_odemeler' => $data['items'], 'ek_odeme_ozet' => $data['summary'], 'gelir_parametreleri' => $data['gelir_parametreleri'], 'bordro_donemleri' => $data['donemler']];
+        } elseif ($section === 'kesintiler') {
+            $data = $model->getKesintilerDetails($personelId, $firmaId);
+            $payload += ['kesintiler' => $data['items'], 'kesinti_ozet' => $data['summary'], 'kesinti_parametreleri' => $data['kesinti_parametreleri'], 'icra_dosyalari' => $data['icralar']];
+        } elseif ($section === 'evraklar') {
+            $data = $model->getEvrakDetails($personelId, $firmaId);
+            $payload += ['evraklar' => $data['items'], 'evrak_ozet' => $data['summary'], 'evrak_turleri' => \App\Helper\Helper::EVRAK_TURLERI];
+        } elseif ($section === 'icralar') {
+            $data = $model->getIcraDetails($personelId, $firmaId);
+            $payload += ['icralar' => $data['items'], 'icra_ozet' => $data['summary'], 'icra_daireleri' => $data['icra_daireleri']];
+        } elseif ($section === 'zimmetler') {
+            $data = $model->getZimmetDetails($personelId, $firmaId);
+            $payload += ['zimmetler' => $data['items'], 'zimmet_ozet' => $data['summary'], 'demirbas_options' => $model->getDemirbasOptions($firmaId)];
+        } elseif ($section === 'puantaj') {
+            $data = $model->getPuantajIsTakipDetails($personelId, $firmaId);
+            $payload += ['puantaj_items' => $data['items'], 'puantaj_ozet' => $data['summary'], 'puantaj_work_types' => $data['work_types'], 'puantaj_work_results' => $data['work_results']];
+        }
+
+        personnelResponse($payload);
     }
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'save_general') {

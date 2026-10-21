@@ -37,7 +37,7 @@ function checkAracAuth(): void
     if (empty($_SESSION['user_id']) || empty($_SESSION['user'])) {
         aracApiResponse(['success' => false, 'message' => 'Oturumunuz sona ermiş.'], 401);
     }
-    if (!Gate::allowsAny(['arac_takip_yonetim', 'arac-takip/list', 'vehicles'])) {
+    if (!Gate::allows('arac_takip')) {
         aracApiResponse(['success' => false, 'message' => 'Araç takip modülünü görüntüleme yetkiniz bulunmuyor.'], 403);
     }
 }

@@ -40,7 +40,7 @@ function checkCariAuth(): void
     if (empty($_SESSION['user_id']) || empty($_SESSION['user'])) {
         cariApiResponse(['success' => false, 'message' => 'Oturumunuz sona ermiş.'], 401);
     }
-    if (!Gate::allows('cari_takibi') && !Gate::allows('cari/list')) {
+    if (!Gate::allows('cari_takibi')) {
         cariApiResponse(['success' => false, 'message' => 'Cari takip modülünü görüntüleme yetkiniz bulunmuyor.'], 403);
     }
 }

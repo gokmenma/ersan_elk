@@ -30,7 +30,7 @@ function checkKasaAuth(): void
     if (empty($_SESSION['user_id']) || empty($_SESSION['user'])) {
         kasaApiResponse(['success' => false, 'message' => 'Oturumunuz sona ermiş.'], 401);
     }
-    if (!Gate::allowsAny(['gelir_gider_takibi', 'gelir-gider/list', 'kasa/list', 'legacy.permission.13'])) {
+    if (!Gate::allows('gelir_gider_takibi')) {
         kasaApiResponse(['success' => false, 'message' => 'Kasa ve gelir-gider modülünü görüntüleme yetkiniz bulunmuyor.'], 403);
     }
 }

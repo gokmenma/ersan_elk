@@ -9,7 +9,6 @@ use App\Model\HakedisDonemModel;
 use App\Model\HakedisKalemModel;
 use App\Model\HakedisMiktarModel;
 use App\Model\HakedisSozlesmeModel;
-use App\Model\MenuModel;
 use App\Service\Gate;
 
 header('Content-Type: application/json; charset=utf-8');
@@ -42,10 +41,7 @@ function checkContractsAuth(): void
         contractsApiResponse(['success' => false, 'message' => 'Lütfen önce aktif firma seçimi yapınız.'], 400);
     }
 
-    $canAccess = Gate::isSuperAdmin()
-        || Gate::allows('hakedis')
-        || Gate::allows('hakedisler/index')
-        || (new MenuModel())->userCanAccessMenuLink($userId, 'hakedisler/index');
+    $canAccess = Gate::isSuperAdmin() || Gate::allows('hakedis');
 
     if (!$canAccess) {
         contractsApiResponse(['success' => false, 'message' => 'Sözleşme & Hakediş modülünü görüntüleme yetkiniz bulunmuyor.'], 403);

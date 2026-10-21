@@ -351,7 +351,7 @@ async function openDetail(doc) {
 // Yeni Evrak Formunu Aç (Gelen Evrak için Modal, Giden Evrak için /giden-evrak rotası)
 async function openCreateForm(type = 'gelen') {
   if (type === 'giden') {
-    router.push('/giden-evrak')
+    if (auth.state.permissions.outgoing_documents) router.push('/giden-evrak')
     return
   }
 
@@ -395,7 +395,7 @@ async function openCreateForm(type = 'gelen') {
 async function openEditForm(doc) {
   if (doc.evrak_tipi === 'giden') {
     isDetailOpen.value = false
-    router.push({ path: '/giden-evrak', query: { id: doc.id } })
+    if (auth.state.permissions.outgoing_documents) router.push({ path: '/giden-evrak', query: { id: doc.id } })
     return
   }
 
@@ -1160,9 +1160,10 @@ onMounted(() => {
     </div>
 
     <!-- FAB: Hızlı Ekleme Çift Buton Grubu -->
-    <div class="evrak-fab-group">
+    <div v-if="auth.state.permissions.incoming_documents || auth.state.permissions.outgoing_documents" class="evrak-fab-group">
       <!-- Gelen Evrak Ekle -->
       <button
+        v-if="auth.state.permissions.incoming_documents"
         type="button"
         class="evrak-fab evrak-fab--gelen"
         title="Gelen Evrak Ekle"
@@ -1174,6 +1175,7 @@ onMounted(() => {
 
       <!-- Giden Evrak Ekle -->
       <button
+        v-if="auth.state.permissions.outgoing_documents"
         type="button"
         class="evrak-fab evrak-fab--giden"
         title="Giden Evrak Ekle"
@@ -1444,7 +1446,7 @@ onMounted(() => {
 
             <!-- Giden Evrak İse Özel Sayfasına Yönlendir (KEP Değilse) -->
             <button
-              v-else-if="selectedDetail.evrak_tipi === 'giden'"
+              v-else-if="selectedDetail.evrak_tipi === 'giden' && auth.state.permissions.outgoing_documents"
               type="button"
               class="evrak-btn evrak-btn--primary"
               @click="isDetailOpen = false; router.push({ path: '/giden-evrak', query: { id: selectedDetail.id } })"
@@ -1456,7 +1458,7 @@ onMounted(() => {
 
             <!-- Gelen Evrak İse Modalda Düzenle -->
             <button
-              v-else-if="!selectedDetail.kilitli"
+              v-else-if="!selectedDetail.kilitli && auth.state.permissions.incoming_documents"
               type="button"
               class="evrak-btn evrak-btn--subtle"
               @click="openEditForm(selectedDetail); isDetailOpen = false"

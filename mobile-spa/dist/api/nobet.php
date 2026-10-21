@@ -38,7 +38,7 @@ if ($firmaId <= 0) {
 }
 
 // Yetki kontrolü (Gate, Permission & SuperAdmin)
-$canAccess = Gate::allowsAny(['nobet/onay-islemleri', 'yonetici_onayi', 'nobet/list']) || Gate::isSuperAdmin();
+$canAccess = Gate::allows('yonetici_onayi') || Gate::isSuperAdmin();
 if (!$canAccess) {
     nobetApiResponse(['success' => false, 'message' => 'Nöbet onay modülüne erişim yetkiniz bulunmuyor.'], 403);
 }

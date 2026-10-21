@@ -184,7 +184,7 @@ const ALL_SYSTEM_ACTIONS = [
   { id: 'act_vehicles', permission: 'vehicles', label: 'Araçlar', iconName: 'CarFront', to: '/arac-takip', theme: 'emerald' },
   { id: 'act_shifts', permission: 'shifts', label: 'Nöbetler', iconName: 'CalendarCheck', to: '/nobet-onay', theme: 'indigo' },
   { id: 'act_notices', permission: 'notices', label: 'İhbarlar', iconName: 'Megaphone', to: '/ihbar', theme: 'amber' },
-  { id: 'act_puantaj', permission: 'reports', label: 'Puantaj', iconName: 'CalendarDays', to: '/puantaj', theme: 'teal' },
+  { id: 'act_puantaj', permission: 'puantaj', label: 'Puantaj', iconName: 'CalendarDays', to: '/puantaj', theme: 'teal' },
   { id: 'act_illegal', permission: 'illegal', label: 'Kaçak Kontrol', iconName: 'ShieldAlert', to: '/kacak-kontrol', theme: 'red' },
   { id: 'act_documents', permission: 'documents', label: 'Evraklar', iconName: 'FileText', to: '/evrak-takip', theme: 'yellow' },
   { id: 'act_tasks', permission: 'tasks', label: 'Görevler', iconName: 'ClipboardCheck', to: '/gorevler', theme: 'emerald' },
@@ -195,7 +195,7 @@ const ALL_SYSTEM_ACTIONS = [
   { id: 'act_accounts', permission: 'current_accounts', label: 'Cari Takip', iconName: 'UsersRound', to: '/cari-takip', theme: 'blue' },
   { id: 'act_invoices', permission: 'invoices', label: 'Faturalar', iconName: 'FileText', to: '/fatura', theme: 'purple' },
   { id: 'act_cash', permission: 'cash', label: 'Kasa', iconName: 'CreditCard', to: '/kasa', theme: 'teal' },
-  { id: 'act_km', permission: 'vehicles', label: 'KM Onayları', iconName: 'Gauge', to: '/km-onaylari', theme: 'emerald' },
+  { id: 'act_km', permission: 'km_approvals', label: 'KM Onayları', iconName: 'Gauge', to: '/km-onaylari', theme: 'emerald' },
   { id: 'act_logs', permission: 'logs', label: 'Loglar', iconName: 'ShieldCheck', to: '/loglar', theme: 'slate' },
 
   // Popüler Alt Sekmeler ve Derin Bağlantılar
@@ -207,7 +207,7 @@ const ALL_SYSTEM_ACTIONS = [
   { id: 'act_deep_pers_icra', permission: 'personnel', label: 'İcra Dosyaları', iconName: 'ShieldAlert', to: 'personnel_section:icralar', theme: 'red', isDeep: true, subtitle: 'Personel > İcra' },
   { id: 'act_deep_avans', permission: 'requests', label: 'Avans Talebi', iconName: 'BadgeDollarSign', to: '/talepler?tab=avans', theme: 'blue', isDeep: true, subtitle: 'Talepler > Avans' },
   { id: 'act_deep_izin', permission: 'requests', label: 'İzin Talebi', iconName: 'CalendarDays', to: '/talepler?tab=izin', theme: 'amber', isDeep: true, subtitle: 'Talepler > İzin' },
-  { id: 'act_deep_giden_evrak', permission: 'documents', label: 'Giden Evrak', iconName: 'FolderOpen', to: '/giden-evrak', theme: 'yellow', isDeep: true, subtitle: 'Evraklar > Giden' },
+  { id: 'act_deep_giden_evrak', permission: 'outgoing_documents', label: 'Giden Evrak', iconName: 'FolderOpen', to: '/giden-evrak', theme: 'yellow', isDeep: true, subtitle: 'Evraklar > Giden' },
   { id: 'act_deep_okuma_rep', permission: 'reports', label: 'Endeks Raporu', iconName: 'Gauge', to: '/raporlar?tab=okuma', theme: 'blue', isDeep: true, subtitle: 'Raporlar > Endeks' },
   { id: 'act_deep_kesme_rep', permission: 'reports', label: 'Kesme Raporu', iconName: 'Zap', to: '/raporlar?tab=kesme', theme: 'amber', isDeep: true, subtitle: 'Raporlar > Kesme' },
   { id: 'act_deep_muhur_rep', permission: 'reports', label: 'Mühürleme', iconName: 'ShieldCheck', to: '/raporlar?tab=muhurleme', theme: 'indigo', isDeep: true, subtitle: 'Raporlar > Mühür' },
@@ -229,19 +229,23 @@ const DEFAULT_QUICK_ACTIONS = [
 // Kullanıcı Kısayolları State'i
 const userQuickActions = ref([])
 
+function canRenderQuickAction(item) {
+  if (!item?.isCustom) {
+    const systemAction = ALL_SYSTEM_ACTIONS.find(action => action.id === item?.id)
+    return !systemAction?.permission || Boolean(auth.state.permissions[systemAction.permission])
+  }
+  if (item.href && /^https?:\/\//i.test(item.href)) return true
+  const target = String(item.to || '').split('?')[0]
+  const systemAction = ALL_SYSTEM_ACTIONS.find(action => String(action.to || '').split('?')[0] === target)
+  return Boolean(systemAction && (!systemAction.permission || auth.state.permissions[systemAction.permission]))
+}
+
 // Ana Ekranda Görünecek Hızlı Erişim Öğeleri
 const actions = computed(() => {
   if (userQuickActions.value.length > 0) {
-    return userQuickActions.value.filter(item => {
-      if (item.isCustom) return true
-      const sys = ALL_SYSTEM_ACTIONS.find(a => a.id === item.id)
-      return !sys || !sys.permission || auth.state.permissions[sys.permission]
-    })
+    return userQuickActions.value.filter(canRenderQuickAction)
   }
-  return DEFAULT_QUICK_ACTIONS.filter(item => {
-    const sys = ALL_SYSTEM_ACTIONS.find(a => a.id === item.id)
-    return !sys || !sys.permission || auth.state.permissions[sys.permission]
-  })
+  return DEFAULT_QUICK_ACTIONS.filter(canRenderQuickAction)
 })
 
 // Kullanıcının Yetkili Olduğu Sistem Önerileri
@@ -401,7 +405,7 @@ function submitCustomAction() {
 // Reaktif Veri Modelleri
 const personnel = computed(() => (auth.state.permissions.personnel ? dashboard.value.personnel : null))
 const vehicles = computed(() => (auth.state.permissions.vehicles ? dashboard.value.vehicles : null))
-const shifts = computed(() => (auth.state.permissions.shifts ? (dashboard.value.shifts || []) : []))
+const shifts = computed(() => (auth.state.permissions.shift_schedule ? (dashboard.value.shifts || []) : []))
 const pendingApprovals = computed(() => (auth.state.permissions.requests ? (dashboard.value.pending_approvals || { requests: 0, advances: 0, leaves: 0, total: 0 }) : null))
 const announcements = computed(() => dashboard.value.announcements || [])
 const opSortOrder = {
@@ -496,7 +500,7 @@ function isCardVisible(cardId) {
 
   if (cardId === 'announcements') return announcements.value.length > 0
   if (cardId === 'pending_approvals') return Boolean(pendingApprovals.value)
-  if (cardId === 'shifts') return Boolean(auth.state.permissions.shifts)
+  if (cardId === 'shifts') return Boolean(auth.state.permissions.shift_schedule)
   if (cardId === 'personnel') return Boolean(personnel.value)
   if (cardId === 'vehicles') return Boolean(vehicles.value)
   if (cardId === 'operations') return operations.value.length > 0

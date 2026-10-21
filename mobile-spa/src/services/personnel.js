@@ -17,8 +17,8 @@ export const personnelApi = {
   list(filters) {
     return get('list', filters)
   },
-  detail(id) {
-    return get('detail', { id })
+  detail(id, section = 'profile') {
+    return get('detail', { id, section })
   },
   async save(data, csrfToken) {
     const response = await fetch('/api/personnel.php?action=save', {

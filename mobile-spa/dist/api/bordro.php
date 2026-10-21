@@ -6,7 +6,6 @@ use App\Helper\Security;
 use App\Model\BordroDonemModel;
 use App\Model\BordroParametreModel;
 use App\Model\BordroPersonelModel;
-use App\Model\MenuModel;
 use App\Service\Gate;
 
 header('Content-Type: application/json; charset=utf-8');
@@ -33,9 +32,7 @@ if ($userId <= 0 || $firmaId <= 0) {
     bordroApiResponse(['success' => false, 'message' => 'Oturumunuz sona ermiş. Lütfen tekrar giriş yapın.'], 401);
 }
 
-$menuModel = new MenuModel();
-$hasAccess = Gate::allowsAny(['bordro/list', 'bordro/parametreler', 'bordro/raporlar'])
-    || $menuModel->userCanAccessMenuLink($userId, 'bordro/list');
+$hasAccess = Gate::allows('bordro/list');
 
 if (!$hasAccess) {
     bordroApiResponse(['success' => false, 'message' => 'Bordro sayfasını görüntüleme yetkiniz bulunmuyor.'], 403);

@@ -39,7 +39,7 @@ function checkKmAuth(): void
         kmApiResponse(['success' => false, 'message' => 'Oturumunuz sona ermiş. Lütfen tekrar giriş yapın.'], 401);
     }
 
-    $canAccess = Gate::allowsAny(['arac_takip_yonetim', 'onaylikm_duzenle', 'arac-takip/km-onaylari']) || Gate::isSuperAdmin();
+    $canAccess = Gate::allows('arac_km_onaylari') || Gate::isSuperAdmin();
     if (!$canAccess) {
         kmApiResponse(['success' => false, 'message' => 'KM onayları modülüne erişim yetkiniz bulunmuyor.'], 403);
     }

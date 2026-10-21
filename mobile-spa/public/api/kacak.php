@@ -33,7 +33,7 @@ function checkKacakAuth(): void
         kacakApiResponse(['success' => false, 'message' => 'Oturumunuz sona ermiş. Lütfen tekrar giriş yapın.'], 401);
     }
 
-    $canAccess = Gate::allowsAny(['kacak_islemleri', 'kacak/list']) || Gate::isSuperAdmin();
+    $canAccess = Gate::allows('kacak_islemleri') || Gate::isSuperAdmin();
     if (!$canAccess) {
         kacakApiResponse(['success' => false, 'message' => 'Kaçak kontrol modülüne erişim yetkiniz bulunmuyor.'], 403);
     }

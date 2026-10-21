@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Helper\Security;
-use App\Model\MenuModel;
 use App\Model\PersonelFazlaMesaileriModel;
 use App\Model\PersonelIzinleriModel;
 use App\Model\PersonelModel;
@@ -38,10 +37,7 @@ if ($userId <= 0 || $firmaId <= 0) {
     puantajApiResponse(['success' => false, 'message' => 'Oturumunuz sona ermiş. Lütfen tekrar giriş yapın.'], 401);
 }
 
-$menuModel = new MenuModel();
-$hasAccess = Gate::allowsAny(['puantaj_raporlama', 'puantaj_yonetim', 'puantaj/raporlar', 'puantaj/list'])
-    || $menuModel->userCanAccessMenuLink($userId, 'puantaj/list')
-    || $menuModel->userCanAccessMenuLink($userId, 'puantaj/raporlar');
+$hasAccess = Gate::allows('personel/puantaj');
 
 if (!$hasAccess) {
     puantajApiResponse(['success' => false, 'message' => 'Puantaj sayfasını görüntüleme yetkiniz bulunmuyor.'], 403);

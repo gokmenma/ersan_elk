@@ -8,7 +8,6 @@ use App\Helper\EkipHelper;
 use App\Helper\Security;
 use App\Model\EndeksOkumaModel;
 use App\Model\FirmaModel;
-use App\Model\MenuModel;
 use App\Model\PersonelModel;
 use App\Model\PuantajModel;
 use App\Model\SettingsModel;
@@ -40,29 +39,13 @@ if ($userId <= 0 || $firmaId <= 0) {
     reportsApiResponse(['success' => false, 'message' => 'Oturumunuz sona ermiş. Lütfen tekrar giriş yapın.'], 401);
 }
 
-// 1. Yetki Doğrulaması (Raporlar permission ID: 61, puantaj/raporlar, puantaj_raporlama, puantaj_yonetim)
-$db = (new Db())->getConnection();
-$userRoles = !empty($_SESSION['user']->roles) ? explode(',', (string) $_SESSION['user']->roles) : [];
-$hasReportPermission = false;
-
-if (!empty($userRoles)) {
-    $placeholders = implode(',', array_fill(0, count($userRoles), '?'));
-    $stmt = $db->prepare("SELECT COUNT(*) FROM user_role_permissions WHERE role_id IN ($placeholders) AND permission_id = 61");
-    $stmt->execute($userRoles);
-    $hasReportPermission = ((int) $stmt->fetchColumn()) > 0;
-}
-
-$menuModel = new MenuModel();
-$hasAccess = $hasReportPermission
-    || Gate::allowsAny(['puantaj_raporlama', 'puantaj_yonetim', 'puantaj/raporlar', 'puantaj/list'])
-    || $menuModel->userCanAccessMenuLink($userId, 'puantaj/raporlar')
-    || $menuModel->userCanAccessMenuLink($userId, 'puantaj/list')
-    || Gate::isSuperAdmin();
+$hasAccess = Gate::allows('puantaj/raporlar') || Gate::isSuperAdmin();
 
 if (!$hasAccess) {
     reportsApiResponse(['success' => false, 'message' => 'Raporlar modülüne erişim yetkiniz bulunmuyor.'], 403);
 }
 
+$db = (new Db())->getConnection();
 $action = $_GET['action'] ?? 'cards';
 
 function cleanTeamName(string $raw): string

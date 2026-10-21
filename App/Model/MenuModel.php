@@ -461,7 +461,10 @@ class MenuModel extends Model
                 return false;
             }
 
-            return true;
+            // Tanımsız bir menü/yetki anahtarı erişim sağlamamalıdır. Aksi halde
+            // eski veya hatalı bir bağlantı adı, yetkisi olmayan kullanıcıların
+            // istemci tarafındaki menü ve rotaları görmesine neden olur.
+            return false;
         }
 
                 $placeholders = implode(',', array_fill(0, count($roleIdArray), '?'));

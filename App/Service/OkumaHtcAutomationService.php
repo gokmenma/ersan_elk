@@ -130,6 +130,67 @@ class OkumaHtcAutomationService
         return $result;
     }
 
+    public function preview(int $firmaId, string $date, int $minimumOkuma = 10, array $operationMinimums = []): array
+    {
+        if (!self::isSunday($date)) throw new RuntimeException('Tarih geçerli bir Pazar günü olmalıdır.');
+        $minimums = array_merge(['okuma' => max(1, $minimumOkuma), 'kacak' => 2, 'sokme_takma' => 10, 'muhurleme' => 10], $operationMinimums);
+        $totals = $this->model->operationTotals($firmaId, $date);
+        foreach ($this->model->eligibleReadingTotals($firmaId, $date) as $personelId => $total) $totals[$personelId]['okuma'] = $total;
+        $people = $this->model->personnelSummaries($firmaId, array_keys($totals));
+        $ids = $this->model->definitionIds($firmaId);
+        $rows = [];
+        foreach ($people as $personelId => $person) {
+            $records = $this->model->activeRecords($personelId, $date);
+            $classification = self::classifyRecords($records, $date, (int) ($ids['HTÇ'] ?? 0));
+            $qualified = self::qualifyingTotals($totals[$personelId] ?? [], $minimums);
+            $currentCode = $records ? implode(', ', array_values(array_filter(array_map(fn($r) => $r['kisa_kod'] ?? '', $records)))) : 'HT';
+            $manualLock = $this->model->hasManualLock($firmaId, $personelId, $date, self::RULE);
+            $rows[] = array_merge($person, [
+                'totals' => array_merge(['okuma' => 0, 'kacak' => 0, 'sokme_takma' => 0, 'muhurleme' => 0], $totals[$personelId] ?? []),
+                'qualified' => !empty($qualified), 'current_code' => $currentCode ?: 'HT',
+                'already_htc' => $classification['automatic_htc'] !== null || mb_strtoupper($currentCode) === 'HTÇ',
+                'blocked' => $manualLock || $classification['blocking'] !== null,
+                'block_reason' => $manualLock ? 'Manuel tercih kilitli' : ($classification['blocking'] !== null ? 'Mevcut manuel kod: ' . $currentCode : ''),
+            ]);
+        }
+        return ['date' => $date, 'minimums' => $minimums, 'rows' => $rows];
+    }
+
+    public function assignSelected(int $firmaId, string $date, array $personelIds): array
+    {
+        if (!self::isSunday($date)) throw new RuntimeException('Tarih geçerli bir Pazar günü olmalıdır.');
+        $personelIds = array_values(array_unique(array_filter(array_map('intval', $personelIds))));
+        if (!$personelIds) throw new RuntimeException('En az bir personel seçilmelidir.');
+        $ids = $this->model->definitionIds($firmaId);
+        $htcId = (int) ($ids['HTÇ'] ?? 0);
+        if (empty($ids['HT']) || !$htcId) throw new RuntimeException('Aktif HT ve HTÇ tanımları bulunmalıdır.');
+        $workTotals = $this->model->operationTotals($firmaId, $date);
+        foreach ($this->model->eligibleReadingTotals($firmaId, $date) as $pid => $total) $workTotals[$pid]['okuma'] = $total;
+        $result = ['created' => 0, 'unchanged' => 0, 'skipped' => []];
+        $this->model->begin();
+        try {
+            foreach ($personelIds as $personelId) {
+                if (empty(array_filter($workTotals[$personelId] ?? [], fn($v) => (float) $v > 0))) {
+                    $result['skipped'][] = ['personel_id' => $personelId, 'reason' => 'Pazar çalışması bulunamadı.']; continue;
+                }
+                if ($this->model->hasManualLock($firmaId, $personelId, $date, self::RULE)) {
+                    $result['skipped'][] = ['personel_id' => $personelId, 'reason' => 'Manuel tercih kilitli.']; continue;
+                }
+                $classification = self::classifyRecords($this->model->activeRecordsForUpdate($personelId, $date), $date, $htcId);
+                if ($classification['blocking'] !== null) {
+                    $result['skipped'][] = ['personel_id' => $personelId, 'reason' => 'Mevcut manuel puantaj kodu korunmuştur.']; continue;
+                }
+                $description = 'Pazar çalışması kontrol ekranından seçilerek HTÇ oluşturuldu.';
+                if ($classification['automatic_htc'] !== null) { $result['unchanged']++; continue; }
+                foreach ($classification['convertible_ht'] as $record) $this->model->softDeleteAutomatic((int) $record['id'], 'Pazar HTÇ kontrol ekranından HTÇ koduna dönüştürüldü.');
+                $this->model->insertAutomatic($personelId, $htcId, $date, $description, self::RULE, max(array_map('floatval', $workTotals[$personelId])));
+                $result['created']++;
+            }
+            $this->model->commit();
+        } catch (\Throwable $e) { if ($this->model->inTransaction()) $this->model->rollBack(); throw $e; }
+        return $result;
+    }
+
     public function lockManualOverride(
         int $firmaId,
         int $personelId,

@@ -12,6 +12,9 @@ use App\Helper\Security;
 use App\Helper\Date;
 use App\Helper\Helper;
 use App\Service\OkumaHtcAutomationService;
+use App\Model\SettingsModel;
+use App\Model\SystemLogModel;
+use App\Service\Gate;
 
 header('Content-Type: application/json');
 
@@ -20,6 +23,12 @@ $firma_id = $_SESSION['firma_id'] ?? 0;
 
 if (!$firma_id) {
     echo json_encode(['status' => 'error', 'message' => 'Oturum sonlanmış.']);
+    exit;
+}
+
+if (!Gate::allows('personel/puantaj')) {
+    http_response_code(403);
+    echo json_encode(['status' => 'error', 'message' => 'Puantaj işlemi için yetkiniz bulunmamaktadır.']);
     exit;
 }
 
@@ -96,7 +105,29 @@ function sgkRaporArsivMi(array $rapor, int $toplamGun): bool
 }
 
 try {
-    if ($action === 'get-definitions') {
+    if ($action === 'get-sunday-work-preview') {
+        $date = trim((string) ($_POST['date'] ?? ''));
+        $settings = (new SettingsModel())->getAllSettingsAsKeyValue((int) $firma_id);
+        $data = (new OkumaHtcAutomationService())->preview((int) $firma_id, $date,
+            max(1, (int) ($settings['okuma_htc_minimum_okuma'] ?? 10)), [
+                'kacak' => max(1, (int) ($settings['kacak_htc_minimum_is'] ?? 2)),
+                'sokme_takma' => max(1, (int) ($settings['sokme_takma_htc_minimum_is'] ?? 10)),
+                'muhurleme' => max(1, (int) ($settings['muhurleme_htc_minimum_is'] ?? 10)),
+            ]);
+        echo json_encode(['status' => 'success', 'data' => $data]);
+    } elseif ($action === 'assign-selected-sunday-htc') {
+        $date = trim((string) ($_POST['date'] ?? ''));
+        $personelIds = json_decode((string) ($_POST['personel_ids'] ?? '[]'), true);
+        if (!is_array($personelIds)) throw new Exception('Personel seçimi geçersiz.');
+        $result = (new OkumaHtcAutomationService())->assignSelected((int) $firma_id, $date, $personelIds);
+        (new SystemLogModel())->logAction(
+            (int) ($_SESSION['user_id'] ?? 0),
+            'Puantaj - Pazar HTÇ Atama',
+            sprintf('%s tarihinde %d seçimin %d tanesine HTÇ eklendi; %d kayıt atlandı.', $date, count($personelIds), $result['created'], count($result['skipped'])),
+            SystemLogModel::LEVEL_IMPORTANT
+        );
+        echo json_encode(['status' => 'success', 'message' => $result['created'] . ' personele HTÇ eklendi.', 'data' => $result]);
+    } elseif ($action === 'get-definitions') {
         $ucretli = $Tanimlamalar->db->prepare("SELECT id, tur_adi, kisa_kod, renk, ikon FROM tanimlamalar WHERE grup = 'izin_turu' AND ucretli_mi = 1 AND (firma_id = ? OR firma_id = 0) AND silinme_tarihi IS NULL");
         $ucretli->execute([$firma_id]);
         $ucretli_list = $ucretli->fetchAll(PDO::FETCH_OBJ);
