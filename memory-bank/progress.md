@@ -1523,3 +1523,4 @@
 - [x] E-imza alt bilgisinde doğrulama kodu/PIN sol tarafa, belge takip adresi sağ tarafa yerleştirildi; elektronik imzalayan bilgisi kaldırıldı.
 - [x] E-imza alt bilgisi özgün referansa yaklaştırıldı; çift kırmızı ayraç tek çizgiye indirildi ve alt bilgi tipografi/boşluk oranları sıkılaştırıldı.
 - [x] Giden KEP evraklarının en son PTT delil durumu, Evrak Takip listesinde Tip alanından ayrılarak bağımsız `KEP Durumu` kolonunda gösterildi; firma izolasyonlu toplu Model sorgusu kullanıldı.
+- [x] `tests/integration` / `tests/Integration` yol çakışması giderildi ve Linux için Git büyük/küçük harf duyarlılığı etkinleştirildi.
