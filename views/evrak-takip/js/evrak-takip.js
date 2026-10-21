@@ -740,8 +740,10 @@ $(document).ready(function () {
       .then(response => response.json())
       .then(agent => {
         if (!agent || agent.status !== "success") throw new Error((agent && agent.message) || "E-imza uygulaması çalışmıyor.");
-        if (!String(agent.agent_version || "").startsWith("1.2.")) {
-          const error = new Error("PAdES için Ersan E-İmza v1.2.0 gereklidir.");
+        const versionMatch = String(agent.agent_version || "").match(/^(\d+)\.(\d+)/);
+        const supportedAgent = versionMatch && (Number(versionMatch[1]) > 1 || (Number(versionMatch[1]) === 1 && Number(versionMatch[2]) >= 2));
+        if (!supportedAgent) {
+          const error = new Error("PAdES için Ersan E-İmza v1.2.0 veya daha yeni bir sürüm gereklidir.");
           error.code = "EIMZA_AGENT_UPDATE_REQUIRED";
           throw error;
         }
@@ -1666,7 +1668,7 @@ $(document).ready(function () {
         syncAgentFooter(
           "E-İmza Aktif",
           null,
-          `<strong>${escapeEvrakHtml(state.data.owner_name || '')}</strong> <span class="text-muted font-size-11">(${escapeEvrakHtml(state.data.device_type || 'Akıllı Kart')})</span>`,
+          `<strong>${escapeEvrakHtml(state.data.owner_name || '')}</strong> <span class="text-muted font-size-11">(${escapeEvrakHtml(state.data.device_type || 'Akıllı Kart')} · ${escapeEvrakHtml(state.data.agent_version || 'sürüm bilinmiyor')})</span>`,
           true
         );
         return;
@@ -1731,8 +1733,9 @@ $(document).ready(function () {
         $badge.removeClass("bg-info-subtle text-info border-info-subtle bg-warning-subtle text-warning border-warning-subtle")
           .addClass("bg-success-subtle text-success border-success-subtle")
           .html(`<i class="bx bx-chip me-1"></i> ${escapeEvrakHtml(state.data.device_type || 'Akıllı Kart')} (Yerel)`);
+        const agentVersion = String(state.data.agent_version || '').trim();
         $sub.html(ownerName && tcno
-          ? `<strong>${escapeEvrakHtml(ownerName)}</strong> <span class="text-muted font-monospace font-size-11">(TC: ${escapeEvrakHtml(tcno)})</span> adına ait sertifika ile imzalanır.`
+          ? `<strong>${escapeEvrakHtml(ownerName)}</strong> <span class="text-muted font-monospace font-size-11">(TC: ${escapeEvrakHtml(tcno)})</span> adına ait sertifika ile imzalanır.${agentVersion ? ` <span class="text-muted font-size-10">Ajan: ${escapeEvrakHtml(agentVersion)}</span>` : ''}`
           : '<span class="text-muted"><i class="bx bx-lock-alt me-1"></i>Sertifika bilgisi PIN girildiğinde güvenli olarak okunacaktır.</span>');
         syncAgentFooter(
           "E-İmza Aktif",

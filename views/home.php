@@ -436,7 +436,7 @@ if (Gate::allows("ana_sayfa")) {
     }
 
     // Görev ve Gelen Evrak Takvimi & Alarmlar Mini Kartı (Görsel 1 & 2 Standardı)
-    $widgets['widget-takvim-alarmlar'] = renderSkeleton('widget-takvim-alarmlar', getWidgetWidth('widget-takvim-alarmlar', 'col-md-4 col-xl-4'), '275px');
+    $widgets['widget-takvim-alarmlar'] = renderSkeleton('widget-takvim-alarmlar', getWidgetWidth('widget-takvim-alarmlar', 'col-md-4 col-xl-4'), '260px');
 
     if (\App\Service\Gate::allows("talepler")) {
         $widgets['widget-bekleyen-talepler'] = renderSkeleton('widget-bekleyen-talepler', 'col-6 col-md-2', '140px');
@@ -5327,7 +5327,7 @@ if (Gate::allows("ana_sayfa")) {
 
                     // 1. Client-Side Cache (Instant Feel)
                     const isFreeLayout = $('#switch-free-layout').is(':checked');
-                    const cacheKey = 'dashboard_cache_v3_<?php echo $_SESSION['user_id']; ?>' + (isFreeLayout ? '_free' : '_grid');
+                    const cacheKey = 'dashboard_cache_v6_<?php echo $_SESSION['user_id']; ?>' + (isFreeLayout ? '_free' : '_grid');
                     const cachedData = localStorage.getItem(cacheKey);
                     
                     if (cachedData && !force) {

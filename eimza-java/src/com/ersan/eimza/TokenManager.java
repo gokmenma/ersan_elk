@@ -597,10 +597,17 @@ public class TokenManager {
         Files.write(inData.toPath(), tokenInput);
 
         // 3. İmzala
+        boolean rsaRawFallback = !isEcAlgorithm(keyAlgorithm)
+                && !supportsMechanism(toolBin, modulePath, "SHA256-RSA-PKCS");
+        if (rsaRawFallback) {
+            Files.write(inData.toPath(), buildSha256DigestInfo(signedAttrsDer));
+        }
+        String initialMechanism = isEcAlgorithm(keyAlgorithm)
+                ? "ECDSA"
+                : (rsaRawFallback ? "RSA-PKCS" : "SHA256-RSA-PKCS");
         ToolResult signResult = runTool(new String[]{
                 toolBin, "--module", modulePath, "--login", "--pin", pin,
-                "--sign", "--id", signingObjects.privateKeyId, "-m",
-                isEcAlgorithm(keyAlgorithm) ? "ECDSA" : "SHA256-RSA-PKCS",
+                "--sign", "--id", signingObjects.privateKeyId, "-m", initialMechanism,
                 "--input-file", inData.getAbsolutePath(),
                 "--output-file", outData.getAbsolutePath()
         });
@@ -609,7 +616,7 @@ public class TokenManager {
         // etmez; yalnız CKM_RSA_PKCS ham mekanizmasını kabul eder. Böyle bir
         // kartta SHA-256 DigestInfo'yu ajan hazırlar, kart yalnız özel anahtar
         // işlemini gerçekleştirir. Kriptografik sonuç yine SHA256withRSA'dır.
-        if (!isEcAlgorithm(keyAlgorithm) && signResult.exitCode != 0
+        if (!isEcAlgorithm(keyAlgorithm) && !rsaRawFallback
                 && isUnsupportedMechanism(signResult.output)) {
             Files.write(inData.toPath(), buildSha256DigestInfo(signedAttrsDer));
             if (outData.exists()) outData.delete();
@@ -687,8 +694,23 @@ public class TokenManager {
     private static boolean isUnsupportedMechanism(String output) {
         String upper = output == null ? "" : output.toUpperCase(Locale.ROOT);
         return upper.contains("CKR_MECHANISM_INVALID")
+                || upper.contains("0X70")
                 || upper.contains("MECHANISM INVALID")
                 || upper.contains("MECHANISM NOT SUPPORTED");
+    }
+
+    private static boolean supportsMechanism(String toolBin, String modulePath, String mechanism) {
+        try {
+            ToolResult result = runTool(new String[]{
+                    toolBin, "--module", modulePath, "--list-mechanisms"
+            });
+            String output = result.output == null ? "" : result.output.toUpperCase(Locale.ROOT);
+            return result.exitCode == 0 && output.contains(mechanism.toUpperCase(Locale.ROOT));
+        } catch (Exception ignored) {
+            // Mekanizma listesi alınamazsa önce birleşik yöntem denenir; kartın
+            // 0x70 yanıtı mevcut çalışma zamanındaki fallback'i tetikler.
+            return true;
+        }
     }
 
     /** PKCS#1 v1.5 RSA-PKCS mekanizmasının beklediği SHA-256 DigestInfo yapısı. */

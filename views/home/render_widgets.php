@@ -160,22 +160,22 @@ function renderWidget(string $widgetId, array $data = []) {
             $todayD = (int)date('j');
             ?>
             <div class="<?php echo getWidgetWidthClass($widgetDomId, 'col-md-4 col-xl-4'); ?> widget-item" id="<?php echo $widgetDomId; ?>" style="<?php echo getWidgetStyle($widgetDomId); ?>">
-                <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card cal-alarm-card" style="border-radius: 14px; background: #fff; overflow: hidden;">
-                    <div class="card-body p-3 p-md-3 d-flex flex-column h-100">
-                        <div class="row g-2 g-md-3 h-100 align-items-stretch">
+                <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card cal-alarm-card" style="border-radius: 12px; background: #fff; overflow: hidden; height: 260px !important; min-height: 260px !important; max-height: 260px !important;">
+                    <div class="card-body p-2 px-3 d-flex flex-column h-100" style="overflow: hidden;">
+                        <div class="row g-2 h-100 align-items-stretch">
                             <!-- Sol Kolon: Minimalist Takvim -->
-                            <div class="col-7 cal-left-col d-flex flex-column">
-                                <div class="cal-mini-header d-flex align-items-center justify-content-between px-3 py-2 text-white rounded-3 shadow-xs" style="background: #1c2430;">
+                            <div class="col-7 cal-left-col d-flex flex-column justify-content-between">
+                                <div class="cal-mini-header d-flex align-items-center justify-content-between px-2 py-1 text-white rounded-2 shadow-xs" style="background: #1c2430;">
                                     <button type="button" class="btn btn-link btn-sm text-white-50 p-0 text-decoration-none cal-nav-btn" onclick="navigateHomeCalendar(<?php echo $targetYear; ?>, <?php echo $targetMonth - 1; ?>)" title="Önceki Ay">
-                                        <i class="bx bx-chevron-left fs-5"></i>
+                                        <i class="bx bx-chevron-left" style="font-size: 15px;"></i>
                                     </button>
-                                    <span class="fw-bold cal-month-title" style="font-size: 0.95rem; letter-spacing: -0.01em;"><?php echo $monthTitle; ?></span>
+                                    <span class="fw-bold cal-month-title" style="font-size: 0.8rem; letter-spacing: -0.01em;"><?php echo $monthTitle; ?></span>
                                     <button type="button" class="btn btn-link btn-sm text-white-50 p-0 text-decoration-none cal-nav-btn" onclick="navigateHomeCalendar(<?php echo $targetYear; ?>, <?php echo $targetMonth + 1; ?>)" title="Sonraki Ay">
-                                        <i class="bx bx-chevron-right fs-5"></i>
+                                        <i class="bx bx-chevron-right" style="font-size: 15px;"></i>
                                     </button>
                                 </div>
 
-                                <div class="cal-weekdays-grid mt-2 mb-1">
+                                <div class="cal-weekdays-grid my-1">
                                     <span>P</span><span>S</span><span>Ç</span><span>P</span><span>C</span><span>C</span><span>P</span>
                                 </div>
 
@@ -211,10 +211,10 @@ function renderWidget(string $widgetId, array $data = []) {
                             </div>
 
                             <!-- Sağ Kolon: Alarmlar Paneli -->
-                            <div class="col-5 cal-right-col d-flex flex-column border-start ps-2 ps-md-3">
-                                <div class="d-flex flex-column align-items-center mb-2 cal-alarm-header">
-                                    <div class="cal-bell-icon-wrapper mb-1">
-                                        <svg width="22" height="24" viewBox="0 0 24 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <div class="col-5 cal-right-col d-flex flex-column border-start ps-2">
+                                <div class="d-flex flex-column align-items-center mb-1 cal-alarm-header">
+                                    <div class="cal-bell-icon-wrapper mb-0">
+                                        <svg width="15" height="17" viewBox="0 0 24 26" fill="none" xmlns="http://www.w3.org/2000/svg">
                                             <circle cx="12" cy="3" r="2" fill="#bd6b5c"/>
                                             <path d="M12 5V7M7 16H17C18.1046 16 19 15.1046 19 14V11.5C19 8.46243 16.5376 6 13.5 6H10.5C7.46243 6 5 8.46243 5 11.5V14C5 15.1046 5.89543 16 7 16Z" stroke="#bd6b5c" stroke-width="2" stroke-linecap="round"/>
                                             <path d="M10 18C10 19.1046 10.8954 20 12 20C13.1046 20 14 19.1046 14 18" stroke="#bd6b5c" stroke-width="2" stroke-linecap="round"/>
@@ -223,30 +223,30 @@ function renderWidget(string $widgetId, array $data = []) {
                                     <div class="d-flex align-items-center gap-1">
                                         <span class="cal-alarm-count-badge fw-bold" id="calAlarmCountTitle"><?php echo $totalAlarmCount; ?> ALARM</span>
                                         <button type="button" class="btn btn-link btn-sm p-0 text-muted cal-reset-filter-btn d-none" id="btnCalResetFilter" onclick="resetHomeCalendarDayFilter()" title="Tümünü Göster">
-                                            <i class="bx bx-x-circle fs-6"></i>
+                                            <i class="bx bx-x-circle" style="font-size: 13px;"></i>
                                         </button>
                                     </div>
                                 </div>
 
-                                <div class="cal-alarm-items-list flex-grow-1 overflow-auto" id="calAlarmItemsList" style="max-height: 220px;">
+                                <div class="cal-alarm-items-list flex-grow-1 overflow-auto" id="calAlarmItemsList" style="max-height: 168px;">
                                     <?php if (empty($alarmsList)): ?>
-                                        <div class="text-center py-4 text-muted" style="font-size: 0.8rem;">
-                                            <i class="bx bx-calendar-check text-muted opacity-50 fs-2 d-block mb-1"></i>
-                                            <span>Bu ayda bekleyen alarm bulunmuyor.</span>
+                                        <div class="text-center py-3 text-muted" style="font-size: 0.72rem;">
+                                            <i class="bx bx-calendar-check text-muted opacity-50 fs-3 d-block mb-1"></i>
+                                            <span>Alarm yok</span>
                                         </div>
                                     <?php else: ?>
                                         <?php foreach ($alarmsList as $alarm): ?>
                                             <?php
-                                            $aDay = (int)date('j', strtotime($alarm['tarih']));
+                                             $aDay = (int)date('j', strtotime($alarm['tarih']));
                                             $aMonth = (int)date('n', strtotime($alarm['tarih']));
                                             $tarihKisa = $aDay . ' ' . ($aylarKisaTr[$aMonth] ?? '');
                                             $isGorev = ($alarm['tur'] ?? '') === 'gorev';
                                             $badgeClass = $isGorev ? 'bg-primary-subtle text-primary' : 'bg-warning-subtle text-warning-emphasis';
-                                            $badgeText = $isGorev ? 'Görev' : 'Gelen Evrak';
+                                            $badgeText = $isGorev ? 'Görev' : 'Evrak';
                                             $url = $alarm['url'] ?? '#';
                                             ?>
-                                            <a href="<?php echo htmlspecialchars($url, ENT_QUOTES, 'UTF-8'); ?>" class="cal-alarm-item d-block text-decoration-none mb-2" data-day="<?php echo $aDay; ?>" title="<?php echo htmlspecialchars($alarm['baslik'] . ' (' . $badgeText . ')', ENT_QUOTES, 'UTF-8'); ?>">
-                                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                            <a href="<?php echo htmlspecialchars($url, ENT_QUOTES, 'UTF-8'); ?>" class="cal-alarm-item d-block text-decoration-none mb-1" data-day="<?php echo $aDay; ?>" title="<?php echo htmlspecialchars($alarm['baslik'] . ' (' . $badgeText . ')', ENT_QUOTES, 'UTF-8'); ?>">
+                                                <div class="d-flex align-items-center justify-content-between">
                                                     <span class="cal-alarm-date fw-bold"><?php echo $tarihKisa; ?></span>
                                                     <span class="badge <?php echo $badgeClass; ?> cal-mini-pill"><?php echo $badgeText; ?></span>
                                                 </div>
@@ -264,7 +264,9 @@ function renderWidget(string $widgetId, array $data = []) {
             <style>
                 .cal-alarm-card {
                     font-family: inherit;
-                    min-height: 275px;
+                    height: 260px !important;
+                    min-height: 260px !important;
+                    max-height: 260px !important;
                 }
                 .cal-mini-header {
                     user-select: none;
@@ -281,26 +283,27 @@ function renderWidget(string $widgetId, array $data = []) {
                     display: grid;
                     grid-template-columns: repeat(7, 1fr);
                     text-align: center;
-                    font-size: 11px;
+                    font-size: 9.5px;
                     font-weight: 600;
                     color: #8c97a8;
+                    line-height: 1.1;
                 }
                 .cal-days-grid {
                     display: grid;
                     grid-template-columns: repeat(7, 1fr);
-                    grid-auto-rows: 28px;
-                    gap: 3px 1px;
+                    grid-auto-rows: 23px;
+                    gap: 2px;
                     align-items: center;
                     justify-items: center;
                 }
                 .cal-day-cell {
-                    width: 27px;
-                    height: 27px;
+                    width: 22px;
+                    height: 22px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     border-radius: 50%;
-                    font-size: 12px;
+                    font-size: 10.5px;
                     font-weight: 500;
                     color: #334155;
                     cursor: pointer;
@@ -318,10 +321,10 @@ function renderWidget(string $widgetId, array $data = []) {
                     background-color: #bd6b5c !important;
                     color: #ffffff !important;
                     font-weight: 700;
-                    box-shadow: 0 2px 4px rgba(189, 107, 92, 0.35);
+                    box-shadow: 0 1px 3px rgba(189, 107, 92, 0.35);
                 }
                 .cal-day-cell.has-alarm:hover {
-                    transform: scale(1.1);
+                    transform: scale(1.15);
                     filter: brightness(1.05);
                 }
                 /* Bugünün Tarihi (Turkuaz/Yeşil Halka - Görsel 1) */
@@ -340,34 +343,45 @@ function renderWidget(string $widgetId, array $data = []) {
                 /* Sağ Alarm Paneli */
                 .cal-alarm-count-badge {
                     color: #bd6b5c;
-                    font-size: 11px;
-                    letter-spacing: 1.2px;
+                    font-size: 9.5px;
+                    letter-spacing: 0.8px;
                     text-transform: uppercase;
+                }
+                .cal-alarm-items-list {
+                    scrollbar-width: thin;
+                    scrollbar-color: #cbd5e1 transparent;
+                }
+                .cal-alarm-items-list::-webkit-scrollbar {
+                    width: 3px;
+                }
+                .cal-alarm-items-list::-webkit-scrollbar-thumb {
+                    background: #cbd5e1;
+                    border-radius: 3px;
                 }
                 .cal-alarm-item {
                     border: 1px solid #ebd5d0;
                     background: #fffcfb;
-                    border-radius: 7px;
-                    padding: 6px 9px;
+                    border-radius: 5px;
+                    padding: 3px 6px;
                     transition: all .2s ease;
                 }
                 .cal-alarm-item:hover {
-                    transform: translateY(-2px);
-                    box-shadow: 0 3px 8px rgba(189, 107, 92, 0.15);
+                    transform: translateY(-1px);
+                    box-shadow: 0 2px 5px rgba(189, 107, 92, 0.15);
                     border-color: #bd6b5c;
                 }
                 .cal-alarm-date {
                     color: #bd6b5c;
-                    font-size: 11px;
+                    font-size: 9.5px;
                     font-family: monospace, sans-serif;
                 }
                 .cal-alarm-text {
-                    font-size: 12px;
-                    line-height: 1.25;
+                    font-size: 10px;
+                    line-height: 1.15;
                 }
                 .cal-mini-pill {
-                    font-size: 9px;
-                    padding: 2px 5px;
+                    font-size: 7.5px;
+                    padding: 1px 3px;
                     font-weight: 600;
                 }
                 /* Koyu Tema Uyumu */

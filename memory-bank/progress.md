@@ -1,5 +1,22 @@
 # Progress
 
+## 2026-10-21: Dashboard — Görev & Evrak Takvimi Kartı Yükseklik Eşitlemesi (260px)
+- [x] Kart Yüksekliği Birebir Eşitlendi: `widget-takvim-alarmlar` kartı (`.cal-alarm-card`), yanındaki operasyonel kartların (Endeks Okuma, Sayaç Değişimi, Kesme Açma) `.stat-card` yüksekliği olan tam **260px** (`height: 260px !important; min-height: 260px !important; max-height: 260px !important;`) ile pikseli pikseline eşitlendi.
+- [x] İç Düzen ve Dikey Oranlama: Takvim ızgarası satır yüksekliği `grid-auto-rows: 23px; gap: 2px;`, gün hücreleri `22x22px` ve sağ alarm listesi kaydırma alanı `max-height: 168px;` olarak güncellenerek 260px içine kusursuz oturtuldu.
+- [x] Önbellek ve Skeleton Güncellendi: `views/home.php` dosyasında skeleton yüksekliği `260px` yapıldı ve istemci önbellek anahtarı `dashboard_cache_v6_` olarak artırılarak tarayıcıdaki eski önbellek otomatik yenilendi.
+
+## 2026-10-21: Ersan E-İmza Java Ajanı — Modern FlatLaf Arayüzü
+- [x] FlatLaf 3.7.2 projeye eklendi ve Java 8 hedefiyle derlendi.
+- [x] Sekmeli eski arayüz, modern sol navigasyonlu ana sayfa/ayarlar yerleşimine dönüştürüldü.
+- [x] Servis ve kart durumları, imza isteği özeti, kart tarama, sürücü seçme, tanılama, arka plana alma ve kapatma aksiyonları yeni tasarıma taşındı.
+- [x] `downloads/ErsanEImza.jar` ve `scripts/ErsanEImza.jar` yeniden üretildi; gerekli FlatLaf ve native kaynakların paket içinde bulunduğu doğrulandı.
+
+## 2026-10-21: Dashboard — Görev & Evrak Takvimi Kartı Yükseklik Standardizasyonu
+- [x] Kart Yüksekliği Sabitlendi: `widget-takvim-alarmlar` kartı, yanındaki operasyonel kartların (Endeks Okuma, Sayaç Değişimi vb.) 235px - 240px yüksekliğiyle birebir eşit olacak şekilde `height: 238px !important; max-height: 238px !important; min-height: 238px !important;` olarak yeniden boyutlandırıldı.
+- [x] Kompakt Takvim Tasarımı: Dikey padding `py-2`, takvim başlığı, hafta isimleri ve 7x6 gün hücreleri `20x20px` (font-size: 10px) kompakt ölçülere getirildi.
+- [x] Kompakt Alarm Paneli: Sağ alarmlar listesi ince scrollbar (`scrollbar-width: thin;`) ve 140px max-height sınırı ile optimize edildi.
+- [x] Önbellek Yenilendi: `views/home.php` dosyasında `dashboard_cache_v4_` tanımlandı ve sunucudaki statik widget cache'i güncellendi.
+
 ## 2026-10-21: KM Onayları AI Analizi ve Ret Gerekçesi Görünümü
 - [x] GPT-5 görsel OCR çağrılarında analiz/çıktı bütçesi yükseltildi ve orta düzey muhakeme etkinleştirildi; güvenlik eşikleri korunarak doğruluk odaklı analiz sıkılaştırıldı.
 - [x] Geçici OpenAI bağlantı/kapasite/oran sınırı hatalarına bir kontrollü tekrar eklendi.
@@ -1513,6 +1530,7 @@
 - [x] KEP PIN modalında PIN sonrası yerel sertifika listeleme endpoint'i ve sahip/T.C./geçerlilik/algoritma kartları eklendi; `1.2.8` JAR ile JS/PHP kontrolleri geçti.
 - [x] Java yerel ajan arayüzü durum kartları ve ayrı `Durum` / `Ayarlar ve Tanılama` sekmeleriyle yenilendi; ayar butonları ana ekrandan ayrıldı ve `1.2.9` JAR üretildi.
 - [x] `CKR_MECHANISM_INVALID` veren RSA kartlar için `SHA256-RSA-PKCS` → ajan tarafında SHA-256 DigestInfo + `RSA-PKCS` otomatik fallback'i eklendi; ana imza ve anahtar eşleştirme yolları kapsandı, `1.3.0` JAR üretildi.
+- [x] RSA kart mekanizmaları imza öncesinde sorgulanarak desteklenen yol doğrudan seçilir hale getirildi; `0x70` metin tabanlı fallback, bağlı ajan sürümünün web UI'da gösterimi ve yeni `1.3.x` sürümlerinin PAdES kontrolünde kabulü eklendi. `1.3.1` JAR üretildi.
 
 # 2026-10-20 — Cari hesap hareketleri Excel dışa aktarımı
 

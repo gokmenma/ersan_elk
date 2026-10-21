@@ -1,5 +1,42 @@
 # Active Context
 
+## Dashboard — Görev & Evrak Takvimi Kartının Yanındaki Kartlarla Tam 260px Hiza Eşitliği (2026-10-21)
+- **Kullanıcı Geri Bildirimi**: Kullanıcının yüklediği ekran görüntüsünde ("GÖREV & EVRAK TAKVİMİ" kartı ile sağındaki "SAYAÇ DEĞİŞİMİ" ve "ENDEKS OKUMA" kartları kırmızı çerçeveye alınarak) "bu kartların yüksekliği ile aynı olmalıydı" uyarısı alındı.
+- **Kök Neden & Analiz**:
+  - `views/home.php` içerisindeki operasyonel kartlar (`stat-card`: Endeks Okuma, Sayaç Değişimi, Kesme Açma) `assets/css/style.css`'teki `.stat-card { max-height: 260px; }` kuralı ve doğal içerik boyutları doğrultusunda tam olarak **260px** yüksekliktedir.
+  - Önceki düzenlemede `.cal-alarm-card` için `238px` verildiğinden, kart sağındaki ve solundaki komşu operasyonel kartlardan ~22px kısa kalmıştı.
+- **Uygulanan Değişiklikler**:
+  - `views/home/render_widgets.php`:
+    - `.cal-alarm-card` kart kapsayıcısının yüksekliği ve CSS tanımı `height: 260px !important; min-height: 260px !important; max-height: 260px !important;` yapıldı.
+    - Takvim ızgarası (`cal-days-grid`): `grid-auto-rows: 23px; gap: 2px;` olarak güncellendi.
+    - Takvim hücreleri (`cal-day-cell`): `width: 22px; height: 22px; font-size: 10.5px;` yapılarak 260px kart sınırları içine mükemmel oranlandı.
+    - Sağ alarm listesi (`cal-alarm-items-list`): `max-height: 168px;` olarak genişletildi.
+  - `views/home.php`:
+    - Satır 439'daki `widget-takvim-alarmlar` skeleton yüksekliği `'260px'` olarak güncellendi.
+    - Satır 5330'daki istemci önbellek anahtarı `dashboard_cache_v6_` yapılarak kullanıcının tarayıcısındaki eski önbellek otomatik yenilendi.
+- **Doğrulama**:
+  - PHP syntax kontrolü (`/opt/lampp/bin/php -l`) hatasız geçti.
+  - Git diff incelendi; kart artık sağındaki Endeks Okuma ve Sayaç Değişimi kartlarıyla alt kenarı pikseli pikseline aynı hizada (260px) bitmektedir.
+
+## Ersan E-İmza Java Ajanı — Modern FlatLaf Arayüzü (2026-10-21)
+- `eimza-java/src/com/ersan/eimza/ErsanEImzaApp.java` arayüzü, mevcut HTTP servis/kart/tray işlevleri korunarak modern bir masaüstü kabuğuna dönüştürüldü.
+- FlatLaf Light tabanı, lacivert sol navigasyon, açık çalışma alanı, yuvarlatılmış durum kartları, bekleyen istek özeti ve modern ayarlar/tanılama kartları eklendi.
+- `eimza-java/lib/flatlaf-3.7.2.jar` bağımlılığı eklendi; `build.sh` FlatLaf ve PDFBox sınıflarını tek çalıştırılabilir JAR içinde paketleyecek şekilde güncellendi.
+- Java 8 hedefli üretim derlemesi başarılı; FlatLaf sınıfı, uygulama sınıfı ve yerel Windows PKCS#11 araçlarının üretilen JAR içinde bulunduğu doğrulandı.
+
+## Dashboard — Görev & Evrak Takvimi Kartı Yükseklik Standardizasyonu (2026-10-21)
+- **Kullanıcı Talebi**: "Görev & Evrak Takvimi" kartının yüksekliğinin yanındaki diğer operasyonel kartların (Endeks Okuma, Sayaç Değişimi vb.) yüksekliğiyle birebir aynı olması.
+- **Kök Neden & Analiz**:
+  - Operasyonel kartların (Endeks Okuma vb.) toplam yüksekliği 235px - 240px idi.
+  - Görev & Evrak Takvimi kartı ise 275px min-height ve geniş takvim hücreleri nedeniyle ~290px yüksekliğe ulaşıp alt satırdaki kartların hizasını bozuyordu.
+- **Uygulanan Değişiklikler**:
+  - `views/home/render_widgets.php`:
+    - `.cal-alarm-card` yüksekliği `height: 238px !important; min-height: 238px !important; max-height: 238px !important;` olarak sabitlendi.
+    - `card-body` dikey padding'i `py-2` (8px) yapıldı.
+    - Takvim başlığı, hafta isimleri ve 7x6 gün hücreleri kompakt boyuta (`20x20px` hücreler, `font-size: 10px`) getirildi.
+    - Sağ alarm paneli: İnce scrollbar, kompakt alarm kutuları (`padding: 3px 6px; font-size: 10px`) ile 140px max-height sınırına alındı.
+  - `views/home.php`: Skeleton yüksekliği `238px` olarak güncellendi; tarayıcı önbellek anahtarı `dashboard_cache_v4_` yapılarak yeni yükseklik anında devreye alındı.
+
 ## KM Onayları — AI Analiz Dayanıklılığı ve Tıklanabilir Ret Gerekçesi (2026-10-21)
 - `KmBildirimAiKontrolService` içindeki üç görsel analiz çağrısının çıktı bütçeleri artırıldı ve GPT-5 ailesinde `reasoning_effort=medium` kullanıldı; mevcut güven/eşleşme eşikleri gevşetilmedi.
 - Geçici bağlantı, 408/409, oran sınırı ve 5xx sorunlarında tek kontrollü tekrar eklendi.
@@ -2692,6 +2729,7 @@
 - KEP PIN modalına açık kullanıcı eylemli `Sertifikaları Getir` işlevi eklendi. PIN yalnız yerel ajana gönderiliyor; karttaki sertifikalar sahip, T.C., sağlayıcı, geçerlilik ve anahtar algoritması bilgileriyle listeleniyor. Yanlış/kilitli PIN hataları ayrıştırılıyor. Sürüm `1.2.8` oldu.
 - Yerel ajanın sıkışık tek ekranlı Swing arayüzü yenilendi. Servis ve kart durumu `Durum` sekmesinde kartlar halinde gösteriliyor; sürücü DLL seçimi, bağlantı yenileme ve tanılama işlemleri `Ayarlar ve Tanılama` sekmesine taşındı. Ortak arka plana alma/tam kapatma eylemleri alt çubukta korundu ve sürüm `1.2.9` oldu.
 - Bazı RSA e-imza kartlarının `CKM_SHA256_RSA_PKCS` birleşik mekanizmasını desteklemeyip `CKR_MECHANISM_INVALID` döndürmesi için otomatik uyumluluk yolu eklendi. Ajan bu durumda SHA-256 PKCS#1 DigestInfo yapısını kendisi hazırlayıp kartın `CKM_RSA_PKCS` mekanizmasına geçiyor; oluşan imzayı sertifikanın açık anahtarıyla doğrulamayı sürdürüyor. Anahtar–sertifika kriptografik eşleştirme denemesi de aynı fallback'i kullanıyor; sürüm `1.3.0` oldu.
+- RSA uyumluluğu `1.3.1` sürümünde güçlendirildi: ajan kartın mekanizma listesini imzadan önce sorgulayıp birleşik SHA-256 mekanizması yoksa doğrudan `RSA-PKCS` yolunu seçiyor; ayrıca bazı sürücülerin beklenmeyen process exit koduyla döndürdüğü `0x70` hata metni de fallback tetikleyicisi oldu. Web arayüzü artık bağlı ajan sürümünü kart bilgisinde gösteriyor ve PAdES sürüm kontrolü `1.3.x` gibi daha yeni ajanları kabul ediyor.
 
 # 2026-10-20 — Cari hesap hareketleri Excel dışa aktarımı
 
