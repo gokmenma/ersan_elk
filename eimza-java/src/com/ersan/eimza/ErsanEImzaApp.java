@@ -19,7 +19,7 @@ public class ErsanEImzaApp {
 
     public static void main(String[] args) {
         System.out.println("=================================================");
-        System.out.println("  Ersan E-İmza Yerel Köprü Servisi (Java v1.2.9) ");
+        System.out.println("  Ersan E-İmza Yerel Köprü Servisi (Java v1.3.0) ");
         System.out.println("  Dinleme Adresi: http://127.0.0.1:9191          ");
         System.out.println("=================================================");
 
@@ -79,7 +79,7 @@ public class ErsanEImzaApp {
         JLabel lblTitle = new JLabel("Ersan E-İmza Yerel Ajanı");
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
         lblTitle.setForeground(Color.WHITE);
-        JLabel lblSubtitle = new JLabel("Güvenli elektronik imza köprüsü  •  v1.2.9 PAdES");
+        JLabel lblSubtitle = new JLabel("Güvenli elektronik imza köprüsü  •  v1.3.0 PAdES");
         lblSubtitle.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblSubtitle.setForeground(new Color(190, 205, 219));
         titlePanel.add(lblTitle);

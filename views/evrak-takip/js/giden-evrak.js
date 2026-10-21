@@ -1223,9 +1223,9 @@ $(document).ready(function () {
             title: "E-İmza Uygulamasını Güncelleyin",
             html: `
               <p class="mb-3">PAdES için <b>Ersan E-İmza v1.2.0</b> gereklidir.</p>
-              <a href="downloads/ErsanEImza.jar?v=1.2.9" download="ErsanEImza.jar"
+              <a href="downloads/ErsanEImza.jar?v=1.3.0" download="ErsanEImza.jar"
                  class="btn btn-primary px-4 py-2">
-                <i class="bx bxs-download me-1"></i> E-İmza v1.2.9 İndir
+                <i class="bx bxs-download me-1"></i> E-İmza v1.3.0 İndir
               </a>
               <div class="small text-muted mt-3">Eski uygulamayı tamamen kapatın, ardından indirdiğiniz dosyayı çalıştırın.</div>`,
             showConfirmButton: true,

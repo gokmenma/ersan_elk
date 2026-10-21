@@ -1512,6 +1512,7 @@
 - [x] PIN öncesinde gizlenen Windows AKİS sertifikası için doğru UI açıklaması ve PIN sonrası X.509 kimliğini önbelleğe alma eklendi; `1.2.7` paketi derlendi, JavaScript/PHP kontrolleri geçti.
 - [x] KEP PIN modalında PIN sonrası yerel sertifika listeleme endpoint'i ve sahip/T.C./geçerlilik/algoritma kartları eklendi; `1.2.8` JAR ile JS/PHP kontrolleri geçti.
 - [x] Java yerel ajan arayüzü durum kartları ve ayrı `Durum` / `Ayarlar ve Tanılama` sekmeleriyle yenilendi; ayar butonları ana ekrandan ayrıldı ve `1.2.9` JAR üretildi.
+- [x] `CKR_MECHANISM_INVALID` veren RSA kartlar için `SHA256-RSA-PKCS` → ajan tarafında SHA-256 DigestInfo + `RSA-PKCS` otomatik fallback'i eklendi; ana imza ve anahtar eşleştirme yolları kapsandı, `1.3.0` JAR üretildi.
 
 # 2026-10-20 — Cari hesap hareketleri Excel dışa aktarımı
 

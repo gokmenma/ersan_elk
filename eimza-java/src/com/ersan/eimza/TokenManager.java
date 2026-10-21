@@ -605,6 +605,22 @@ public class TokenManager {
                 "--output-file", outData.getAbsolutePath()
         });
 
+        // Bazı e-imza kartları CKM_SHA256_RSA_PKCS birleşik mekanizmasını ilan
+        // etmez; yalnız CKM_RSA_PKCS ham mekanizmasını kabul eder. Böyle bir
+        // kartta SHA-256 DigestInfo'yu ajan hazırlar, kart yalnız özel anahtar
+        // işlemini gerçekleştirir. Kriptografik sonuç yine SHA256withRSA'dır.
+        if (!isEcAlgorithm(keyAlgorithm) && signResult.exitCode != 0
+                && isUnsupportedMechanism(signResult.output)) {
+            Files.write(inData.toPath(), buildSha256DigestInfo(signedAttrsDer));
+            if (outData.exists()) outData.delete();
+            signResult = runTool(new String[]{
+                    toolBin, "--module", modulePath, "--login", "--pin", pin,
+                    "--sign", "--id", signingObjects.privateKeyId, "-m", "RSA-PKCS",
+                    "--input-file", inData.getAbsolutePath(),
+                    "--output-file", outData.getAbsolutePath()
+            });
+        }
+
         inData.delete();
 
         if (signResult.exitCode != 0) {
@@ -666,6 +682,22 @@ public class TokenManager {
 
     private static String signatureName(String keyAlgorithm) {
         return isEcAlgorithm(keyAlgorithm) ? "SHA256withECDSA" : "SHA256withRSA";
+    }
+
+    private static boolean isUnsupportedMechanism(String output) {
+        String upper = output == null ? "" : output.toUpperCase(Locale.ROOT);
+        return upper.contains("CKR_MECHANISM_INVALID")
+                || upper.contains("MECHANISM INVALID")
+                || upper.contains("MECHANISM NOT SUPPORTED");
+    }
+
+    /** PKCS#1 v1.5 RSA-PKCS mekanizmasının beklediği SHA-256 DigestInfo yapısı. */
+    private static byte[] buildSha256DigestInfo(byte[] data) throws Exception {
+        byte[] digest = MessageDigest.getInstance("SHA-256").digest(data);
+        return Asn1Der.sequence(
+                Asn1Der.sequence(Asn1Der.oid(Asn1Der.OID_SHA256), Asn1Der.nullVal()),
+                Asn1Der.octetString(digest)
+        );
     }
 
     /** PKCS#11 CKM_ECDSA r||s çıktısını CMS'in beklediği ASN.1 DER SEQUENCE biçimine çevirir. */
@@ -752,6 +784,16 @@ public class TokenManager {
                         "--input-file", probeInput.getAbsolutePath(),
                         "--output-file", probeSignature.getAbsolutePath()
                 });
+                if (signResult.exitCode != 0 && isUnsupportedMechanism(signResult.output)) {
+                    Files.write(probeInput.toPath(), buildSha256DigestInfo(probe));
+                    if (probeSignature.exists()) probeSignature.delete();
+                    signResult = runTool(new String[]{
+                            toolBin, "--module", modulePath, "--login", "--pin", pin,
+                            "--sign", "--id", privateKeyId, "-m", "RSA-PKCS",
+                            "--input-file", probeInput.getAbsolutePath(),
+                            "--output-file", probeSignature.getAbsolutePath()
+                    });
+                }
                 if (signResult.exitCode != 0 || probeSignature.length() == 0) continue;
                 byte[] signature = Files.readAllBytes(probeSignature.toPath());
 

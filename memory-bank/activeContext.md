@@ -2691,6 +2691,7 @@
 - Windows AKİS slot algılamasında sertifika sahibi/T.C. PIN öncesi gizli olduğunda modal artık boş `(TC: ) adına ait` göstermiyor; sertifikanın PIN ile okunacağını açıklıyor. İmzalama sırasında okunan gerçek X.509 kimliği ajan önbelleğine aktarılıyor ve sonraki durum yanıtlarında ad/T.C. bilgisi geliyor. Sürüm `1.2.7` oldu.
 - KEP PIN modalına açık kullanıcı eylemli `Sertifikaları Getir` işlevi eklendi. PIN yalnız yerel ajana gönderiliyor; karttaki sertifikalar sahip, T.C., sağlayıcı, geçerlilik ve anahtar algoritması bilgileriyle listeleniyor. Yanlış/kilitli PIN hataları ayrıştırılıyor. Sürüm `1.2.8` oldu.
 - Yerel ajanın sıkışık tek ekranlı Swing arayüzü yenilendi. Servis ve kart durumu `Durum` sekmesinde kartlar halinde gösteriliyor; sürücü DLL seçimi, bağlantı yenileme ve tanılama işlemleri `Ayarlar ve Tanılama` sekmesine taşındı. Ortak arka plana alma/tam kapatma eylemleri alt çubukta korundu ve sürüm `1.2.9` oldu.
+- Bazı RSA e-imza kartlarının `CKM_SHA256_RSA_PKCS` birleşik mekanizmasını desteklemeyip `CKR_MECHANISM_INVALID` döndürmesi için otomatik uyumluluk yolu eklendi. Ajan bu durumda SHA-256 PKCS#1 DigestInfo yapısını kendisi hazırlayıp kartın `CKM_RSA_PKCS` mekanizmasına geçiyor; oluşan imzayı sertifikanın açık anahtarıyla doğrulamayı sürdürüyor. Anahtar–sertifika kriptografik eşleştirme denemesi de aynı fallback'i kullanıyor; sürüm `1.3.0` oldu.
 
 # 2026-10-20 — Cari hesap hareketleri Excel dışa aktarımı
 
