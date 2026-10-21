@@ -1326,6 +1326,7 @@ const AracTakip = {
             html += `<tr data-km="${yapilanKm}" data-created-by="${k.olusturan_kullanici_adi || ''}" data-created-at="${self.formatDateTime(k.olusturma_tarihi) || ''}">
                             <td class="text-center">${index + 1}</td>
                             <td><strong>${k.plaka}</strong></td>
+                            <td><small>${k.zimmetli_personel || '<span class="text-muted">Boşta</span>'}</small></td>
                             <td>${self.formatDate(k.tarih)}</td>
                             <td class="text-end">
                                 <div class="d-flex flex-column align-items-end">
@@ -1358,13 +1359,13 @@ const AracTakip = {
         });
         self.updateKmSummaryCards();
       } else {
-        const colCount = $("#kmTable").find("thead tr:first th").length || 6;
+        const colCount = $("#kmTable").find("thead tr:first th").length || 8;
         let tds = `<td>-</td><td>${response.message || "Veri yükleniyor..."}</td>`;
         for (let i = 2; i < colCount; i++) tds += "<td></td>";
         tbody.html(`<tr>${tds}</tr>`);
       }
     }).fail(function (xhr) {
-      const colCount = $("#kmTable").find("thead tr:first th").length || 6;
+      const colCount = $("#kmTable").find("thead tr:first th").length || 8;
       let tds = `<td>-</td><td>Hata: ${xhr.statusText}</td>`;
       for (let i = 2; i < colCount; i++) tds += "<td></td>";
       tbody.html(`<tr>${tds}</tr>`);
@@ -3109,6 +3110,24 @@ $(document).ready(function () {
       const urlParams = new URLSearchParams(window.location.search);
       const filter = urlParams.get("filter") || "";
       window.location.href = AracTakip.apiUrl + "?action=arac-excel-aktar&filter=" + filter;
+      return;
+    }
+
+    // KM sekmesiyse sunucu taraflı normal excel indirme kullan
+    if (activeTabId === "kmContent") {
+      const dateRange = getDateRangeForType("km");
+      const aracId = $("#km-filtre-arac").val() || "";
+      const departman = $("#km-filtre-departman").val() || "";
+
+      const queryParams = new URLSearchParams({
+        action: "km-excel-aktar",
+        baslangic: dateRange.baslangic || "",
+        bitis: dateRange.bitis || "",
+        arac_id: aracId,
+        departman: departman
+      });
+
+      window.location.href = AracTakip.apiUrl + "?" + queryParams.toString();
       return;
     }
 

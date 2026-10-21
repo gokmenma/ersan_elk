@@ -205,7 +205,9 @@ class KmBildirimAiKontrolService
                     ],
                 ],
             ],
-            'max_tokens' => 300,
+            // GPT-5 ailesinde muhakeme token'lari da ayni butceden dusulur.
+            // Dusuk limit, gorsel okunabildigi halde bos/yarim JSON uretebiliyordu.
+            'max_tokens' => 1200,
         ];
 
         return $this->sendAiRequest($payload);
@@ -295,7 +297,7 @@ class KmBildirimAiKontrolService
                     ],
                 ],
             ],
-            'max_tokens' => 100,
+            'max_tokens' => 600,
         ];
 
         $ikinciAnaliz = $this->sendAiRequest($payload);
@@ -400,7 +402,7 @@ class KmBildirimAiKontrolService
                     ],
                 ],
             ],
-            'max_tokens' => 60,
+            'max_tokens' => 400,
         ];
 
         $hakem = $this->sendAiRequest($payload);
@@ -487,35 +489,90 @@ class KmBildirimAiKontrolService
                 unset($payload['max_tokens']);
             }
             unset($payload['temperature']);
+            // Odometre hanelerinde hizdan cok dikkat onemlidir. Otomatik onay
+            // esikleri degismeden modelin gorseli daha dikkatli incelemesini saglar.
+            $payload['reasoning_effort'] = 'medium';
         }
 
-        $ch = curl_init('https://api.openai.com/v1/chat/completions');
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST => true,
-            CURLOPT_TIMEOUT => 120,
-            CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Authorization: Bearer ' . $this->apiKey],
-            CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE),
-        ]);
-        $body = curl_exec($ch);
-        $curlError = curl_error($ch);
-        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        $body = false;
+        $curlError = '';
+        $status = 0;
+        $response = null;
+        for ($attempt = 1; $attempt <= 2; $attempt++) {
+            $ch = curl_init('https://api.openai.com/v1/chat/completions');
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_TIMEOUT => 120,
+                CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Authorization: Bearer ' . $this->apiKey],
+                CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE),
+            ]);
+            $body = curl_exec($ch);
+            $curlError = curl_error($ch);
+            $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            $response = is_string($body) ? json_decode($body, true) : null;
+
+            // Yalnizca gecici ag, kapasite ve oran siniri sorunlari bir kez yinelenir.
+            $retryable = $body === false || $curlError !== '' || $status === 408 || $status === 409
+                || $status === 429 || $status >= 500;
+            if (!$retryable || $attempt === 2) {
+                break;
+            }
+            usleep(300000);
+        }
+
         if ($body === false || $curlError !== '') {
-            throw new Exception('Yapay zekâ servisine ulaşılamadı.');
+            throw new Exception('Yapay zekâ servisine ulaşılamadı. Bağlantı kurulamadığı için kayıt manuel kontrolde bırakıldı.');
         }
 
-        $response = json_decode((string) $body, true);
         if ($status >= 400 || isset($response['error'])) {
-            error_log('KM AI OpenAI hatası: ' . substr((string) $body, 0, 500));
-            throw new Exception($status === 401 ? 'OpenAI API anahtarı geçersiz.' : 'Yapay zekâ servisi analizi kabul etmedi.');
+            error_log('KM AI OpenAI hatası: ' . substr((string) $body, 0, 1000));
+            throw new Exception($this->formatAiServiceError($status, is_array($response) ? $response : []));
         }
-        $content = $response['choices'][0]['message']['content'] ?? '';
+
+        $message = $response['choices'][0]['message'] ?? [];
+        $refusal = trim((string) ($message['refusal'] ?? ''));
+        if ($refusal !== '') {
+            throw new Exception('Yapay zekâ görseli analiz etmeyi reddetti: ' . $this->sanitizeAiMessage($refusal));
+        }
+
+        $finishReason = (string) ($response['choices'][0]['finish_reason'] ?? '');
+        if ($finishReason === 'length') {
+            throw new Exception('Yapay zekâ analizi çıktı sınırına ulaştı; eksik sonuçla otomatik onay yapılmadı.');
+        }
+        if ($finishReason === 'content_filter') {
+            throw new Exception('Görsel içerik filtresine takıldığı için otomatik analiz tamamlanamadı.');
+        }
+
+        $content = $message['content'] ?? '';
         $data = json_decode((string) $content, true);
         if (!is_array($data)) {
-            throw new Exception('Yapay zekâ geçerli analiz sonucu döndürmedi.');
+            throw new Exception('Yapay zekâ geçerli ve eksiksiz bir analiz sonucu döndürmedi; doğruluktan sapmamak için kayıt manuel kontrolde bırakıldı.');
         }
         return $data;
+    }
+
+    private function formatAiServiceError(int $status, array $response): string
+    {
+        if ($status === 401) {
+            return 'OpenAI API anahtarı geçersiz veya bu proje için yetkisiz.';
+        }
+        if ($status === 429) {
+            return 'Yapay zekâ servisinin kullanım limiti aşıldı veya servis şu anda yoğun.';
+        }
+
+        $message = $this->sanitizeAiMessage((string) ($response['error']['message'] ?? ''));
+        $code = $this->sanitizeAiMessage((string) ($response['error']['code'] ?? ''));
+        $detail = $message !== '' ? $message : ($code !== '' ? $code : 'Servis isteği işleyemedi.');
+        return "Yapay zekâ servisi isteği kabul etmedi (HTTP {$status}): {$detail}";
+    }
+
+    private function sanitizeAiMessage(string $message): string
+    {
+        $message = preg_replace('/sk-[A-Za-z0-9_-]+/', '[gizlendi]', $message) ?? '';
+        $message = preg_replace('/\s+/', ' ', strip_tags($message)) ?? '';
+        return mb_substr(trim($message), 0, 400, 'UTF-8');
     }
 
     /**

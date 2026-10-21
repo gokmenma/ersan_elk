@@ -22,7 +22,7 @@ use App\Helper\Date;
 
 header('Content-Type: application/json; charset=utf-8');
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array($_GET['action'], ['get-arac-puantaj-table', 'get-arac-ozel-puantaj', 'arac-performans', 'arac-excel-aktar', 'get-arac-analiz', 'arac-karsilastirma', 'get-km-onay-yapmayanlar', 'get-yakit-personelleri', 'get-mobile-km-onaylari', 'get-dashboard-stats']))) {
+if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array($_GET['action'], ['get-arac-puantaj-table', 'get-arac-ozel-puantaj', 'arac-performans', 'arac-excel-aktar', 'km-excel-aktar', 'get-arac-analiz', 'arac-karsilastirma', 'get-km-onay-yapmayanlar', 'get-yakit-personelleri', 'get-mobile-km-onaylari', 'get-dashboard-stats']))) {
     $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
     if (!is_string($action) || trim($action) === '') {
@@ -1316,6 +1316,169 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
 
                 echo json_encode(['status' => 'success', 'data' => $kayit]);
                 break;
+
+            case 'km-excel-aktar':
+                require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
+
+                $arac_id = isset($_GET['arac_id']) && $_GET['arac_id'] !== '' ? intval($_GET['arac_id']) : null;
+                $departman = isset($_GET['departman']) && $_GET['departman'] !== '' ? trim($_GET['departman']) : null;
+                $baslangic = null;
+                if (!empty($_GET['baslangic'])) {
+                    $d = DateTime::createFromFormat('d.m.Y', $_GET['baslangic']);
+                    if ($d) {
+                        $baslangic = $d->format('Y-m-d');
+                    } elseif (preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['baslangic'])) {
+                        $baslangic = $_GET['baslangic'];
+                    }
+                }
+                $bitis = null;
+                if (!empty($_GET['bitis'])) {
+                    $d = DateTime::createFromFormat('d.m.Y', $_GET['bitis']);
+                    if ($d) {
+                        $bitis = $d->format('Y-m-d');
+                    } elseif (preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['bitis'])) {
+                        $bitis = $_GET['bitis'];
+                    }
+                }
+
+                if ($baslangic || $bitis) {
+                    if (!$baslangic) $baslangic = date('Y-m-01');
+                    if (!$bitis) $bitis = date('Y-m-t');
+                    $kayitlar = $Km->getByDateRange($baslangic, $bitis, $arac_id, $departman);
+                } elseif ($arac_id) {
+                    $kayitlar = $Km->getByArac($arac_id, null, $departman);
+                } elseif ($departman) {
+                    $kayitlar = $Km->all($departman);
+                } else {
+                    $kayitlar = $Km->all();
+                }
+
+                $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+                $sheet = $spreadsheet->getActiveSheet();
+                $sheet->setTitle('KM Kayıtları');
+
+                $headerStyle = [
+                    'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 10],
+                    'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '556EE6']],
+                    'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER],
+                    'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN, 'color' => ['rgb' => '4050B5']]]
+                ];
+
+                $headers = [
+                    'A' => 'SIRA',
+                    'B' => 'PLAKA',
+                    'C' => 'MARKA / MODEL',
+                    'D' => 'DEPARTMAN',
+                    'E' => 'ZİMMETLİ PERSONEL',
+                    'F' => 'TARİH',
+                    'G' => 'BAŞLANGIÇ KM',
+                    'H' => 'SABAH BİLDİREN',
+                    'I' => 'BİTİŞ KM',
+                    'J' => 'AKŞAM BİLDİREN',
+                    'K' => 'YAPILAN KM',
+                    'L' => 'KAYDEDEN',
+                    'M' => 'KAYIT TARİHİ'
+                ];
+
+                foreach ($headers as $col => $title) {
+                    $sheet->setCellValue($col . '1', $title);
+                    $sheet->getColumnDimension($col)->setAutoSize(true);
+                }
+
+                $sheet->getStyle('A1:M1')->applyFromArray($headerStyle);
+                $sheet->getRowDimension(1)->setRowHeight(26);
+
+                $row = 2;
+                $i = 1;
+
+                foreach ($kayitlar as $k) {
+                    $yapilanKm = (float)($k->yapilan_km ?? 0);
+                    if ($yapilanKm < 0) $yapilanKm = 0;
+
+                    $sheet->setCellValue('A' . $row, $i++);
+                    $sheet->setCellValue('B' . $row, $k->plaka ?? '-');
+                    $markaModel = trim(($k->marka ?? '') . ' ' . ($k->model ?? ''));
+                    $sheet->setCellValue('C' . $row, $markaModel ?: '-');
+                    $sheet->setCellValue('D' . $row, $k->departmani ?: '-');
+                    $sheet->setCellValue('E' . $row, $k->zimmetli_personel ?: 'Boşta');
+                    $sheet->setCellValue('F' . $row, !empty($k->tarih) ? date('d.m.Y', strtotime($k->tarih)) : '-');
+
+                    $sheet->setCellValue('G' . $row, (int)($k->baslangic_km ?? 0));
+                    $sheet->getStyle('G' . $row)->getNumberFormat()->setFormatCode('#,##0');
+
+                    $sheet->setCellValue('H' . $row, $k->sabah_personel ?: '-');
+
+                    $sheet->setCellValue('I' . $row, (int)($k->bitis_km ?? 0));
+                    $sheet->getStyle('I' . $row)->getNumberFormat()->setFormatCode('#,##0');
+
+                    $sheet->setCellValue('J' . $row, $k->aksam_personel ?: '-');
+
+                    $sheet->setCellValue('K' . $row, $yapilanKm);
+                    $sheet->getStyle('K' . $row)->getNumberFormat()->setFormatCode('#,##0');
+
+                    $sheet->setCellValue('L' . $row, $k->olusturan_kullanici_adi ?: '-');
+                    $sheet->setCellValue('M' . $row, !empty($k->olusturma_tarihi) ? date('d.m.Y H:i', strtotime($k->olusturma_tarihi)) : '-');
+
+                    $sheet->getRowDimension($row)->setRowHeight(20);
+                    $row++;
+                }
+
+                $lastDataRow = $row - 1;
+
+                if ($lastDataRow >= 2) {
+                    // Veri hücrelerinin hizalaması ve kenarlıkları
+                    $sheet->getStyle('A2:M' . $lastDataRow)->applyFromArray([
+                        'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN, 'color' => ['rgb' => 'E0E0E0']]],
+                        'alignment' => ['vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER]
+                    ]);
+                    $sheet->getStyle('A2:A' . $lastDataRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+                    $sheet->getStyle('B2:B' . $lastDataRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+                    $sheet->getStyle('F2:F' . $lastDataRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+                    $sheet->getStyle('M2:M' . $lastDataRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+                    $sheet->getStyle('G2:G' . $lastDataRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+                    $sheet->getStyle('I2:I' . $lastDataRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+                    $sheet->getStyle('K2:K' . $lastDataRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+
+                    // Toplam Satırı
+                    $sheet->mergeCells('A' . $row . ':J' . $row);
+                    $sheet->setCellValue('A' . $row, 'TOPLAM YAPILAN KM');
+                    $sheet->setCellValue('K' . $row, '=SUM(K2:K' . $lastDataRow . ')');
+                    $sheet->getStyle('K' . $row)->getNumberFormat()->setFormatCode('#,##0');
+                    $sheet->setCellValue('L' . $row, '');
+                    $sheet->setCellValue('M' . $row, '');
+
+                    $totalRowStyle = [
+                        'font' => ['bold' => true, 'color' => ['rgb' => '1E293B']],
+                        'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F1F5F9']],
+                        'alignment' => ['vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER],
+                        'borders' => [
+                            'top' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_MEDIUM, 'color' => ['rgb' => '556EE6']],
+                            'bottom' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_DOUBLE, 'color' => ['rgb' => '556EE6']],
+                            'allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN, 'color' => ['rgb' => 'CBD5E1']]
+                        ]
+                    ];
+                    $sheet->getStyle('A' . $row . ':M' . $row)->applyFromArray($totalRowStyle);
+                    $sheet->getStyle('A' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+                    $sheet->getStyle('K' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+                    $sheet->getRowDimension($row)->setRowHeight(24);
+                }
+
+                // Logla
+                $SystemLog = new SystemLogModel();
+                $userId = $_SESSION['user_id'] ?? 0;
+                $SystemLog->logAction($userId, 'KM Kayıtları Excel İndirme', "KM kayıtları listesi Excel olarak dışa aktarıldı. (Kayıt sayısı: " . count($kayitlar) . ")", SystemLogModel::LEVEL_INFO);
+
+                $filename = 'KM_Kayitlari_' . date('Ymd_His') . '.xlsx';
+
+                if (ob_get_length()) ob_clean();
+
+                header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                header('Content-Disposition: attachment;filename="' . $filename . '"');
+                header('Cache-Control: max-age=0');
+
+                $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+                $writer->save('php://output');
+                exit;
 
             case 'km-excel-yukle':
                 require_once dirname(__DIR__, 2) . '/vendor/autoload.php';
@@ -3784,12 +3947,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     
                     $aciklamaHtml = htmlspecialchars($report->aciklama ?: '-');
                     if ($status === 'beklemede' && !empty($report->ai_onaylanmama_nedeni)) {
+                        $aiNeden = (string) $report->ai_onaylanmama_nedeni;
                         $aciklamaHtml .= '
                             <div class="mt-1">
-                                <span class="badge bg-soft-warning text-dark border border-warning-subtle text-wrap text-start w-100 p-2" style="font-size: 0.75rem; font-weight: 500; line-height: 1.35; white-space: normal;">
+                                <button type="button" class="btn p-0 border-0 bg-transparent w-100 text-start btn-km-ai-reason"
+                                    data-ai-reason="' . htmlspecialchars($aiNeden, ENT_QUOTES, 'UTF-8') . '"
+                                    data-plaka="' . htmlspecialchars((string) $report->plaka, ENT_QUOTES, 'UTF-8') . '"
+                                    title="Yapay zekâ kararının ayrıntısını göster">
+                                <span class="badge bg-soft-warning text-dark border border-warning-subtle text-wrap text-start w-100 p-2" style="font-size: 0.75rem; font-weight: 500; line-height: 1.35; white-space: normal; cursor: pointer;">
                                     <i class="bx bx-bot text-warning me-1 fs-6 align-middle"></i>
-                                    <strong class="text-dark">YZ Onaylamadı:</strong> ' . htmlspecialchars($report->ai_onaylanmama_nedeni) . '
+                                    <strong class="text-dark">YZ Onaylamadı:</strong> ' . htmlspecialchars($aiNeden, ENT_QUOTES, 'UTF-8') . '
+                                    <i class="bx bx-info-circle ms-1 align-middle"></i>
                                 </span>
+                                </button>
                             </div>';
                     }
                     $nested['aciklama'] = $aciklamaHtml;

@@ -22,7 +22,25 @@ class AracKmModel extends Model
     {
         $sql = "
             SELECT k.*, 
-                   a.plaka, a.marka, a.model,
+                   a.plaka, a.marka, a.model, a.departmani,
+                   COALESCE(
+                       (SELECT p2.adi_soyadi 
+                        FROM arac_zimmetleri az2 
+                        INNER JOIN personel p2 ON az2.personel_id = p2.id
+                        WHERE az2.arac_id = k.arac_id 
+                        AND az2.zimmet_tarihi <= k.tarih 
+                        AND (az2.iade_tarihi IS NULL OR az2.iade_tarihi >= k.tarih)
+                        AND az2.durum != 'iptal'
+                        AND az2.silinme_tarihi IS NULL
+                        ORDER BY az2.id DESC LIMIT 1),
+                       (SELECT p3.adi_soyadi 
+                        FROM arac_zimmetleri az3 
+                        INNER JOIN personel p3 ON az3.personel_id = p3.id
+                        WHERE az3.arac_id = k.arac_id 
+                        AND az3.durum = 'aktif'
+                        AND az3.silinme_tarihi IS NULL
+                        ORDER BY az3.id DESC LIMIT 1)
+                   ) as zimmetli_personel,
                    p1.adi_soyadi as sabah_personel,
                    p2.adi_soyadi as aksam_personel,
                    s.sabah_durum,
@@ -66,13 +84,33 @@ class AracKmModel extends Model
     {
         $sql = "
             SELECT k.*, 
-                   a.plaka, a.marka, a.model,
+                   a.plaka, a.marka, a.model, a.departmani,
+                   COALESCE(
+                       (SELECT p2.adi_soyadi 
+                        FROM arac_zimmetleri az2 
+                        INNER JOIN personel p2 ON az2.personel_id = p2.id
+                        WHERE az2.arac_id = k.arac_id 
+                        AND az2.zimmet_tarihi <= k.tarih 
+                        AND (az2.iade_tarihi IS NULL OR az2.iade_tarihi >= k.tarih)
+                        AND az2.durum != 'iptal'
+                        AND az2.silinme_tarihi IS NULL
+                        ORDER BY az2.id DESC LIMIT 1),
+                       (SELECT p3.adi_soyadi 
+                        FROM arac_zimmetleri az3 
+                        INNER JOIN personel p3 ON az3.personel_id = p3.id
+                        WHERE az3.arac_id = k.arac_id 
+                        AND az3.durum = 'aktif'
+                        AND az3.silinme_tarihi IS NULL
+                        ORDER BY az3.id DESC LIMIT 1)
+                   ) as zimmetli_personel,
                    p1.adi_soyadi as sabah_personel,
                    p2.adi_soyadi as aksam_personel,
                    s.sabah_durum,
-                   ak.aksam_durum
+                   ak.aksam_durum,
+                   COALESCE(u.adi_soyadi, u.user_name) as olusturan_kullanici_adi
             FROM {$this->table} k
             INNER JOIN araclar a ON k.arac_id = a.id
+            LEFT JOIN users u ON k.olusturan_kullanici_id = u.id
             LEFT JOIN (
                 SELECT arac_id, tarih, personel_id, durum as sabah_durum
                 FROM arac_km_bildirimleri 
@@ -117,7 +155,25 @@ class AracKmModel extends Model
     {
         $sql = "
             SELECT k.*, 
-                   a.plaka, a.marka, a.model,
+                   a.plaka, a.marka, a.model, a.departmani,
+                   COALESCE(
+                       (SELECT p2.adi_soyadi 
+                        FROM arac_zimmetleri az2 
+                        INNER JOIN personel p2 ON az2.personel_id = p2.id
+                        WHERE az2.arac_id = k.arac_id 
+                        AND az2.zimmet_tarihi <= k.tarih 
+                        AND (az2.iade_tarihi IS NULL OR az2.iade_tarihi >= k.tarih)
+                        AND az2.durum != 'iptal'
+                        AND az2.silinme_tarihi IS NULL
+                        ORDER BY az2.id DESC LIMIT 1),
+                       (SELECT p3.adi_soyadi 
+                        FROM arac_zimmetleri az3 
+                        INNER JOIN personel p3 ON az3.personel_id = p3.id
+                        WHERE az3.arac_id = k.arac_id 
+                        AND az3.durum = 'aktif'
+                        AND az3.silinme_tarihi IS NULL
+                        ORDER BY az3.id DESC LIMIT 1)
+                   ) as zimmetli_personel,
                    p1.adi_soyadi as sabah_personel,
                    p2.adi_soyadi as aksam_personel,
                    s.sabah_durum,

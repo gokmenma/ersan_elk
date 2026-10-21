@@ -1,5 +1,33 @@
 # Active Context
 
+## KM Onayları — AI Analiz Dayanıklılığı ve Tıklanabilir Ret Gerekçesi (2026-10-21)
+- `KmBildirimAiKontrolService` içindeki üç görsel analiz çağrısının çıktı bütçeleri artırıldı ve GPT-5 ailesinde `reasoning_effort=medium` kullanıldı; mevcut güven/eşleşme eşikleri gevşetilmedi.
+- Geçici bağlantı, 408/409, oran sınırı ve 5xx sorunlarında tek kontrollü tekrar eklendi.
+- HTTP servis hatası, model reddi, çıktı sınırı, içerik filtresi ve geçersiz JSON birbirinden ayrıldı; güvenli teknik gerekçe `ai_onaylanmama_nedeni` alanına kaydediliyor. API anahtarına benzeyen parçalar maskeleniyor.
+- Masaüstü KM Onayları tablosundaki `YZ Onaylamadı` etiketi tıklanabilir ayrıntı penceresine dönüştürüldü.
+- Mobil SPA kartlarındaki AI uyarısı tıklanabilir hale getirildi ve Soft Bento uyumlu gerekçe modalı eklendi.
+- PHP lint, hata ayrıştırma yansıma testi ve mobil üretim derlemesi başarıyla tamamlandı.
+
+## Araç Takip KM Kayıtları — Zimmetli Personel Kolonu ve Sunucu Taraflı Excel Export (2026-10-21)
+- **Kullanıcı Talebi**: `views/arac-takip/list.php` sayfasında "km kayıtları" sekmesinde zimmetli personeli ayrı bir kolon olarak eklemek ve Excel indirirken DataTables'ın tarayıcı taraflı HTML5 dışa aktarma işlemi yerine normal (sunucu taraflı PhpSpreadsheet ile) Excel indirme işlemi yapmak.
+- **Uygulanan Değişiklikler**:
+  1. **Model Katmanı (`App/Model/AracKmModel.php`)**:
+     - `all($departman = null)`, `getByArac($aracId, $limit = null, $departman = null)` ve `getByDateRange($baslangic, $bitis, $aracId = null, $departman = null)` sorgularına `a.departmani` ve KM tarihindeki veya güncel aktif zimmetli personeli getiren `zimmetli_personel` (COALESCE ile tarihli zimmet + aktif zimmet fallback) alanı eklendi.
+     - `getByArac` sorgusuna eksik olan kullanıcı tablosu (`LEFT JOIN users u`) ve `olusturan_kullanici_adi` eklendi.
+  2. **Görünüm Katmanı (`views/arac-takip/list.php`)**:
+     - `#kmTable` `<thead>` yapısına `Plaka`dan sonra `Zimmetli Personel` sütunu (`data-filter="string"`) eklendi.
+     - Sütun genişlikleri toplam %100 olacak şekilde dengelendi ve canlı header filtreleme ile uyumlu hale getirildi.
+     - Yükleniyor satırı `colspan="8"` olarak güncellendi.
+  3. **İstemci Tarafı (`views/arac-takip/js/arac-takip.js`)**:
+     - `kmListesiYukle` fonksiyonunda oluşturulan satırlara `<td><small>${k.zimmetli_personel || '<span class="text-muted">Boşta</span>'}</small></td>` kolonu eklendi.
+     - `#btnExceleAktar` tıklama olayında `activeTabId === "kmContent"` kontrolü eklendi; `getDateRangeForType("km")` üzerinden aktif başlangıç/bitiş tarihleri, araç ID ve departman parametreleri toplanarak doğrudan `action=km-excel-aktar` endpointine yönlendirildi.
+  4. **Backend API (`views/arac-takip/api.php`)**:
+     - Girişteki GET aksiyon listesine `km-excel-aktar` eklendi.
+     - `case 'km-excel-aktar':` bloğu uygulandı: PhpSpreadsheet ile şık kurumsal başlık tasarımı (`#556EE6`), sütun genişlikleri, sayı ve tarih biçimlendirmeleri (`#,##0`, `d.m.Y`), veri sınırları, alt toplam satırı (`TOPLAM YAPILAN KM`, `=SUM(K2:K...)`) ve `SystemLogModel` log kaydı oluşturularak Excel dosyası güvenle sunuldu.
+  5. **Yetkilendirme ve SQL (`sql/2026_10_21_km_excel_aktar_permission.sql`)**:
+     - `permission_policies` tablosuna `km-excel-aktar` aksiyonu için `arac_takip_yonetim` yetkisine bağlı `read` erişim politikası tanımlandı ve çalıştırıldı.
+
+
 ## Araç Takip KM Onayları — Yapay Zekâ 1.000 KM Üst Sınır Kontrolü (2026-10-21)
 - **Kullanıcı Talebi**: `@km-onayları` sayfasında yapay zeka ile KM onaylarken personelin hatalı KM göndermesi (örnek: Fiat Uno aracında mekanik sayaçtaki ondalık hane farkı veya yanlış giriş sebebiyle 25.853 KM'den 258.594 KM'ye fırlayarak günlük yapılan KM'nin 232.741 KM çıkması) sonucu sistemin bunu otomatik onaylaması durumu yaşandı. Toplam yapılan KM 1.000 KM'den fazla ise yapay zekânın otomatik onaylamaması istendi.
 - **Uygulanan Değişiklikler**:

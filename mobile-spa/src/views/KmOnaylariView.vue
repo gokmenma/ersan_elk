@@ -103,6 +103,16 @@ const rejectData = ref({
 // AI Sonuç Rapor Modalı
 const aiResultModalOpen = ref(false)
 const aiResultData = ref(null)
+const aiReasonModalOpen = ref(false)
+const aiReasonData = ref({ plaka: '', reason: '' })
+
+function openAiReason(report) {
+  aiReasonData.value = {
+    plaka: report?.plaka || 'KM Bildirimi',
+    reason: report?.ai_onaylanmama_nedeni || 'Ayrıntılı gerekçe bulunamadı.',
+  }
+  aiReasonModalOpen.value = true
+}
 
 // Toast Bildirimi
 function showToast(msg) {
@@ -1003,10 +1013,17 @@ onBeforeUnmount(() => {
           </div>
 
           <!-- Varsa AI Uyarısı -->
-          <div v-if="r.ai_onaylanmama_nedeni" class="km-mini-ai-alert">
+          <button
+            v-if="r.ai_onaylanmama_nedeni"
+            type="button"
+            class="km-mini-ai-alert"
+            aria-label="Yapay zekâ onaylamama nedenini göster"
+            @click.stop="openAiReason(r)"
+          >
             <Sparkles :size="13" class="text-amber" />
             <span>{{ r.ai_onaylanmama_nedeni }}</span>
-          </div>
+            <Info :size="13" class="km-ai-reason-info" />
+          </button>
 
           <!-- Alt Satır (Footer): Durum / Aksiyonlar -->
           <div class="project-card-footer km-card-footer-custom">
@@ -1149,6 +1166,44 @@ onBeforeUnmount(() => {
               <span>{{ lightboxData.personel }}</span>
               <small>{{ lightboxData.tur }} • {{ lightboxData.tarih }}</small>
             </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <Transition name="ds-modal">
+      <div
+        v-if="aiReasonModalOpen"
+        class="ds-modal-layer"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Yapay zekâ onaylamama nedeni"
+        @click.self="aiReasonModalOpen = false"
+      >
+        <div class="bento-sheet-modal ai-reason-sheet">
+          <header class="sheet-head">
+            <div>
+              <span class="sheet-eyebrow text-cyan">YAPAY ZEKÂ KARAR AYRINTISI</span>
+              <h3>Neden Otomatik Onaylanmadı?</h3>
+            </div>
+            <button type="button" class="sheet-close-btn" @click="aiReasonModalOpen = false">
+              <X :size="20" />
+            </button>
+          </header>
+          <div class="sheet-body">
+            <div class="ai-reason-plate">{{ aiReasonData.plaka }}</div>
+            <div class="ai-reason-card">
+              <AlertCircle :size="20" />
+              <p>{{ aiReasonData.reason }}</p>
+            </div>
+            <p class="ai-reason-note">
+              Bu kayıt doğruluk eşiğini geçmediği için otomatik onaylanmadı ve manuel incelemede bırakıldı.
+            </p>
+            <footer class="sheet-footer">
+              <button type="button" class="btn-primary-close" @click="aiReasonModalOpen = false">
+                Anladım, Kapat
+              </button>
+            </footer>
           </div>
         </div>
       </div>
@@ -2185,6 +2240,7 @@ onBeforeUnmount(() => {
 }
 
 .km-mini-ai-alert {
+  width: 100%;
   margin-top: 8px;
   background: #fffbeb;
   border: 1px solid #fde68a;
@@ -2195,6 +2251,18 @@ onBeforeUnmount(() => {
   gap: 6px;
   font-size: 11px;
   color: #92400e;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.km-mini-ai-alert span {
+  flex: 1;
+}
+
+.km-ai-reason-info {
+  flex: 0 0 auto;
+  opacity: 0.75;
 }
 
 /* Alt Satır (Footer) & Renkli Noktalar (Puantaj Görsel 2) */
@@ -2824,6 +2892,58 @@ onBeforeUnmount(() => {
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.ai-reason-sheet {
+  max-width: 420px;
+}
+
+.ai-reason-plate {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+  color: #172033;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+.ai-reason-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid #fde68a;
+  border-radius: 16px;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.ai-reason-card svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.ai-reason-card p,
+.ai-reason-note {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.ai-reason-card p {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ai-reason-note {
+  margin-top: 10px;
+  color: #64748b;
+  font-size: 11px;
 }
 
 /* Toast Bildirimi */

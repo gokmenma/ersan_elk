@@ -1,5 +1,31 @@
 # Progress
 
+## 2026-10-21: KM Onayları AI Analizi ve Ret Gerekçesi Görünümü
+- [x] GPT-5 görsel OCR çağrılarında analiz/çıktı bütçesi yükseltildi ve orta düzey muhakeme etkinleştirildi; güvenlik eşikleri korunarak doğruluk odaklı analiz sıkılaştırıldı.
+- [x] Geçici OpenAI bağlantı/kapasite/oran sınırı hatalarına bir kontrollü tekrar eklendi.
+- [x] Genel `Yapay zekâ servisi analizi kabul etmedi` mesajı yerine HTTP hata ayrıntısı, model reddi, çıktı sınırı, içerik filtresi ve bozuk çıktı gerekçeleri güvenli biçimde ayrıştırıldı.
+- [x] Masaüstünde `YZ Onaylamadı` mesajına tıklanınca tam gerekçeyi gösteren SweetAlert ayrıntısı eklendi.
+- [x] Mobil SPA'da AI mesajına dokununca plaka ve tam gerekçeyi gösteren Bento modalı eklendi.
+- [x] Mobil SPA üretim derlemesi, ilgili PHP lint kontrolleri ve hata ayrıştırma testi geçti.
+
+## 2026-10-21: Araç Takip KM Kayıtları — Zimmetli Personel Kolonu ve Normal Excel Export
+- [x] Model Katmanı (`App/Model/AracKmModel.php`):
+  - `all()`, `getByArac()` ve `getByDateRange()` metotlarına `a.departmani` ve KM tarihindeki veya güncel aktif zimmetli personeli getiren `zimmetli_personel` alanı eklendi.
+  - `getByArac()` sorgusundaki eksik kullanıcı tablosu (`LEFT JOIN users u`) ve `olusturan_kullanici_adi` tamamlandı.
+- [x] Liste Arayüzü (`views/arac-takip/list.php`):
+  - KM Kayıtları sekmesindeki `#kmTable` başlığına Plaka'dan hemen sonra "Zimmetli Personel" sütunu (`data-filter="string"`) eklendi.
+  - Sütun genişlikleri dengelendi, canlı filtreleme özellikleri korunarak `colspan="8"` yapıldı.
+- [x] İstemci Mantığı (`views/arac-takip/js/arac-takip.js`):
+  - `kmListesiYukle()` fonksiyonunda tablo satırına personelin adı veya "Boşta" rozeti içeren sütun eklendi.
+  - `#btnExceleAktar` butonuna tıklandığında KM sekmesinde DataTables HTML5 export yerine doğrudan aktif filtrelerle birlikte `action=km-excel-aktar` sunucu çağrısı yapılması sağlandı.
+- [x] Sunucu Taraflı Excel Export (`views/arac-takip/api.php`):
+  - `action === 'km-excel-aktar'` aksiyonu oluşturuldu.
+  - PhpSpreadsheet ile profesyonel kurumsal tablo şablonu (Sıra, Plaka, Araç Marka/Model, Departman, Zimmetli Personel, Tarih, Başlangıç KM, Sabah Bildiren, Bitiş KM, Akşam Bildiren, Yapılan KM, Kaydeden, Kayıt Tarihi) üretildi.
+  - Toplam yapılan KM için alt toplam satırı (`=SUM(...)`) ve `SystemLogModel` log kaydı oluşturuldu.
+- [x] Güvenlik ve Yetkilendirme (`sql/2026_10_21_km_excel_aktar_permission.sql`):
+  - `permission_policies` tablosuna `km-excel-aktar` için `arac_takip_yonetim` yetkisi tanımlandı ve doğrulandı.
+
+
 ## 2026-10-21: Araç Takip KM Onayları — Yapay Zekâ 1.000 KM Üst Sınır Kontrolü
 - [x] `App/Service/KmBildirimAiKontrolService.php` içerisine `calculateYapilanKm(object $bildirim, int $kmCandidate): ?int` metodu eklendi.
 - [x] Akşam bildirimlerinde günün başlangıç KM'si veya önceki KM baz alınarak yapılan KM (`bitis_km - baslangic_km`) hesaplandı.

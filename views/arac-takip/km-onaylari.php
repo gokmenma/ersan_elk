@@ -1025,6 +1025,24 @@ $(document).ready(function() {
         });
     });
 
+    $(document).on('click', '.btn-km-ai-reason', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const reason = String($(this).data('ai-reason') || 'Ayrıntılı gerekçe bulunamadı.');
+        const plate = String($(this).data('plaka') || 'KM Bildirimi');
+        Swal.fire({
+            icon: 'info',
+            title: 'Yapay Zekâ Onaylamama Nedeni',
+            html: $('<div>').append(
+                $('<div>', { class: 'fw-bold mb-2', text: plate }),
+                $('<div>', { class: 'text-start small lh-base', text: reason })
+            ),
+            confirmButtonText: 'Kapat',
+            confirmButtonColor: '#556ee6',
+            width: 560
+        });
+    });
+
     $('#btnTopluOnayla').on('click', function() {
         const selectedIds = [];
         let hasInvalidAksam = false;

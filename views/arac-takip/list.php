@@ -1287,17 +1287,18 @@ if (!function_exists('getEvrakBadgeStatus')) {
                                     <thead class="table-light">
                                         <tr>
                                             <th class="text-center" style="width:5%">Sıra</th>
-                                            <th style="width:15%" data-filter="string">Plaka</th>
-                                            <th style="width:15%" data-filter="date">Tarih</th>
-                                            <th style="width:15%" class="text-end" data-filter="number">Başlangıç KM</th>
-                                            <th style="width:15%" class="text-end" data-filter="number">Bitiş KM</th>
-                                            <th style="width:15%" class="text-end" data-filter="number">Yapılan KM</th>
+                                            <th style="width:12%" data-filter="string">Plaka</th>
+                                            <th style="width:18%" data-filter="string">Zimmetli Personel</th>
+                                            <th style="width:11%" data-filter="date">Tarih</th>
+                                            <th style="width:14%" class="text-end" data-filter="number">Başlangıç KM</th>
+                                            <th style="width:14%" class="text-end" data-filter="number">Bitiş KM</th>
+                                            <th style="width:16%" class="text-end" data-filter="number">Yapılan KM</th>
                                             <th style="width:10%" class="text-center">İşlemler</th>
                                         </tr>
                                     </thead>
                                     <tbody id="kmTableBody">
                                         <tr>
-                                            <td colspan="7" class="text-center text-muted py-4">
+                                            <td colspan="8" class="text-center text-muted py-4">
                                                 Yükleniyor...
                                             </td>
                                         </tr>
