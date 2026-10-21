@@ -5,18 +5,23 @@ import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.Path;
 import java.security.*;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.prefs.Preferences;
+import java.util.stream.Stream;
 
 public class TokenManager {
 
     private static final String BUNDLED_OPENSC_VERSION = "0.27.1";
     private static final String BUNDLED_OPENSC_RESOURCE_ROOT = "/native/windows-x64/";
     private static final Map<String, String> BUNDLED_OPENSC_FILES = createBundledOpenScFiles();
+    private static final Preferences PREFS = Preferences.userNodeForPackage(TokenManager.class);
+    private static final String CUSTOM_MODULE_KEY = "customPkcs11Module";
 
     private static TokenStatus cachedStatus = null;
     private static long lastCacheTime = 0;
@@ -42,6 +47,8 @@ public class TokenManager {
     public static List<String> getCandidateModules() {
         String os = System.getProperty("os.name", "").toLowerCase();
         List<String> list = new ArrayList<>();
+        String customModule = PREFS.get(CUSTOM_MODULE_KEY, "").trim();
+        if (!customModule.isEmpty()) list.add(customModule);
 
         if (os.contains("win")) {
             String sys32 = System.getenv("SystemRoot");
@@ -64,6 +71,14 @@ public class TokenManager {
             String programFilesX86 = System.getenv("ProgramFiles(x86)");
             addWindowsAkiaCandidates(list, programFiles);
             addWindowsAkiaCandidates(list, programFilesX86);
+            discoverWindowsPkcs11Modules(list,
+                    programFiles == null ? null : programFiles + "\\Akia",
+                    programFiles == null ? null : programFiles + "\\AKIA",
+                    programFiles == null ? null : programFiles + "\\E-Tugra",
+                    programFilesX86 == null ? null : programFilesX86 + "\\Akia",
+                    programFilesX86 == null ? null : programFilesX86 + "\\AKIA",
+                    programFilesX86 == null ? null : programFilesX86 + "\\E-Tugra",
+                    s32, wow64);
         } else if (os.contains("mac")) {
             list.add("/Library/Frameworks/eToken.framework/Versions/A/libeToken.dylib");
             list.add("/usr/local/lib/libakisp11.dylib");
@@ -82,7 +97,38 @@ public class TokenManager {
             list.add("/usr/lib/libaetpkss.so");
             list.add("/usr/lib/libetpkcs11.so");
         }
-        return list;
+        return new ArrayList<>(new LinkedHashSet<>(list));
+    }
+
+    public static synchronized void setCustomModulePath(String modulePath) {
+        String normalized = modulePath == null ? "" : modulePath.trim();
+        if (normalized.isEmpty()) PREFS.remove(CUSTOM_MODULE_KEY);
+        else PREFS.put(CUSTOM_MODULE_KEY, normalized);
+        clearCache();
+    }
+
+    public static String getCustomModulePath() {
+        return PREFS.get(CUSTOM_MODULE_KEY, "").trim();
+    }
+
+    private static void discoverWindowsPkcs11Modules(List<String> list, String... roots) {
+        Set<String> accepted = new HashSet<>(Arrays.asList(
+                "akisp11.dll", "akia_pkcs11.dll", "etpkcs11.dll",
+                "aetpkss1.dll", "ocscryptolib_pkcs11.dll", "opensc-pkcs11.dll"
+        ));
+        for (String root : roots) {
+            if (root == null || root.trim().isEmpty()) continue;
+            Path rootPath = new File(root).toPath();
+            if (!Files.isDirectory(rootPath)) continue;
+            try (Stream<Path> paths = Files.walk(rootPath, 5)) {
+                paths.filter(Files::isRegularFile)
+                        .filter(path -> accepted.contains(path.getFileName().toString().toLowerCase(Locale.ROOT)))
+                        .limit(30)
+                        .forEach(path -> list.add(path.toAbsolutePath().toString()));
+            } catch (Throwable ignored) {
+                // Kurum politikası bazı klasörlere erişimi engelleyebilir; diğer adaylara devam et.
+            }
+        }
     }
 
     private static void addWindowsAkiaCandidates(List<String> list, String root) {

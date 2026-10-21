@@ -1462,6 +1462,7 @@
 - [x] Linux `akia-bin` AKİS sürücüsü `/opt/Akia/libakisp11.so` adaylarına eklendi; gerçek ATR19 kart/sertifika algılaması başarıyla doğrulandı. Aynı kartın EC anahtarı için PKCS#11 ECDSA imzalama, DER kodlama/doğrulama ve CMS algoritma desteği eklenerek `1.2.2` JAR üretildi.
 - [x] AKİS ikinci sorgusunda görülen `wsm.sessionDeactivated` için kart algılama tek oturumlu hale getirildi; ayrıntılı kimlik sonucu ajan/tarayıcı tarafında önbelleklendi ve yalnız modül yükleyerek üretilen T.C.'siz yalancı başarı kaldırıldı. `1.2.3` paketi derlendi.
 - [x] Windows AKİS algılamasına alternatif `akia_pkcs11.dll`/Program Files yolları ve 32/64-bit Java uyumlu sertifika doğrulamalı fallback eklendi; tarayıcı–ajan durum çelişkisine yol açan istemci önbelleği kaldırıldı. `1.2.4` JAR derlendi ve sürüm içeriği doğrulandı.
+- [x] Windows'ta kart sürücüsü standart dizinde değilse kullanıcıya terminal gerektirmeden PKCS#11 DLL seçtiren ve seçimi kalıcı saklayan arayüz eklendi; yaygın AKİA dizinleri otomatik taranıyor. `1.2.5` Java 8 uyumlu JAR üretildi.
 
 # 2026-10-20 — Cari hesap hareketleri Excel dışa aktarımı
 

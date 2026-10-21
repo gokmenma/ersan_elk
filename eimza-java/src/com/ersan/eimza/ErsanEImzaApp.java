@@ -19,7 +19,7 @@ public class ErsanEImzaApp {
 
     public static void main(String[] args) {
         System.out.println("=================================================");
-        System.out.println("  Ersan E-İmza Yerel Köprü Servisi (Java v1.2.4) ");
+        System.out.println("  Ersan E-İmza Yerel Köprü Servisi (Java v1.2.5) ");
         System.out.println("  Dinleme Adresi: http://127.0.0.1:9191          ");
         System.out.println("=================================================");
 
@@ -56,7 +56,7 @@ public class ErsanEImzaApp {
         } catch (Throwable ignored) {}
 
         mainFrame = new JFrame("Ersan E-İmza Servisi");
-        mainFrame.setSize(520, 280);
+        mainFrame.setSize(650, 290);
         mainFrame.setLocationRelativeTo(null);
         mainFrame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
         mainFrame.setLayout(new BorderLayout(15, 15));
@@ -64,7 +64,7 @@ public class ErsanEImzaApp {
         JPanel pnlCenter = new JPanel(new GridLayout(3, 1, 8, 8));
         pnlCenter.setBorder(BorderFactory.createEmptyBorder(15, 20, 10, 20));
 
-        JLabel lblTitle = new JLabel("Ersan E-İmza Yerel Ajanı (v1.2.4 PAdES)", JLabel.LEFT);
+        JLabel lblTitle = new JLabel("Ersan E-İmza Yerel Ajanı (v1.2.5 PAdES)", JLabel.LEFT);
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
         lblTitle.setForeground(new Color(33, 37, 41));
 
@@ -91,10 +91,14 @@ public class ErsanEImzaApp {
         JButton btnRestart = new JButton("Bağlantıyı Yenile");
         btnRestart.addActionListener(e -> restartAgent());
 
+        JButton btnDriver = new JButton("Sürücü DLL Seç");
+        btnDriver.addActionListener(e -> choosePkcs11Driver());
+
         JButton btnExit = new JButton("Tamamen Kapat");
         btnExit.addActionListener(e -> exitAgent());
 
         pnlBottom.add(btnRefresh);
+        pnlBottom.add(btnDriver);
         pnlBottom.add(btnRestart);
         pnlBottom.add(btnMinimize);
         pnlBottom.add(btnExit);
@@ -112,7 +116,13 @@ public class ErsanEImzaApp {
     private static void refreshCardStatus() {
         new Thread(() -> {
             TokenManager.TokenStatus ts = TokenManager.detectActiveToken();
-            SwingUtilities.invokeLater(() -> updateCardStatus(ts));
+            SwingUtilities.invokeLater(() -> {
+                updateCardStatus(ts);
+                if (lblStatus != null) {
+                    lblStatus.setText("● Servis Aktif (http://127.0.0.1:9191)");
+                    lblStatus.setForeground(new Color(25, 135, 84));
+                }
+            });
         }).start();
     }
 
@@ -130,11 +140,15 @@ public class ErsanEImzaApp {
         MenuItem itemRestart = new MenuItem("Bağlantıyı Yenile");
         itemRestart.addActionListener(e -> restartAgent());
 
+        MenuItem itemDriver = new MenuItem("Sürücü DLL Seç");
+        itemDriver.addActionListener(e -> choosePkcs11Driver());
+
         MenuItem itemExit = new MenuItem("Tamamen Kapat");
         itemExit.addActionListener(e -> exitAgent());
 
         popup.add(itemOpen);
         popup.add(itemRefresh);
+        popup.add(itemDriver);
         popup.addSeparator();
         popup.add(itemRestart);
         popup.add(itemExit);
@@ -199,6 +213,27 @@ public class ErsanEImzaApp {
             lblCard.setText("! USB E-İmza Kartı Takılı Değil");
             lblCard.setForeground(new Color(220, 53, 69));
         }
+    }
+
+    private static void choosePkcs11Driver() {
+        if (GraphicsEnvironment.isHeadless()) return;
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("E-İmza PKCS#11 sürücü DLL dosyasını seçin");
+        chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        String current = TokenManager.getCustomModulePath();
+        if (!current.isEmpty()) chooser.setSelectedFile(new java.io.File(current));
+        chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("PKCS#11 sürücüsü (*.dll)", "dll"));
+        if (chooser.showOpenDialog(mainFrame) != JFileChooser.APPROVE_OPTION) return;
+
+        java.io.File selected = chooser.getSelectedFile();
+        if (selected == null || !selected.isFile()) {
+            JOptionPane.showMessageDialog(mainFrame, "Geçerli bir DLL dosyası seçilmedi.", "Ersan E-İmza", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        TokenManager.setCustomModulePath(selected.getAbsolutePath());
+        lblStatus.setText("● Seçilen sürücü kontrol ediliyor...");
+        lblStatus.setForeground(new Color(255, 152, 0));
+        refreshCardStatus();
     }
 
     private static void exitAgent() {

@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
 public class ErsanHttpServer {
 
     public static final int PORT = 9191;
-    public static final String VERSION = "1.2.4 (PAdES + Windows AKİS x86/x64)";
+    public static final String VERSION = "1.2.5 (PAdES + Windows Sürücü Seçimi)";
 
     private HttpServer server;
     private ExecutorService executor;
