@@ -17,6 +17,7 @@ const error = ref('')
 const person = ref(null)
 const canEdit = ref(false)
 const quickPersonnelList = ref([])
+const quickPersonnelLoading = ref(false)
 const showPhotoModal = ref(false)
 
 const isPersonSheetOpen = ref(false)
@@ -30,9 +31,20 @@ function closePhotoModal() {
   showPhotoModal.value = false
 }
 
-function openPersonSheet() {
+async function openPersonSheet() {
   personSheetSearch.value = ''
   isPersonSheetOpen.value = true
+  if (quickPersonnelList.value.length === 0 && !quickPersonnelLoading.value) {
+    quickPersonnelLoading.value = true
+    try {
+      const result = await personnelApi.quickList()
+      quickPersonnelList.value = result.items || []
+    } catch (reason) {
+      error.value = reason.message
+    } finally {
+      quickPersonnelLoading.value = false
+    }
+  }
 }
 
 function closePersonSheet() {
@@ -95,7 +107,6 @@ async function load() {
       localStorage.setItem('ersan_last_personnel_id', String(result.personnel.id))
     }
     canEdit.value = Boolean(result.can_edit)
-    quickPersonnelList.value = result.personnel_quick_list || []
   } catch (reason) {
     error.value = reason.message
   } finally {
@@ -265,7 +276,12 @@ onMounted(load)
             </div>
 
             <div class="period-sheet-body hide-scrollbar" style="max-height: 55vh; overflow-y: auto;">
-              <div v-if="filteredQuickPersonnelList.length === 0" class="clay-state-card py-4" style="margin: 8px 0;">
+              <div v-if="quickPersonnelLoading" class="clay-state-card py-4" style="margin: 8px 0;">
+                <RefreshCw :size="22" class="clay-spin-icon" />
+                <strong style="font-size: 13px;">Personeller yükleniyor</strong>
+              </div>
+
+              <div v-else-if="filteredQuickPersonnelList.length === 0" class="clay-state-card py-4" style="margin: 8px 0;">
                 <UserRound :size="24" class="text-muted mb-1" />
                 <strong style="font-size: 13px;">Eşleşen personel bulunamadı</strong>
                 <p style="font-size: 11.5px; margin: 0;">Farklı bir arama terimi deneyebilirsiniz.</p>

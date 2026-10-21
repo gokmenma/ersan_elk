@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-10-21 — Personel Detaya Geçiş Lazy-load Tamamlama
+- [x] Hızlı personel seçici listesi ilk profil isteğinden çıkarıldı.
+- [x] Liste yalnız personel seçici açıldığında ayrı API aksiyonundan yüklenir hale getirildi.
+- [x] İlk profil çekirdeği ~1 ms ve ~2,2 KB olarak ölçüldü.
+- [x] Sekmelerin yalnız tıklanınca yüklendiği doğrulandı; production build ve API dağıtım kontrolleri geçti.
+
 ## 2026-10-21 — Personel Zimmetler ve İş Takip Performans Düzeltmesi
 - [x] Binlerce zimmet kaydının tek yanıtta ve DOM'da yüklenmesi engellendi; tam özet + son 100 kayıt modeli uygulandı.
 - [x] Zimmet sorgusuna firma izolasyonu ve birleşik performans indeksi eklendi.

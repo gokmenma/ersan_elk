@@ -1,5 +1,12 @@
 # Active Context
 
+## Mobil SPA — Personel Adından Detaya Geçişin Hafifletilmesi (2026-10-21)
+- Personel ana detay isteğinde sekme verilerinin bölüm bazlı lazy-load edilmesi korunurken kalan son toplu yük olan `personnel_quick_list` de ilk istekten çıkarıldı.
+- Personel değiştirme listesi artık kullanıcı profil başlığındaki personel seçiciyi açtığında `quick_list` aksiyonundan yükleniyor; modal içerisinde yüklenme durumu gösteriliyor.
+- Gerçek veri ölçümünde ilk profil çekirdeği yaklaşık **1 ms / 2,2 KB** oldu. Önceden ilk yanıta eklenen yaklaşık **36,6 KB** hızlı personel listesi yalnız kullanıcı isterse yükleniyor.
+- Sekme verileri yalnız ilgili bölüm rotası açıldığında yükleniyor; profil açılışı izin, finans, evrak, zimmet, demirbaş veya iş takip sorgusu çalıştırmıyor.
+- PHP lint, Vite production build, public/dist eşitliği ve diff kontrolleri geçti.
+
 ## Mobil SPA — Personel Zimmetler ve İş Takip Açılış Performansı (2026-10-21)
 - Bazı personellerde çok yüksek zimmet geçmişi bulunduğu doğrulandı; örnek personel 155 için 8.840 demirbaş zimmeti tek yanıtta yükleniyor ve Vue tarafından karta dönüştürülüyordu.
 - Mobil zimmet listesi son 100 kayıtla sınırlandı; toplam/aktif/iade/kategori özetleri ayrı toplu sorguyla tüm kayıtlar üzerinden eksiksiz hesaplanıyor. Zimmet sorgusuna firma izolasyonu eklendi.

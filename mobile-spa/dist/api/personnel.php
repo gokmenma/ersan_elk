@@ -146,14 +146,12 @@ try {
         }
 
         $work = $section === 'calisma' ? $model->getWorkDetails($personelId, $firmaId) : [];
-        $quickList = $section === 'profile' ? $model->mobileDirectoryQuickList($firmaId) : [];
         $payload = [
             'success' => true,
             'can_edit' => $canEdit,
             'can_view_documents' => $canViewDocuments,
             'personel_id_raw' => $personelId,
             'personnel' => personnelPublicRow($row, $work),
-            'personnel_quick_list' => $quickList,
         ];
 
         if ($section === 'calisma') {
