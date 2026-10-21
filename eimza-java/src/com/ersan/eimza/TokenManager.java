@@ -20,7 +20,8 @@ public class TokenManager {
 
     private static TokenStatus cachedStatus = null;
     private static long lastCacheTime = 0;
-    private static final long CACHE_DURATION_MS = 10000; // 10 saniye cache
+    private static final long CACHE_DURATION_MS = 5 * 60 * 1000L;
+    private static final long LAST_GOOD_GRACE_MS = 30 * 60 * 1000L;
 
     public static synchronized void clearCache() {
         cachedStatus = null;
@@ -205,8 +206,8 @@ public class TokenManager {
 
             // YÖNTEM A: pkcs11-tool ile nesneleri sorgula (hızlı ve PIN sormaz)
             if (pkcsTool != null) try {
-                Process p = Runtime.getRuntime().exec(new String[]{pkcsTool, "--module", mod, "-O"});
-                BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8));
+                ToolResult objectResult = runTool(new String[]{pkcsTool, "--module", mod, "-O"});
+                BufferedReader r = new BufferedReader(new StringReader(objectResult.output));
                 String line;
                 String owner = "";
                 String tc = "";
@@ -225,8 +226,7 @@ public class TokenManager {
                         fullSub = line.trim();
                     }
                 }
-                int exitCode = p.waitFor();
-                if (exitCode == 0 && (!owner.isEmpty() || !tc.isEmpty())) {
+                if (objectResult.exitCode == 0 && (!owner.isEmpty() || !tc.isEmpty())) {
                     status.success = true;
                     status.modulePath = mod;
                     status.deviceType = devType;
@@ -240,29 +240,20 @@ public class TokenManager {
                 }
             } catch (Throwable ignored) {}
 
-            // YÖNTEM B: SunPKCS11 sağlayıcısını doğrudan kontrol et
-            try {
-                String safeName = "Detect_" + Math.abs(mod.hashCode() % 10000);
-                Provider p = createSunPKCS11(safeName, mod);
-                Security.addProvider(p);
+            // Sadece PKCS#11 sağlayıcısının yüklenebilmesi kartın gerçekten takılı
+            // olduğunu göstermez. Özellikle AKİS'te ikinci sağlayıcı oturumu mevcut
+            // WSM oturumunu kapatabildiği için algılama sırasında SunPKCS11 açılmaz.
+        }
 
-                status.success = true;
-                status.modulePath = mod;
-                status.deviceType = devType;
-                status.tokenLabel = "E-İmza Donanımı";
-                status.ownerName = "E-İmza Kartı Takılı";
-                status.tcno = "";
-                status.subject = "";
-                cachedStatus = status;
-                lastCacheTime = now;
-                return status;
-            } catch (Throwable ignored) {}
+        // AKİS ara katmanı kısa süreli sessionDeactivated döndürürse son ayrıntılı
+        // sonucu koru. Kullanıcının "Kartı Yeniden Tara" eylemi clearCache ile bu
+        // güvenli geri dönüşü de temizler ve fiziksel kart değişimini zorla sorgular.
+        if (cachedStatus != null && cachedStatus.success && (now - lastCacheTime < LAST_GOOD_GRACE_MS)) {
+            return cachedStatus;
         }
 
         status.success = false;
         status.message = "Sistemde takılı aktif bir e-imza cihazı bulunamadı. Lütfen USB kartınızı takınız.";
-        cachedStatus = null;
-        lastCacheTime = 0;
         return status;
     }
 

@@ -1615,7 +1615,7 @@ $(document).ready(function () {
   };
 
   function checkLocalEimzaAgent(onComplete) {
-    if (localEimzaAgentState.available && localEimzaAgentState.cardDetected && (Date.now() - (localEimzaAgentState.timestamp || 0) < 8000)) {
+    if (localEimzaAgentState.available && localEimzaAgentState.cardDetected && (Date.now() - (localEimzaAgentState.timestamp || 0) < 60000)) {
       if (typeof onComplete === "function") onComplete(localEimzaAgentState);
       return;
     }

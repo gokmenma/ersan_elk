@@ -2609,6 +2609,7 @@
 - Linux kart sürücüsünde sertifika ve özel anahtar CKA_ID değerlerinin farklı olabilmesi nedeniyle oluşan `özel imza anahtarıyla eşleşen sertifika bulunamadı` hatası giderildi. ID metin ayrıştırması genişletildi; doğrudan ID eşleşmesi yoksa karttaki özel anahtarlarla deneme imzası üretilip sertifikaların açık anahtarıyla doğrulanarak gerçek çift seçiliyor. Ajan sürümü `1.1.6` oldu.
 - Kurum bilgisayarında `v1.2.0 PAdES` ajanının `Ajan yeniden başlatılıyor` durumunda kalması giderildi. Arayüz eylemi çalışan 9191 servisini kapatıp yeniden bind etmek yerine kart/bağlantı önbelleğini güvenle yeniliyor; HTTP sunucusu dört daemon worker ile eşzamanlı isteklere dayanıklı hale getirildi. Sürüm `1.2.1` oldu.
 - `akia-bin` ile kurulan AKİS kartının `/opt/Akia/libakisp11.so` sürücüsü standart adaylarda bulunmadığı için algılanmaması giderildi. Akia ve ArkSigner Linux yolları eklendi; takılı ATR19 kartı gerçek sürücü üzerinden `MEHMET ALİ GÖKMEN` olarak doğrulandı. Kartın EC anahtarlı olması nedeniyle CKM_ECDSA, ham `r||s` → DER dönüşümü, `SHA256withECDSA` doğrulaması ve CMS ECDSA algoritma tanımı eklendi. Sürüm `1.2.2` oldu.
+- AKİS'in `wsm.sessionDeactivated` hatasının güvenlik duvarı değil, arka arkaya PKCS#11 sağlayıcı oturumları açılmasından kaynaklandığı belirlendi. Kart sonucu 5 dakika, son başarılı ayrıntılı kimlik sonucu geçici WSM hataları için 30 dakika korunuyor; algılama sırasında ikinci SunPKCS11 oturumu açılmıyor ve tarayıcı sorgu önbelleği 60 saniyeye çıkarıldı. Sürüm `1.2.3` oldu.
 
 # 2026-10-20 — Cari hesap hareketleri Excel dışa aktarımı
 
