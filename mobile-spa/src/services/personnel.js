@@ -253,6 +253,92 @@ export const personnelApi = {
     if (!response.ok || !payload.success) throw new Error(payload.message || 'İcra kesintileri alınamadı.')
     return payload
   },
+  async saveZimmet(data, csrfToken) {
+    const response = await fetch('/api/personnel.php?action=save_zimmet', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+      body: JSON.stringify(data),
+    })
+    const payload = await response.json().catch(() => ({ success: false, message: 'Sunucudan geçersiz yanıt alındı.' }))
+    if (!response.ok || !payload.success) throw new Error(payload.message || 'Zimmet kaydedilemedi.')
+    return payload
+  },
+  async iadeZimmet(data, csrfToken) {
+    const response = await fetch('/api/personnel.php?action=iade_zimmet', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+      body: JSON.stringify(data),
+    })
+    const payload = await response.json().catch(() => ({ success: false, message: 'Sunucudan geçersiz yanıt alındı.' }))
+    if (!response.ok || !payload.success) throw new Error(payload.message || 'Zimmet iade işlemi yapılamadı.')
+    return payload
+  },
+  async deleteZimmet(id, personelId, csrfToken) {
+    const response = await fetch('/api/personnel.php?action=delete_zimmet', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+      body: JSON.stringify({ id, personel_id: personelId }),
+    })
+    const payload = await response.json().catch(() => ({ success: false, message: 'Sunucudan geçersiz yanıt alındı.' }))
+    if (!response.ok || !payload.success) throw new Error(payload.message || 'Zimmet kaydı silinemedi.')
+    return payload
+  },
+  async getZimmetHareketleri(id, personelId) {
+    const response = await fetch(`/api/personnel.php?action=zimmet_hareketleri&id=${encodeURIComponent(id)}&personel_id=${encodeURIComponent(personelId)}`, {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json' },
+    })
+    const payload = await response.json().catch(() => ({ success: false, message: 'Sunucudan geçersiz yanıt alındı.' }))
+    if (!response.ok || !payload.success) throw new Error(payload.message || 'Zimmet hareketleri alınamadı.')
+    return payload
+  },
+  async searchDemirbas(q) {
+    const response = await fetch(`/api/personnel.php?action=search_demirbas&q=${encodeURIComponent(q)}`, {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json' },
+    })
+    const payload = await response.json().catch(() => ({ success: false, message: 'Sunucudan geçersiz yanıt alındı.' }))
+    if (!response.ok || !payload.success) throw new Error(payload.message || 'Demirbaş araması yapılamadı.')
+    return payload
+  },
+  async getPuantajIsTakip(personelId, filters = {}) {
+    const query = new URLSearchParams({ action: 'puantaj_is_takip', id: personelId, ...filters })
+    const response = await fetch(`/api/personnel.php?${query}`, {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json' },
+    })
+    const payload = await response.json().catch(() => ({ success: false, message: 'Sunucudan geçersiz yanıt alındı.' }))
+    if (!response.ok || !payload.success) throw new Error(payload.message || 'İş ve görev kayıtları alınamadı.')
+    return payload
+  },
+  async savePuantajJob(data, csrfToken) {
+    const response = await fetch('/api/personnel.php?action=save_puantaj_job', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+      body: JSON.stringify(data),
+    })
+    const payload = await response.json().catch(() => ({ success: false, message: 'Sunucudan geçersiz yanıt alındı.' }))
+    if (!response.ok || !payload.success) throw new Error(payload.message || 'Görev kaydı oluşturulamadı.')
+    return payload
+  },
+  async deletePuantajJob(id, type, personelId, csrfToken) {
+    const response = await fetch('/api/personnel.php?action=delete_puantaj_job', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+      body: JSON.stringify({ id, type, personel_id: personelId }),
+    })
+    const payload = await response.json().catch(() => ({ success: false, message: 'Sunucudan geçersiz yanıt alındı.' }))
+    if (!response.ok || !payload.success) throw new Error(payload.message || 'Görev kaydı silinemedi.')
+    return payload
+  },
 }
 
 

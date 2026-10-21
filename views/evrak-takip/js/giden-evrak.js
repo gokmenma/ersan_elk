@@ -736,6 +736,8 @@ $(document).ready(function () {
     $("#gonderim_kanali").val(channel);
     $(".gonderim-channel-card").removeClass("active").filter(`[data-channel="${channel}"]`).addClass("active");
     $("#kepComposerPanel").toggleClass("d-none", channel !== "kep");
+    $("#islakImzaOnayaSunItem").toggleClass("d-none", channel !== "normal");
+    $("#mobilImzaOnayaSunItem").toggleClass("d-none", channel !== "normal");
     $("#btnGidenKepHizliGonder").toggleClass("d-none", channel !== "kep" && !window.gidenKepCanSendApproved);
     updateKepPackageSummary();
     adjustGidenEvrakLayout();
@@ -1328,6 +1330,94 @@ $(document).ready(function () {
           Swal.fire("Hata", "Sunucu ile iletişim kurulamadı.", "error");
         }
       });
+    });
+  });
+
+  $("#btnIslakImzaOnayaSun").on("click", function () {
+    syncContent();
+    if (!validateForm()) return;
+    if ($("#gonderim_kanali").val() !== "normal") return Swal.fire("Uygun Değil", "Islak imza akışı yalnız Normal Gönderim türünde kullanılabilir.", "warning");
+    if (!$("#imza_kullanici_ids").val()?.length) {
+      $("#collapseImzaYetkilileri").collapse("show");
+      return Swal.fire("Eksik Bilgi", "Islak imza onayı için en az bir imza yetkilisi seçmelisiniz.", "warning");
+    }
+    Swal.fire({
+      title: "Islak İmza ile Onaya Sun",
+      html: "Evrak kaydedilecek ve seçilen yetkililere sırayla gönderilecektir.<br>Yetkililer, belgeyi fiziksel olarak imzaladıklarını sistemde teyit edecektir.<br><b>Bu akış nitelikli elektronik imza oluşturmaz.</b>",
+      icon: "question", showCancelButton: true, confirmButtonColor: "#f59e0b", cancelButtonColor: "#64748b",
+      confirmButtonText: "Kaydet ve Onaya Sun", cancelButtonText: "Vazgeç"
+    }).then(result => {
+      if (!result.isConfirmed) return;
+      const button = $("#btnIslakImzaOnayaSun").prop("disabled", true);
+      $.ajax({ url: "views/evrak-takip/api.php", type: "POST", data: buildFormData(), contentType: false, processData: false })
+        .then(kayit => {
+          if (kayit.status !== "success" || !kayit.id) return $.Deferred().reject({ message: kayit.message || "Evrak kaydedilemedi." }).promise();
+          return $.post("views/evrak-takip/api.php", { action: "evrak-islak-imza-onaya-sun", id: kayit.id });
+        })
+        .done(response => {
+          if (response.status !== "success") throw new Error(response.message || "Onaya sunulamadı.");
+          Swal.fire("Onaya Sunuldu", response.message, "success").then(() => location.href = "index?p=evrak-takip/list");
+        })
+        .fail(xhr => {
+          button.prop("disabled", false);
+          Swal.fire("Hata", xhr.responseJSON?.message || xhr.message || "İşlem tamamlanamadı.", "error");
+        });
+    });
+  });
+
+  $("#btnIslakImzaOnayla").on("click", function () {
+    const button = $(this);
+    Swal.fire({ title: "Islak İmza Onayı", text: "Belgeyi fiziksel olarak imzaladığınızı ve onayladığınızı teyit ediyor musunuz?", icon: "question", showCancelButton: true, confirmButtonColor: "#f59e0b", confirmButtonText: "İmzaladım, Onayla", cancelButtonText: "Vazgeç" })
+      .then(result => {
+        if (!result.isConfirmed) return;
+        button.prop("disabled", true);
+        $.post("views/evrak-takip/api.php", { action: "evrak-islak-imza-onayla", id: button.data("id") })
+          .done(response => {
+            if (response.status === "success") Swal.fire("Onaylandı", response.message, "success").then(() => location.reload());
+            else { button.prop("disabled", false); Swal.fire("Hata", response.message || "Onay kaydedilemedi.", "error"); }
+          })
+          .fail(xhr => { button.prop("disabled", false); Swal.fire("Hata", xhr.responseJSON?.message || xhr.message || "Onay kaydedilemedi.", "error"); });
+      });
+  });
+
+  $("#btnMobilImzaOnayaSun").on("click", function () {
+    syncContent();
+    if (!validateForm()) return;
+    if ($("#gonderim_kanali").val() !== "normal") return Swal.fire("Uygun Değil", "Mobil imza akışı yalnız Normal Gönderim türünde kullanılabilir.", "warning");
+    if (!$("#imza_kullanici_ids").val()?.length) {
+      $("#collapseImzaYetkilileri").collapse("show");
+      return Swal.fire("Eksik Bilgi", "Mobil imza onayı için en az bir imza yetkilisi seçmelisiniz.", "warning");
+    }
+    Swal.fire({
+      title: "Mobil İmza ile Onaya Sun",
+      html: "Evrak kaydedilecek, kilitlenecek ve seçilen yetkililer için mobil imza onay sırası oluşturulacaktır.<br><b>Mobil operatör üzerinden gerçek imzalama işlemi ileride devreye alınacaktır.</b>",
+      icon: "info", showCancelButton: true, confirmButtonColor: "#0ea5e9", cancelButtonColor: "#64748b",
+      confirmButtonText: "Kaydet ve Akışı Başlat", cancelButtonText: "Vazgeç"
+    }).then(result => {
+      if (!result.isConfirmed) return;
+      const button = $("#btnMobilImzaOnayaSun").prop("disabled", true);
+      $.ajax({ url: "views/evrak-takip/api.php", type: "POST", data: buildFormData(), contentType: false, processData: false })
+        .then(kayit => {
+          if (kayit.status !== "success" || !kayit.id) return $.Deferred().reject({ message: kayit.message || "Evrak kaydedilemedi." }).promise();
+          return $.post("views/evrak-takip/api.php", { action: "evrak-mobil-imza-onaya-sun", id: kayit.id });
+        })
+        .done(response => {
+          if (response.status === "success") Swal.fire("Mobil İmza Akışı Başlatıldı", response.message, "success").then(() => location.href = "index?p=evrak-takip/list");
+          else { button.prop("disabled", false); Swal.fire("Hata", response.message || "Mobil imza akışı başlatılamadı.", "error"); }
+        })
+        .fail(xhr => {
+          button.prop("disabled", false);
+          Swal.fire("Hata", xhr.responseJSON?.message || xhr.message || "İşlem tamamlanamadı.", "error");
+        });
+    });
+  });
+
+  $("#btnMobilImzaOnayla").on("click", function () {
+    Swal.fire({
+      title: "Mobil İmza Entegrasyonu Hazırlanıyor",
+      text: "Evrak mobil imza sırasına alınmıştır. Operatör üzerinden mobil imzalama işlemi ileride devreye alınacaktır.",
+      icon: "info",
+      confirmButtonText: "Tamam"
     });
   });
 
@@ -1933,8 +2023,8 @@ $(document).ready(function () {
   adjustGidenEvrakLayout();
   window.setTimeout(adjustGidenEvrakLayout, 100);
   window.setTimeout(adjustGidenEvrakLayout, 500);
-  if (new URLSearchParams(window.location.search).get("islem") === "imzala" && $("#btnEImzaOnayla").length) {
-    window.setTimeout(() => $("#btnEImzaOnayla").trigger("click"), 350);
+  if (new URLSearchParams(window.location.search).get("islem") === "imzala" && $("#btnEImzaOnayla, #btnIslakImzaOnayla, #btnMobilImzaOnayla").length) {
+    window.setTimeout(() => $("#btnEImzaOnayla, #btnIslakImzaOnayla, #btnMobilImzaOnayla").first().trigger("click"), 350);
   }
   $(window).on("resize orientationchange", adjustGidenEvrakLayout);
   $("#gidenEvrakTabs button").on("shown.bs.tab", adjustGidenEvrakLayout);

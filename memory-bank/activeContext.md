@@ -1,5 +1,115 @@
 # Active Context
 
+## Mobil SPA — Personel Detay Sayfasında İş ve Puantaj (İş Takip / Saha Operasyonları) Modülü (2026-10-21)
+- **Kullanıcı Talebi**: Mobil SPA (`mobile-spa`) personel detay sayfasındaki (`/personel/:id/bolum/puantaj`) geçiş/taslak ekranı yerine tam fonksiyonel saha iş takip, görev ve operasyonel puantaj yönetim sayfasının yapılması.
+- **Uygulanan Mimari & Değişiklikler**:
+  1. **Model Katmanı (`App/Model/MobilePersonelModel.php`)**:
+     - `getPuantajIsTakipDetails(int $personelId, int $firmaId, array $filters = []): array`:
+       - Personelin `yapilan_isler` (Saha İşleri: kesme, açma, sayaç değiştirme, kontrol vb.), `endeks_okuma` (Endeks okuma ve sayaç tüketimleri) ve `kacak_kontrol` (Kaçak tespit tutanakları) hareketlerini tek standart şemada birleştirir.
+       - Filtre verilmediğinde en güncel 150 kaydı azalan sıralamayla döner; `start_date` ve `end_date` parametreleri sağlandığında ise tarih aralığına göre sorgular.
+       - `PuantajModel::getWorkTypes()` ve `PuantajModel::getWorkResults($personelId)` üzerinden iş emri tipleri ve sonuç seçeneklerini çeker.
+       - Özet istatistikleri üretir (`toplam_kayit`, `toplam_is`, `sonuclanan_is`, `acik_is`, `endeks_sayisi`, `kacak_sayisi`, `tamamlanma_orani`).
+     - `savePuantajJob(array $data, int $firmaId, int $userId): array`:
+       - `yapilan_isler` tablosuna manuel iş emri/görev kaydı ekler.
+     - `deletePuantajJob(int $id, string $type, int $personelId, int $firmaId, int $userId): array`:
+       - Soft delete mantığıyla görev kaydını (`deleted_at = NOW()`) iptal eder.
+  2. **Mobil Backend API (`mobile-spa/public/api/personnel.php` & `dist/api/personnel.php`)**:
+     - `action === 'detail'`: Yanıta `puantaj_items`, `puantaj_ozet`, `puantaj_work_types` ve `puantaj_work_results` verilerini ekledi.
+     - `action === 'puantaj_is_takip'` (GET): Tarih filtresiyle canlı iş ve görev listesi çekme.
+     - `action === 'save_puantaj_job'` (POST): CSRF, Gate (`personel_duzenle` veya `puantaj_yonetim`) kontrolüyle görev ekleme.
+     - `action === 'delete_puantaj_job'` (POST): CSRF ve Gate kontrolüyle görev silme.
+  3. **Mobil İstemci Servisi (`mobile-spa/src/services/personnel.js`)**:
+     - `personnelApi` servisine `getPuantajIsTakip`, `savePuantajJob` ve `deletePuantajJob` fonksiyonları eklendi.
+  4. **Vue Arayüzü & Soft Bento Design System (`mobile-spa/src/views/PersonnelSectionView.vue`)**:
+     - **Hero Obsidian Bento Kartı**: Görev & Saha Takibi başlığı, tamamlanan işler ve açık işler oranı segmentli dağılım barı, 4'lü tıklanabilir filtre kartı (Tüm Kayıtlar, Saha İşleri, Endeks Okuma, Kaçak Kontrol).
+     - **Canlı Arama ve Tarih Aralığı Filtresi**: İş emri no, abone no, işlem tipi araması ve başlangıç/bitiş tarihi seçimi (`applyPuantajDateFilter` / `resetPuantajDateFilter`).
+     - **Kategori Hapları (`clay-tabs-wrap`)**: Tümü, Saha İşleri, Açık İşler, Tamamlanan, Endeks Okuma ve Kaçak Kontrol sekmeleri.
+     - **Görev Bento Kartları**: Kategori rozeti (mavi, yeşil, kırmızı), durum badge'i (`Sonuçlandı`, `Açık / Devam Ediyor`), Abone no, İş emri no, Sayaç no, Tüketim miktarı (m³), ekip ve açıklama alanları.
+     - **3 Adet Bottom-Sheet Modalı (Teleport)**:
+       - *Yeni İş Ekle (Manuel)*: Tarih, iş emri tipi, iş emri sonucu, abone no, iş emri no ve açıklama giriş formu.
+       - *İş / Görev Detayı*: Tüm operasyonel parametrelerin şık satırlar halinde listelendiği bottom sheet.
+       - *Silme Onay Modalı*: Güvenli silme doğrulama modalı.
+  5. **Doğrulama & Derleme**:
+     - PHP CLI lint testleri (`/opt/lampp/bin/php -l`) hatasız geçti.
+     - Vite production derlemesi (`npm run build`) 0 hata ile tamamlandı.
+
+## Mobil SPA — Personel Detay Sayfasında Zimmetler Modülü (2026-10-21)
+- **Kullanıcı Talebi**: Mobil SPA (`mobile-spa`) personel detay sayfasındaki (`/personel/:id/bolum/zimmetler`) geçiş/taslak ekranı yerine tam fonksiyonel zimmet (demirbaş ve araç zimmetleri) yönetim sayfasının yapılması.
+- **Uygulanan Mimari & Değişiklikler**:
+  1. **Model Katmanı (`App/Model/MobilePersonelModel.php`)**:
+     - `getZimmetDetails(int $personelId, int $firmaId): array`:
+       - `DemirbasZimmetModel::getByPersonel($personelId)` üzerinden personelin demirbaş zimmetlerini çeker.
+       - `AracZimmetModel::getHistoryByPersonel($personelId)` üzerinden araç zimmetlerini çeker.
+       - Her iki varlık türünü ortak standart şemada birleştirir (`id`, `demirbas_no`/plaka, `demirbas_adi`, `marka`, `model`, `seri_no`, `kategori_adi`, `teslim_tarihi`, `teslim_miktar`, `iade_tarihi`, `iade_miktar`, `durum`, `durum_label`, `aciklama`, `is_arac`, `can_iade`, `can_delete`).
+       - Özet istatistikleri üretir (`toplam_zimmet`, `aktif_zimmet`, `iade_zimmet`, `arac_zimmet`, `kategori_sayilari`).
+       - Aktif kayıtları üstte, teslim tarihine göre azalan şekilde sıralar.
+     - `getDemirbasOptions(int $firmaId, string $search = ''): array`:
+       - Stoktaki teslim edilebilir demirbaşları (`getForSelect`) formatlı liste olarak çeker.
+     - `saveZimmet(array $data, int $firmaId, int $userId): array`:
+       - `DemirbasZimmetModel::zimmetVer` ile personele yeni demirbaş zimmet kaydı oluşturur, stoktan düşer ve hareket kaydeder.
+     - `iadeZimmet(array $data, int $firmaId, int $userId): array`:
+       - Araç zimmetleri için `AracZimmetModel::iadeEt` (km ve not ile).
+       - Demirbaş zimmetleri için `DemirbasZimmetModel::iadeYap` (miktar ve not ile) çağırır, stoku günceller ve hareket kaydeder.
+     - `deleteZimmet(int $zimmetId, int $personelId, int $firmaId, int $userId): array`:
+       - Personel ve durum doğrulaması yaparak `DemirbasZimmetModel::delete` ile kaydı siler, teslim edilen miktarı stoka geri kazandırır.
+     - `getZimmetHareketleri(int $zimmetId, int $personelId, int $firmaId): array`:
+       - `DemirbasHareketModel::getZimmetHareketleri` üzerinden zimmetin geçmiş tüm teslim, iade ve tüketim hareketlerini işlem yapan kullanıcı bilgisiyle döner.
+  2. **Mobil Backend API (`mobile-spa/public/api/personnel.php` & `dist/api/personnel.php`)**:
+     - `action === 'detail'`: Yanıta `zimmetler`, `zimmet_ozet` ve `demirbas_options` verilerini ekledi.
+     - `action === 'save_zimmet'` (POST): CSRF, Gate (`personel_duzenle` veya `demirbas/zimmet`), ID şifre çözme ve validasyon ile zimmet verme.
+     - `action === 'iade_zimmet'` (POST): CSRF ve Gate kontrolü ile iade alma işlemi.
+     - `action === 'delete_zimmet'` (POST): CSRF ve Gate kontrolü ile aktif zimmet silme işlemi.
+     - `action === 'zimmet_hareketleri'` (GET): İlgili zimmetin hareket loglarını çekme.
+     - `action === 'search_demirbas'` (GET): Stoktaki demirbaşlar arasında canlı arama yapma.
+  3. **Mobil İstemci Servisi (`mobile-spa/src/services/personnel.js`)**:
+     - `personnelApi` servisine `saveZimmet`, `iadeZimmet`, `deleteZimmet`, `getZimmetHareketleri` ve `searchDemirbas` fonksiyonları eklendi.
+  4. **Vue Arayüzü & Design System (`mobile-spa/src/views/PersonnelSectionView.vue`)**:
+     - **Obsidian Bento Hero Kartı**: Varlık & Demirbaş başlığı, aktif varlık adedi, toplam varlık ve dağılım, aktif/iade oranlarını gösteren renkli segmentli ilerleme çubuğu ve 4'lü tıklanabilir metrik filtre kartı (Tüm Varlıklar, Aktif Zimmetler, Zimmet Geçmişi, Araç Zimmetleri).
+     - **Canlı Arama ve Kategori Filtre Hapları**: Demirbaş adı, seri no, marka, model veya kategori bazlı filtreleme çubuğu ve dinamik kategori hapları (`clay-tabs-wrap`).
+     - **Zimmet Kartları Listesi**: Kategori ikonu (araba, bilgisayar, telefon, paket vb.), durum rozetleri (`● ZİMMETLİ`, `✓ İADE EDİLDİ`), teslim ve iade tarihleri, miktar, seri no ve açıklamalar.
+     - **İşlem Butonları**: "Detay", "İade Al" (aktifler için) ve "Sil" (demirbaşlar için).
+     - **Bottom-Sheet Modalları (Teleport)**:
+       - *Yeni Zimmet Ver*: Stoktaki demirbaş seçimi, kalan stok uyarısı, miktar, teslim tarihi, açıklama formu.
+       - *Zimmet İade Al*: Varlık özeti, araç ise km bilgisi, demirbaş ise iade miktarı, iade tarihi ve açıklaması.
+       - *Zimmet Detayı & Hareket Geçmişi*: Tüm demirbaş/araç özellikleri, teslim ve iade detayları, varsa sistem hareket logları akışı (`timeline-list`).
+       - *Silme Onay Modalı*: Stoğa geri aktarım uyarısıyla güvenli silme doğrulaması.
+     - **Mevcut Yönetim Modülü Butonu**: Ekranın alt kısmında masaüstü/yönetim modülü köprüsü korundu.
+  5. **Doğrulama & Test**:
+     - PHP CLI lint testleri (`/opt/lampp/bin/php -l`) hatasız geçti.
+     - PHP CLI ortamında `getZimmetDetails` ve `getZimmetHareketleri` gerçek veritabanı kayıtları (PID 75 ve PID 155) üzerinde çalıştırılarak doğrulandı.
+     - Vite production derlemesi (`npm run build`) 0 hata ile başarıyla tamamlandı.
+
+## Mobil SPA — Sözleşme & Hakediş Modülü Entegrasyonu ve Dönem İmalat/KDV Düzeltmeleri (2026-10-21)
+- **Kullanıcı Talebi**: 
+  1. Masaüstündeki Sözleşme & Hakediş modülünün Mobil SPA (`mobile-spa`) sistemine eklenmesi.
+  2. Hakediş dönem listesinde ("Hakediş Dönemleri" kartlarında) "DÖNEM İMALAT TUTARI" alanında kümülatif toplam değil, **sadece o dönemin kendi imalat tutarı** yazılsın.
+  3. Hakediş detay sayfasındaki koyu renkli özet bento kartında "KDV DAHİL TOPLAM ÖDEME" kısmında kümülatif tutar yerine **sadece o dönemin KDV dahil toplam ödemesi** gösterilsin.
+  4. "İmalat Miktarı Girişi" modalında etiket ve inputların birbirine girmesine yol açan form grid/field CSS eksikliği giderilsin.
+- **Uygulanan Mimari & Değişiklikler**:
+  1. **Yetkilendirme & Oturum (`mobile-spa/public/api/auth.php`)**:
+     - `sessionPayload()` içerisindeki yetki haritasına `'contracts' => mobileCan(['hakedis', 'hakedisler/index'], ['hakedisler/index', 'hakedisler/sozlesme-detay', 'hakedisler/hakedis-detay'])` eklendi.
+     - `Gate::allows('hakedis')` veya menü linki üzerinden sunucu taraflı yetki kontrolü sağlandı.
+  2. **Mobil Backend API (`mobile-spa/public/api/sozlesme-hakedis.php`)**:
+     - Standart güvenlik, oturum ve firma kontrolleri (`checkContractsAuth()`, CSRF doğrulama, `Security::encrypt/decrypt`).
+     - `contract_detail`: `donemler` sorgusuna her dönemin kalem toplamından hesaplanan `imalat_donem` subquery'si eklendi. Çıktıda `hakedi_tutari` alanına bu dönem tutarı atanırken kümülatif tutar `imalat_kumulatif` olarak sağlandı.
+     - `hakedis_detail`: KDV oranı baz alınarak dönemin KDV dahil ödemesi (`$donemKdvDahil = round($fiyatFarkiDahil * (1 + $kdvRate / 100), 2)`) hesaplandı; `donem_kdv_dahil` ve `kdv_dahil_toplam` olarak atandı. Kümülatif KDV dahil tutar ise `kumulatif_kdv_dahil` alanına verildi.
+  3. **Mobil İstemci Servisi (`mobile-spa/src/services/sozlesme-hakedis.js`)**:
+     - `sozlesmeApi` nesnesi altında tüm backend API uçlarına erişim fonksiyonları tanımlandı.
+  4. **Vue Arayüzleri (Soft Bento & Claymorphic UI Standardı)**:
+     - `SozlesmeHakedisView.vue`: 4 Bento KPI kartı, canlı arama ve filtre hapları (Tümü, Aktif, Tamamlandı, Pasif), sözleşme kartları listesi ve "+ Yeni Sözleşme" modalı.
+     - `SozlesmeDetailView.vue`: Hakediş kartlarında "DÖNEM İMALAT TUTARI" alanı `d.imalat_donem_formatted` olarak bağlandı, altına kümülatif imalat bilgisi eklendi.
+     - `HakedisDetailView.vue`: 
+       - Koyu Bento özet kartında "BU AYKİ KDV DAHİL TOPLAM ÖDEME" başlığı ve `donem_kdv_dahil_formatted` (10.575.019,02 ₺) gösterildi; altına kümülatif KDV dahil tutar yerleştirildi.
+       - "İmalat Miktarı Girişi" modalı için `.form-grid`, `.form-field`, `.calc-preview-box` ve `.preview-item` CSS stilleri tamamlanarak mobil input ve etiket kaymaları giderildi.
+  5. **Navigasyon ve Rota Bağlantıları**:
+     - `mobile-spa/src/router.js`: `/sozlesme-hakedis`, `/sozlesme-hakedis/:id`, `/sozlesme-hakedis/:id/hakedis/:hakedisId` rotaları eklendi.
+     - `mobile-spa/src/components/BottomNav.vue`: "Daha Fazla" menüsünde "FİNANS & MUHASEBE" kategorisi altına "Sözleşme & Hakediş" bağlantısı eklendi.
+     - `mobile-spa/src/views/HomeView.vue`: Ana sayfa hızlı erişim ve kısayollar arasına eklendi.
+  6. **Derleme & Doğrulama**:
+     - Vite production derlemesi (`npm run build`) 0 hata ile tamamlandı.
+     - `dist/api/sozlesme-hakedis.php` ve `public/api/sozlesme-hakedis.php` PHP syntax testlerinden (`/opt/lampp/bin/php -l`) ve CLI simülasyon testlerinden başarıyla geçti.
+
+
 ## Dashboard — Görev & Evrak Takvimi Kartının Yanındaki Kartlarla Tam 260px Hiza Eşitliği (2026-10-21)
 - **Kullanıcı Geri Bildirimi**: Kullanıcının yüklediği ekran görüntüsünde ("GÖREV & EVRAK TAKVİMİ" kartı ile sağındaki "SAYAÇ DEĞİŞİMİ" ve "ENDEKS OKUMA" kartları kırmızı çerçeveye alınarak) "bu kartların yüksekliği ile aynı olmalıydı" uyarısı alındı.
 - **Kök Neden & Analiz**:
@@ -2781,6 +2891,11 @@
 - PAdES görünür bilgileri kurumsal evrak alt bilgisini yeniden tasarlamayacak şekilde ayrıştırıldı: mevcut adres ve `Bilgi için` bloğu aynen korunuyor; yalnız üstüne ince doğrulama kutusu, altına gri güvenli e-imza notu ekleniyor. Üretilen A4 örneği görsel ve metinsel olarak doğrulandı.
 - KEP satırlarında e-imza durum rozetine tıklamanın satır geneli KEP önizleme olayını da tetiklemesi engellendi. E-imza rozeti yalnız evrak PDF + imza tarihçesi modalını, KEP önizleme aksiyonu ise yalnız KEP detay modalını açıyor.
 - KEP kanallı giden evrakların ayrı `GİDEN` ve `KEP` rozetleri tek mor `GİDEN / KEP` rozeti olarak birleştirildi. Normal giden ve gelen KEP gösterimleri değiştirilmedi.
+- KEP ileti oluşturma modalı, numaralı bölüm kartları ve daha belirgin alıcı/ek alanlarıyla görsel olarak iyileştirildi. Yazılan alıcılar için varsayılan açık `Doğrulanan KEP adreslerini adres defterine kaydet` seçeneği eklendi; PTT doğrulamasından geçen adresler kontrollü olarak firma adres defterine kaydediliyor ve seçim listesi anında yenileniyor.
+- KEP modalının alt işlem alanındaki ayrı indirme ve yardım düğmeleri kaldırılarak e-imza cihaz durumu tek, kompakt bir durum kartında toplandı. Evrak Takip `İşlemler` menüsündeki AI taslak ve icra üst yazısı kısayolları kaldırıldı; menünün en altına açıklamalı `E-İmza Uygulamasını İndir` bağlantısı eklendi.
+- Giden Evrak normal gönderim kayıtlarına ayrı `Islak İmza ile Onaya Sun` akışı eklendi. Akış türü evrak üzerinde saklanıyor; seçili yetkililer sırayla fiziksel imzayı teyit ediyor, son onayda evrak kilitleniyor. KEP gönderiminde ıslak imza hem arayüzde gizli hem sunucuda engelli; ıslak imza kaydına PAdES uygulanması da sunucu tarafında reddediliyor.
+- Kullanıcı düzenleme modalının Yetkilendirme & Organizasyon bölümüne `Evrak İmza Yetkisi` alanı eklendi. Yalnız aktif, mevcut firmaya bağlı ve bu ayarı açık kullanıcılar Giden Evrak imza yetkilileri listesine alınıyor; gönderilen imzacı ID'leri onaya sunma sırasında Model katmanında aynı koşullarla yeniden doğrulanıyor.
+- Normal gönderim türüne `Mobil İmza ile Onaya Sun` seçeneği eklendi ve `onay_turu=mobil_imza` olarak ayrı saklanıyor. Evrak kaydedilip kilitleniyor, sıralı yetkili/bildirim akışı oluşturuluyor; gerçek mobil operatör imzalama entegrasyonu tamamlanana kadar onay aksiyonu işlem yapmadan bilgilendirme gösteriyor. Mobil imza KEP'te kullanılamıyor ve PAdES modalına düşmüyor.
 - Giden Evrak formunun altındaki mükerrer `KEP / Gönderim Bilgileri` akordeonu kaldırıldı. Gönderim türü ve zorunlu alıcı KEP adresi üstteki evrak bilgileri alanında kalmaya devam ediyor.
 - Evrak/imza önizleme modalında imza sırası oturum kullanıcısındaysa `E-İmza ile İmzala` butonu gösteriliyor. Buton gerçek yerel ajan + akıllı kart + PIN ile PAdES akışını çalıştırıyor; son imzada kayıtlı KEP otomatik sevk zinciri de korunuyor.
 - İmza modalının işlem alanı sağ alt köşede sabitlendi; sıra kullanıcıdaysa `İade Et` ve `E-İmza ile İmzala` butonları birlikte gösteriliyor. Liste İşlemler menüsündeki `PAdES ile İmzala` etiketi de `E-İmza ile İmzala` olarak sadeleştirildi.
@@ -2790,3 +2905,7 @@
 - E-imza PDF alt bilgisi özgün görsele daha yakın olacak şekilde sıkılaştırıldı: doğrulama paneli ile kurumsal alt bilgi arasındaki mükerrer kırmızı çizgi kaldırıldı, tek 0,6 mm ayraç kurumsal bloğun üstünde bırakıldı; başlık, meta, iletişim ve gri dipnot tipografi/boşlukları küçültüldü.
 - Evrak Takip listesindeki giden KEP kayıtlarının PTT delillerindeki son durumu, kalabalığı azaltmak için `Tip` hücresinden ayrılarak hemen yanındaki bağımsız `KEP Durumu` kolonuna taşındı (`Kabul Edildi`, `İletildi`, `Teslim Edildi`, `Okundu`, `İndirildi` veya hata). KEP olmayan kayıtlarda `-` gösteriliyor. Deliller sayfadaki evraklar için firma kapsamlı tek toplu Model sorgusuyla okunuyor; modalda PTT delilleri yenilendiğinde liste aynı sayfada otomatik tazeleniyor.
 - Linux çalışma ortamında `tests/integration` ile Git'te izlenen `tests/Integration` arasındaki büyük/küçük harf çakışması giderildi; test dosyaları standart `tests/Integration` yolunda toplandı ve depo için `core.ignorecase=false` ayarlandı.
+# Ayarlar — Avans Ayarları Kaydetme Yetki Hatası (2026-10-21)
+- Avans Ayarları sekmesi görünmesine rağmen kaydetme isteğinin merkezi API politika katmanında 403 ile reddedildiği tespit edildi.
+- Canlı veritabanında `avans_ayarlari_sekmesi` yetkisinin ve `ayarlar/api / save_avans_ayarlari` politikasının eksik olduğu doğrulandı.
+- Tekrarlanabilir düzeltme scripti `sql/2026_10_21_fix_avans_ayarlari_permission.sql` oluşturuldu; yetki, API politikası ve yalnızca Süper Admin/Firma Sahibi kapsamındaki rol atamaları tanımlandı.

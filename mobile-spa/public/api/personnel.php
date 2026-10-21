@@ -138,6 +138,9 @@ try {
         $kesintilerData = $model->getKesintilerDetails($personelId, $firmaId);
         $evrakData = $model->getEvrakDetails($personelId, $firmaId);
         $icraData = $model->getIcraDetails($personelId, $firmaId);
+        $zimmetData = $model->getZimmetDetails($personelId, $firmaId);
+        $demirbasOptions = $model->getDemirbasOptions($firmaId);
+        $puantajData = $model->getPuantajIsTakipDetails($personelId, $firmaId);
         $quickList = $model->mobileDirectoryQuickList($firmaId);
         personnelResponse([
             'success' => true,
@@ -163,6 +166,13 @@ try {
             'icralar' => $icraData['items'],
             'icra_ozet' => $icraData['summary'],
             'icra_daireleri' => $icraData['icra_daireleri'],
+            'zimmetler' => $zimmetData['items'],
+            'zimmet_ozet' => $zimmetData['summary'],
+            'demirbas_options' => $demirbasOptions,
+            'puantaj_items' => $puantajData['items'],
+            'puantaj_ozet' => $puantajData['summary'],
+            'puantaj_work_types' => $puantajData['work_types'],
+            'puantaj_work_results' => $puantajData['work_results'],
         ]);
     }
 
@@ -680,6 +690,150 @@ try {
             personnelResponse(['success' => false, 'message' => 'Geçersiz kayıt bilgisi.'], 422);
         }
         $result = $model->deleteIcra($icraId, $personelId, $firmaId, (int) $_SESSION['user_id']);
+        personnelResponse($result);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'save_zimmet') {
+        if (!Gate::allows('personel_duzenle') && !Gate::allows('demirbas/zimmet')) {
+            personnelResponse(['success' => false, 'message' => 'Zimmet verme yetkiniz bulunmuyor.'], 403);
+        }
+        $data = json_decode((string) file_get_contents('php://input'), true);
+        $data = is_array($data) ? $data : [];
+        $sentToken = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        $knownToken = (string) ($_SESSION['csrf_token'] ?? '');
+        if ($sentToken === '' || $knownToken === '' || !hash_equals($knownToken, $sentToken)) {
+            personnelResponse(['success' => false, 'message' => 'Güvenlik doğrulaması başarısız.'], 403);
+        }
+        $rawPersonelId = (string) ($data['personel_id'] ?? '');
+        $personelId = ctype_digit($rawPersonelId) ? (int) $rawPersonelId : (int) Security::decrypt($rawPersonelId);
+        if ($personelId <= 0) {
+            personnelResponse(['success' => false, 'message' => 'Geçersiz personel kaydı.'], 422);
+        }
+        $data['personel_id'] = $personelId;
+        $result = $model->saveZimmet($data, $firmaId, (int) $_SESSION['user_id']);
+        personnelResponse($result);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'iade_zimmet') {
+        if (!Gate::allows('personel_duzenle') && !Gate::allows('demirbas/zimmet')) {
+            personnelResponse(['success' => false, 'message' => 'Zimmet iade alma yetkiniz bulunmuyor.'], 403);
+        }
+        $data = json_decode((string) file_get_contents('php://input'), true);
+        $data = is_array($data) ? $data : [];
+        $sentToken = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        $knownToken = (string) ($_SESSION['csrf_token'] ?? '');
+        if ($sentToken === '' || $knownToken === '' || !hash_equals($knownToken, $sentToken)) {
+            personnelResponse(['success' => false, 'message' => 'Güvenlik doğrulaması başarısız.'], 403);
+        }
+        $rawPersonelId = (string) ($data['personel_id'] ?? '');
+        $personelId = ctype_digit($rawPersonelId) ? (int) $rawPersonelId : (int) Security::decrypt($rawPersonelId);
+        if ($personelId <= 0) {
+            personnelResponse(['success' => false, 'message' => 'Geçersiz personel kaydı.'], 422);
+        }
+        $data['personel_id'] = $personelId;
+        if (!empty($data['id']) && !ctype_digit((string) $data['id'])) {
+            $data['id'] = (int) Security::decrypt((string) $data['id']);
+        }
+        $result = $model->iadeZimmet($data, $firmaId, (int) $_SESSION['user_id']);
+        personnelResponse($result);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'delete_zimmet') {
+        if (!Gate::allows('personel_duzenle') && !Gate::allows('demirbas/zimmet')) {
+            personnelResponse(['success' => false, 'message' => 'Zimmet silme yetkiniz bulunmuyor.'], 403);
+        }
+        $data = json_decode((string) file_get_contents('php://input'), true);
+        $data = is_array($data) ? $data : [];
+        $sentToken = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        $knownToken = (string) ($_SESSION['csrf_token'] ?? '');
+        if ($sentToken === '' || $knownToken === '' || !hash_equals($knownToken, $sentToken)) {
+            personnelResponse(['success' => false, 'message' => 'Güvenlik doğrulaması başarısız.'], 403);
+        }
+        $rawPersonelId = (string) ($data['personel_id'] ?? '');
+        $personelId = ctype_digit($rawPersonelId) ? (int) $rawPersonelId : (int) Security::decrypt($rawPersonelId);
+        $rawZimmetId = (string) ($data['id'] ?? '');
+        $zimmetId = ctype_digit($rawZimmetId) ? (int) $rawZimmetId : (int) Security::decrypt($rawZimmetId);
+        if ($personelId <= 0 || $zimmetId <= 0) {
+            personnelResponse(['success' => false, 'message' => 'Geçersiz kayıt bilgisi.'], 422);
+        }
+        $result = $model->deleteZimmet($zimmetId, $personelId, $firmaId, (int) $_SESSION['user_id']);
+        personnelResponse($result);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && $action === 'zimmet_hareketleri') {
+        $rawPersonelId = (string) ($_GET['personel_id'] ?? '');
+        $personelId = ctype_digit($rawPersonelId) ? (int) $rawPersonelId : (int) Security::decrypt($rawPersonelId);
+        $rawZimmetId = (string) ($_GET['id'] ?? '');
+        $zimmetId = ctype_digit($rawZimmetId) ? (int) $rawZimmetId : (int) Security::decrypt($rawZimmetId);
+        if ($personelId <= 0 || $zimmetId <= 0) {
+            personnelResponse(['success' => false, 'message' => 'Geçersiz kayıt bilgisi.'], 422);
+        }
+        $result = $model->getZimmetHareketleri($zimmetId, $personelId, $firmaId);
+        personnelResponse($result);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && $action === 'search_demirbas') {
+        $search = mb_substr(trim((string) ($_GET['q'] ?? '')), 0, 50);
+        $options = $model->getDemirbasOptions($firmaId, $search);
+        personnelResponse(['success' => true, 'options' => $options]);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && $action === 'puantaj_is_takip') {
+        $rawPersonelId = (string) ($_GET['personel_id'] ?? $_GET['id'] ?? '');
+        $personelId = ctype_digit($rawPersonelId) ? (int) $rawPersonelId : (int) Security::decrypt($rawPersonelId);
+        if ($personelId <= 0) {
+            personnelResponse(['success' => false, 'message' => 'Geçersiz personel kaydı.'], 422);
+        }
+        $filters = [
+            'start_date' => $_GET['start_date'] ?? null,
+            'end_date' => $_GET['end_date'] ?? null,
+            'limit' => $_GET['limit'] ?? 150,
+        ];
+        $result = $model->getPuantajIsTakipDetails($personelId, $firmaId, $filters);
+        personnelResponse(['success' => true, ...$result]);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'save_puantaj_job') {
+        if (!Gate::allows('personel_duzenle') && !Gate::allows('puantaj_yonetim')) {
+            personnelResponse(['success' => false, 'message' => 'İş kaydı oluşturma yetkiniz bulunmuyor.'], 403);
+        }
+        $data = json_decode((string) file_get_contents('php://input'), true);
+        $data = is_array($data) ? $data : [];
+        $sentToken = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        $knownToken = (string) ($_SESSION['csrf_token'] ?? '');
+        if ($sentToken === '' || $knownToken === '' || !hash_equals($knownToken, $sentToken)) {
+            personnelResponse(['success' => false, 'message' => 'Güvenlik doğrulaması başarısız.'], 403);
+        }
+        $rawPersonelId = (string) ($data['personel_id'] ?? '');
+        $personelId = ctype_digit($rawPersonelId) ? (int) $rawPersonelId : (int) Security::decrypt($rawPersonelId);
+        if ($personelId <= 0) {
+            personnelResponse(['success' => false, 'message' => 'Geçersiz personel kaydı.'], 422);
+        }
+        $data['personel_id'] = $personelId;
+        $result = $model->savePuantajJob($data, $firmaId, (int) $_SESSION['user_id']);
+        personnelResponse($result);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'delete_puantaj_job') {
+        if (!Gate::allows('personel_duzenle') && !Gate::allows('puantaj_yonetim')) {
+            personnelResponse(['success' => false, 'message' => 'İş kaydı silme yetkiniz bulunmuyor.'], 403);
+        }
+        $data = json_decode((string) file_get_contents('php://input'), true);
+        $data = is_array($data) ? $data : [];
+        $sentToken = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        $knownToken = (string) ($_SESSION['csrf_token'] ?? '');
+        if ($sentToken === '' || $knownToken === '' || !hash_equals($knownToken, $sentToken)) {
+            personnelResponse(['success' => false, 'message' => 'Güvenlik doğrulaması başarısız.'], 403);
+        }
+        $rawPersonelId = (string) ($data['personel_id'] ?? '');
+        $personelId = ctype_digit($rawPersonelId) ? (int) $rawPersonelId : (int) Security::decrypt($rawPersonelId);
+        $rawJobId = (string) ($data['id'] ?? '');
+        $jobId = ctype_digit($rawJobId) ? (int) $rawJobId : (int) Security::decrypt($rawJobId);
+        $type = (string) ($data['type'] ?? 'yapilan_is');
+        if ($personelId <= 0 || $jobId <= 0) {
+            personnelResponse(['success' => false, 'message' => 'Geçersiz kayıt bilgisi.'], 422);
+        }
+        $result = $model->deletePuantajJob($jobId, $type, $personelId, $firmaId, (int) $_SESSION['user_id']);
         personnelResponse($result);
     }
 

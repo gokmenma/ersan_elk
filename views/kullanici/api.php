@@ -82,6 +82,7 @@ if ($action == "kullanici-kaydet") {
         $izinOnaySirasi = $izinOnayiYapacakMi === 'Evet' && $izinOnaySirasiRaw !== ''
             ? max(1, (int) $izinOnaySirasiRaw)
             : null;
+        $evrakImzaYetkisi = ($_POST['evrak_imza_yetkisi'] ?? '0') === '1' ? 1 : 0;
 
         $data = [
             'id' => $id, // Eğer id varsa deşifre et
@@ -96,6 +97,7 @@ if ($action == "kullanici-kaydet") {
             'firma_ids' => $user_firma_ids,
             'izin_onayi_yapacakmi' => $izinOnayiYapacakMi,
             'izin_onay_sirasi' => $izinOnaySirasi,
+            'evrak_imza_yetkisi' => $evrakImzaYetkisi,
             'mail_avans_talep' => $mail_avans_talep,
             'mail_izin_talep' => $mail_izin_talep,
             'mail_genel_talep' => $mail_genel_talep,

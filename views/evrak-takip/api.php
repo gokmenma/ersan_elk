@@ -850,6 +850,42 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 ], JSON_UNESCAPED_UNICODE);
                 break;
 
+            case 'evrak-islak-imza-onaya-sun':
+                $id = $decryptId($_POST['id'] ?? '');
+                if ($id <= 0) throw new Exception('Geçersiz evrak ID.');
+                $submission = $Model->submitForApproval($id, $currentUserId, (string) ($_SERVER['REMOTE_ADDR'] ?? ''), 'islak_imza');
+                (new SystemLogModel())->logAction($currentUserId, 'Evrak Islak İmza Onayına Sunma', "Evrak ID: {$id} ıslak imza onayına sunuldu. İmzacılar: " . implode(', ', $submission['signers']), SystemLogModel::LEVEL_IMPORTANT);
+                $siradaki = $Model->getNextPendingSigner($id);
+                if ($siradaki) (new EvrakOnayBildirimService())->imzaSirasiGeldi($Model->getById($id), (int) $siradaki->kullanici_id, (int) $siradaki->sira, (int) $submission['total']);
+                echo json_encode(['status' => 'success', 'message' => 'Evrak ıslak imza onayına sunuldu. ' . $submission['total'] . ' yetkilinin onayı bekleniyor.', 'data' => $submission], JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'evrak-mobil-imza-onaya-sun':
+                $id = $decryptId($_POST['id'] ?? '');
+                if ($id <= 0) throw new Exception('Geçersiz evrak ID.');
+                $submission = $Model->submitForApproval($id, $currentUserId, (string) ($_SERVER['REMOTE_ADDR'] ?? ''), 'mobil_imza');
+                (new SystemLogModel())->logAction($currentUserId, 'Evrak Mobil İmza Onayına Sunma', "Evrak ID: {$id} mobil imza onayına sunuldu. İmzacılar: " . implode(', ', $submission['signers']), SystemLogModel::LEVEL_IMPORTANT);
+                $siradaki = $Model->getNextPendingSigner($id);
+                if ($siradaki) (new EvrakOnayBildirimService())->imzaSirasiGeldi($Model->getById($id), (int) $siradaki->kullanici_id, (int) $siradaki->sira, (int) $submission['total']);
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'Evrak mobil imza onayına sunuldu. Mobil imzalama entegrasyonu devreye alındığında sıradaki yetkili işlemi tamamlayabilecektir.',
+                    'data' => $submission,
+                ], JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'evrak-islak-imza-onayla':
+                $id = $decryptId($_POST['id'] ?? '');
+                if ($id <= 0) throw new Exception('Geçersiz evrak ID.');
+                $approval = $Model->approveWithWetSignature($id, $currentUserId, (string) ($_SERVER['REMOTE_ADDR'] ?? ''));
+                $evrak = $Model->getById($id);
+                $bildirim = new EvrakOnayBildirimService();
+                if ($approval['completed']) $bildirim->onayTamamlandi($evrak);
+                elseif ($siradaki = $Model->getNextPendingSigner($id)) $bildirim->imzaSirasiGeldi($evrak, (int) $siradaki->kullanici_id, (int) $siradaki->sira, (int) $approval['total']);
+                (new SystemLogModel())->logAction($currentUserId, 'Evrak Islak İmza Onayı', "Evrak ID: {$id} ıslak imza ile onaylandı ({$approval['approved']}/{$approval['total']}).", SystemLogModel::LEVEL_IMPORTANT);
+                echo json_encode(['status' => 'success', 'message' => $approval['completed'] ? 'Tüm ıslak imza onayları tamamlandı.' : 'Islak imza onayınız kaydedildi; sıradaki yetkili bekleniyor.', 'data' => $approval], JSON_UNESCAPED_UNICODE);
+                break;
+
             case 'evrak-sil':
                 $id = $decryptId($_POST['id'] ?? '');
                 if ($id <= 0) {
@@ -1061,6 +1097,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $encryptedId = Security::encrypt((int) $evrak->id);
                     $type = (string) ($evrak->evrak_tipi ?? 'gelen');
                     $approvalStatus = (string) ($evrak->onay_durumu ?? 'taslak');
+                    $approvalType = (string) ($evrak->onay_turu ?? 'eimza');
+                    $approvalTypeLabel = match ($approvalType) {
+                        'islak_imza' => 'ISLAK İMZA',
+                        'mobil_imza' => 'MOBİL İMZA',
+                        default => 'E-İMZA',
+                    };
                     $approval = $approvalMap[(int) $evrak->id] ?? ['toplam' => 0, 'onaylanan' => 0, 'sira_bende' => false];
                     $myTurn = $approvalStatus === 'onay_bekliyor' && !empty($approval['sira_bende']);
                     $locked = $approvalStatus !== 'taslak';
@@ -1105,8 +1147,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                     $flowAttr = $flowItems !== '' ? ' tabindex="0" role="button" data-onay-akis="' . $esc('<ul class="list-unstyled mb-0">' . $flowItems . '</ul>') . '"' : '';
                     if ($type !== 'giden' || (int) $approval['toplam'] === 0) $approvalHtml = '<span class="text-muted small">-</span>';
-                    elseif ($approvalStatus === 'onaylandi') $approvalHtml = '<span class="badge e-imza-rozet evrak-imza-onizle bg-success-subtle text-success border rounded-pill px-2 py-1 font-size-11 fw-semibold" data-id="' . $esc($encryptedId) . '" style="cursor:pointer" title="Evrakı ve imza tarihçesini görüntüle"' . $flowAttr . '><i class="bx bx-check-double"></i> ONAYLI</span>';
-                    elseif ($approvalStatus === 'onay_bekliyor') $approvalHtml = '<span class="badge e-imza-rozet evrak-imza-onizle ' . ($myTurn ? 'bg-warning text-dark' : 'bg-warning-subtle text-warning border') . ' rounded-pill px-2 py-1 font-size-11 fw-semibold" data-id="' . $esc($encryptedId) . '" style="cursor:pointer" title="Evrakı ve imza tarihçesini görüntüle"' . $flowAttr . '><i class="bx bx-time-five"></i> ' . ($myTurn ? 'İMZANIZDA' : 'ONAYDA') . ' ' . (int) $approval['onaylanan'] . '/' . (int) $approval['toplam'] . '</span>';
+                    elseif ($approvalStatus === 'onaylandi') $approvalHtml = '<span class="badge e-imza-rozet evrak-imza-onizle bg-success-subtle text-success border rounded-pill px-2 py-1 font-size-11 fw-semibold" data-id="' . $esc($encryptedId) . '" style="cursor:pointer" title="Evrakı ve imza tarihçesini görüntüle"' . $flowAttr . '><i class="bx bx-check-double"></i> ' . ($approvalType === 'eimza' ? 'ONAYLI' : $approvalTypeLabel . ' ONAYLI') . '</span>';
+                    elseif ($approvalStatus === 'onay_bekliyor') $approvalHtml = '<span class="badge e-imza-rozet evrak-imza-onizle ' . ($myTurn ? 'bg-warning text-dark' : 'bg-warning-subtle text-warning border') . ' rounded-pill px-2 py-1 font-size-11 fw-semibold" data-id="' . $esc($encryptedId) . '" style="cursor:pointer" title="' . $approvalTypeLabel . ' akışı — evrakı ve tarihçeyi görüntüle"' . $flowAttr . '><i class="bx bx-time-five"></i> ' . ($approvalType === 'eimza' ? '' : $approvalTypeLabel . ' · ') . ($myTurn ? 'İMZANIZDA' : 'ONAYDA') . ' ' . (int) $approval['onaylanan'] . '/' . (int) $approval['toplam'] . '</span>';
                     else $approvalHtml = '<span class="badge e-imza-rozet evrak-imza-onizle bg-secondary-subtle text-secondary border rounded-pill px-2 py-1 font-size-11 fw-semibold" data-id="' . $esc($encryptedId) . '" style="cursor:pointer" title="Evrakı ve imza tarihçesini görüntüle"' . $flowAttr . '>TASLAK</span>';
 
                     $files = $attachmentMap[(int) $evrak->id] ?? [];
@@ -1135,7 +1177,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-duzenle" data-id="' . $esc($encryptedId) . '" title="Düzenle"><i class="bx bx-edit-alt text-primary"></i><span>Düzenle</span></button>';
                     }
                     if (!empty($evrak->uets_mesaj_id)) $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 btn-uets-deliller" data-uets-id="' . $esc($evrak->uets_mesaj_id) . '" title="UETS Delillerini Görüntüle"><i class="bx bx-shield-quarter text-info"></i><span>UETS Delillerini Görüntüle</span></button>';
-                    if ($myTurn) $actionItems .= '<a href="index?p=evrak-takip/giden-evrak&amp;id=' . $esc($encryptedId) . '&amp;islem=imzala" class="dropdown-item d-flex align-items-center gap-2" title="E-İmza ile İmzala"><i class="bx bx-check text-success"></i><span>E-İmza ile İmzala</span></a><button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-e-imza-iade" data-id="' . $esc($encryptedId) . '" title="Düzeltilmek Üzere İade Et"><i class="bx bx-undo text-warning"></i><span>Düzeltilmek Üzere İade Et</span></button>';
+                    if ($myTurn) {
+                        $signActionLabel = match ($approvalType) {
+                            'islak_imza' => 'Islak İmza ile Onayla',
+                            'mobil_imza' => 'Mobil İmza ile Onayla',
+                            default => 'E-İmza ile İmzala',
+                        };
+                        $actionItems .= '<a href="index?p=evrak-takip/giden-evrak&amp;id=' . $esc($encryptedId) . '&amp;islem=imzala" class="dropdown-item d-flex align-items-center gap-2" title="' . $signActionLabel . '"><i class="bx bx-check text-success"></i><span>' . $signActionLabel . '</span></a><button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-e-imza-iade" data-id="' . $esc($encryptedId) . '" title="Düzeltilmek Üzere İade Et"><i class="bx bx-undo text-warning"></i><span>Düzeltilmek Üzere İade Et</span></button>';
+                    }
                     if ($locked && $approvalStatus === 'onay_bekliyor' && (int) ($evrak->olusturan_kullanici_id ?? 0) === $currentUserId) $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-e-imza-geri-al" data-id="' . $esc($encryptedId) . '" title="Evrakı Üzerime Geri Al"><i class="bx bx-revision text-info"></i><span>Evrakı Üzerime Geri Al</span></button>';
                     if (!$locked && !$isKep) $actionItems .= '<div class="dropdown-divider"></div><button type="button" class="dropdown-item d-flex align-items-center gap-2 text-danger evrak-sil cm-danger" data-id="' . $esc($encryptedId) . '" title="Sil"><i class="bx bx-trash"></i><span>Sil</span></button>';
                     $actions = '<div class="action-btn-group d-flex align-items-center justify-content-center"><div class="dropdown"><button type="button" class="btn btn-sm btn-outline-secondary bg-white dropdown-toggle" data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false" title="İşlemler"><i class="bx bx-cog me-1"></i> İşlemler</button><div class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-1">' . $actionItems . '</div></div></div>';
@@ -1666,7 +1715,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
                 $kepService = new KepService();
                 $res = $kepService->verifyRecipient($firmaId, $aliciKep);
-                if (($res['status'] ?? '') === 'success' && !empty($res['exist']) && !empty($res['suitable'])) {
+                $saveToAddressBook = filter_var(
+                    $_POST['adres_defterine_kaydet'] ?? false,
+                    FILTER_VALIDATE_BOOLEAN
+                );
+                if ($saveToAddressBook && ($res['status'] ?? '') === 'success' && !empty($res['exist']) && !empty($res['suitable'])) {
                     (new KepAdresDefteriModel())->saveVerified($firmaId, $aliciKep);
                     $res['adres_defterine_kaydedildi'] = true;
                 }

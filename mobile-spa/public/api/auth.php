@@ -230,6 +230,7 @@ function sessionPayload(): array
         'documents' => mobileCan(['evrak-takip/list'], ['evrak-takip/list']),
         'shifts' => mobileCan(['nobet/onay-islemleri', 'yonetici_onayi', 'nobet/list'], ['nobet/onay-islemleri', 'nobet/list']),
         'payroll' => mobileCan(['bordro/list'], ['bordro/list']),
+        'contracts' => mobileCan(['hakedis', 'hakedisler/index'], ['hakedisler/index', 'hakedisler/sozlesme-detay', 'hakedisler/hakedis-detay']),
         'notices' => mobileCan(['ihbar/list'], ['ihbar/list']),
         'illegal' => mobileCan(['kacak_islemleri', 'kacak/list'], ['kacak/list']),
         'illegal_approve' => Gate::allows('kacak_onay') || Gate::isSuperAdmin(),

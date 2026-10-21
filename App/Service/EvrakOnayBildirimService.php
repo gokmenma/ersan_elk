@@ -21,18 +21,30 @@ final class EvrakOnayBildirimService
 
     public function imzaSirasiGeldi(object $evrak, int $signerId, int $sira, int $toplam): void
     {
+        $onayTuru = (string) ($evrak->onay_turu ?? 'eimza');
+        $turMetni = match ($onayTuru) {
+            'islak_imza' => 'ıslak imza',
+            'mobil_imza' => 'mobil imza',
+            default => 'elektronik imza',
+        };
         $baslik = 'İmzanızı Bekleyen Evrak';
-        $ozet = 'Giden evrak elektronik imza onayınıza sunuldu' . ($toplam > 1 ? ' (' . $sira . '. imza)' : '') . '.';
+        $ozet = 'Giden evrak ' . $turMetni . ' onayınıza sunuldu' . ($toplam > 1 ? ' (' . $sira . '. imza)' : '') . '.';
         $this->gonder($signerId, $evrak, $baslik, $ozet, 'edit-3', 'warning', 'Evrakı İncele ve İmzala');
     }
 
     public function onayTamamlandi(object $evrak): void
     {
+        $onayTuru = (string) ($evrak->onay_turu ?? 'eimza');
+        $turMetni = match ($onayTuru) {
+            'islak_imza' => 'Islak İmza',
+            'mobil_imza' => 'Mobil İmza',
+            default => 'E-İmza',
+        };
         $this->gonder(
             (int) ($evrak->olusturan_kullanici_id ?? 0),
             $evrak,
-            'Evrak E-İmza ile Onaylandı',
-            'Hazırladığınız giden evrakın tüm imzaları tamamlandı ve evrak elektronik imzalı hâle geldi.',
+            'Evrak ' . $turMetni . ' ile Onaylandı',
+            'Hazırladığınız giden evrakın tüm ' . mb_strtolower($turMetni, 'UTF-8') . ' onayları tamamlandı.',
             'check-circle',
             'success',
             'Evrakı Görüntüle'

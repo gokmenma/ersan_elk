@@ -1893,6 +1893,588 @@ class MobilePersonelModel extends Model
         ];
     }
 
+    public function getZimmetDetails(int $personelId, int $firmaId): array
+    {
+        $personel = $this->mobileDirectoryDetail($personelId, $firmaId);
+        if (!$personel) {
+            throw new \RuntimeException('Personel bulunamadı veya erişim yetkiniz yok.');
+        }
+
+        $zimmetModel = new \App\Model\DemirbasZimmetModel();
+        $aracZimmetModel = new \App\Model\AracZimmetModel();
+
+        $rawZimmetler = $zimmetModel->getByPersonel($personelId) ?: [];
+        $rawAracZimmetler = $aracZimmetModel->getHistoryByPersonel($personelId) ?: [];
+
+        $items = [];
+        $toplamZimmet = 0;
+        $aktifZimmet = 0;
+        $iadeZimmet = 0;
+        $aracZimmet = 0;
+        $kategoriSayilari = [];
+
+        foreach ($rawZimmetler as $z) {
+            $encId = \App\Helper\Security::encrypt((string) $z->id);
+            $kat = trim((string) ($z->kategori_adi ?? 'Genel'));
+            if ($kat === '') {
+                $kat = 'Genel';
+            }
+            $durum = (string) ($z->durum ?? 'teslim');
+            $isTeslim = ($durum === 'teslim');
+
+            $toplamZimmet++;
+            if ($isTeslim) {
+                $aktifZimmet++;
+            } else {
+                $iadeZimmet++;
+            }
+            $kategoriSayilari[$kat] = ($kategoriSayilari[$kat] ?? 0) + 1;
+
+            $items[] = [
+                'id' => $encId,
+                'raw_id' => (int) $z->id,
+                'demirbas_id' => (int) ($z->demirbas_id ?? 0),
+                'demirbas_no' => (string) ($z->demirbas_no ?? ''),
+                'demirbas_adi' => (string) ($z->demirbas_adi ?? 'Demirbaş'),
+                'marka' => (string) ($z->marka ?? ''),
+                'model' => (string) ($z->model ?? ''),
+                'seri_no' => (string) ($z->seri_no ?? ''),
+                'kategori_adi' => $kat,
+                'teslim_tarihi' => !empty($z->teslim_tarihi) ? (string) $z->teslim_tarihi : '',
+                'teslim_tarihi_formatted' => !empty($z->teslim_tarihi) ? date('d.m.Y', strtotime((string) $z->teslim_tarihi)) : '',
+                'teslim_miktar' => max(1, (int) ($z->teslim_miktar ?? 1)),
+                'iade_tarihi' => !empty($z->iade_tarihi) ? (string) $z->iade_tarihi : null,
+                'iade_tarihi_formatted' => !empty($z->iade_tarihi) ? date('d.m.Y', strtotime((string) $z->iade_tarihi)) : '-',
+                'iade_miktar' => (int) ($z->iade_miktar ?? 0),
+                'durum' => $durum,
+                'durum_label' => $durum === 'teslim' ? 'Zimmetli' : ($durum === 'iade' ? 'İade Edildi' : ($durum === 'kayip' ? 'Kayıp' : 'Arızalı')),
+                'aciklama' => (string) ($z->aciklama ?? ''),
+                'is_arac' => false,
+                'can_iade' => $isTeslim,
+                'can_delete' => $isTeslim,
+            ];
+        }
+
+        foreach ($rawAracZimmetler as $az) {
+            $encId = \App\Helper\Security::encrypt((string) $az->id);
+            $kat = 'Araçlar';
+            $durum = ($az->durum === 'aktif' ? 'teslim' : ($az->durum === 'iade_edildi' ? 'iade' : (string) $az->durum));
+            $isTeslim = ($durum === 'teslim');
+
+            $toplamZimmet++;
+            $aracZimmet++;
+            if ($isTeslim) {
+                $aktifZimmet++;
+            } else {
+                $iadeZimmet++;
+            }
+            $kategoriSayilari[$kat] = ($kategoriSayilari[$kat] ?? 0) + 1;
+
+            $items[] = [
+                'id' => $encId,
+                'raw_id' => (int) $az->id,
+                'demirbas_id' => (int) ($az->arac_id ?? 0),
+                'demirbas_no' => (string) ($az->plaka ?? ''),
+                'demirbas_adi' => 'ARAÇ: ' . ($az->plaka ?? ''),
+                'marka' => (string) ($az->marka ?? ''),
+                'model' => (string) ($az->model ?? ''),
+                'seri_no' => '',
+                'kategori_adi' => $kat,
+                'teslim_tarihi' => !empty($az->zimmet_tarihi) ? (string) $az->zimmet_tarihi : '',
+                'teslim_tarihi_formatted' => !empty($az->zimmet_tarihi) ? date('d.m.Y', strtotime((string) $az->zimmet_tarihi)) : '',
+                'teslim_miktar' => 1,
+                'iade_tarihi' => !empty($az->iade_tarihi) ? (string) $az->iade_tarihi : null,
+                'iade_tarihi_formatted' => !empty($az->iade_tarihi) ? date('d.m.Y', strtotime((string) $az->iade_tarihi)) : '-',
+                'iade_miktar' => ($durum === 'iade' ? 1 : 0),
+                'durum' => $durum,
+                'durum_label' => $durum === 'teslim' ? 'Zimmetli' : 'İade Edildi',
+                'aciklama' => (string) ($az->notlar ?? ''),
+                'is_arac' => true,
+                'can_iade' => $isTeslim,
+                'can_delete' => false,
+            ];
+        }
+
+        // Sıralama: Aktifler önce, sonra teslim tarihine göre azalan
+        usort($items, static function ($a, $b) {
+            if ($a['durum'] === 'teslim' && $b['durum'] !== 'teslim') {
+                return -1;
+            }
+            if ($a['durum'] !== 'teslim' && $b['durum'] === 'teslim') {
+                return 1;
+            }
+            return strcmp((string) $b['teslim_tarihi'], (string) $a['teslim_tarihi']);
+        });
+
+        return [
+            'items' => $items,
+            'summary' => [
+                'toplam_zimmet' => $toplamZimmet,
+                'aktif_zimmet' => $aktifZimmet,
+                'iade_zimmet' => $iadeZimmet,
+                'arac_zimmet' => $aracZimmet,
+                'kategori_sayilari' => $kategoriSayilari,
+            ],
+        ];
+    }
+
+    public function getDemirbasOptions(int $firmaId, string $search = ''): array
+    {
+        $dm = new \App\Model\DemirbasModel();
+        $options = $dm->getForSelect($search, 'demirbas') ?: [];
+        $result = [];
+        foreach ($options as $opt) {
+            $result[] = [
+                'id' => (int) $opt->id,
+                'text' => (string) $opt->text,
+                'kalan_miktar' => (int) ($opt->kalan_miktar ?? 1),
+                'seri_no' => (string) ($opt->seri_no ?? ''),
+            ];
+        }
+        return $result;
+    }
+
+    public function saveZimmet(array $data, int $firmaId, int $userId): array
+    {
+        $personelId = (int) ($data['personel_id'] ?? 0);
+        $personel = $this->mobileDirectoryDetail($personelId, $firmaId);
+        if (!$personel) {
+            throw new \RuntimeException('Personel bulunamadı veya erişim yetkiniz yok.');
+        }
+
+        $demirbasId = (int) ($data['demirbas_id'] ?? 0);
+        if ($demirbasId <= 0) {
+            throw new \RuntimeException('Lütfen teslim edilecek demirbaşı seçiniz.');
+        }
+
+        $teslimMiktar = max(1, (int) ($data['teslim_miktar'] ?? 1));
+        $teslimTarihi = !empty($data['teslim_tarihi']) ? (string) $data['teslim_tarihi'] : date('Y-m-d');
+        if (str_contains($teslimTarihi, '.')) {
+            $parts = explode('.', $teslimTarihi);
+            if (count($parts) === 3) {
+                $teslimTarihi = $parts[2] . '-' . str_pad($parts[1], 2, '0', STR_PAD_LEFT) . '-' . str_pad($parts[0], 2, '0', STR_PAD_LEFT);
+            }
+        }
+        $aciklama = mb_substr(trim((string) ($data['aciklama'] ?? '')), 0, 1000);
+
+        $zimmetModel = new \App\Model\DemirbasZimmetModel();
+        $lastId = $zimmetModel->zimmetVer([
+            'demirbas_id' => $demirbasId,
+            'personel_id' => $personelId,
+            'teslim_tarihi' => $teslimTarihi,
+            'teslim_miktar' => $teslimMiktar,
+            'aciklama' => $aciklama,
+            'teslim_eden_id' => $userId,
+        ]);
+
+        return [
+            'success' => true,
+            'message' => 'Zimmet başarıyla verildi ve stok güncellendi.',
+            'last_id' => $lastId,
+        ];
+    }
+
+    public function iadeZimmet(array $data, int $firmaId, int $userId): array
+    {
+        $personelId = (int) ($data['personel_id'] ?? 0);
+        $personel = $this->mobileDirectoryDetail($personelId, $firmaId);
+        if (!$personel) {
+            throw new \RuntimeException('Personel bulunamadı veya erişim yetkiniz yok.');
+        }
+
+        $isArac = !empty($data['is_arac']);
+        $rawId = (int) ($data['id'] ?? 0);
+        if ($rawId <= 0) {
+            throw new \RuntimeException('Geçersiz zimmet kaydı.');
+        }
+
+        $iadeTarihi = !empty($data['iade_tarihi']) ? (string) $data['iade_tarihi'] : date('Y-m-d');
+        if (str_contains($iadeTarihi, '.')) {
+            $parts = explode('.', $iadeTarihi);
+            if (count($parts) === 3) {
+                $iadeTarihi = $parts[2] . '-' . str_pad($parts[1], 2, '0', STR_PAD_LEFT) . '-' . str_pad($parts[0], 2, '0', STR_PAD_LEFT);
+            }
+        }
+        $aciklama = mb_substr(trim((string) ($data['aciklama'] ?? '')), 0, 1000);
+
+        if ($isArac) {
+            $aracZimmetModel = new \App\Model\AracZimmetModel();
+            $iadeKm = !empty($data['iade_km']) ? (int) $data['iade_km'] : null;
+            $res = $aracZimmetModel->iadeEt($rawId, $iadeKm, $aciklama, $iadeTarihi);
+            if (!$res) {
+                throw new \RuntimeException('Araç zimmet iadesi tamamlanamadı.');
+            }
+            return [
+                'success' => true,
+                'message' => 'Araç zimmeti başarıyla iade alındı.',
+            ];
+        }
+
+        $iadeMiktar = max(1, (int) ($data['iade_miktar'] ?? 1));
+        $zimmetModel = new \App\Model\DemirbasZimmetModel();
+        $zimmetKaydi = $zimmetModel->find($rawId);
+        if (!$zimmetKaydi) {
+            throw new \RuntimeException('Zimmet kaydı bulunamadı.');
+        }
+        if ($zimmetKaydi->durum !== 'teslim') {
+            throw new \RuntimeException('Sadece aktif zimmet kayıtları iade alınabilir.');
+        }
+
+        $kalanZimmet = (int) ($zimmetKaydi->teslim_miktar ?? 0) - (int) ($zimmetKaydi->iade_miktar ?? 0);
+        if ($iadeMiktar > $kalanZimmet) {
+            throw new \RuntimeException("İade miktarı kalan miktardan ({$kalanZimmet}) fazla olamaz.");
+        }
+
+        $res = $zimmetModel->iadeYap($rawId, $iadeTarihi, $iadeMiktar, $aciklama);
+        if (!$res) {
+            throw new \RuntimeException('İade işlemi tamamlanamadı.');
+        }
+
+        return [
+            'success' => true,
+            'message' => 'Demirbaş iadesi başarıyla tamamlandı ve stok güncellendi.',
+        ];
+    }
+
+    public function deleteZimmet(int $zimmetId, int $personelId, int $firmaId, int $userId): array
+    {
+        $personel = $this->mobileDirectoryDetail($personelId, $firmaId);
+        if (!$personel) {
+            throw new \RuntimeException('Personel bulunamadı veya erişim yetkiniz yok.');
+        }
+
+        $zimmetModel = new \App\Model\DemirbasZimmetModel();
+        $zimmetKaydi = $zimmetModel->find($zimmetId);
+        if (!$zimmetKaydi) {
+            throw new \RuntimeException('Zimmet kaydı bulunamadı.');
+        }
+        if ((int) $zimmetKaydi->personel_id !== $personelId) {
+            throw new \RuntimeException('Bu zimmet kaydı seçili personele ait değil.');
+        }
+        if ($zimmetKaydi->durum === 'iade') {
+            throw new \RuntimeException('İade alınmış (arşiv) kayıtları silemezsiniz.');
+        }
+
+        $res = $zimmetModel->delete($zimmetId, false);
+        if (!$res) {
+            throw new \RuntimeException('Zimmet kaydı silinemedi.');
+        }
+
+        return [
+            'success' => true,
+            'message' => 'Zimmet kaydı silindi ve stok güncellendi.',
+        ];
+    }
+
+    public function getZimmetHareketleri(int $zimmetId, int $personelId, int $firmaId): array
+    {
+        $personel = $this->mobileDirectoryDetail($personelId, $firmaId);
+        if (!$personel) {
+            throw new \RuntimeException('Personel bulunamadı veya erişim yetkiniz yok.');
+        }
+
+        $hareketModel = new \App\Model\DemirbasHareketModel();
+        $rows = $hareketModel->getZimmetHareketleri($zimmetId);
+
+        $hareketler = [];
+        foreach ($rows as $h) {
+            $hareketler[] = [
+                'id' => (int) $h->id,
+                'hareket_tipi' => (string) $h->hareket_tipi,
+                'hareket_tipi_label' => $h->hareket_tipi === 'zimmet' ? 'Teslim' : ($h->hareket_tipi === 'iade' ? 'İade' : ($h->hareket_tipi === 'sarf' ? 'Tüketim' : 'Kayıp')),
+                'miktar' => (int) ($h->miktar ?? 1),
+                'tarih' => !empty($h->tarih) ? date('d.m.Y', strtotime((string) $h->tarih)) : '',
+                'aciklama' => (string) ($h->aciklama ?? ''),
+                'islem_yapan_adi' => (string) ($h->islem_yapan_adi ?? 'Sistem'),
+            ];
+        }
+
+        return [
+            'success' => true,
+            'hareketler' => $hareketler,
+        ];
+    }
+
+    public function getPuantajIsTakipDetails(int $personelId, int $firmaId, array $filters = []): array
+    {
+        $personel = $this->mobileDirectoryDetail($personelId, $firmaId);
+        if (!$personel) {
+            throw new \RuntimeException('Personel bulunamadı veya erişim yetkiniz yok.');
+        }
+
+        $startDate = !empty($filters['start_date']) ? (string) $filters['start_date'] : null;
+        $endDate = !empty($filters['end_date']) ? (string) $filters['end_date'] : null;
+        $limit = max(10, min(300, (int) ($filters['limit'] ?? 150)));
+
+        $items = [];
+        $toplamSonuclanan = 0;
+        $toplamAcik = 0;
+        $toplamOkunanAbone = 0;
+        $toplamKacak = 0;
+        $sahaIsleriCount = 0;
+        $okumaCount = 0;
+        $kacakCount = 0;
+        $isTipleriSayilari = [];
+
+        // 1. Yapılan İşler (Kesme, Açma, Sayaç, Arıza vb.)
+        $sqlY = "SELECT y.* FROM yapilan_isler y WHERE y.personel_id = :pid AND y.firma_id = :fid AND y.silinme_tarihi IS NULL";
+        $paramsY = [':pid' => $personelId, ':fid' => $firmaId];
+        if ($startDate) {
+            $sqlY .= " AND y.tarih >= :start_date";
+            $paramsY[':start_date'] = $startDate;
+        }
+        if ($endDate) {
+            $sqlY .= " AND y.tarih <= :end_date";
+            $paramsY[':end_date'] = $endDate;
+        }
+        $sqlY .= " ORDER BY y.tarih DESC, y.id DESC LIMIT " . $limit;
+        $stmtY = $this->db->prepare($sqlY);
+        $stmtY->execute($paramsY);
+        $rawY = $stmtY->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        foreach ($rawY as $y) {
+            $encId = \App\Helper\Security::encrypt((string) $y['id']);
+            $isEmriTipi = trim((string) ($y['is_emri_tipi'] ?? 'Saha Görevi'));
+            $isEmriSonucu = trim((string) ($y['is_emri_sonucu'] ?? 'Tamamlandı'));
+            $sonuclanmis = max(0, (int) ($y['sonuclanmis'] ?? 0));
+            $acikOlanlar = max(0, (int) ($y['acik_olanlar'] ?? 0));
+
+            $toplamSonuclanan += $sonuclanmis;
+            $toplamAcik += $acikOlanlar;
+            $sahaIsleriCount++;
+            $isTipleriSayilari[$isEmriTipi] = ($isTipleriSayilari[$isEmriTipi] ?? 0) + 1;
+
+            $items[] = [
+                'id' => $encId,
+                'raw_id' => (int) $y['id'],
+                'type' => 'yapilan_is',
+                'category' => 'Saha İşleri',
+                'is_emri_tipi' => $isEmriTipi,
+                'is_emri_sonucu' => $isEmriSonucu,
+                'tarih' => (string) $y['tarih'],
+                'tarih_formatted' => !empty($y['tarih']) ? date('d.m.Y', strtotime((string) $y['tarih'])) : '',
+                'sonuclanmis' => $sonuclanmis,
+                'acik_olanlar' => $acikOlanlar,
+                'ekip_kodu' => (string) ($y['ekip_kodu'] ?? ''),
+                'abone_no' => (string) ($y['abone_no'] ?? ''),
+                'is_emri_no' => (string) ($y['is_emri_no'] ?? ''),
+                'aciklama' => (string) ($y['aciklama'] ?? ''),
+                'can_delete' => true,
+            ];
+        }
+
+        // 2. Endeks Okuma Kayıtları
+        $sqlE = "SELECT e.* FROM endeks_okuma e WHERE e.personel_id = :pid AND e.firma_id = :fid AND e.silinme_tarihi IS NULL";
+        $paramsE = [':pid' => $personelId, ':fid' => $firmaId];
+        if ($startDate) {
+            $sqlE .= " AND e.tarih >= :start_date";
+            $paramsE[':start_date'] = $startDate;
+        }
+        if ($endDate) {
+            $sqlE .= " AND e.tarih <= :end_date";
+            $paramsE[':end_date'] = $endDate;
+        }
+        $sqlE .= " ORDER BY e.tarih DESC, e.id DESC LIMIT " . $limit;
+        $stmtE = $this->db->prepare($sqlE);
+        $stmtE->execute($paramsE);
+        $rawE = $stmtE->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        foreach ($rawE as $e) {
+            $encId = \App\Helper\Security::encrypt((string) $e['id']);
+            $okunanAbone = max(0, (int) ($e['okunan_abone_sayisi'] ?? 0));
+            $sayacDurum = trim((string) ($e['sayac_durum'] ?? 'Okuma Yapıldı'));
+
+            $toplamSonuclanan += $okunanAbone;
+            $toplamOkunanAbone += $okunanAbone;
+            $okumaCount++;
+            $isTipleriSayilari['Endeks Okuma'] = ($isTipleriSayilari['Endeks Okuma'] ?? 0) + 1;
+
+            $items[] = [
+                'id' => $encId,
+                'raw_id' => (int) $e['id'],
+                'type' => 'endeks_okuma',
+                'category' => 'Endeks Okuma',
+                'is_emri_tipi' => 'Endeks Okuma',
+                'is_emri_sonucu' => $sayacDurum,
+                'tarih' => (string) $e['tarih'],
+                'tarih_formatted' => !empty($e['tarih']) ? date('d.m.Y', strtotime((string) $e['tarih'])) : '',
+                'sonuclanmis' => $okunanAbone,
+                'acik_olanlar' => 0,
+                'ekip_kodu' => (string) ($e['kullanici_adi'] ?? ''),
+                'bolge' => (string) ($e['bolge'] ?? ''),
+                'defter' => (string) ($e['defter'] ?? ''),
+                'sarfiyat' => (float) ($e['sarfiyat'] ?? 0),
+                'tahakkuk' => (float) ($e['tahakkuk'] ?? 0),
+                'okuma_performansi' => (float) ($e['okuma_performansi'] ?? 0),
+                'abone_no' => (string) ($e['abone_no'] ?? ''),
+                'is_emri_no' => (string) ($e['is_emri_no'] ?? ''),
+                'aciklama' => (string) ($e['aciklama'] ?? ''),
+                'can_delete' => true,
+            ];
+        }
+
+        // 3. Kaçak Kontrol Kayıtları
+        $sqlK = "SELECT k.* FROM kacak_kontrol k WHERE (FIND_IN_SET(:pid_str, k.personel_ids) OR k.bildiren_personel_id = :pid) AND k.firma_id = :fid AND k.silinme_tarihi IS NULL";
+        $paramsK = [':pid_str' => (string) $personelId, ':pid' => $personelId, ':fid' => $firmaId];
+        if ($startDate) {
+            $sqlK .= " AND k.tarih >= :start_date";
+            $paramsK[':start_date'] = $startDate;
+        }
+        if ($endDate) {
+            $sqlK .= " AND k.tarih <= :end_date";
+            $paramsK[':end_date'] = $endDate;
+        }
+        $sqlK .= " ORDER BY k.tarih DESC, k.id DESC LIMIT 50";
+        $stmtK = $this->db->prepare($sqlK);
+        $stmtK->execute($paramsK);
+        $rawK = $stmtK->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        foreach ($rawK as $k) {
+            $encId = \App\Helper\Security::encrypt((string) $k['id']);
+            $sayi = max(1, (int) ($k['sayi'] ?? 1));
+            $kacakTuru = trim((string) ($k['tur'] ?? 'Kaçak Tutanak'));
+
+            $toplamKacak += $sayi;
+            $kacakCount++;
+            $isTipleriSayilari['Kaçak Kontrol'] = ($isTipleriSayilari['Kaçak Kontrol'] ?? 0) + 1;
+
+            $items[] = [
+                'id' => $encId,
+                'raw_id' => (int) $k['id'],
+                'type' => 'kacak_kontrol',
+                'category' => 'Kaçak Kontrol',
+                'is_emri_tipi' => 'Kaçak Kontrol (' . $kacakTuru . ')',
+                'is_emri_sonucu' => (string) ($k['onay_durumu'] ?: 'Kayıtlı'),
+                'tarih' => (string) $k['tarih'],
+                'tarih_formatted' => !empty($k['tarih']) ? date('d.m.Y', strtotime((string) $k['tarih'])) : '',
+                'sonuclanmis' => $sayi,
+                'acik_olanlar' => 0,
+                'ekip_kodu' => (string) ($k['ekip_adi'] ?? ''),
+                'abone_no' => (string) ($k['tutanak_no'] ?? ''),
+                'is_emri_no' => (string) ($k['sayac_no'] ?? ''),
+                'aciklama' => (string) ($k['aciklama'] ?? ''),
+                'can_delete' => false,
+            ];
+        }
+
+        // Tarihe göre azalan sırala
+        usort($items, static function ($a, $b) {
+            return strcmp((string) $b['tarih'], (string) $a['tarih']);
+        });
+
+        // Toplam sonuç listesini sınırla
+        $items = array_slice($items, 0, $limit);
+
+        // Seçenekleri PuantajModel'den al
+        $puantajModel = new \App\Model\PuantajModel();
+        $workTypes = $puantajModel->getWorkTypes() ?: [];
+        $workResults = $puantajModel->getWorkResults($personelId) ?: [];
+
+        return [
+            'items' => $items,
+            'summary' => [
+                'toplam_is' => count($items),
+                'toplam_sonuclanan' => $toplamSonuclanan,
+                'toplam_acik' => $toplamAcik,
+                'toplam_okunan_abone' => $toplamOkunanAbone,
+                'toplam_kacak' => $toplamKacak,
+                'saha_isleri_count' => $sahaIsleriCount,
+                'okuma_count' => $okumaCount,
+                'kacak_count' => $kacakCount,
+                'is_tipleri_sayilari' => $isTipleriSayilari,
+            ],
+            'work_types' => $workTypes,
+            'work_results' => $workResults,
+        ];
+    }
+
+    public function savePuantajJob(array $data, int $firmaId, int $userId): array
+    {
+        $personelId = (int) ($data['personel_id'] ?? 0);
+        $personel = $this->mobileDirectoryDetail($personelId, $firmaId);
+        if (!$personel) {
+            throw new \RuntimeException('Personel bulunamadı veya erişim yetkiniz yok.');
+        }
+
+        $tarih = !empty($data['tarih']) ? (string) $data['tarih'] : date('Y-m-d');
+        if (str_contains($tarih, '.')) {
+            $parts = explode('.', $tarih);
+            if (count($parts) === 3) {
+                $tarih = $parts[2] . '-' . str_pad($parts[1], 2, '0', STR_PAD_LEFT) . '-' . str_pad($parts[0], 2, '0', STR_PAD_LEFT);
+            }
+        }
+
+        $isEmriTipi = mb_substr(trim((string) ($data['is_emri_tipi'] ?? '')), 0, 255);
+        if ($isEmriTipi === '') {
+            throw new \RuntimeException('Lütfen iş emri tipini seçiniz veya giriniz.');
+        }
+
+        $isEmriSonucu = mb_substr(trim((string) ($data['is_emri_sonucu'] ?? '')), 0, 500);
+        if ($isEmriSonucu === '') {
+            throw new \RuntimeException('Lütfen iş emri sonucunu belirtiniz.');
+        }
+
+        $sonuclanmis = max(0, (int) ($data['sonuclanmis'] ?? 1));
+        $acikOlanlar = max(0, (int) ($data['acik_olanlar'] ?? 0));
+        $aboneNo = mb_substr(trim((string) ($data['abone_no'] ?? '')), 0, 50);
+        $isEmriNo = mb_substr(trim((string) ($data['is_emri_no'] ?? '')), 0, 50);
+        $aciklama = mb_substr(trim((string) ($data['aciklama'] ?? '')), 0, 255);
+        $aciklamaText = $aciklama !== '' ? ($aciklama . ' (mobil manuel giriş)') : 'mobil manuel giriş';
+        $ekipKodu = trim((string) ($data['ekip_kodu'] ?? $personel['ekip_no'] ?? ''));
+
+        $saveData = [
+            'firma_id' => $firmaId,
+            'personel_id' => $personelId,
+            'ekip_kodu' => $ekipKodu,
+            'tarih' => $tarih,
+            'is_emri_tipi' => $isEmriTipi,
+            'is_emri_sonucu' => $isEmriSonucu,
+            'sonuclanmis' => $sonuclanmis,
+            'acik_olanlar' => $acikOlanlar,
+            'abone_no' => $aboneNo,
+            'is_emri_no' => $isEmriNo,
+            'aciklama' => $aciklamaText,
+            'islem_id' => md5(date('Y-m-d H:i:s') . '|' . $personelId . '|' . uniqid('', true)),
+        ];
+
+        $puantajModel = new \App\Model\PuantajModel();
+        $lastId = $puantajModel->saveWithAttr($saveData);
+
+        return [
+            'success' => true,
+            'message' => 'İş kaydı başarıyla eklendi.',
+            'last_id' => $lastId,
+        ];
+    }
+
+    public function deletePuantajJob(int $id, string $type, int $personelId, int $firmaId, int $userId): array
+    {
+        $personel = $this->mobileDirectoryDetail($personelId, $firmaId);
+        if (!$personel) {
+            throw new \RuntimeException('Personel bulunamadı veya erişim yetkiniz yok.');
+        }
+
+        if ($type === 'endeks_okuma') {
+            $stmt = $this->db->prepare("UPDATE endeks_okuma SET silinme_tarihi = NOW() WHERE id = :id AND personel_id = :pid AND firma_id = :fid");
+            $res = $stmt->execute([':id' => $id, ':pid' => $personelId, ':fid' => $firmaId]);
+        } elseif ($type === 'kacak_kontrol') {
+            $stmt = $this->db->prepare("UPDATE kacak_kontrol SET silinme_tarihi = NOW() WHERE id = :id AND (FIND_IN_SET(:pid_str, personel_ids) OR bildiren_personel_id = :pid) AND firma_id = :fid");
+            $res = $stmt->execute([':id' => $id, ':pid_str' => (string) $personelId, ':pid' => $personelId, ':fid' => $firmaId]);
+        } else {
+            $stmt = $this->db->prepare("UPDATE yapilan_isler SET silinme_tarihi = NOW() WHERE id = :id AND personel_id = :pid AND firma_id = :fid");
+            $res = $stmt->execute([':id' => $id, ':pid' => $personelId, ':fid' => $firmaId]);
+        }
+
+        if (!$res) {
+            throw new \RuntimeException('Kayıt silinemedi.');
+        }
+
+        return [
+            'success' => true,
+            'message' => 'İş kaydı başarıyla silindi.',
+        ];
+    }
+
     public function formatBytes(int $bytes, int $precision = 2): string
     {
         $units = ['B', 'KB', 'MB', 'GB', 'TB'];

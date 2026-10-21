@@ -3,11 +3,11 @@ import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   Activity, AlertCircle, ArrowLeft, BadgeDollarSign, Ban, Banknote,
-  BriefcaseBusiness, Building2, CalendarCheck, CalendarDays, Car, Check,
+  Box, BriefcaseBusiness, Building2, CalendarCheck, CalendarDays, Car, Check,
   ChevronDown, ChevronRight, ChevronUp, Clock, Coins, Copy, CreditCard, Crown,
-  Download, ExternalLink, Eye, EyeOff, FileText, FileUp, Gavel, Heart, History, IdCard, KeyRound,
-  Mail, MapPin, MinusCircle, PackageCheck, Pencil, Percent, Phone, Plus,
-  Receipt, RefreshCw, Save, Search, Send, ShieldAlert, ShieldCheck, Smartphone,
+  Download, ExternalLink, Eye, EyeOff, FileText, FileUp, Gavel, Heart, History, IdCard, Info, KeyRound,
+  Laptop, Layers, Mail, MapPin, MinusCircle, Package, PackageCheck, Pencil, Percent, Phone, Plus,
+  Receipt, RefreshCw, RotateCcw, Save, Search, Send, ShieldAlert, ShieldCheck, Smartphone,
   Trash2, TrendingDown, TrendingUp, Upload, UserRound, UserRoundCheck, Wallet, X
 } from '@lucide/vue'
 import { auth } from '../services/auth.js'
@@ -1661,6 +1661,486 @@ async function openIcraKesintiGecmisi(item) {
   }
 }
 
+// =========================================================================
+// ZİMMETLER (VARLIK YÖNETİMİ) STATE & METOTLARI
+// =========================================================================
+const zimmetler = ref([])
+const zimmetOzet = ref({
+  toplam_zimmet: 0,
+  aktif_zimmet: 0,
+  iade_zimmet: 0,
+  arac_zimmet: 0,
+  kategori_sayilari: {},
+})
+const demirbasOptions = ref([])
+const zimmetTab = ref('all')
+const zimmetSearch = ref('')
+
+const isZimmetModalOpen = ref(false)
+const zimmetSaving = ref(false)
+const zimmetFormError = ref('')
+const zimmetForm = reactive({
+  demirbas_id: '',
+  teslim_miktar: 1,
+  teslim_tarihi: new Date().toISOString().slice(0, 10),
+  aciklama: '',
+})
+
+const selectedDemirbasInfo = computed(() => {
+  if (!zimmetForm.demirbas_id) return null
+  return demirbasOptions.value.find(d => String(d.id) === String(zimmetForm.demirbas_id)) || null
+})
+
+const isIadeModalOpen = ref(false)
+const iadeSaving = ref(false)
+const iadeFormError = ref('')
+const selectedZimmetForIade = ref(null)
+const iadeForm = reactive({
+  id: '',
+  is_arac: false,
+  iade_miktar: 1,
+  iade_tarihi: new Date().toISOString().slice(0, 10),
+  iade_km: '',
+  aciklama: '',
+})
+
+const isZimmetDetailOpen = ref(false)
+const selectedZimmetDetail = ref(null)
+const zimmetHareketleri = ref([])
+const loadingHareketler = ref(false)
+
+const isDeleteZimmetConfirmOpen = ref(false)
+const zimmetToDelete = ref(null)
+const zimmetDeleting = ref(false)
+
+const zimmetKategoriler = computed(() => {
+  const set = new Set()
+  for (const z of (zimmetler.value || [])) {
+    if (z.kategori_adi) set.add(z.kategori_adi)
+  }
+  return Array.from(set).sort()
+})
+
+const filteredZimmetler = computed(() => {
+  let list = zimmetler.value || []
+  const q = zimmetSearch.value.trim().toLowerCase()
+  if (q) {
+    list = list.filter(z =>
+      (z.demirbas_adi && z.demirbas_adi.toLowerCase().includes(q)) ||
+      (z.demirbas_no && z.demirbas_no.toLowerCase().includes(q)) ||
+      (z.marka && z.marka.toLowerCase().includes(q)) ||
+      (z.model && z.model.toLowerCase().includes(q)) ||
+      (z.seri_no && z.seri_no.toLowerCase().includes(q)) ||
+      (z.kategori_adi && z.kategori_adi.toLowerCase().includes(q)) ||
+      (z.aciklama && z.aciklama.toLowerCase().includes(q))
+    )
+  }
+
+  if (zimmetTab.value === 'aktif') {
+    list = list.filter(z => z.durum === 'teslim')
+  } else if (zimmetTab.value === 'iade') {
+    list = list.filter(z => z.durum !== 'teslim')
+  } else if (zimmetTab.value === 'arac') {
+    list = list.filter(z => z.is_arac)
+  } else if (zimmetTab.value !== 'all') {
+    list = list.filter(z => z.kategori_adi === zimmetTab.value)
+  }
+
+  return list
+})
+
+const zimmetAktifRatio = computed(() => {
+  const total = zimmetOzet.value.toplam_zimmet || 0
+  if (!total) return 0
+  return Math.round(((zimmetOzet.value.aktif_zimmet || 0) / total) * 100)
+})
+
+const zimmetIadeRatio = computed(() => {
+  const total = zimmetOzet.value.toplam_zimmet || 0
+  if (!total) return 0
+  return 100 - zimmetAktifRatio.value
+})
+
+function openNewZimmetModal() {
+  zimmetFormError.value = ''
+  zimmetForm.demirbas_id = ''
+  zimmetForm.teslim_miktar = 1
+  zimmetForm.teslim_tarihi = new Date().toISOString().slice(0, 10)
+  zimmetForm.aciklama = ''
+  isZimmetModalOpen.value = true
+}
+
+function closeNewZimmetModal() {
+  isZimmetModalOpen.value = false
+}
+
+function onDemirbasSelectChange() {
+  const item = selectedDemirbasInfo.value
+  if (item && item.kalan_miktar > 0) {
+    if (zimmetForm.teslim_miktar > item.kalan_miktar) {
+      zimmetForm.teslim_miktar = item.kalan_miktar
+    }
+  }
+}
+
+async function submitSaveZimmet() {
+  if (!zimmetForm.demirbas_id) {
+    zimmetFormError.value = 'Lütfen teslim edilecek demirbaşı seçiniz.'
+    return
+  }
+  if (!zimmetForm.teslim_miktar || zimmetForm.teslim_miktar <= 0) {
+    zimmetFormError.value = 'Teslim miktarı en az 1 olmalıdır.'
+    return
+  }
+  const item = selectedDemirbasInfo.value
+  if (item && item.kalan_miktar < zimmetForm.teslim_miktar) {
+    zimmetFormError.value = `Seçilen demirbaş için stokta yalnızca ${item.kalan_miktar} adet bulunmaktadır.`
+    return
+  }
+
+  zimmetSaving.value = true
+  zimmetFormError.value = ''
+  try {
+    const payload = {
+      personel_id: route.params.id,
+      demirbas_id: zimmetForm.demirbas_id,
+      teslim_miktar: zimmetForm.teslim_miktar,
+      teslim_tarihi: zimmetForm.teslim_tarihi,
+      aciklama: zimmetForm.aciklama,
+    }
+    const res = await personnelApi.saveZimmet(payload, auth.state.csrfToken)
+    showToast(res.message || 'Zimmet başarıyla verildi.')
+    closeNewZimmetModal()
+    await load()
+  } catch (err) {
+    zimmetFormError.value = err.message || 'Zimmet verilemedi.'
+  } finally {
+    zimmetSaving.value = false
+  }
+}
+
+function openIadeModal(item) {
+  selectedZimmetForIade.value = item
+  iadeFormError.value = ''
+  iadeForm.id = item.id
+  iadeForm.is_arac = Boolean(item.is_arac)
+  const remaining = Math.max(1, (item.teslim_miktar || 1) - (item.iade_miktar || 0))
+  iadeForm.iade_miktar = remaining
+  iadeForm.iade_tarihi = new Date().toISOString().slice(0, 10)
+  iadeForm.iade_km = ''
+  iadeForm.aciklama = ''
+  isIadeModalOpen.value = true
+}
+
+function closeIadeModal() {
+  isIadeModalOpen.value = false
+  selectedZimmetForIade.value = null
+}
+
+async function submitIadeZimmet() {
+  if (!selectedZimmetForIade.value) return
+  const item = selectedZimmetForIade.value
+
+  if (!item.is_arac) {
+    if (!iadeForm.iade_miktar || iadeForm.iade_miktar <= 0) {
+      iadeFormError.value = 'İade miktarı en az 1 olmalıdır.'
+      return
+    }
+    const remaining = Math.max(1, (item.teslim_miktar || 1) - (item.iade_miktar || 0))
+    if (iadeForm.iade_miktar > remaining) {
+      iadeFormError.value = `İade miktarı kalan miktardan (${remaining}) fazla olamaz.`
+      return
+    }
+  }
+
+  iadeSaving.value = true
+  iadeFormError.value = ''
+  try {
+    const payload = {
+      personel_id: route.params.id,
+      id: item.raw_id || item.id,
+      is_arac: Boolean(item.is_arac),
+      iade_miktar: iadeForm.iade_miktar,
+      iade_tarihi: iadeForm.iade_tarihi,
+      iade_km: iadeForm.iade_km,
+      aciklama: iadeForm.aciklama,
+    }
+    const res = await personnelApi.iadeZimmet(payload, auth.state.csrfToken)
+    showToast(res.message || 'Zimmet başarıyla iade alındı.')
+    closeIadeModal()
+    await load()
+  } catch (err) {
+    iadeFormError.value = err.message || 'İade işlemi yapılamadı.'
+  } finally {
+    iadeSaving.value = false
+  }
+}
+
+async function openZimmetDetail(item) {
+  selectedZimmetDetail.value = item
+  zimmetHareketleri.value = []
+  isZimmetDetailOpen.value = true
+
+  if (!item.is_arac) {
+    loadingHareketler.value = true
+    try {
+      const res = await personnelApi.getZimmetHareketleri(item.raw_id || item.id, route.params.id)
+      if (res.hareketler) {
+        zimmetHareketleri.value = res.hareketler
+      }
+    } catch {
+      // silently ignore or empty
+    } finally {
+      loadingHareketler.value = false
+    }
+  }
+}
+
+function closeZimmetDetail() {
+  isZimmetDetailOpen.value = false
+  selectedZimmetDetail.value = null
+}
+
+function confirmDeleteZimmet(item) {
+  zimmetToDelete.value = item
+  isDeleteZimmetConfirmOpen.value = true
+}
+
+function closeDeleteZimmetConfirm() {
+  isDeleteZimmetConfirmOpen.value = false
+  zimmetToDelete.value = null
+}
+
+async function executeDeleteZimmet() {
+  if (!zimmetToDelete.value) return
+  const item = zimmetToDelete.value
+
+  zimmetDeleting.value = true
+  try {
+    const res = await personnelApi.deleteZimmet(item.raw_id || item.id, route.params.id, auth.state.csrfToken)
+    showToast(res.message || 'Zimmet kaydı silindi.')
+    closeDeleteZimmetConfirm()
+    await load()
+  } catch (err) {
+    showToast(err.message || 'Silme işlemi gerçekleştirilemedi.')
+  } finally {
+    zimmetDeleting.value = false
+  }
+}
+
+// =========================================================================
+// İŞ VE PUANTAJ (İŞ TAKİP & SAHA OPERASYONLARI) STATE & METOTLARI
+// =========================================================================
+const puantajItems = ref([])
+const puantajOzet = ref({
+  toplam_kayit: 0,
+  toplam_is: 0,
+  sonuclanan_is: 0,
+  acik_is: 0,
+  endeks_sayisi: 0,
+  kacak_sayisi: 0,
+  tamamlanma_orani: 100,
+})
+const puantajWorkTypes = ref([])
+const puantajWorkResults = ref([])
+const puantajTab = ref('all')
+const puantajSearch = ref('')
+const puantajDateStart = ref('')
+const puantajDateEnd = ref('')
+const isPuantajFiltering = ref(false)
+
+const isPuantajJobModalOpen = ref(false)
+const puantajJobSaving = ref(false)
+const puantajJobFormError = ref('')
+const puantajJobForm = reactive({
+  tarih: new Date().toISOString().slice(0, 10),
+  is_emri_tipi_id: '',
+  is_emri_sonuc_id: '',
+  abone_no: '',
+  is_emri_no: '',
+  aciklama: '',
+})
+
+const isPuantajDetailOpen = ref(false)
+const selectedPuantajDetail = ref(null)
+
+const isDeletePuantajConfirmOpen = ref(false)
+const puantajToDelete = ref(null)
+const puantajDeleting = ref(false)
+
+const filteredPuantajItems = computed(() => {
+  let list = puantajItems.value || []
+  const q = puantajSearch.value.trim().toLowerCase()
+  if (q) {
+    list = list.filter(item =>
+      (item.is_emri_tipi && item.is_emri_tipi.toLowerCase().includes(q)) ||
+      (item.is_emri_sonucu && item.is_emri_sonucu.toLowerCase().includes(q)) ||
+      (item.abone_no && String(item.abone_no).toLowerCase().includes(q)) ||
+      (item.is_emri_no && String(item.is_emri_no).toLowerCase().includes(q)) ||
+      (item.ekip_kodu && String(item.ekip_kodu).toLowerCase().includes(q)) ||
+      (item.category && item.category.toLowerCase().includes(q)) ||
+      (item.aciklama && item.aciklama.toLowerCase().includes(q))
+    )
+  }
+
+  if (puantajTab.value === 'yapilan_isler') {
+    list = list.filter(item => item.type === 'yapilan_isler')
+  } else if (puantajTab.value === 'endeks_okuma') {
+    list = list.filter(item => item.type === 'endeks_okuma')
+  } else if (puantajTab.value === 'kacak_kontrol') {
+    list = list.filter(item => item.type === 'kacak_kontrol')
+  } else if (puantajTab.value === 'sonuclanan') {
+    list = list.filter(item => item.sonuclanmis === 1)
+  } else if (puantajTab.value === 'acik') {
+    list = list.filter(item => item.acik_olanlar === 1)
+  }
+
+  return list
+})
+
+const puantajTamamlananRatio = computed(() => {
+  const total = puantajOzet.value.toplam_is || 0
+  if (!total) return 100
+  return Math.min(100, Math.round(((puantajOzet.value.sonuclanan_is || 0) / total) * 100))
+})
+
+const puantajAcikRatio = computed(() => {
+  const total = puantajOzet.value.toplam_is || 0
+  if (!total) return 0
+  return 100 - puantajTamamlananRatio.value
+})
+
+function openNewPuantajJobModal() {
+  puantajJobFormError.value = ''
+  puantajJobForm.tarih = new Date().toISOString().slice(0, 10)
+  puantajJobForm.is_emri_tipi_id = ''
+  puantajJobForm.is_emri_sonuc_id = ''
+  puantajJobForm.abone_no = ''
+  puantajJobForm.is_emri_no = ''
+  puantajJobForm.aciklama = ''
+  isPuantajJobModalOpen.value = true
+}
+
+function closeNewPuantajJobModal() {
+  isPuantajJobModalOpen.value = false
+}
+
+async function submitSavePuantajJob() {
+  if (!puantajJobForm.tarih) {
+    puantajJobFormError.value = 'Lütfen işlem tarihini belirtiniz.'
+    return
+  }
+  if (!puantajJobForm.is_emri_tipi_id) {
+    puantajJobFormError.value = 'Lütfen iş emri tipini seçiniz.'
+    return
+  }
+  if (!puantajJobForm.is_emri_sonuc_id) {
+    puantajJobFormError.value = 'Lütfen iş emri sonucunu seçiniz.'
+    return
+  }
+
+  puantajJobSaving.value = true
+  puantajJobFormError.value = ''
+
+  try {
+    const payload = {
+      personel_id: route.params.id,
+      tarih: puantajJobForm.tarih,
+      is_emri_tipi_id: puantajJobForm.is_emri_tipi_id,
+      is_emri_sonuc_id: puantajJobForm.is_emri_sonuc_id,
+      abone_no: puantajJobForm.abone_no || '',
+      is_emri_no: puantajJobForm.is_emri_no || '',
+      aciklama: puantajJobForm.aciklama || '',
+    }
+
+    const res = await personnelApi.savePuantajJob(payload, auth.state.csrfToken)
+    showToast(res.message || 'Görev kaydı başarıyla oluşturuldu.')
+    closeNewPuantajJobModal()
+    await load()
+  } catch (err) {
+    puantajJobFormError.value = err.message || 'Kayıt sırasında bir hata oluştu.'
+  } finally {
+    puantajJobSaving.value = false
+  }
+}
+
+function openPuantajDetail(item) {
+  selectedPuantajDetail.value = item
+  isPuantajDetailOpen.value = true
+}
+
+function closePuantajDetail() {
+  isPuantajDetailOpen.value = false
+  selectedPuantajDetail.value = null
+}
+
+function confirmDeletePuantaj(item) {
+  puantajToDelete.value = item
+  isDeletePuantajConfirmOpen.value = true
+}
+
+function closeDeletePuantajConfirm() {
+  isDeletePuantajConfirmOpen.value = false
+  puantajToDelete.value = null
+}
+
+async function executeDeletePuantaj() {
+  if (!puantajToDelete.value) return
+  const item = puantajToDelete.value
+
+  puantajDeleting.value = true
+  try {
+    const res = await personnelApi.deletePuantajJob(item.raw_id || item.id, item.type, route.params.id, auth.state.csrfToken)
+    showToast(res.message || 'Görev kaydı silindi.')
+    closeDeletePuantajConfirm()
+    if (isPuantajDetailOpen.value && selectedPuantajDetail.value?.raw_id === item.raw_id) {
+      closePuantajDetail()
+    }
+    await load()
+  } catch (err) {
+    showToast(err.message || 'Silme işlemi gerçekleştirilemedi.')
+  } finally {
+    puantajDeleting.value = false
+  }
+}
+
+async function applyPuantajDateFilter() {
+  isPuantajFiltering.value = true
+  try {
+    const res = await personnelApi.getPuantajIsTakip(route.params.id, {
+      start_date: puantajDateStart.value || '',
+      end_date: puantajDateEnd.value || '',
+    })
+    if (res.data) {
+      puantajItems.value = res.data.items || []
+      puantajOzet.value = res.data.ozet || puantajOzet.value
+    }
+    showToast('Tarih filtresi uygulandı.')
+  } catch (err) {
+    showToast(err.message || 'Filtreleme yapılamadı.')
+  } finally {
+    isPuantajFiltering.value = false
+  }
+}
+
+async function resetPuantajDateFilter() {
+  puantajDateStart.value = ''
+  puantajDateEnd.value = ''
+  isPuantajFiltering.value = true
+  try {
+    const res = await personnelApi.getPuantajIsTakip(route.params.id, {})
+    if (res.data) {
+      puantajItems.value = res.data.items || []
+      puantajOzet.value = res.data.ozet || puantajOzet.value
+    }
+    showToast('Tarih filtresi sıfırlandı.')
+  } catch (err) {
+    showToast(err.message || 'Liste yenilenemedi.')
+  } finally {
+    isPuantajFiltering.value = false
+  }
+}
+
 async function load() {
   if (!section.value) {
     router.replace(`/personel/${route.params.id}`)
@@ -1731,6 +2211,27 @@ async function load() {
     }
     if (result.icra_daireleri) {
       icraDaireleri.value = result.icra_daireleri
+    }
+    if (result.zimmetler) {
+      zimmetler.value = result.zimmetler
+    }
+    if (result.zimmet_ozet) {
+      zimmetOzet.value = result.zimmet_ozet
+    }
+    if (result.demirbas_options) {
+      demirbasOptions.value = result.demirbas_options
+    }
+    if (result.puantaj_items) {
+      puantajItems.value = result.puantaj_items
+    }
+    if (result.puantaj_ozet) {
+      puantajOzet.value = result.puantaj_ozet
+    }
+    if (result.puantaj_work_types) {
+      puantajWorkTypes.value = result.puantaj_work_types
+    }
+    if (result.puantaj_work_results) {
+      puantajWorkResults.value = result.puantaj_work_results
     }
     // Düzenleme yetkisi varsa doğrudan düzenleme açık gelsin
     if (canEdit.value) {
@@ -4506,6 +5007,674 @@ onUnmounted(() => {
         </div>
       </div>
 
+      <!-- ========================================================================= -->
+      <!-- 10. ZİMMETLER (VARLIK YÖNETİMİ) SEKME İÇERİĞİ                              -->
+      <!-- ========================================================================= -->
+      <div v-else-if="route.params.section === 'zimmetler'" class="zimmetler-section-container">
+        <!-- 1. HERO OBSIDIAN BENTO KART: ZİMMET DAĞILIMI (Bento Standardı) -->
+        <article class="cari-hero-volume-card">
+          <header class="cari-hero-volume-card__header">
+            <div class="cari-hero-volume-card__title">
+              <span class="cari-hero-icon-box" style="color: #f59e0b;">
+                <PackageCheck :size="16" />
+              </span>
+              <div>
+                <span class="cari-hero-tag">VARLIK & DEMİRBAŞ</span>
+                <span class="cari-hero-subtitle">Zimmetli Varlıklar & Ekipmanlar</span>
+              </div>
+            </div>
+            <button
+              v-if="canEdit"
+              type="button"
+              class="clay-btn clay-btn--primary"
+              style="padding: 6px 12px; font-size: 12px; border-radius: 999px;"
+              @click="openNewZimmetModal"
+            >
+              <Plus :size="14" />
+              <span>Yeni Zimmet</span>
+            </button>
+          </header>
+
+          <div class="cari-hero-volume-main">
+            <strong class="cari-hero-volume-amount">{{ zimmetOzet.aktif_zimmet }} Aktif Varlık</strong>
+            <div class="cari-hero-balance-row">
+              <span class="cari-hero-balance-label">Toplam: {{ zimmetOzet.toplam_zimmet }} Varlık</span>
+              <span class="text-white-50">·</span>
+              <span class="text-emerald fw-bold">Aktif: {{ zimmetOzet.aktif_zimmet }}</span>
+              <span class="text-white-50">·</span>
+              <span class="text-sky fw-bold">İade: {{ zimmetOzet.iade_zimmet }}</span>
+              <span v-if="zimmetOzet.arac_zimmet > 0" class="text-white-50">·</span>
+              <span v-if="zimmetOzet.arac_zimmet > 0" class="text-amber fw-bold">Araç: {{ zimmetOzet.arac_zimmet }}</span>
+            </div>
+          </div>
+
+          <!-- Segmentli İlerleme Çubuğu -->
+          <div class="cari-chart-container">
+            <div class="cari-segmented-track">
+              <div
+                class="cari-seg-fill cari-seg-fill--alacak"
+                :style="{ width: `${zimmetAktifRatio}%` }"
+                :title="`Aktif: %${zimmetAktifRatio}`"
+              >
+                <span v-if="zimmetAktifRatio >= 15" class="cari-seg-label">%{{ zimmetAktifRatio }} Aktif</span>
+              </div>
+              <div
+                class="cari-seg-fill cari-seg-fill--borc"
+                :style="{ width: `${zimmetIadeRatio}%` }"
+                :title="`İade: %${zimmetIadeRatio}`"
+              >
+                <span v-if="zimmetIadeRatio >= 15" class="cari-seg-label">%{{ zimmetIadeRatio }} İade</span>
+              </div>
+            </div>
+
+            <!-- Tıklanabilir Filtre / Lejant Kutuları (4'lü Grid) -->
+            <div class="cari-chart-legend cari-chart-legend--2x2">
+              <div
+                class="cari-legend-item"
+                :class="{ 'cari-legend-item--active': zimmetTab === 'all' }"
+                @click="zimmetTab = 'all'"
+              >
+                <span class="cari-legend-dot" style="background: #ffffff; box-shadow: 0 0 8px rgba(255,255,255,0.6);"></span>
+                <div class="cari-legend-info">
+                  <div class="cari-legend-header">
+                    <span class="cari-legend-title">Tüm Varlıklar</span>
+                  </div>
+                  <strong class="cari-legend-val">{{ zimmetler.length }} Adet</strong>
+                </div>
+              </div>
+
+              <div
+                class="cari-legend-item"
+                :class="{ 'cari-legend-item--active': zimmetTab === 'aktif' }"
+                @click="zimmetTab = 'aktif'"
+              >
+                <span class="cari-legend-dot cari-legend-dot--alacak"></span>
+                <div class="cari-legend-info">
+                  <div class="cari-legend-header">
+                    <span class="cari-legend-title">Aktif Zimmetler</span>
+                    <b class="cari-legend-pct text-emerald">{{ zimmetOzet.aktif_zimmet }}</b>
+                  </div>
+                  <strong class="cari-legend-val">{{ zimmetOzet.aktif_zimmet }} Teslim</strong>
+                </div>
+              </div>
+
+              <div
+                class="cari-legend-item"
+                :class="{ 'cari-legend-item--active': zimmetTab === 'iade' }"
+                @click="zimmetTab = 'iade'"
+              >
+                <span class="cari-legend-dot cari-legend-dot--borc"></span>
+                <div class="cari-legend-info">
+                  <div class="cari-legend-header">
+                    <span class="cari-legend-title">Zimmet Geçmişi</span>
+                    <b class="cari-legend-pct text-sky">{{ zimmetOzet.iade_zimmet }}</b>
+                  </div>
+                  <strong class="cari-legend-val">{{ zimmetOzet.iade_zimmet }} İade</strong>
+                </div>
+              </div>
+
+              <div
+                class="cari-legend-item"
+                :class="{ 'cari-legend-item--active': zimmetTab === 'arac' }"
+                @click="zimmetTab = 'arac'"
+              >
+                <span class="cari-legend-dot" style="background: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);"></span>
+                <div class="cari-legend-info">
+                  <div class="cari-legend-header">
+                    <span class="cari-legend-title">Araç Zimmetleri</span>
+                    <b class="cari-legend-pct" style="color: #f59e0b;">{{ zimmetOzet.arac_zimmet }}</b>
+                  </div>
+                  <strong class="cari-legend-val">{{ zimmetOzet.arac_zimmet }} Araç</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- 2. ARAMA VE FİLTRELEME ÇUBUĞU -->
+        <div class="evrak-filter-section mb-3">
+          <div class="evrak-search-box mb-2">
+            <Search :size="16" class="search-icon" />
+            <input
+              v-model="zimmetSearch"
+              type="text"
+              placeholder="Demirbaş adı, no, marka veya kategori ara…"
+              class="evrak-search-input"
+            />
+            <button
+              v-if="zimmetSearch"
+              type="button"
+              class="search-clear-btn"
+              @click="zimmetSearch = ''"
+            >
+              <X :size="14" />
+            </button>
+          </div>
+
+          <!-- Filtre Hapları -->
+          <div class="clay-tabs-wrap">
+            <button
+              type="button"
+              class="clay-filter-pill"
+              :class="{ active: zimmetTab === 'all' }"
+              @click="zimmetTab = 'all'"
+            >
+              Tümü ({{ zimmetler.length }})
+            </button>
+            <button
+              type="button"
+              class="clay-filter-pill"
+              :class="{ active: zimmetTab === 'aktif' }"
+              @click="zimmetTab = 'aktif'"
+            >
+              Aktifler ({{ zimmetOzet.aktif_zimmet }})
+            </button>
+            <button
+              type="button"
+              class="clay-filter-pill"
+              :class="{ active: zimmetTab === 'iade' }"
+              @click="zimmetTab = 'iade'"
+            >
+              İade Edilenler ({{ zimmetOzet.iade_zimmet }})
+            </button>
+            <button
+              v-if="zimmetOzet.arac_zimmet > 0"
+              type="button"
+              class="clay-filter-pill"
+              :class="{ active: zimmetTab === 'arac' }"
+              @click="zimmetTab = 'arac'"
+            >
+              Araçlar ({{ zimmetOzet.arac_zimmet }})
+            </button>
+            <button
+              v-for="kat in zimmetKategoriler.filter(k => k !== 'Araçlar')"
+              :key="kat"
+              type="button"
+              class="clay-filter-pill"
+              :class="{ active: zimmetTab === kat }"
+              @click="zimmetTab = kat"
+            >
+              {{ kat }} ({{ (zimmetOzet.kategori_sayilari && zimmetOzet.kategori_sayilari[kat]) || 0 }})
+            </button>
+          </div>
+        </div>
+
+        <!-- 3. ZİMMET LİSTESİ (Bento Kartlar) -->
+        <div v-if="filteredZimmetler.length === 0" class="clay-state-card">
+          <PackageCheck :size="32" class="clay-empty-icon text-muted" />
+          <strong>Zimmet kaydı bulunamadı</strong>
+          <p v-if="zimmetSearch || zimmetTab !== 'all'">
+            Seçilen arama veya filtre kriterine uygun zimmet kaydı bulunamadı.
+          </p>
+          <p v-else>Personelin üzerinde aktif veya geçmiş herhangi bir zimmet kaydı bulunmuyor.</p>
+          <button
+            v-if="canEdit"
+            type="button"
+            class="clay-btn clay-btn--primary mt-2"
+            @click="openNewZimmetModal"
+          >
+            <Plus :size="15" />
+            <span>Yeni Zimmet Ver</span>
+          </button>
+        </div>
+
+        <div v-else class="zimmet-items-grid">
+          <article
+            v-for="item in filteredZimmetler"
+            :key="`${item.is_arac ? 'arac' : 'db'}_${item.id}`"
+            class="bento-card bento-card--white zimmet-item-card"
+          >
+            <!-- Üst Kategori & Durum Satırı -->
+            <div class="zimmet-item-header">
+              <span class="zimmet-item-cat">
+                <Car v-if="item.is_arac" :size="13" class="text-amber" />
+                <Laptop v-else-if="item.kategori_adi.toLowerCase().includes('bilgisayar') || item.kategori_adi.toLowerCase().includes('laptop')" :size="13" class="text-primary" />
+                <Smartphone v-else-if="item.kategori_adi.toLowerCase().includes('telefon') || item.kategori_adi.toLowerCase().includes('sim')" :size="13" class="text-info" />
+                <Package v-else :size="13" class="text-secondary" />
+                <span>{{ item.kategori_adi }}</span>
+              </span>
+
+              <span
+                class="clay-badge"
+                :class="item.durum === 'teslim' ? 'clay-badge--emerald' : 'clay-badge--sky'"
+              >
+                {{ item.durum_label }}
+              </span>
+            </div>
+
+            <!-- Ana Başlık ve Açıklamalar -->
+            <div class="zimmet-item-body">
+              <h3 class="zimmet-item-title">{{ item.demirbas_adi }}</h3>
+              <p class="zimmet-item-subtitle">
+                <span v-if="item.demirbas_no" class="fw-semibold">{{ item.demirbas_no }} · </span>
+                <span>{{ [item.marka, item.model].filter(Boolean).join(' ') || 'Marka/Model belirtilmemiş' }}</span>
+                <span v-if="item.seri_no"> · SN: {{ item.seri_no }}</span>
+              </p>
+            </div>
+
+            <!-- Meta Bilgi Kutusu -->
+            <div class="zimmet-meta-grid">
+              <div class="zimmet-meta-item">
+                <CalendarDays :size="13" class="text-muted" />
+                <span class="meta-label">Teslim Tarihi:</span>
+                <strong>{{ item.teslim_tarihi_formatted || '-' }}</strong>
+                <span v-if="item.teslim_miktar > 1" class="text-muted">({{ item.teslim_miktar }} Adet)</span>
+              </div>
+              <div v-if="item.iade_tarihi" class="zimmet-meta-item">
+                <RotateCcw :size="13" class="text-muted" />
+                <span class="meta-label">İade Tarihi:</span>
+                <strong>{{ item.iade_tarihi_formatted }}</strong>
+                <span v-if="item.iade_miktar" class="text-muted">({{ item.iade_miktar }} Adet)</span>
+              </div>
+              <div v-if="item.aciklama" class="zimmet-meta-item">
+                <FileText :size="13" class="text-muted" />
+                <span class="meta-label">Not:</span>
+                <span class="text-truncate">{{ item.aciklama }}</span>
+              </div>
+            </div>
+
+            <!-- Kart Aksiyonları -->
+            <div class="zimmet-item-actions">
+              <button
+                type="button"
+                class="clay-btn clay-btn--subtle"
+                style="padding: 6px 12px; font-size: 12px;"
+                title="Detay ve Geçmiş"
+                @click="openZimmetDetail(item)"
+              >
+                <Info :size="13" />
+                <span>Detay</span>
+              </button>
+
+              <button
+                v-if="item.can_iade && canEdit"
+                type="button"
+                class="clay-btn clay-btn--secondary-subtle"
+                style="padding: 6px 12px; font-size: 12px;"
+                title="İade Al"
+                @click="openIadeModal(item)"
+              >
+                <RotateCcw :size="13" />
+                <span>İade Al</span>
+              </button>
+
+              <button
+                v-if="item.can_delete && canEdit"
+                type="button"
+                class="clay-btn clay-btn--danger-subtle"
+                style="padding: 6px 10px;"
+                title="Sil"
+                @click="confirmDeleteZimmet(item)"
+              >
+                <Trash2 :size="13" />
+              </button>
+            </div>
+          </article>
+        </div>
+
+        <!-- Yönetim Modülü Butonu (Obsidian Bento Standardı) -->
+        <a class="section-manage-button" :href="legacyUrl">
+          <span>
+            <ExternalLink :size="18" />
+            <b>{{ canEdit ? 'Tüm yönetim işlemlerini aç' : 'Kayıtları görüntüle' }}</b>
+          </span>
+          <small>Mevcut mobil modülde kayıpsız devam et</small>
+        </a>
+      </div>
+
+      <!-- ========================================================================= -->
+      <!-- 11. İŞ VE PUANTAJ (İŞ TAKİP & SAHA OPERASYONLARI) SEKME İÇERİĞİ           -->
+      <!-- ========================================================================= -->
+      <div v-else-if="route.params.section === 'puantaj'" class="puantaj-section-container">
+        <!-- 1. HERO OBSIDIAN BENTO KART: İŞ & SAHA TAKİBİ -->
+        <article class="cari-hero-volume-card">
+          <header class="cari-hero-volume-card__header">
+            <div class="cari-hero-volume-card__title">
+              <span class="cari-hero-icon-box" style="color: #38bdf8;">
+                <CalendarCheck :size="16" />
+              </span>
+              <div>
+                <span class="cari-hero-tag">GÖREV & SAHA TAKİBİ</span>
+                <span class="cari-hero-subtitle">İş ve Puantaj Hareketleri</span>
+              </div>
+            </div>
+            <button
+              v-if="canEdit"
+              type="button"
+              class="clay-btn clay-btn--primary"
+              style="padding: 6px 12px; font-size: 12px; border-radius: 999px;"
+              @click="openNewPuantajJobModal"
+            >
+              <Plus :size="14" />
+              <span>Yeni İş Ekle</span>
+            </button>
+          </header>
+
+          <div class="cari-hero-volume-main">
+            <strong class="cari-hero-volume-amount">{{ puantajOzet.toplam_kayit }} Saha Hareketi</strong>
+            <div class="cari-hero-balance-row">
+              <span class="cari-hero-balance-label">Saha İşi: {{ puantajOzet.toplam_is }}</span>
+              <span class="text-white-50">·</span>
+              <span class="text-emerald fw-bold">Tamamlanan: {{ puantajOzet.sonuclanan_is }}</span>
+              <span v-if="puantajOzet.acik_is > 0" class="text-white-50">·</span>
+              <span v-if="puantajOzet.acik_is > 0" class="text-amber fw-bold">Açık: {{ puantajOzet.acik_is }}</span>
+              <span v-if="puantajOzet.endeks_sayisi > 0" class="text-white-50">·</span>
+              <span v-if="puantajOzet.endeks_sayisi > 0" class="text-sky fw-bold">Endeks: {{ puantajOzet.endeks_sayisi }}</span>
+              <span v-if="puantajOzet.kacak_sayisi > 0" class="text-white-50">·</span>
+              <span v-if="puantajOzet.kacak_sayisi > 0" class="text-rose fw-bold">Kaçak: {{ puantajOzet.kacak_sayisi }}</span>
+            </div>
+          </div>
+
+          <!-- Segmentli İlerleme Çubuğu (Tamamlanma Oranı) -->
+          <div class="cari-chart-container">
+            <div class="cari-segmented-track">
+              <div
+                class="cari-seg-fill cari-seg-fill--alacak"
+                :style="{ width: `${puantajTamamlananRatio}%` }"
+                :title="`Tamamlanan: %${puantajTamamlananRatio}`"
+              >
+                <span v-if="puantajTamamlananRatio >= 18" class="cari-seg-label">%{{ puantajTamamlananRatio }} Tamamlandı</span>
+              </div>
+              <div
+                class="cari-seg-fill cari-seg-fill--borc"
+                :style="{ width: `${puantajAcikRatio}%` }"
+                :title="`Açık: %${puantajAcikRatio}`"
+              >
+                <span v-if="puantajAcikRatio >= 18" class="cari-seg-label">%{{ puantajAcikRatio }} Açık</span>
+              </div>
+            </div>
+
+            <!-- Tıklanabilir Filtre / Lejant Kutuları (4'lü Grid) -->
+            <div class="cari-chart-legend cari-chart-legend--2x2">
+              <div
+                class="cari-legend-item"
+                :class="{ 'cari-legend-item--active': puantajTab === 'all' }"
+                @click="puantajTab = 'all'"
+              >
+                <span class="cari-legend-dot cari-legend-dot--alacak"></span>
+                <div class="cari-legend-meta">
+                  <span class="cari-legend-title">TÜM KAYITLAR</span>
+                  <strong class="cari-legend-val text-white">{{ puantajOzet.toplam_kayit }}</strong>
+                </div>
+              </div>
+              <div
+                class="cari-legend-item"
+                :class="{ 'cari-legend-item--active': puantajTab === 'yapilan_isler' }"
+                @click="puantajTab = 'yapilan_isler'"
+              >
+                <span class="cari-legend-dot" style="background: #38bdf8;"></span>
+                <div class="cari-legend-meta">
+                  <span class="cari-legend-title">SAHA İŞLERİ</span>
+                  <strong class="cari-legend-val text-sky">{{ puantajOzet.toplam_is }}</strong>
+                </div>
+              </div>
+              <div
+                class="cari-legend-item"
+                :class="{ 'cari-legend-item--active': puantajTab === 'endeks_okuma' }"
+                @click="puantajTab = 'endeks_okuma'"
+              >
+                <span class="cari-legend-dot" style="background: #34d399;"></span>
+                <div class="cari-legend-meta">
+                  <span class="cari-legend-title">ENDEKS OKUMA</span>
+                  <strong class="cari-legend-val text-emerald">{{ puantajOzet.endeks_sayisi }}</strong>
+                </div>
+              </div>
+              <div
+                class="cari-legend-item"
+                :class="{ 'cari-legend-item--active': puantajTab === 'kacak_kontrol' }"
+                @click="puantajTab = 'kacak_kontrol'"
+              >
+                <span class="cari-legend-dot" style="background: #fb7185;"></span>
+                <div class="cari-legend-meta">
+                  <span class="cari-legend-title">KAÇAK KONTROL</span>
+                  <strong class="cari-legend-val text-rose">{{ puantajOzet.kacak_sayisi }}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Arama ve Tarih Filtresi -->
+        <div class="puantaj-filter-section clay-card p-3">
+          <div class="person-sheet-search-wrap mb-2">
+            <Search :size="16" class="person-sheet-search-icon" />
+            <input
+              v-model="puantajSearch"
+              type="text"
+              placeholder="İş emri no, abone no, işlem tipi ara…"
+              class="person-sheet-search-input"
+            />
+            <button
+              v-if="puantajSearch"
+              type="button"
+              class="person-sheet-search-clear"
+              @click="puantajSearch = ''"
+              aria-label="Temizle"
+            >
+              <X :size="12" />
+            </button>
+          </div>
+
+          <!-- Tarih Filtresi Satırı -->
+          <div class="puantaj-date-filter-row">
+            <div class="date-input-group">
+              <span class="date-label">Başlangıç</span>
+              <input v-model="puantajDateStart" type="date" class="form-control form-control-sm" />
+            </div>
+            <div class="date-input-group">
+              <span class="date-label">Bitiş</span>
+              <input v-model="puantajDateEnd" type="date" class="form-control form-control-sm" />
+            </div>
+            <button
+              type="button"
+              class="clay-btn clay-btn--primary"
+              style="padding: 7px 12px; font-size: 11.5px; align-self: flex-end;"
+              :disabled="isPuantajFiltering"
+              @click="applyPuantajDateFilter"
+            >
+              <RefreshCw v-if="isPuantajFiltering" :size="13" class="clay-spin-icon" />
+              <Search v-else :size="13" />
+              <span>Uygula</span>
+            </button>
+            <button
+              v-if="puantajDateStart || puantajDateEnd"
+              type="button"
+              class="clay-btn clay-btn--secondary"
+              style="padding: 7px 10px; font-size: 11.5px; align-self: flex-end;"
+              :disabled="isPuantajFiltering"
+              @click="resetPuantajDateFilter"
+              title="Filtreyi Temizle"
+            >
+              <RotateCcw :size="13" />
+            </button>
+          </div>
+
+          <!-- Kategori Sekmeleri (Pills) -->
+          <div class="clay-tabs-wrap mt-2">
+            <button
+              type="button"
+              class="clay-tab-pill"
+              :class="{ 'clay-tab-pill--active': puantajTab === 'all' }"
+              @click="puantajTab = 'all'"
+            >
+              <span>Tümü</span>
+              <span class="tab-count">{{ puantajOzet.toplam_kayit }}</span>
+            </button>
+            <button
+              type="button"
+              class="clay-tab-pill"
+              :class="{ 'clay-tab-pill--active': puantajTab === 'yapilan_isler' }"
+              @click="puantajTab = 'yapilan_isler'"
+            >
+              <span>Saha İşleri</span>
+              <span class="tab-count">{{ puantajOzet.toplam_is }}</span>
+            </button>
+            <button
+              v-if="puantajOzet.acik_is > 0"
+              type="button"
+              class="clay-tab-pill text-amber"
+              :class="{ 'clay-tab-pill--active': puantajTab === 'acik' }"
+              @click="puantajTab = 'acik'"
+            >
+              <span>Açık İşler</span>
+              <span class="tab-count">{{ puantajOzet.acik_is }}</span>
+            </button>
+            <button
+              v-if="puantajOzet.sonuclanan_is > 0"
+              type="button"
+              class="clay-tab-pill text-emerald"
+              :class="{ 'clay-tab-pill--active': puantajTab === 'sonuclanan' }"
+              @click="puantajTab = 'sonuclanan'"
+            >
+              <span>Tamamlanan</span>
+              <span class="tab-count">{{ puantajOzet.sonuclanan_is }}</span>
+            </button>
+            <button
+              v-if="puantajOzet.endeks_sayisi > 0"
+              type="button"
+              class="clay-tab-pill"
+              :class="{ 'clay-tab-pill--active': puantajTab === 'endeks_okuma' }"
+              @click="puantajTab = 'endeks_okuma'"
+            >
+              <span>Endeks</span>
+              <span class="tab-count">{{ puantajOzet.endeks_sayisi }}</span>
+            </button>
+            <button
+              v-if="puantajOzet.kacak_sayisi > 0"
+              type="button"
+              class="clay-tab-pill"
+              :class="{ 'clay-tab-pill--active': puantajTab === 'kacak_kontrol' }"
+              @click="puantajTab = 'kacak_kontrol'"
+            >
+              <span>Kaçak</span>
+              <span class="tab-count">{{ puantajOzet.kacak_sayisi }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Kayıt Listesi -->
+        <div v-if="filteredPuantajItems.length === 0" class="clay-state-card py-5">
+          <CalendarCheck :size="32" class="text-muted mb-2" />
+          <strong class="font-size-14 text-dark">Kayıt Bulunamadı</strong>
+          <p class="font-size-12 text-muted mb-3">Seçili filtrelere uygun görev veya saha hareketi bulunamadı.</p>
+          <button
+            v-if="canEdit"
+            type="button"
+            class="clay-btn clay-btn--primary"
+            style="padding: 6px 14px; font-size: 12px; border-radius: 999px;"
+            @click="openNewPuantajJobModal"
+          >
+            <Plus :size="14" />
+            <span>Yeni İş Ekle</span>
+          </button>
+        </div>
+
+        <div v-else class="puantaj-items-grid">
+          <article
+            v-for="item in filteredPuantajItems"
+            :key="`${item.type}_${item.raw_id || item.id}`"
+            class="clay-card puantaj-item-card"
+          >
+            <!-- Üst Başlık Satırı -->
+            <div class="puantaj-item-header">
+              <div class="d-flex align-items-center gap-2">
+                <span
+                  class="puantaj-item-cat"
+                  :class="{
+                    'cat--saha': item.type === 'yapilan_isler',
+                    'cat--endeks': item.type === 'endeks_okuma',
+                    'cat--kacak': item.type === 'kacak_kontrol',
+                  }"
+                >
+                  <Activity v-if="item.type === 'yapilan_isler'" :size="12" />
+                  <FileText v-else-if="item.type === 'endeks_okuma'" :size="12" />
+                  <AlertCircle v-else :size="12" />
+                  <span>{{ item.category }}</span>
+                </span>
+                <span class="puantaj-item-date text-muted font-size-11">
+                  {{ item.tarih_formatted || item.tarih }}
+                </span>
+              </div>
+
+              <!-- Durum Rozeti -->
+              <span
+                class="badge rounded-pill font-size-11 fw-semibold"
+                :class="item.sonuclanmis === 1 ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning'"
+              >
+                {{ item.sonuclanmis === 1 ? 'Sonuçlandı' : 'Açık / Devam Ediyor' }}
+              </span>
+            </div>
+
+            <!-- Ana İçerik -->
+            <div class="puantaj-item-body">
+              <h4 class="puantaj-item-title">{{ item.is_emri_tipi }}</h4>
+              <p class="puantaj-item-subtitle">{{ item.is_emri_sonucu }}</p>
+            </div>
+
+            <!-- Meta Bilgileri Grid -->
+            <div class="puantaj-meta-grid">
+              <div v-if="item.abone_no" class="puantaj-meta-item">
+                <span class="meta-label">Abone No:</span>
+                <strong>{{ item.abone_no }}</strong>
+              </div>
+              <div v-if="item.is_emri_no" class="puantaj-meta-item">
+                <span class="meta-label">İş Emri No:</span>
+                <strong>{{ item.is_emri_no }}</strong>
+              </div>
+              <div v-if="item.ekip_kodu" class="puantaj-meta-item">
+                <span class="meta-label">Ekip:</span>
+                <span>{{ item.ekip_kodu }}</span>
+              </div>
+              <div v-if="item.sayac_no" class="puantaj-meta-item">
+                <span class="meta-label">Sayaç No:</span>
+                <span>{{ item.sayac_no }}</span>
+              </div>
+              <div v-if="item.tuketim !== undefined && item.tuketim !== null && item.type === 'endeks_okuma'" class="puantaj-meta-item">
+                <span class="meta-label">Tüketim:</span>
+                <strong class="text-emerald">{{ item.tuketim }} m³</strong>
+              </div>
+            </div>
+
+            <p v-if="item.aciklama" class="puantaj-item-desc">
+              {{ item.aciklama }}
+            </p>
+
+            <!-- Aksiyon Butonları -->
+            <div class="puantaj-item-actions">
+              <button
+                type="button"
+                class="clay-btn clay-btn--secondary"
+                style="padding: 5px 12px; font-size: 11.5px; border-radius: 999px;"
+                @click="openPuantajDetail(item)"
+              >
+                <Eye :size="13" />
+                <span>Detay</span>
+              </button>
+              <button
+                v-if="canEdit && item.can_delete"
+                type="button"
+                class="clay-btn clay-btn--danger"
+                style="padding: 5px 10px; font-size: 11.5px; border-radius: 999px;"
+                @click="confirmDeletePuantaj(item)"
+                title="Kaydı Sil"
+              >
+                <Trash2 :size="13" />
+                <span>Sil</span>
+              </button>
+            </div>
+          </article>
+        </div>
+
+        <!-- Yönetim Modülü Butonu (Mevcut Mobil Sayfaya Geçiş) -->
+        <a class="section-manage-button" :href="legacyUrl">
+          <span>
+            <ExternalLink :size="18" />
+            <b>{{ canEdit ? 'Tüm yönetim işlemlerini aç' : 'Kayıtları görüntüle' }}</b>
+          </span>
+          <small>Mevcut mobil modülde kayıpsız devam et</small>
+        </a>
+      </div>
+
       <!-- DİĞER SEKMELER (Geliştirilecek diğer sekmeler için geçiş görünümü) -->
       <template v-else>
         <section class="section-capabilities">
@@ -5022,6 +6191,698 @@ onUnmounted(() => {
                   <p v-if="k.aciklama" class="timeline-desc">{{ k.aciklama }}</p>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </Teleport>
+
+      <!-- Bottom-Sheet Modal: Yeni Zimmet Ver -->
+      <Teleport to="body">
+        <div
+          v-if="isZimmetModalOpen"
+          class="payroll-modal-backdrop"
+          @click.self="closeNewZimmetModal"
+        >
+          <div class="payroll-modal-sheet payroll-modal-sheet--period">
+            <div class="sheet-drag-handle"></div>
+            <header class="payroll-sheet-header">
+              <div>
+                <span class="clay-page-eyebrow">VARLIK TESLİMİ</span>
+                <h3 class="payroll-sheet-title">Personele Zimmet Ver</h3>
+                <p class="payroll-sheet-subtitle">Stoktaki demirbaşlardan personele teslim kaydı oluşturun</p>
+              </div>
+              <button
+                type="button"
+                class="clay-circle-btn"
+                @click="closeNewZimmetModal"
+                aria-label="Kapat"
+              >
+                <X :size="18" />
+              </button>
+            </header>
+
+            <form class="leave-request-form" @submit.prevent="submitSaveZimmet">
+              <div v-if="zimmetFormError" class="clay-alert-banner clay-alert-banner--danger mb-2">
+                <AlertCircle :size="16" />
+                <span>{{ zimmetFormError }}</span>
+              </div>
+
+              <!-- Demirbaş Seçimi -->
+              <div class="form-field">
+                <span>Demirbaş Seçin *</span>
+                <select
+                  v-model="zimmetForm.demirbas_id"
+                  class="clay-input"
+                  required
+                  @change="onDemirbasSelectChange"
+                >
+                  <option value="" disabled>-- Stoktaki Demirbaşı Seçin --</option>
+                  <option
+                    v-for="d in demirbasOptions"
+                    :key="d.id"
+                    :value="d.id"
+                  >
+                    {{ d.text }} (Stok: {{ d.kalan_miktar }})
+                  </option>
+                </select>
+                <small v-if="selectedDemirbasInfo" class="text-muted mt-1 d-block font-size-11">
+                  Kalan Stok: <strong class="text-primary">{{ selectedDemirbasInfo.kalan_miktar }} adet</strong>
+                </small>
+              </div>
+
+              <!-- Miktar ve Tarih -->
+              <div class="form-grid-2">
+                <div class="form-field">
+                  <span>Teslim Miktarı *</span>
+                  <input
+                    v-model.number="zimmetForm.teslim_miktar"
+                    type="number"
+                    min="1"
+                    :max="selectedDemirbasInfo?.kalan_miktar || 999"
+                    class="clay-input"
+                    required
+                  />
+                </div>
+
+                <div class="form-field">
+                  <span>Teslim Tarihi *</span>
+                  <input
+                    v-model="zimmetForm.teslim_tarihi"
+                    type="date"
+                    class="clay-input"
+                    required
+                  />
+                </div>
+              </div>
+
+              <!-- Açıklama -->
+              <div class="form-field">
+                <span>Açıklama / Notlar</span>
+                <textarea
+                  v-model="zimmetForm.aciklama"
+                  rows="3"
+                  class="clay-input"
+                  placeholder="Teslimat notu veya seri numarası…"
+                ></textarea>
+              </div>
+
+              <div class="form-actions mt-3">
+                <button
+                  type="button"
+                  class="clay-btn clay-btn--secondary"
+                  @click="closeNewZimmetModal"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  class="clay-btn clay-btn--primary"
+                  :disabled="zimmetSaving"
+                >
+                  <RefreshCw v-if="zimmetSaving" :size="15" class="clay-spin-icon" />
+                  <PackageCheck v-else :size="15" />
+                  <span>{{ zimmetSaving ? 'Kaydediliyor…' : 'Zimmet Ver' }}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </Teleport>
+
+      <!-- Bottom-Sheet Modal: Zimmet İade Al -->
+      <Teleport to="body">
+        <div
+          v-if="isIadeModalOpen"
+          class="payroll-modal-backdrop"
+          @click.self="closeIadeModal"
+        >
+          <div class="payroll-modal-sheet payroll-modal-sheet--period">
+            <div class="sheet-drag-handle"></div>
+            <header class="payroll-sheet-header">
+              <div>
+                <span class="clay-page-eyebrow">VARLIK İADESİ</span>
+                <h3 class="payroll-sheet-title">Zimmet İade Al</h3>
+                <p class="payroll-sheet-subtitle">Varlığın iadesini onaylayıp stoka geri aktarın</p>
+              </div>
+              <button
+                type="button"
+                class="clay-circle-btn"
+                @click="closeIadeModal"
+                aria-label="Kapat"
+              >
+                <X :size="18" />
+              </button>
+            </header>
+
+            <form class="leave-request-form" @submit.prevent="submitIadeZimmet">
+              <div v-if="iadeFormError" class="clay-alert-banner clay-alert-banner--danger mb-2">
+                <AlertCircle :size="16" />
+                <span>{{ iadeFormError }}</span>
+              </div>
+
+              <!-- İade Edilecek Varlık Özeti -->
+              <div class="hero-mini-meta-card mb-3" style="background: #f1f5f9; padding: 12px; border-radius: 14px;">
+                <div class="meta-row">
+                  <span class="meta-lbl"><PackageCheck :size="13" /> Varlık</span>
+                  <strong class="meta-val">{{ selectedZimmetForIade?.demirbas_adi }}</strong>
+                </div>
+                <div v-if="!selectedZimmetForIade?.is_arac" class="meta-row">
+                  <span class="meta-lbl"><Coins :size="13" /> Kalan Miktar</span>
+                  <strong class="meta-val">{{ Math.max(1, (selectedZimmetForIade?.teslim_miktar || 1) - (selectedZimmetForIade?.iade_miktar || 0)) }} Adet</strong>
+                </div>
+              </div>
+
+              <!-- Araç ise İade Km, Demirbaş ise İade Miktarı -->
+              <div class="form-grid-2">
+                <div v-if="selectedZimmetForIade?.is_arac" class="form-field">
+                  <span>İade Kilometresi</span>
+                  <input
+                    v-model.number="iadeForm.iade_km"
+                    type="number"
+                    min="0"
+                    placeholder="Örn: 145200"
+                    class="clay-input"
+                  />
+                </div>
+                <div v-else class="form-field">
+                  <span>İade Miktarı *</span>
+                  <input
+                    v-model.number="iadeForm.iade_miktar"
+                    type="number"
+                    min="1"
+                    :max="Math.max(1, (selectedZimmetForIade?.teslim_miktar || 1) - (selectedZimmetForIade?.iade_miktar || 0))"
+                    class="clay-input"
+                    required
+                  />
+                </div>
+
+                <div class="form-field">
+                  <span>İade Tarihi *</span>
+                  <input
+                    v-model="iadeForm.iade_tarihi"
+                    type="date"
+                    class="clay-input"
+                    required
+                  />
+                </div>
+              </div>
+
+              <!-- Açıklama -->
+              <div class="form-field">
+                <span>İade Notu / Açıklama</span>
+                <textarea
+                  v-model="iadeForm.aciklama"
+                  rows="3"
+                  class="clay-input"
+                  placeholder="İade sebebi veya durum notu…"
+                ></textarea>
+              </div>
+
+              <div class="form-actions mt-3">
+                <button
+                  type="button"
+                  class="clay-btn clay-btn--secondary"
+                  @click="closeIadeModal"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  class="clay-btn clay-btn--primary"
+                  :disabled="iadeSaving"
+                >
+                  <RefreshCw v-if="iadeSaving" :size="15" class="clay-spin-icon" />
+                  <RotateCcw v-else :size="15" />
+                  <span>{{ iadeSaving ? 'İşleniyor…' : 'İadeyi Onayla' }}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </Teleport>
+
+      <!-- Bottom-Sheet Modal: Zimmet Detayı & Hareket Geçmişi -->
+      <Teleport to="body">
+        <div
+          v-if="isZimmetDetailOpen"
+          class="payroll-modal-backdrop"
+          @click.self="closeZimmetDetail"
+        >
+          <div class="payroll-modal-sheet payroll-modal-sheet--period">
+            <div class="sheet-drag-handle"></div>
+            <header class="payroll-sheet-header">
+              <div>
+                <span class="clay-page-eyebrow">ZİMMET DETAYLARI</span>
+                <h3 class="payroll-sheet-title">{{ selectedZimmetDetail?.demirbas_adi }}</h3>
+                <p class="payroll-sheet-subtitle">{{ selectedZimmetDetail?.kategori_adi }} · {{ selectedZimmetDetail?.durum_label }}</p>
+              </div>
+              <button
+                type="button"
+                class="clay-circle-btn"
+                @click="closeZimmetDetail"
+                aria-label="Kapat"
+              >
+                <X :size="18" />
+              </button>
+            </header>
+
+            <div class="zimmet-spec-list">
+              <div v-if="selectedZimmetDetail?.demirbas_no" class="zimmet-spec-row">
+                <span class="spec-label">{{ selectedZimmetDetail?.is_arac ? 'Plaka' : 'Demirbaş No' }}</span>
+                <strong class="spec-val">{{ selectedZimmetDetail?.demirbas_no }}</strong>
+              </div>
+              <div class="zimmet-spec-row">
+                <span class="spec-label">Kategori</span>
+                <strong class="spec-val">{{ selectedZimmetDetail?.kategori_adi }}</strong>
+              </div>
+              <div v-if="selectedZimmetDetail?.marka || selectedZimmetDetail?.model" class="zimmet-spec-row">
+                <span class="spec-label">Marka / Model</span>
+                <strong class="spec-val">{{ [selectedZimmetDetail?.marka, selectedZimmetDetail?.model].filter(Boolean).join(' ') }}</strong>
+              </div>
+              <div v-if="selectedZimmetDetail?.seri_no" class="zimmet-spec-row">
+                <span class="spec-label">Seri Numarası</span>
+                <strong class="spec-val">{{ selectedZimmetDetail?.seri_no }}</strong>
+              </div>
+              <div class="zimmet-spec-row">
+                <span class="spec-label">Teslim Tarihi</span>
+                <strong class="spec-val">{{ selectedZimmetDetail?.teslim_tarihi_formatted }} ({{ selectedZimmetDetail?.teslim_miktar }} Adet)</strong>
+              </div>
+              <div v-if="selectedZimmetDetail?.iade_tarihi" class="zimmet-spec-row">
+                <span class="spec-label">İade Tarihi</span>
+                <strong class="spec-val">{{ selectedZimmetDetail?.iade_tarihi_formatted }} ({{ selectedZimmetDetail?.iade_miktar }} Adet)</strong>
+              </div>
+              <div class="zimmet-spec-row">
+                <span class="spec-label">Durum</span>
+                <span class="clay-badge" :class="selectedZimmetDetail?.durum === 'teslim' ? 'clay-badge--emerald' : 'clay-badge--sky'">
+                  {{ selectedZimmetDetail?.durum_label }}
+                </span>
+              </div>
+              <div v-if="selectedZimmetDetail?.aciklama" class="zimmet-spec-row" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                <span class="spec-label">Açıklama / Not</span>
+                <p class="mb-0 text-dark font-size-12">{{ selectedZimmetDetail?.aciklama }}</p>
+              </div>
+            </div>
+
+            <!-- Hareket Geçmişi (Demirbaş Hareketleri) -->
+            <div v-if="!selectedZimmetDetail?.is_arac" class="mt-3">
+              <h4 class="font-size-13 fw-bold mb-2 text-dark d-flex align-items-center gap-1">
+                <History :size="14" class="text-primary" />
+                <span>İşlem & Hareket Geçmişi</span>
+              </h4>
+
+              <div v-if="loadingHareketler" class="text-center py-3 text-muted">
+                <RefreshCw :size="18" class="clay-spin-icon" />
+                <span class="ms-2 font-size-12">Yükleniyor…</span>
+              </div>
+
+              <div v-else-if="zimmetHareketleri.length === 0" class="p-3 bg-light rounded-3 text-muted font-size-12 text-center">
+                Henüz kayıtlı hareket geçmişi bulunmuyor.
+              </div>
+
+              <div v-else class="timeline-list">
+                <div
+                  v-for="h in zimmetHareketleri"
+                  :key="h.id"
+                  class="timeline-item"
+                >
+                  <div class="timeline-header">
+                    <span class="clay-badge" :class="h.hareket_tipi === 'zimmet' ? 'clay-badge--emerald' : 'clay-badge--sky'">
+                      {{ h.hareket_tipi_label }} ({{ h.miktar }} Adet)
+                    </span>
+                    <span class="timeline-meta">{{ h.tarih }}</span>
+                  </div>
+                  <div class="timeline-meta">
+                    <span>İşlem Yapan: {{ h.islem_yapan_adi }}</span>
+                  </div>
+                  <p v-if="h.aciklama" class="timeline-desc">{{ h.aciklama }}</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-actions mt-3">
+              <button
+                v-if="selectedZimmetDetail?.can_iade && canEdit"
+                type="button"
+                class="clay-btn clay-btn--secondary-subtle"
+                @click="closeZimmetDetail(); openIadeModal(selectedZimmetDetail)"
+              >
+                <RotateCcw :size="15" />
+                <span>İade Al</span>
+              </button>
+              <button
+                type="button"
+                class="clay-btn clay-btn--primary"
+                style="flex: 1;"
+                @click="closeZimmetDetail"
+              >
+                Kapat
+              </button>
+            </div>
+          </div>
+        </div>
+      </Teleport>
+
+      <!-- Bottom-Sheet Modal: Silme Onayı -->
+      <Teleport to="body">
+        <div
+          v-if="isDeleteZimmetConfirmOpen"
+          class="payroll-modal-backdrop"
+          @click.self="closeDeleteZimmetConfirm"
+        >
+          <div class="payroll-modal-sheet" style="max-width: 420px;">
+            <div class="sheet-drag-handle"></div>
+            <header class="payroll-sheet-header">
+              <div>
+                <span class="clay-page-eyebrow text-danger">ONAY GEREKLİ</span>
+                <h3 class="payroll-sheet-title">Zimmet Kaydını Sil</h3>
+                <p class="payroll-sheet-subtitle">Bu işlem geri alınamaz</p>
+              </div>
+              <button
+                type="button"
+                class="clay-circle-btn"
+                @click="closeDeleteZimmetConfirm"
+                aria-label="Kapat"
+              >
+                <X :size="18" />
+              </button>
+            </header>
+
+            <div class="p-3 text-center">
+              <Trash2 :size="36" class="text-danger mb-2" />
+              <p class="font-size-13 text-dark mb-0">
+                <strong>{{ zimmetToDelete?.demirbas_adi }}</strong> zimmet kaydını silmek istediğinize emin misiniz?
+                <br>
+                <small class="text-muted">Teslim edilen miktar otomatik olarak demirbaş stoğuna geri aktarılacaktır.</small>
+              </p>
+            </div>
+
+            <div class="form-actions mt-3">
+              <button
+                type="button"
+                class="clay-btn clay-btn--secondary"
+                @click="closeDeleteZimmetConfirm"
+              >
+                Vazgeç
+              </button>
+              <button
+                type="button"
+                class="clay-btn clay-btn--danger"
+                :disabled="zimmetDeleting"
+                @click="executeDeleteZimmet"
+              >
+                <RefreshCw v-if="zimmetDeleting" :size="15" class="clay-spin-icon" />
+                <Trash2 v-else :size="15" />
+                <span>{{ zimmetDeleting ? 'Siliniyor…' : 'Evet, Sil' }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </Teleport>
+
+      <!-- Bottom-Sheet Modal: Yeni Görev / Saha İşi Ekle -->
+      <Teleport to="body">
+        <div
+          v-if="isPuantajJobModalOpen"
+          class="payroll-modal-backdrop"
+          @click.self="closeNewPuantajJobModal"
+        >
+          <div class="payroll-modal-sheet" style="max-width: 520px;">
+            <div class="sheet-drag-handle"></div>
+            <header class="payroll-sheet-header">
+              <div>
+                <span class="clay-page-eyebrow">MANUEL GÖREV GİRİŞİ</span>
+                <h3 class="payroll-sheet-title">Yeni İş / Görev Ekle</h3>
+                <p class="payroll-sheet-subtitle">Personel için yeni saha iş emri kaydı oluşturun</p>
+              </div>
+              <button
+                type="button"
+                class="clay-circle-btn"
+                @click="closeNewPuantajJobModal"
+                aria-label="Kapat"
+              >
+                <X :size="18" />
+              </button>
+            </header>
+
+            <form class="leave-request-form" @submit.prevent="submitSavePuantajJob">
+              <div v-if="puantajJobFormError" class="clay-alert-banner clay-alert-banner--danger mb-2">
+                <AlertCircle :size="16" />
+                <span>{{ puantajJobFormError }}</span>
+              </div>
+
+              <div class="form-grid-2">
+                <div class="form-field">
+                  <span>İşlem Tarihi *</span>
+                  <input
+                    v-model="puantajJobForm.tarih"
+                    type="date"
+                    class="clay-input"
+                    required
+                  />
+                </div>
+                <div class="form-field">
+                  <span>İş Emri No</span>
+                  <input
+                    v-model="puantajJobForm.is_emri_no"
+                    type="text"
+                    placeholder="Örn: 2026-98124"
+                    class="clay-input"
+                  />
+                </div>
+              </div>
+
+              <div class="form-field">
+                <span>İş Emri Tipi *</span>
+                <select v-model="puantajJobForm.is_emri_tipi_id" class="clay-input" required>
+                  <option value="" disabled>Seçiniz</option>
+                  <option
+                    v-for="wt in puantajWorkTypes"
+                    :key="wt.id"
+                    :value="wt.id"
+                  >
+                    {{ wt.name }}
+                  </option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <span>İş Emri Sonucu *</span>
+                <select v-model="puantajJobForm.is_emri_sonuc_id" class="clay-input" required>
+                  <option value="" disabled>Seçiniz</option>
+                  <option
+                    v-for="wr in puantajWorkResults"
+                    :key="wr.id"
+                    :value="wr.id"
+                  >
+                    {{ wr.name }}
+                  </option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <span>Abone / Tesisat No</span>
+                <input
+                  v-model="puantajJobForm.abone_no"
+                  type="text"
+                  placeholder="Örn: 10084521"
+                  class="clay-input"
+                />
+              </div>
+
+              <div class="form-field">
+                <span>Açıklama / Not</span>
+                <textarea
+                  v-model="puantajJobForm.aciklama"
+                  rows="2"
+                  placeholder="İşlem ile ilgili not veya açıklama ekleyin…"
+                  class="clay-input"
+                  style="resize: vertical; min-height: 64px;"
+                ></textarea>
+              </div>
+
+              <div class="form-actions mt-3">
+                <button
+                  type="button"
+                  class="clay-btn clay-btn--secondary"
+                  @click="closeNewPuantajJobModal"
+                >
+                  Vazgeç
+                </button>
+                <button
+                  type="submit"
+                  class="clay-btn clay-btn--primary"
+                  :disabled="puantajJobSaving"
+                >
+                  <RefreshCw v-if="puantajJobSaving" :size="15" class="clay-spin-icon" />
+                  <Save v-else :size="15" />
+                  <span>{{ puantajJobSaving ? 'Kaydediliyor…' : 'Kaydet' }}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </Teleport>
+
+      <!-- Bottom-Sheet Modal: İş / Görev Detayı -->
+      <Teleport to="body">
+        <div
+          v-if="isPuantajDetailOpen"
+          class="payroll-modal-backdrop"
+          @click.self="closePuantajDetail"
+        >
+          <div class="payroll-modal-sheet" style="max-width: 520px;">
+            <div class="sheet-drag-handle"></div>
+            <header class="payroll-sheet-header">
+              <div>
+                <span class="clay-page-eyebrow">{{ selectedPuantajDetail?.category?.toUpperCase() || 'İŞ DETAYI' }}</span>
+                <h3 class="payroll-sheet-title">{{ selectedPuantajDetail?.is_emri_tipi }}</h3>
+                <p class="payroll-sheet-subtitle">{{ selectedPuantajDetail?.tarih_formatted || selectedPuantajDetail?.tarih }}</p>
+              </div>
+              <button
+                type="button"
+                class="clay-circle-btn"
+                @click="closePuantajDetail"
+                aria-label="Kapat"
+              >
+                <X :size="18" />
+              </button>
+            </header>
+
+            <div class="puantaj-spec-list">
+              <div class="puantaj-spec-row">
+                <span class="spec-label">İşlem Türü:</span>
+                <span class="spec-val">{{ selectedPuantajDetail?.category }}</span>
+              </div>
+              <div class="puantaj-spec-row">
+                <span class="spec-label">İş Emri Tipi:</span>
+                <strong class="spec-val">{{ selectedPuantajDetail?.is_emri_tipi }}</strong>
+              </div>
+              <div class="puantaj-spec-row">
+                <span class="spec-label">İş Emri Sonucu:</span>
+                <strong class="spec-val text-primary">{{ selectedPuantajDetail?.is_emri_sonucu }}</strong>
+              </div>
+              <div class="puantaj-spec-row">
+                <span class="spec-label">Durum:</span>
+                <span
+                  class="badge rounded-pill font-size-11 fw-semibold"
+                  :class="selectedPuantajDetail?.sonuclanmis === 1 ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning'"
+                >
+                  {{ selectedPuantajDetail?.sonuclanmis === 1 ? 'Sonuçlandı' : 'Açık / Devam Ediyor' }}
+                </span>
+              </div>
+              <div v-if="selectedPuantajDetail?.tarih" class="puantaj-spec-row">
+                <span class="spec-label">Tarih:</span>
+                <span class="spec-val">{{ selectedPuantajDetail?.tarih_formatted || selectedPuantajDetail?.tarih }}</span>
+              </div>
+              <div v-if="selectedPuantajDetail?.abone_no" class="puantaj-spec-row">
+                <span class="spec-label">Abone / Tesisat No:</span>
+                <strong class="spec-val">{{ selectedPuantajDetail?.abone_no }}</strong>
+              </div>
+              <div v-if="selectedPuantajDetail?.is_emri_no" class="puantaj-spec-row">
+                <span class="spec-label">İş Emri No:</span>
+                <strong class="spec-val">{{ selectedPuantajDetail?.is_emri_no }}</strong>
+              </div>
+              <div v-if="selectedPuantajDetail?.ekip_kodu" class="puantaj-spec-row">
+                <span class="spec-label">Ekip Kodu:</span>
+                <span class="spec-val">{{ selectedPuantajDetail?.ekip_kodu }}</span>
+              </div>
+              <div v-if="selectedPuantajDetail?.sayac_no" class="puantaj-spec-row">
+                <span class="spec-label">Sayaç No:</span>
+                <span class="spec-val">{{ selectedPuantajDetail?.sayac_no }}</span>
+              </div>
+              <div v-if="selectedPuantajDetail?.onceki_endeks !== undefined && selectedPuantajDetail?.onceki_endeks !== null && selectedPuantajDetail?.onceki_endeks !== ''" class="puantaj-spec-row">
+                <span class="spec-label">Önceki Endeks:</span>
+                <span class="spec-val">{{ selectedPuantajDetail?.onceki_endeks }}</span>
+              </div>
+              <div v-if="selectedPuantajDetail?.son_endeks !== undefined && selectedPuantajDetail?.son_endeks !== null && selectedPuantajDetail?.son_endeks !== ''" class="puantaj-spec-row">
+                <span class="spec-label">Son Endeks:</span>
+                <span class="spec-val">{{ selectedPuantajDetail?.son_endeks }}</span>
+              </div>
+              <div v-if="selectedPuantajDetail?.tuketim !== undefined && selectedPuantajDetail?.tuketim !== null && selectedPuantajDetail?.tuketim !== ''" class="puantaj-spec-row">
+                <span class="spec-label">Tüketim Miktarı:</span>
+                <strong class="spec-val text-emerald">{{ selectedPuantajDetail?.tuketim }} m³</strong>
+              </div>
+              <div v-if="selectedPuantajDetail?.aciklama" class="puantaj-spec-row" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                <span class="spec-label">Açıklama:</span>
+                <span class="spec-val text-start" style="font-weight: 500; font-size: 12px; color: #475569;">
+                  {{ selectedPuantajDetail?.aciklama }}
+                </span>
+              </div>
+            </div>
+
+            <div class="form-actions mt-3">
+              <button
+                v-if="canEdit && selectedPuantajDetail?.can_delete"
+                type="button"
+                class="clay-btn clay-btn--danger"
+                @click="confirmDeletePuantaj(selectedPuantajDetail)"
+              >
+                <Trash2 :size="15" />
+                <span>Kaydı Sil</span>
+              </button>
+              <button
+                type="button"
+                class="clay-btn clay-btn--secondary"
+                style="flex: 1;"
+                @click="closePuantajDetail"
+              >
+                Kapat
+              </button>
+            </div>
+          </div>
+        </div>
+      </Teleport>
+
+      <!-- Bottom-Sheet Modal: Puantaj Kaydı Silme Onayı -->
+      <Teleport to="body">
+        <div
+          v-if="isDeletePuantajConfirmOpen"
+          class="payroll-modal-backdrop"
+          @click.self="closeDeletePuantajConfirm"
+        >
+          <div class="payroll-modal-sheet" style="max-width: 420px;">
+            <div class="sheet-drag-handle"></div>
+            <header class="payroll-sheet-header">
+              <div>
+                <span class="clay-page-eyebrow text-danger">ONAY GEREKLİ</span>
+                <h3 class="payroll-sheet-title">Görev Kaydını Sil</h3>
+                <p class="payroll-sheet-subtitle">Bu işlem geri alınamaz</p>
+              </div>
+              <button
+                type="button"
+                class="clay-circle-btn"
+                @click="closeDeletePuantajConfirm"
+                aria-label="Kapat"
+              >
+                <X :size="18" />
+              </button>
+            </header>
+
+            <div class="p-3 text-center">
+              <Trash2 :size="36" class="text-danger mb-2" />
+              <p class="font-size-13 text-dark mb-0">
+                <strong>{{ puantajToDelete?.is_emri_tipi }} ({{ puantajToDelete?.tarih_formatted || puantajToDelete?.tarih }})</strong> görev kaydını silmek istediğinize emin misiniz?
+              </p>
+            </div>
+
+            <div class="form-actions mt-3">
+              <button
+                type="button"
+                class="clay-btn clay-btn--secondary"
+                @click="closeDeletePuantajConfirm"
+              >
+                Vazgeç
+              </button>
+              <button
+                type="button"
+                class="clay-btn clay-btn--danger"
+                :disabled="puantajDeleting"
+                @click="executeDeletePuantaj"
+              >
+                <RefreshCw v-if="puantajDeleting" :size="15" class="clay-spin-icon" />
+                <Trash2 v-else :size="15" />
+                <span>{{ puantajDeleting ? 'Siliniyor…' : 'Evet, Sil' }}</span>
+              </button>
             </div>
           </div>
         </div>
@@ -7719,5 +9580,314 @@ onUnmounted(() => {
   padding: 4px 8px;
   border-radius: 6px;
   line-height: 1.3;
+}
+
+/* Zimmet Kartları & Grid */
+.zimmetler-section-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.zimmet-items-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.zimmet-item-card {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-radius: var(--ds-radius-card, 24px);
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.zimmet-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.zimmet-item-cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ds-ink);
+  background: var(--ds-surface-muted, #f1f5f9);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.zimmet-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.zimmet-item-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--ds-ink, #0f172a);
+  margin: 0;
+  line-height: 1.25;
+}
+
+.zimmet-item-subtitle {
+  font-size: 12px;
+  color: var(--ds-muted, #64748b);
+  margin: 0;
+}
+
+.zimmet-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  background: #f8fafc;
+  padding: 10px 12px;
+  border-radius: 14px;
+}
+
+.zimmet-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #334155;
+}
+
+.zimmet-meta-item .meta-label {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.zimmet-meta-item strong {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.zimmet-item-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* Zimmet Detay Bottom Sheet */
+.zimmet-spec-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.zimmet-spec-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: 10px;
+  font-size: 12.5px;
+}
+
+.zimmet-spec-row .spec-label {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.zimmet-spec-row .spec-val {
+  color: #0f172a;
+  font-weight: 700;
+  text-align: right;
+}
+
+/* ========================================================================= */
+/* İŞ VE PUANTAJ (İŞ TAKİP & SAHA OPERASYONLARI) STİLLERİ                    */
+/* ========================================================================= */
+.puantaj-section-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.puantaj-date-filter-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.puantaj-date-filter-row .date-input-group {
+  flex: 1 1 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.puantaj-date-filter-row .date-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.puantaj-items-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.puantaj-item-card {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-radius: var(--ds-radius-card, 24px);
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.puantaj-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.puantaj-item-cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--ds-surface-muted, #f1f5f9);
+  color: var(--ds-ink);
+}
+
+.puantaj-item-cat.cat--saha {
+  background: rgba(56, 189, 248, 0.12);
+  color: #0284c7;
+}
+
+.puantaj-item-cat.cat--endeks {
+  background: rgba(52, 211, 153, 0.12);
+  color: #059669;
+}
+
+.puantaj-item-cat.cat--kacak {
+  background: rgba(251, 113, 133, 0.12);
+  color: #e11d48;
+}
+
+.puantaj-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.puantaj-item-title {
+  font-size: 15.5px;
+  font-weight: 800;
+  color: var(--ds-ink, #0f172a);
+  margin: 0;
+  line-height: 1.25;
+}
+
+.puantaj-item-subtitle {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ds-muted, #475569);
+  margin: 0;
+}
+
+.puantaj-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px 12px;
+  background: #f8fafc;
+  padding: 10px 12px;
+  border-radius: 14px;
+}
+
+@media (max-width: 360px) {
+  .puantaj-meta-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.puantaj-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: #334155;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.puantaj-meta-item .meta-label {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.puantaj-item-desc {
+  font-size: 11.5px;
+  color: #64748b;
+  margin: 0;
+  background: #f8fafc;
+  padding: 6px 10px;
+  border-radius: 8px;
+  line-height: 1.35;
+}
+
+.puantaj-item-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* Puantaj Detay Bottom Sheet */
+.puantaj-spec-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.puantaj-spec-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: 10px;
+  font-size: 12.5px;
+}
+
+.puantaj-spec-row .spec-label {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.puantaj-spec-row .spec-val {
+  color: #0f172a;
+  font-weight: 700;
+  text-align: right;
 }
 </style>

@@ -129,19 +129,17 @@ $title = "Evrak Listesi";
                         <i class="bx bx-file me-2 font-size-16 text-success"></i> Excel'e Aktar
                     </button>
                     <div class="dropdown-divider"></div>
-                    <a class="dropdown-item d-flex align-items-center" href="index?p=evrak-takip/giden-evrak&amp;arac=ai">
-                        <i class="bx bx-bot me-2 text-info font-size-16"></i> AI ile Taslak Yazdır
-                    </a>
-                    <a class="dropdown-item d-flex align-items-center" href="index?p=evrak-takip/giden-evrak&amp;arac=icra">
-                        <i class="bx bx-file-blank me-2 text-warning font-size-16"></i> İcra Üst Yazısı Oluştur
-                    </a>
-                    <div class="dropdown-divider"></div>
                     <button type="button" class="dropdown-item d-flex align-items-center" id="btnUetsSync">
                         <i class="bx bx-sync me-2 text-primary font-size-16"></i> UETS / KEP Senkronize Et
                     </button>
                     <button type="button" class="dropdown-item d-flex align-items-center" id="btnUetsSettings">
                         <i class="bx bx-slider me-2 text-secondary font-size-16"></i> UETS / KEP Ayarları
                     </button>
+                    <div class="dropdown-divider"></div>
+                    <a class="dropdown-item d-flex align-items-center py-2" href="downloads/ErsanEImza.jar?v=1.3.1" download="ErsanEImza.jar" title="E-İmza Java uygulamasını indir">
+                        <i class="bx bxl-java me-2 text-danger font-size-18"></i>
+                        <span><span class="d-block fw-semibold">E-İmza Java Uygulamasını İndir</span><small class="text-muted">Masaüstü imza köprüsü (.jar)</small></span>
+                    </a>
                 </div>
             </div>
 

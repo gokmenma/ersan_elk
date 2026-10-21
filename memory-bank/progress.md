@@ -1,5 +1,64 @@
 # Progress
 
+## 2026-10-21: Mobil SPA — Personel Detay Sayfasında İş ve Puantaj (İş Takip / Saha Operasyonları) Modülü
+- [x] Model Katmanı (`App/Model/MobilePersonelModel.php`):
+  - `getPuantajIsTakipDetails`: `yapilan_isler`, `endeks_okuma` ve `kacak_kontrol` kayıtlarını ortak standart veri şemasında birleştiren, özet metrikleri (`toplam_kayit`, `toplam_is`, `sonuclanan_is`, `acik_is`, `endeks_sayisi`, `kacak_sayisi`, `tamamlanma_orani`) ve dinamik iş tipi/sonuç seçeneklerini üreten metot yazıldı.
+  - `savePuantajJob`: Personel için manuel iş emri/görev kaydını `yapilan_isler` tablosuna güvenli şekilde oluşturan metot yazıldı.
+  - `deletePuantajJob`: İlgili iş emri, endeks veya kaçak kaydını soft delete mantığıyla silen metot yazıldı.
+- [x] Backend API (`mobile-spa/public/api/personnel.php` & `dist/api/personnel.php`):
+  - `detail` aksiyonuna `puantaj_items`, `puantaj_ozet`, `puantaj_work_types` ve `puantaj_work_results` verileri bağlandı.
+  - `puantaj_is_takip` (GET), `save_puantaj_job` (POST) ve `delete_puantaj_job` (POST) API uçları CSRF ve Gate (`personel_duzenle` / `puantaj_yonetim`) denetimiyle eklendi.
+- [x] Mobil İstemci Servisi (`mobile-spa/src/services/personnel.js`):
+  - `personnelApi` servisine `getPuantajIsTakip`, `savePuantajJob` ve `deletePuantajJob` fonksiyonları eklendi.
+- [x] Vue Arayüzü (`mobile-spa/src/views/PersonnelSectionView.vue`):
+  - Hero Obsidian Bento Kartı (Tamamlanan/Açık işler ilerleme çubuğu, 4'lü tıklanabilir KPI legend kartları).
+  - Canlı arama, tarih filtresi (Başlangıç/Bitiş) ve dinamik filtre sekmeleri (`clay-tabs-wrap`).
+  - Saha İşleri, Endeks Okuma ve Kaçak Kontrol bento kartları (Abone no, İş emri no, Sayaç no, Tüketim m³, Ekip, Açıklama, Detay ve Sil butonları).
+  - 3 Adet Teleport Modalı: "Yeni İş Ekle (Manuel)", "İş / Görev Detayı" ve "Silme Onayı".
+- [x] Derleme ve Test:
+  - PHP syntax kontrolleri (`/opt/lampp/bin/php -l`) hatasız geçti.
+  - Vite derlemesi (`npm run build`) 0 hata ile tamamlandı.
+
+## 2026-10-21: Mobil SPA — Personel Detay Sayfasında Zimmetler Modülü
+- [x] Model Katmanı (`App/Model/MobilePersonelModel.php`):
+  - `getZimmetDetails`: Personelin demirbaş ve araç zimmet kayıtlarını ortak şemada birleştirip özet metriklerle birlikte getiren metot yazıldı.
+  - `getDemirbasOptions`: Stoktaki teslim edilebilir demirbaşları kalan stok bilgileriyle listeleyen metot yazıldı.
+  - `saveZimmet`: Stok kontrolü, mükerrer sayaç kontrolü, işlem logları ve stoktan düşme mantığıyla zimmet kaydı oluşturan metot yazıldı.
+  - `iadeZimmet`: Araç zimmetleri için `AracZimmetModel::iadeEt` ve demirbaşlar için `DemirbasZimmetModel::iadeYap` entegrasyonuyla iade ve stok yenileme metodu yazıldı.
+  - `deleteZimmet`: Yetki ve durum doğrulamasıyla aktif zimmet kaydını silip stoku geri yükleyen metot yazıldı.
+  - `getZimmetHareketleri`: Zimmet kaydına ait tüm teslim/iade hareketlerini ve işlem yapan personeli getiren metot yazıldı.
+- [x] Backend API (`mobile-spa/public/api/personnel.php` & `dist/api/personnel.php`):
+  - `detail` aksiyonuna `zimmetler`, `zimmet_ozet` ve `demirbas_options` verileri bağlandı.
+  - `save_zimmet`, `iade_zimmet`, `delete_zimmet`, `zimmet_hareketleri` ve `search_demirbas` API uçları CSRF ve Gate denetimiyle eklendi.
+- [x] Mobil İstemci Servisi (`mobile-spa/src/services/personnel.js`):
+  - `personnelApi` servisine tüm zimmet CRUD fonksiyonları eklendi.
+- [x] Vue Arayüzü (`mobile-spa/src/views/PersonnelSectionView.vue`):
+  - Hero Obsidian Bento Kartı (Aktif zimmet sayısı, renkli segmentli dağılım barı, 4'lü tıklanabilir KPI legend kartları).
+  - Canlı arama ve dinamik kategori filtre hapları (`clay-tabs-wrap`).
+  - Zimmet Bento Kartları (Demirbaş ve araç rozetleri, durum badge'i, tarih/miktar/açıklama bilgileri, Detay, İade Al ve Sil aksiyon butonları).
+  - 4 Adet Bottom-Sheet Modalı: "Yeni Zimmet Ver", "Zimmet İade Al", "Zimmet Detayı & Hareket Geçmişi" ve "Silme Onayı".
+- [x] Derleme ve Test:
+  - PHP syntax ve CLI simülasyon testleri (`/opt/lampp/bin/php -l`) başarıyla geçti.
+  - Vite derlemesi (`npm run build`) 0 hata ile tamamlandı.
+
+## 2026-10-21: Mobil SPA — Sözleşme & Hakediş Modülü Entegrasyonu ve Düzeltmeler
+- [x] Backend API: `mobile-spa/public/api/sozlesme-hakedis.php` geliştirildi (Sözleşmeler listesi, KPI özetleri, detay, yeni sözleşme/düzenleme, soft delete, iş artış/azalış revizyonları, süre uzatımları, hakediş dönemleri, kalem imalat girişleri, kümülatif hesaplamalar, EPDK/TÜİK canlı endeks servisi entegrasyonu).
+- [x] Dönem İmalat Tutarı Düzeltmesi: Hakediş dönemleri listesinde kümülatif tutar yerine sadece dönemin kendi imalat tutarı (`imalat_donem`) gösterildi; altına kümülatif imalat bilgisi eklendi.
+- [x] KDV Dahil Dönem Tutarı Düzeltmesi: Hakediş detayındaki koyu renkli özet bento kartında "KDV DAHİL TOPLAM ÖDEME" kısmında kümülatif tutar (98.733.787,02 ₺) yerine o dönemin KDV dahil tutarı (`(imalat_donem + fiyat_farki) * (1 + kdv / 100)` = 10.575.019,02 ₺) gösterildi; kümülatif KDV dahil tutar altına yerleştirildi.
+- [x] İmalat Miktarı Girişi Modalı Düzeltmesi: `HakedisDetailView.vue` içerisindeki bottom sheet modalında `.form-grid`, `.form-field`, `.calc-preview-box` ve `.preview-item` CSS stilleri tamamlanarak 2 sütunlu, modern, etiket-input çakışması olmayan mobil bento form düzeni sağlandı.
+- [x] Yetkilendirme & Güvenlik: `auth.php` içerisine `contracts` Gate/menü izni eklendi. Tüm API uçlarında Gate denetimi, session firma kontrolü, CSRF koruması ve `Security::encrypt/decrypt` ID şifrelemesi uygulandı.
+- [x] Servis Katmanı: `mobile-spa/src/services/sozlesme-hakedis.js` oluşturuldu.
+- [x] Vue Arayüzleri: `SozlesmeHakedisView.vue`, `SozlesmeDetailView.vue`, `HakedisDetailView.vue`.
+- [x] Rota ve Menü Entegrasyonu: `router.js` içerisine `/sozlesme-hakedis` rotaları, `BottomNav.vue` içine "FİNANS & MUHASEBE" kategorisinde "Sözleşme & Hakediş", `HomeView.vue` içine hızlı erişim seçeneği eklendi.
+- [x] Derleme & Test: `npm run build` ile Vite üretim derlemesi 0 hata ile tamamlandı, PHP sözdizimi ve CLI simülasyon testleri başarıyla geçti.
+
+
+## 2026-10-21: Ayarlar — Avans Ayarları Kaydetme Yetki Hatası
+- [x] API reddinin form içi kontrolden değil, eksik merkezi `permission_policies` kaydından kaynaklandığı doğrulandı.
+- [x] `avans_ayarlari_sekmesi` aktif ve benzersiz yetkisi için tekrarlanabilir SQL oluşturuldu.
+- [x] `save_avans_ayarlari` aksiyonu aynı yetkiye bağlı `write` politikası olarak tanımlandı.
+- [x] Yeni yetki yalnızca `role_type = 'superadmin'` veya `superadmin = 1` rollerine `NOT EXISTS` kontrolüyle atandı.
+
 ## 2026-10-21: Dashboard — Görev & Evrak Takvimi Kartı Yükseklik Eşitlemesi (260px)
 - [x] Kart Yüksekliği Birebir Eşitlendi: `widget-takvim-alarmlar` kartı (`.cal-alarm-card`), yanındaki operasyonel kartların (Endeks Okuma, Sayaç Değişimi, Kesme Açma) `.stat-card` yüksekliği olan tam **260px** (`height: 260px !important; min-height: 260px !important; max-height: 260px !important;`) ile pikseli pikseline eşitlendi.
 - [x] İç Düzen ve Dikey Oranlama: Takvim ızgarası satır yüksekliği `grid-auto-rows: 23px; gap: 2px;`, gün hücreleri `22x22px` ve sağ alarm listesi kaydırma alanı `max-height: 168px;` olarak güncellenerek 260px içine kusursuz oturtuldu.
@@ -1538,6 +1597,37 @@
 - [x] Aktif Aldım/Verdim filtresi ve DataTables genel araması Excel isteğine aktarılmaya devam edecek şekilde korundu.
 - [x] Excel veri sorgusu Model katmanına taşındı ve tüm dinamik değerler PDO parametrik binding ile bağlandı.
 - [x] İlgili PHP dosyaları, JavaScript ve diff kontrolleri geçti; örnek cari için Model sorgusu 45 satırla başarıyla çalıştı.
+
+# 2026-10-21 — KEP ileti modalı ve adres defteri akışı
+
+- [x] KEP ileti oluşturma modalı numaralı, kart tabanlı bölümler ve belirgin ek yükleme alanıyla yenilendi.
+- [x] Yazılan KEP adresleri için kullanıcı kontrollü `Doğrula ve Kaydet` seçeneği eklendi; yalnız PTT rehberinde geçerli ve uygun bulunan adresler firma bazlı adres defterine kaydediliyor.
+- [x] Kayıt sonucu satır bazında gösteriliyor ve yeni adresler modal içindeki Select2 adres defteri listesine anında alınıyor.
+- [x] PHP, JavaScript ve diff sözdizimi kontrolleri geçti.
+- [x] Modal alt işlem alanı kompakt e-imza durum kartı ve sade gönderim aksiyonlarıyla düzenlendi.
+- [x] Evrak Takip İşlemler menüsünden AI taslak/icra üst yazısı kısayolları kaldırıldı; Java E-İmza indirme bağlantısı menünün en altına taşındı.
+
+# 2026-10-21 — Giden Evrak ıslak imza onay akışı
+
+- [x] Normal gönderim türüne `Islak İmza ile Onaya Sun` işlemi eklendi.
+- [x] Islak imza ve PAdES akışları veritabanındaki `onay_turu` alanıyla ayrıştırıldı.
+- [x] Sıralı yetkili onayı, fiziksel imza teyidi, bildirim, işlem kaydı, iade/geri alma ve son onayda kilitleme akışları bağlandı.
+- [x] KEP evraklarında ıslak imza; ıslak imza evraklarında PAdES işlemi sunucu tarafında engellendi.
+- [x] Migration aktif geliştirme veritabanına uygulandı; yeni API politikaları doğrulandı.
+
+# 2026-10-21 — Kullanıcı bazlı evrak imza yetkisi
+
+- [x] Kullanıcı düzenleme modalına `Evrak İmza Yetkisi` seçimi eklendi ve kullanıcı kayıt API'sine bağlandı.
+- [x] `users.evrak_imza_yetkisi` alanı ile sorgu indeksini oluşturan tekrarlanabilir migration hazırlandı ve aktif geliştirme veritabanına uygulandı.
+- [x] Giden Evrak imzacı listesi aktif firma üyeliği ve evrak imza yetkisiyle filtrelenir hale getirildi.
+- [x] İstemciden gönderilen imzacı seçimi onaya sunma sırasında aynı yetki koşullarıyla sunucu tarafında doğrulanıyor.
+
+# 2026-10-21 — Giden Evrak mobil imza onay taslağı
+
+- [x] Normal gönderim işlemlerine `Mobil İmza ile Onaya Sun` seçeneği eklendi.
+- [x] Mobil imza akışı e-imza ve ıslak imzadan ayrı `mobil_imza` türüyle veritabanında saklanıyor.
+- [x] Kayıt, evrak kilitleme, sıralı imzacı ve bildirim başlangıç akışı bağlandı; KEP gönderiminde sunucu tarafında engellendi.
+- [x] Gerçek mobil imzalama entegrasyonu yapılana kadar sıradaki kullanıcının onay aksiyonu açıklayıcı `hazırlanıyor` mesajı gösteriyor ve sahte onay üretmiyor.
 
 # 2026-10-20 — PTT KEP çoklu kullanıcı kimlikleri
 

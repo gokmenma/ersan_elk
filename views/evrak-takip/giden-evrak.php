@@ -163,6 +163,12 @@ if ($record) {
     }
 }
 $gonderimKanali = $record && (($record->gonderim_kanali ?? 'normal') === 'kep' || !empty($record->kep_mesaj_id) || !empty($kepMesaj)) ? 'kep' : 'normal';
+$onayTuru = (string) ($record->onay_turu ?? 'eimza');
+$onayTuruMetni = match ($onayTuru) {
+    'islak_imza' => 'ıslak imza',
+    'mobil_imza' => 'mobil imza',
+    default => 'elektronik imza',
+};
 $kepAlicilarValue = (string) ($value('kep_alicilar', '') ?: $value('alici_kep', ''));
 $gonderimTuruOptions = ['normal' => 'Normal Gönderim'];
 if ($canSendKep || $gonderimKanali === 'kep') {
@@ -178,13 +184,13 @@ if ($canSendKep || $gonderimKanali === 'kep') {
             <i data-feather="lock" class="icon-sm me-2 mt-1"></i>
             <div>
                 <?php if ($onayDurumu === 'onaylandi'): ?>
-                    <div class="fw-bold">Bu evrak elektronik imza ile onaylanmıştır.</div>
+                    <div class="fw-bold">Bu evrak <?php echo htmlspecialchars($onayTuruMetni, ENT_QUOTES, 'UTF-8'); ?> akışıyla onaylanmıştır.</div>
                     <div class="small">
                         Onay tarihi: <?php echo $record->e_imza_onay_tarihi ? htmlspecialchars(date('d.m.Y H:i', strtotime($record->e_imza_onay_tarihi)), ENT_QUOTES, 'UTF-8') : '-'; ?>
                         &nbsp;•&nbsp; İmza süreci tamamlandığı için evrak kalıcı olarak kilitlendi; içeriği değiştirilemez ve geri alınamaz. Düzeltme gerekiyorsa yeni bir evrak düzenlenmelidir.
                     </div>
                 <?php else: ?>
-                    <div class="fw-bold">Evrak elektronik imza onayına sunuldu (<?php echo $onaylananSayisi . '/' . count($onayKayitlari); ?> imza tamamlandı).</div>
+                    <div class="fw-bold">Evrak <?php echo htmlspecialchars($onayTuruMetni, ENT_QUOTES, 'UTF-8'); ?> onayına sunuldu (<?php echo $onaylananSayisi . '/' . count($onayKayitlari); ?> imza tamamlandı).</div>
                     <div class="small">
                         <?php if ($siradakiImzaci): ?>
                             Sırada <strong><?php echo htmlspecialchars((string) $siradakiImzaci->adi_soyadi, ENT_QUOTES, 'UTF-8'); ?></strong> bulunuyor<?php echo $siraBende ? ' — <strong>imza sırası sizde</strong>' : ''; ?>.
@@ -493,14 +499,49 @@ if ($canSendKep || $gonderimKanali === 'kep') {
                                         </span>
                                     </button>
                                 </li>
+                                <li id="islakImzaOnayaSunItem" class="<?php echo $gonderimKanali === 'normal' ? '' : 'd-none'; ?>">
+                                    <button type="button" class="dropdown-item d-flex align-items-start gap-2 py-2" id="btnIslakImzaOnayaSun">
+                                        <i class="bx bx-pen icon-xs text-warning mt-1"></i>
+                                        <span>
+                                            <span class="d-block fw-semibold">Islak İmza ile Onaya Sun</span>
+                                            <span class="d-block small text-muted">Normal gönderim için fiziksel imza onayı başlatır</span>
+                                        </span>
+                                    </button>
+                                </li>
+                                <li id="mobilImzaOnayaSunItem" class="<?php echo $gonderimKanali === 'normal' ? '' : 'd-none'; ?>">
+                                    <button type="button" class="dropdown-item d-flex align-items-start gap-2 py-2" id="btnMobilImzaOnayaSun">
+                                        <i class="bx bx-mobile-alt icon-xs text-info mt-1"></i>
+                                        <span>
+                                            <span class="d-block fw-semibold">Mobil İmza ile Onaya Sun</span>
+                                            <span class="d-block small text-muted">Mobil imza onay sürecini başlatır</span>
+                                        </span>
+                                    </button>
+                                </li>
                             <?php endif; ?>
                             <?php if ($imzalayabilir): ?>
+                                <?php
+                                $onayButtonId = match ($onayTuru) {
+                                    'islak_imza' => 'btnIslakImzaOnayla',
+                                    'mobil_imza' => 'btnMobilImzaOnayla',
+                                    default => 'btnEImzaOnayla',
+                                };
+                                $onayButtonMetni = match ($onayTuru) {
+                                    'islak_imza' => 'Islak İmza ile Onayla',
+                                    'mobil_imza' => 'Mobil İmza ile Onayla',
+                                    default => 'E-İmza ile Onayla',
+                                };
+                                $onayButtonAciklama = match ($onayTuru) {
+                                    'islak_imza' => 'Fiziksel imzanızı attığınızı teyit eder',
+                                    'mobil_imza' => 'Mobil imza entegrasyonu yakında kullanıma açılacak',
+                                    default => 'Kendi imzanızı bu evraka ekler',
+                                };
+                                ?>
                                 <li>
-                                    <button type="button" class="dropdown-item d-flex align-items-start gap-2 py-2" id="btnEImzaOnayla" data-id="<?php echo htmlspecialchars($encryptedId, ENT_QUOTES, 'UTF-8'); ?>">
+                                    <button type="button" class="dropdown-item d-flex align-items-start gap-2 py-2" id="<?php echo htmlspecialchars($onayButtonId, ENT_QUOTES, 'UTF-8'); ?>" data-id="<?php echo htmlspecialchars($encryptedId, ENT_QUOTES, 'UTF-8'); ?>">
                                         <i data-feather="check-circle" class="icon-xs text-success mt-1"></i>
                                         <span>
-                                            <span class="d-block fw-semibold">E-İmza ile Onayla</span>
-                                            <span class="d-block small text-muted">Kendi imzanızı bu evraka ekler</span>
+                                            <span class="d-block fw-semibold"><?php echo htmlspecialchars($onayButtonMetni, ENT_QUOTES, 'UTF-8'); ?></span>
+                                            <span class="d-block small text-muted"><?php echo htmlspecialchars($onayButtonAciklama, ENT_QUOTES, 'UTF-8'); ?></span>
                                         </span>
                                     </button>
                                 </li>

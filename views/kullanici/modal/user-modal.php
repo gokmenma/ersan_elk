@@ -401,7 +401,7 @@ $selectedRoleIds = $isEdit
                     ); ?>
                 </div>
 
-                <div class="col-md-12">
+                <div class="col-md-8">
                     <?php 
                     $db = (new \App\Core\Db())->db;
                     $deptsQuery = $db->query("SELECT DISTINCT departman FROM personel WHERE departman IS NOT NULL AND departman != '' ORDER BY departman");
@@ -430,6 +430,17 @@ $selectedRoleIds = $isEdit
                         icon: "users",
                         attributes: 'data-selection-label="departman"'
                     ); ?>
+                </div>
+
+                <div class="col-md-4">
+                    <?php echo Form::FormSelect2(
+                        name: "evrak_imza_yetkisi",
+                        label: "Evrak İmza Yetkisi",
+                        options: ['0' => 'Hayır (İmza listesinde görünmez)', '1' => 'Evet (Evrak imzalayabilir)'],
+                        selectedValue: (string) ($user->evrak_imza_yetkisi ?? '0'),
+                        icon: "edit-3"
+                    ); ?>
+                    <div class="form-text px-2">Açık olduğunda kullanıcı Giden Evrak imza yetkilileri listesinde gösterilir.</div>
                 </div>
             </div>
         </div>

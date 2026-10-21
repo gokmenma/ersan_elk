@@ -24,6 +24,9 @@ import KacakView from './views/KacakView.vue'
 import NobetOnayView from './views/NobetOnayView.vue'
 import IhbarView from './views/IhbarView.vue'
 import LogView from './views/LogView.vue'
+import SozlesmeHakedisView from './views/SozlesmeHakedisView.vue'
+import SozlesmeDetailView from './views/SozlesmeDetailView.vue'
+import HakedisDetailView from './views/HakedisDetailView.vue'
 import { auth } from './services/auth.js'
 
 const router = createRouter({
@@ -60,6 +63,13 @@ const router = createRouter({
     { path: '/kasa-yonetimi', redirect: '/kasa' },
     { path: '/bordro', name: 'payroll', component: PayrollView, meta: { requiresAuth: true, requiresCompany: true, permission: 'payroll' } },
     { path: '/maas', redirect: '/bordro' },
+    { path: '/sozlesme-hakedis', name: 'sozlesme-hakedis', component: SozlesmeHakedisView, meta: { requiresAuth: true, requiresCompany: true, permission: 'contracts' } },
+    { path: '/sozlesme-hakedis/:id', name: 'sozlesme-detail', component: SozlesmeDetailView, meta: { requiresAuth: true, requiresCompany: true, permission: 'contracts' } },
+    { path: '/sozlesme-hakedis/:id/hakedis/:hakedisId', name: 'hakedis-detail', component: HakedisDetailView, meta: { requiresAuth: true, requiresCompany: true, permission: 'contracts' } },
+    { path: '/sozlesme', redirect: '/sozlesme-hakedis' },
+    { path: '/sozlesmeler', redirect: '/sozlesme-hakedis' },
+    { path: '/hakedis', redirect: '/sozlesme-hakedis' },
+    { path: '/hakedisler', redirect: '/sozlesme-hakedis' },
     { path: '/puantaj', name: 'puantaj', component: PuantajView, meta: { requiresAuth: true, requiresCompany: true, permission: 'reports' } },
     { path: '/puantaj-takip', redirect: '/puantaj' },
     { path: '/kacak-kontrol', name: 'kacak-kontrol', component: KacakView, meta: { requiresAuth: true, requiresCompany: true, permission: 'illegal' } },

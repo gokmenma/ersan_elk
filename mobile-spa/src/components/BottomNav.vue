@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   AlertCircle,
   Banknote,
+  Briefcase,
   CalendarCheck,
   CalendarDays,
   CalendarRange,
@@ -259,6 +260,15 @@ const operationGroups = [
         icon: Banknote,
         theme: 'emerald',
         to: '/bordro',
+      },
+      {
+        permission: 'contracts',
+        label: 'Sözleşme & Hakediş',
+        eyebrow: 'HAKEDİŞ & PROJE',
+        subtitle: 'Sözleşmeler, keşif ve dönem hakedişleri',
+        icon: Briefcase,
+        theme: 'blue',
+        to: '/sozlesme-hakedis',
       },
     ],
   },

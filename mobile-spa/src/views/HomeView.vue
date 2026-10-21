@@ -7,6 +7,7 @@ import {
   ArrowUpRight,
   BadgeDollarSign,
   Bell,
+  Briefcase,
   CalendarCheck,
   CalendarDays,
   CarFront,
@@ -151,6 +152,7 @@ const cardSettings = ref({}) // { [cardId]: { hidden: boolean, quick_actions?: a
 // Dinamik İkon Haritası
 const iconComponentsMap = {
   UsersRound,
+  Briefcase,
   CarFront,
   CalendarCheck,
   CalendarDays,
@@ -189,6 +191,7 @@ const ALL_SYSTEM_ACTIONS = [
   { id: 'act_reports', permission: 'reports', label: 'Raporlar', iconName: 'ChartNoAxesCombined', to: '/raporlar', theme: 'teal' },
   { id: 'act_requests', permission: 'requests', label: 'Talepler', iconName: 'AlertTriangle', to: '/talepler', theme: 'amber' },
   { id: 'act_payroll', permission: 'payroll', label: 'Bordro & Maaş', iconName: 'BadgeDollarSign', to: '/bordro', theme: 'purple' },
+  { id: 'act_contracts', permission: 'contracts', label: 'Sözleşme & Hakediş', iconName: 'Briefcase', to: '/sozlesme-hakedis', theme: 'blue' },
   { id: 'act_accounts', permission: 'current_accounts', label: 'Cari Takip', iconName: 'UsersRound', to: '/cari-takip', theme: 'blue' },
   { id: 'act_invoices', permission: 'invoices', label: 'Faturalar', iconName: 'FileText', to: '/fatura', theme: 'purple' },
   { id: 'act_cash', permission: 'cash', label: 'Kasa', iconName: 'CreditCard', to: '/kasa', theme: 'teal' },
@@ -264,6 +267,7 @@ const customNewAction = ref({
 
 const availableIconNames = [
   'Zap',
+  'Briefcase',
   'BadgeDollarSign',
   'CreditCard',
   'UsersRound',
@@ -293,6 +297,7 @@ const availableThemes = [
 ]
 
 const quickPresets = [
+  { label: 'Sözleşme & Hakediş', to: '/sozlesme-hakedis', iconName: 'Briefcase', theme: 'blue' },
   { label: 'Ek Ödemeler', to: 'personnel_section:ek_odemeler', iconName: 'BadgeDollarSign', theme: 'emerald' },
   { label: 'Maaş Kesintisi', to: 'personnel_section:kesintiler', iconName: 'CreditCard', theme: 'red' },
   { label: 'İzin Talebi', to: '/talepler?tab=izin', iconName: 'CalendarDays', theme: 'amber' },

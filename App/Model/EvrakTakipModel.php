@@ -303,6 +303,7 @@ class EvrakTakipModel extends Model
             FROM users
             WHERE silinme_tarihi IS NULL
               AND durum = 'Aktif'
+              AND evrak_imza_yetkisi = 1
               AND owner_id = :owner_id
               AND (firma_ids IS NULL OR firma_ids = '' OR FIND_IN_SET(:firma_id, REPLACE(firma_ids, ' ', '')) > 0)
             ORDER BY adi_soyadi ASC
@@ -328,6 +329,8 @@ class EvrakTakipModel extends Model
             FROM users
             WHERE id IN ({$placeholders})
               AND silinme_tarihi IS NULL
+              AND durum = 'Aktif'
+              AND evrak_imza_yetkisi = 1
               AND owner_id = ?
               AND (firma_ids IS NULL OR firma_ids = '' OR FIND_IN_SET(?, REPLACE(firma_ids, ' ', '')) > 0)
         ");
@@ -418,6 +421,9 @@ class EvrakTakipModel extends Model
             }
             if (($evrak->onay_durumu ?? 'taslak') !== 'onay_bekliyor') {
                 throw new \RuntimeException('Evrak henüz elektronik imza onayına sunulmamış.');
+            }
+            if (($evrak->onay_turu ?? 'eimza') !== 'eimza') {
+                throw new \RuntimeException('Bu evrak ıslak imza onay akışındadır; PAdES imzası uygulanamaz.');
             }
             $sirada = $this->getNextPendingSigner($evrakId);
             if (!$sirada) {
@@ -538,8 +544,9 @@ class EvrakTakipModel extends Model
         return $map;
     }
 
-    public function submitForApproval(int $evrakId, int $userId = 0, string $ipAddress = ''): array
+    public function submitForApproval(int $evrakId, int $userId = 0, string $ipAddress = '', string $approvalType = 'eimza'): array
     {
+        $approvalType = in_array($approvalType, ['eimza', 'islak_imza', 'mobil_imza'], true) ? $approvalType : 'eimza';
         $this->db->beginTransaction();
         try {
             $lock = $this->db->prepare("SELECT * FROM {$this->table} WHERE id = :id AND firma_id = :firma_id AND silinme_tarihi IS NULL FOR UPDATE");
@@ -549,7 +556,10 @@ class EvrakTakipModel extends Model
                 throw new \RuntimeException('Evrak bulunamadı.');
             }
             if (($evrak->onay_durumu ?? 'taslak') !== 'taslak') {
-                throw new \RuntimeException('Bu evrak zaten elektronik imza onayına sunulmuş.');
+                throw new \RuntimeException('Bu evrak zaten onaya sunulmuş.');
+            }
+            if (in_array($approvalType, ['islak_imza', 'mobil_imza'], true) && ($evrak->gonderim_kanali ?? 'normal') !== 'normal') {
+                throw new \RuntimeException(($approvalType === 'mobil_imza' ? 'Mobil imza' : 'Islak imza') . ' onayı yalnızca Normal Gönderim türünde kullanılabilir.');
             }
             $signers = $this->getSigningUsersByIds(json_decode((string) ($evrak->imza_kullanici_ids ?? '[]'), true) ?: []);
             if ($signers === []) {
@@ -562,8 +572,8 @@ class EvrakTakipModel extends Model
             foreach ($signers as $signer) {
                 $insert->execute(['evrak_id' => $evrakId, 'firma_id' => $_SESSION['firma_id'], 'kullanici_id' => (int) $signer->id, 'sira' => $sira++]);
             }
-            $update = $this->db->prepare("UPDATE {$this->table} SET onay_durumu = 'onay_bekliyor', e_imza_onay_tarihi = NULL, e_imza_belge_ozeti = NULL, e_imza_iade_gerekcesi = NULL, e_imza_iade_kullanici_id = NULL, e_imza_iade_tarihi = NULL WHERE id = :id AND firma_id = :firma_id");
-            $update->execute(['id' => $evrakId, 'firma_id' => $_SESSION['firma_id']]);
+            $update = $this->db->prepare("UPDATE {$this->table} SET onay_durumu = 'onay_bekliyor', onay_turu = :onay_turu, e_imza_onay_tarihi = NULL, e_imza_belge_ozeti = NULL, e_imza_iade_gerekcesi = NULL, e_imza_iade_kullanici_id = NULL, e_imza_iade_tarihi = NULL WHERE id = :id AND firma_id = :firma_id");
+            $update->execute(['onay_turu' => $approvalType, 'id' => $evrakId, 'firma_id' => $_SESSION['firma_id']]);
 
             $this->db->commit();
             return [
@@ -571,7 +581,39 @@ class EvrakTakipModel extends Model
                 'signers' => array_map(fn($signer) => (string) $signer->adi_soyadi, $signers),
                 'otomatik_imza' => false,
                 'completed' => false,
+                'approval_type' => $approvalType,
             ];
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
+    public function approveWithWetSignature(int $evrakId, int $userId, string $ipAddress): array
+    {
+        $this->db->beginTransaction();
+        try {
+            $lock = $this->db->prepare("SELECT * FROM {$this->table} WHERE id = :id AND firma_id = :firma_id AND silinme_tarihi IS NULL FOR UPDATE");
+            $lock->execute(['id' => $evrakId, 'firma_id' => $_SESSION['firma_id']]);
+            $evrak = $lock->fetch(PDO::FETCH_OBJ);
+            if (!$evrak || ($evrak->onay_durumu ?? 'taslak') !== 'onay_bekliyor' || ($evrak->onay_turu ?? 'eimza') !== 'islak_imza') {
+                throw new \RuntimeException('Evrak ıslak imza onayında değil.');
+            }
+            $sirada = $this->getNextPendingSigner($evrakId);
+            if (!$sirada || (int) $sirada->kullanici_id !== $userId) {
+                throw new \RuntimeException('Islak imza onay sırası sizde değil.');
+            }
+            $approve = $this->db->prepare("UPDATE evrak_takip_onaylari SET durum = 'onaylandi', onay_tarihi = NOW(), ip_adresi = :ip, imza_turu = 'ISLAK-IMZA', imza_dogrulama_durumu = 'fiziksel_teyit' WHERE evrak_id = :evrak_id AND firma_id = :firma_id AND kullanici_id = :kullanici_id AND durum = 'bekliyor'");
+            $approve->execute(['ip' => mb_substr($ipAddress, 0, 45), 'evrak_id' => $evrakId, 'firma_id' => $_SESSION['firma_id'], 'kullanici_id' => $userId]);
+            if ($approve->rowCount() !== 1) throw new \RuntimeException('Bekleyen ıslak imza onayınız bulunmuyor.');
+            $count = $this->db->prepare("SELECT COUNT(*) toplam, SUM(durum = 'onaylandi') onaylanan FROM evrak_takip_onaylari WHERE evrak_id = :evrak_id AND firma_id = :firma_id");
+            $count->execute(['evrak_id' => $evrakId, 'firma_id' => $_SESSION['firma_id']]);
+            $state = $count->fetch(PDO::FETCH_ASSOC);
+            $completed = (int) $state['toplam'] > 0 && (int) $state['toplam'] === (int) $state['onaylanan'];
+            $update = $this->db->prepare("UPDATE {$this->table} SET onay_durumu = :durum, e_imza_onay_tarihi = IF(:tamamlandi, NOW(), NULL), e_imza_belge_ozeti = :ozet WHERE id = :id AND firma_id = :firma_id");
+            $update->execute(['durum' => $completed ? 'onaylandi' : 'onay_bekliyor', 'tamamlandi' => $completed ? 1 : 0, 'ozet' => self::belgeOzeti($evrak), 'id' => $evrakId, 'firma_id' => $_SESSION['firma_id']]);
+            $this->db->commit();
+            return ['completed' => $completed, 'approved' => (int) $state['onaylanan'], 'total' => (int) $state['toplam']];
         } catch (\Throwable $e) {
             $this->db->rollBack();
             throw $e;

@@ -1024,7 +1024,7 @@ $(document).ready(function () {
     const timelineHtml = events.map(event => '<div class="d-flex gap-2 mb-3"><span class="rounded-circle bg-' + event.color + ' flex-shrink-0 mt-1" style="width:9px;height:9px"></span><div><div class="text-dark font-size-11">' + escapeEvrakHtml(event.label) + '</div><div class="text-muted" style="font-size:10px">' + escapeEvrakHtml(formatImzaTarihi(event.date)) + '</div></div></div>').join("");
     $("#evrakImzaSignerList").html(signerHtml);
     $("#evrakImzaTimeline").html(timelineHtml || '<div class="text-muted font-size-12">İşlem tarihçesi bulunamadı.</div>');
-    $("#evrakImzaOnayAction").toggleClass("d-none", !evrak.imza_sirasi_bende);
+    $("#evrakImzaOnayAction").toggleClass("d-none", !evrak.imza_sirasi_bende || evrak.onay_turu !== "eimza");
     $("#modal_eimza_pin").val("").removeClass("is-invalid").prop("disabled", false);
     $("#modalPadesProgress").addClass("d-none");
     updateModalPadesProgress(0, "İşlem hazırlanıyor", "");
@@ -1836,6 +1836,7 @@ $(document).ready(function () {
     const form = $("#formKepGonderisi")[0];
     if (!form) return;
     form.reset();
+    $("#modal_kep_adres_defterine_kaydet").trigger("change");
     if (!approvedKepEvrakId) {
       $("#modalKepGonderisiLabel").text("KEP İletisi Oluştur");
       $("#modalKepGonderisiLabel").next("div").text("PTT KEP üzerinden doğrudan güvenli ileti gönderin");
@@ -1893,6 +1894,13 @@ $(document).ready(function () {
     $(this).val("").trigger("change.select2");
   });
 
+  $("#modal_kep_adres_defterine_kaydet").on("change", function () {
+    const save = $(this).is(":checked");
+    $("#btnModalKepAliciDogrula")
+      .attr("title", save ? "PTT rehberinde doğrula ve adres defterine kaydet" : "Yalnız PTT rehberinde doğrula")
+      .html('<i class="bx ' + (save ? "bx-user-plus" : "bx-search") + '"></i> ' + (save ? "Doğrula ve Kaydet" : "Doğrula"));
+  });
+
   $("#modal_kep_ekler").on("change", function () {
     const files = Array.from(this.files || []);
     const total = files.reduce((sum, file) => sum + file.size, 0);
@@ -1901,14 +1909,15 @@ $(document).ready(function () {
 
   $("#btnModalKepAliciDogrula").on("click", function () {
     const addresses = parseModalKepRecipients();
+    const saveToAddressBook = $("#modal_kep_adres_defterine_kaydet").is(":checked");
     const result = $("#modalKepDogrulamaSonuc").empty();
     if (!addresses.length) return result.html('<span class="text-danger">En az bir KEP adresi giriniz.</span>');
-    const button = $(this).prop("disabled", true).html('<i class="bx bx-loader-alt bx-spin"></i> Doğrulanıyor');
+    const button = $(this).prop("disabled", true).html('<i class="bx bx-loader-alt bx-spin"></i> ' + (saveToAddressBook ? "Doğrulanıyor ve kaydediliyor" : "Doğrulanıyor"));
     const requests = addresses.map(address => new Promise(resolve => {
       $.ajax({
         url: api_url,
         type: "POST",
-        data: { action: "kep-alici-dogrula", alici_kep: address },
+        data: { action: "kep-alici-dogrula", alici_kep: address, adres_defterine_kaydet: saveToAddressBook ? "1" : "0" },
         dataType: "json",
       }).done(response => resolve({ address, response }))
         .fail(xhr => resolve({
@@ -1925,14 +1934,15 @@ $(document).ready(function () {
         const row = $("<div>").addClass(ok ? "text-success" : "text-warning");
         $("<i>").addClass("bx me-1 " + (ok ? "bx-check-circle" : "bx-error-circle")).appendTo(row);
         $("<span>").addClass("font-monospace").text(item.address).appendTo(row);
-        row.append(document.createTextNode(" — " + (ok ? "Doğrulandı" : (item.response?.message || "Rehberde bulunamadı"))));
+        const successText = item.response?.adres_defterine_kaydedildi ? "Doğrulandı · Adres defterine kaydedildi" : "Doğrulandı";
+        row.append(document.createTextNode(" — " + (ok ? successText : (item.response?.message || "Rehberde bulunamadı"))));
         result.append(row);
       });
       if (items.some(item => item.response?.adres_defterine_kaydedildi)) loadKepAddressBook();
-      button.prop("disabled", false).html('<i class="bx bx-search"></i> Doğrula');
+      button.prop("disabled", false).html('<i class="bx ' + (saveToAddressBook ? "bx-user-plus" : "bx-search") + '"></i> ' + (saveToAddressBook ? "Doğrula ve Kaydet" : "Doğrula"));
     }).catch(function () {
       result.html('<span class="text-danger">PTT KEP rehber sorgusu tamamlanamadı.</span>');
-      button.prop("disabled", false).html('<i class="bx bx-search"></i> Doğrula');
+      button.prop("disabled", false).html('<i class="bx ' + (saveToAddressBook ? "bx-user-plus" : "bx-search") + '"></i> ' + (saveToAddressBook ? "Doğrula ve Kaydet" : "Doğrula"));
     });
   });
 
