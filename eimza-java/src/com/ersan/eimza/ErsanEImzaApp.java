@@ -19,7 +19,7 @@ public class ErsanEImzaApp {
 
     public static void main(String[] args) {
         System.out.println("=================================================");
-        System.out.println("  Ersan E-İmza Yerel Köprü Servisi (Java v1.2.3) ");
+        System.out.println("  Ersan E-İmza Yerel Köprü Servisi (Java v1.2.4) ");
         System.out.println("  Dinleme Adresi: http://127.0.0.1:9191          ");
         System.out.println("=================================================");
 
@@ -64,7 +64,7 @@ public class ErsanEImzaApp {
         JPanel pnlCenter = new JPanel(new GridLayout(3, 1, 8, 8));
         pnlCenter.setBorder(BorderFactory.createEmptyBorder(15, 20, 10, 20));
 
-        JLabel lblTitle = new JLabel("Ersan E-İmza Yerel Ajanı (v1.2.3 PAdES)", JLabel.LEFT);
+        JLabel lblTitle = new JLabel("Ersan E-İmza Yerel Ajanı (v1.2.4 PAdES)", JLabel.LEFT);
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
         lblTitle.setForeground(new Color(33, 37, 41));
 

@@ -51,12 +51,19 @@ public class TokenManager {
 
             list.add(s32 + "eTPKCS11.dll");            // SafeNet / TÜRKKEP / E-GÜVEN
             list.add(s32 + "akisp11.dll");             // AKİS / KamuSM / E-Tuğra
+            list.add(s32 + "akia_pkcs11.dll");         // Yeni AKİA / E-Tuğra paketleri
             list.add(s32 + "aetpkss1.dll");            // SafeSign / E-Tuğra
             list.add(s32 + "OcsCryptolib_pkcs11.dll"); // E-Tuğra OCS
             list.add(s32 + "opensc-pkcs11.dll");       // OpenSC
             list.add(wow64 + "eTPKCS11.dll");
             list.add(wow64 + "akisp11.dll");
+            list.add(wow64 + "akia_pkcs11.dll");
             list.add(wow64 + "aetpkss1.dll");
+
+            String programFiles = System.getenv("ProgramFiles");
+            String programFilesX86 = System.getenv("ProgramFiles(x86)");
+            addWindowsAkiaCandidates(list, programFiles);
+            addWindowsAkiaCandidates(list, programFilesX86);
         } else if (os.contains("mac")) {
             list.add("/Library/Frameworks/eToken.framework/Versions/A/libeToken.dylib");
             list.add("/usr/local/lib/libakisp11.dylib");
@@ -76,6 +83,18 @@ public class TokenManager {
             list.add("/usr/lib/libetpkcs11.so");
         }
         return list;
+    }
+
+    private static void addWindowsAkiaCandidates(List<String> list, String root) {
+        if (root == null || root.trim().isEmpty()) return;
+        String[] relativePaths = {
+                "Akia\\akisp11.dll", "AKIA\\akisp11.dll",
+                "Akia\\akia_pkcs11.dll", "AKIA\\akia_pkcs11.dll",
+                "E-Tugra\\akisp11.dll", "E-Tuğra\\akisp11.dll"
+        };
+        for (String relativePath : relativePaths) {
+            list.add(root + "\\" + relativePath);
+        }
     }
 
     public static String getPkcs11ToolBin() {
@@ -192,6 +211,7 @@ public class TokenManager {
         TokenStatus status = new TokenStatus();
         List<String> modules = getCandidateModules();
         String pkcsTool = getPkcs11ToolBin();
+        boolean windows = System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
 
         for (String mod : modules) {
             File f = new File(mod);
@@ -240,6 +260,19 @@ public class TokenManager {
                 }
             } catch (Throwable ignored) {}
 
+            // Taşınabilir pkcs11-tool 64-bit'tir. Kurum bilgisayarında yalnız
+            // 32-bit AKİS sürücüsü varsa çalışan Java'nın kendi mimarisiyle
+            // sertifikayı okuyarak güvenli fallback uygula. Yalnız sağlayıcının
+            // yüklenmesi başarı sayılmaz; gerçek X.509 sertifika zorunludur.
+            if (windows) {
+                TokenStatus javaDetected = detectWithJavaPkcs11(mod, devType);
+                if (javaDetected != null) {
+                    cachedStatus = javaDetected;
+                    lastCacheTime = now;
+                    return javaDetected;
+                }
+            }
+
             // Sadece PKCS#11 sağlayıcısının yüklenebilmesi kartın gerçekten takılı
             // olduğunu göstermez. Özellikle AKİS'te ikinci sağlayıcı oturumu mevcut
             // WSM oturumunu kapatabildiği için algılama sırasında SunPKCS11 açılmaz.
@@ -255,6 +288,46 @@ public class TokenManager {
         status.success = false;
         status.message = "Sistemde takılı aktif bir e-imza cihazı bulunamadı. Lütfen USB kartınızı takınız.";
         return status;
+    }
+
+    private static TokenStatus detectWithJavaPkcs11(String modulePath, String deviceType) {
+        Provider provider = null;
+        try {
+            String safeName = "WinDetect_" + Math.abs((modulePath + System.nanoTime()).hashCode());
+            provider = createSunPKCS11(safeName, modulePath);
+            Security.addProvider(provider);
+            KeyStore keyStore = KeyStore.getInstance("PKCS11", provider);
+            keyStore.load(null, null);
+            Enumeration<String> aliases = keyStore.aliases();
+            while (aliases.hasMoreElements()) {
+                java.security.cert.Certificate cert = keyStore.getCertificate(aliases.nextElement());
+                if (!(cert instanceof X509Certificate)) continue;
+                X509Certificate x509 = (X509Certificate) cert;
+                String subject = x509.getSubjectX500Principal().getName();
+                String owner = extractSubjectValue(subject, "CN");
+                String tc = extractSubjectValue(subject, "SERIALNUMBER").replaceAll("[^0-9]", "");
+
+                TokenStatus found = new TokenStatus();
+                found.success = true;
+                found.modulePath = modulePath;
+                found.deviceType = deviceType;
+                found.tokenLabel = "E-İmza Donanımı";
+                found.ownerName = owner.isEmpty() ? "E-İmza Kartı Takılı" : owner;
+                found.tcno = tc.length() == 11 ? tc : "";
+                found.subject = subject;
+                return found;
+            }
+        } catch (Throwable ignored) {
+            // Aday DLL yanlış mimaride veya kart bu sürücüye ait değil.
+        } finally {
+            if (provider != null) Security.removeProvider(provider.getName());
+        }
+        return null;
+    }
+
+    private static String extractSubjectValue(String subject, String key) {
+        Matcher matcher = Pattern.compile("(?:^|,)" + Pattern.quote(key) + "=([^,]+)", Pattern.CASE_INSENSITIVE).matcher(subject);
+        return matcher.find() ? cleanTurkishChars(matcher.group(1).trim()) : "";
     }
 
     public static byte[] sign(String pin, byte[] rawDigest) throws Exception {

@@ -1615,10 +1615,9 @@ $(document).ready(function () {
   };
 
   function checkLocalEimzaAgent(onComplete) {
-    if (localEimzaAgentState.available && localEimzaAgentState.cardDetected && (Date.now() - (localEimzaAgentState.timestamp || 0) < 60000)) {
-      if (typeof onComplete === "function") onComplete(localEimzaAgentState);
-      return;
-    }
+    // Her UI kontrolünde ajanın güncel durumunu sor. Fiziksel karta tekrar erişim
+    // ajan tarafındaki tek-oturum önbelleğiyle engellenir; böylece kart değişince
+    // tarayıcı eski yeşil durumu göstermeye devam etmez.
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 6000);
 
