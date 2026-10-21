@@ -2,12 +2,14 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
+  AlertCircle,
   ArrowLeft,
   ArrowUpRight,
   BarChart3,
   Calendar,
   CalendarDays,
   CalendarRange,
+  CheckCircle,
   ChevronDown,
   ChevronRight,
   Clock,
@@ -16,6 +18,8 @@ import {
   Gauge,
   Layers,
   MapPin,
+  PieChart,
+  Receipt,
   RefreshCw,
   Search,
   ShieldAlert,
@@ -24,9 +28,11 @@ import {
   TrendingUp,
   Trophy,
   User,
+  Users,
   UsersRound,
   Wrench,
   X,
+  XCircle,
   Zap,
   ZapOff,
 } from '@lucide/vue'
@@ -35,11 +41,16 @@ import {
   applyCustomDateRange,
   closeCardDetail,
   closeDatePicker,
+  closeDistributionModal,
+  loadDistribution,
   loadReports,
   openCardDetail,
   openDatePicker,
+  openDistributionModal,
   openReportsDrawer,
   reportsState,
+  setDistributionFilter,
+  setDistributionView,
   setReportsTab,
 } from '../services/reports.js'
 
@@ -248,6 +259,7 @@ function getInitials(name) {
 // Drawer ESC Dinleyicisi
 function handleDrawerKeydown(e) {
   if (e.key === 'Escape') {
+    if (reportsState.distributionDrawerOpen) closeDistributionModal()
     if (reportsState.detailDrawerOpen) closeCardDetail()
     if (reportsState.datePickerOpen) closeDatePicker()
   }
@@ -259,6 +271,26 @@ function applyTabFromRoute() {
   const queryTab = route.query.tab
   if (queryTab && reportsState.tabs.some(t => t.id === queryTab)) {
     reportsState.activeTab = queryTab
+  }
+}
+
+function getHeroBubbleClass(icon) {
+  switch (icon) {
+    case 'CheckCircle':
+      return 'bg-emerald-soft text-emerald'
+    case 'AlertCircle':
+    case 'Clock':
+      return 'bg-amber-soft text-amber'
+    case 'XCircle':
+    case 'ShieldAlert':
+      return 'bg-coral-soft text-coral'
+    case 'Receipt':
+    case 'Layers':
+      return 'bg-purple-soft text-purple'
+    case 'MapPin':
+      return 'bg-cyan-soft text-cyan'
+    default:
+      return 'bg-blue-soft text-blue'
   }
 }
 
@@ -332,18 +364,36 @@ onMounted(() => {
 
     <!-- 3. KPI Bento Kartları (2x2 Grid) -->
     <section class="kpi-grid">
-      <!-- 1. Toplam İşlem -->
-      <article class="bento-card bento-card--white kpi-card">
+      <!-- 1. Toplam İşlem (Tıklanabilir - Masaüstündeki gibi detaylı dağılım dökümü) -->
+      <article
+        class="bento-card bento-card--white kpi-card kpi-card--clickable cursor-pointer"
+        role="button"
+        tabindex="0"
+        aria-label="Toplam işlem detaylı dökümünü göster"
+        title="Detaylı dökümü görmek için dokunun"
+        @click="openDistributionModal"
+      >
         <div class="kpi-top">
           <span class="kpi-icon-bubble bg-blue-soft text-blue">
             <Zap :size="18" />
           </span>
-          <span class="clay-pill-tag text-xs font-semibold uppercase">{{ currentUnit }}</span>
+          <div class="kpi-tag-group">
+            <span class="clay-pill-tag text-xs font-semibold uppercase">{{ currentUnit }}</span>
+            <span class="kpi-spark-badge" title="Dağılım Analizi">
+              <PieChart :size="11" />
+            </span>
+          </div>
         </div>
         <div class="kpi-body">
           <small class="kpi-label">Toplam {{ currentUnit }}</small>
           <strong class="kpi-value">{{ formatNumber(reportsState.stats.total_operations) }}</strong>
-          <span class="kpi-sub">{{ reportsState.stats.active_personnel }} ekip işlem üretti</span>
+          <div class="kpi-sub-row">
+            <span class="kpi-sub">{{ reportsState.stats.active_personnel }} ekip işlem üretti</span>
+            <span class="kpi-action-pill">
+              <span>Döküm</span>
+              <ChevronRight :size="11" />
+            </span>
+          </div>
         </div>
       </article>
 
@@ -954,6 +1004,335 @@ onMounted(() => {
               >
                 Tarih Aralığını Uygula
               </button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </Transition>
+
+    <!-- ================================================================= -->
+    <!-- 9. İŞLEM DAĞILIMI VE DETAYLI DÖKÜM SHEET (Design System Standardı) -->
+    <!-- ================================================================= -->
+    <Transition name="nav-sheet">
+      <div
+        v-if="reportsState.distributionDrawerOpen"
+        class="nav-sheet-layer"
+        @click.self="closeDistributionModal"
+      >
+        <section
+          class="nav-sheet dist-sheet"
+          role="dialog"
+          aria-modal="true"
+          :aria-label="reportsState.distributionData?.modal_title || 'İşlem Dağılımı'"
+        >
+          <!-- Drawer Üst Başlığı (Mobil SPA Standart Header) -->
+          <header class="dist-sheet__header">
+            <div class="dist-sheet__head-left">
+              <span class="dist-avatar-box">
+                <PieChart v-if="reportsState.activeTab === 'okuma'" :size="22" class="text-blue" />
+                <ZapOff v-else-if="reportsState.activeTab === 'kesme'" :size="22" class="text-coral" />
+                <Wrench v-else-if="reportsState.activeTab === 'sokme_takma'" :size="22" class="text-purple" />
+                <ShieldCheck v-else-if="reportsState.activeTab === 'muhurleme'" :size="22" class="text-emerald" />
+                <ShieldAlert v-else :size="22" class="text-amber" />
+              </span>
+              <div class="dist-header-text">
+                <span class="detail-eyebrow">
+                  {{ reportsState.distributionData?.tab_title || 'OPERASYONEL ANALİZ' }}
+                </span>
+                <h2 class="detail-person-name">
+                  {{ reportsState.distributionData?.modal_title || 'Bu Dönemin Dağılımı' }}
+                </h2>
+                <div class="detail-meta-tags">
+                  <span class="detail-pill detail-pill--region">
+                    <CalendarRange :size="11" />
+                    {{ reportsState.distributionData?.date_range_label || reportsState.dateRangeLabel }}
+                  </span>
+                  <span class="detail-pill uppercase font-semibold">{{ currentUnit }}</span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              class="detail-close-btn"
+              aria-label="Kapat"
+              @click="closeDistributionModal"
+            >
+              <X :size="20" />
+            </button>
+          </header>
+
+          <!-- Sheet İçerik Gövdesi -->
+          <div class="dist-sheet__body hide-scrollbar">
+            <!-- Loading State -->
+            <div v-if="reportsState.distributionLoading" class="dist-loading-box">
+              <div class="clay-spinner" />
+              <span>Dönem dağılım verileri hesaplanıyor…</span>
+            </div>
+
+            <!-- Error State -->
+            <div v-else-if="reportsState.distributionData?.error" class="dist-error-box">
+              <ShieldAlert :size="32" class="text-danger mb-2" />
+              <p>{{ reportsState.distributionData.error }}</p>
+              <button
+                type="button"
+                class="clay-btn clay-btn--primary btn-sm mt-2"
+                @click="loadDistribution()"
+              >
+                Tekrar Dene
+              </button>
+            </div>
+
+            <!-- Asıl Veri İçeriği -->
+            <div v-else-if="reportsState.distributionData" class="dist-content-stack">
+              <!-- Kesme / Olumlu / Olumsuz Filtre Hapları (Merkezi Clay Tabs) -->
+              <div
+                v-if="reportsState.distributionData?.supported_filters"
+                class="clay-tabs-wrap"
+              >
+                <button
+                  v-for="flt in reportsState.distributionData.supported_filters"
+                  :key="flt.id"
+                  type="button"
+                  class="clay-tab-btn"
+                  :class="{ 'is-active': reportsState.distributionFilterType === flt.id }"
+                  @click="setDistributionFilter(flt.id)"
+                >
+                  <CheckCircle v-if="flt.id === 'olumlu'" :size="14" />
+                  <XCircle v-else-if="flt.id === 'olumsuz'" :size="14" />
+                  <span>{{ flt.label }}</span>
+                </button>
+              </div>
+
+              <!-- 4'lü Hero KPI Bento Kartları (Mevcut Raporlar Sayfasıyla Birebir Aynı Tasarım Dili) -->
+              <div
+                v-if="reportsState.distributionData?.hero_stats"
+                class="kpi-grid dist-kpi-grid"
+              >
+                <article
+                  v-for="(st, sIdx) in reportsState.distributionData.hero_stats"
+                  :key="sIdx"
+                  class="bento-card bento-card--white kpi-card dist-kpi-card"
+                >
+                  <div class="kpi-top">
+                    <span class="kpi-icon-bubble" :class="getHeroBubbleClass(st.icon)">
+                      <Users v-if="st.icon === 'Users'" :size="17" />
+                      <CheckCircle v-else-if="st.icon === 'CheckCircle'" :size="17" />
+                      <AlertCircle v-else-if="st.icon === 'AlertCircle'" :size="17" />
+                      <XCircle v-else-if="st.icon === 'XCircle'" :size="17" />
+                      <Receipt v-else-if="st.icon === 'Receipt'" :size="17" />
+                      <Zap v-else-if="st.icon === 'Zap'" :size="17" />
+                      <Layers v-else-if="st.icon === 'Layers'" :size="17" />
+                      <MapPin v-else-if="st.icon === 'MapPin'" :size="17" />
+                      <Wrench v-else-if="st.icon === 'Wrench'" :size="17" />
+                      <ShieldCheck v-else-if="st.icon === 'ShieldCheck'" :size="17" />
+                      <ShieldAlert v-else-if="st.icon === 'ShieldAlert'" :size="17" />
+                      <Clock v-else-if="st.icon === 'Clock'" :size="17" />
+                    </span>
+                    <span class="clay-pill-tag text-xs font-semibold uppercase">{{ currentUnit }}</span>
+                  </div>
+                  <div class="kpi-body">
+                    <small class="kpi-label">{{ st.label }}</small>
+                    <strong class="kpi-value">{{ formatNumber(st.value) }}</strong>
+                  </div>
+                </article>
+              </div>
+
+              <!-- Görünüm Seçici Sekmeler (Durumlar / Bölge Katkısı / Tümü) -->
+              <div class="clay-tabs-wrap">
+                <button
+                  type="button"
+                  class="clay-tab-btn"
+                  :class="{ 'is-active': reportsState.distributionActiveView === 'all' }"
+                  @click="setDistributionView('all')"
+                >
+                  <span>Tümü</span>
+                </button>
+                <button
+                  type="button"
+                  class="clay-tab-btn"
+                  :class="{ 'is-active': reportsState.distributionActiveView === 'status' }"
+                  @click="setDistributionView('status')"
+                >
+                  <PieChart :size="14" />
+                  <span>{{ reportsState.distributionData.status_section?.title || 'Durumlar' }}</span>
+                  <span class="clay-tab-badge">{{ reportsState.distributionData.status_section?.items?.length || 0 }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="clay-tab-btn"
+                  :class="{ 'is-active': reportsState.distributionActiveView === 'region' }"
+                  @click="setDistributionView('region')"
+                >
+                  <MapPin :size="14" />
+                  <span>Bölge Katkısı</span>
+                  <span class="clay-tab-badge">{{ reportsState.distributionData.region_section?.items?.length || 0 }}</span>
+                </button>
+              </div>
+
+              <!-- BÖLÜM 1: SAYAÇ / İŞ SONUCU / TUTANAK DAĞILIMI -->
+              <section
+                v-if="reportsState.distributionActiveView === 'all' || reportsState.distributionActiveView === 'status'"
+                class="dist-section bento-card bento-card--white"
+              >
+                <div class="dist-section-head">
+                  <div class="dist-head-left">
+                    <span class="kpi-icon-bubble bg-blue-soft text-blue">
+                      <PieChart :size="18" />
+                    </span>
+                    <div>
+                      <h3 class="dist-section-title">
+                        {{ reportsState.distributionData.status_section?.title }}
+                      </h3>
+                      <p class="dist-section-sub">
+                        {{ reportsState.distributionData.status_section?.subtitle }}
+                      </p>
+                    </div>
+                  </div>
+                  <span class="clay-pill-tag text-xs font-semibold">
+                    {{ reportsState.distributionData.status_section?.count_label }}
+                  </span>
+                </div>
+
+                <div
+                  v-if="!reportsState.distributionData.status_section?.items || reportsState.distributionData.status_section.items.length === 0"
+                  class="dist-empty-note"
+                >
+                  <Sparkles :size="20" class="text-muted mb-1" />
+                  <p>Bu filtreye uygun dağılım verisi bulunamadı.</p>
+                </div>
+
+                <!-- Durum Kartları Listesi -->
+                <div v-else class="dist-items-list">
+                  <article
+                    v-for="(item, idx) in reportsState.distributionData.status_section.items"
+                    :key="item.durum + '_' + idx"
+                    class="dist-item-card"
+                    :class="{ 'dist-item-card--olumsuz': item.sonuc_tipi === 'olumsuz' }"
+                  >
+                    <div class="dist-item-top">
+                      <div class="dist-item-name-group">
+                        <span
+                          class="dist-item-dot"
+                          :style="{ backgroundColor: item.color, boxShadow: `0 0 0 3px ${item.color}22` }"
+                        />
+                        <strong class="dist-item-name" :title="item.durum">
+                          {{ item.durum }}
+                        </strong>
+                      </div>
+
+                      <div class="dist-item-badge-group">
+                        <span
+                          v-if="item.sonuc_tipi === 'olumlu'"
+                          class="status-micro-badge status-micro-badge--success"
+                        >
+                          <CheckCircle :size="10" />
+                          <span>Olumlu</span>
+                        </span>
+                        <span
+                          v-else-if="item.sonuc_tipi === 'olumsuz'"
+                          class="status-micro-badge status-micro-badge--danger"
+                        >
+                          <XCircle :size="10" />
+                          <span>Olumsuz</span>
+                        </span>
+
+                        <span class="dist-item-pct" :style="{ color: item.color }">
+                          %{{ item.yuzde }}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div class="dist-item-mid">
+                      <strong class="dist-item-val">{{ formatNumber(item.toplam) }}</strong>
+                      <span class="dist-item-records">{{ formatNumber(item.kayit_sayisi) }} kayıt</span>
+                    </div>
+
+                    <div class="dist-item-bar-track">
+                      <div
+                        class="dist-item-bar-fill"
+                        :style="{ width: `${Math.min(Math.max(item.yuzde, 2), 100)}%`, backgroundColor: item.color }"
+                      />
+                    </div>
+                  </article>
+                </div>
+              </section>
+
+              <!-- BÖLÜM 2: BÖLGE KATKISI -->
+              <section
+                v-if="reportsState.distributionActiveView === 'all' || reportsState.distributionActiveView === 'region'"
+                class="dist-section bento-card bento-card--white"
+              >
+                <div class="dist-section-head">
+                  <div class="dist-head-left">
+                    <span class="kpi-icon-bubble bg-cyan-soft text-cyan">
+                      <MapPin :size="18" />
+                    </span>
+                    <div>
+                      <h3 class="dist-section-title">
+                        {{ reportsState.distributionData.region_section?.title }}
+                      </h3>
+                      <p class="dist-section-sub">
+                        {{ reportsState.distributionData.region_section?.subtitle }}
+                      </p>
+                    </div>
+                  </div>
+                  <span class="clay-pill-tag text-xs font-semibold">
+                    {{ reportsState.distributionData.region_section?.count_label }}
+                  </span>
+                </div>
+
+                <div
+                  v-if="!reportsState.distributionData.region_section?.items || reportsState.distributionData.region_section.items.length === 0"
+                  class="dist-empty-note"
+                >
+                  <Sparkles :size="20" class="text-muted mb-1" />
+                  <p>Bölge katkı verisi bulunamadı.</p>
+                </div>
+
+                <div v-else class="dist-region-stack">
+                  <div
+                    v-for="(reg, rIdx) in reportsState.distributionData.region_section.items"
+                    :key="reg.bolge + '_' + rIdx"
+                    class="dist-region-row"
+                  >
+                    <div class="dist-region-top">
+                      <div class="dist-region-rank-name">
+                        <span class="dist-region-rank">{{ rIdx + 1 }}.</span>
+                        <strong class="dist-region-name">{{ reg.bolge }}</strong>
+                      </div>
+                      <strong class="dist-region-val">{{ formatNumber(reg.toplam) }}</strong>
+                    </div>
+
+                    <div class="dist-region-track">
+                      <div
+                        class="dist-region-fill"
+                        :style="{ width: `${Math.min(Math.max(reg.bar_width, 3), 100)}%` }"
+                      />
+                    </div>
+
+                    <div class="dist-region-meta">
+                      <span>{{ formatNumber(reg.kayit_sayisi) }} kayıt</span>
+                      <span>Toplamın %{{ reg.pay }}'si</span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- Bilgilendirme Notu & Kapat Butonu -->
+              <div class="dist-footer-info">
+                <div class="dist-info-text">
+                  <Sparkles :size="13" class="text-primary me-1" />
+                  <span>Veriler, seçilen rapor dönemindeki tüm operasyonel kayıtları kapsar.</span>
+                </div>
+                <button
+                  type="button"
+                  class="clay-btn clay-btn--secondary w-full mt-3"
+                  @click="closeDistributionModal"
+                >
+                  Kapat
+                </button>
+              </div>
             </div>
           </div>
         </section>
@@ -1965,5 +2344,413 @@ onMounted(() => {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* ------------------------------------------------------------- */
+/* 9. DETAYLI DAĞILIM VE DÖKÜM SHEET (MASAÜSTÜ PARİTESİ)          */
+/* ------------------------------------------------------------- */
+
+/* Tıklanabilir KPI Kartı */
+.kpi-card--clickable {
+  cursor: pointer;
+  transition: transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.16s ease, border-color 0.16s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-card--clickable:active {
+  transform: scale(0.975);
+}
+
+.kpi-tag-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.kpi-spark-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+  border: 1px solid rgba(37, 99, 235, 0.2);
+}
+
+.kpi-sub-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.kpi-action-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.08);
+  padding: 1px 6px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+/* Color Helpers linking directly to --ds-* tokens */
+.bg-blue-soft { background: var(--ds-blue-soft, #f0f9ff); }
+.text-blue { color: var(--ds-blue-ink, #0284c7); }
+.bg-emerald-soft { background: var(--ds-emerald-soft, #ecfdf5); }
+.text-emerald { color: var(--ds-emerald-ink, #059669); }
+.bg-amber-soft { background: var(--ds-amber-soft, #fffbeb); }
+.text-amber { color: var(--ds-amber-ink, #d97706); }
+.bg-purple-soft { background: var(--ds-purple-soft, #f5f3ff); }
+.text-purple { color: var(--ds-purple-ink, #7c3aed); }
+.bg-coral-soft { background: var(--ds-coral-soft, #fff1f2); }
+.text-coral { color: var(--ds-coral-ink, #e11d48); }
+.bg-cyan-soft { background: #ecfeff; }
+.text-cyan { color: #0891b2; }
+
+/* 9. DETAYLI DAĞILIM DÖKÜM SHEET (MOBİL SPA DESİGN SYSTEM) */
+.dist-sheet {
+  max-height: calc(88svh - 40px - var(--ds-safe-bottom));
+  display: flex;
+  flex-direction: column;
+}
+
+.dist-sheet__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  flex-shrink: 0;
+}
+
+.dist-sheet__head-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.dist-avatar-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: var(--ds-surface-subtle);
+  border: 1px solid var(--ds-border-subtle);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.dist-header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.dist-sheet__body {
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 2px;
+}
+
+.dist-loading-box,
+.dist-error-box {
+  padding: 36px 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--ds-muted);
+  font: 700 13px var(--ds-font-main);
+}
+
+.dist-content-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 4'lü Hero KPI Kartları (Bento Grid) */
+.dist-kpi-grid {
+  margin-bottom: 0;
+}
+
+.dist-kpi-card {
+  padding: 12px 14px;
+  margin-bottom: 0;
+}
+
+/* Bölüm Bento Kartı */
+.dist-section {
+  padding: 16px;
+  border-radius: var(--ds-radius-card);
+  margin-bottom: 0;
+}
+
+.dist-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.dist-head-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.dist-section-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--ds-ink);
+  letter-spacing: -0.01em;
+}
+
+.dist-section-sub {
+  margin: 1px 0 0;
+  font-size: 11px;
+  color: var(--ds-muted);
+}
+
+.dist-empty-note {
+  text-align: center;
+  padding: 24px 10px;
+  color: var(--ds-muted);
+  font-size: 12px;
+}
+
+/* Durum Kartları Izgarası (Tek sütun mobile-first, ferah) */
+.dist-items-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+@media (min-width: 500px) {
+  .dist-items-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.dist-item-card {
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--ds-surface-subtle);
+  border: 1px solid var(--ds-border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: transform 0.14s ease, border-color 0.14s ease;
+}
+
+.dist-item-card:active {
+  transform: scale(0.985);
+}
+
+.dist-item-card--olumsuz {
+  background: rgba(244, 63, 94, 0.04);
+  border-color: rgba(244, 63, 94, 0.2);
+}
+
+.dist-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dist-item-name-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.dist-item-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dist-item-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ds-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dist-item-badge-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.status-micro-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: var(--ds-radius-pill);
+}
+
+.status-micro-badge--success {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.status-micro-badge--danger {
+  background: rgba(244, 63, 94, 0.12);
+  color: #e11d48;
+  border: 1px solid rgba(244, 63, 94, 0.25);
+}
+
+.dist-item-pct {
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.dist-item-mid {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.dist-item-val {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--ds-ink);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.dist-item-records {
+  font-size: 11px;
+  color: var(--ds-muted);
+  font-weight: 600;
+}
+
+.dist-item-bar-track {
+  height: 5px;
+  background: var(--ds-border-subtle);
+  border-radius: var(--ds-radius-pill);
+  overflow: hidden;
+  margin-top: 3px;
+}
+
+.dist-item-bar-fill {
+  height: 100%;
+  border-radius: var(--ds-radius-pill);
+  transition: width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Bölge Katkısı Sıralama Yığını */
+.dist-region-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dist-region-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.dist-region-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dist-region-rank-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.dist-region-rank {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--ds-muted);
+}
+
+.dist-region-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ds-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dist-region-val {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--ds-ink);
+}
+
+.dist-region-track {
+  height: 7px;
+  background: var(--ds-border-subtle);
+  border-radius: var(--ds-radius-pill);
+  overflow: hidden;
+}
+
+.dist-region-fill {
+  height: 100%;
+  border-radius: var(--ds-radius-pill);
+  background: linear-gradient(90deg, #2563eb, #38bdf8);
+  transition: width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.dist-region-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10.5px;
+  color: var(--ds-muted);
+  font-weight: 600;
+}
+
+/* Bilgilendirme Notu & Kapat Butonu */
+.dist-footer-info {
+  margin-top: 4px;
+}
+
+.dist-info-text {
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+  color: var(--ds-muted);
+  padding: 0 4px;
 }
 </style>

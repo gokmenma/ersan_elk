@@ -1726,10 +1726,14 @@ $(document).ready(function () {
     // 1. Önce yerel ajanı kontrol et (Seçenek B)
     checkLocalEimzaAgent(state => {
       if (state.available && state.cardDetected) {
+        const ownerName = String(state.data.owner_name || '').trim();
+        const tcno = String(state.data.tcno || '').trim();
         $badge.removeClass("bg-info-subtle text-info border-info-subtle bg-warning-subtle text-warning border-warning-subtle")
           .addClass("bg-success-subtle text-success border-success-subtle")
           .html(`<i class="bx bx-chip me-1"></i> ${escapeEvrakHtml(state.data.device_type || 'Akıllı Kart')} (Yerel)`);
-        $sub.html(`<strong>${escapeEvrakHtml(state.data.owner_name || '')}</strong> <span class="text-muted font-monospace font-size-11">(TC: ${escapeEvrakHtml(state.data.tcno || '')})</span> adına ait sertifika ile imzalanır.`);
+        $sub.html(ownerName && tcno
+          ? `<strong>${escapeEvrakHtml(ownerName)}</strong> <span class="text-muted font-monospace font-size-11">(TC: ${escapeEvrakHtml(tcno)})</span> adına ait sertifika ile imzalanır.`
+          : '<span class="text-muted"><i class="bx bx-lock-alt me-1"></i>Sertifika bilgisi PIN girildiğinde güvenli olarak okunacaktır.</span>');
         syncAgentFooter(
           "E-İmza Aktif",
           null,
@@ -1742,10 +1746,14 @@ $(document).ready(function () {
       // 2. Yerel ajanda kart yoksa veya ajan kapalıysa sunucuyu sorgula
       $.ajax({ url: api_url, type: "POST", data: { action: "eimza-kart-bilgisi" }, dataType: "json" }).done(function (card) {
         if (card && card.status === "success") {
+          const ownerName = String(card.owner_name || '').trim();
+          const tcno = String(card.tcno || '').trim();
           $badge.removeClass("bg-info-subtle text-info border-info-subtle")
             .addClass("bg-success-subtle text-success border-success-subtle")
             .html(`<i class="bx bx-chip me-1"></i> ${escapeEvrakHtml(card.device_type || 'Akıllı Kart')} Takılı`);
-          $sub.html(`<strong>${escapeEvrakHtml(card.owner_name || '')}</strong> <span class="text-muted font-monospace font-size-11">(TC: ${escapeEvrakHtml(card.tcno || '')})</span> adına ait sertifika ile imzalanır.`);
+          $sub.html(ownerName && tcno
+            ? `<strong>${escapeEvrakHtml(ownerName)}</strong> <span class="text-muted font-monospace font-size-11">(TC: ${escapeEvrakHtml(tcno)})</span> adına ait sertifika ile imzalanır.`
+            : '<span class="text-muted"><i class="bx bx-lock-alt me-1"></i>Sertifika bilgisi PIN girildiğinde güvenli olarak okunacaktır.</span>');
           syncAgentFooter(
             "E-İmza Hazır",
             null,
@@ -1945,6 +1953,8 @@ $(document).ready(function () {
               '</div>' +
               '<label for="kepSignPin" class="form-label fw-semibold">E-İmza Kart PIN Kodu</label>' +
               '<input type="password" id="kepSignPin" class="form-control" maxlength="20" autocomplete="off" placeholder="PIN kodunuzu giriniz">' +
+              '<button type="button" id="btnLoadKepCertificates" class="btn btn-sm btn-outline-primary mt-2"><i class="bx bx-id-card me-1"></i>Sertifikaları Getir</button>' +
+              '<div id="kepCertificateList" class="mt-2"></div>' +
               '<div class="d-flex align-items-center justify-content-between mt-2 pt-2 border-top">' +
                 '<span class="small text-muted"><i class="bx bx-shield-check text-success me-1"></i>PIN kaydedilmez.</span>' +
                 '<a href="downloads/ErsanEImza.jar" download class="text-primary font-size-11 fw-semibold text-decoration-none" title="Java E-İmza Uygulamasını İndir">' +
@@ -1960,6 +1970,28 @@ $(document).ready(function () {
       didOpen: function () {
         scanKepEimzaCard($("#kepSignCardBadge"), $("#kepSignCardText"));
         $("#kepSignPin").trigger("focus");
+        $("#btnLoadKepCertificates").on("click", function () {
+          const pin = String($("#kepSignPin").val() || "").trim();
+          if (!pin) return Swal.showValidationMessage("Sertifikaları okumak için PIN kodunu giriniz.");
+          Swal.resetValidationMessage();
+          const button = $(this).prop("disabled", true).html('<i class="bx bx-loader-alt bx-spin me-1"></i>Okunuyor');
+          fetch(LOCAL_EIMZA_AGENT_URL + "/certificates", {
+            method: "POST", mode: "cors", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pin: pin })
+          }).then(response => response.json()).then(result => {
+            if (result.status !== "success" || !Array.isArray(result.certificates)) throw new Error(result.message || "Sertifika okunamadı.");
+            const html = result.certificates.map(cert =>
+              '<div class="border rounded p-2 mb-1 bg-light small">' +
+                '<div class="fw-semibold text-dark"><i class="bx bx-certification text-success me-1"></i>' + escapeEvrakHtml(cert.owner_name || "İmza Sertifikası") + '</div>' +
+                '<div class="text-muted">TC: ' + escapeEvrakHtml(cert.tcno || "—") + ' · ' + escapeEvrakHtml(cert.key_algorithm || "") + '</div>' +
+                '<div class="text-muted">Geçerlilik: ' + escapeEvrakHtml(cert.valid_from || "") + ' – ' + escapeEvrakHtml(cert.valid_until || "") + '</div>' +
+              '</div>'
+            ).join("");
+            $("#kepCertificateList").html(html);
+            scanKepEimzaCard($("#kepSignCardBadge"), $("#kepSignCardText"));
+          }).catch(error => Swal.showValidationMessage(error.message || "Sertifika okunamadı."))
+            .finally(() => button.prop("disabled", false).html('<i class="bx bx-id-card me-1"></i>Sertifikaları Getir'));
+        });
       },
       preConfirm: function () {
         const pin = String($("#kepSignPin").val() || "").trim();

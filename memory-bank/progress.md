@@ -1,5 +1,24 @@
 # Progress
 
+## 2026-10-21: Araç Takip KM Onayları — Yapay Zekâ 1.000 KM Üst Sınır Kontrolü
+- [x] `App/Service/KmBildirimAiKontrolService.php` içerisine `calculateYapilanKm(object $bildirim, int $kmCandidate): ?int` metodu eklendi.
+- [x] Akşam bildirimlerinde günün başlangıç KM'si veya önceki KM baz alınarak yapılan KM (`bitis_km - baslangic_km`) hesaplandı.
+- [x] Sabah bildirimlerinde kayıtlı bitiş KM varsa yapılan KM, yoksa önceki sistem KM'si ile fark hesaplandı.
+- [x] `evaluate()` metodunda toplam yapılan KM veya atlama farkı 1.000 KM'yi aştığında yapay zekânın otomatik onayı engellendi (`$karar['uygun'] = false`); net açıklayıcı red nedeni (`Toplam yapılan KM (X KM) 1.000 KM'den fazla olduğu için otomatik onaylanamaz.`) üretilerek `ai_onaylanmama_nedeni` alanına kaydedildi.
+- [x] Fotoğraftan okunan alternatif KM değeri ve `adjudicateCloseOdometerReading` aday hakemliği adımı da 1.000 KM sınırına bağlanarak gereksiz API çağrıları engellendi.
+- [x] PHP CLI üzerinden tüm uç senaryolar (aşırı KM, normal KM, sabah/akşam) test edilerek doğrulandı.
+
+## 2026-10-21: Mobil SPA Raporlar — Toplam İşlemler Kartı Detaylı Dağılım Dökümü
+- [x] Backend API (`mobile-spa/public/api/reports.php` ve `mobile-spa/dist/api/reports.php`) üzerinde `action === 'distribution'` aksiyonu oluşturuldu.
+- [x] Tüm 5 operasyon sekmesi (`okuma`, `kesme`, `sokme_takma`, `muhurleme`, `kacakkontrol`) için operasyonel durum dağılımı (`status_section`) ve bölge katkısı (`region_section`) analiz sorguları uygulandı.
+- [x] Kesme/Açma sekmesinde masaüstü formatında `Tümü / Olumlu / Olumsuz` filtre hapları ve dinamik kırılım desteği sağlandı.
+- [x] Servis katmanında (`mobile-spa/src/services/reports.js`) `distributionDrawerOpen`, `distributionLoading`, `distributionData`, `openDistributionModal()`, `closeDistributionModal()` ve `loadDistribution()` fonksiyonları tanımlandı.
+- [x] Görsel arayüzde (`mobile-spa/src/views/ReportsView.vue`):
+  - Sol üstteki Toplam İşlem KPI kartı tıklanabilir yapıldı (`.kpi-card--clickable`, grafik rozeti, `Döküm >` eylem linki).
+  - Masaüstündeki zengin gradyan hero başlığına (`.dist-hero-banner`) sahip şık Mobil Dağılım Çekmecesi (`distribution-sheet`) tasarlandı.
+  - 4'lü Hero KPI cam kapsülleri, `Tümü / Durumlar / Bölge Katkısı` görünüm geçişleri, her durum için yüzde, kayıt ve renkli ilerleme çubukları ve sıralı bölge katkı çubukları uygulandı.
+- [x] `npm run build` ile prodüksiyon derlemesi hatasız alındı ve testler başarıyla doğrulandı.
+
 ## 2026-10-20: Ana Sayfa — Görev & Evrak Takvimi & Alarmlar Mini Kartı
 - [x] Veritabanı Değişikliği: `sql/2026_10_20_add_son_tarih_to_evrak_takip.sql` oluşturuldu ve `evrak_takip` tablosuna `son_tarih DATE NULL` sütunu eklendi.
 - [x] Model Katmanı:
@@ -1464,6 +1483,9 @@
 - [x] Windows AKİS algılamasına alternatif `akia_pkcs11.dll`/Program Files yolları ve 32/64-bit Java uyumlu sertifika doğrulamalı fallback eklendi; tarayıcı–ajan durum çelişkisine yol açan istemci önbelleği kaldırıldı. `1.2.4` JAR derlendi ve sürüm içeriği doğrulandı.
 - [x] Windows'ta kart sürücüsü standart dizinde değilse kullanıcıya terminal gerektirmeden PKCS#11 DLL seçtiren ve seçimi kalıcı saklayan arayüz eklendi; yaygın AKİA dizinleri otomatik taranıyor. `1.2.5` Java 8 uyumlu JAR üretildi.
 - [x] Windows'ta PIN öncesi sertifika listesini kapatan AKİS sürümleri için slot/token tabanlı kart algılama ve kullanıcıya kopyalanabilir sürücü tanılaması eklendi; `1.2.6` JAR derlendi.
+- [x] PIN öncesinde gizlenen Windows AKİS sertifikası için doğru UI açıklaması ve PIN sonrası X.509 kimliğini önbelleğe alma eklendi; `1.2.7` paketi derlendi, JavaScript/PHP kontrolleri geçti.
+- [x] KEP PIN modalında PIN sonrası yerel sertifika listeleme endpoint'i ve sahip/T.C./geçerlilik/algoritma kartları eklendi; `1.2.8` JAR ile JS/PHP kontrolleri geçti.
+- [x] Java yerel ajan arayüzü durum kartları ve ayrı `Durum` / `Ayarlar ve Tanılama` sekmeleriyle yenilendi; ayar butonları ana ekrandan ayrıldı ve `1.2.9` JAR üretildi.
 
 # 2026-10-20 — Cari hesap hareketleri Excel dışa aktarımı
 

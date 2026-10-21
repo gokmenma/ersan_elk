@@ -19,7 +19,7 @@ public class ErsanEImzaApp {
 
     public static void main(String[] args) {
         System.out.println("=================================================");
-        System.out.println("  Ersan E-İmza Yerel Köprü Servisi (Java v1.2.6) ");
+        System.out.println("  Ersan E-İmza Yerel Köprü Servisi (Java v1.2.9) ");
         System.out.println("  Dinleme Adresi: http://127.0.0.1:9191          ");
         System.out.println("=================================================");
 
@@ -56,54 +56,51 @@ public class ErsanEImzaApp {
         } catch (Throwable ignored) {}
 
         mainFrame = new JFrame("Ersan E-İmza Servisi");
-        mainFrame.setSize(730, 300);
+        mainFrame.setSize(720, 470);
+        mainFrame.setMinimumSize(new Dimension(640, 430));
         mainFrame.setLocationRelativeTo(null);
         mainFrame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
-        mainFrame.setLayout(new BorderLayout(15, 15));
+        mainFrame.getContentPane().setBackground(new Color(244, 247, 250));
+        mainFrame.setLayout(new BorderLayout());
 
-        JPanel pnlCenter = new JPanel(new GridLayout(3, 1, 8, 8));
-        pnlCenter.setBorder(BorderFactory.createEmptyBorder(15, 20, 10, 20));
+        JPanel header = new JPanel(new BorderLayout(14, 0));
+        header.setBackground(new Color(31, 51, 73));
+        header.setBorder(BorderFactory.createEmptyBorder(18, 22, 18, 22));
+        JLabel logo = new JLabel("E", JLabel.CENTER);
+        logo.setOpaque(true);
+        logo.setBackground(new Color(45, 156, 219));
+        logo.setForeground(Color.WHITE);
+        logo.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        logo.setPreferredSize(new Dimension(46, 46));
+        header.add(logo, BorderLayout.WEST);
 
-        JLabel lblTitle = new JLabel("Ersan E-İmza Yerel Ajanı (v1.2.6 PAdES)", JLabel.LEFT);
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        lblTitle.setForeground(new Color(33, 37, 41));
+        JPanel titlePanel = new JPanel(new GridLayout(2, 1, 0, 2));
+        titlePanel.setOpaque(false);
+        JLabel lblTitle = new JLabel("Ersan E-İmza Yerel Ajanı");
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblTitle.setForeground(Color.WHITE);
+        JLabel lblSubtitle = new JLabel("Güvenli elektronik imza köprüsü  •  v1.2.9 PAdES");
+        lblSubtitle.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblSubtitle.setForeground(new Color(190, 205, 219));
+        titlePanel.add(lblTitle);
+        titlePanel.add(lblSubtitle);
+        header.add(titlePanel, BorderLayout.CENTER);
+        mainFrame.add(header, BorderLayout.NORTH);
 
-        lblStatus = new JLabel("● Servis Aktif (http://127.0.0.1:9191)", JLabel.LEFT);
-        lblStatus.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        lblStatus.setForeground(new Color(25, 135, 84));
-
-        lblCard = new JLabel("Kart aranıyor...", JLabel.LEFT);
-        lblCard.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lblCard.setForeground(new Color(108, 117, 125));
-
-        pnlCenter.add(lblTitle);
-        pnlCenter.add(lblStatus);
-        pnlCenter.add(lblCard);
-        mainFrame.add(pnlCenter, BorderLayout.CENTER);
+        JTabbedPane tabs = new JTabbedPane();
+        tabs.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        tabs.setBorder(BorderFactory.createEmptyBorder(10, 16, 0, 16));
+        tabs.addTab("  Durum  ", createStatusTab());
+        tabs.addTab("  Ayarlar ve Tanılama  ", createSettingsTab());
+        mainFrame.add(tabs, BorderLayout.CENTER);
 
         JPanel pnlBottom = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
-        JButton btnRefresh = new JButton("Kartı Yeniden Tara");
-        btnRefresh.addActionListener(e -> refreshCardStatus());
-
-        JButton btnMinimize = new JButton("Arka Plana Al");
+        pnlBottom.setBackground(new Color(244, 247, 250));
+        pnlBottom.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(222, 227, 232)));
+        JButton btnMinimize = createButton("Arka Plana Al", false);
         btnMinimize.addActionListener(e -> mainFrame.setVisible(false));
-
-        JButton btnRestart = new JButton("Bağlantıyı Yenile");
-        btnRestart.addActionListener(e -> restartAgent());
-
-        JButton btnDriver = new JButton("Sürücü DLL Seç");
-        btnDriver.addActionListener(e -> choosePkcs11Driver());
-
-        JButton btnDiagnostic = new JButton("Tanılama");
-        btnDiagnostic.addActionListener(e -> showDiagnostic());
-
-        JButton btnExit = new JButton("Tamamen Kapat");
+        JButton btnExit = createButton("Tamamen Kapat", false);
         btnExit.addActionListener(e -> exitAgent());
-
-        pnlBottom.add(btnRefresh);
-        pnlBottom.add(btnDriver);
-        pnlBottom.add(btnDiagnostic);
-        pnlBottom.add(btnRestart);
         pnlBottom.add(btnMinimize);
         pnlBottom.add(btnExit);
         mainFrame.add(pnlBottom, BorderLayout.SOUTH);
@@ -115,6 +112,126 @@ public class ErsanEImzaApp {
 
         refreshCardStatus();
         mainFrame.setVisible(true);
+    }
+
+    private static JPanel createStatusTab() {
+        JPanel panel = new JPanel();
+        panel.setBackground(new Color(244, 247, 250));
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(BorderFactory.createEmptyBorder(16, 8, 16, 8));
+
+        lblStatus = new JLabel("●  Servis Aktif", JLabel.LEFT);
+        lblStatus.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblStatus.setForeground(new Color(25, 135, 84));
+        JPanel serviceCard = createInfoCard("YEREL SERVİS", lblStatus,
+                "http://127.0.0.1:9191 adresinde güvenli biçimde çalışıyor.");
+
+        lblCard = new JLabel("Kart aranıyor...", JLabel.LEFT);
+        lblCard.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblCard.setForeground(new Color(108, 117, 125));
+        JPanel cardCard = createInfoCard("E-İMZA KARTI", lblCard,
+                "Kartınızı taktıktan sonra yeniden tarayabilirsiniz.");
+
+        JButton btnRefresh = new JButton("Kartı Yeniden Tara");
+        styleButton(btnRefresh, true);
+        btnRefresh.addActionListener(e -> refreshCardStatus());
+        JPanel action = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        action.setOpaque(false);
+        action.add(btnRefresh);
+
+        panel.add(serviceCard);
+        panel.add(Box.createVerticalStrut(12));
+        panel.add(cardCard);
+        panel.add(Box.createVerticalStrut(14));
+        panel.add(action);
+        return panel;
+    }
+
+    private static JPanel createSettingsTab() {
+        JPanel panel = new JPanel(new GridLayout(3, 1, 0, 10));
+        panel.setBackground(new Color(244, 247, 250));
+        panel.setBorder(BorderFactory.createEmptyBorder(16, 8, 16, 8));
+
+        panel.add(createSettingRow("Sürücü Ayarı",
+                "Kartınız otomatik bulunmazsa üreticinin PKCS#11 DLL dosyasını seçin.",
+                "Sürücü DLL Seç", e -> choosePkcs11Driver()));
+        panel.add(createSettingRow("Bağlantıyı Yenile",
+                "Servisi kapatmadan kart ve bağlantı önbelleğini güvenle yeniler.",
+                "Bağlantıyı Yenile", e -> restartAgent()));
+        panel.add(createSettingRow("Tanılama Bilgileri",
+                "Java mimarisi, sürücü yolu ve kart okuyucu çıktısını görüntüler.",
+                "Tanılamayı Aç", e -> showDiagnostic()));
+        return panel;
+    }
+
+    private static JPanel createInfoCard(String heading, JLabel value, String detail) {
+        JPanel card = new JPanel();
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setBackground(Color.WHITE);
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(222, 227, 232)),
+                BorderFactory.createEmptyBorder(12, 16, 12, 16)));
+        card.setAlignmentX(Component.LEFT_ALIGNMENT);
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 86));
+        JLabel title = new JLabel(heading);
+        title.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        title.setForeground(new Color(108, 117, 125));
+        JLabel description = new JLabel(detail);
+        description.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        description.setForeground(new Color(108, 117, 125));
+        card.add(title);
+        card.add(Box.createVerticalStrut(5));
+        card.add(value);
+        card.add(Box.createVerticalStrut(3));
+        card.add(description);
+        return card;
+    }
+
+    private static JPanel createSettingRow(String title, String detail, String buttonText,
+                                           java.awt.event.ActionListener listener) {
+        JPanel row = new JPanel(new BorderLayout(14, 0));
+        row.setBackground(Color.WHITE);
+        row.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(222, 227, 232)),
+                BorderFactory.createEmptyBorder(10, 14, 10, 14)));
+        JPanel text = new JPanel(new GridLayout(2, 1, 0, 2));
+        text.setOpaque(false);
+        JLabel heading = new JLabel(title);
+        heading.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        heading.setForeground(new Color(33, 37, 41));
+        JLabel description = new JLabel(detail);
+        description.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        description.setForeground(new Color(108, 117, 125));
+        text.add(heading);
+        text.add(description);
+        JButton button = createButton(buttonText, false);
+        button.addActionListener(listener);
+        row.add(text, BorderLayout.CENTER);
+        row.add(button, BorderLayout.EAST);
+        return row;
+    }
+
+    private static JButton createButton(String text, boolean primary) {
+        JButton button = new JButton(text);
+        styleButton(button, primary);
+        return button;
+    }
+
+    private static void styleButton(JButton button, boolean primary) {
+        button.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        button.setFocusPainted(false);
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(primary ? new Color(13, 110, 253) : new Color(190, 198, 206)),
+                BorderFactory.createEmptyBorder(7, 14, 7, 14)));
+        if (primary) {
+            button.setBackground(new Color(13, 110, 253));
+            button.setForeground(Color.WHITE);
+            button.setOpaque(true);
+        } else {
+            button.setBackground(Color.WHITE);
+            button.setForeground(new Color(52, 58, 64));
+        }
     }
 
     private static void refreshCardStatus() {

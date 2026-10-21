@@ -755,4 +755,410 @@ if ($action === 'detail') {
     }
 }
 
+// -------------------------------------------------------------
+// ACTION: DISTRIBUTION (Detailed Breakdown for Modal / Sheet)
+// -------------------------------------------------------------
+if ($action === 'distribution') {
+    try {
+        $activeTab = (string) ($_GET['tab'] ?? 'okuma');
+        $validTabs = ['okuma', 'kesme', 'sokme_takma', 'muhurleme', 'kacakkontrol'];
+        if (!in_array($activeTab, $validTabs, true)) {
+            $activeTab = 'okuma';
+        }
+
+        $startDateStr = (string) ($_GET['start_date'] ?? date('Y-m-d'));
+        $endDateStr = (string) ($_GET['end_date'] ?? date('Y-m-d'));
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $startDateStr) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $endDateStr)) {
+            $startDateStr = date('Y-m-01');
+            $endDateStr = date('Y-m-t');
+        }
+
+        $filterType = (string) ($_GET['type'] ?? 'all');
+        if (!in_array($filterType, ['all', 'olumlu', 'olumsuz'], true)) {
+            $filterType = 'all';
+        }
+
+        $palette = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#6366f1', '#14b8a6', '#f97316', '#64748b', '#84cc16'];
+
+        $tabMeta = [
+            'okuma' => [
+                'title' => 'ENDEKS OKUMA ANALİZİ',
+                'modal_title' => 'Bu Dönemin Dağılımı',
+                'unit' => 'Abone',
+                'theme' => 'okuma',
+                'status_title' => 'Sayaç Durumu Dağılımı',
+                'status_subtitle' => 'Okunan abonelerin sonuç türlerine göre dağılımı',
+                'supported_filters' => false,
+            ],
+            'kesme' => [
+                'title' => 'KESME / AÇMA ANALİZİ',
+                'modal_title' => 'Bu Dönemin İş Dağılımı',
+                'unit' => 'İşlem',
+                'theme' => 'kesme',
+                'status_title' => 'İş Sonucu Dağılımı',
+                'status_subtitle' => 'Sonuçlanan işlerin işlem türlerine göre dağılımı',
+                'supported_filters' => true,
+            ],
+            'sokme_takma' => [
+                'title' => 'SAYAÇ SÖKME/TAKMA ANALİZİ',
+                'modal_title' => 'Bu Dönemin Sayaç Dağılımı',
+                'unit' => 'Sayaç',
+                'theme' => 'sayac',
+                'status_title' => 'İş Emri Sonucu Dağılımı',
+                'status_subtitle' => 'Sökme ve takma işlemlerinin sonuç türlerine göre dağılımı',
+                'supported_filters' => false,
+            ],
+            'muhurleme' => [
+                'title' => 'MÜHÜRLEME ANALİZİ',
+                'modal_title' => 'Bu Dönemin Mühürleme Dağılımı',
+                'unit' => 'Mühür',
+                'theme' => 'muhur',
+                'status_title' => 'İşlem Sonucu Dağılımı',
+                'status_subtitle' => 'Mühürleme işlemlerinin sonuç türlerine göre dağılımı',
+                'supported_filters' => false,
+            ],
+            'kacakkontrol' => [
+                'title' => 'KAÇAK KONTROL ANALİZİ',
+                'modal_title' => 'Bu Dönemin Kaçak Dağılımı',
+                'unit' => 'Tutanak',
+                'theme' => 'kacak',
+                'status_title' => 'Tutanak Türü Dağılımı',
+                'status_subtitle' => 'Tespit edilen kaçak ve usulsüzlük türleri dağılımı',
+                'supported_filters' => false,
+            ],
+        ];
+
+        $meta = $tabMeta[$activeTab];
+        $statusRows = [];
+        $regionRows = [];
+        $heroStats = [];
+
+        if ($activeTab === 'okuma') {
+            $statusSql = "SELECT COALESCE(NULLIF(UPPER(TRIM(sayac_durum)), ''), 'BELİRTİLMEMİŞ') AS durum,
+                                 COUNT(*) AS kayit_sayisi,
+                                 COALESCE(SUM(okunan_abone_sayisi), 0) AS toplam
+                          FROM endeks_okuma
+                          WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL
+                          GROUP BY COALESCE(NULLIF(UPPER(TRIM(sayac_durum)), ''), 'BELİRTİLMEMİŞ')
+                          ORDER BY toplam DESC";
+            $statusStmt = $db->prepare($statusSql);
+            $statusStmt->execute([$firmaId, $startDateStr, $endDateStr]);
+            $statusRows = $statusStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $regionSql = "SELECT COALESCE(NULLIF(TRIM(def.ekip_bolge), ''), 'TANIMSIZ') AS bolge,
+                                 COUNT(*) AS kayit_sayisi,
+                                 COALESCE(SUM(t.okunan_abone_sayisi), 0) AS toplam
+                          FROM endeks_okuma t
+                          LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
+                          WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
+                          GROUP BY COALESCE(NULLIF(TRIM(def.ekip_bolge), ''), 'TANIMSIZ')
+                          ORDER BY toplam DESC";
+            $regionStmt = $db->prepare($regionSql);
+            $regionStmt->execute([$firmaId, $startDateStr, $endDateStr]);
+            $regionRows = $regionStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $total = (int) array_sum(array_column($statusRows, 'toplam'));
+            $records = (int) array_sum(array_column($statusRows, 'kayit_sayisi'));
+            $normal = 0;
+            foreach ($statusRows as $r) {
+                if ($r['durum'] === 'SAYAÇ NORMAL') {
+                    $normal += (int) $r['toplam'];
+                }
+            }
+            $other = max(0, $total - $normal);
+
+            $heroStats = [
+                ['label' => 'Toplam Abone', 'value' => $total, 'icon' => 'Users', 'accent' => '#60a5fa'],
+                ['label' => 'Sayaç Normal', 'value' => $normal, 'icon' => 'CheckCircle', 'accent' => '#34d399'],
+                ['label' => 'Diğer Durumlar', 'value' => $other, 'icon' => 'AlertCircle', 'accent' => '#fbbf24'],
+                ['label' => 'Toplam Kayıt', 'value' => $records, 'icon' => 'Receipt', 'accent' => '#c084fc'],
+            ];
+        } elseif ($activeTab === 'kesme') {
+            $stWT = $db->prepare("SELECT TRIM(is_emri_sonucu) as is_emri_sonucu, COALESCE(NULLIF(TRIM(sonuc_tipi), ''), 'olumlu') as sonuc_tipi FROM tanimlamalar WHERE firma_id = ? AND grup = 'is_turu' AND rapor_sekmesi = 'kesme' AND silinme_tarihi IS NULL");
+            $stWT->execute([$firmaId]);
+            $allWT = $stWT->fetchAll(PDO::FETCH_ASSOC);
+            $filterWT = [];
+            foreach ($allWT as $wt) {
+                if ($filterType === 'all' || $wt['sonuc_tipi'] === $filterType) {
+                    $filterWT[] = $wt['is_emri_sonucu'];
+                }
+            }
+            $params = [$firmaId, $startDateStr, $endDateStr];
+            $wtClause = '';
+            if (!empty($filterWT)) {
+                $placeholders = implode(',', array_fill(0, count($filterWT), '?'));
+                $wtClause = " AND TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)) IN ($placeholders)";
+                $params = array_merge($params, $filterWT);
+            } elseif ($filterType !== 'all') {
+                $wtClause = " AND 1 = 0";
+            }
+
+            $statusSql = "SELECT COALESCE(NULLIF(TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)), ''), 'BELİRTİLMEMİŞ') AS durum,
+                                 COALESCE(NULLIF(TRIM(tn.sonuc_tipi), ''), 'olumlu') AS sonuc_tipi,
+                                 COUNT(*) AS kayit_sayisi,
+                                 COALESCE(SUM(t.sonuclanmis), 0) AS toplam
+                          FROM yapilan_isler t
+                          LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
+                          WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL {$wtClause}
+                          GROUP BY COALESCE(NULLIF(TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)), ''), 'BELİRTİLMEMİŞ'), COALESCE(NULLIF(TRIM(tn.sonuc_tipi), ''), 'olumlu')
+                          ORDER BY toplam DESC";
+            $statusStmt = $db->prepare($statusSql);
+            $statusStmt->execute($params);
+            $statusRows = $statusStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $regionSql = "SELECT COALESCE(NULLIF(TRIM(def.ekip_bolge), ''), 'TANIMSIZ') AS bolge,
+                                 COUNT(*) AS kayit_sayisi,
+                                 COALESCE(SUM(t.sonuclanmis), 0) AS toplam
+                          FROM yapilan_isler t
+                          LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
+                          LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
+                          WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL {$wtClause}
+                          GROUP BY COALESCE(NULLIF(TRIM(def.ekip_bolge), ''), 'TANIMSIZ')
+                          ORDER BY toplam DESC";
+            $regionStmt = $db->prepare($regionSql);
+            $regionStmt->execute($params);
+            $regionRows = $regionStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $total = (int) array_sum(array_column($statusRows, 'toplam'));
+            $records = (int) array_sum(array_column($statusRows, 'kayit_sayisi'));
+            $olumluTotal = 0;
+            $olumsuzTotal = 0;
+            foreach ($statusRows as $r) {
+                if (($r['sonuc_tipi'] ?? '') === 'olumsuz') {
+                    $olumsuzTotal += (int) $r['toplam'];
+                } else {
+                    $olumluTotal += (int) $r['toplam'];
+                }
+            }
+
+            if ($filterType === 'all') {
+                $heroStats = [
+                    ['label' => 'Toplam İş', 'value' => $total, 'icon' => 'Zap', 'accent' => '#f43f5e'],
+                    ['label' => 'Olumlu İşler', 'value' => $olumluTotal, 'icon' => 'CheckCircle', 'accent' => '#34d399'],
+                    ['label' => 'Olumsuz İşler', 'value' => $olumsuzTotal, 'icon' => 'XCircle', 'accent' => '#fb7185'],
+                    ['label' => 'Toplam Kayıt', 'value' => $records, 'icon' => 'Receipt', 'accent' => '#fdba74'],
+                ];
+            } elseif ($filterType === 'olumlu') {
+                $heroStats = [
+                    ['label' => 'Olumlu İşler', 'value' => $total, 'icon' => 'CheckCircle', 'accent' => '#34d399'],
+                    ['label' => 'İşlem Türü', 'value' => count($statusRows), 'icon' => 'Layers', 'accent' => '#60a5fa'],
+                    ['label' => 'Toplam Kayıt', 'value' => $records, 'icon' => 'Receipt', 'accent' => '#fdba74'],
+                    ['label' => 'Aktif Bölge', 'value' => count($regionRows), 'icon' => 'MapPin', 'accent' => '#c084fc'],
+                ];
+            } else {
+                $heroStats = [
+                    ['label' => 'Olumsuz İşler', 'value' => $total, 'icon' => 'XCircle', 'accent' => '#fb7185'],
+                    ['label' => 'İşlem Türü', 'value' => count($statusRows), 'icon' => 'Layers', 'accent' => '#60a5fa'],
+                    ['label' => 'Toplam Kayıt', 'value' => $records, 'icon' => 'Receipt', 'accent' => '#fdba74'],
+                    ['label' => 'Aktif Bölge', 'value' => count($regionRows), 'icon' => 'MapPin', 'accent' => '#c084fc'],
+                ];
+            }
+        } elseif ($activeTab === 'sokme_takma') {
+            $statusSql = "SELECT TRIM(t.isemri_sonucu) AS durum,
+                                 COUNT(*) AS kayit_sayisi,
+                                 COUNT(DISTINCT SUBSTRING_INDEX(t.islem_id, '_', 1)) AS toplam
+                          FROM sayac_degisim t
+                          WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
+                          AND EXISTS (
+                              SELECT 1
+                              FROM tanimlamalar def
+                              WHERE def.firma_id = t.firma_id
+                              AND def.grup = 'is_turu'
+                              AND def.rapor_sekmesi = 'sokme_takma'
+                              AND TRIM(def.is_emri_sonucu) = TRIM(t.isemri_sonucu)
+                              AND def.silinme_tarihi IS NULL
+                          )
+                          GROUP BY TRIM(t.isemri_sonucu)
+                          ORDER BY toplam DESC";
+            $statusStmt = $db->prepare($statusSql);
+            $statusStmt->execute([$firmaId, $startDateStr, $endDateStr]);
+            $statusRows = $statusStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $regionSql = "SELECT COALESCE(NULLIF(TRIM(ek.ekip_bolge), ''), NULLIF(TRIM(t.bolge), ''), 'TANIMSIZ') AS bolge,
+                                 COUNT(*) AS kayit_sayisi,
+                                 COUNT(DISTINCT SUBSTRING_INDEX(t.islem_id, '_', 1)) AS toplam
+                          FROM sayac_degisim t
+                          LEFT JOIN tanimlamalar ek ON t.ekip_kodu_id = ek.id
+                          WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
+                          AND EXISTS (
+                              SELECT 1
+                              FROM tanimlamalar def
+                              WHERE def.firma_id = t.firma_id
+                              AND def.grup = 'is_turu'
+                              AND def.rapor_sekmesi = 'sokme_takma'
+                              AND TRIM(def.is_emri_sonucu) = TRIM(t.isemri_sonucu)
+                              AND def.silinme_tarihi IS NULL
+                          )
+                          GROUP BY COALESCE(NULLIF(TRIM(ek.ekip_bolge), ''), NULLIF(TRIM(t.bolge), ''), 'TANIMSIZ')
+                          ORDER BY toplam DESC";
+            $regionStmt = $db->prepare($regionSql);
+            $regionStmt->execute([$firmaId, $startDateStr, $endDateStr]);
+            $regionRows = $regionStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $total = (int) array_sum(array_column($statusRows, 'toplam'));
+            $records = (int) array_sum(array_column($statusRows, 'kayit_sayisi'));
+
+            $heroStats = [
+                ['label' => 'Toplam Sayaç', 'value' => $total, 'icon' => 'Wrench', 'accent' => '#a78bfa'],
+                ['label' => 'İşlem Türü', 'value' => count($statusRows), 'icon' => 'Layers', 'accent' => '#38bdf8'],
+                ['label' => 'Toplam Kayıt', 'value' => $records, 'icon' => 'Receipt', 'accent' => '#f472b6'],
+                ['label' => 'Aktif Bölge', 'value' => count($regionRows), 'icon' => 'MapPin', 'accent' => '#34d399'],
+            ];
+        } elseif ($activeTab === 'muhurleme') {
+            $statusSql = "SELECT COALESCE(NULLIF(TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)), ''), 'MÜHÜR TAKILDI') AS durum,
+                                 COUNT(*) AS kayit_sayisi,
+                                 COALESCE(SUM(t.sonuclanmis), 0) AS toplam
+                          FROM yapilan_isler t
+                          LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
+                          WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL AND tn.rapor_sekmesi = 'muhurleme'
+                          GROUP BY COALESCE(NULLIF(TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)), ''), 'MÜHÜR TAKILDI')
+                          ORDER BY toplam DESC";
+            $statusStmt = $db->prepare($statusSql);
+            $statusStmt->execute([$firmaId, $startDateStr, $endDateStr]);
+            $statusRows = $statusStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $regionSql = "SELECT COALESCE(NULLIF(TRIM(def.ekip_bolge), ''), 'TANIMSIZ') AS bolge,
+                                 COUNT(*) AS kayit_sayisi,
+                                 COALESCE(SUM(t.sonuclanmis), 0) AS toplam
+                          FROM yapilan_isler t
+                          LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
+                          LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
+                          WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL AND tn.rapor_sekmesi = 'muhurleme'
+                          GROUP BY COALESCE(NULLIF(TRIM(def.ekip_bolge), ''), 'TANIMSIZ')
+                          ORDER BY toplam DESC";
+            $regionStmt = $db->prepare($regionSql);
+            $regionStmt->execute([$firmaId, $startDateStr, $endDateStr]);
+            $regionRows = $regionStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $total = (int) array_sum(array_column($statusRows, 'toplam'));
+            $records = (int) array_sum(array_column($statusRows, 'kayit_sayisi'));
+
+            $heroStats = [
+                ['label' => 'Toplam Mühür', 'value' => $total, 'icon' => 'ShieldCheck', 'accent' => '#34d399'],
+                ['label' => 'İşlem Türü', 'value' => count($statusRows), 'icon' => 'Layers', 'accent' => '#38bdf8'],
+                ['label' => 'Toplam Kayıt', 'value' => $records, 'icon' => 'Receipt', 'accent' => '#fbbf24'],
+                ['label' => 'Aktif Bölge', 'value' => count($regionRows), 'icon' => 'MapPin', 'accent' => '#a78bfa'],
+            ];
+        } elseif ($activeTab === 'kacakkontrol') {
+            $kacakCond = \App\Model\KacakKontrolModel::raporKosulu('k');
+            $statusSql = "SELECT COALESCE(NULLIF(TRIM(k.tur), ''), 'Belirtilmemiş') AS durum,
+                                 COUNT(*) AS kayit_sayisi,
+                                 COALESCE(SUM(k.sayi), 0) AS toplam,
+                                 SUM(CASE WHEN k.onay_durumu = 'onaylandi' THEN k.sayi ELSE 0 END) AS onaylanan,
+                                 SUM(CASE WHEN k.onay_durumu = 'beklemede' THEN k.sayi ELSE 0 END) AS bekleyen
+                          FROM kacak_kontrol k
+                          WHERE k.firma_id = ? AND k.tarih BETWEEN ? AND ? AND k.silinme_tarihi IS NULL AND (k.aciklama != 'Manuel Düşüm' OR k.aciklama IS NULL) AND {$kacakCond}
+                          GROUP BY COALESCE(NULLIF(TRIM(k.tur), ''), 'Belirtilmemiş')
+                          ORDER BY toplam DESC";
+            $statusStmt = $db->prepare($statusSql);
+            $statusStmt->execute([$firmaId, $startDateStr, $endDateStr]);
+            $statusRows = $statusStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $regionSql = "SELECT COALESCE(NULLIF(TRIM(ek.ekip_bolge), ''), NULLIF(TRIM(k.ilce), ''), 'TANIMSIZ') AS bolge,
+                                 COUNT(*) AS kayit_sayisi,
+                                 COALESCE(SUM(k.sayi), 0) AS toplam
+                          FROM kacak_kontrol k
+                          LEFT JOIN tanimlamalar ek ON k.ekip_adi = ek.tur_adi AND ek.grup = 'ekip_kodu' AND ek.firma_id = k.firma_id
+                          WHERE k.firma_id = ? AND k.tarih BETWEEN ? AND ? AND k.silinme_tarihi IS NULL AND (k.aciklama != 'Manuel Düşüm' OR k.aciklama IS NULL) AND {$kacakCond}
+                          GROUP BY COALESCE(NULLIF(TRIM(ek.ekip_bolge), ''), NULLIF(TRIM(k.ilce), ''), 'TANIMSIZ')
+                          ORDER BY toplam DESC";
+            $regionStmt = $db->prepare($regionSql);
+            $regionStmt->execute([$firmaId, $startDateStr, $endDateStr]);
+            $regionRows = $regionStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $total = (int) array_sum(array_column($statusRows, 'toplam'));
+            $records = (int) array_sum(array_column($statusRows, 'kayit_sayisi'));
+            $onaylanan = (int) array_sum(array_column($statusRows, 'onaylanan'));
+            $bekleyen = (int) array_sum(array_column($statusRows, 'bekleyen'));
+
+            $heroStats = [
+                ['label' => 'Toplam Tutanak', 'value' => $total, 'icon' => 'ShieldAlert', 'accent' => '#fbbf24'],
+                ['label' => 'Onaylanan', 'value' => $onaylanan, 'icon' => 'CheckCircle', 'accent' => '#34d399'],
+                ['label' => 'Bekleyen', 'value' => $bekleyen, 'icon' => 'Clock', 'accent' => '#60a5fa'],
+                ['label' => 'Toplam Kayıt', 'value' => $records, 'icon' => 'Receipt', 'accent' => '#c084fc'],
+            ];
+        }
+
+        $totalForPct = $total > 0 ? $total : 1;
+        $statusDist = [];
+        foreach ($statusRows as $idx => $r) {
+            $val = (int) $r['toplam'];
+            $pct = round(($val / $totalForPct) * 100, 1);
+            $color = $palette[$idx % count($palette)];
+            if ($activeTab === 'okuma' && $r['durum'] === 'SAYAÇ NORMAL') {
+                $color = '#10b981';
+            } elseif ($activeTab === 'kesme') {
+                if (($r['sonuc_tipi'] ?? '') === 'olumsuz') {
+                    $color = '#f43f5e';
+                } elseif (($r['sonuc_tipi'] ?? '') === 'olumlu') {
+                    $color = '#10b981';
+                }
+            }
+            $statusDist[] = [
+                'durum' => (string) $r['durum'],
+                'toplam' => $val,
+                'kayit_sayisi' => (int) $r['kayit_sayisi'],
+                'yuzde' => $pct,
+                'color' => $color,
+                'sonuc_tipi' => $r['sonuc_tipi'] ?? null,
+            ];
+        }
+
+        $regionDist = [];
+        $maxRegionVal = max(1, ...array_map(static fn($r) => (int) $r['toplam'], $regionRows ?: [['toplam' => 0]]));
+        foreach ($regionRows as $idx => $r) {
+            $val = (int) $r['toplam'];
+            $pay = round(($val / $totalForPct) * 100, 1);
+            $barWidth = round(($val / $maxRegionVal) * 100, 1);
+            $regionDist[] = [
+                'bolge' => (string) $r['bolge'],
+                'toplam' => $val,
+                'kayit_sayisi' => (int) $r['kayit_sayisi'],
+                'pay' => $pay,
+                'bar_width' => $barWidth,
+            ];
+        }
+
+        $formattedRange = Date::dmY($startDateStr);
+        if ($startDateStr !== $endDateStr) {
+            $formattedRange .= ' – ' . Date::dmY($endDateStr);
+        }
+
+        reportsApiResponse([
+            'success' => true,
+            'tab' => $activeTab,
+            'tab_title' => $meta['title'],
+            'modal_title' => $meta['modal_title'],
+            'unit' => $meta['unit'],
+            'theme' => $meta['theme'],
+            'date_range_label' => $formattedRange,
+            'start_date' => $startDateStr,
+            'end_date' => $endDateStr,
+            'filter_type' => $filterType,
+            'supported_filters' => $meta['supported_filters'] ? [
+                ['id' => 'all', 'label' => 'Tümü'],
+                ['id' => 'olumlu', 'label' => 'Olumlu'],
+                ['id' => 'olumsuz', 'label' => 'Olumsuz'],
+            ] : null,
+            'hero_stats' => $heroStats,
+            'status_section' => [
+                'title' => $meta['status_title'],
+                'subtitle' => $meta['status_subtitle'],
+                'count_label' => count($statusDist) . ' durum',
+                'items' => $statusDist,
+            ],
+            'region_section' => [
+                'title' => 'Bölge Katkısı',
+                'subtitle' => 'Toplam ' . mb_strtolower($meta['unit'], 'UTF-8') . ' işlemine en çok katkı sağlayan bölgeler',
+                'count_label' => count($regionDist) . ' bölge',
+                'items' => $regionDist,
+            ],
+        ]);
+    } catch (Throwable $e) {
+        error_log('reports distribution error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+        reportsApiResponse(['success' => false, 'message' => 'Dağılım analizi alınırken bir hata oluştu.'], 500);
+    }
+}
+
+
 reportsApiResponse(['success' => false, 'message' => 'Bilinmeyen işlem.'], 400);

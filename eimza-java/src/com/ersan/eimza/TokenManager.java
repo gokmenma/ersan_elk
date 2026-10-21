@@ -45,6 +45,70 @@ public class TokenManager {
         public String message;
     }
 
+    public static class CertificateInfo {
+        public String id;
+        public String ownerName;
+        public String tcno;
+        public String issuer;
+        public String validFrom;
+        public String validUntil;
+        public String keyAlgorithm;
+    }
+
+    public static List<CertificateInfo> listCertificates(String pin) throws Exception {
+        TokenStatus token = detectActiveToken();
+        if (!token.success || token.modulePath == null) throw new RuntimeException("E-İmza cihazı bulunamadı.");
+        String toolBin = getPkcs11ToolBin();
+        if (toolBin == null) throw new RuntimeException("E-İmza kart okuma motoru bulunamadı.");
+        ToolResult objects = runTool(new String[]{
+                toolBin, "--module", token.modulePath, "--login", "--pin", pin, "--list-objects"
+        });
+        if (objects.exitCode != 0) throwPinOrToolError(objects.output, "Kart sertifikaları okunamadı");
+
+        Set<String> certificateIds = extractObjectIds(objects.output, "Certificate Object");
+        List<CertificateInfo> certificates = new ArrayList<>();
+        java.text.SimpleDateFormat dateFormat = new java.text.SimpleDateFormat("dd.MM.yyyy HH:mm");
+        for (String certificateId : certificateIds) {
+            File certificateFile = File.createTempFile("ersan_cert_list_", ".der");
+            try {
+                ToolResult read = runTool(new String[]{
+                        toolBin, "--module", token.modulePath, "--login", "--pin", pin,
+                        "--read-object", "--type", "cert", "--id", certificateId,
+                        "--output-file", certificateFile.getAbsolutePath()
+                });
+                if (read.exitCode != 0 || certificateFile.length() == 0) continue;
+                X509Certificate certificate = readCertificate(Files.readAllBytes(certificateFile.toPath()));
+                String subject = certificate.getSubjectX500Principal().getName();
+                CertificateInfo info = new CertificateInfo();
+                info.id = certificateId;
+                info.ownerName = extractSubjectValue(subject, "CN");
+                String tc = extractSubjectValue(subject, "SERIALNUMBER").replaceAll("[^0-9]", "");
+                info.tcno = tc.length() == 11 ? tc : "";
+                info.issuer = extractSubjectValue(certificate.getIssuerX500Principal().getName(), "CN");
+                info.validFrom = dateFormat.format(certificate.getNotBefore());
+                info.validUntil = dateFormat.format(certificate.getNotAfter());
+                info.keyAlgorithm = certificate.getPublicKey().getAlgorithm();
+                certificates.add(info);
+                updateCachedIdentity(certificate, token.modulePath);
+            } finally {
+                certificateFile.delete();
+            }
+        }
+        if (certificates.isEmpty()) throw new RuntimeException("Kartta okunabilir imza sertifikası bulunamadı.");
+        return certificates;
+    }
+
+    private static void throwPinOrToolError(String output, String fallback) {
+        String upper = output == null ? "" : output.toUpperCase(Locale.ROOT);
+        if (upper.contains("CKR_PIN_INCORRECT") || upper.contains("PIN_INCORRECT")) {
+            throw new RuntimeException("Girdiğiniz e-imza PIN kodu hatalıdır.");
+        }
+        if (upper.contains("CKR_PIN_LOCKED") || upper.contains("PIN_LOCKED")) {
+            throw new RuntimeException("E-İmza kartınız kilitlenmiştir.");
+        }
+        throw new RuntimeException(fallback + ": " + summarizeToolError(output));
+    }
+
     public static List<String> getCandidateModules() {
         String os = System.getProperty("os.name", "").toLowerCase();
         List<String> list = new ArrayList<>();
@@ -467,6 +531,7 @@ public class TokenManager {
 
             if (privKey != null && signerCert != null) {
                 byte[] certDer = signerCert.getEncoded();
+                updateCachedIdentity(signerCert, token.modulePath);
                 Date now = new Date();
                 byte[] signedAttrsDer = Asn1Der.buildCadesSignedAttrs(rawDigest, certDer, now);
 
@@ -516,6 +581,7 @@ public class TokenManager {
         certFile.delete();
         X509Certificate signingCertificate = readCertificate(certDer);
         String keyAlgorithm = signingCertificate.getPublicKey().getAlgorithm();
+        updateCachedIdentity(signingCertificate, modulePath);
 
         // 2. CAdES SignedAttributes hazırla
         Date now = new Date();
@@ -576,6 +642,22 @@ public class TokenManager {
     private static X509Certificate readCertificate(byte[] certDer) throws Exception {
         CertificateFactory factory = CertificateFactory.getInstance("X.509");
         return (X509Certificate) factory.generateCertificate(new ByteArrayInputStream(certDer));
+    }
+
+    private static synchronized void updateCachedIdentity(X509Certificate certificate, String modulePath) {
+        String subject = certificate.getSubjectX500Principal().getName();
+        String owner = extractSubjectValue(subject, "CN");
+        String tc = extractSubjectValue(subject, "SERIALNUMBER").replaceAll("[^0-9]", "");
+        TokenStatus updated = cachedStatus != null ? cachedStatus : new TokenStatus();
+        updated.success = true;
+        updated.modulePath = modulePath;
+        if (updated.deviceType == null || updated.deviceType.isEmpty()) updated.deviceType = "AKİS (KamuSM / E-Tuğra)";
+        updated.tokenLabel = "E-İmza Donanımı";
+        updated.ownerName = owner.isEmpty() ? "E-İmza Kartı Takılı" : owner;
+        updated.tcno = tc.length() == 11 ? tc : "";
+        updated.subject = subject;
+        cachedStatus = updated;
+        lastCacheTime = System.currentTimeMillis();
     }
 
     private static boolean isEcAlgorithm(String algorithm) {

@@ -54,6 +54,12 @@ export const reportsState = reactive({
   detailLoading: false,
   activeCard: null,
   detailData: null,
+  // Dağılım Dökümü Modal / Sheet
+  distributionDrawerOpen: false,
+  distributionLoading: false,
+  distributionData: null,
+  distributionFilterType: 'all',
+  distributionActiveView: 'all', // 'all' | 'status' | 'region'
   // Tarih Seçici Sheet
   datePickerOpen: false,
   // Bottom Navbar Sekmeler Çekmecesi (Talepler / KM Onayları Stili)
@@ -117,6 +123,9 @@ export const reportsApi = {
   },
   async getDetail(params = {}) {
     return request('detail', { params })
+  },
+  async getDistribution(params = {}) {
+    return request('distribution', { params })
   },
 }
 
@@ -225,6 +234,51 @@ export function closeCardDetail() {
   reportsState.detailDrawerOpen = false
   reportsState.activeCard = null
   reportsState.detailData = null
+}
+
+export async function openDistributionModal() {
+  reportsState.distributionDrawerOpen = true
+  reportsState.distributionLoading = true
+  reportsState.distributionData = null
+  reportsState.distributionFilterType = 'all'
+  reportsState.distributionActiveView = 'all'
+  await loadDistribution()
+}
+
+export async function loadDistribution(forceType = null) {
+  if (forceType !== null) {
+    reportsState.distributionFilterType = forceType
+  }
+  reportsState.distributionLoading = true
+  try {
+    const res = await reportsApi.getDistribution({
+      tab: reportsState.activeTab,
+      start_date: reportsState.startDate,
+      end_date: reportsState.endDate,
+      type: reportsState.distributionFilterType,
+    })
+    reportsState.distributionData = res
+  } catch (err) {
+    reportsState.distributionData = {
+      error: err.message || 'Dağılım dökümü alınamadı.',
+    }
+  } finally {
+    reportsState.distributionLoading = false
+  }
+}
+
+export function setDistributionFilter(type) {
+  if (reportsState.distributionFilterType === type && !reportsState.distributionLoading) return
+  return loadDistribution(type)
+}
+
+export function setDistributionView(view) {
+  reportsState.distributionActiveView = view
+}
+
+export function closeDistributionModal() {
+  reportsState.distributionDrawerOpen = false
+  reportsState.distributionData = null
 }
 
 export function openDatePicker() {

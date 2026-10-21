@@ -1,5 +1,52 @@
 # Active Context
 
+## Araç Takip KM Onayları — Yapay Zekâ 1.000 KM Üst Sınır Kontrolü (2026-10-21)
+- **Kullanıcı Talebi**: `@km-onayları` sayfasında yapay zeka ile KM onaylarken personelin hatalı KM göndermesi (örnek: Fiat Uno aracında mekanik sayaçtaki ondalık hane farkı veya yanlış giriş sebebiyle 25.853 KM'den 258.594 KM'ye fırlayarak günlük yapılan KM'nin 232.741 KM çıkması) sonucu sistemin bunu otomatik onaylaması durumu yaşandı. Toplam yapılan KM 1.000 KM'den fazla ise yapay zekânın otomatik onaylamaması istendi.
+- **Uygulanan Değişiklikler**:
+  1. **Servis Katmanı (`App/Service/KmBildirimAiKontrolService.php`)**:
+     - `calculateYapilanKm(object $bildirim, int $kmCandidate): ?int` metodu eklendi:
+       - **Akşam Bildirimi**: Günün mevcut başlangıç KM'si (`arac_km_kayitlari.baslangic_km`), günün sabah bildirimi (`arac_km_bildirimleri.tur = 'sabah'`), geçmiş günlerin bitiş KM'si veya `getLastKm` üzerinden aracın başlangıç KM'sini tespit ederek `kmCandidate - baslangic` farkını hesaplar.
+       - **Sabah Bildirimi**: Günün bitiş KM'si zaten kayıtlıysa `bitis_km - kmCandidate`, henüz bitiş kaydı yoksa önceki sistem KM'si ile farkı (`kmCandidate - oncekiKm`) hesaplar.
+     - `evaluate(array &$analiz, object $bildirim): array` metodu:
+       - Toplam yapılan KM 1.000 KM sınırını aştığında otomatik onayı engeller (`$karar['uygun'] = false`).
+       - Akşam bildirimleri için `Toplam yapılan KM (X KM) 1.000 KM'den fazla olduğu için otomatik onaylanamaz.` nedenini ekler.
+       - Sabah bildirimleri için `Günün bitiş KM'sine göre hesaplanan yapılan KM (X KM) 1.000 KM'den fazla olduğu için otomatik onaylanamaz.` veya `Önceki sistem KM'si ile fark (X KM) 1.000 KM'den fazla olduğu için otomatik onaylanamaz.` nedenini ekler.
+       - Modelin fotoğraftan okuduğu alternatif KM (`odometer_km`) değeri de aynı şekilde 1.000 KM sınırına karşı denetlenir.
+     - `adjudicateCloseOdometerReading(array $image, array $analiz, object $bildirim): array` metodu:
+       - Bildirilen aday değer 1.000 KM'den fazla yapılan KM oluşturuyorsa aday hakemliği adımı atlanarak gereksiz OpenAI maliyeti ve gecikmesi engellendi.
+  2. **Doğrulama ve Test**:
+     - Yapılan KM'nin 232.741 KM çıktığı senaryo, 100 KM çıktığı normal senaryo ve sabah bildirimleri PHP CLI (`/opt/lampp/bin/php`) üzerinden test edilerek kuralın kusursuz çalıştığı doğrulandı.
+     - Test için kullanılan geçici scriptler silindi.
+
+## Mobil SPA Raporlar — Toplam İşlemler Kartı Detaylı Dağılım Dökümü (2026-10-21)
+- **Kullanıcı Talebi**: Mobil SPA Raporlar sayfasında (`@mobile-spa`) sol üstteki "Toplam İşlem" KPI kartına basıldığında masaüstündeki dağılım modalı gibi detaylı döküm gösterilmesi; tüm sekmeler (okuma, kesme, sayaç, mühür, kaçak) için yapılması.
+- **Uygulanan Değişiklikler**:
+  1. **Backend API (`mobile-spa/public/api/reports.php` ve `mobile-spa/dist/api/reports.php`)**:
+     - `action === 'distribution'` aksiyonu eklendi.
+     - Giriş parametreleri: `tab` (`okuma`, `kesme`, `sokme_takma`, `muhurleme`, `kacakkontrol`), `start_date`, `end_date`, `type` (`all`, `olumlu`, `olumsuz`).
+     - **Okuma**: `endeks_okuma` tablosundan `sayac_durum` (18 farklı durum: SAYAÇ NORMAL, SARFİYAT YOK vb.) ve bölge bazlı dağılım sorgulanır. 4 Hero KPI: Toplam Abone, Sayaç Normal, Diğer Durumlar, Toplam Kayıt.
+     - **Kesme / Açma**: `yapilan_isler` + `tanimlamalar` üzerinden `is_emri_sonucu` ve `sonuc_tipi` (olumlu/olumsuz) kırılımı. Tümü / Olumlu / Olumsuz filtreleme desteği. 4 Hero KPI: Toplam İş, Olumlu İşler, Olumsuz İşler, Toplam Kayıt.
+     - **Sayaç Sökme/Takma**: `sayac_degisim` + `tanimlamalar` (`rapor_sekmesi = 'sokme_takma'`) üzerinden iş emri sonuçları ve bölgeler. 4 Hero KPI: Toplam Sayaç, İşlem Türü, Toplam Kayıt, Aktif Bölge.
+     - **Mühürleme**: `yapilan_isler` + `tanimlamalar` (`rapor_sekmesi = 'muhurleme'`) sonuçları ve bölgeleri. 4 Hero KPI: Toplam Mühür, İşlem Türü, Toplam Kayıt, Aktif Bölge.
+     - **Kaçak Kontrol**: `kacak_kontrol` tablosundan kaçak türü (`tur`) ve ilçe/bölge kırılımları. 4 Hero KPI: Toplam Tutanak, Onaylanan, Bekleyen / İptal, Toplam Kayıt.
+     - Her iki bölüm için (`status_section` ve `region_section`) toplam adetler, kayıt sayıları, yüzdeler, bölge bar genişlikleri ve tema renkleri eksiksiz formatlandı.
+  2. **Servis Katmanı (`mobile-spa/src/services/reports.js`)**:
+     - `distributionDrawerOpen`, `distributionLoading`, `distributionData`, `distributionFilterType`, `distributionActiveView` reaktif alanları eklendi.
+     - `reportsApi.getDistribution()` endpoint metodu yazıldı.
+     - `openDistributionModal()`, `closeDistributionModal()`, `loadDistribution(type)`, `setDistributionFilter(type)`, `setDistributionView(view)` fonksiyonları eklendi.
+  3. **Arayüz (`mobile-spa/src/views/ReportsView.vue`)**:
+     - Toplam İşlem KPI kartına `@click="openDistributionModal"` bağlandı; kart `kpi-card--clickable`, `cursor-pointer`, pasta grafik rozeti ve `Döküm >` eylem hapı ile tıklanabilir hale getirildi.
+     - **Design System Uyarlaması (Soft Bento & Claymorphic UI)**:
+       - Masaüstündeki yabancı radyal/lineer gradyan banner kaldırıldı; mobil SPA'nın standart `.nav-sheet` çekmece yapısına dönüldü.
+       - Çekmece başlığı: Standart `.dist-sheet__header` altında sol tarafta operasyon türüne göre pastel kavisli simge kutusu (`.dist-avatar-box`), eyebrow (`OPERASYONEL ANALİZ`), ana başlık (`Bu Dönemin Dağılımı`) ve meta hapları (`CalendarRange` dönem tarihi + birim). Sağda ise standart dairesel kapat butonu (`.detail-close-btn`).
+       - **Hero KPI Kartları**: Dar alanda sıkışan tek satırlık kapsüller yerine ana sayfadaki 2x2 Bento grid mimarisi (`.kpi-grid` + `.bento-card.bento-card--white.kpi-card`) uygulanarak tam görsel süreklilik sağlandı.
+       - **Filtreler ve Sekmeler**: Kesme sekmesindeki durum filtreleri ile görünüm seçiciler (Tümü / Durumlar / Bölge Katkısı) `design-system.css` içindeki merkezi `.clay-tabs-wrap` ve `.clay-tab-btn` bileşenlerine bağlandı.
+       - **Dağılım Kartları**: Durum ve bölge bölümleri saf beyaz bento kartları (`.bento-card.bento-card--white`) içine alındı; mobil uyumlu ferah kart dizilimi sağlandı.
+  4. **Derleme ve Dağıtım**:
+     - `npm run build` ile Vite prodüksiyon derlemesi hatasız alındı (`dist/index.html`, `dist/assets/`).
+     - `mobile-spa/dist/api/reports.php` güncellendi.
+
+
 ## Ana Sayfa (views/home) — Görev & Evrak Takvimi & Alarmlar Mini Kartı (2026-10-20)
 - **Kullanıcı Talebi**: Ana sayfada kullanıcının görevler sayfasından girdiği görevler veya evrak takip sayfasında gelen evrak eklerken son tarih (termin) olarak girdiği tarihi uyarı ve takvim olarak gösteren, personel kartı boyutunda (`col-md-4 col-xl-4`) mini kart yapılması (referans görseller: `media_1792521434125_852df864.png` takvim tasarımı ve `media_1792521677052_3234947f.png` dashboard kart boyutu/düzeni).
 - **Uygulanan Değişiklikler**:
@@ -2613,6 +2660,9 @@
 - Windows'ta AKİS kartının görülmemesi için `akia_pkcs11.dll`, Program Files AKİA/E-Tuğra yolları ve Java işlem mimarisiyle çalışan gerçek X.509 sertifika kontrollü SunPKCS11 fallback eklendi. Böylece 32-bit Java/AKİS veya 64-bit AKİS kurulumları destekleniyor; yalnız DLL yüklenmesi kart var sayılmıyor. Tarayıcıdaki eski yeşil kart durumu kaldırılarak her UI kontrolü ajan önbelleğinden güncel sonucu alıyor. Sürüm `1.2.4` oldu.
 - Windows kurum bilgisayarlarında standart dışı PKCS#11 kurulumu için ajana `Sürücü DLL Seç` arayüzü eklendi. Seçilen DLL kullanıcı tercihlerinde kalıcı saklanıyor ve sonraki açılışlarda ilk aday olarak deneniyor; AKİA/E-Tuğra ile System32/SysWOW64 yollarında sınırlı otomatik keşif de yapılıyor. Sürüm `1.2.5` oldu.
 - Windows AKİS sürücüsünün sertifika nesnelerini PIN'siz listelememesi halinde kartın yok sayılması giderildi. Ajan artık seçili DLL üzerinde PKCS#11 slot/token varlığını doğrulayıp kartı hazır kabul ediyor; sertifika PIN aşamasında okunuyor. Arayüze Java mimarisi, seçilen DLL, çıkış kodu ve sürücü çıktısını gösteren `Tanılama` penceresi eklendi. Sürüm `1.2.6` oldu.
+- Windows AKİS slot algılamasında sertifika sahibi/T.C. PIN öncesi gizli olduğunda modal artık boş `(TC: ) adına ait` göstermiyor; sertifikanın PIN ile okunacağını açıklıyor. İmzalama sırasında okunan gerçek X.509 kimliği ajan önbelleğine aktarılıyor ve sonraki durum yanıtlarında ad/T.C. bilgisi geliyor. Sürüm `1.2.7` oldu.
+- KEP PIN modalına açık kullanıcı eylemli `Sertifikaları Getir` işlevi eklendi. PIN yalnız yerel ajana gönderiliyor; karttaki sertifikalar sahip, T.C., sağlayıcı, geçerlilik ve anahtar algoritması bilgileriyle listeleniyor. Yanlış/kilitli PIN hataları ayrıştırılıyor. Sürüm `1.2.8` oldu.
+- Yerel ajanın sıkışık tek ekranlı Swing arayüzü yenilendi. Servis ve kart durumu `Durum` sekmesinde kartlar halinde gösteriliyor; sürücü DLL seçimi, bağlantı yenileme ve tanılama işlemleri `Ayarlar ve Tanılama` sekmesine taşındı. Ortak arka plana alma/tam kapatma eylemleri alt çubukta korundu ve sürüm `1.2.9` oldu.
 
 # 2026-10-20 — Cari hesap hareketleri Excel dışa aktarımı
 

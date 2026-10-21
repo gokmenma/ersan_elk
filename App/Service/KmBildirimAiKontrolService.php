@@ -336,6 +336,12 @@ class KmBildirimAiKontrolService
             return $analiz;
         }
 
+        // Bildirilen aday KM değeri 1.000 KM'den fazla yapılan KM üretiyorsa aday hakemliğine başvurma
+        $adayYapilanKm = $this->calculateYapilanKm($bildirim, $bildirilenKm);
+        if ($adayYapilanKm !== null && $adayYapilanKm > 1000) {
+            return $analiz;
+        }
+
         $okunanMetin = $okunanKm === null ? 'okunamadı' : (string) (int) $okunanKm;
         $bildirilenMetin = (string) $bildirilenKm;
 
@@ -590,6 +596,30 @@ class KmBildirimAiKontrolService
             $nedenler[] = "Bildirilen KM önceki sistem KM'sinden ({$oncekiKm}) düşük.";
         }
 
+        // Toplam Yapılan KM Kontrolü (Azami 1.000 KM Sınırı):
+        $yapilanKm = $this->calculateYapilanKm($bildirim, (int) $bildirim->bitis_km);
+        if ($yapilanKm !== null && $yapilanKm > 1000) {
+            $yapilanKmFmt = number_format($yapilanKm, 0, ',', '.');
+            if ($bildirim->tur === 'aksam') {
+                $nedenler[] = "Toplam yapılan KM ({$yapilanKmFmt} KM) 1.000 KM'den fazla olduğu için otomatik onaylanamaz.";
+            } else {
+                $mevcut = $this->kmModel->kayitVarMi((int) $bildirim->arac_id, $bildirim->tarih, null, true);
+                if ($mevcut && (int) $mevcut->bitis_km > 0) {
+                    $nedenler[] = "Günün bitiş KM'sine göre hesaplanan yapılan KM ({$yapilanKmFmt} KM) 1.000 KM'den fazla olduğu için otomatik onaylanamaz.";
+                } else {
+                    $nedenler[] = "Önceki sistem KM'si ile fark ({$yapilanKmFmt} KM) 1.000 KM'den fazla olduğu için otomatik onaylanamaz.";
+                }
+            }
+        }
+
+        if ($okunanKm !== null && $okunanKm !== (int) $bildirim->bitis_km) {
+            $okunanYapilanKm = $this->calculateYapilanKm($bildirim, $okunanKm);
+            if ($okunanYapilanKm !== null && $okunanYapilanKm > 1000) {
+                $okunanYapilanKmFmt = number_format($okunanYapilanKm, 0, ',', '.');
+                $nedenler[] = "Fotoğraftan okunan KM'ye göre yapılan KM ({$okunanYapilanKmFmt} KM) 1.000 KM'den fazla olduğu için otomatik onaylanamaz.";
+            }
+        }
+
         if (empty($analiz['dashboard_visible'])) {
             $nedenler[] = 'Gösterge paneli net görünmüyor.';
         }
@@ -677,5 +707,64 @@ class KmBildirimAiKontrolService
         } else {
             error_log("KM Bildirim AI otomatik onaylandı: ID {$bildirim->id}, Araç ID {$aracId}, KM {$km}");
         }
+    }
+
+    /**
+     * Bildirim türüne göre verilen KM adayı uygulandığında oluşacak yapılan KM veya farkı hesaplar.
+     */
+    private function calculateYapilanKm(object $bildirim, int $kmCandidate): ?int
+    {
+        if ($kmCandidate <= 0) {
+            return null;
+        }
+
+        $aracId = (int) $bildirim->arac_id;
+        $tarih = (string) $bildirim->tarih;
+        $tur = (string) $bildirim->tur;
+
+        // Günün mevcut resmi kaydını kontrol et
+        $mevcut = $this->kmModel->kayitVarMi($aracId, $tarih, null, true);
+
+        if ($tur === 'aksam') {
+            $baslangic = ($mevcut && (int) $mevcut->baslangic_km > 0) ? (int) $mevcut->baslangic_km : 0;
+            
+            // Eğer aynı günün resmi başlangıç KM'si henüz işlenmemişse, aynı günün sabah bildirimine bak
+            if ($baslangic <= 0) {
+                $stmtSabah = $this->db->prepare("SELECT COALESCE(onaylanan_km, bitis_km) AS km 
+                    FROM arac_km_bildirimleri 
+                    WHERE arac_id = ? AND tarih = ? AND tur = 'sabah' AND durum != 'reddedildi' AND silinme_tarihi IS NULL 
+                    ORDER BY id DESC LIMIT 1");
+                $stmtSabah->execute([$aracId, $tarih]);
+                $baslangic = (int) ($stmtSabah->fetchColumn() ?: 0);
+            }
+
+            // O da yoksa geçmiş günlerin en son kayıtlı bitiş KM'sine bak
+            if ($baslangic <= 0) {
+                $stmt = $this->db->prepare("SELECT bitis_km FROM arac_km_kayitlari WHERE arac_id = ? AND tarih < ? AND silinme_tarihi IS NULL AND bitis_km > 0 ORDER BY tarih DESC, id DESC LIMIT 1");
+                $stmt->execute([$aracId, $tarih]);
+                $baslangic = (int) ($stmt->fetchColumn() ?: 0);
+            }
+
+            // Son çare modelin getLastKm metodunu kullan
+            if ($baslangic <= 0) {
+                $baslangic = (int) $this->bildirimModel->getLastKm($aracId, $tarih, 'aksam', (int) $bildirim->id);
+            }
+
+            if ($baslangic > 0) {
+                return $kmCandidate - $baslangic;
+            }
+        } else {
+            // Sabah bildirimi (başlangıç KM'si olarak adayı ele al)
+            if ($mevcut && (int) $mevcut->bitis_km > 0) {
+                return (int) $mevcut->bitis_km - $kmCandidate;
+            }
+
+            $oncekiKm = (int) $this->bildirimModel->getLastKm($aracId, $tarih, 'sabah', (int) $bildirim->id);
+            if ($oncekiKm > 0) {
+                return $kmCandidate - $oncekiKm;
+            }
+        }
+
+        return null;
     }
 }

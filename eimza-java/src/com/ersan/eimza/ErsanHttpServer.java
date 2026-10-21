@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
 public class ErsanHttpServer {
 
     public static final int PORT = 9191;
-    public static final String VERSION = "1.2.6 (PAdES + Windows Token Slot)";
+    public static final String VERSION = "1.2.9 (PAdES + Yenilenen Arayüz)";
 
     private HttpServer server;
     private ExecutorService executor;
@@ -145,6 +145,36 @@ public class ErsanHttpServer {
                 } catch (Throwable e) {
                     String msg = e.getMessage() != null ? e.getMessage() : "İmza oluşturulamadı.";
                     sendResponse(exchange, 400, "{\"status\":\"error\",\"message\":" + jsonEscape(msg) + "}");
+                }
+                return;
+            }
+
+            if ("POST".equals(method) && "/certificates".equals(path)) {
+                String body = readStream(exchange.getRequestBody());
+                String pin = extractJsonValue(body, "pin");
+                if (pin == null || pin.isEmpty()) {
+                    sendResponse(exchange, 400, "{\"status\":\"error\",\"message\":\"PIN zorunludur.\"}");
+                    return;
+                }
+                try {
+                    java.util.List<TokenManager.CertificateInfo> certificates = TokenManager.listCertificates(pin);
+                    StringBuilder sb = new StringBuilder("{\"status\":\"success\",\"certificates\":[");
+                    for (int i = 0; i < certificates.size(); i++) {
+                        if (i > 0) sb.append(',');
+                        TokenManager.CertificateInfo cert = certificates.get(i);
+                        sb.append('{')
+                                .append("\"id\":").append(jsonEscape(cert.id)).append(',')
+                                .append("\"owner_name\":").append(jsonEscape(cert.ownerName)).append(',')
+                                .append("\"tcno\":").append(jsonEscape(cert.tcno)).append(',')
+                                .append("\"issuer\":").append(jsonEscape(cert.issuer)).append(',')
+                                .append("\"valid_from\":").append(jsonEscape(cert.validFrom)).append(',')
+                                .append("\"valid_until\":").append(jsonEscape(cert.validUntil)).append(',')
+                                .append("\"key_algorithm\":").append(jsonEscape(cert.keyAlgorithm)).append('}');
+                    }
+                    sb.append("]}");
+                    sendResponse(exchange, 200, sb.toString());
+                } catch (Throwable e) {
+                    sendResponse(exchange, 400, "{\"status\":\"error\",\"message\":" + jsonEscape(e.getMessage()) + "}");
                 }
                 return;
             }
