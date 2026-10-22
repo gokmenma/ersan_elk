@@ -568,8 +568,8 @@ class PersonelIzinleriModel extends Model
     }
 
     /**
-     * Hakedişi bulunmayan personelin seçemeyeceği ücretli/yıllık izinleri belirler.
-     * Mazeret, evlilik ve babalık izinleri bu kısıttan muaftır.
+     * Hakedişi bulunmayan personelin seçemeyeceği ücretli izinleri belirler.
+     * Yıllık, mazeret, evlilik ve babalık izinleri bu kısıttan muaftır.
      */
     public function isEntitlementRequiredLeaveType($izinTuru)
     {
@@ -577,8 +577,10 @@ class PersonelIzinleriModel extends Model
             return false;
         }
 
-        // Evlilik ve babalık izinleri yasal mazeret iznidir, yıllık izin hakedişine bağlı değildir
-        if ($this->isMarriageLeaveType($izinTuru) || $this->isPaternityLeaveType($izinTuru)) {
+        // Personel yıllık izin talebini hakediş bakiyesi olmasa da onaya sunabilir.
+        if ($this->isAnnualLeaveType($izinTuru)
+            || $this->isMarriageLeaveType($izinTuru)
+            || $this->isPaternityLeaveType($izinTuru)) {
             return false;
         }
 
@@ -586,7 +588,7 @@ class PersonelIzinleriModel extends Model
         $kod = mb_strtolower((string) ($izinTuru->kisa_kod ?? ''), 'UTF-8');
         $mazeretMi = mb_strpos($ad, 'mazeret') !== false || $kod === 'mazeret';
 
-        return !$mazeretMi && ($this->isAnnualLeaveType($izinTuru) || (int) ($izinTuru->ucretli_mi ?? 0) === 1);
+        return !$mazeretMi && (int) ($izinTuru->ucretli_mi ?? 0) === 1;
     }
 
     public function isExcuseLeaveType($izinTuru)

@@ -684,14 +684,11 @@
 
     function isHakEdisGerektirenIzinTuru(tur) {
         if (!tur) return false;
-        // Evlilik ve babalık izinleri yasal mazeret izinleridir, yıllık izin hakedişine bağlı değildir
-        if (isEvlilikIzinTuru(tur) || isBabalikIzinTuru(tur)) {
+        // Yıllık izin talebi bakiye olmasa da onaya sunulabilir.
+        if (isYillikIzinTuru(tur) || isEvlilikIzinTuru(tur) || isBabalikIzinTuru(tur)) {
             return false;
         }
-        const ad = normalizeIzinMetni(tur.tur_adi);
-        const kod = normalizeIzinMetni(tur.kisa_kod);
-        const yillikMi = ad.includes('yıllık') || ad.includes('yillik') || kod === 'yillik';
-        return !isMazeretIzinTuru(tur) && (yillikMi || Number(tur.ucretli_mi) === 1);
+        return !isMazeretIzinTuru(tur) && Number(tur.ucretli_mi) === 1;
     }
 
     function updateIzinTuruUyarilari(selectedId, showToast = true) {
@@ -1148,14 +1145,6 @@
             return;
         }
 
-        // Yıllık izin talebi kalan bakiyeyi aşamaz.
-        if (isYillikIzinTuru(secilenIzinTuru) && hakedisData && toplamGun > hakedisData.kalan_izin) {
-            Toast.show(
-                `Yetersiz izin hakkı! Talebiniz: ${toplamGun} gün, Kalan izniniz: ${hakedisData.kalan_izin} gün`,
-                'error'
-            );
-            return;
-        }
         /**izin türü mazeret ise açıklama zorunlu olmalıdır */
         if (secilenIzinTuru && isMazeretIzinTuru(secilenIzinTuru) && !formData.aciklama.trim()) {
             Toast.show('Lütfen açıklama giriniz', 'error');

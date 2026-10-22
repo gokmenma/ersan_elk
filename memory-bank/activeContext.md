@@ -3028,3 +3028,7 @@
 - Son 30 gün için en aktif sekiz personel/kullanıcı; toplam ziyaret, farklı sayfa, son ziyaret ve en sık kullandığı beş sayfayla birlikte gösteriliyor. Personel PWA aktörleri gerçek personel adıyla gruplanıyor.
 - En çok ziyaret edilen sekiz sayfa, benzersiz ziyaretçi sayıları, Masaüstü/Mobil SPA/Personel PWA/Mobil Panel platform dağılımı ve son altı kritik olay ayrı panellerde sunuluyor.
 - Tüm sorgular firma kapsamında, PDO prepare/execute ile Model katmanında çalışıyor. Dashboard veri sözleşmesi gerçek veride, PHP lint ve diff kontrolüyle doğrulandı.
+# 2026-10-22 — Personel PWA yıllık izin talep kısıtı
+
+- Personel PWA'da yıllık izin türü, personelin kalan hakedişi sıfır veya talep edilen günden az olsa da seçilebilir ve onaya gönderilebilir hale getirildi.
+- İstemci ve API aynı Model kuralına uyumlu hale getirildi; yıllık izin dışındaki ücretli izinlerin hakediş kısıtı korundu.
