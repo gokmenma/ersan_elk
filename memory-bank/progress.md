@@ -1798,3 +1798,4 @@
 - [x] Hakedişi olmayan personel için yıllık izin seçeneğinin pasifleşmesi kaldırıldı.
 - [x] Yıllık izin talebinin kalan bakiyeyi aşmasını engelleyen istemci kontrolü kaldırıldı.
 - [x] API tarafındaki yıllık izin hakediş reddi kaldırılırken diğer ücretli izin kısıtı korundu ve birim testle güvenceye alındı.
+- [x] Üç günü aşan yıllık izinlerdeki 14 günlük ön bildirim zorunluluğu ve arayüz hatırlatması kaldırıldı; 20 günlük azami talep sınırı korundu.

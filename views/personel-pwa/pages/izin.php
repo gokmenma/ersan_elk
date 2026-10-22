@@ -236,16 +236,6 @@
                         placeholder="İzin talebiniz hakkında kısa bir açıklama..."></textarea>
                 </div>
 
-                <!-- Info Box (Sadece Yıllık İzin için) -->
-                <div id="yillik-izin-hatirlatma" class="bg-primary/5 border border-primary/20 rounded-xl p-4 transition-all" style="display: none;">
-                    <div class="flex items-start gap-3">
-                        <span class="material-symbols-outlined text-primary">info</span>
-                        <div>
-                            <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Hatırlatma</p>
-                            <p class="text-xs text-slate-500 mt-1">3 günden uzun süreli yıllık izin talepleri en az 2 hafta önceden bildirilmelidir.</p>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <!-- Sabit Alt Butonlar -->
@@ -693,7 +683,6 @@
 
     function updateIzinTuruUyarilari(selectedId, showToast = true) {
         const hastalikUyariEl = document.getElementById('hastalik-izni-uyari');
-        const yillikHatirlatmaEl = document.getElementById('yillik-izin-hatirlatma');
 
         const secilenTur = izinTurleri.find(tur => String(tur.id) === String(selectedId));
 
@@ -709,14 +698,6 @@
             }
         }
 
-        // Yıllık izin hatırlatması (SADECE yıllık izin seçildiğinde gösterilir)
-        if (yillikHatirlatmaEl) {
-            if (secilenTur && isYillikIzinTuru(secilenTur)) {
-                yillikHatirlatmaEl.style.display = 'block';
-            } else {
-                yillikHatirlatmaEl.style.display = 'none';
-            }
-        }
     }
 
     function checkHastalikIzniUyarisi(selectedId, showToast = true) {
@@ -1119,25 +1100,12 @@
             return;
         }
 
-        // İzin talep limit denetimleri (SADECE yıllık izin için geçerlidir)
+        // Tek yıllık izin talebi en fazla 20 gün olabilir.
         const secilenIzinTuru = izinTurleri.find(tur => String(tur.id) === String(formData.izin_tipi));
 
-        if (isYillikIzinTuru(secilenIzinTuru)) {
-            if (toplamGun > 3) {
-                const bugun = new Date();
-                bugun.setHours(0, 0, 0, 0);
-                const gunFarki = Math.floor((baslangicD - bugun) / (1000 * 60 * 60 * 24));
-                
-                if (gunFarki < 14) {
-                    Toast.show('3 günden fazla olan yıllık izinlerin en az iki hafta önceden bildirilmesi gerekir.', 'error');
-                    return;
-                }
-                
-                if (toplamGun > 20) {
-                    Toast.show('İki haftadan uzun süre öncesinden yapılan yıllık izin talepleri en fazla 20 gün olabilir.', 'error');
-                    return;
-                }
-            }
+        if (isYillikIzinTuru(secilenIzinTuru) && toplamGun > 20) {
+            Toast.show('Yıllık izin talepleri en fazla 20 gün olabilir.', 'error');
+            return;
         }
 
         if (secilenIzinTuru && isHakEdisGerektirenIzinTuru(secilenIzinTuru) && hakedisData && Number(hakedisData.kalan_izin) <= 0) {

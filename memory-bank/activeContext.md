@@ -3032,3 +3032,4 @@
 
 - Personel PWA'da yıllık izin türü, personelin kalan hakedişi sıfır veya talep edilen günden az olsa da seçilebilir ve onaya gönderilebilir hale getirildi.
 - İstemci ve API aynı Model kuralına uyumlu hale getirildi; yıllık izin dışındaki ücretli izinlerin hakediş kısıtı korundu.
+- Yıllık izinlerde 3 günü aşan talepler için uygulanan 14 günlük ön bildirim şartı istemci ve API'den kaldırıldı; 20 günlük tek talep üst sınırı korundu.

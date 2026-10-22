@@ -26,3 +26,18 @@ test('diğer ücretli izinlerin hakediş kısıtı korunur', function () {
 
     expect(izinModeli()->isEntitlementRequiredLeaveType($izinTuru))->toBeTrue();
 });
+
+test('personel PWA yıllık izin akışında 14 günlük ön bildirim kısıtı bulunmaz', function () {
+    $istemci = file_get_contents(__DIR__ . '/../../views/personel-pwa/pages/izin.php');
+    $api = file_get_contents(__DIR__ . '/../../views/personel-pwa/api.php');
+
+    expect($istemci)
+        ->not->toContain('gunFarki < 14')
+        ->not->toContain('en az iki hafta önceden bildirilmesi gerekir')
+        ->toContain("toplamGun > 20");
+
+    expect($api)
+        ->not->toContain('$gun_farki < 14')
+        ->not->toContain('en az iki hafta önceden bildirilmesi gerekir')
+        ->toContain('$toplam_gun > 20');
+});
