@@ -45,6 +45,25 @@ class BildirimModel extends Model
         ]);
     }
 
+    public function createNotificationWithPush($userId, $title, $message, $link = null, $icon = 'bell', $color = 'primary', ?string $notificationType = null, ?string $pushTitle = null): bool
+    {
+        if (!$this->createNotification($userId, $title, $message, $link, $icon, $color, $notificationType)) {
+            return false;
+        }
+
+        try {
+            (new \App\Service\PushNotificationService())->sendToUser((int) $userId, [
+                'title' => $pushTitle ?? $title,
+                'body' => $message,
+                'url' => $link ?? '',
+            ], true, $notificationType);
+        } catch (\Throwable $e) {
+            error_log('Bildirim push gönderilemedi (kullanıcı ' . (int) $userId . '): ' . $e->getMessage());
+        }
+
+        return true;
+    }
+
     /**
      * Kullanıcının okunmamış bildirimlerini getir
      */
@@ -148,7 +167,7 @@ class BildirimModel extends Model
      * Belirli bir yetkiye sahip tüm aktif kullanıcılara bildirim gönder
      * @param string $menuLink Menü linki veya yetki adı (örn: 'arac-takip/km-onaylari')
      */
-    public function broadcastByPermission($menuLink, $title, $message, $link = null, $icon = 'bell', $color = 'primary', ?string $notificationType = null)
+    public function broadcastByPermission($menuLink, $title, $message, $link = null, $icon = 'bell', $color = 'primary', ?string $notificationType = null, bool $sendPush = false)
     {
         // 1. Menü ID'sini bul
         $stmt = $this->db->prepare("SELECT id FROM menus WHERE menu_link = ?");
@@ -188,7 +207,11 @@ class BildirimModel extends Model
 
         // 5. Bildirimleri oluştur
         foreach ($usersToNotify as $userId) {
-            $this->createNotification($userId, $title, $message, $link, $icon, $color, $notificationType);
+            if ($sendPush) {
+                $this->createNotificationWithPush($userId, $title, $message, $link, $icon, $color, $notificationType);
+            } else {
+                $this->createNotification($userId, $title, $message, $link, $icon, $color, $notificationType);
+            }
         }
 
         return count($usersToNotify);
@@ -198,11 +221,14 @@ class BildirimModel extends Model
      * Belirli bir firmaya erişimi ve ilgili sayfa yetkisi olan aktif kullanıcılara bildirir.
      * Superadmin kullanıcılar firma listesinden bağımsız olarak kapsama alınır.
      */
-    public function broadcastByPermissionForFirm(int $firmId, string $permission, string $title, string $message, ?string $link = null, string $icon = 'bell', string $color = 'primary', ?string $notificationType = null): int
+    public function broadcastByPermissionForFirm(int $firmId, string $permission, string $title, string $message, ?string $link = null, string $icon = 'bell', string $color = 'primary', ?string $notificationType = null, bool $sendPush = false): int
     {
         $created = 0;
         foreach ($this->userIdsByPermissionForFirm($firmId, $permission) as $userId) {
-            if ($this->createNotification($userId, $title, $message, $link, $icon, $color, $notificationType)) {
+            $result = $sendPush
+                ? $this->createNotificationWithPush($userId, $title, $message, $link, $icon, $color, $notificationType)
+                : $this->createNotification($userId, $title, $message, $link, $icon, $color, $notificationType);
+            if ($result) {
                 $created++;
             }
         }

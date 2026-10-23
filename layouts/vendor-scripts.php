@@ -179,7 +179,8 @@ if ($page == "hakedisler/hakedis-detay") {
     $page == "efatura/giden-list" ||
     $page == "efatura/gelen-list" ||
     strpos($page, "efatura/") === 0 ||
-    $page == "menu-yonetimi/list"
+    $page == "menu-yonetimi/list" ||
+    $page == "yedekleme/list"
 ) { ?>
 
     <!-- Datatable init js -->

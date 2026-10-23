@@ -406,8 +406,10 @@ class EvrakTakipModel extends Model
         throw new \RuntimeException('Sanal onay devre dışıdır. Evrak akıllı kart ile PAdES olarak imzalanmalıdır.');
     }
 
-    public function approveWithPades(int $evrakId, int $userId, string $ipAddress, string $pdfPath, string $pdfSha256, array $certificate): array
+    public function approveWithPades(int $evrakId, int $userId, string $ipAddress, string $pdfPath, string $pdfSha256, array $certificate, string $signatureMethod = 'akilli_kart'): array
     {
+        $signatureMethod = $signatureMethod === 'mobil_imza' ? 'mobil_imza' : 'akilli_kart';
+        $allowedApprovalTypes = $signatureMethod === 'mobil_imza' ? ['eimza', 'mobil_imza'] : ['eimza'];
         $this->db->beginTransaction();
         try {
             $lock = $this->db->prepare("SELECT * FROM {$this->table} WHERE id = :id AND firma_id = :firma_id AND silinme_tarihi IS NULL FOR UPDATE");
@@ -422,8 +424,10 @@ class EvrakTakipModel extends Model
             if (($evrak->onay_durumu ?? 'taslak') !== 'onay_bekliyor') {
                 throw new \RuntimeException('Evrak henüz elektronik imza onayına sunulmamış.');
             }
-            if (($evrak->onay_turu ?? 'eimza') !== 'eimza') {
-                throw new \RuntimeException('Bu evrak ıslak imza onay akışındadır; PAdES imzası uygulanamaz.');
+            if (!in_array($evrak->onay_turu ?? 'eimza', $allowedApprovalTypes, true)) {
+                throw new \RuntimeException(($evrak->onay_turu ?? '') === 'mobil_imza'
+                    ? 'Bu evrak mobil imza onay akışındadır; Mobil İmza ile imzalayınız.'
+                    : 'Bu evrak ıslak imza onay akışındadır; PAdES imzası uygulanamaz.');
             }
             $sirada = $this->getNextPendingSigner($evrakId);
             if (!$sirada) {
@@ -433,13 +437,14 @@ class EvrakTakipModel extends Model
                 throw new \RuntimeException('İmza sırası sizde değil. Sırada ' . $sirada->adi_soyadi . ' bulunuyor.');
             }
             $approve = $this->db->prepare("UPDATE evrak_takip_onaylari SET durum = 'onaylandi', onay_tarihi = NOW(), ip_adresi = :ip,
-                imza_turu = 'PAdES-BES', sertifika_ozne = :subject, sertifika_veren = :issuer,
+                imza_turu = 'PAdES-BES', imza_yontemi = :imza_yontemi, sertifika_ozne = :subject, sertifika_veren = :issuer,
                 sertifika_seri_no = :serial, sertifika_parmak_izi = :fingerprint,
                 sertifika_gecerlilik_baslangic = :valid_from, sertifika_gecerlilik_bitis = :valid_to,
                 imzali_pdf_sha256 = :pdf_sha256, imza_dogrulama_durumu = 'dogrulandi'
                 WHERE evrak_id = :evrak_id AND firma_id = :firma_id AND kullanici_id = :kullanici_id AND durum = 'bekliyor'");
             $approve->execute([
-                'ip' => mb_substr($ipAddress, 0, 45), 'subject' => $certificate['subject'], 'issuer' => $certificate['issuer'],
+                'ip' => mb_substr($ipAddress, 0, 45), 'imza_yontemi' => $signatureMethod,
+                'subject' => $certificate['subject'], 'issuer' => $certificate['issuer'],
                 'serial' => $certificate['serial'], 'fingerprint' => $certificate['fingerprint'],
                 'valid_from' => $certificate['valid_from'], 'valid_to' => $certificate['valid_to'], 'pdf_sha256' => $pdfSha256,
                 'evrak_id' => $evrakId, 'firma_id' => $_SESSION['firma_id'], 'kullanici_id' => $userId,
@@ -642,7 +647,7 @@ class EvrakTakipModel extends Model
                 throw new \RuntimeException('Bu evrakı iade etme yetkiniz bulunmuyor.');
             }
             $reset = $this->db->prepare("UPDATE evrak_takip_onaylari SET durum = 'bekliyor', onay_tarihi = NULL, ip_adresi = NULL,
-                imza_turu = NULL, sertifika_ozne = NULL, sertifika_veren = NULL, sertifika_seri_no = NULL,
+                imza_turu = NULL, imza_yontemi = NULL, sertifika_ozne = NULL, sertifika_veren = NULL, sertifika_seri_no = NULL,
                 sertifika_parmak_izi = NULL, sertifika_gecerlilik_baslangic = NULL, sertifika_gecerlilik_bitis = NULL,
                 imzali_pdf_sha256 = NULL, imza_dogrulama_durumu = NULL
                 WHERE evrak_id = :evrak_id AND firma_id = :firma_id");
@@ -726,7 +731,7 @@ class EvrakTakipModel extends Model
                 throw new \RuntimeException('Evrakı yalnızca onu oluşturan kullanıcı geri alabilir.');
             }
             $reset = $this->db->prepare("UPDATE evrak_takip_onaylari SET durum = 'bekliyor', onay_tarihi = NULL, ip_adresi = NULL,
-                imza_turu = NULL, sertifika_ozne = NULL, sertifika_veren = NULL, sertifika_seri_no = NULL,
+                imza_turu = NULL, imza_yontemi = NULL, sertifika_ozne = NULL, sertifika_veren = NULL, sertifika_seri_no = NULL,
                 sertifika_parmak_izi = NULL, sertifika_gecerlilik_baslangic = NULL, sertifika_gecerlilik_bitis = NULL,
                 imzali_pdf_sha256 = NULL, imza_dogrulama_durumu = NULL
                 WHERE evrak_id = :evrak_id AND firma_id = :firma_id");

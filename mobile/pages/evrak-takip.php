@@ -10,6 +10,7 @@ $evraklar = $Evrak->all();
 $evrakEkleriMap = $Evrak->getAttachmentMap();
 
 $currentUserId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
+$mobilImzaAktif = \App\Service\MobilImzaPadesService::isEnabled((int) ($_SESSION['firma_id'] ?? 0));
 $Evrak->ensureApprovalRowsForDrafts();
 $onayMap = $Evrak->getApprovalSummaryMap($currentUserId);
 $imzamiBekleyenSayisi = 0;
@@ -196,7 +197,7 @@ if (!function_exists('formatDateEvrak')) {
                 
                 <div class="flex gap-2">
                     <?php if ($siraBende): ?>
-                        <button onclick="event.stopPropagation(); eImzaOnayla('<?= htmlspecialchars($encId, ENT_QUOTES, 'UTF-8') ?>')" class="h-8 px-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 flex items-center gap-1 text-[11px] font-bold active:scale-90 transition-transform">
+                        <button onclick="event.stopPropagation(); eImzaOnayla('<?= htmlspecialchars($encId, ENT_QUOTES, 'UTF-8') ?>', '<?= htmlspecialchars((string) ($evrak->onay_turu ?? 'eimza'), ENT_QUOTES, 'UTF-8') ?>', <?= $mobilImzaAktif ? 'true' : 'false' ?>)" class="h-8 px-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 flex items-center gap-1 text-[11px] font-bold active:scale-90 transition-transform">
                             <span class="material-symbols-outlined text-base">verified</span> İmzala
                         </button>
                         <button onclick="event.stopPropagation(); eImzaIade('<?= htmlspecialchars($encId, ENT_QUOTES, 'UTF-8') ?>')" class="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-600 flex items-center justify-center active:scale-90 transition-transform" title="İade et">
@@ -297,6 +298,7 @@ if (!function_exists('formatDateEvrak')) {
     </div>
 </div>
 
+<script src="../<?= htmlspecialchars(\App\Helper\Helper::assetVersion('views/evrak-takip/js/mobil-imza.js'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script>
 function filterType(type) {
     document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -661,16 +663,35 @@ function eImzaOnayaSun(id) {
     });
 }
 
-function eImzaOnayla(id) {
+function eImzaOnayla(id, onayTuru, mobilImzaAktif) {
+    if (onayTuru === 'islak_imza') {
+        MobileSwal.fire({
+            title: 'Islak İmza ile Onayla',
+            html: 'Evrakı fiziksel olarak imzaladığınızı teyit ediyorsunuz.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, Onayla',
+            cancelButtonText: 'Vazgeç'
+        }).then(res => {
+            if (res.isConfirmed) eImzaIstek('evrak-islak-imza-onayla', id, null, 'Onaylandı');
+        });
+        return;
+    }
+    if (!mobilImzaAktif) {
+        MobileSwal.fire('Akıllı Kart Gerekli', 'Mobil imza hizmeti etkin değil. Bu evrakı masaüstünden akıllı kart ile imzalayınız.', 'info');
+        return;
+    }
     MobileSwal.fire({
-        title: 'E-İmza ile Onayla',
-        html: 'Evrakı elektronik imza ile onaylıyorsunuz.<br><b>Tüm imzacılar onayladığında evrak kilitlenir.</b>',
+        title: 'Mobil İmza ile İmzala',
+        html: 'Telefonunuza gelecek Turkcell Mobil İmza mesajını onaylayıp PIN girdiğinizde evrak <b>PAdES</b> olarak imzalanır.<br><b>Tüm imzacılar imzaladığında evrak kilitlenir.</b>',
         icon: 'question',
         showCancelButton: true,
-        confirmButtonText: 'Evet, Onayla',
+        confirmButtonText: 'İmza İsteği Gönder',
         cancelButtonText: 'Vazgeç'
     }).then(res => {
-        if (res.isConfirmed) eImzaIstek('evrak-e-imza-onayla', id, null, 'Onaylandı');
+        if (res.isConfirmed) {
+            window.MobilImza.baslat({ id: id, apiUrl: '../views/evrak-takip/api.php', swal: MobileSwal, onSuccess: () => window.location.reload() });
+        }
     });
 }
 

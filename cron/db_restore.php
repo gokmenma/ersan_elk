@@ -9,6 +9,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 set_time_limit(0);
+date_default_timezone_set('Europe/Istanbul');
 
 require_once dirname(__DIR__) . '/Autoloader.php';
 require_once dirname(__DIR__) . '/vendor/autoload.php';
@@ -18,8 +19,10 @@ $dotenv->safeLoad();
 
 use App\Model\YedeklemeModel;
 use App\Model\SystemLogModel;
+use App\Service\VeritabaniGeriYuklemeService;
+use App\Service\VeritabaniYedekService;
 
-$ayar     = require __DIR__ . '/yedekleme_ayar.php';
+$ayar     = VeritabaniYedekService::ayarlar();
 $logDizin = __DIR__ . '/logs';
 $logDosya = $logDizin . '/restore.log';
 
@@ -55,163 +58,6 @@ Secenekler:
 TXT;
 }
 
-function metaOku(string $dosya): ?array
-{
-    $gz = gzopen($dosya, 'rb');
-    if ($gz === false) {
-        return null;
-    }
-    $satir = gzgets($gz);
-    gzclose($gz);
-    if (!is_string($satir) || strpos($satir, '-- @META ') !== 0) {
-        return null;
-    }
-    $meta = json_decode(trim(substr($satir, 9)), true);
-    return is_array($meta) ? $meta : null;
-}
-
-function yedekleriTara(string $dizin, string $vt): array
-{
-    $liste = [];
-    foreach ((glob($dizin . "/{tam,artimli}_{$vt}_*.sql.gz", GLOB_BRACE) ?: []) as $dosya) {
-        $meta = metaOku($dosya);
-        if ($meta === null) {
-            yaz('Meta satiri okunamadi, atlandi: ' . basename($dosya), 'WARNING');
-            continue;
-        }
-        $meta['dosya'] = $dosya;
-        $meta['ad']    = basename($dosya);
-        $meta['boyut'] = filesize($dosya);
-        $liste[]       = $meta;
-    }
-    usort($liste, fn($a, $b) => strcmp($a['zaman'], $b['zaman']));
-    return $liste;
-}
-
-function zincirKur(array $liste, string $hedefZaman): array
-{
-    $temel = null;
-    foreach ($liste as $kayit) {
-        if ($kayit['tip'] === 'tam' && $kayit['zaman'] <= $hedefZaman) {
-            $temel = $kayit;
-        }
-    }
-    if ($temel === null) {
-        return [];
-    }
-
-    $zincir = [$temel];
-    foreach ($liste as $kayit) {
-        if ($kayit['tip'] !== 'artimli') {
-            continue;
-        }
-        if (($kayit['temel'] ?? null) !== $temel['ad']) {
-            continue;
-        }
-        if ($kayit['zaman'] > $temel['zaman'] && $kayit['zaman'] <= $hedefZaman) {
-            $zincir[] = $kayit;
-        }
-    }
-    return $zincir;
-}
-
-function dosyaDogrula(string $dosya): array
-{
-    $gz = gzopen($dosya, 'rb');
-    if ($gz === false) {
-        throw new RuntimeException('Dosya acilamadi: ' . basename($dosya));
-    }
-
-    $ifadeSayisi = 0;
-    $tamamlandi  = false;
-    $acikBlok    = false;
-
-    while (($satir = gzgets($gz)) !== false) {
-        if (strpos($satir, '-- @STMT ') === 0) {
-            $acikBlok = true;
-            $ifadeSayisi++;
-        } elseif (strpos($satir, '-- @END') === 0) {
-            $acikBlok = false;
-        } elseif (strpos($satir, '-- @SON') === 0) {
-            $tamamlandi = true;
-        }
-    }
-    gzclose($gz);
-
-    if ($acikBlok) {
-        throw new RuntimeException('Yedek dosyasi yarim kalmis (kapanmamis ifade): ' . basename($dosya));
-    }
-    if (!$tamamlandi) {
-        throw new RuntimeException('Yedek dosyasi eksik, sonlandirma isareti yok: ' . basename($dosya));
-    }
-
-    return ['ifade' => $ifadeSayisi];
-}
-
-function dosyaUygula(YedeklemeModel $model, string $dosya, array $tabloFiltre, bool $onayla): array
-{
-    $gz = gzopen($dosya, 'rb');
-    if ($gz === false) {
-        throw new RuntimeException('Dosya acilamadi: ' . basename($dosya));
-    }
-
-    $calisan  = 0;
-    $atlanan  = 0;
-    $tampon   = null;
-    $tablo    = '';
-    $tur      = '';
-
-    try {
-        while (($satir = gzgets($gz)) !== false) {
-            if (strpos($satir, '-- @STMT ') === 0) {
-                $tablo = '';
-                $tur   = '';
-                if (preg_match('/t=(\S+)\s+k=(\S+)/', $satir, $e)) {
-                    $tablo = $e[1];
-                    $tur   = $e[2];
-                }
-                $tampon = '';
-                continue;
-            }
-
-            if (strpos($satir, '-- @END') === 0) {
-                if ($tampon === null) {
-                    continue;
-                }
-                $sql    = trim($tampon);
-                $tampon = null;
-
-                if ($sql === '') {
-                    continue;
-                }
-
-                $uygula = empty($tabloFiltre)
-                    || $tablo === '*'
-                    || in_array($tablo, $tabloFiltre, true);
-
-                if (!$uygula) {
-                    $atlanan++;
-                    continue;
-                }
-
-                if ($onayla) {
-                    $model->calistir($sql);
-                }
-                $calisan++;
-                continue;
-            }
-
-            if ($tampon !== null) {
-                $tampon .= $satir;
-            }
-        }
-    } finally {
-        gzclose($gz);
-    }
-
-    return ['calisan' => $calisan, 'atlanan' => $atlanan];
-}
-
 $secenekler = getopt('h', ['liste', 'zaman:', 'dosya:', 'tablo:', 'onayla', 'help', 'hedef-vt:']);
 
 if (isset($secenekler['h']) || isset($secenekler['help']) || empty($secenekler)) {
@@ -229,7 +75,8 @@ if (!empty($secenekler['tablo'])) {
 try {
     $model = new YedeklemeModel();
     $vt    = $model->veritabaniAdi();
-    $liste = yedekleriTara($yedekDizin, $vt);
+    $servis = new VeritabaniGeriYuklemeService($yedekDizin);
+    $liste  = $servis->yedekleriTara($vt, 'yaz');
 
     if (empty($liste)) {
         yaz("Yedek dizininde '$vt' icin yedek bulunamadi: $yedekDizin", 'ERROR');
@@ -261,7 +108,7 @@ try {
         }
     } else {
         $hedefZaman = $secenekler['zaman'] ?? $model->sunucuZamani();
-        $zincir     = zincirKur($liste, $hedefZaman);
+        $zincir     = $servis->zincirKur($liste, $hedefZaman);
         if (empty($zincir)) {
             yaz("Belirtilen ana ($hedefZaman) uygun tam yedek bulunamadi.", 'ERROR');
             exit(1);
@@ -272,7 +119,7 @@ try {
 
     $toplamIfade = 0;
     foreach ($zincir as $kayit) {
-        $dogrulama = dosyaDogrula($kayit['dosya']);
+        $dogrulama = $servis->dosyaDogrula($kayit['dosya']);
         $toplamIfade += $dogrulama['ifade'];
         yaz(sprintf('%s | %s | %s | %s ifade | dogrulandi',
             $kayit['tip'], $kayit['zaman'], $kayit['ad'], number_format($dogrulama['ifade'])));
@@ -289,6 +136,14 @@ try {
         exit(0);
     }
 
+    $yedekServis = new VeritabaniYedekService($ayar);
+    $kilit = $yedekServis->kilitAl();
+    if ($kilit === null) {
+        yaz('Baska bir yedekleme/geri yukleme islemi suruyor, once onun bitmesini bekleyin.', 'ERROR');
+        exit(1);
+    }
+    register_shutdown_function([$yedekServis, 'kilitBirak'], $kilit);
+
     $basladi = microtime(true);
 
     if (!empty($secenekler['hedef-vt'])) {
@@ -300,7 +155,7 @@ try {
 
     $toplamCalisan = 0;
     foreach ($zincir as $kayit) {
-        $sonuc = dosyaUygula($model, $kayit['dosya'], $tabloFiltre, true);
+        $sonuc = $servis->dosyaUygula($model, $kayit['dosya'], $tabloFiltre, true);
         $toplamCalisan += $sonuc['calisan'];
         yaz(sprintf('Uygulandi: %s (%s ifade, %s atlandi)',
             $kayit['ad'], number_format($sonuc['calisan']), number_format($sonuc['atlanan'])));

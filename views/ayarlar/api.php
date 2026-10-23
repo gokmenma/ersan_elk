@@ -110,7 +110,7 @@ switch ($action) {
         }
 
         // Ayar olmayan alanları temizle
-        $excludeKeys = ['action', 'firma_id', 'user_id', 'config_id', 'online_sorgulama_endeks_saat_select', 'online_sorgulama_puantaj_saat_select', 'online_sorgulama_sayac_degisim_saat_select'];
+        $excludeKeys = ['action', 'firma_id', 'user_id', 'config_id', 'online_sorgulama_endeks_saat_select', 'online_sorgulama_puantaj_saat_select', 'online_sorgulama_sayac_degisim_saat_select', 'mobil_imza_aktif', 'mobil_imza_gosterim_metni'];
         foreach ($excludeKeys as $key) {
             unset($settingsToUpdate[$key]);
         }
@@ -523,6 +523,95 @@ switch ($action) {
         } catch (\Throwable $e) {
             error_log('Avans ayarları kaydetme hatası: ' . $e->getMessage());
             $response['message'] = 'Ayarlar kaydedilirken bir hata oluştu.';
+        }
+        break;
+
+    case 'save_mobil_imza_ayarlari':
+        try {
+            if (!Gate::allows('mobil_imza_ayarlari_sekmesi')) {
+                $response['message'] = 'Bu işlem için yetkiniz bulunmuyor.';
+                break;
+            }
+            $firma_id = (int) ($_SESSION['firma_id'] ?? 0);
+            $owner_id = (int) ($_SESSION['owner_id'] ?? 0);
+            $aktif = isset($_POST['mobil_imza_aktif']) ? '1' : '0';
+            $gosterimMetni = mb_substr(trim(strip_tags((string) ($_POST['mobil_imza_gosterim_metni'] ?? ''))), 0, 100);
+
+            $hatlar = [];
+            $kullaniciIds = (array) ($_POST['kullanici_ids'] ?? []);
+            $msisdnler = (array) ($_POST['msisdn'] ?? []);
+            foreach ($kullaniciIds as $index => $encryptedUserId) {
+                $userId = (int) Security::decrypt((string) $encryptedUserId);
+                if ($userId <= 0) {
+                    continue;
+                }
+                $telefon = trim((string) ($msisdnler[$index] ?? ''));
+                try {
+                    $hatlar[$userId] = $telefon === '' ? '' : \App\Service\TurkcellMobilImzaClient::normalizeMsisdn($telefon);
+                } catch (\RuntimeException $e) {
+                    $response['message'] = $telefon . ': ' . $e->getMessage();
+                    break 2;
+                }
+            }
+
+            $mobilImza = new \App\Model\MobilImzaModel();
+            if (!$Settings->upsertMultipleSettings([
+                'mobil_imza_aktif' => $aktif,
+                'mobil_imza_gosterim_metni' => $gosterimMetni,
+            ], $firma_id, null)) {
+                throw new \RuntimeException('Mobil imza ayarları kaydedilemedi.');
+            }
+            $mobilImza->getDb()->beginTransaction();
+            try {
+                foreach ($hatlar as $userId => $msisdn) {
+                    if (!$mobilImza->saveUserMsisdn($userId, $owner_id, $msisdn)) {
+                        throw new \RuntimeException('İmzacı bulunamadı.');
+                    }
+                }
+                $mobilImza->getDb()->commit();
+            } catch (\Throwable $e) {
+                if ($mobilImza->getDb()->inTransaction()) {
+                    $mobilImza->getDb()->rollBack();
+                }
+                throw $e;
+            }
+
+            (new \App\Model\SystemLogModel())->logAction(
+                $_SESSION['user_id'] ?? 0,
+                'Mobil İmza Ayarları',
+                'Mobil imza hizmeti ' . ($aktif === '1' ? 'açık' : 'kapalı') . ' olarak kaydedildi; ' . count(array_filter($hatlar)) . ' imzacı hattı tanımlı.',
+                \App\Model\SystemLogModel::LEVEL_IMPORTANT
+            );
+            $response = ['status' => 'success', 'message' => 'Mobil imza ayarları kaydedildi.'];
+        } catch (\Throwable $e) {
+            error_log('Mobil imza ayarları kaydetme hatası: ' . $e->getMessage());
+            $response['message'] = 'Ayarlar kaydedilirken bir hata oluştu.';
+        }
+        break;
+
+    case 'test_mobil_imza_profil':
+        try {
+            if (!Gate::allows('mobil_imza_ayarlari_sekmesi')) {
+                $response['message'] = 'Bu işlem için yetkiniz bulunmuyor.';
+                break;
+            }
+            $msisdn = \App\Service\TurkcellMobilImzaClient::normalizeMsisdn((string) ($_POST['msisdn'] ?? ''));
+            $profil = (new \App\Service\MobilImzaPadesService())->testProfile($msisdn);
+            (new \App\Model\SystemLogModel())->logAction(
+                $_SESSION['user_id'] ?? 0,
+                'Mobil İmza Profil Sorgusu',
+                \App\Service\TurkcellMobilImzaClient::maskMsisdn($msisdn) . ' hattı için mobil imza profili doğrulandı.',
+                \App\Model\SystemLogModel::LEVEL_INFO
+            );
+            $response = [
+                'status' => 'success',
+                'message' => 'Mobil imza aktif' . ($profil['cert_issuer'] !== '' ? ' (' . $profil['cert_issuer'] . ')' : ''),
+            ];
+        } catch (\RuntimeException $e) {
+            $response['message'] = $e->getMessage();
+        } catch (\Throwable $e) {
+            error_log('Mobil imza profil sorgusu hatası: ' . $e->getMessage());
+            $response['message'] = 'Profil sorgusu tamamlanamadı.';
         }
         break;
 

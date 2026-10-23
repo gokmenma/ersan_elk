@@ -787,6 +787,13 @@ $(document).ready(function () {
       });
   }
 
+  $(document).on("click", "#btnModalMobilImza", function (event) {
+    event.preventDefault();
+    const id = $(this).data("id");
+    if (!id || !window.MobilImza) return;
+    window.MobilImza.baslat({ id: id, apiUrl: "views/evrak-takip/api.php", swal: Swal, onSuccess: () => location.reload() });
+  });
+
   $(document).on("click", ".evrak-e-imza-onayla, #btnModalPadesImzala", function (event) {
     event.preventDefault();
     event.stopPropagation();
@@ -1024,7 +1031,11 @@ $(document).ready(function () {
     const timelineHtml = events.map(event => '<div class="d-flex gap-2 mb-3"><span class="rounded-circle bg-' + event.color + ' flex-shrink-0 mt-1" style="width:9px;height:9px"></span><div><div class="text-dark font-size-11">' + escapeEvrakHtml(event.label) + '</div><div class="text-muted" style="font-size:10px">' + escapeEvrakHtml(formatImzaTarihi(event.date)) + '</div></div></div>').join("");
     $("#evrakImzaSignerList").html(signerHtml);
     $("#evrakImzaTimeline").html(timelineHtml || '<div class="text-muted font-size-12">İşlem tarihçesi bulunamadı.</div>');
-    $("#evrakImzaOnayAction").toggleClass("d-none", !evrak.imza_sirasi_bende || evrak.onay_turu !== "eimza");
+    const mobilImzaTuru = evrak.onay_turu === "mobil_imza";
+    $("#evrakImzaOnayAction").toggleClass("d-none", !evrak.imza_sirasi_bende || !["eimza", "mobil_imza"].includes(evrak.onay_turu) || (mobilImzaTuru && !$("#btnModalMobilImza").length));
+    $("#modal_eimza_pin").closest(".mb-2").toggleClass("d-none", mobilImzaTuru);
+    $("#btnModalPadesImzala").toggleClass("d-none", mobilImzaTuru);
+    $("#btnModalMobilImza").data("id", evrak.id || "").attr("data-id", evrak.id || "");
     $("#modal_eimza_pin").val("").removeClass("is-invalid").prop("disabled", false);
     $("#modalPadesProgress").addClass("d-none");
     updateModalPadesProgress(0, "İşlem hazırlanıyor", "");

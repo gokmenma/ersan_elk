@@ -91,6 +91,15 @@ $settings = (object) $Settings->getAllSettingsAsKeyValue($_SESSION['firma_id'] ?
                             </a>
                         </li>
                         <?php endif ?>
+                        <?php if (Gate::allows('mobil_imza_ayarlari_sekmesi')): ?>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link" data-bs-toggle="tab" href="#mobil_imza_ayarlari" role="tab"
+                                aria-selected="false">
+                                <span class="d-block d-sm-none"><i class="bx bx-mobile-alt"></i></span>
+                                <span class="d-none d-sm-block">Mobil İmza</span>
+                            </a>
+                        </li>
+                        <?php endif ?>
                     </ul>
 
 
@@ -124,6 +133,11 @@ $settings = (object) $Settings->getAllSettingsAsKeyValue($_SESSION['firma_id'] ?
                         <div class="tab-pane" id="avans_ayarlari" role="tabpanel">
                             <?php if (Gate::allows('avans_ayarlari_sekmesi')): ?>
                             <?php include_once "icerik/avans-ayarlari.php"; ?>
+                            <?php endif ?>
+                        </div>
+                        <div class="tab-pane" id="mobil_imza_ayarlari" role="tabpanel">
+                            <?php if (Gate::allows('mobil_imza_ayarlari_sekmesi')): ?>
+                            <?php include_once "icerik/mobil-imza-ayarlari.php"; ?>
                             <?php endif ?>
                         </div>
                     </div>

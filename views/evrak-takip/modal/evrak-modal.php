@@ -281,6 +281,11 @@ $araclar_list = $Evrak->getActiveVehicles();
                                 <button type="button" id="btnModalPadesImzala" class="btn btn-success d-flex align-items-center justify-content-center gap-2" data-id="">
                                     <i class="bx bx-pen"></i><span>E-İmza ile İmzala</span>
                                 </button>
+                                <?php if (\App\Service\MobilImzaPadesService::isEnabled((int) ($_SESSION['firma_id'] ?? 0))): ?>
+                                <button type="button" id="btnModalMobilImza" class="btn btn-info d-flex align-items-center justify-content-center gap-2" data-id="" title="Turkcell Mobil İmza ile imzala">
+                                    <i class="bx bx-mobile-alt"></i><span>Mobil İmza</span>
+                                </button>
+                                <?php endif; ?>
                             </div>
                             <div id="modalPadesProgress" class="d-none mt-3">
                                 <div class="d-flex align-items-center justify-content-between mb-1">

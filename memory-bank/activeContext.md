@@ -1,5 +1,54 @@
 # Active Context
 
+## Turkcell Mobil İmza ile Giden Evrak PAdES İmzası (2026-10-23)
+- Turkcell MSSP yalnız SHA-256 özeti imzalar; PDF ve CMS yapısı sunucuda kuruluyor. Akış: ProfileQuery (sertifika özeti) → `PdfIncrementalSigner::prepare` (incremental update ile imza alanı + 16 KB `/Contents`, klasik xref ve xref stream/object stream destekli) → `CmsSignedDataBuilder::signedAttributes` (contentType, signingTime, messageDigest, signingCertificateV2) → `MSS_Signature` (`asynchClientServer`, PKCS7) → istemci 3 sn’de bir `evrak-mobil-imza-durum` → `MSS_StatusQuery` 500 olunca PKCS7’den imza+sertifika alınır, `openssl_verify` ile özet doğrulanır, CMS SignedData kurulup PDF’e gömülür → `PadesEImzaService::finalize()` (mevcut openssl cms doğrulaması, sertifika bağlama, şifreli depolama, `approveWithPades`).
+- Servisler: `TurkcellMobilImzaClient`, `MobilImzaPadesService`, `PdfIncrementalSigner`, `CmsSignedDataBuilder`; model `MobilImzaModel` (`mobil_imza_islemleri`, şifreli `users.mobil_imza_msisdn`).
+- Kimlik bilgileri `.env`: `TURKCELL_MIMZA_AP_ID`, `TURKCELL_MIMZA_AP_PWD` (servis URL’leri sınıf sabiti, isteğe bağlı `TURKCELL_MIMZA_*_URL` ile değiştirilebilir).
+- Sertifika zinciri `storage/mobil-imza/certs/kok.pem` (E-Güven kökleri) + `ara.pem` (Turkcell Mobil NES S2/S7) ile doğrulanıyor, yayıncı CN’i “Turkcell Mobil NES” olmalı; OCSP iptal ise reddediliyor, erişilemezse loglanıp devam ediliyor; kullanıcıya bağlı personelin `tc_hash`’i varsa TCKN eşleşmesi zorunlu. `storage/mobil-imza` .gitignore istisnası ve `.htaccess` ile web’e kapalı; geçici şifreli PDF’ler `uploads/evrak-pades/.mobil`.
+- `PadesEImzaService::bindCertificate` artık aynı TCKN’ye ait yeni sertifikayı (mobil imza / yenilenen kart) kabul ediyor; farklı TCKN hâlâ reddediliyor.
+- `approveWithPades` imza yöntemini (`imza_yontemi`: akilli_kart | mobil_imza) yazıyor; mobil imza `eimza` ve `mobil_imza` onay türlerinde geçerli.
+- Arayüz: Ayarlar > Mobil İmza sekmesi (`mobil_imza_ayarlari_sekmesi`; aç/kapa, telefonda gösterilecek metin, imzacı hatları, Profil Sorgula); masaüstü giden evrak menüsü ve liste PAdES paneline “Mobil İmza” butonu; mobil `evrak-takip`/`giden-evrak` sayfalarındaki kırık `evrak-e-imza-onayla` çağrısı mobil imza (ıslak imza türünde `evrak-islak-imza-onayla`) ile değiştirildi. Ortak istemci `views/evrak-takip/js/mobil-imza.js`.
+- Geliştirme makinesinden `msign.turkcell.com.tr:443` TLS el sıkışmasında bağlantı kesiliyor (IP beyaz liste); canlı uçtan uca test sunucu IP’si Turkcell’e tanımlandıktan sonra yapılmalı.
+## Menü Yönetimi — Sürükle/Bırak ve Alt Menü Yapma (2 Seviye Grup Hiyerarşisi Düzeltmesi) (2026-10-23)
+- **Kullanıcı Talebi**: `views/menu-yonetimi/list.php` ekranında menüleri sürüklerken bir menüyü alt menü yaptıktan sonra hemen altındaki diğer menüyü de alt menü yapınca bir üstündeki alt menünün alt menüsü (3. seviye) olması; bunun yerine menünün bulunduğu grubun Ana Menüsünün alt menüsü olması.
+- **Kök Nedenler**:
+  1. `.btn-indent` yalnızca hemen bir önceki DOM kardeşine (`card.prev('.menu-item-card')`) bakıyordu; kapalı (`children-collapsed`) bir ana menünün altına sürüklenen kartlar gizli `.is-child` elemanlarının önüne/arasına düşebiliyor ya da önce alttaki menü alt menü yapılıp sonra üstteki menü alt menü yapıldığında alttaki menünün `parent_id` değeri üstteki alt menüde kalıyordu.
+  2. Başka bir gruba sürüklenen `.is-child` kartların `data-parent-id` ve `data-group` nitelikleri bırakma (`onEnd`) anında yeni grubun Ana Menüsüne güncellenmiyordu.
+  3. `.btn-outdent` (Ana Menü Yap) işlemi, bir ana menünün ortadaki alt menüsünü yerinde `.is-parent` yaptığı için altında kalan kardeş alt menülerin görsel/DOM olarak o yeni karta aitmiş gibi davranmasına yol açıyordu.
+  4. `MenuManagementModel::updateMenuHierarchy()` ve `saveMenuData()` metotlarında `parent_id` değerinin başka bir alt menüyü (`parent_id > 0`) işaret etmesini kök ana menüye (`parent_id = 0`) düzleştiren sunucu tarafı kontrolü bulunmuyordu.
+- **Yapılan İyileştirmeler**:
+  - `views/menu-yonetimi/js/list.js`:
+    - `findGroupParentCard(card)` eklendi; her zaman kartın içinde bulunduğu grubun gerçek üst `Ana Menü` (`.is-parent[data-parent-id="0"]`) kartını bulur.
+    - `.btn-indent` tıklandığında kart doğrudan bulunduğu grubun Ana Menüsüne bağlanır; eğer karta daha önceden bağlanmış alt menüler varsa onlar da aynı Ana Menüye aktarılarak 3. seviye oluşumu tamamen engellenir.
+    - `.btn-outdent` tıklandığında kart, eski ana menünün kalan alt menülerinin sonuna taşınarak kardeş alt menü bloğunun bölünmesi önlenir.
+    - `initSortable` (`onEnd`), `.btn-move-up`, `.btn-move-down`, `updateParentCardUI` ve `autoSaveHierarchy` fonksiyonları 2 seviyeli grup hiyerarşisini, `X Alt Menü` rozetini ve grup adı/sırası senkronizasyonunu koruyacak şekilde güncellendi.
+    - `.inline-menu-form` içerisine `parent_id` gizli alanı eklendi.
+  - `App/Model/MenuManagementModel.php` & `views/menu-yonetimi/api.php`:
+    - `updateMenuHierarchy()` ve `saveMenuData()` içinde `parent_id` değerinin başka bir alt menüyü göstermesi durumunda kök `Ana Menü` ID'sine çözümlenmesi ve alt menülerin `group_name`/`group_order` bilgilerinin üst menüyle senkronize edilmesi sağlandı.
+
+## Veritabanı Yedekleri — Yönetim Arayüzü ve 2 Saatlik Yedek (2026-10-22)
+- Yedek alma/geri yükleme mantığı `cron/db_backup.php` ve `cron/db_restore.php` içinden `VeritabaniYedekService` ve `VeritabaniGeriYuklemeService` servislerine taşındı; CLI scriptleri ince sarmalayıcı oldu.
+- Tam yedek artık `tam_yedek_gunu` gününün yalnız ilk çalışmasında alınıyor; başarı maili günde bir, hata maili her seferinde gidiyor. `.islem.lock` ile cron/arayüz çakışması engelleniyor.
+- Her yedeğe `@SAYIM` (tablo satır sayıları) satırı yazılıyor; geri yükleme testi `YEDEK_TEST_VT` veritabanına ayrı PDO bağlantısıyla yükleyip bu sayılarla karşılaştırıyor, sonra test VT’yi boşaltıyor.
+- Yeni sayfa `views/yedekleme/` (list, api, js) yalnız `Gate::isSuperAdmin()`; yetki `yedekleme_yonetimi` (superadmin=1), politikalar superadmin_only=1. `layouts/vendor-scripts.php` DataTables beyaz listesine `yedekleme/list` eklendi.
+- Uzun işler yanıt sonrası arka planda (`fastcgi_finish_request` / `litespeed_finish_request` / Connection: close) çalışıyor; durum `is_durumu.json`.
+- `efatura_loglari` artımlı tablolara eklendi; Drive’da artımlılar 14 gün (`drive_artimli_saklama_gun`).
+- Kullanıcıya görünen hata mesajları `VeritabaniYedekService::kullaniciMesaji()` ile PDO ayrıntısından arındırılıyor.
+
+## Bildirimler — Profil Tercihi ve Mobil Push Tutarlılığı (2026-10-22, geri alındıktan sonra yeniden uygulandı)
+- **Kök Neden 1**: Avans/izin/genel/arıza talep bildirimi alıcıları `UserModel::getInAppBildirimKullanicilari()` içinde eski `users.mail_*_talep = 'Evet'` sütunlarından seçiliyordu; Profil > Ayarlar anahtarları yalnız kapatma filtresi olduğundan anahtar açık olsa da bildirim gelmiyordu. Alıcılar artık sayfa yetkisine göre seçiliyor; tercih filtresi `createNotification()`/`sendToUser()` içinde uygulanıyor. Mail alıcıları eski sütunlarla aynen kalıyor. `ihbar` türü (`ihbar/list`) eklendi.
+- **Kök Neden 2**: Nöbet, canlı destek, kaçak tutanağı, KM manuel onay, evrak zimmet/onay ve SPA/mobil ihbar akışları push göndermiyordu. `BildirimModel::createNotificationWithPush()` ve broadcast metotlarına varsayılanı `false` olan `$sendPush` parametresi eklendi; ilgili çağrılar push'lu hale getirildi.
+- E-fatura akışı zaten yetki tabanlı alıcı + push kullandığı için tek çalışan bildirim türüydü.
+
+## Veritabanı Yedekleri — Google Drive Uzak Kopya (2026-10-22)
+- Sunucu çökmesinde veri kaybını önlemek için gece alınan yedekler artık şifrelenip Google Drive’a kopyalanıyor (cPanel uyumlu, ek kütüphane yok, yalnız curl + OpenSSL).
+- `App/Service/GoogleDriveService.php`: OAuth2 refresh token, `drive.file` kapsamı, 8 MB parçalı devam ettirilebilir yükleme, tekrar deneme.
+- `App/Service/YedekSifrelemeService.php`: AES-256-GCM, 1 MB parçalar; sıra/son-parça bilgisi ek veriye bağlı (bozulma, kesilme ve yanlış anahtar tespit edilir).
+- `App/Service/DriveYedekSenkronService.php`: yerelde olup Drive’da olmayan yedekleri yükler, MD5 doğrular, `drive_saklama_gun` (90) rotasyonu uygular.
+- `cron/db_backup.php` sonunda senkron çalışır; `.env` eksikse yalnız WARNING verir. `--drivesiz` ile kapatılabilir.
+- Kurulum: `cron/drive_yetkilendir.php` (`--anahtar-uret`, `--kod`, `--test`); felaket kurtarma: `cron/drive_geri_al.php` ardından `cron/db_restore.php`.
+- Bekleyen: sunucu `.env` değerleri (GDRIVE_CLIENT_ID/SECRET/REFRESH_TOKEN/KLASOR_ID, YEDEK_SIFRELEME_ANAHTARI) kullanıcı tarafından girilecek.
+
 ## Menü Yönetimi — Sürükle/Bırakta Hiyerarşi Koruması (2026-10-21)
 - Menü sıralaması kaydedilirken `parent_id` değerlerinin DOM sırasındaki son ana menüye göre yeniden üretilmesi, taşınan ana menülerin alt menülerini yanlış ebeveyne bağlıyordu.
 - Sürükle/bırak artık yalnız sıralamayı değiştiriyor; mevcut ebeveyn bağları `data-parent-id` üzerinden aynen korunuyor.

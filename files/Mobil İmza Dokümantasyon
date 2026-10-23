@@ -1,0 +1,742 @@
+1 - İMZALAMA ÖNCESİ
+
+ 
+
+Gelişmiş İmza Türleri ( CADES, PADES, XADES ) Desteği
+
+  
+
+Turkcell Mobil İmza Platformu Gelişmiş İmza Türleri ile uyumludur.
+
+ 
+
+Gelişmiş imza türü(CAdES, XAdES, PAdES) ve alt türler(XAdES-BES, XAdES-EPES, XAdES-T,…) Servis Sağlayıcı tarafından kullanım alanına göre belirlenmektedir. Bu imza türlerinde ( örn; CADES ) “doküman oluşturma” işi Servis Sağlayıcının sorumluluğundadır. Servis Sağlayıcı ilgili  standarda ( örn ; CADES standardına ) uygun olarak doküman oluşturur ve Turkcell Mobil İmza üzerinden aşağıdaki formatta imzalama işlemini yapar.
+
+ 
+
+ 
+
+ 
+
+Genel Bilgiler
+
+ 
+
+PADES gibi gelişmiş imza standartları imzalamadan önce sertifika bilgisini dokümana eklemeyi gerektiriyor. Bu nedenle imzalama öncesi Turkcell Mobil İmza sisteminin ProfileQuery servisi çağırılarak sertifika bilgisi alınıp dokümana eklenmeli. ProfileQuery sertifikanın tamamını dönmez. Sertifika ile ilgili bazı değerler döner ve bu değerler sertifika bilgisi olarak yeterli olmaktadır.
+
+ 
+
+Yine gelişmiş imza sistemleri bütün dokümanın özetini almaz. Doküman içerisinde belirli bir alanın özetini alır. Dokümanın özeti alınırsa, özet alma işlemi sonrası dokümana eklenen sertifika, imza gibi bilgiler dokümanı dolayısıyla özeti değiştirir ve imza doğrulanamaz. Bu mantıkla sample_temp.pdf ve
+
+sample_signed.pdf için aynı imzalama amaçlı hash hesaplanmalıdır.
+
+ 
+
+Turkcell Mobil İmza Platformu aşağıdaki  formatlardan birinde response üretir. Bu formatlar  imza ve sertifikadan oluşan formatlardır.  Turkcell MSSP platformu sadece kendisine gönderilen HASH’e göre imzayı oluşturur ve Servis Sağlayıcıya response olarak “İmza+Sertifika” yollar.
+
+ 
+
+Turkcell Mobil İmza platformundan ( MSSP ) dönen 2048 bitlik imza değerini, imzalayan kullanıcının sertifikası içinde yer alan kullanıcının açık anahtarı(public key) ile decrypt edildiğinde Turkcell Mobil İmza sistemine imzalama isteği içerisinde gönderdiğiniz HASH değerini bulmalısınız. Bu işlem sonucu saf HASH değeri çıkmaz. HASH içeren basit bir ASN.1 veri yapısı elde edilir. Bunu yaparak kullanıcının gerçekten sizin gönderdiğiniz HASH değerini şifrelediğinden emin olabilirsiniz.
+
+ 
+
+ 
+
+MSS_Format
+
+MssURI
+
+This field indicates the format of the signature that should be created. The supported types are:
+
+·        http://uri.etsi.org/TS102204/v1.1.2#PKCS7 is used in Single Signing(Single Signature Request)
+
+·        http://uri.etsi.org/TS102204/v1.1.2#XML-Signature is used in Single Signing(Single Signature Request)
+
+·        trmobilesignature:MultipleSignature, is used in  Multiple Signing( Multiple Signature Request)
+
+ 
+
+Aşağıdaki örnekte Turkcell MSSP’nin response’unu  Base64 ile decode edince,  aşağıdaki  gibi  bir XML data elde edildiği görülür.  Yani  http://uri.etsi.org/TS102204/v1.1.2#XML-Signature ile formatlanmıştır.Görüldüğü gibi  bu XML, imza ve sertifikayı içeriyor.  İmza-> Turkuaz,   Sertifika-> Sarı
+
+ 
+
+Bu iki alandan her birini yine base64 ile decode edince binary imza ve sertifika alanlarına ulaşılır. Bu imza, sertifika vs.’yi  Servis Sağlayıcının kendi tarafında uygun yerlere yerleştirmeniz gerekiyor.
+
+ 
+
+ 
+
+ 
+
+<SignatureValue Id="Signature-0533xxxxxxx-SIG">RlZ8zQQ7kVnEtrQpC+g53+GizwbEIsMCTH4NOevjH6TT5V0FTHycrdwUQYukFFGz
+
+YtY0TbR+eUvSagFlyn8TO7qRnt3DGKxaY3CXs/5hYARG1LT+N/AGzjt5PNqBOiqs
+
+sLcQOB2GwRon3vLUyYTRlnUtgAhhvHS0B7PxcZqsLQK9XBRm2/GPNojdjBqSIqBB
+
+XmZ/hmoX4tXiMb7H9aHIRKI2lxY+WkepSyt324203VjEXtJ2V33xgNZRdGRgKZLj
+
+Qpkw2yi/KPQC6zlce0NEwPQbYhA6Zj9vDHD0C9iiaEqsDwWPaEkjWEsF7d1WbXFe
+
+NDyKis/3B5JKJXq7GabbrQ==</SignatureValue>
+
+<KeyInfo>
+
+<KeyValue>
+
+<RSAKeyValue>
+
+<Modulus>AJdh1XjPXw/rRRapRcTv70LlJNBjIqj+7CqPQ0IWsfLeN3MKOEQbEIQw46/uyXIu
+
+h18ZUPd3VZ05u9TWX9KInfptrRJTlDcvqtIZ/fVpE6uIcFLJNUAUWZKZQKKkM6ZD
+
+BCwmeFxCie7fCatZ8x12mPRse5Jd9pVtkIxOFnlkAIjKxu1kgh5dJEN4uLNAY2gr
+
+tWvC/xBSOhPeMvLx/hOIRkpAQxIPZUZ2Ac7LJApgPst85D3TuhRFt9y5/jhGtrMn
+
+mkGBmqUKTx9U5XOhQV14VdQ+weJlYWyzcOFT5Qg/hgYVXbdsKhGSZ41Keq18jrLe
+
+FqjXxwiS1LoUBLl7It4shL0=</Modulus>
+
+<Exponent>AQAB</Exponent>
+
+</RSAKeyValue>
+
+</KeyValue>
+
+<X509Data><X509Certificate>MIIGcTCCBfagAwIBAgIIPu3hK39hpcUwCgYIKoZIzj0EAwMwcTE1MDMGA1UEAwws
+
+VHVya2NlbGwgTW9iaWwgTkVTIEhpem1ldCBTYcSfbGF5xLFjxLFzxLEgUzcxKzAp
+
+BgNVBAoMIkVsZWt0cm9uaWsgQmlsZ2kgR8O8dmVubGnEn2kgQS7Fni4xCzAJBgNV
+
+BAYTAlRSMB4XDTIxMDkyNDA3NDYxNloXDTIyMDkyNDA3NDYxNlowWDEWMBQGA1UE
+
+AwwNTUVITUVUIERPxJ5BTjEUMBIGA1UEBRMLNDQwODk2NDk3MTIxGzAZBgNVBAsM
+
+EnBvcENvZGUgLSAyMzAwNzQwMDELMAkGA1UEBhMCVFIwggEiMA0GCSqGSIb3DQEB
+
+AQUAA4IBDwAwggEKAoIBAQCXYdV4z18P60UWqUXE7+9C5STQYyKo/uwqj0NCFrHy
+
+3jdzCjhEGxCEMOOv7slyLodfGVD3d1WdObvU1l/SiJ36ba0SU5Q3L6rSGf31aROr
+
+iHBSyTVAFFmSmUCipDOmQwQsJnhcQonu3wmrWfMddpj0bHuSXfaVbZCMThZ5ZACI
+
+ysbtZIIeXSRDeLizQGNoK7Vrwv8QUjoT3jLy8f4TiEZKQEMSD2VGdgHOyyQKYD7L
+
+fOQ907oURbfcuf44RrazJ5pBgZqlCk8fVOVzoUFdeFXUPsHiZWFss3DhU+UIP4YG
+
+FV23bCoRkmeNSnqtfI6y3hao18cIktS6FAS5eyLeLIS9AgMBAAGjggPEMIIDwDAJ
+
+BgNVHRMEAjAAMB8GA1UdIwQYMBaAFIAs3By8gXtCDbcQwmUf8C1JK50HMH4GCCsG
+
+AQUFBwEBBHIwcDA6BggrBgEFBQcwAoYuaHR0cDovL2NybDM4NC5lLWd1dmVuLmNv
+
+bS9FQ0NORVNUVVJLQ0VMTFM3LmNydDAyBggrBgEFBQcwAYYmaHR0cDovL29jc3Az
+
+ODQuZS1ndXZlbi5jb20vc3RhdHVzL29jc3AwggIaBgNVHSAEggIRMIICDTCCAQgG
+
+BmCGGAMAATCB/TA2BggrBgEFBQcCARYqaHR0cDovL3d3dy5lLWd1dmVuLmNvbS9k
+
+b2N1bWVudHMvTkVTVUUucGRmMIHCBggrBgEFBQcCAjCBtR6BsgBCAHUAIABzAGUA
+
+cgB0AGkAZgBpAGsAYQAsACAANQAwADcAMAAgAHMAYQB5ATEAbAExACAARQBsAGUA
+
+awB0AHIAbwBuAGkAawAgATAAbQB6AGEAIABLAGEAbgB1AG4AdQBuAGEAIABnAPYA
+
+cgBlACAAbgBpAHQAZQBsAGkAawBsAGkAIABlAGwAZQBrAHQAcgBvAG4AaQBrACAA
+
+cwBlAHIAdABpAGYAaQBrAGEAZAExAHIwgf4GCWCGGAMAAQEBAzCB8DA3BggrBgEF
+
+BQcCARYraHR0cDovL3d3dy5lLWd1dmVuLmNvbS9kb2N1bWVudHMvTUtORVNJLnBk
+
+ZjCBtAYIKwYBBQUHAgIwgacegaQAQgB1ACAAcwBlAHIAdABpAGYAaQBrAGEALAAg
+
+AE0ASwBOAEUAUwBJACAAawBhAHAAcwBhAG0BMQBuAGQAYQAgAHkAYQB5ATEAbgBs
+
+AGEAbgBtATEBXwAgAGIAaQByACAAbgBpAHQAZQBsAGkAawBsAGkAIABlAGwAZQBr
+
+AHQAcgBvAG4AaQBrACAAcwBlAHIAdABpAGYAaQBrAGEAZAExAHIALjCBgwYIKwYB
+
+BQUHAQMEdzB1MAgGBgQAjkYBATBpBgtghhgBPQABp04BAQxaQnUgc2VydGlmaWth
+
+LCA1MDcwIHNheWlsaSBFbGVrdHJvbmlrIEltemEgS2FudW51bmEgZ8O2cmUgbml0
+
+ZWxpa2xpIGVsZWt0cm9uaWsgc2VydGlmaWthZGlyMD8GA1UdHwQ4MDYwNKAyoDCG
+
+Lmh0dHA6Ly9jcmwzODQuZS1ndXZlbi5jb20vRUNDTkVTVFVSS0NFTExTNy5jcmww
+
+HQYDVR0OBBYEFLI+0F+OoiIK3Rd8Ann1JlRuGJ7RMA4GA1UdDwEB/wQEAwIGwDAK
+
+BggqhkjOPQQDAwNpADBmAjEAmDH/MDUP6RtMoFqsVYJax+lbaw/W3HLgPHitqFUh
+
+YHzvIRailjCylZENH6UBHRZ+AjEA55X4nLGxEcF4V9S4XkbxYK13RbK60WLUHtHI
+
+AfvF394Hzje2+i82AUWXlT182DWy</X509Certificate></X509Data>
+
+</KeyInfo><SignatureValueId="Signature-0533xxxxxxx-SIG">RlZ8zQQ7kVnEtrQpC+g53+GizwbEIsMCTH4NOevjH6TT5V0FTHycrdwUQYukFFGz
+
+YtY0TbR+eUvSagFlyn8TO7qRnt3DGKxaY3CXs/5hYARG1LT+N/AGzjt5PNqBOiqs
+
+sLcQOB2GwRon3vLUyYTRlnUtgAhhvHS0B7PxcZqsLQK9XBRm2/GPNojdjBqSIqBB
+
+XmZ/hmoX4tXiMb7H9aHIRKI2lxY+WkepSyt324203VjEXtJ2V33xgNZRdGRgKZLj
+
+Qpkw2yi/KPQC6zlce0NEwPQbYhA6Zj9vDHD0C9iiaEqsDwWPaEkjWEsF7d1WbXFe
+
+NDyKis/3B5JKJXq7GabbrQ==</SignatureValue><KeyInfo>
+
+<KeyValue>
+
+<RSAKeyValue>
+
+<Modulus>AJdh1XjPXw/rRRapRcTv70LlJNBjIqj+7CqPQ0IWsfLeN3MKOEQbEIQw46/uyXIu
+
+h18ZUPd3VZ05u9TWX9KInfptrRJTlDcvqtIZ/fVpE6uIcFLJNUAUWZKZQKKkM6ZD
+
+BCwmeFxCie7fCatZ8x12mPRse5Jd9pVtkIxOFnlkAIjKxu1kgh5dJEN4uLNAY2gr
+
+tWvC/xBSOhPeMvLx/hOIRkpAQxIPZUZ2Ac7LJApgPst85D3TuhRFt9y5/jhGtrMn
+
+mkGBmqUKTx9U5XOhQV14VdQ+weJlYWyzcOFT5Qg/hgYVXbdsKhGSZ41Keq18jrLe
+
+FqjXxwiS1LoUBLl7It4shL0=</Modulus>
+
+<Exponent>AQAB</Exponent>
+
+</RSAKeyValue>
+
+</KeyValue>
+
+<X509Data><X509Certificate>MIIGcTCCBfagAwIBAgIIPu3hK39hpcUwCgYIKoZIzj0EAwMwcTE1MDMGA1UEAwws
+
+VHVya2NlbGwgTW9iaWwgTkVTIEhpem1ldCBTYcSfbGF5xLFjxLFzxLEgUzcxKzAp
+
+BgNVBAoMIkVsZWt0cm9uaWsgQmlsZ2kgR8O8dmVubGnEn2kgQS7Fni4xCzAJBgNV
+
+BAYTAlRSMB4XDTIxMDkyNDA3NDYxNloXDTIyMDkyNDA3NDYxNlowWDEWMBQGA1UE
+
+AwwNTUVITUVUIERPxJ5BTjEUMBIGA1UEBRMLNDQwODk2NDk3MTIxGzAZBgNVBAsM
+
+EnBvcENvZGUgLSAyMzAwNzQwMDELMAkGA1UEBhMCVFIwggEiMA0GCSqGSIb3DQEB
+
+AQUAA4IBDwAwggEKAoIBAQCXYdV4z18P60UWqUXE7+9C5STQYyKo/uwqj0NCFrHy
+
+3jdzCjhEGxCEMOOv7slyLodfGVD3d1WdObvU1l/SiJ36ba0SU5Q3L6rSGf31aROr
+
+iHBSyTVAFFmSmUCipDOmQwQsJnhcQonu3wmrWfMddpj0bHuSXfaVbZCMThZ5ZACI
+
+ysbtZIIeXSRDeLizQGNoK7Vrwv8QUjoT3jLy8f4TiEZKQEMSD2VGdgHOyyQKYD7L
+
+fOQ907oURbfcuf44RrazJ5pBgZqlCk8fVOVzoUFdeFXUPsHiZWFss3DhU+UIP4YG
+
+FV23bCoRkmeNSnqtfI6y3hao18cIktS6FAS5eyLeLIS9AgMBAAGjggPEMIIDwDAJ
+
+BgNVHRMEAjAAMB8GA1UdIwQYMBaAFIAs3By8gXtCDbcQwmUf8C1JK50HMH4GCCsG
+
+AQUFBwEBBHIwcDA6BggrBgEFBQcwAoYuaHR0cDovL2NybDM4NC5lLWd1dmVuLmNv
+
+bS9FQ0NORVNUVVJLQ0VMTFM3LmNydDAyBggrBgEFBQcwAYYmaHR0cDovL29jc3Az
+
+ODQuZS1ndXZlbi5jb20vc3RhdHVzL29jc3AwggIaBgNVHSAEggIRMIICDTCCAQgG
+
+BmCGGAMAATCB/TA2BggrBgEFBQcCARYqaHR0cDovL3d3dy5lLWd1dmVuLmNvbS9k
+
+b2N1bWVudHMvTkVTVUUucGRmMIHCBggrBgEFBQcCAjCBtR6BsgBCAHUAIABzAGUA
+
+cgB0AGkAZgBpAGsAYQAsACAANQAwADcAMAAgAHMAYQB5ATEAbAExACAARQBsAGUA
+
+awB0AHIAbwBuAGkAawAgATAAbQB6AGEAIABLAGEAbgB1AG4AdQBuAGEAIABnAPYA
+
+cgBlACAAbgBpAHQAZQBsAGkAawBsAGkAIABlAGwAZQBrAHQAcgBvAG4AaQBrACAA
+
+cwBlAHIAdABpAGYAaQBrAGEAZAExAHIwgf4GCWCGGAMAAQEBAzCB8DA3BggrBgEF
+
+BQcCARYraHR0cDovL3d3dy5lLWd1dmVuLmNvbS9kb2N1bWVudHMvTUtORVNJLnBk
+
+ZjCBtAYIKwYBBQUHAgIwgacegaQAQgB1ACAAcwBlAHIAdABpAGYAaQBrAGEALAAg
+
+AE0ASwBOAEUAUwBJACAAawBhAHAAcwBhAG0BMQBuAGQAYQAgAHkAYQB5ATEAbgBs
+
+AGEAbgBtATEBXwAgAGIAaQByACAAbgBpAHQAZQBsAGkAawBsAGkAIABlAGwAZQBr
+
+AHQAcgBvAG4AaQBrACAAcwBlAHIAdABpAGYAaQBrAGEAZAExAHIALjCBgwYIKwYB
+
+BQUHAQMEdzB1MAgGBgQAjkYBATBpBgtghhgBPQABp04BAQxaQnUgc2VydGlmaWth
+
+LCA1MDcwIHNheWlsaSBFbGVrdHJvbmlrIEltemEgS2FudW51bmEgZ8O2cmUgbml0
+
+ZWxpa2xpIGVsZWt0cm9uaWsgc2VydGlmaWthZGlyMD8GA1UdHwQ4MDYwNKAyoDCG
+
+Lmh0dHA6Ly9jcmwzODQuZS1ndXZlbi5jb20vRUNDTkVTVFVSS0NFTExTNy5jcmww
+
+HQYDVR0OBBYEFLI+0F+OoiIK3Rd8Ann1JlRuGJ7RMA4GA1UdDwEB/wQEAwIGwDAK
+
+BggqhkjOPQQDAwNpADBmAjEAmDH/MDUP6RtMoFqsVYJax+lbaw/W3HLgPHitqFUh
+
+YHzvIRailjCylZENH6UBHRZ+AjEA55X4nLGxEcF4V9S4XkbxYK13RbK60WLUHtHI
+
+AfvF394Hzje2+i82AUWXlT182DWy</X509Certificate></X509Data></KeyInfo>
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+Turkcell Mobil İmza servisi imzalı doküman oluşturur mu?
+
+ 
+
+Turkcell Mobil İmza servisi imzalı doküman oluşturMAmaktadır. Servis, servis sağlayıcı tarafından kendisine iletilen imzalanacak verinin özet(hash) değerinin imzalayıcının SIM kartında yer alan gizli anahtarı ile imzalanmasına ve oluşturulan imzanın servis sağlayıcıya iletilmesine aracılık etmektedir.
+
+Bu anlamda Mobil İmza servisi imzalanacak dokümanı bilmemektedir. İmzalanacak doküman ile ilgili bildiği şeyler imzalanacak verinin özeti ve imzalanacak doküman hakkında imzalayıcıya gösterilmek üzere iletilen metindir. Özet bilgisinden imzalanacak dokümanı elde etmek teknik olarak mümkün değildir.
+
+Turkcell Mobil İmza servisine gönderilecek imzalanacak verinin özeti salt imzalanacak belgenin özet değeri değildir. Seçilen imzalama standardında uygun olarak oluşturulan ve imzalanacak belgeyi ya da referansını da içeren imzalı doküman yapısının bir bölümünün özeti alınmaktadır.
+
+ 
+
+ 
+
+Mobil imzalama sürecinde kullanılacak servisler aşağıdaki gibidir.
+
+ 
+
+MSS_ProfileQueryPort : MSISDN’in profil ve sertifika bilgilerini döner.
+MSS_Signature: İmzalama işlemini yapar.
+MSS_StatusQuery: İmzalama sonucunu sorgular.
+ 
+
+ 
+
+İmzalama sürecinde aşağıdaki işlemler takip edilir:
+
+ProfileQuery servisi kullanılarak MSISDN’e ait profil ve sertifika bilgisini edinilir.
+Profile Query servisi imzalayıcının profili yanında imzalayıcının sertifika referans bilgilerini de dönmektedir. Bu bilgiler gelişmiş imzalama standartlarına göre imzalı doküman oluşturmak için yeterlidir.
+Turkcell Mobil İmza servisi kişisel veriler ile ilgili kısıtlar nedeniyle imzalamadan önce kullanıcının sertifikasını paylaşmamaktadır.
+ 
+
+ProfileQuery servisi ile elde edilen profil bilgisi MSS_Signature requestinde SignatureProfile alanında kullanılır.
+ 
+
+MSS_Signature requestinde MessagingMode alanı Turkcell MSSP’in imzalama response’unu clienta nasıl döneceğini belirler. MessagingMode alanı aşağıdaki değerleri alabilmektedir:
+ 
+
+ 
+
+synch : Turkcell MSSP, MSS_Signature requestinde gönderilen Timeout süresi içinde client’a response döner.
+ 
+
+asynchClientServer : Turkcell MSSP, MSS_Signature requestine 504/OUTSTANDING_TRANSACTION  StatusCode/StatusMessage response’unu anında döner. Client’ın MSS_StatusQuery servisini kullanarak imzalama sonucunu alıncaya kadar query etmesi gerekir.
+ 
+
+asynchServerServer : Turkcell MSSP’de imzalama başarılı gerçekleştiğinde oluşan imza MSSP tarafından servis sağlayıcıya gönderilir.
+ 
+
+Turkcell MSSP, MSS_Signature requestine  504/OUTSTANDING_TRANSACTION  StatusCode/StatusMessage response’unu anında döner.  Turkcell MSSP, imzalama response’u oluşunca client’ın açtığı web servise response’u döner.
+
+ 
+
+Not ; Turkcell MSSP’nin Servis Sağlayıcıya imzayı gönderebilmesi için aradaki firewall tanımlarının yaptırılması gerekmektedir.
+
+ 
+
+ 
+
+Detaylı bilgiye dokümantasyonu indirerek erişebilirsiniz
+
+ 
+
+ 
+
+ 
+
+2 - İMZALAMA AŞAMASI
+
+ 
+
+PROFILE_QUERY REQUEST
+
+Servis Sağlayıcı, Turkcell MSSP’ye profil sorgusu gönderirken;
+ 
+
+Prod URL: https://msign.turkcell.com.tr/MSSP2/services/MSS_ProfileQueryPort?wsdl
+ 
+
+Örnek Request:
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:soap="http://turkcelltech.com/mobilesignature/validation/soap" xmlns:v1="http://uri.etsi.org/TS102204/v1.1.2#">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <soap:MSS_ProfileQuery>
+         <MSS_ProfileReq MajorVersion="1" MinorVersion="1">
+            <v1:AP_Info AP_ID="http://***" AP_PWD="***123" AP_TransID="_137101*****"  Instant="2013-06-12T04:54:43.260Z" xmlns:ns1="http://uri.etsi.org/TS102204/v1.1.2#"/>
+            <v1:MSSP_Info Instant="2020-02-13T12:49:36.832+02:00">
+               <v1:MSSP_ID>05*********</v1:MSSP_ID>
+            </v1:MSSP_Info>
+            <v1:MobileUser>
+               <v1:UserIdentifier>http://www.w3.org/2001/04/xmlenc#sha256</v1:UserIdentifier>
+               <v1:MSISDN>05*********</v1:MSISDN>
+            </v1:MobileUser>
+         </MSS_ProfileReq>
+      </soap:MSS_ProfileQuery>
+   </soapenv:Body>
+</soapenv:Envelope>
+ 
+
+Turkcell MSSP platformu Servis Sağlayıcıya response olarak aşağıdaki gibi döner:
+ 
+
+Örnek Response:
+ 
+
+<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope">
+   <soap:Body>
+      <ns1:MSS_ProfileQueryResponse xmlns:ns1="http://turkcelltech.com/mobilesignature/validation/soap">
+         <MSS_ProfileResp MajorVersion="1" MinorVersion="1" xmlns:ns2="http://uri.etsi.org/TS102204/v1.1.2#" xmlns:ns3="http://www.w3.org/2000/09/xmldsig#" xmlns:ns4="http://www.w3.org/2001/04/xmlenc#">
+            <ns2:AP_Info AP_ID="http://***" AP_PWD="***123" AP_TransID="_12647******" Instant="2021-03-05T15:00:28.848+03:00"/>
+            <ns2:MSSP_Info Instant="2023-11-28T13:28:36.142+03:00">
+               <ns2:MSSP_ID>
+                  <ns2:URI>http://uri.turkcellteknoloji.com.tr/MobileSignature/profile2</ns2:URI>
+               </ns2:MSSP_ID>
+            </ns2:MSSP_Info>
+            <ns2:SignatureProfile>
+               <ns2:mssURI>http://uri.turkcellteknoloji.com.tr/MobileSignature/profile3</ns2:mssURI>
+               <ns2:CertIssuerDN>CN=Turkcell Mobil NES Hizmet Sağlayıcısı    </ns2:CertIssuerDN>
+               <ns2:CertSerialNumber>7930370****</ns2:CertSerialNumber>
+               <ns2:CertHash>
+                  <ns2:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>
+                  <ns2:DigestValue>Cnc353Khpd+4DHUKInZciQR4Mv/FI=</ns2:DigestValue>
+               </ns2:CertHash>
+               <ns2:msspUrl>http://localhost</ns2:msspUrl>
+               <ns2:certIssuerDN-DER>MHExNTAzBgNVBAMMLHJvbmlrIEJpbGdpIEfDvHZlbmxpxJ9pIEEuxZ4uMQswCQYDVQQGEwJUUg==</ns2:certIssuerDN-DER>
+            </ns2:SignatureProfile>
+            <ns2:Status>
+               <ns2:StatusCode Value="100"/>
+               <ns2:StatusMessage>REQUEST_OK</ns2:StatusMessage>
+            </ns2:Status>
+         </MSS_ProfileResp>
+      </ns1:MSS_ProfileQueryResponse>
+   </soap:Body>
+</soap:Envelope>
+ 
+
+MSS_SIGNATURE REQUEST
+
+ 
+
+SENKRON İMZALAMA
+
+Servis Sağlayıcı, Turkcell MSSP’ye imza isteğini gönderirken:
+ 
+
+Prod URL’i : https://msign.turkcell.com.tr/MSSP2/services/MSS_Signature?wsdl
+ 
+
+Örnek Request:
+ 
+
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:soap="http://turkcelltech.com/mobilesignature/validation/soap" xmlns:v1="http://uri.etsi.org/TS102204/v1.1.2#">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <soap:MSS_Signature>
+         <MSS_SignatureReq MajorVersion="1" MessagingMode="synch" MinorVersion="1" TimeOut="30">
+            <v1:AP_Info AP_ID="http://***" AP_PWD="***123" AP_TransID="_12647******" AP_URL="" Instant="2009-12-22T08:23:38.778Z"/>
+            <v1:MSSP_Info>
+               <v1:MSSP_ID/>
+            </v1:MSSP_Info> 
+            <v1:MobileUser>
+               <v1:MSISDN>05*********</v1:MSISDN>
+            </v1:MobileUser>
+            <v1:DataToBeSigned Encoding="Base64" MimeType="application/octet-stream">+vLmZ1MH57M2GvI/+xDmrq7RKzg1Dv53YytK/822R+Q=</v1:DataToBeSigned>
+            <v1:DataToBeDisplayed Encoding="UTF-8" MimeType="text/plain">TEST</v1:DataToBeDisplayed>
+            <v1:SignatureProfile>
+               <v1:mssURI>http://uri.turkcellteknoloji.com.tr/MobileSignature/profile2</v1:mssURI>
+            </v1:SignatureProfile>
+            <v1:MSS_Format>
+               <v1:mssURI>http://uri.etsi.org/TS102204/v1.1.2#PKCS7</v1:mssURI>
+            </v1:MSS_Format>
+         </MSS_SignatureReq>
+      </soap:MSS_Signature>
+   </soapenv:Body>
+</soapenv:Envelope>
+ 
+
+Turkcell MSSP platformu Servis Sağlayıcıya response olarak aşağıdaki gibi döner:
+ 
+
+Örnek response:
+ 
+
+<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope">
+   <soap:Body>
+      <ns1:MSS_SignatureResponse xmlns:ns1="http://turkcelltech.com/mobilesignature/validation/soap">
+         <MSS_SignatureResp MSSP_TransID="_655324" MajorVersion="1" MinorVersion="1" xmlns:ns2="http://www.w3.org/2000/09/xmldsig#" xmlns:ns3="http://www.w3.org/2003/05/soap-envelope" xmlns:ns4="http://www.w3.org/2001/04/xmlenc#" xmlns:ns5="http://uri.etsi.org/TS102204/v1.1.2#">
+            <ns5:AP_Info AP_ID="http://***" AP_TransID="_12647*****" AP_PWD="***123" Instant="2009-12-22T08:23:38.778Z" AP_URL=""/>
+            <ns5:MSSP_Info Instant="2020-02-16T18:00:11.208+02:00">
+               <ns5:MSSP_ID/>
+            </ns5:MSSP_Info>
+            <ns5:MobileUser>
+               <ns5:MSISDN>05*********</ns5:MSISDN>
+            </ns5:MobileUser>
+            <ns5:MSS_Signature>
+               <ns5:Base64Signature>PFNpZ25hdHVyZVZhbHVlIElkPSJTaWduYXR…</ns5:Base64Signature>
+            </ns5:MSS_Signature>
+            <ns5:SignatureProfile>
+               <ns5:mssURI>http://uri.turkcellteknoloji.com.tr/MobileSignature/profile2</ns5:mssURI>
+            </ns5:SignatureProfile>
+            <ns5:Status>
+               <ns5:StatusCode Value="500"/>
+               <ns5:StatusMessage>SIGNATURE</ns5:StatusMessage>
+            </ns5:Status>
+         </MSS_SignatureResp>
+      </ns1:MSS_SignatureResponse>
+   </soap:Body>
+</soap:Envelope>
+ 
+
+ 
+
+ASENKRON CLIENT-SERVER İMZALAMA
+
+Servis Sağlayıcı, Turkcell MSSP’ye imza isteğini gönderirken:
+ 
+
+Prod URL : https://msign.turkcell.com.tr/MSSP2/services/MSS_Signature?wsdl
+ 
+
+Örnek Request:
+ 
+
+<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:soap1="http://turkcelltech.com/mobilesignature/validation/soap" xmlns:v1="http://uri.etsi.org/TS102204/v1.1.2#">
+   <soap:Header/>
+   <soap:Body>
+      <soap1:MSS_Signature>
+         <MSS_SignatureReq MajorVersion="1" MessagingMode="asynchClientServer" MinorVersion="1" TimeOut="60">
+            <v1:AP_Info AP_ID="http://***" AP_PWD="***123" AP_TransID="_12647******" AP_URL="" Instant="2009-12-22T08:23:38.778Z" xmlns:v1="http://uri.etsi.org/TS102204/v1.1.2#"/>
+            <v1:MSSP_Info xmlns:v1="http://uri.etsi.org/TS102204/v1.1.2#">
+               <v1:MSSP_ID> </v1:MSSP_ID>
+            </v1:MSSP_Info>
+            <v1:MobileUser>
+               <v1:MSISDN>05*********</v1:MSISDN>
+            </v1:MobileUser>
+            <v1:DataToBeSigned Encoding="Base64" MimeType="application/octet-stream" xmlns:v1="http://uri.etsi.org/TS102204/v1.1.2#">+vLmZ1MH57M2GvI/+xDmrq7RKzg1Dv53YytK/822R+Q=</v1:DataToBeSigned>
+            <v1:DataToBeDisplayed Encoding="UTF-8" MimeType="text/plain" xmlns:v1="http://uri.etsi.org/TS102204/v1.1.2#">Test single signature</v1:DataToBeDisplayed>
+            <v1:SignatureProfile>
+               <v1:mssURI>http://uri.turkcellteknoloji.com.tr/MobileSignature/profile2</v1:mssURI>    
+            </v1:SignatureProfile>
+            <v1:MSS_Format>
+               <v1:mssURI></v1:mssURI>
+            </v1:MSS_Format>
+         </MSS_SignatureReq>
+      </soap1:MSS_Signature>
+   </soap:Body>
+</soap:Envelope>
+ 
+
+ 
+
+Turkcell MSSP platformu Servis Sağlayıcıya response olarak aşağıdaki gibi döner:
+ 
+
+Örnek Response:
+ 
+
+<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope">
+
+   <soap:Body>
+      <ns1:MSS_SignatureResponse xmlns:ns1="http://turkcelltech.com/mobilesignature/validation/soap">
+         <MSS_SignatureResp MSSP_TransID="_655324" MajorVersion="1" MinorVersion="1" xmlns:ns2="http://www.w3.org/2000/09/xmldsig#" xmlns:ns3="http://www.w3.org/2003/05/soap-envelope" xmlns:ns4="http://www.w3.org/2001/04/xmlenc#" xmlns:ns5="http://uri.etsi.org/TS102204/v1.1.2#">
+            <ns5:AP_Info AP_ID="http://***" AP_TransID="_12647*****" AP_PWD="***123" Instant="2009-12-22T08:23:38.778Z" AP_URL=""/>
+            <ns5:MSSP_Info Instant="2020-02-16T18:00:11.208+02:00">
+               <ns5:MSSP_ID/>
+            </ns5:MSSP_Info>
+            <ns5:MobileUser>
+               <ns5:MSISDN>05*********</ns5:MSISDN>
+            </ns5:MobileUser>
+            <ns5:Status>
+               <ns5:StatusCode Value="504"/>
+               <ns5:StatusMessage>OUTSTANDING_TRANSACTION</ns5:StatusMessage>
+            </ns5:Status>
+         </MSS_SignatureResp>
+      </ns1:MSS_SignatureResponse>
+   </soap:Body>
+</soap:Envelope>
+ 
+
+
+Yukarıdaki response'un MSSP_TransID'si MSS_StatusQuery servisi kullanılarak sorgulanır.
+ 
+
+Prod URL : https://msign.turkcell.com.tr/MSSP2/services/MSS_StatusPort?wsdl
+ 
+
+Örnek Request:
+ 
+
+<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:soap1="http://turkcelltech.com/mobilesignature/validation/soap" xmlns:v1="http://uri.etsi.org/TS102204/v1.1.2#">
+   <soap:Header/>
+   <soap:Body>
+      <soap1:MSS_StatusQuery>
+         <MSS_StatusReq MajorVersion="1" MinorVersion="1" MSSP_TransID="_655324">
+            <v1:AP_Info AP_ID="http://***" AP_PWD="***123" AP_TransID="_12647*****" AP_URL="" Instant="2009-12-22T08:23:38.778Z" xmlns:v1="http://uri.etsi.org/TS102204/v1.1.2#"/>
+            <v1:MSSP_Info Instant="2009-12-22T08:23:38.778Z">
+               <v1:MSSP_ID>
+                  <v1:DNSName></v1:DNSName>
+               </v1:MSSP_ID>
+            </v1:MSSP_Info>
+         </MSS_StatusReq>
+      </soap1:MSS_StatusQuery>
+   </soap:Body>
+</soap:Envelope>
+ 
+
+ 
+
+Örnek Response:
+ 
+
+<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope">
+   <soap:Body>
+      <ns1:MSS_StatusQueryResponse xmlns:ns1="http://turkcelltech.com/mobilesignature/validation/soap">
+         <MSS_StatusResp MajorVersion="1" MinorVersion="1" xmlns:ns2="http://uri.etsi.org/TS102204/v1.1.2#" xmlns:ns3="http://www.w3.org/2000/09/xmldsig#" xmlns:ns4="http://www.w3.org/2001/04/xmlenc#">
+            <ns2:AP_Info AP_ID="http://***" AP_PWD="***123" AP_TransID="_12647*****" AP_URL="" Instant="2021-11-09T13:51:59.392+02:00"/>
+            <ns2:MSSP_Info Instant="2024-08-09T11:02:15.015+03:00">
+               <ns2:MSSP_ID>
+                  <ns2:DNSName/>
+               </ns2:MSSP_ID>
+            </ns2:MSSP_Info>
+            <ns2:MobileUser>
+               <ns2:MSISDN>05*********</ns2:MSISDN>
+            </ns2:MobileUser>
+            <ns2:MSS_Signature>
+               <ns2:Base64Signature>PFNpZ25hdHVyZVZhbHV...</ns2:Base64Signature>
+            </ns2:MSS_Signature>
+            <ns2:Status>
+               <ns2:StatusCode Value="500"/>
+               <ns2:StatusMessage>SIGNATURE</ns2:StatusMessage>
+            </ns2:Status>
+         </MSS_StatusResp>
+      </ns1:MSS_StatusQueryResponse>
+   </soap:Body>
+</soap:Envelope>
+ 
+
+ASENKRON SERVER-SERVER İMZALAMA
+
+Servis Sağlayıcı, Turkcell MSSP’ye imza isteğini gönderirken:
+ 
+
+Prod URL’i : https://msign.turkcell.com.tr/MSSP2/services/MSS_Signature?wsdl
+ 
+
+Örnek Request:
+ 
+
+<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:soap1="http://turkcelltech.com/mobilesignature/validation/soap" xmlns:v1="http://uri.etsi.org/TS102204/v1.1.2#">
+   <soap:Header/>
+   <soap:Body>
+      <soap1:MSS_Signature>
+         <MSS_SignatureReq MajorVersion="1" MessagingMode="asynchServerServer" MinorVersion="1" TimeOut="30">
+            <v1:AP_Info AP_ID="http://***" AP_PWD="***123" AP_TransID="_1264****" AP_URL="http://host:port/NotificationService?wsdl"  Instant="2009-12-22T08:23:38.778Z" xmlns:v1="http://uri.etsi.org/TS102204/v1.1.2#"/>
+            <v1:MSSP_Info xmlns:v1="http://uri.etsi.org/TS102204/v1.1.2#">
+               <v1:MSSP_ID> </v1:MSSP_ID>
+            </v1:MSSP_Info>
+            <v1:MobileUser>
+               <v1:MSISDN>05*********</v1:MSISDN>
+            </v1:MobileUser>
+            <v1:DataToBeSigned Encoding="Base64" MimeType="application/octet-Stream" xmlns:v1="http://uri.etsi.org/TS102204/v1.1.2#">+vLmZ1MH57M2GvI/+xDmrq7RKzg1Dv53YytK/822R+Q=</v1:DataToBeSigned>
+            <v1:DataToBeDisplayed Encoding="UTF-8" MimeType="text/plain" xmlns:v1="http://uri.etsi.org/TS102204/v1.1.2#">TEST</v1:DataToBeDisplayed>
+            <v1:SignatureProfile>
+               <v1:mssURI>http://uri.turkcellteknoloji.com.tr/MobileSignature/profile2</v1:mssURI>
+            </v1:SignatureProfile>
+            <v1:MSS_Format>       
+               <v1:mssURI>http://uri.etsi.org/TS102204/v1.1.2#XML-Signature</v1:mssURI>
+            </v1:MSS_Format>
+         </MSS_SignatureReq>
+      </soap1:MSS_Signature>
+   </soap:Body>
+</soap:Envelope>
+
+ 
+
+Turkcell MSSP platformu Servis Sağlayıcıya response olarak aşağıdaki gibi döner ;
+ 
+
+Örnek Response:
+ 
+
+<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope">
+   <soap:Body>
+      <ns1:MSS_SignatureResponse xmlns:ns1="http://turkcelltech.com/mobilesignature/validation/soap">
+         <MSS_SignatureResp MSSP_TransID="_655324" MajorVersion="1" MinorVersion="1" xmlns:ns2="http://www.w3.org/2000/09/xmldsig#" xmlns:ns3="http://www.w3.org/2003/05/soap-envelope" xmlns:ns4="http://www.w3.org/2001/04/xmlenc#" xmlns:ns5="http://uri.etsi.org/TS102204/v1.1.2#">
+            <ns5:AP_Info AP_ID="http://***" AP_TransID="_12647*****" AP_PWD="***123" Instant="2009-12-22T08:23:38.778Z" AP_URL=""/>
+            <ns5:MSSP_Info Instant="2020-02-16T18:00:11.208+02:00">
+               <ns5:MSSP_ID/>
+            </ns5:MSSP_Info>
+            <ns5:MobileUser>
+               <ns5:MSISDN>0533*******</ns5:MSISDN>
+            </ns5:MobileUser>
+            <ns5:Status>
+               <ns5:StatusCode Value="504"/>
+               <ns5:StatusMessage>OUTSTANDING_TRANSACTION</ns5:StatusMessage>
+            </ns5:Status>
+        </MSS_SignatureResp>
+      </ns1:MSS_SignatureResponse>
+   </soap:Body>
+</soap:Envelope>
+ 
+
+İmzalama işlemi tamamlanınca Turkcell MSSP platformu, requestin AP_URL alanındaki servise imzalama sonucunu döner.
+ 
+
+3- İMZALAMA SONRASI
+
+İmzalama işlemi tamamlandıktan sonra doğrulama işlemine geçilmelidir. Kabaca, İmza Doğrulama ve Sertifika Doğulama olarak 2 adımdan oluşur.
+
+ 
+
+1 – İmza Doğrulama
+
+ 
+
+ Turkcell MSSP platformunun döndüğü imza formatı içindeki imza alınarak gönderilen özet ( hash) çıkarılır ve bu hash’in uygulama tarafından gönderilen hash ile 1-1 aynı olup olmadığı kontrol edilir.
+
+ 
+
+2 – Sertifika Doğrulama
+
+ 
+
+ Turkcell MSSP’den dönen sertifikanın geçerli olup olmadığı ESHS’ler üzerinden kontrol eder.
+
+ 
+
+ 
+
+ 
+
+Kök sertifika ihtiyaçları için aşağıdaki linkler kullanılabilir.
+
+ 
+
+EGÜVEN İÇİN:
+
+ 
+
+https://www.e-guven.com/bilgi-bankasi/kok-sertifikalar/
+
+ 
+
+ 
+
+KAMUSM İÇİN:
+
+ 
+
+https://sertifikalar.kamusm.gov.tr/
+
+ 

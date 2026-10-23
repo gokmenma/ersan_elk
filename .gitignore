@@ -30,7 +30,8 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
-/storage/
+/storage/*
+!/storage/mobil-imza/
 vendor/
 .phpunit.cache/
 mobile-app/

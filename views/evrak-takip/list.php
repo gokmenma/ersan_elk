@@ -1022,4 +1022,5 @@ body[data-layout-mode="dark"] #evrakImzaOnayAction {
 <?php if ($canSendKep) include_once "modal/kep-send-modal.php"; ?>
 <?php include_once "modal/kep-preview-modal.php"; ?>
 
+<script src="<?= Helper::assetVersion('views/evrak-takip/js/mobil-imza.js'); ?>"></script>
 <script src="<?= Helper::assetVersion('views/evrak-takip/js/evrak-takip.js'); ?>"></script>

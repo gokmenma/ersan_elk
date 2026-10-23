@@ -220,7 +220,32 @@ class MenuManagementModel extends Model
         }
 
         if ($id > 0) {
-            // GÜNCELLEME
+            // GÜNCELLEME: Formda açıkça gönderilmeyen parent_id, group_order ve menu_order değerlerini mevcut kayıttan koru
+            $existing = $this->getMenuById($id);
+            if ($existing) {
+                if (!array_key_exists('parent_id', $data) || $data['parent_id'] === null) {
+                    $parentId = (int) $existing->parent_id;
+                }
+                if (!array_key_exists('group_order', $data) || $data['group_order'] === null) {
+                    $groupOrder = (int) $existing->group_order;
+                }
+                if (!array_key_exists('menu_order', $data) || $data['menu_order'] === null) {
+                    $menuOrder = (int) $existing->menu_order;
+                }
+            }
+
+            if ($parentId === $id) {
+                $parentId = 0;
+            } elseif ($parentId > 0) {
+                // Alt menünün alt menüsü (3. seviye) olmasını engelle: üst menünün kendisi de alt menüyse kök ana menüsüne bağla
+                $parentMenu = $this->getMenuById($parentId);
+                if (!$parentMenu) {
+                    $parentId = 0;
+                } elseif ((int) $parentMenu->parent_id > 0 && (int) $parentMenu->parent_id !== $id) {
+                    $parentId = (int) $parentMenu->parent_id;
+                }
+            }
+
             $sql = "UPDATE {$this->table} SET 
                         menu_name = ?,
                         page_description = ?,
@@ -262,6 +287,15 @@ class MenuManagementModel extends Model
             $this->clearMenuCache();
             return true;
         } else {
+            if ($parentId > 0) {
+                $parentMenu = $this->getMenuById($parentId);
+                if (!$parentMenu) {
+                    $parentId = 0;
+                } elseif ((int) $parentMenu->parent_id > 0) {
+                    $parentId = (int) $parentMenu->parent_id;
+                }
+            }
+
             // YENİ EKLEME
             $sql = "INSERT INTO {$this->table} (
                         menu_name, page_description, parent_id, group_name, group_order, 
@@ -315,6 +349,65 @@ class MenuManagementModel extends Model
         try {
             $this->db->beginTransaction();
 
+            // Mevcut menülerin parent_id, group_name ve group_order haritasını al
+            $existingStmt = $this->db->query("SELECT id, parent_id, group_name, group_order FROM {$this->table}");
+            $existingMap = [];
+            foreach ($existingStmt->fetchAll(PDO::FETCH_OBJ) as $row) {
+                $existingMap[(int) $row->id] = [
+                    'parent_id' => (int) $row->parent_id,
+                    'group_name' => (string) ($row->group_name ?? ''),
+                    'group_order' => (int) $row->group_order
+                ];
+            }
+
+            // Gelen öğeleri haritala
+            $itemsMap = [];
+            foreach ($items as $item) {
+                $id = (int) ($item['id'] ?? 0);
+                if ($id <= 0) {
+                    continue;
+                }
+                $parentId = max(0, (int) ($item['parent_id'] ?? 0));
+                if ($parentId === $id) {
+                    $parentId = 0;
+                }
+                $itemsMap[$id] = [
+                    'id' => $id,
+                    'parent_id' => $parentId,
+                    'menu_order' => max(1, (int) ($item['menu_order'] ?? 1)),
+                    'group_name' => isset($item['group_name']) ? trim((string) $item['group_name']) : null,
+                    'group_order' => isset($item['group_order']) ? (int) $item['group_order'] : 0
+                ];
+            }
+
+            // 2 seviye hiyerarşi kuralı (Ana Menü -> Alt Menü):
+            // Bir alt menünün parent_id değeri başka bir alt menüyü gösteriyorsa kök Ana Menüyü bul
+            $resolveRootParent = function (int $id, int $parentId) use (&$itemsMap, &$existingMap): int {
+                $visited = [$id => true];
+                $curr = $parentId;
+                while ($curr > 0) {
+                    if (isset($visited[$curr])) {
+                        return 0;
+                    }
+                    $visited[$curr] = true;
+
+                    $nextParent = 0;
+                    if (isset($itemsMap[$curr])) {
+                        $nextParent = (int) $itemsMap[$curr]['parent_id'];
+                    } elseif (isset($existingMap[$curr])) {
+                        $nextParent = (int) $existingMap[$curr]['parent_id'];
+                    } else {
+                        return 0;
+                    }
+
+                    if ($nextParent === 0) {
+                        return $curr;
+                    }
+                    $curr = $nextParent;
+                }
+                return 0;
+            };
+
             $sql = "UPDATE {$this->table} SET 
                         parent_id = ?, 
                         menu_order = ?,
@@ -323,25 +416,38 @@ class MenuManagementModel extends Model
                     WHERE id = ?";
             $stmt = $this->db->prepare($sql);
 
-            foreach ($items as $item) {
-                $id = (int) ($item['id'] ?? 0);
-                if ($id <= 0) {
-                    continue;
-                }
+            foreach ($itemsMap as $id => &$item) {
+                $rootParentId = ($item['parent_id'] > 0)
+                    ? $resolveRootParent($id, $item['parent_id'])
+                    : 0;
+                $item['parent_id'] = $rootParentId;
 
-                $parentId = max(0, (int) ($item['parent_id'] ?? 0));
-                // Kendisini parent yapmasını engelle
-                if ($parentId === $id) {
-                    $parentId = 0;
-                }
+                $groupName = $item['group_name'];
+                $groupOrder = $item['group_order'];
 
-                $menuOrder = max(1, (int) ($item['menu_order'] ?? 1));
-                $groupName = isset($item['group_name']) ? trim((string)$item['group_name']) : null;
-                $groupOrder = isset($item['group_order']) ? (int) $item['group_order'] : 0;
+                // Alt menünün grup adı ve grup sırası her zaman bağlı olduğu Ana Menü ile aynı olmalıdır
+                if ($rootParentId > 0) {
+                    if (isset($itemsMap[$rootParentId])) {
+                        if (!empty($itemsMap[$rootParentId]['group_name'])) {
+                            $groupName = $itemsMap[$rootParentId]['group_name'];
+                        }
+                        if ($itemsMap[$rootParentId]['group_order'] > 0) {
+                            $groupOrder = $itemsMap[$rootParentId]['group_order'];
+                        }
+                    }
+                    if ((empty($groupName) || $groupOrder <= 0) && isset($existingMap[$rootParentId])) {
+                        if (empty($groupName) && !empty($existingMap[$rootParentId]['group_name'])) {
+                            $groupName = $existingMap[$rootParentId]['group_name'];
+                        }
+                        if ($groupOrder <= 0 && $existingMap[$rootParentId]['group_order'] > 0) {
+                            $groupOrder = $existingMap[$rootParentId]['group_order'];
+                        }
+                    }
+                }
 
                 $stmt->execute([
-                    $parentId,
-                    $menuOrder,
+                    $rootParentId,
+                    $item['menu_order'],
                     $groupName,
                     $groupName,
                     $groupName,
@@ -350,6 +456,7 @@ class MenuManagementModel extends Model
                     $id
                 ]);
             }
+            unset($item);
 
             $this->db->commit();
 

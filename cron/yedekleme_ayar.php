@@ -25,6 +25,7 @@ return [
         'demirbas_hareketler',
         'mesaj_log',
         'bildirimler',
+        'efatura_loglari',
     ],
 
     'veri_haric_tablolar' => [],
@@ -32,4 +33,7 @@ return [
     'mail_alicilar' => ['beyzade83@gmail.com'],
 
     'mail_gonder' => true,
+    'drive_yedekleme' => true,
+    'drive_saklama_gun' => 90,
+    'drive_artimli_saklama_gun' => 14,
 ];

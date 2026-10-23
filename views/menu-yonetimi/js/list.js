@@ -82,7 +82,7 @@ $(document).ready(function () {
             : `<i class="bx bx-${escapeHtml(iconName)}"></i>`;
 
         const groupBadge = item.group_name 
-            ? `<span class="menu-tag menu-tag-group">${escapeHtml(item.group_name)}</span>` 
+            ? `<span class="menu-tag menu-tag-group group-name-badge">${escapeHtml(item.group_name)}</span>` 
             : '';
 
         const linkBadge = item.menu_link 
@@ -101,7 +101,7 @@ $(document).ready(function () {
             : (item.menu_link ? `<div class="col-12"><div class="alert alert-warning-subtle border border-warning-subtle py-1 px-2 mb-0 font-size-11 text-warning d-flex align-items-center gap-1"><i class="mdi mdi-alert-circle-outline fs-6"></i><span><strong>Dikkat:</strong> Bu menü linki (${escapeHtml(item.menu_link)}) için tanımlı bir yetki bulunmuyor.</span></div></div>` : '');
 
         const childCountBadge = (!isChild && childCount > 0)
-            ? `<span class="menu-tag text-muted border bg-light fs-10" title="${childCount} Alt Menü">${childCount} Alt Menü</span>`
+            ? `<span class="menu-tag text-muted border bg-light fs-10 child-count-badge" title="${childCount} Alt Menü">${childCount} Alt Menü</span>`
             : '';
 
         const childFoldBtn = (!isChild && childCount > 0)
@@ -118,6 +118,7 @@ $(document).ready(function () {
                  data-enc-id="${item.encrypted_id}" 
                  data-parent-id="${item.parent_id}" 
                  data-group="${escapeHtml(item.group_name || '')}" 
+                 data-group-order="${parseInt(item.group_order, 10) || 1}"
                  data-active="${item.is_active}"
                  ${displayStyle}>
                 
@@ -131,7 +132,7 @@ $(document).ready(function () {
                             ${iconHtml}
                         </div>
 
-                        <div class="d-flex align-items-center flex-wrap gap-2 text-truncate">
+                        <div class="d-flex align-items-center flex-wrap gap-2 text-truncate item-badges-wrap">
                             <span class="menu-title-text fw-semibold text-dark fs-13">${escapeHtml(item.menu_name)}</span>
                             <span class="${badgeClass} item-type-badge">${badgeText}</span>
                             ${childCountBadge}
@@ -153,6 +154,7 @@ $(document).ready(function () {
                 <div class="menu-item-body">
                     <form class="inline-menu-form" autocomplete="off">
                         <input type="hidden" name="id" value="${item.encrypted_id}">
+                        <input type="hidden" name="parent_id" class="inline-parent-id-input" value="${item.parent_id}">
                         <div class="row g-2">
                             ${permInfoRow}
                             <div class="col-md-4">
@@ -219,18 +221,42 @@ $(document).ready(function () {
         $("#menuTreeEmpty").hide();
         container.show();
 
-        // 1. Group parents and children
+        // 1. Group parents and children (2 seviye hiyerarşi garantisi: alt menünün alt menüsü varsa kök ana menüye bağla)
+        const itemsById = {};
+        $.each(items, function (i, item) {
+            itemsById[item.id] = item;
+        });
+
+        const resolveRootParentId = function (item) {
+            let pid = parseInt(item.parent_id, 10) || 0;
+            const visited = new Set([parseInt(item.id, 10)]);
+            while (pid > 0 && itemsById[pid] && (parseInt(itemsById[pid].parent_id, 10) || 0) > 0) {
+                if (visited.has(pid)) {
+                    pid = 0;
+                    break;
+                }
+                visited.add(pid);
+                pid = parseInt(itemsById[pid].parent_id, 10) || 0;
+            }
+            if (pid > 0 && !itemsById[pid]) {
+                return 0;
+            }
+            return pid;
+        };
+
         const parents = [];
         const childrenMap = {};
 
         $.each(items, function (i, item) {
-            if (item.parent_id == 0) {
+            const rootParentId = resolveRootParentId(item);
+            item.parent_id = rootParentId;
+            if (rootParentId == 0) {
                 parents.push(item);
             } else {
-                if (!childrenMap[item.parent_id]) {
-                    childrenMap[item.parent_id] = [];
+                if (!childrenMap[rootParentId]) {
+                    childrenMap[rootParentId] = [];
                 }
-                childrenMap[item.parent_id].push(item);
+                childrenMap[rootParentId].push(item);
             }
         });
 
@@ -260,6 +286,111 @@ $(document).ready(function () {
         applyFilters();
     }
 
+    // Bir kartın ait olduğu üst grubun Ana Menü (.is-parent, parent_id=0) kartını bulur.
+    // Alt menünün alt menüsü (3. seviye) oluşmasını kesin olarak engeller.
+    function findGroupParentCard(card) {
+        if (!card || !card.length) return $();
+
+        const prevCard = card.prev('.menu-item-card');
+        if (prevCard.length > 0) {
+            if (prevCard.hasClass('is-child')) {
+                const candidateParentId = parseInt(prevCard.attr('data-parent-id'), 10) || 0;
+                if (candidateParentId > 0) {
+                    const candidateParent = $(`#menuTreeContainer .menu-item-card.is-parent[data-id="${candidateParentId}"]`);
+                    if (candidateParent.length > 0 && (parseInt(candidateParent.attr('data-parent-id'), 10) || 0) === 0) {
+                        return candidateParent;
+                    }
+                }
+            } else if (prevCard.hasClass('is-parent') && (parseInt(prevCard.attr('data-parent-id'), 10) || 0) === 0) {
+                return prevCard;
+            }
+        }
+
+        // Yukarı doğru en yakın gerçek Ana Menü (.is-parent ve data-parent-id="0") kartını bul
+        const prevParents = card.prevAll('.menu-item-card.is-parent');
+        for (let i = 0; i < prevParents.length; i++) {
+            const p = $(prevParents[i]);
+            if ((parseInt(p.attr('data-parent-id'), 10) || 0) === 0) {
+                return p;
+            }
+        }
+
+        return $();
+    }
+
+    // Kartın grup bilgisini (attribute, rozet ve inline form input) senkronize eder
+    function syncCardGroup(card, groupName, groupOrder) {
+        if (!card || !card.length) return;
+        if (typeof groupName === 'string' && groupName !== '') {
+            card.attr('data-group', groupName);
+            card.find('input[name="group_name"]').val(groupName);
+            const badge = card.find('.group-name-badge');
+            if (badge.length > 0) {
+                badge.text(groupName);
+            }
+        }
+        if (groupOrder && groupOrder > 0) {
+            card.attr('data-group-order', groupOrder);
+        }
+    }
+
+    // Ana menü kartının "X Alt Menü" rozetini ve akordiyon aç/kapat butonunu günceller
+    function updateParentCardUI(parentId) {
+        const pid = parseInt(parentId, 10) || 0;
+        if (pid <= 0) return;
+
+        const parentCard = $(`#menuTreeContainer .menu-item-card[data-id="${pid}"]`);
+        if (parentCard.length === 0) return;
+
+        const childCards = $(`#menuTreeContainer .menu-item-card.is-child[data-parent-id="${pid}"]`);
+        const childCount = childCards.length;
+        const countBadge = parentCard.find('.child-count-badge');
+        const foldBtn = parentCard.find('.btn-toggle-children');
+
+        if (childCount > 0) {
+            if (countBadge.length > 0) {
+                countBadge.attr('title', `${childCount} Alt Menü`).text(`${childCount} Alt Menü`);
+            } else {
+                parentCard.find('.item-type-badge').after(
+                    `<span class="menu-tag text-muted border bg-light fs-10 child-count-badge" title="${childCount} Alt Menü">${childCount} Alt Menü</span>`
+                );
+            }
+
+            const isCollapsed = parentCard.hasClass('children-collapsed');
+            const chevronClass = isCollapsed ? 'bx-chevron-right' : 'bx-chevron-down';
+            if (foldBtn.length === 0) {
+                parentCard.find('.menu-action-btn-group').prepend(
+                    `<button type="button" class="btn-ghost btn-toggle-children" title="Alt Menüleri Aç / Kapat"><i class="bx ${chevronClass} fs-5 text-primary"></i></button>`
+                );
+            } else {
+                foldBtn.find('i').removeClass('bx-chevron-right bx-chevron-down').addClass(chevronClass);
+            }
+        } else {
+            countBadge.remove();
+            foldBtn.remove();
+            parentCard.removeClass('children-collapsed');
+        }
+    }
+
+    // Bir kartı görsel ve yapısal olarak Alt Menü (.is-child) durumuna çevirir
+    function applyChildStateToCard(card, targetParentId, parentGroupName, parentGroupOrder) {
+        card.removeClass('is-parent children-collapsed').addClass('is-child');
+        card.css('display', '');
+        card.attr('data-parent-id', targetParentId);
+        card.find('.inline-parent-id-input').val(targetParentId);
+        card.find('.menu-icon-box').removeClass('parent-icon').addClass('child-icon');
+        card.find('.item-type-badge').removeClass('menu-tag-parent').addClass('menu-tag-child').text('Alt Menü');
+        card.find('.child-count-badge').remove();
+        card.find('.btn-toggle-children').remove();
+
+        const indentBtn = card.find('.btn-indent');
+        if (indentBtn.length > 0) {
+            indentBtn.replaceWith(`<button type="button" class="btn-ghost btn-outdent" title="Ana Menü Yap"><i class="bx bx-left-arrow-alt fs-5 text-purple"></i></button>`);
+        }
+
+        syncCardGroup(card, parentGroupName, parentGroupOrder);
+    }
+
     // Initialize SortableJS
     function initSortable() {
         const el = document.getElementById('menuTreeContainer');
@@ -286,17 +417,76 @@ $(document).ready(function () {
                 }
             },
             onEnd: function (evt) {
-                // Sortable yalnız sürüklenen kartı taşır. Ana menünün çocuklarını da
-                // hemen arkasına alarak ekrandaki hiyerarşik bloğu birlikte koru.
-                if (draggedParentChildIds.length > 0) {
-                    let insertAfter = $(evt.item);
-                    draggedParentChildIds.forEach(function (childId) {
-                        const childCard = $(`#menuTreeContainer .menu-item-card[data-id="${childId}"]`);
-                        if (childCard.length) {
-                            childCard.insertAfter(insertAfter);
-                            insertAfter = childCard;
+                const draggedCard = $(evt.item);
+
+                if (draggedCard.hasClass('is-parent')) {
+                    // Kapalı (veya açık) bir ana menünün hemen altına bırakıldığında,
+                    // o ana menünün alt menülerinin arasına girmesini önle; son alt menünün arkasına yerleştir.
+                    const nextCard = draggedCard.next('.menu-item-card');
+                    if (nextCard.length > 0 && nextCard.hasClass('is-child')) {
+                        const splitParentId = parseInt(nextCard.attr('data-parent-id'), 10) || 0;
+                        const draggedId = parseInt(draggedCard.attr('data-id'), 10) || 0;
+                        if (splitParentId > 0 && splitParentId !== draggedId) {
+                            const splitSiblings = $(`#menuTreeContainer .menu-item-card.is-child[data-parent-id="${splitParentId}"]`);
+                            if (splitSiblings.length > 0) {
+                                draggedCard.insertAfter(splitSiblings.last());
+                            }
                         }
-                    });
+                    }
+
+                    // Sortable yalnız sürüklenen kartı taşır. Ana menünün çocuklarını da
+                    // hemen arkasına alarak ekrandaki hiyerarşik bloğu birlikte koru.
+                    if (draggedParentChildIds.length > 0) {
+                        let insertAfter = draggedCard;
+                        draggedParentChildIds.forEach(function (childId) {
+                            const childCard = $(`#menuTreeContainer .menu-item-card[data-id="${childId}"]`);
+                            if (childCard.length) {
+                                childCard.insertAfter(insertAfter);
+                                insertAfter = childCard;
+                            }
+                        });
+                    }
+                } else if (draggedCard.hasClass('is-child')) {
+                    // Alt menü başka bir grubun altına sürüklendiyse bulunduğu grubun Ana Menüsüne bağla
+                    const oldParentId = parseInt(draggedCard.attr('data-parent-id'), 10) || 0;
+                    const newGroupParent = findGroupParentCard(draggedCard);
+                    if (newGroupParent.length > 0) {
+                        const newParentId = parseInt(newGroupParent.attr('data-id'), 10) || 0;
+                        if (newParentId > 0) {
+                            // Eğer hedef ana menü kapalıysa ve kart onun gizli çocuklarının önüne düştüyse,
+                            // ana menüyü görünür yap veya son çocuğun arkasına hizala
+                            if (newGroupParent.hasClass('children-collapsed')) {
+                                const hiddenChildren = $(`#menuTreeContainer .menu-item-card.is-child[data-parent-id="${newParentId}"]`).not(draggedCard);
+                                hiddenChildren.slideDown(150);
+                                newGroupParent.removeClass('children-collapsed');
+                                newGroupParent.find('.btn-toggle-children i').removeClass('bx-chevron-right').addClass('bx-chevron-down');
+                            }
+                            draggedCard.attr('data-parent-id', newParentId);
+                            draggedCard.find('.inline-parent-id-input').val(newParentId);
+                            syncCardGroup(
+                                draggedCard,
+                                newGroupParent.attr('data-group') || '',
+                                parseInt(newGroupParent.attr('data-group-order'), 10) || 0
+                            );
+                            if (oldParentId > 0 && oldParentId !== newParentId) {
+                                updateParentCardUI(oldParentId);
+                            }
+                            updateParentCardUI(newParentId);
+                        }
+                    } else {
+                        // En üste (hiçbir ana menünün altında olmayacak yere) bırakıldıysa Ana Menüye çevir
+                        draggedCard.removeClass('is-child').addClass('is-parent');
+                        draggedCard.attr('data-parent-id', '0');
+                        draggedCard.find('.inline-parent-id-input').val('0');
+                        draggedCard.find('.menu-icon-box').removeClass('child-icon').addClass('parent-icon');
+                        draggedCard.find('.item-type-badge').removeClass('menu-tag-child').addClass('menu-tag-parent').text('Ana Menü');
+                        draggedCard.find('.btn-outdent').replaceWith(
+                            `<button type="button" class="btn-ghost btn-indent" title="Alt Menü Yap"><i class="bx bx-right-arrow-alt fs-5 text-primary"></i></button>`
+                        );
+                        if (oldParentId > 0) {
+                            updateParentCardUI(oldParentId);
+                        }
+                    }
                 }
 
                 draggedParentChildIds = [];
@@ -341,8 +531,7 @@ $(document).ready(function () {
         });
     }
 
-    // Extract the current order from DOM while preserving explicit parent links.
-    // Drag/drop changes order only; hierarchy changes solely via indent/outdent.
+    // Extract the current order from DOM while enforcing 2-level hierarchy (Ana Menü -> Alt Menü).
     function autoSaveHierarchy(silent = false) {
         const cards = $("#menuTreeContainer .menu-item-card");
         const itemsToSave = [];
@@ -351,15 +540,53 @@ $(document).ready(function () {
         cards.each(function () {
             const card = $(this);
             const id = parseInt(card.attr('data-id'), 10);
-            const parentId = Math.max(0, parseInt(card.attr('data-parent-id'), 10) || 0);
+            let parentId = 0;
+
+            if (card.hasClass('is-child')) {
+                const rawParentId = Math.max(0, parseInt(card.attr('data-parent-id'), 10) || 0);
+                const parentCard = rawParentId > 0
+                    ? $(`#menuTreeContainer .menu-item-card[data-id="${rawParentId}"]`)
+                    : $();
+
+                if (parentCard.length > 0 && parentCard.hasClass('is-parent') && (parseInt(parentCard.attr('data-parent-id'), 10) || 0) === 0) {
+                    parentId = rawParentId;
+                } else {
+                    const groupParent = findGroupParentCard(card);
+                    parentId = groupParent.length > 0 ? (parseInt(groupParent.attr('data-id'), 10) || 0) : 0;
+                }
+
+                if (parentId === id) {
+                    parentId = 0;
+                }
+
+                card.attr('data-parent-id', parentId);
+                card.find('.inline-parent-id-input').val(parentId);
+
+                if (parentId > 0) {
+                    const validParent = $(`#menuTreeContainer .menu-item-card[data-id="${parentId}"]`);
+                    if (validParent.length > 0) {
+                        syncCardGroup(
+                            card,
+                            validParent.attr('data-group') || '',
+                            parseInt(validParent.attr('data-group-order'), 10) || 0
+                        );
+                    }
+                }
+            } else {
+                card.attr('data-parent-id', '0');
+                card.find('.inline-parent-id-input').val('0');
+                parentId = 0;
+            }
 
             const groupName = card.attr('data-group') || '';
-            
+            const groupOrder = parseInt(card.attr('data-group-order'), 10) || 0;
+
             itemsToSave.push({
                 id: id,
                 parent_id: parentId,
                 menu_order: orderIndex++,
-                group_name: groupName
+                group_name: groupName,
+                group_order: groupOrder
             });
         });
 
@@ -439,13 +666,14 @@ $(document).ready(function () {
         });
     });
 
-    // Indent: Turn into Sub-Menu
+    // Indent: Turn into Sub-Menu (Her zaman bulunduğu grubun Ana Menüsüne bağlanır)
     $(document).on("click", ".btn-indent", function (e) {
         e.stopPropagation();
         const card = $(this).closest('.menu-item-card');
-        const prevCard = card.prev('.menu-item-card');
+        const cardId = parseInt(card.attr('data-id'), 10) || 0;
+        const parentCard = findGroupParentCard(card);
 
-        if (prevCard.length === 0) {
+        if (parentCard.length === 0) {
             Toastify({
                 text: "En üstteki menü alt menü yapılamaz.",
                 duration: 2500,
@@ -454,34 +682,44 @@ $(document).ready(function () {
             return;
         }
 
-        const existingChildren = $(`#menuTreeContainer .menu-item-card[data-parent-id="${card.attr('data-id')}"]`);
+        const targetParentId = parseInt(parentCard.attr('data-id'), 10) || 0;
+        if (!targetParentId || targetParentId === cardId) {
+            return;
+        }
+
+        const parentGroupName = parentCard.attr('data-group') || '';
+        const parentGroupOrder = parseInt(parentCard.attr('data-group-order'), 10) || 0;
+
+        // Bu kartın kendisine bağlı alt menüler varsa (ör. önce alttaki menü alt menü yapılıp
+        // sonra üstteki menü alt menü yapıldıysa), 3. seviye oluşmaması için onları da aynı ana menüye bağla.
+        const existingChildren = $(`#menuTreeContainer .menu-item-card[data-parent-id="${cardId}"]`);
         if (existingChildren.length > 0) {
-            Toastify({
-                text: "Alt menüsü bulunan bir ana menü başka bir menünün altına alınamaz.",
-                duration: 3000,
-                backgroundColor: "#f59e0b"
-            }).showToast();
-            return;
+            existingChildren.each(function () {
+                applyChildStateToCard($(this), targetParentId, parentGroupName, parentGroupOrder);
+            });
         }
 
-        const targetParentId = prevCard.hasClass('is-child')
-            ? parseInt(prevCard.attr('data-parent-id'), 10)
-            : parseInt(prevCard.attr('data-id'), 10);
-
-        if (!targetParentId) {
-            return;
+        // Eğer hedef ana menü kapalıysa, alt menüleri aç ve yeni alt menüyü grubun sonuna hizala
+        const existingTargetChildren = $(`#menuTreeContainer .menu-item-card.is-child[data-parent-id="${targetParentId}"]`).not(card).not(existingChildren);
+        if (parentCard.hasClass('children-collapsed') && existingTargetChildren.length > 0) {
+            // Eğer kart kapalı ana menünün gizli çocuklarının önünde kalmışsa son çocuğun arkasına taşı
+            const lastTargetChild = existingTargetChildren.last();
+            if (card.index() < lastTargetChild.index()) {
+                card.insertAfter(lastTargetChild);
+                let afterEl = card;
+                existingChildren.each(function () {
+                    $(this).insertAfter(afterEl);
+                    afterEl = $(this);
+                });
+            }
+            existingTargetChildren.slideDown(150);
+            parentCard.removeClass('children-collapsed');
         }
 
-        // Make it child
-        card.removeClass('is-parent children-collapsed').addClass('is-child');
-        card.css('display', '');
-        card.attr('data-parent-id', targetParentId);
-        card.find('.menu-icon-box').removeClass('parent-icon').addClass('child-icon');
-        card.find('.item-type-badge').removeClass('menu-tag-parent').addClass('menu-tag-child').text('Alt Menü');
-        
-        // Swap button to Outdent
-        $(this).replaceWith(`<button type="button" class="btn-ghost btn-outdent" title="Ana Menü Yap"><i class="bx bx-left-arrow-alt fs-5 text-purple"></i></button>`);
+        // Kartı alt menü yap
+        applyChildStateToCard(card, targetParentId, parentGroupName, parentGroupOrder);
 
+        updateParentCardUI(targetParentId);
         safeFeatherReplace();
         autoSaveHierarchy(false);
     });
@@ -490,16 +728,35 @@ $(document).ready(function () {
     $(document).on("click", ".btn-outdent", function (e) {
         e.stopPropagation();
         const card = $(this).closest('.menu-item-card');
+        const oldParentId = parseInt(card.attr('data-parent-id'), 10) || 0;
+
+        // Eğer eski ana menünün başka alt menüleri varsa ve bu kart aralarında yer alıyorsa,
+        // altta kalan kardeş alt menülerin bu kartın alt menüsü gibi davranmaması için
+        // kartı eski ana menünün son alt menüsünün arkasına taşı.
+        if (oldParentId > 0) {
+            const remainingSiblings = $(`#menuTreeContainer .menu-item-card.is-child[data-parent-id="${oldParentId}"]`).not(card);
+            if (remainingSiblings.length > 0) {
+                const lastSibling = remainingSiblings.last();
+                if (card.index() < lastSibling.index()) {
+                    card.insertAfter(lastSibling);
+                }
+            }
+        }
 
         // Make it parent
         card.removeClass('is-child').addClass('is-parent');
         card.css('display', '');
         card.attr('data-parent-id', '0');
+        card.find('.inline-parent-id-input').val('0');
         card.find('.menu-icon-box').removeClass('child-icon').addClass('parent-icon');
         card.find('.item-type-badge').removeClass('menu-tag-child').addClass('menu-tag-parent').text('Ana Menü');
 
         // Swap button to Indent
         $(this).replaceWith(`<button type="button" class="btn-ghost btn-indent" title="Alt Menü Yap"><i class="bx bx-right-arrow-alt fs-5 text-primary"></i></button>`);
+
+        if (oldParentId > 0) {
+            updateParentCardUI(oldParentId);
+        }
 
         safeFeatherReplace();
         autoSaveHierarchy(false);
@@ -509,10 +766,27 @@ $(document).ready(function () {
     $(document).on("click", ".btn-move-up", function (e) {
         e.stopPropagation();
         const card = $(this).closest('.menu-item-card');
-        const prev = card.prev('.menu-item-card');
-        if (prev.length > 0) {
-            card.insertBefore(prev);
-            autoSaveHierarchy(false);
+
+        if (card.hasClass('is-parent')) {
+            const prevParent = card.prevAll('.menu-item-card.is-parent').first();
+            if (prevParent.length > 0) {
+                const cardId = card.attr('data-id');
+                const myChildren = $(`#menuTreeContainer .menu-item-card.is-child[data-parent-id="${cardId}"]`);
+                card.insertBefore(prevParent);
+                let insertAfter = card;
+                myChildren.each(function () {
+                    $(this).insertAfter(insertAfter);
+                    insertAfter = $(this);
+                });
+                autoSaveHierarchy(false);
+            }
+        } else {
+            const parentId = card.attr('data-parent-id');
+            const prevSibling = card.prev('.menu-item-card.is-child[data-parent-id="' + parentId + '"]');
+            if (prevSibling.length > 0) {
+                card.insertBefore(prevSibling);
+                autoSaveHierarchy(false);
+            }
         }
     });
 
@@ -520,10 +794,31 @@ $(document).ready(function () {
     $(document).on("click", ".btn-move-down", function (e) {
         e.stopPropagation();
         const card = $(this).closest('.menu-item-card');
-        const next = card.next('.menu-item-card');
-        if (next.length > 0) {
-            card.insertAfter(next);
-            autoSaveHierarchy(false);
+
+        if (card.hasClass('is-parent')) {
+            const nextParent = card.nextAll('.menu-item-card.is-parent').first();
+            if (nextParent.length > 0) {
+                const nextParentId = nextParent.attr('data-id');
+                const nextParentChildren = $(`#menuTreeContainer .menu-item-card.is-child[data-parent-id="${nextParentId}"]`);
+                const targetAfter = nextParentChildren.length > 0 ? nextParentChildren.last() : nextParent;
+
+                const cardId = card.attr('data-id');
+                const myChildren = $(`#menuTreeContainer .menu-item-card.is-child[data-parent-id="${cardId}"]`);
+                card.insertAfter(targetAfter);
+                let insertAfter = card;
+                myChildren.each(function () {
+                    $(this).insertAfter(insertAfter);
+                    insertAfter = $(this);
+                });
+                autoSaveHierarchy(false);
+            }
+        } else {
+            const parentId = card.attr('data-parent-id');
+            const nextSibling = card.next('.menu-item-card.is-child[data-parent-id="' + parentId + '"]');
+            if (nextSibling.length > 0) {
+                card.insertAfter(nextSibling);
+                autoSaveHierarchy(false);
+            }
         }
     });
 

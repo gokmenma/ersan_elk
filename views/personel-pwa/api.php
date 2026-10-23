@@ -3982,7 +3982,7 @@ try {
                 // Yöneticiye mail ve bildirim
                 try {
                     $BildirimModel = new BildirimModel();
-                    $BildirimModel->createNotification(
+                    $BildirimModel->createNotificationWithPush(
                         1, // Admin user_id
                         'Nöbet Değişim Talebi Onayı Bekliyor',
                         $personel->adi_soyadi . " nöbet değişim talebini onayladı. Yönetici onayı bekleniyor.",
@@ -4109,7 +4109,7 @@ try {
                 try {
                     $BildirimModel = new BildirimModel();
                     $tarihFormatli = date('d.m.Y', strtotime($nobet->nobet_tarihi));
-                    $BildirimModel->createNotification(
+                    $BildirimModel->createNotificationWithPush(
                         1, // Admin user_id
                         'Nöbet Mazeret Bildirimi',
                         $personel->adi_soyadi . ", $tarihFormatli tarihli nöbeti için mazeret bildirdi: " . mb_substr($aciklama, 0, 100),
@@ -4262,7 +4262,7 @@ try {
                         $mesaj = ($personel->adi_soyadi ?? 'Bir personel') . ", $tarihFormatli tarihi için nöbet talep etti.";
                     }
 
-                    $BildirimModel->createNotification(
+                    $BildirimModel->createNotificationWithPush(
                         1,
                         'Yeni Nöbet Talebi',
                         $mesaj,
@@ -4361,7 +4361,7 @@ try {
             // Yöneticiye bildirim
             try {
                 $BildirimModel = new \App\Model\BildirimModel();
-                $BildirimModel->createNotification(
+                $BildirimModel->createNotificationWithPush(
                     1,
                     'Yeni Destek Talebi',
                     ($personel->adi_soyadi ?? 'Bir personel') . ' canlı destek başlattı.',
@@ -5463,7 +5463,8 @@ try {
                     'index.php?p=kacak/list&tab=onay&kacak_token=' . Security::encrypt($kacakId),
                     'shield',
                     'info',
-                    UserNotificationPreferenceModel::TYPE_KACAK_CREATED
+                    UserNotificationPreferenceModel::TYPE_KACAK_CREATED,
+                    true
                 );
             } catch (\Throwable $e) {
                 error_log('Kaçak bildirimi yöneticilere iletilemedi: ' . $e->getMessage());
@@ -5599,7 +5600,8 @@ try {
                         'index?p=arac-takip/km-onaylari',
                         'error-circle',
                         'warning',
-                        UserNotificationPreferenceModel::TYPE_KM
+                        UserNotificationPreferenceModel::TYPE_KM,
+                        true
                     );
 
                         if ($pwaUserId > 0) {

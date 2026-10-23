@@ -75,7 +75,7 @@ final class EvrakOnayBildirimService
         $mesaj = $ozet . ' (Konu: ' . $konu . ', Sayı: ' . (string) ($evrak->evrak_no ?? '-') . ')';
 
         try {
-            $this->bildirim->createNotification(
+            $this->bildirim->createNotificationWithPush(
                 $userId,
                 $baslik,
                 $mesaj,

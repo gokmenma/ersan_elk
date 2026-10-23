@@ -353,40 +353,30 @@ class UserModel extends Model
     }
 
     /**
-     * Belirli bir talep türü için uygulama içi bildirimleri açık olan ve İLGİLİ SAYFAYA YETKİSİ BULUNAN kullanıcıları getirir
-     * @param string $talepTuru 'avans', 'izin', 'genel', 'ariza'
+     * Belirli bir talep türü için İLGİLİ SAYFAYA YETKİSİ BULUNAN aktif kullanıcıları getirir.
+     * Kullanıcının bildirim tercihi (Profil > Ayarlar) bildirim oluşturulurken ayrıca uygulanır.
+     * @param string $talepTuru 'avans', 'izin', 'genel', 'ariza', 'ihbar'
      * @return array Kullanıcı listesi
      */
     public function getInAppBildirimKullanicilari(string $talepTuru): array
     {
-        $column_map = [
-            'avans' => 'mail_avans_talep',
-            'izin'  => 'mail_izin_talep',
-            'genel' => 'mail_genel_talep',
-            'ariza' => 'mail_ariza_talep'
-        ];
         $permission_map = [
             'avans' => 'avans_talepleri',
             'izin'  => 'izin_talepleri',
             'genel' => 'talepler',
-            'ariza' => 'ariza_talepleri'
+            'ariza' => 'ariza_talepleri',
+            'ihbar' => 'ihbar/list'
         ];
 
-        if (!isset($column_map[$talepTuru])) {
+        if (!isset($permission_map[$talepTuru])) {
             return [];
         }
 
-        $column = $column_map[$talepTuru];
-        $permName = $permission_map[$talepTuru] ?? null;
+        $permName = $permission_map[$talepTuru];
 
-        // Email adresi zorunluluğu yok
-        $query = $this->db->prepare("SELECT * FROM $this->table WHERE $column = ? AND durum = 'Aktif'");
-        $query->execute(['Evet']);
+        $query = $this->db->prepare("SELECT * FROM $this->table WHERE durum = 'Aktif'");
+        $query->execute();
         $users = $query->fetchAll(PDO::FETCH_OBJ);
-
-        if (!$permName) {
-            return $users;
-        }
 
         return array_values(array_filter($users, function($u) use ($permName) {
             return $this->hasUserPermission($u, $permName);

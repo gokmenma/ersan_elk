@@ -570,7 +570,7 @@ try {
                 $ozetMetin = "Yeni bir ihbar kaydı oluşturuldu: {$ilce} / {$mahalle}";
                 $hedefAdres = 'index.php?p=ihbar/list&ihbar_id=' . $ihbarId;
                 foreach ($sorumlular as $kullanici) {
-                    $bildirimModel->createNotification(
+                    $bildirimModel->createNotificationWithPush(
                         (int) $kullanici->id,
                         '📣 Yeni İhbar',
                         $ozetMetin,

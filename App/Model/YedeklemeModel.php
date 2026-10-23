@@ -15,6 +15,72 @@ class YedeklemeModel extends Model
         parent::__construct();
     }
 
+    public static function ayriBaglanti(string $vt): self
+    {
+        if (!preg_match('/^[A-Za-z0-9_]{1,64}$/', $vt)) {
+            throw new \InvalidArgumentException('Gecersiz veritabani adi.');
+        }
+
+        $model = new self();
+        $model->db = new PDO(
+            'mysql:host=' . $_ENV['DB_HOST'] . ';dbname=' . $vt . ';charset=utf8mb4',
+            $_ENV['DB_USER'],
+            $_ENV['DB_PASS'],
+            [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+        );
+        $model->db->exec("SET NAMES utf8mb4");
+
+        return $model;
+    }
+
+    public function veritabaniniBosalt(string $korunanVt): int
+    {
+        $vt = $this->veritabaniAdi();
+        if ($vt === '' || $vt === $korunanVt) {
+            throw new \RuntimeException('Canli veritabani bosaltilamaz.');
+        }
+
+        $this->kesifOnbellek = null;
+        $silinen = 0;
+        $this->db->exec("SET FOREIGN_KEY_CHECKS = 0");
+        try {
+            foreach ($this->viewListesi() as $view) {
+                $this->db->exec("DROP VIEW IF EXISTS `" . str_replace('`', '``', $view) . "`");
+                $silinen++;
+            }
+            foreach ($this->tabloListesi() as $tablo) {
+                $this->db->exec("DROP TABLE IF EXISTS `" . str_replace('`', '``', $tablo) . "`");
+                $silinen++;
+            }
+            foreach ($this->rutinAdlari() as $rutin) {
+                $this->db->exec("DROP {$rutin['tip']} IF EXISTS `" . str_replace('`', '``', $rutin['ad']) . "`");
+            }
+        } finally {
+            $this->db->exec("SET FOREIGN_KEY_CHECKS = 1");
+            $this->kesifOnbellek = null;
+            $this->kolonOnbellek = [];
+        }
+
+        return $silinen;
+    }
+
+    private function rutinAdlari(): array
+    {
+        try {
+            $stmt = $this->db->prepare(
+                "SELECT routine_name AS ad, routine_type AS tip FROM information_schema.routines WHERE routine_schema = DATABASE()"
+            );
+            $stmt->execute();
+        } catch (\Throwable $e) {
+            error_log('[yedekleme] Rutin listesi alinamadi: ' . $e->getMessage());
+            return [];
+        }
+        return array_values(array_filter(
+            $stmt->fetchAll(PDO::FETCH_ASSOC),
+            static fn(array $r): bool => in_array($r['tip'], ['PROCEDURE', 'FUNCTION'], true)
+        ));
+    }
+
     public function veritabaniAdi(): string
     {
         return (string) $this->db->query("SELECT DATABASE()")->fetchColumn();

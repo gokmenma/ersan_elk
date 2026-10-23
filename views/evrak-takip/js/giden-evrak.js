@@ -1390,7 +1390,7 @@ $(document).ready(function () {
     }
     Swal.fire({
       title: "Mobil İmza ile Onaya Sun",
-      html: "Evrak kaydedilecek, kilitlenecek ve seçilen yetkililer için mobil imza onay sırası oluşturulacaktır.<br><b>Mobil operatör üzerinden gerçek imzalama işlemi ileride devreye alınacaktır.</b>",
+      html: "Evrak kaydedilecek, kilitlenecek ve seçilen yetkililer için mobil imza onay sırası oluşturulacaktır.<br><b>İmzacılar sırayla Turkcell Mobil İmza ile imzalayacaktır.</b>",
       icon: "info", showCancelButton: true, confirmButtonColor: "#0ea5e9", cancelButtonColor: "#64748b",
       confirmButtonText: "Kaydet ve Akışı Başlat", cancelButtonText: "Vazgeç"
     }).then(result => {
@@ -1412,12 +1412,19 @@ $(document).ready(function () {
     });
   });
 
-  $("#btnMobilImzaOnayla").on("click", function () {
+  $("#btnMobilImzaOnayla, #btnMobilImzaIleImzala").on("click", function () {
+    const id = $(this).data("id");
     Swal.fire({
-      title: "Mobil İmza Entegrasyonu Hazırlanıyor",
-      text: "Evrak mobil imza sırasına alınmıştır. Operatör üzerinden mobil imzalama işlemi ileride devreye alınacaktır.",
-      icon: "info",
-      confirmButtonText: "Tamam"
+      title: "Mobil İmza ile İmzala",
+      html: "Evrak, telefonunuza gelecek Turkcell Mobil İmza mesajını onaylamanızla <b>PAdES</b> olarak imzalanacaktır.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#0ea5e9",
+      confirmButtonText: "İmza İsteği Gönder",
+      cancelButtonText: "Vazgeç"
+    }).then(result => {
+      if (!result.isConfirmed) return;
+      window.MobilImza.baslat({ id: id, apiUrl: "views/evrak-takip/api.php", swal: Swal, onSuccess: () => location.reload() });
     });
   });
 

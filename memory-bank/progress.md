@@ -1,5 +1,39 @@
 # Progress
 
+## 2026-10-23 — Turkcell Mobil İmza Entegrasyonu
+- [x] SQL `sql/2026_10_23_add_turkcell_mobil_imza.sql` yerelde iki kez çalıştırıldı (tekrarlanabilir); yetki Yetki Kataloğu ve Yetki Grubu Düzenleme verisinde görünüyor, Süper Admin ve Firma Sahibi rollerine atandı.
+- [x] Incremental PAdES imzalayıcı: mPDF (klasik xref) ve Ghostscript (xref stream + object stream) PDF’lerinde art arda iki imza `pdfsig` ile “Signature is Valid”.
+- [x] Sahte MSSP sunucusu + test CA ile uçtan uca: başarılı imza (mobil_imza ve eimza türü), telefonda iptal (401) ve yanlış özet senaryoları doğrulandı; test verileri geri alındı.
+- [x] Ayarlar sekmesi ve API aksiyonları HTTP üzerinden test edildi (doğrulama, Gate, oturum, hata mesajları).
+- [ ] Sunucuda: SQL scripti, `.env` `TURKCELL_MIMZA_AP_ID/AP_PWD`, sunucu çıkış IP’sinin Turkcell’e beyaz listeye eklenmesi, Ayarlar > Mobil İmza’dan hatların girilip “Profil Sorgula” ile denenmesi, gerçek telefonla imza testi.
+## 2026-10-23 — Menü Yönetimi 2 Seviye Grup Hiyerarşisi ve Sürükle/Bırak Düzeltmesi
+- [x] `views/menu-yonetimi/js/list.js` içerisinde `findGroupParentCard()`, `applyChildStateToCard()`, `updateParentCardUI()` ve `syncCardGroup()` yardımcıları eklendi.
+- [x] Ardışık menüler alt menü yapıldığında (`.btn-indent`) veya sürüklendiğinde (`initSortable`) bir üstteki alt menünün değil, bulunduğu grubun `Ana Menü` (`parent_id = 0`) kaydının alt menüsü olması sağlandı.
+- [x] `.btn-outdent`, `.btn-move-up`, `.btn-move-down` ve `.inline-menu-form` işlemlerinde alt menü bloklarının bölünmemesi ve `parent_id` bilgisinin korunması sağlandı.
+- [x] `App/Model/MenuManagementModel.php` (`updateMenuHierarchy`, `saveMenuData`) ve `views/menu-yonetimi/api.php` üzerinde 3. seviye alt menü oluşumunu kök ana menüye bağlayan sunucu doğrulaması ve grup senkronizasyonu eklendi.
+- [x] PHP (`php -l`) ve JS (`node --check`) sözdizimi kontrolleri doğrulandı.
+
+## 2026-10-22 — Veritabanı Yedekleri Yönetim Arayüzü
+- [x] Yedek/geri yükleme servisleri ayrıştırıldı, CLI davranışı korundu (tam+artımlı+liste+test VT’ye yükleme doğrulandı).
+- [x] 2 saatlik cron uyumu: günde bir tam yedek kontrolü, günlük başarı maili, işlem kilidi.
+- [x] Geri yükleme testi: 188 tablo `@SAYIM` ile birebir eşleşti; canlı VT adıyla test engellendi; test VT sonunda boşaltıldı.
+- [x] `views/yedekleme` sayfası (§8 standardı): KPI kartları, birleşik liste, arka plan işleri, indirme, detay modalı; açık/koyu tema ve sağ tık menüsü doğrulandı.
+- [x] Yetki SQL’i yerelde iki kez çalıştırıldı (tekrarlanabilir); Yetki Kataloğu ve Yetki Grubu Düzenleme ekranında göründüğü doğrulandı; normal kullanıcı sayfa/API’de reddedildi.
+- [ ] Sunucuda: SQL scripti, `YEDEK_TEST_VT` veritabanı, cPanel cron `0 */2 * * *`, Google Drive `.env` değerleri.
+
+## 2026-10-22 — Bildirim Tercihleri ve Mobil Push Düzeltmesi (yeniden uygulandı)
+- [x] Talep bildirimi alıcıları sayfa yetkisine göre seçiliyor; `ihbar` türü eklendi.
+- [x] `BildirimModel::createNotificationWithPush()` ve broadcast `$sendPush` seçeneği eklendi.
+- [x] Nöbet, destek, kaçak, KM, evrak ve SPA/mobil ihbar bildirimleri push gönderiyor; `mobile-spa/dist/api/ihbar.php` eşitlendi.
+- [x] PHP lint ve alıcı listesi doğrulaması geçti.
+
+## 2026-10-22 — Veritabanı Yedeklerinin Google Drive’a Şifreli Kopyalanması
+- [x] Google Drive REST servisi, AES-256-GCM yedek şifreleme servisi ve senkron servisi yazıldı.
+- [x] `db_backup.php` yedek sonrası Drive senkronuna bağlandı; yapılandırma yoksa mevcut davranış korunuyor.
+- [x] Yetkilendirme/test ve Drive’dan geri alma CLI scriptleri eklendi; `cron/YEDEKLEME.md` güncellendi.
+- [x] Yerel testler: 0 B–5 MB gidiş-dönüş, bozulma/kesilme/yanlış anahtar tespiti, sahte Drive ile senkron-rotasyon-geri alma, gerçek 13 MB yedekle bütünlük.
+- [ ] Sunucuda Google Cloud OAuth kurulumu ve `php cron/drive_yetkilendir.php --test` doğrulaması.
+
 ## 2026-10-21 — Evrak Takip Modülü Koyu Mod (Dark Theme) Düzeltmeleri
 - [x] `views/evrak-takip/list.php` sayfasında koyu modda tablo thead'inin açık/beyaz kalmasına neden olan inline CSS ve `table-light` sınıfı kaldırıldı.
 - [x] `#evrakTable thead th` ve `#evrakTable thead .dt-filter-row th` hücreleri koyu tema zemin ve açık yazı renkleriyle entegre edildi.

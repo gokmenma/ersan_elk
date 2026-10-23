@@ -532,7 +532,7 @@ if ($canSendKep || $gonderimKanali === 'kep') {
                                 };
                                 $onayButtonAciklama = match ($onayTuru) {
                                     'islak_imza' => 'Fiziksel imzanızı attığınızı teyit eder',
-                                    'mobil_imza' => 'Mobil imza entegrasyonu yakında kullanıma açılacak',
+                                    'mobil_imza' => 'Telefonunuza gelen Turkcell Mobil İmza mesajını onaylarsınız',
                                     default => 'Kendi imzanızı bu evraka ekler',
                                 };
                                 ?>
@@ -545,6 +545,17 @@ if ($canSendKep || $gonderimKanali === 'kep') {
                                         </span>
                                     </button>
                                 </li>
+                                <?php if ($onayTuru === 'eimza' && \App\Service\MobilImzaPadesService::isEnabled((int) ($_SESSION['firma_id'] ?? 0))): ?>
+                                <li>
+                                    <button type="button" class="dropdown-item d-flex align-items-start gap-2 py-2" id="btnMobilImzaIleImzala" data-id="<?php echo htmlspecialchars($encryptedId, ENT_QUOTES, 'UTF-8'); ?>">
+                                        <i class="bx bx-mobile-alt icon-xs text-info mt-1"></i>
+                                        <span>
+                                            <span class="d-block fw-semibold">Mobil İmza ile İmzala</span>
+                                            <span class="d-block small text-muted">Akıllı kart yerine Turkcell Mobil İmza kullanır</span>
+                                        </span>
+                                    </button>
+                                </li>
+                                <?php endif; ?>
                             <?php endif; ?>
                             <?php if ($imzalayabilir): ?>
                                 <li>
@@ -887,4 +898,5 @@ window.gidenKepAutoStart = <?php echo $canSendKep && (string) ($_GET['kep_gonder
 
 <?php include_once "modal/kep-settings-modal.php"; ?>
 
+<script src="<?php echo \App\Helper\Helper::assetVersion('views/evrak-takip/js/mobil-imza.js'); ?>"></script>
 <script src="<?php echo \App\Helper\Helper::assetVersion('views/evrak-takip/js/giden-evrak.js'); ?>"></script>

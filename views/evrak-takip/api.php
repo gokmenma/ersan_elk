@@ -33,6 +33,7 @@ use App\Model\KepAdresDefteriModel;
 use App\Service\KepClientService;
 use App\Service\KepService;
 use App\Service\PadesEImzaService;
+use App\Service\MobilImzaPadesService;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -55,6 +56,28 @@ if ($permissionPolicy->isReady()) {
 
 $decryptId = static function ($value): int {
     return (int) Security::decrypt((string) $value);
+};
+
+$afterPadesApproval = static function (int $id, array $approval): ?array {
+    $model = new EvrakTakipModel();
+    $onayBildirim = new EvrakOnayBildirimService();
+    $onaylananEvrak = $model->getById($id);
+    if (!$approval['completed']) {
+        $siradaki = $model->getNextPendingSigner($id);
+        if ($siradaki) {
+            $onayBildirim->imzaSirasiGeldi($onaylananEvrak, (int) $siradaki->kullanici_id, (int) $siradaki->sira, (int) $approval['total']);
+        }
+        return null;
+    }
+    $onayBildirim->onayTamamlandi($onaylananEvrak);
+    if (($onaylananEvrak->gonderim_kanali ?? 'normal') !== 'kep') {
+        return null;
+    }
+    $kepAlicilar = trim((string) ($onaylananEvrak->kep_alicilar ?: $onaylananEvrak->alici_kep));
+    return $kepAlicilar !== '' ? [
+        'enabled' => true, 'alici_kep' => $kepAlicilar,
+        'paket_turu' => (string) ($onaylananEvrak->kep_paket_turu ?: 'Standart'),
+    ] : ['enabled' => false, 'error' => 'Kayıtlı alıcı KEP adresi bulunamadı.'];
 };
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -700,7 +723,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 $user = $User->checkUser($email);
                                 if ($user) {
                                     $Bildirim = new BildirimModel();
-                                    $Bildirim->createNotification(
+                                    $Bildirim->createNotificationWithPush(
                                         $user->id,
                                         "Yeni Evrak Zimmetlendi",
                                         "Tarafınıza '{$evrak->konu}' konulu bir evrak zimmetlenmiştir.",
@@ -758,7 +781,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 $user = $User->checkUser($email);
                                 if ($user) {
                                     $Bildirim = new BildirimModel();
-                                    $Bildirim->createNotification(
+                                    $Bildirim->createNotificationWithPush(
                                         $user->id,
                                         "Yeni Evrak Zimmetlendi",
                                         "Tarafınıza '{$evrak->konu}' konulu bir evrak zimmetlenmiştir.",
@@ -869,7 +892,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if ($siradaki) (new EvrakOnayBildirimService())->imzaSirasiGeldi($Model->getById($id), (int) $siradaki->kullanici_id, (int) $siradaki->sira, (int) $submission['total']);
                 echo json_encode([
                     'status' => 'success',
-                    'message' => 'Evrak mobil imza onayına sunuldu. Mobil imzalama entegrasyonu devreye alındığında sıradaki yetkili işlemi tamamlayabilecektir.',
+                    'message' => 'Evrak mobil imza onayına sunuldu. Sıradaki yetkili telefonundaki Turkcell Mobil İmza ile imzalayabilir.',
                     'data' => $submission,
                 ], JSON_UNESCAPED_UNICODE);
                 break;
@@ -940,24 +963,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     "Evrak ID: {$id} doğrulanmış PAdES imzası ile onaylandı ({$approval['approved']}/{$approval['total']} imza).",
                     SystemLogModel::LEVEL_IMPORTANT
                 );
-                $onayBildirim = new EvrakOnayBildirimService();
-                $onaylananEvrak = $Model->getById($id);
-                $autoKep = null;
-                if ($approval['completed']) {
-                    $onayBildirim->onayTamamlandi($onaylananEvrak);
-                    if (($onaylananEvrak->gonderim_kanali ?? 'normal') === 'kep') {
-                        $kepAlicilar = trim((string) ($onaylananEvrak->kep_alicilar ?: $onaylananEvrak->alici_kep));
-                        $autoKep = $kepAlicilar !== '' ? [
-                            'enabled' => true, 'alici_kep' => $kepAlicilar,
-                            'paket_turu' => (string) ($onaylananEvrak->kep_paket_turu ?: 'Standart'),
-                        ] : ['enabled' => false, 'error' => 'Kayıtlı alıcı KEP adresi bulunamadı.'];
-                    }
-                } else {
-                    $siradaki = $Model->getNextPendingSigner($id);
-                    if ($siradaki) {
-                        $onayBildirim->imzaSirasiGeldi($onaylananEvrak, (int) $siradaki->kullanici_id, (int) $siradaki->sira, (int) $approval['total']);
-                    }
-                }
+                $autoKep = $afterPadesApproval($id, $approval);
                 echo json_encode([
                     'status' => 'success',
                     'message' => $approval['completed']
@@ -965,6 +971,74 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         : 'PAdES imzanız doğrulandı. Evrak diğer imzacıların imzasını bekliyor.',
                     'data' => array_merge($approval, ['auto_kep' => $autoKep]),
                 ], JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'evrak-mobil-imza-baslat':
+                $id = $decryptId($_POST['id'] ?? '');
+                if ($id <= 0) throw new Exception('Geçersiz evrak ID.');
+                try {
+                    $started = (new MobilImzaPadesService())->start($id, $currentUserId);
+                } catch (\RuntimeException $e) {
+                    (new SystemLogModel())->logAction($currentUserId, 'Evrak Mobil İmza Hatası', "Evrak ID: {$id} mobil imza isteği başlatılamadı: " . $e->getMessage(), SystemLogModel::LEVEL_IMPORTANT);
+                    throw $e;
+                } catch (\Throwable $e) {
+                    error_log('evrak-mobil-imza-baslat: ' . $e->getMessage());
+                    throw new Exception('Mobil imza isteği başlatılamadı.');
+                }
+                (new SystemLogModel())->logAction($currentUserId, 'Evrak Mobil İmza İsteği', "Evrak ID: {$id} için {$started['msisdn']} hattına mobil imza isteği gönderildi.", SystemLogModel::LEVEL_IMPORTANT);
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'İmza isteği telefonunuza gönderildi.',
+                    'data' => $started,
+                ], JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'evrak-mobil-imza-durum':
+                $token = (string) ($_POST['token'] ?? '');
+                try {
+                    $result = (new MobilImzaPadesService())->poll($token, $currentUserId, (string) ($_SERVER['REMOTE_ADDR'] ?? ''));
+                } catch (\RuntimeException $e) {
+                    (new SystemLogModel())->logAction($currentUserId, 'Evrak Mobil İmza Hatası', 'Mobil imza tamamlanamadı: ' . $e->getMessage(), SystemLogModel::LEVEL_IMPORTANT);
+                    throw $e;
+                } catch (\Throwable $e) {
+                    error_log('evrak-mobil-imza-durum: ' . $e->getMessage());
+                    throw new Exception('Mobil imza durumu sorgulanamadı.');
+                }
+                if (in_array($result['state'], ['iptal', 'zaman_asimi', 'hata'], true)) {
+                    (new SystemLogModel())->logAction($currentUserId, 'Evrak Mobil İmza Sonucu', 'Mobil imza tamamlanmadı: ' . $result['message'], SystemLogModel::LEVEL_INFO);
+                }
+                if ($result['state'] !== 'imzalandi') {
+                    echo json_encode(['status' => 'success', 'data' => $result], JSON_UNESCAPED_UNICODE);
+                    break;
+                }
+                $approval = $result['approval'];
+                $id = (int) $result['evrak_id'];
+                (new SystemLogModel())->logAction(
+                    $currentUserId,
+                    'Evrak Mobil İmza Onayı',
+                    "Evrak ID: {$id} Turkcell mobil imza ile doğrulanmış PAdES imzası olarak onaylandı ({$approval['approved']}/{$approval['total']} imza).",
+                    SystemLogModel::LEVEL_IMPORTANT
+                );
+                $autoKep = $afterPadesApproval($id, $approval);
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => $approval['completed']
+                        ? 'Tüm imzalar doğrulandı. Evrak elektronik imzalı olarak kilitlendi.'
+                        : 'Mobil imzanız doğrulandı. Evrak diğer imzacıların imzasını bekliyor.',
+                    'data' => [
+                        'state' => 'imzalandi',
+                        'completed' => $approval['completed'],
+                        'approved' => $approval['approved'],
+                        'total' => $approval['total'],
+                        'auto_kep' => $autoKep,
+                    ],
+                ], JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'evrak-mobil-imza-iptal':
+                (new MobilImzaPadesService())->cancel((string) ($_POST['token'] ?? ''), $currentUserId);
+                (new SystemLogModel())->logAction($currentUserId, 'Evrak Mobil İmza İptali', 'Bekleyen mobil imza isteği ekrandan iptal edildi.', SystemLogModel::LEVEL_INFO);
+                echo json_encode(['status' => 'success', 'message' => 'Mobil imza isteği iptal edildi.'], JSON_UNESCAPED_UNICODE);
                 break;
 
             case 'evrak-e-imza-onayla':
@@ -1255,7 +1329,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     
                     if ($user) {
                         $Bildirim = new BildirimModel();
-                        $Bildirim->createNotification(
+                        $Bildirim->createNotificationWithPush(
                             $user->id,
                             "Yeni Evrak Zimmetlendi",
                             "Tarafınıza '{$evrak->konu}' konulu bir evrak zimmetlenmiştir.",

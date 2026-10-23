@@ -11,7 +11,7 @@ final class PadesEImzaService
     // Base64 taşıma ek yüküyle birlikte PHP'nin 40 MB POST sınırının altında kalır.
     private const MAX_PDF_BYTES = 25 * 1024 * 1024;
 
-    public function prepare(int $evrakId, int $userId): array
+    public function signingContext(int $evrakId, int $userId): array
     {
         $model = new EvrakTakipModel();
         $evrak = $model->getById($evrakId);
@@ -27,6 +27,12 @@ final class PadesEImzaService
         if (strlen($pdf) > self::MAX_PDF_BYTES) {
             throw new \RuntimeException('İmzalanacak PDF 25 MB sınırını aşıyor.');
         }
+        return ['evrak' => $evrak, 'signer' => $next, 'pdf' => $pdf];
+    }
+
+    public function prepare(int $evrakId, int $userId): array
+    {
+        ['signer' => $next, 'pdf' => $pdf] = $this->signingContext($evrakId, $userId);
         $tempId = bin2hex(random_bytes(24));
         $this->storePreparedPdf($tempId, $evrakId, $userId, $pdf);
         return [
@@ -50,6 +56,14 @@ final class PadesEImzaService
         $evrak = $model->getById($evrakId);
         if (!$evrak) throw new \RuntimeException('Evrak bulunamadı.');
         $sourcePdf = $this->loadPreparedPdf($tempId, $evrakId, $userId);
+        $result = $this->finalize($evrakId, $userId, $sourcePdf, $signedPdf, $ipAddress, 'akilli_kart');
+        $this->deletePreparedPdf($tempId);
+        return $result;
+    }
+
+    public function finalize(int $evrakId, int $userId, string $sourcePdf, string $signedPdf, string $ipAddress, string $signatureMethod): array
+    {
+        $model = new EvrakTakipModel();
         if (strlen($signedPdf) <= strlen($sourcePdf)
             || !hash_equals(hash('sha256', $sourcePdf), hash('sha256', substr($signedPdf, 0, strlen($sourcePdf))))) {
             throw new \RuntimeException('İmzalı PDF, sunucunun hazırladığı değişmez evrak sürümüne ait değil.');
@@ -73,13 +87,7 @@ final class PadesEImzaService
             throw new \RuntimeException('İmzalı PDF kalıcı depoya alınamadı.');
         }
 
-        try {
-            $result = $model->approveWithPades($evrakId, $userId, $ipAddress, $relativePath, $pdfSha256, $certificate);
-            $this->deletePreparedPdf($tempId);
-            return $result;
-        } catch (\Throwable $e) {
-            throw $e;
-        }
+        return $model->approveWithPades($evrakId, $userId, $ipAddress, $relativePath, $pdfSha256, $certificate, $signatureMethod);
     }
 
     private function currentPdf(object $evrak, int $evrakId): string
@@ -227,11 +235,15 @@ final class PadesEImzaService
 
     private function bindCertificate(PDO $db, int $userId, array $cert): void
     {
-        $bound = $db->prepare("SELECT sertifika_parmak_izi FROM kullanici_eimza_sertifikalari
+        $bound = $db->prepare("SELECT sertifika_parmak_izi, tckn_hash FROM kullanici_eimza_sertifikalari
             WHERE firma_id = :firma_id AND kullanici_id = :kullanici_id AND is_active = 1 AND deleted_at IS NULL");
         $bound->execute(['firma_id' => (int) $_SESSION['firma_id'], 'kullanici_id' => $userId]);
-        foreach ($bound->fetchAll(PDO::FETCH_COLUMN) as $fingerprint) {
-            if (!hash_equals((string) $fingerprint, (string) $cert['fingerprint'])) {
+        $tcknHash = $cert['tckn'] !== '' ? hash('sha256', $cert['tckn']) : '';
+        foreach ($bound->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            if (hash_equals((string) $row['sertifika_parmak_izi'], (string) $cert['fingerprint'])) {
+                continue;
+            }
+            if ($tcknHash === '' || empty($row['tckn_hash']) || !hash_equals((string) $row['tckn_hash'], $tcknHash)) {
                 throw new \RuntimeException('Bu kullanıcıya daha önce farklı bir e-imza sertifikası bağlanmış. Sertifika değişikliği yetkili yönetici tarafından yapılmalıdır.');
             }
         }
