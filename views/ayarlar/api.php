@@ -611,7 +611,7 @@ switch ($action) {
             $response['message'] = $e->getMessage();
             if ($e->getCode() === \App\Service\TurkcellMobilImzaClient::ERROR_CONNECTION_REFUSED) {
                 $cikisIp = \App\Service\TurkcellMobilImzaClient::outboundIp();
-                $response['message'] .= ' Sunucunun Turkcell\'e çıkış IP adresi: ' . ($cikisIp !== '' ? $cikisIp : 'tespit edilemedi') . '.';
+                $response['message'] .= ' Sunucunun çıkış IP adresi: ' . ($cikisIp !== '' ? $cikisIp : 'tespit edilemedi') . '.';
             }
         } catch (\Throwable $e) {
             error_log('Mobil imza profil sorgusu hatası: ' . $e->getMessage());

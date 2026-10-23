@@ -211,10 +211,15 @@ final class TurkcellMobilImzaClient
 
         if ($response === false || $response === '') {
             error_log('TurkcellMobilImzaClient bağlantı hatası (' . $errno . '): ' . $error);
-            if (in_array($errno, [CURLE_SSL_CONNECT_ERROR, CURLE_RECV_ERROR, CURLE_SEND_ERROR], true)) {
-                throw new \RuntimeException('Turkcell mobil imza sunucusu bağlantıyı reddetti. Sunucu IP adresinin Turkcell tarafında izinli (beyaz liste) olması gerekir.', self::ERROR_CONNECTION_REFUSED);
-            }
-            throw new \RuntimeException('Turkcell mobil imza servisine bağlanılamadı.');
+            $reason = match ($errno) {
+                CURLE_SSL_CONNECT_ERROR, CURLE_RECV_ERROR, CURLE_SEND_ERROR => 'Turkcell sunucusu bağlantıyı reddetti; sunucu IP adresinin Turkcell tarafında izinli (beyaz liste) olması gerekir.',
+                CURLE_COULDNT_RESOLVE_HOST => 'msign.turkcell.com.tr adresi sunucuda çözümlenemedi (DNS).',
+                CURLE_COULDNT_CONNECT => 'Sunucudan Turkcell 443 portuna çıkış yapılamadı; hosting güvenlik duvarında giden bağlantı izni gerekir.',
+                CURLE_OPERATION_TIMEDOUT => 'Turkcell sunucusuna bağlantı zaman aşımına uğradı; hosting güvenlik duvarı veya Turkcell IP izni kontrol edilmelidir.',
+                CURLE_SSL_CACERT, CURLE_SSL_CACERT_BADFILE, CURLE_SSL_PEER_CERTIFICATE => 'Sunucuda Turkcell SSL sertifikası doğrulanamadı (CA sertifika paketi eksik veya eski).',
+                default => 'Turkcell mobil imza servisine bağlanılamadı.',
+            };
+            throw new \RuntimeException($reason . ' (Hata kodu: ' . $errno . ')', self::ERROR_CONNECTION_REFUSED);
         }
         $document = new \DOMDocument();
         if (!@$document->loadXML((string) $response, LIBXML_NONET)) {
