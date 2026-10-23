@@ -197,7 +197,7 @@ final class TurkcellMobilImzaClient
             CURLOPT_POSTFIELDS => $envelope,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => $this->timeout,
-            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_CONNECTTIMEOUT => 15,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
             CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
@@ -205,6 +205,9 @@ final class TurkcellMobilImzaClient
         ]);
         $response = curl_exec($ch);
         $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $connectTime = (float) curl_getinfo($ch, CURLINFO_CONNECT_TIME);
+        $tlsTime = (float) curl_getinfo($ch, CURLINFO_APPCONNECT_TIME);
+        $remoteIp = (string) curl_getinfo($ch, CURLINFO_PRIMARY_IP);
         $error = curl_error($ch);
         $errno = curl_errno($ch);
         curl_close($ch);
@@ -219,7 +222,12 @@ final class TurkcellMobilImzaClient
                 CURLE_SSL_CACERT, CURLE_SSL_CACERT_BADFILE, CURLE_SSL_PEER_CERTIFICATE => 'Sunucuda Turkcell SSL sertifikası doğrulanamadı (CA sertifika paketi eksik veya eski).',
                 default => 'Turkcell mobil imza servisine bağlanılamadı.',
             };
-            throw new \RuntimeException($reason . ' (Hata kodu: ' . $errno . ')', self::ERROR_CONNECTION_REFUSED);
+            $stage = match (true) {
+                $connectTime <= 0 => 'TCP bağlantısı kurulamadı',
+                $tlsTime <= 0 => 'TCP bağlandı, TLS el sıkışması tamamlanmadı',
+                default => 'TLS kuruldu, servis yanıt vermedi',
+            };
+            throw new \RuntimeException($reason . ' (Hata kodu: ' . $errno . '; aşama: ' . $stage . ($remoteIp !== '' ? '; hedef: ' . $remoteIp : '') . ')', self::ERROR_CONNECTION_REFUSED);
         }
         $document = new \DOMDocument();
         if (!@$document->loadXML((string) $response, LIBXML_NONET)) {
