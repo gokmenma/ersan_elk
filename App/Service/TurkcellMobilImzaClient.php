@@ -10,6 +10,7 @@ final class TurkcellMobilImzaClient
     private const NS_ETSI = 'http://uri.etsi.org/TS102204/v1.1.2#';
     private const NS_SOAP = 'http://turkcelltech.com/mobilesignature/validation/soap';
     private const FORMAT_PKCS7 = 'http://uri.etsi.org/TS102204/v1.1.2#PKCS7';
+    public const ERROR_CONNECTION_REFUSED = 1001;
 
     private const STATUS_MESSAGES = [
         101 => 'Mobil imza isteğinde hatalı parametre var.',
@@ -47,6 +48,15 @@ final class TurkcellMobilImzaClient
     public static function isConfigured(): bool
     {
         return trim((string) ($_ENV['TURKCELL_MIMZA_AP_ID'] ?? '')) !== '' && trim((string) ($_ENV['TURKCELL_MIMZA_AP_PWD'] ?? '')) !== '';
+    }
+
+    public static function outboundIp(): string
+    {
+        $ch = curl_init('https://api.ipify.org');
+        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 5, CURLOPT_CONNECTTIMEOUT => 5, CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4]);
+        $ip = trim((string) curl_exec($ch));
+        curl_close($ch);
+        return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : '';
     }
 
     public static function normalizeMsisdn(string $phone): string
@@ -190,6 +200,7 @@ final class TurkcellMobilImzaClient
             CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
             CURLOPT_HTTPHEADER => ['Content-Type: text/xml; charset=utf-8', 'SOAPAction: ""'],
         ]);
         $response = curl_exec($ch);
@@ -201,7 +212,7 @@ final class TurkcellMobilImzaClient
         if ($response === false || $response === '') {
             error_log('TurkcellMobilImzaClient bağlantı hatası (' . $errno . '): ' . $error);
             if (in_array($errno, [CURLE_SSL_CONNECT_ERROR, CURLE_RECV_ERROR, CURLE_SEND_ERROR], true)) {
-                throw new \RuntimeException('Turkcell mobil imza sunucusu bağlantıyı reddetti. Sunucu IP adresinin Turkcell tarafında izinli (beyaz liste) olması gerekir.');
+                throw new \RuntimeException('Turkcell mobil imza sunucusu bağlantıyı reddetti. Sunucu IP adresinin Turkcell tarafında izinli (beyaz liste) olması gerekir.', self::ERROR_CONNECTION_REFUSED);
             }
             throw new \RuntimeException('Turkcell mobil imza servisine bağlanılamadı.');
         }
