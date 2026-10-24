@@ -31,7 +31,21 @@ router.afterEach(() => {
   preferences.syncThemeColorMeta()
 })
 
+const splashStart = performance.now()
 createApp(App).use(router).mount('#app')
+
+router.isReady().finally(() => {
+  const splashEl = document.getElementById('app-splash')
+  if (!splashEl) return
+  const elapsed = performance.now() - splashStart
+  const remaining = Math.max(0, 850 - elapsed)
+  setTimeout(() => {
+    splashEl.classList.add('is-hiding')
+    setTimeout(() => {
+      splashEl.remove()
+    }, 520)
+  }, remaining)
+})
 
 // Service Worker Kaydı (Push bildirimleri ve çevrimdışı kabuk desteği)
 if ('serviceWorker' in navigator) {

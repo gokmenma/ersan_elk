@@ -11,6 +11,15 @@ const remember = ref(true)
 const showPassword = ref(false)
 const busy = ref(false)
 const error = ref('')
+const logoSpinning = ref(false)
+
+function triggerLogoSpin() {
+  if (logoSpinning.value) return
+  logoSpinning.value = true
+  setTimeout(() => {
+    logoSpinning.value = false
+  }, 850)
+}
 
 async function submit() {
   error.value = ''
@@ -30,8 +39,17 @@ async function submit() {
   <section class="auth-screen">
     <div class="auth-visual">
       <div class="auth-brand-row">
-        <div class="brand-mark brand-mark--3d">
-          <img src="/images/logo-3d.png?v=3" alt="Ersan Elektrik" class="brand-logo-3d" />
+        <div
+          class="brand-mark brand-mark--3d brand-mark--animated"
+          :class="{ 'is-spinning-3d': logoSpinning }"
+          title="Ersan Elektrik 3D"
+          @click="triggerLogoSpin"
+        >
+          <span class="brand-3d-halo" aria-hidden="true"></span>
+          <span class="brand-3d-orbit" aria-hidden="true"></span>
+          <span class="brand-logo-3d-inner">
+            <img src="/images/logo-3d.png?v=3" alt="Ersan Elektrik" class="brand-logo-3d" />
+          </span>
         </div>
         <span class="auth-status"><i></i> Sistem aktif</span>
       </div>

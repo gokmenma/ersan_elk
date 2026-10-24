@@ -19,7 +19,157 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
     <title>Ersan Mobile</title>
-    <style>html[data-theme="dark"] { background: #0e1116; }</style>
+    <style>
+      html[data-theme="dark"] { background: #0e1116; }
+      #app-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle at 50% 38%, #17294d 0%, #0d1629 62%, #070c18 100%);
+        color: #f8fafc;
+        font-family: 'Roboto Condensed', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        overflow: hidden;
+        transition: opacity 0.48s cubic-bezier(0.22, 1, 0.36, 1), transform 0.48s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.48s;
+      }
+      #app-splash.is-hiding {
+        opacity: 0;
+        transform: scale(1.06);
+        visibility: hidden;
+        pointer-events: none;
+      }
+      .splash-stage-3d {
+        position: relative;
+        width: 156px;
+        height: 156px;
+        display: grid;
+        place-items: center;
+        perspective: 900px;
+      }
+      .splash-glow {
+        position: absolute;
+        inset: -24px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(251, 191, 36, 0.28) 0%, rgba(56, 189, 248, 0.18) 45%, transparent 72%);
+        filter: blur(14px);
+        animation: splash-glow-pulse 2.6s ease-in-out infinite alternate;
+      }
+      .splash-orbit {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 1.5px solid rgba(251, 191, 36, 0.22);
+        border-top-color: #fbbf24;
+        border-right-color: rgba(56, 189, 248, 0.65);
+        box-shadow: 0 0 22px rgba(251, 191, 36, 0.16);
+        animation: splash-orbit-spin 3.2s linear infinite;
+      }
+      .splash-orbit--inner {
+        inset: 12px;
+        border: 1px dashed rgba(56, 189, 248, 0.32);
+        border-bottom-color: #38bdf8;
+        animation: splash-orbit-spin-rev 4.4s linear infinite;
+      }
+      .splash-logo-card-3d {
+        position: relative;
+        width: 104px;
+        height: 104px;
+        border-radius: 24px;
+        transform-style: preserve-3d;
+        box-shadow: 0 22px 44px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.18);
+        overflow: hidden;
+        animation: splash-logo-3d-motion 3.4s ease-in-out infinite alternate, splash-logo-entry 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      .splash-logo-card-3d img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .splash-logo-card-3d::after {
+        content: '';
+        position: absolute;
+        top: -40%;
+        left: -120%;
+        width: 75%;
+        height: 180%;
+        background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.58) 50%, transparent 100%);
+        transform: rotate(28deg);
+        animation: splash-logo-sheen 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        pointer-events: none;
+      }
+      .splash-meta {
+        margin-top: 26px;
+        text-align: center;
+        animation: splash-meta-fade 0.7s 0.15s cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+      .splash-kicker {
+        display: block;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.24em;
+        color: #fbbf24;
+        text-transform: uppercase;
+      }
+      .splash-title {
+        display: block;
+        margin-top: 5px;
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        color: #ffffff;
+      }
+      .splash-loader {
+        width: 112px;
+        height: 4px;
+        margin: 18px auto 0;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.12);
+        overflow: hidden;
+      }
+      .splash-loader i {
+        display: block;
+        width: 48%;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #fbbf24, #38bdf8);
+        animation: splash-bar-slide 1.15s ease-in-out infinite alternate;
+      }
+      @keyframes splash-logo-entry {
+        0% { opacity: 0; transform: translateY(18px) scale(0.68) rotateY(-32deg) rotateX(18deg); }
+        100% { opacity: 1; transform: translateY(0) scale(1) rotateY(-10deg) rotateX(8deg); }
+      }
+      @keyframes splash-logo-3d-motion {
+        0% { transform: translateY(-3px) rotateY(-12deg) rotateX(9deg) scale(1); box-shadow: 12px 22px 42px rgba(0, 0, 0, 0.55), 0 0 24px rgba(251, 191, 36, 0.22); }
+        50% { transform: translateY(3px) rotateY(12deg) rotateX(-7deg) scale(1.03); box-shadow: -12px 24px 44px rgba(0, 0, 0, 0.58), 0 0 28px rgba(56, 189, 248, 0.24); }
+        100% { transform: translateY(-2px) rotateY(-6deg) rotateX(11deg) scale(1.01); box-shadow: 6px 20px 38px rgba(0, 0, 0, 0.52), 0 0 22px rgba(251, 191, 36, 0.25); }
+      }
+      @keyframes splash-logo-sheen {
+        0% { left: -120%; }
+        55%, 100% { left: 165%; }
+      }
+      @keyframes splash-orbit-spin {
+        to { transform: rotateX(22deg) rotateY(-12deg) rotateZ(360deg); }
+      }
+      @keyframes splash-orbit-spin-rev {
+        to { transform: rotateX(-18deg) rotateY(15deg) rotateZ(-360deg); }
+      }
+      @keyframes splash-glow-pulse {
+        0% { transform: scale(0.92); opacity: 0.72; }
+        100% { transform: scale(1.12); opacity: 1; }
+      }
+      @keyframes splash-meta-fade {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes splash-bar-slide {
+        0% { transform: translateX(-15%); }
+        100% { transform: translateX(125%); }
+      }
+    </style>
     <script>
       try {
         var theme = localStorage.getItem('ersan_mobile_theme_v1');
@@ -28,10 +178,25 @@
         if (theme === 'dark') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0e1116');
       } catch (e) {}
     </script>
-    <script type="module" crossorigin src="/assets/index-BOSYYWzr.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-BbQu3Bm_.css">
+    <script type="module" crossorigin src="/assets/index-BC0Jbe3Q.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BYw5u6B3.css">
   </head>
   <body>
+    <div id="app-splash" aria-hidden="true">
+      <div class="splash-stage-3d">
+        <div class="splash-glow"></div>
+        <div class="splash-orbit"></div>
+        <div class="splash-orbit splash-orbit--inner"></div>
+        <div class="splash-logo-card-3d">
+          <img src="/images/logo-3d.png?v=3" alt="Ersan Elektrik" />
+        </div>
+      </div>
+      <div class="splash-meta">
+        <span class="splash-kicker">ERSAN ELEKTRİK</span>
+        <strong class="splash-title">Mobil Yönetim Sistemi</strong>
+        <div class="splash-loader"><i></i></div>
+      </div>
+    </div>
     <div id="app"></div>
   </body>
 </html>

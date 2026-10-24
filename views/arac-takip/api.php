@@ -23,7 +23,7 @@ use App\Helper\Date;
 
 header('Content-Type: application/json; charset=utf-8');
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array($_GET['action'], ['get-arac-puantaj-table', 'get-arac-ozel-puantaj', 'arac-performans', 'arac-excel-aktar', 'km-excel-aktar', 'get-arac-analiz', 'arac-karsilastirma', 'get-km-onay-yapmayanlar', 'get-yakit-personelleri', 'get-mobile-km-onaylari', 'get-dashboard-stats']))) {
+if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array($_GET['action'], ['get-arac-puantaj-table', 'get-arac-ozel-puantaj', 'arac-performans', 'arac-excel-aktar', 'km-excel-aktar', 'get-arac-analiz', 'arac-karsilastirma', 'get-km-onay-yapmayanlar', 'get-yakit-personelleri', 'get-mobile-km-onaylari', 'get-dashboard-stats', 'zimmet-form-yazdir']))) {
     $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
     if (!is_string($action) || trim($action) === '') {
@@ -957,6 +957,125 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 echo json_encode(['status' => 'success', 'message' => 'Araç zimmet kaydı başarıyla güncellendi.' . $fotoMesaj]);
                 break;
 
+            case 'zimmet-form-yazdir':
+                $zimmet_id = intval($_GET['zimmet_id'] ?? 0);
+                if ($zimmet_id <= 0) {
+                    throw new Exception("Geçersiz zimmet ID.");
+                }
+
+                $zimmet = $Zimmet->find($zimmet_id);
+                if (!$zimmet || (int) $zimmet->firma_id !== (int) ($_SESSION['firma_id'] ?? 0)) {
+                    throw new Exception("Zimmet kaydı bulunamadı veya yetkiniz yok.");
+                }
+
+                $arac = $Arac->find($zimmet->arac_id);
+                $personel = (new \App\Model\PersonelModel())->find($zimmet->personel_id);
+                if (!$arac || !$personel) {
+                    throw new Exception("Araç veya personel bulunamadı.");
+                }
+
+                $rawTc = (string) ($personel->tc_kimlik_no ?? '');
+                $tcNo = $rawTc;
+                if ($rawTc !== '' && !ctype_digit($rawTc)) {
+                    $dec = Security::decrypt($rawTc);
+                    $tcNo = ($dec && $dec !== '0') ? (string) $dec : '';
+                }
+
+                $e = function ($v) {
+                    return htmlspecialchars((string) ($v ?? ''), ENT_QUOTES, 'UTF-8');
+                };
+                $zimmetTarihi = date('d.m.Y');
+                $kullaniciAdi = '';
+                if (!empty($_SESSION['user_id'])) {
+                    $stmtKullanici = (new \App\Model\Model())->db->prepare("SELECT COALESCE(NULLIF(adi_soyadi, ''), user_name) FROM users WHERE id = ?");
+                    $stmtKullanici->execute([(int) $_SESSION['user_id']]);
+                    $kullaniciAdi = (string) $stmtKullanici->fetchColumn();
+                }
+                if ($kullaniciAdi === '') {
+                    $kullaniciAdi = (string) ($_SESSION['user_name'] ?? '');
+                }
+                $km = ($zimmet->teslim_km !== null && $zimmet->teslim_km !== '') ? number_format((int) $zimmet->teslim_km, 0, ',', '.') : '';
+                $yakitlar = ['benzin' => 'Benzin', 'dizel' => 'Dizel', 'lpg' => 'LPG', 'elektrik' => 'Elektrik', 'hibrit' => 'Hibrit'];
+                $yakit = $yakitlar[$arac->yakit_tipi ?? ''] ?? '';
+
+                (new SystemLogModel())->logAction(
+                    $_SESSION['user_id'] ?? 0,
+                    'Zimmet Formu Yazdırma',
+                    "{$arac->plaka} plakalı araç için zimmet formu yazdırıldı (Zimmet ID: {$zimmet_id}).",
+                    SystemLogModel::LEVEL_INFO
+                );
+                $AracLog->ekle((int) $arac->id, 'Zimmet Formu', "Zimmet formu yazdırıldı. Personel: {$personel->adi_soyadi}");
+
+                header('Content-Type: text/html; charset=utf-8');
+                ob_start();
+                ?>
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Araç Teslim Zimmet Formu - <?php echo $e($arac->plaka); ?></title>
+<style>
+    @page { size: A4; margin: 18mm 20mm; }
+    body { font-family: "Segoe UI", Arial, sans-serif; font-size: 13px; color: #000; line-height: 1.45; margin: 0; }
+    .sayfa { max-width: 760px; margin: 0 auto; padding: 20px; }
+    h1 { text-align: center; font-size: 18px; margin: 0 0 18px; }
+    h2 { text-align: center; font-size: 14px; margin: 22px 0 10px; }
+    h3 { font-size: 13px; text-decoration: underline; margin: 22px 0 8px; }
+    .kurum { text-align: center; font-weight: 700; margin-bottom: 20px; }
+    table.bilgi { border-collapse: collapse; margin-bottom: 4px; }
+    table.bilgi td { padding: 2px 6px 2px 0; vertical-align: top; }
+    table.bilgi td:first-child { font-weight: 700; width: 130px; }
+    p.metin { text-align: justify; margin: 14px 0; }
+    ol { padding-left: 22px; text-align: justify; }
+    ol li { margin-bottom: 3px; }
+    table.imza { width: 100%; margin-top: 60px; text-align: center; border-collapse: collapse; }
+    table.imza td { width: 50%; padding-top: 4px; }
+    .yazdir-bar { text-align: center; padding: 10px; background: #f1f3f5; }
+    @media print { .yazdir-bar { display: none; } .sayfa { padding: 0; } }
+</style>
+</head>
+<body>
+<div class="yazdir-bar"><button onclick="window.print()">Yazdır</button></div>
+<div class="sayfa">
+    <h1>ARAÇ TESLİM ZİMMET FORMU</h1>
+    <div class="kurum">ZİMMETİ VEREN KURUM : ERSAN ELEKTRİK İNŞAAT TAAH.TİC.LTD.ŞTİ.</div>
+    <table class="bilgi">
+        <tr><td>ZİMMETLİ KİŞİ</td><td>: <?php echo $e($personel->adi_soyadi); ?></td></tr>
+        <tr><td>T.C</td><td>: <?php echo $e($tcNo); ?></td></tr>
+    </table>
+    <p class="metin">Kiralayan ve KIRACI arasında aşağıda belirtilen şart ve hükümler çerçevesinde bir Araç Zimmet Sözleşmesi (Bundan böyle sözleşme) akdedilmiş olup, taraflar işbu hükümlere uymayı peşinen ve gayri kabili rücu kabul, beyan ve taahhüt ederler.</p>
+    <h2>ŞART VE HÜKÜMLER</h2>
+    <ol>
+        <li>Araç, Kullanıcıya sağlam ve temiz teslim edilmiş olup, teslim tarihinde aynı durumda teslim edilecektir.</li>
+        <li>Araç adına tahakkuk edecek tüm cezalar, kullanıcı tarafından ödenir.</li>
+        <li>Kullanıcı dışında, aracı kimse kullanamaz.</li>
+        <li>Araç stepne ve avadanlıkları ile teslim edilmiştir.</li>
+        <li>Herhangi bir kaza sonucu kaskonun karşılamadığı durumlarda (Alkollü kullanım, ehliyetsiz kullanım vs.) oluşabilecek tüm masraflardan kullanıcı sorumludur.</li>
+        <li>Araç içerisinde sigara içmek yasaktır. Döşeme yanıkları oluşması durumunda sorumluluk kullanıcıya aittir.</li>
+    </ol>
+    <h3>TESLİM EDİLEN ARAÇ</h3>
+    <table class="bilgi">
+        <tr><td>Plaka No</td><td>: <?php echo $e($arac->plaka); ?></td></tr>
+        <tr><td>Markası</td><td>: <?php echo $e($arac->marka); ?></td></tr>
+        <tr><td>Modeli</td><td>: <?php echo $e($arac->model); ?></td></tr>
+        <tr><td>Yakıt Tipi</td><td>: <?php echo $e($yakit); ?></td></tr>
+        <tr><td>KM</td><td>: <?php echo $e($km); ?></td></tr>
+        <tr><td>Teslim Tarihi</td><td>: <?php echo $e($zimmetTarihi); ?></td></tr>
+    </table>
+    <table class="imza">
+        <tr><td>TESLİM EDEN</td><td>TESLİM ALAN</td></tr>
+        <tr><td><?php echo $e($kullaniciAdi); ?></td><td><?php echo $e($personel->adi_soyadi); ?></td></tr>
+        <tr><td>&nbsp;</td><td>&nbsp;</td></tr>
+        <tr><td>Tarih / İmza</td><td>Tarih / İmza</td></tr>
+    </table>
+</div>
+<script>window.addEventListener('load', function () { window.print(); });</script>
+</body>
+</html>
+                <?php
+                echo ob_get_clean();
+                exit;
+
             case 'zimmet-gecmisi-excel':
                 $arac_id = intval($_GET['arac_id'] ?? 0);
                 if ($arac_id <= 0) throw new Exception("Geçersiz araç ID.");
@@ -1172,6 +1291,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 }
 
                 echo json_encode(['status' => 'success', 'data' => $kayitlar, 'stats' => $stats]);
+                break;
+
+            case 'get-unique-values':
+                $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
+                $degerler = $Arac->listeBenzersizDegerler((string) ($_POST['column'] ?? ''), $_POST['filter'] ?? null, $firmaId);
+                echo json_encode(['status' => 'success', 'data' => $degerler]);
+                break;
+
+            case 'arac-ajax-list':
+                try {
+                    require_once __DIR__ . '/arac-satir-render.php';
+                    $res = $Arac->ajaxList($_POST, (int) ($_SESSION['firma_id'] ?? 0));
+                    $satirlar = [];
+                    foreach ($res['data'] as $i => $arac) {
+                        $satirlar[] = aracListeSatiriOlustur($arac, $res['baslangic'] + $i + 1);
+                    }
+                    $res['data'] = $satirlar;
+                    unset($res['baslangic']);
+                    echo json_encode($res, JSON_UNESCAPED_UNICODE);
+                } catch (\Throwable $e) {
+                    error_log('arac-ajax-list: ' . $e->getMessage());
+                    echo json_encode(['draw' => (int) ($_POST['draw'] ?? 0), 'recordsTotal' => 0, 'recordsFiltered' => 0, 'data' => [], 'error' => 'Liste yüklenemedi.'], JSON_UNESCAPED_UNICODE);
+                }
                 break;
 
             case 'get-yakit-personelleri':

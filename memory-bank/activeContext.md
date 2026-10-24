@@ -1,5 +1,14 @@
 # Active Context
 
+## Mobil SPA — 3 Boyutlu (3D) Uygulama Logosu, 3D Açılış Görseli ve Animasyonlu 3D Açılış Ekranı (2026-10-24)
+- **3D Kurumsal Logo ve PWA İkon Seti**:
+  - Mevcut Ersan Elektrik `ER` logosunun birebir geometrisi korunarak fırçalanmış altın (`E`) ve titanyum-obsidyen (`R`) 3 boyutlu kabartma dokusuyla `mobile-spa/public/images/logo-3d.png` ve tüm PWA ikonları (`pwa-icons/icon-512.png`, `icon-192.png`, `icon-maskable-512.png`, `apple-touch-icon.png`, `favicon.svg`, `favicon.ico`) üretildi.
+  - `LoginView.vue` üst alanına 3 boyutlu saha aracı, trafo/sayaç düğümü ve canlı analitik panellerinden oluşan `images/login-hero-3d.jpg` sahnesi yerleştirildi.
+  - `CompanySelectView.vue`, `TopBar.vue` ve `PwaInstallPrompt.vue` marka görselleri 3D logo ile güncellendi.
+- **Animasyonlu 3D Açılış Ekranı (Splash Screen) ve Etkileşimli 3D Logo**:
+  - `mobile-spa/index.html` içerisine uygulama yüklenirken çalışan `#app-splash` tam ekran 3D açılış sahnesi eklendi (3D perspektif süzülme/eğim, çift yönlü altın/mavi enerji halkaları, metalik ışık yansıması ve yükleme çubuğu); `src/main.js` içinde `router.isReady()` sonrasında yumuşak geçişle kapanması sağlandı.
+  - `LoginView.vue`, `CompanySelectView.vue` ve `src/design-system.css` üzerinde `.brand-mark--animated` bileşeniyle sürekli 3D perspektif salınımı (`brand3dTilt`), dönen enerji halkası (`brandOrbitSpin`), metalik parlama (`brandMetallicSheen`) ve dokunulduğunda 360° 3D tam tur dönüş (`triggerLogoSpin` / `brand3dFlipSpin`) animasyonları eklendi (`ds-reduce-motion` ve `prefers-reduced-motion` uyumlu).
+
 ## Yönetici Mobil — Koyu Tema (2026-10-24)
 - Profil > Görünüm ve tema ekranına Açık / Koyu / Sistem seçimi eklendi (`services/preferences.js`, `localStorage: ersan_mobile_theme_v1`). `index.html` içindeki ön betik `html[data-theme]` değerini CSS yüklenmeden uygular; ilk açılışta beyaz sıçrama olmaz. Sistem modu `prefers-color-scheme` değişimini canlı izler.
 - Koyu tema `:root[data-theme="dark"]` altında `--ds-*` token'larının yeniden tanımlanmasıyla çalışır. Yeni token'lar: `--ds-primary-ink` (birincil renk metin/kenarlık olarak), `--ds-ink-fill` (koyu dolgu zemin).
@@ -3212,3 +3221,7 @@
 - badges.php (canlı destek okunmamış + e-fatura gelen/giden "son görülen ID" mantığı), MobilRozetModel, services/badges.js, BottomNav rozeti. SQL: sql/mobil_rozet_durumlari.sql (çalıştırılmalı).
 - Rozetler genişletildi: km_approvals, kacak (onay bekleyen), ihbar (yeni), evrak (imzamda bekleyen), requests (avans+izin+talep bekleyen).
 - Rozet mantığı "görülmemiş"e çevrildi: KM, kaçak, ihbar, evrak, talepler de son görülen ID ile çalışır; sayfa açılınca düşer (canlı destek hâlâ gerçek okunmamış).
+
+- 2026-10-24: Araç takip Zimmetler ve Araçlar sekmelerine "Zimmet Formu Yazdır" eklendi (api action zimmet-form-yazdir, sql/2026_10_24_arac_zimmet_form_yazdir_permission.sql).
+
+- 2026-10-24: Araç takip Araçlar sekmesi server-side DataTables yapıldı (AracModel::ajaxList/listeBenzersizDegerler, api actions arac-ajax-list + get-unique-values, satır HTML views/arac-takip/arac-satir-render.php, sql/2026_10_24_arac_liste_serverside_policy.sql canlıda çalıştırılmalı). Eski filtre getter metotları excel export için duruyor.

@@ -70,7 +70,7 @@
                                         <div class="row g-3">
                                             <div class="col-md-8">
                                                 <?php
-                                                $araclar = (new App\Model\AracModel())->getAktifAraclar();
+                                                $araclar = $aktifAraclar ?? (new App\Model\AracModel())->getAktifAraclar();
                                                 $aracOptions = ['' => 'Araç Seçin'];
                                                 foreach ($araclar as $arac) {
                                                     $aracOptions[$arac->id] = $arac->plaka . ' - ' . ($arac->marka ?? '') . ' ' . ($arac->model ?? '');

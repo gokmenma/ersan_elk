@@ -30,8 +30,12 @@ async function logout() {
 <template>
   <section class="company-screen">
     <header class="company-head">
-      <div class="brand-mark small brand-mark--3d">
-        <img src="/images/logo-3d.png?v=3" alt="Ersan Elektrik" class="brand-logo-3d" />
+      <div class="brand-mark small brand-mark--3d brand-mark--animated">
+        <span class="brand-3d-halo" aria-hidden="true"></span>
+        <span class="brand-3d-orbit" aria-hidden="true"></span>
+        <span class="brand-logo-3d-inner">
+          <img src="/images/logo-3d.png?v=3" alt="Ersan Elektrik" class="brand-logo-3d" />
+        </span>
       </div>
       <button type="button" aria-label="Güvenli çıkış" @click="logout"><LogOut :size="18" /></button>
     </header>

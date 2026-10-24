@@ -110,6 +110,48 @@ const AracTakip = {
         },
       ];
 
+      if (selector === "#aracTable") {
+        const aracFiltre = new URLSearchParams(window.location.search).get("filter") || "";
+        $(selector).one("draw.dt error.dt", function () {
+          $("#arac-list-loader").removeClass("show");
+        });
+        Object.assign(options, {
+          responsive: false,
+          processing: true,
+          serverSide: true,
+          ajax: {
+            url: this.apiUrl,
+            type: "POST",
+            data: function (d) {
+              d.action = "arac-ajax-list";
+              d.filter = aracFiltre;
+            },
+          },
+          columns: [
+            { data: "sira", className: "text-center", orderable: false, searchable: false },
+            { data: "tip", className: "text-center" },
+            { data: "plaka" },
+            { data: "departmani" },
+            { data: "mulkiyet" },
+            { data: "zimmetli" },
+            { data: "zimmet_tarihi", className: "text-center align-middle" },
+            { data: "durum", className: "text-center" },
+            { data: "yakit", className: "text-center" },
+            { data: "guncel_km", className: "text-end fw-bold" },
+            { data: "muayene", className: "text-center align-middle" },
+            { data: "sigorta", className: "text-center align-middle" },
+            { data: "kasko", className: "text-center align-middle" },
+            { data: "actions", className: "text-center", orderable: false, searchable: false },
+          ],
+          order: [[2, "asc"]],
+          createdRow: function (row, data) {
+            $(row)
+              .attr("data-created-by", data.created_by || "")
+              .attr("data-created-at", data.created_at || "");
+          },
+        });
+      }
+
       $(selector).DataTable(options);
     }
   },
@@ -1015,6 +1057,11 @@ const AracTakip = {
                                                 </a>
                                             </li>
                                         ` : ''}
+                                        <li>
+                                            <a class="dropdown-item text-primary zimmet-form-yazdir" href="javascript:void(0);" data-id="${z.id}">
+                                                <i class="bx bx-printer me-2"></i> Zimmet Formu Yazdır
+                                            </a>
+                                        </li>
                                         <li>
                                             <a class="dropdown-item text-info arac-zimmet-gecmisi" href="javascript:void(0);" data-id="${z.arac_id}" data-plaka="${z.plaka}">
                                                 <i class="bx bx-history me-2"></i> Zimmet Geçmişi
@@ -3292,6 +3339,11 @@ $(document).ready(function () {
   $(document).on("click", "#btnRuhsatSil", function () {
     const aracId = $("#aracForm input[name='id']").val();
     if (aracId) AracTakip.ruhsatSil(aracId);
+  });
+  $(document).on("click", ".zimmet-form-yazdir", function (e) {
+    e.preventDefault();
+    const id = $(this).data("id");
+    if (id) window.open(AracTakip.apiUrl + "?action=zimmet-form-yazdir&zimmet_id=" + encodeURIComponent(id), "_blank");
   });
   $(document).on("click", ".arac-zimmet-gecmisi", function (e) {
     e.preventDefault();
