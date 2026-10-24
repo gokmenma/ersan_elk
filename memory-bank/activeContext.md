@@ -1,5 +1,10 @@
 # Active Context
 
+## Puantaj — Pasif Personelin SGK T.C. Eşleşmesi (2026-10-24)
+- Masaüstü ve yönetici mobil SGK vizite raporu sorgularında T.C. hash eşleştirme havuzu artık yalnız aktif personelle sınırlı değildir.
+- Aynı firmadaki silinmemiş pasif personeller de eşleştirilir; soft-delete edilmiş kayıtlar kapsam dışı kalır.
+- Olası mükerrer T.C. kayıtlarında aktif ve daha yeni personel kaydı önceliklendirilir.
+
 ## Mobil SPA — Hakediş Silme SweetAlert2 ve Tamamlandı Durum Koruması (2026-10-24)
 - **Kullanıcı Talebi**:
   1. Hakediş silme işleminde tarayıcı yerel `confirm()` ve `alert()` pencereleri yerine sistemde kullanılan SweetAlert tasarımının uygulanması.

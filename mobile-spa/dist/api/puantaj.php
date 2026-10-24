@@ -662,12 +662,14 @@ try {
             ]);
         }
 
-        // Personel listesi (TC eşleştirmesi için)
+        // SGK raporu, personel sonradan pasife alınmış olsa da T.C. kimlik numarasıyla
+        // eşleşmelidir. Yalnız soft-delete edilmiş kayıtlar eşleştirme dışında kalır.
         $personelStmt = $Personel->db->prepare("
             SELECT id, adi_soyadi, tc_hash 
             FROM personel 
-            WHERE firma_id = ? AND aktif_mi = 1 AND silinme_tarihi IS NULL 
+            WHERE firma_id = ? AND silinme_tarihi IS NULL
               AND (disardan_sigortali = 0 OR FIND_IN_SET('puantaj', gorunum_modulleri))
+            ORDER BY aktif_mi ASC, id ASC
         ");
         $personelStmt->execute([$firmaId]);
         $personelList = $personelStmt->fetchAll(PDO::FETCH_OBJ);

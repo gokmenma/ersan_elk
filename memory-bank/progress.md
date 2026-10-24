@@ -1863,6 +1863,12 @@
 - [x] Son kritik olaylar paneli ve tüm kritik kayıtlara geçiş eklendi.
 - [x] Firma kapsamı, parametrik Model sorguları, HTML escaping, responsive/dark tema stilleri ve boş durumlar uygulandı.
 - [x] Gerçek veride dashboard sözleşmesi, PHP lint ve diff kontrolü başarıyla doğrulandı.
+
+# 2026-10-24 — Puantaj SGK raporu pasif personel eşleştirmesi
+
+- [x] Masaüstü SGK onaylanmış ve onay bekleyen rapor sorgularındaki aktif personel kısıtı kaldırıldı.
+- [x] Yönetici mobil SGK raporu sorgusunda silinmemiş pasif personeller T.C. hash eşleştirmesine dahil edildi.
+- [x] Soft-delete filtresi ve aktif kayıt önceliği korundu.
 # 2026-10-22 — Personel PWA yıllık izin talep kısıtı
 
 - [x] Hakedişi olmayan personel için yıllık izin seçeneğinin pasifleşmesi kaldırıldı.

@@ -852,8 +852,9 @@ try {
         $sgkService = new SgkViziteService($kullaniciAdi, $isyeriKodu, $isyeriSifresi);
         $raporlar = $sgkService->onayliRaporlariGetir($tarih1, $tarih2);
 
-        // Personel listesini getir (TC Kimlik No eşleştirmesi için)
-        $personelStmt = $Personel->db->prepare("SELECT id, adi_soyadi, tc_hash FROM personel WHERE firma_id = ? AND aktif_mi = 1 AND silinme_tarihi IS NULL AND (disardan_sigortali = 0 OR FIND_IN_SET('puantaj', gorunum_modulleri))");
+        // SGK raporu, personel sonradan pasife alınmış olsa da T.C. kimlik numarasıyla
+        // eşleşmelidir. Yalnız soft-delete edilmiş kayıtlar eşleştirme dışında kalır.
+        $personelStmt = $Personel->db->prepare("SELECT id, adi_soyadi, tc_hash FROM personel WHERE firma_id = ? AND silinme_tarihi IS NULL AND (disardan_sigortali = 0 OR FIND_IN_SET('puantaj', gorunum_modulleri)) ORDER BY aktif_mi ASC, id ASC");
         $personelStmt->execute([$firma_id]);
         $personelList = $personelStmt->fetchAll(PDO::FETCH_OBJ);
 
@@ -1063,8 +1064,9 @@ try {
             error_log('SGK onaylı rapor listesi alınamadı, onay bekleyen listesi filtrelenemedi: ' . $e->getMessage());
         }
 
-        // Personel listesini getir (TC Kimlik No eşleştirmesi için)
-        $personelStmt = $Personel->db->prepare("SELECT id, adi_soyadi, tc_hash FROM personel WHERE firma_id = ? AND aktif_mi = 1 AND silinme_tarihi IS NULL AND (disardan_sigortali = 0 OR FIND_IN_SET('puantaj', gorunum_modulleri))");
+        // SGK raporu, personel sonradan pasife alınmış olsa da T.C. kimlik numarasıyla
+        // eşleşmelidir. Yalnız soft-delete edilmiş kayıtlar eşleştirme dışında kalır.
+        $personelStmt = $Personel->db->prepare("SELECT id, adi_soyadi, tc_hash FROM personel WHERE firma_id = ? AND silinme_tarihi IS NULL AND (disardan_sigortali = 0 OR FIND_IN_SET('puantaj', gorunum_modulleri)) ORDER BY aktif_mi ASC, id ASC");
         $personelStmt->execute([$firma_id]);
         $personelList = $personelStmt->fetchAll(PDO::FETCH_OBJ);
 
@@ -1644,5 +1646,3 @@ try {
 } catch (Throwable $e) {
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
 }
-
-
