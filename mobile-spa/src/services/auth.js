@@ -1,4 +1,5 @@
 import { reactive, readonly } from 'vue'
+import { clearDashboardCache } from './dashboard.js'
 
 const MENU_ORDER_STORAGE_KEY = 'ersan_mobile_menu_order_v1'
 
@@ -138,6 +139,7 @@ export const auth = {
     state.permissions = {}
     state.menuOrder = null
     saveCachedMenuOrder(null)
+    clearDashboardCache()
     state.csrfToken = ''
     state.ready = false
     await this.bootstrap(true)

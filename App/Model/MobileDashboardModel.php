@@ -162,7 +162,16 @@ class MobileDashboardModel
         }, ['requests' => 0, 'advances' => 0, 'leaves' => 0, 'total' => 0]);
     }
 
+    private ?array $timestampsCache = null;
+
     public function operationalTimestamps(): array
+    {
+        if ($this->timestampsCache !== null) return $this->timestampsCache;
+
+        return $this->timestampsCache = $this->loadOperationalTimestamps();
+    }
+
+    private function loadOperationalTimestamps(): array
     {
         $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
         if ($firmaId <= 0) return ['reading' => null, 'works' => null, 'meter' => null];

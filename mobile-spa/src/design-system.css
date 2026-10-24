@@ -2086,13 +2086,29 @@
 
 /* Entry screens use the same surfaces and controls as the app. */
 .auth-screen, .company-screen { background: var(--ds-canvas); }
-.auth-visual { background: var(--ds-surface-dark); color: var(--ds-ink-light); }
+.auth-visual { position: relative; min-height: 48svh; background: #0d1629; color: var(--ds-ink-light); overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; }
 .auth-visual::before, .auth-visual::after, .auth-orbit { display: none; }
-.auth-message h1 em { color: var(--ds-ink-light); }
-.auth-message p, .auth-kicker { color: var(--ds-on-dark-muted); }
-.auth-status { background: var(--ds-on-dark-surface); color: var(--ds-on-dark-muted); }
-.auth-status i { background: var(--ds-emerald); box-shadow: none; }
-.auth-screen .brand-mark { background: var(--ds-surface); color: var(--ds-ink); }
+.auth-hero-3d-stage { position: absolute; inset: 0; z-index: 1; display: flex; align-items: center; justify-content: center; pointer-events: none; overflow: hidden; }
+.auth-hero-3d-stage::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(13, 22, 41, 0.38) 0%, rgba(13, 22, 41, 0.12) 42%, rgba(13, 22, 41, 0.88) 84%, #0d1629 100%); z-index: 2; }
+.auth-hero-3d-img { width: 108%; max-width: 540px; height: 100%; object-fit: cover; object-position: center 38%; transform: scale(1.03); filter: saturate(1.08) contrast(1.04); animation: auth-hero-float 7s ease-in-out infinite alternate; }
+@keyframes auth-hero-float {
+  0% { transform: scale(1.02) translateY(0); }
+  100% { transform: scale(1.05) translateY(-6px); }
+}
+.auth-message { position: relative !important; right: auto !important; bottom: auto !important; left: auto !important; z-index: 3; margin-top: auto; padding-top: 88px; text-shadow: 0 4px 18px rgba(6, 12, 24, 0.75); }
+.auth-message h1 em { color: #fbbf24; }
+.auth-message p { color: rgba(255, 255, 255, 0.82); }
+.auth-kicker { color: #38bdf8; }
+.auth-status { background: rgba(15, 23, 42, 0.62); border: 1px solid rgba(255, 255, 255, 0.16); color: #f8fafc; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28); }
+.auth-status i { background: var(--ds-emerald); box-shadow: 0 0 8px rgba(16, 185, 129, 0.65); }
+.auth-screen .brand-mark, .company-head .brand-mark { background: transparent; color: var(--ds-ink); border: 0; padding: 0; overflow: visible; }
+.brand-mark--3d { width: 54px !important; height: 54px !important; border-radius: 16px !important; box-shadow: 0 12px 26px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.2) !important; background: transparent !important; border: 0 !important; }
+.company-head .brand-mark--3d { width: 48px !important; height: 48px !important; box-shadow: 0 10px 22px rgba(15, 23, 42, 0.16), 0 2px 5px rgba(15, 23, 42, 0.08) !important; }
+.brand-logo-3d { width: 100%; height: 100%; object-fit: contain; display: block; border-radius: inherit; filter: drop-shadow(0 4px 10px rgba(15, 23, 42, 0.18)); }
+.clay-brand-icon--3d { background: transparent !important; padding: 0 !important; overflow: hidden; box-shadow: 0 3px 8px rgba(15, 23, 42, 0.14); }
+.clay-brand-logo-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pwa-install__icon--3d { background: transparent !important; padding: 0 !important; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25); }
+.pwa-install__logo-img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .auth-form { background: var(--ds-surface); box-shadow: var(--ds-shadow-bento); }
 .auth-field { color: var(--ds-muted); }
 .auth-field > div { background: var(--ds-surface-subtle); border-color: var(--ds-border-subtle); border-radius: var(--ds-radius-sm); }

@@ -30,10 +30,14 @@ async function submit() {
   <section class="auth-screen">
     <div class="auth-visual">
       <div class="auth-brand-row">
-        <div class="brand-mark"><span>EE</span></div>
+        <div class="brand-mark brand-mark--3d">
+          <img src="/images/logo-3d.png?v=3" alt="Ersan Elektrik" class="brand-logo-3d" />
+        </div>
         <span class="auth-status"><i></i> Sistem aktif</span>
       </div>
-      <div class="auth-orbit orbit-one"></div><div class="auth-orbit orbit-two"></div>
+      <div class="auth-hero-3d-stage" aria-hidden="true">
+        <img src="/images/login-hero-3d.jpg?v=3" alt="" class="auth-hero-3d-img" />
+      </div>
       <div class="auth-message">
         <span class="auth-kicker">ERSAN MOBILE</span>
         <h1>İşin sahada,<br><em>kontrol sende.</em></h1>

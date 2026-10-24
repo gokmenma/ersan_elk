@@ -3152,3 +3152,9 @@
 - API yazma ve dosya yükleme istekleri service worker `respondWith` hattından çıkarılıp doğrudan tarayıcı ağ katmanına bırakıldı; GET çevrimdışı fallback davranışı korundu.
 - Güvenilir ve idempotent aktarım isteklerine, `AbortError` dışındaki geçici ağ kopmalarında 700 ms sonra tek otomatik yeniden deneme eklendi.
 - Service worker/kuyruk önbellek sürümü `33` olarak artırıldı; cihazdaki mevcut kuyruk ve fotoğraf ilerlemesi korunuyor.
+
+## Yönetici Mobil Ana Sayfa Hızlandırma (2026-10-24)
+- `mobile-spa/src/router.js`: Ana sayfa, giriş ve firma seçimi dışındaki tüm görünümler tembel yükleniyor (`() => import(...)`); ana JS paketi 1,29 MB → 274 KB. Eski chunk 404 durumunda `router.onError` sayfayı yeniden yüklüyor.
+- `HomeView.vue` + `services/dashboard.js`: Dashboard yanıtı kullanıcı+firma bazlı `localStorage` anahtarına yazılıyor; açılışta önce önbellek çiziliyor, arkada sunucu verisi yenileniyor. Çıkışta `clearDashboardCache()` ile temizleniyor.
+- `MobileDashboardModel::operationalTimestamps()` istek içi önbelleğe alındı (iki kez çalışan 3 alt sorgu teke indi).
+- `database/2026_10_24_personel_hareketleri_zaman_indeks.sql`: `personel_hareketleri` için kapsayan `idx_zaman_kapsayan` indeksi; `getGecKalanlarCount` 83 ms → 2,6 ms. Canlı veritabanında çalıştırılmalı.

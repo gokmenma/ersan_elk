@@ -29,7 +29,12 @@ async function logout() {
 
 <template>
   <section class="company-screen">
-    <header class="company-head"><div class="brand-mark small"><span>EE</span></div><button type="button" aria-label="Güvenli çıkış" @click="logout"><LogOut :size="18" /></button></header>
+    <header class="company-head">
+      <div class="brand-mark small brand-mark--3d">
+        <img src="/images/logo-3d.png?v=3" alt="Ersan Elektrik" class="brand-logo-3d" />
+      </div>
+      <button type="button" aria-label="Güvenli çıkış" @click="logout"><LogOut :size="18" /></button>
+    </header>
     <div class="company-copy"><span class="section-kicker">ÇALIŞMA ALANI</span><h1>Merhaba, {{ auth.state.user?.name }}</h1><p>Devam etmek istediğiniz firmayı seçin.</p></div>
     <div v-if="error" class="form-alert" role="alert">{{ error }}</div>
     <div class="company-list">

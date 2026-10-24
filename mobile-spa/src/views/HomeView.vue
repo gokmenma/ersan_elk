@@ -48,7 +48,7 @@ import {
 } from '@lucide/vue'
 import TopBar from '../components/TopBar.vue'
 import { auth } from '../services/auth.js'
-import { getDashboard, saveDashboardSettings, syncDailyOperations } from '../services/dashboard.js'
+import { getDashboard, readDashboardCache, saveDashboardSettings, syncDailyOperations, writeDashboardCache } from '../services/dashboard.js'
 import { notificationsState, toggleNotificationsDrawer } from '../services/notifications.js'
 
 const router = useRouter()
@@ -700,31 +700,46 @@ function closeAnnouncementDetail() {
   selectedAnnouncement.value = null
 }
 
+function dashboardScope() {
+  return `${auth.state.user?.username ?? ''}_${auth.state.company?.id ?? ''}`
+}
+
+function applyDashboard(data) {
+  dashboard.value = data
+
+  if (data.card_preferences) {
+    if (Array.isArray(data.card_preferences.order) && data.card_preferences.order.length) {
+      cardOrder.value = data.card_preferences.order
+    }
+    if (data.card_preferences.settings && typeof data.card_preferences.settings === 'object') {
+      cardSettings.value = data.card_preferences.settings
+      if (Array.isArray(data.card_preferences.settings.quick_actions) && data.card_preferences.settings.quick_actions.length) {
+        userQuickActions.value = data.card_preferences.settings.quick_actions
+      }
+    }
+  }
+  if (!userQuickActions.value || userQuickActions.value.length === 0) {
+    userQuickActions.value = [...DEFAULT_QUICK_ACTIONS]
+  }
+}
+
 async function load() {
-  loading.value = true
+  const scope = dashboardScope()
+  const cached = readDashboardCache(scope)
+  const hasCache = Boolean(cached)
   error.value = ''
+  if (hasCache) {
+    applyDashboard(cached)
+    loading.value = false
+  } else {
+    loading.value = true
+  }
   try {
     const data = await getDashboard()
-    dashboard.value = data
-
-    // Sunucudan gelen tercihleri uygula
-    if (data.card_preferences) {
-      if (Array.isArray(data.card_preferences.order) && data.card_preferences.order.length) {
-        cardOrder.value = data.card_preferences.order
-      }
-      if (data.card_preferences.settings && typeof data.card_preferences.settings === 'object') {
-        cardSettings.value = data.card_preferences.settings
-        if (Array.isArray(data.card_preferences.settings.quick_actions) && data.card_preferences.settings.quick_actions.length) {
-          userQuickActions.value = data.card_preferences.settings.quick_actions
-        }
-      }
-    }
-    // Eğer yerel veya sunucuda henüz kayıt yoksa varsayılan listeyi yükle
-    if (!userQuickActions.value || userQuickActions.value.length === 0) {
-      userQuickActions.value = [...DEFAULT_QUICK_ACTIONS]
-    }
+    applyDashboard(data)
+    writeDashboardCache(scope, data)
   } catch (reason) {
-    error.value = reason.message
+    if (!hasCache) error.value = reason.message
   } finally {
     loading.value = false
   }

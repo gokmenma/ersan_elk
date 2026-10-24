@@ -35,7 +35,9 @@ function goBack() {
           <ArrowLeft :size="20" />
         </button>
         <button v-else type="button" class="clay-company-chip" aria-label="Firma seçimini aç" @click="router.push('/firma-secimi')">
-          <span class="clay-brand-icon"><Zap :size="16" /></span>
+          <span class="clay-brand-icon clay-brand-icon--3d">
+            <img src="/images/logo-3d.png?v=3" alt="" class="clay-brand-logo-img" />
+          </span>
           <span>{{ auth.state.company?.name || 'Ersan Elektrik' }}</span>
           <ChevronDown :size="14" />
         </button>

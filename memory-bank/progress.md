@@ -1904,3 +1904,5 @@
 - [x] Service worker sürümü artırılarak güncel kuyruk kodunun cihazlara ulaşması sağlandı.
 - [x] JavaScript sözdizimi ve `git diff --check` doğrulamaları geçti.
 - [ ] Playwright tarayıcı paketi ortamda kurulu olmadığı için mevcut browser entegrasyon testi çalıştırılamadı; gerçek iPhone doğrulaması gerekli.
+- [x] Yönetici mobil ana sayfa: rota tembel yükleme, dashboard stale-while-revalidate önbelleği, zaman damgası sorgusu tekilleştirme ve `personel_hareketleri` indeksi eklendi.
+- [ ] Canlı sunucuda indeks SQL'i çalıştırılmalı; `auth.php?action=session` her geçişte zorla yenilenmesi (madde 1) henüz yapılmadı.

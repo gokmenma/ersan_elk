@@ -1,33 +1,33 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import HomeView from './views/HomeView.vue'
-import TasksView from './views/TasksView.vue'
-import ReportsView from './views/ReportsView.vue'
-import ProfileView from './views/ProfileView.vue'
-import TaleplerView from './views/TaleplerView.vue'
+const TasksView = () => import('./views/TasksView.vue')
+const ReportsView = () => import('./views/ReportsView.vue')
+const ProfileView = () => import('./views/ProfileView.vue')
+const TaleplerView = () => import('./views/TaleplerView.vue')
 import LoginView from './views/LoginView.vue'
 import CompanySelectView from './views/CompanySelectView.vue'
-import PersonnelView from './views/PersonnelView.vue'
-import PersonnelFormView from './views/PersonnelFormView.vue'
-import PersonnelDetailView from './views/PersonnelDetailView.vue'
-import PersonnelSectionView from './views/PersonnelSectionView.vue'
-import CariView from './views/CariView.vue'
-import CariDetailView from './views/CariDetailView.vue'
-import FaturaView from './views/FaturaView.vue'
-import KasaView from './views/KasaView.vue'
-import PayrollView from './views/PayrollView.vue'
-import AracView from './views/AracView.vue'
-import EvrakView from './views/EvrakView.vue'
-import GidenEvrakView from './views/GidenEvrakView.vue'
-import KmOnaylariView from './views/KmOnaylariView.vue'
-import PuantajView from './views/PuantajView.vue'
-import KacakView from './views/KacakView.vue'
-import NobetOnayView from './views/NobetOnayView.vue'
-import IhbarView from './views/IhbarView.vue'
-import LogView from './views/LogView.vue'
-import SozlesmeHakedisView from './views/SozlesmeHakedisView.vue'
-import SozlesmeDetailView from './views/SozlesmeDetailView.vue'
-import HakedisDetailView from './views/HakedisDetailView.vue'
-import SupportView from './views/SupportView.vue'
+const PersonnelView = () => import('./views/PersonnelView.vue')
+const PersonnelFormView = () => import('./views/PersonnelFormView.vue')
+const PersonnelDetailView = () => import('./views/PersonnelDetailView.vue')
+const PersonnelSectionView = () => import('./views/PersonnelSectionView.vue')
+const CariView = () => import('./views/CariView.vue')
+const CariDetailView = () => import('./views/CariDetailView.vue')
+const FaturaView = () => import('./views/FaturaView.vue')
+const KasaView = () => import('./views/KasaView.vue')
+const PayrollView = () => import('./views/PayrollView.vue')
+const AracView = () => import('./views/AracView.vue')
+const EvrakView = () => import('./views/EvrakView.vue')
+const GidenEvrakView = () => import('./views/GidenEvrakView.vue')
+const KmOnaylariView = () => import('./views/KmOnaylariView.vue')
+const PuantajView = () => import('./views/PuantajView.vue')
+const KacakView = () => import('./views/KacakView.vue')
+const NobetOnayView = () => import('./views/NobetOnayView.vue')
+const IhbarView = () => import('./views/IhbarView.vue')
+const LogView = () => import('./views/LogView.vue')
+const SozlesmeHakedisView = () => import('./views/SozlesmeHakedisView.vue')
+const SozlesmeDetailView = () => import('./views/SozlesmeDetailView.vue')
+const HakedisDetailView = () => import('./views/HakedisDetailView.vue')
+const SupportView = () => import('./views/SupportView.vue')
 import { auth } from './services/auth.js'
 
 const router = createRouter({
@@ -102,6 +102,12 @@ router.beforeEach(async (to) => {
   if (to.meta.permission && !auth.state.permissions[to.meta.permission]) return { name: 'home' }
   if (to.name === 'personnel-section' && !auth.state.permissions.personnel_edit) return { name: 'personnel-detail', params: { id: to.params.id } }
   if (to.name === 'personnel-section' && to.params.section === 'evraklar' && !auth.state.permissions.personnel_documents) return { name: 'personnel-detail', params: { id: to.params.id } }
+})
+
+router.onError((error, to) => {
+  if (/Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i.test(String(error?.message))) {
+    window.location.assign(router.resolve(to.fullPath).href)
+  }
 })
 
 export default router

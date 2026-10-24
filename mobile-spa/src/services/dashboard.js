@@ -1,3 +1,33 @@
+const DASHBOARD_CACHE_PREFIX = 'ersan_mobile_dashboard_cache_'
+
+function dashboardCacheKey(scope) {
+  return DASHBOARD_CACHE_PREFIX + String(scope || '')
+}
+
+export function readDashboardCache(scope) {
+  try {
+    const raw = localStorage.getItem(dashboardCacheKey(scope))
+    const parsed = raw ? JSON.parse(raw) : null
+    return parsed && typeof parsed === 'object' && parsed.data ? parsed.data : null
+  } catch {
+    return null
+  }
+}
+
+export function writeDashboardCache(scope, data) {
+  try {
+    localStorage.setItem(dashboardCacheKey(scope), JSON.stringify({ at: Date.now(), data }))
+  } catch {}
+}
+
+export function clearDashboardCache() {
+  try {
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith(DASHBOARD_CACHE_PREFIX))
+      .forEach((key) => localStorage.removeItem(key))
+  } catch {}
+}
+
 export async function getDashboard() {
   const response = await fetch('/api/dashboard.php', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
   const payload = await response.json().catch(() => ({ success: false, message: 'Sunucudan geçersiz yanıt alındı.' }))
