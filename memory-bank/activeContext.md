@@ -3112,3 +3112,4 @@
 - Kaçak Kontrol kartlarındaki fotoğraf badge'i doğrudan tutanak galerisini açan erişilebilir bir butona dönüştürüldü.
 - Galeri görseli artık nesne token eşleşmesine bağlı kalmadan doğrudan görsel indeksinden tam ekran önizlemeyi açıyor. Önizlemeye mobil sağ/sol kaydırma, klavye okları, Escape ile kapatma ve çoklu görseller için gezinme kontrolleri eklendi.
 - Tam ekran sahnesi viewport ölçülerine sabitlendi; görsel en-boy oranını koruyarak ekran içine sığıyor ve sağ üstteki yüksek kontrastlı kapatma düğmesi safe-area içinde daima görünür kalıyor.
+- Çok sayıda fotoğrafta galeri sheet gövdesinin kaymaması giderildi; gövde flex içinde küçülebilen bağımsız bir dikey scroll alanına ve iOS momentum kaydırmasına geçirildi.

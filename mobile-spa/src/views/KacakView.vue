@@ -1106,7 +1106,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleGalleryKeydown))
         </button>
       </header>
 
-      <div class="p-4 overflow-y-auto max-h-[70vh]">
+      <div class="gallery-scroll-area">
         <div v-if="galleryLoading" class="text-center py-10">
           <RefreshCw :size="28" class="animate-spin text-slate-400 mx-auto" />
           <p class="text-xs text-slate-400 mt-2">Fotoğraflar yükleniyor…</p>
@@ -1983,6 +1983,17 @@ onUnmounted(() => window.removeEventListener('keydown', handleGalleryKeydown))
   padding: 0;
   border-radius: 50%;
   pointer-events: auto;
+}
+
+.gallery-scroll-area {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 16px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
 .drawer-drag-handle {

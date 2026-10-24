@@ -1864,3 +1864,4 @@
 - [x] Galeri görsellerinin tam ekran büyütülmesi güvenilir indeks tabanlı akışa geçirildi.
 - [x] Dokunmatik kaydırma, klavye gezinmesi, sayaç, indirme ve kapatma davranışları tamamlandı.
 - [x] Büyük görselin viewport dışına taşması giderildi ve sabit, yüksek kontrastlı kapatma kontrolü eklendi.
+- [x] Çok fotoğraflı galeri sheet'inde dokunmatik dikey scroll etkinleştirildi.
