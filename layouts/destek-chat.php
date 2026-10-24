@@ -176,6 +176,37 @@ if (!empty($_yetkiliKullanicilar)) {
         background: rgba(255, 255, 255, 0.25);
     }
 
+    .achat-status-option {
+        position: relative;
+        border: 1px solid transparent;
+    }
+
+    .achat-status-option.is-selected {
+        padding-right: 34px !important;
+        background: #f1f5f9 !important;
+        border-color: #cbd5e1 !important;
+        font-weight: 700;
+    }
+
+    .achat-status-option.is-selected::after {
+        content: '\2713';
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 14px;
+        font-weight: 800;
+        color: #16a34a;
+    }
+
+    .achat-status-option[data-status="mesgul"].is-selected::after { color: #d97706; }
+    .achat-status-option[data-status="cevrimdisi"].is-selected {
+        background: #fef2f2 !important;
+        border-color: #fecaca !important;
+        color: #b91c1c !important;
+    }
+    .achat-status-option[data-status="cevrimdisi"].is-selected::after { color: #dc2626; }
+
     /* Conversation List */
     .achat-conv-list {
         flex: 1;
@@ -787,20 +818,20 @@ if (!empty($_yetkiliKullanicilar)) {
                 </button>
                 <div id="achat-status-menu"
                     style="display:none; position:absolute; top:100%; right:0; background:#fff; border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,.15); padding:4px; min-width:140px; z-index:10;">
-                    <div onclick="event.stopPropagation(); AdminChat.setAdminStatus('cevrimici')"
+                    <div class="achat-status-option" data-status="cevrimici" onclick="event.stopPropagation(); AdminChat.setAdminStatus('cevrimici')"
                         style="display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:6px; cursor:pointer; font-size:13px; color:#1e293b; transition:background .15s;"
                         onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
                         <span style="width:8px; height:8px; border-radius:50%; background:#22c55e;"></span> Çevrimiçi
                     </div>
-                    <div onclick="event.stopPropagation(); AdminChat.setAdminStatus('mesgul')"
+                    <div class="achat-status-option" data-status="mesgul" onclick="event.stopPropagation(); AdminChat.setAdminStatus('mesgul')"
                         style="display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:6px; cursor:pointer; font-size:13px; color:#1e293b; transition:background .15s;"
                         onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
                         <span style="width:8px; height:8px; border-radius:50%; background:#f59e0b;"></span> Meşgul
                     </div>
-                    <div onclick="event.stopPropagation(); AdminChat.setAdminStatus('cevrimdisi')"
+                    <div class="achat-status-option" data-status="cevrimdisi" onclick="event.stopPropagation(); AdminChat.setAdminStatus('cevrimdisi')"
                         style="display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:6px; cursor:pointer; font-size:13px; color:#1e293b; transition:background .15s;"
                         onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
-                        <span style="width:8px; height:8px; border-radius:50%; background:#94a3b8;"></span> Çevrimdışı
+                        <span style="width:8px; height:8px; border-radius:50%; background:#ef4444;"></span> Çevrimdışı
                     </div>
                 </div>
             </div>
@@ -912,8 +943,18 @@ if (!empty($_yetkiliKullanicilar)) {
             menu.style.display = this.statusMenuOpen ? 'block' : 'none';
         },
 
+        updateAdminStatusAppearance(status) {
+            const statusColors = { cevrimici: '#22c55e', mesgul: '#f59e0b', cevrimdisi: '#ef4444' };
+            const dot = document.getElementById('achat-admin-status-dot');
+            if (dot) dot.style.background = statusColors[status] || statusColors.cevrimici;
+            document.querySelectorAll('.achat-status-option').forEach(option => {
+                option.classList.toggle('is-selected', option.dataset.status === status);
+                option.setAttribute('aria-selected', option.dataset.status === status ? 'true' : 'false');
+            });
+        },
+
         async setAdminStatus(status) {
-            const statusColors = { cevrimici: '#22c55e', mesgul: '#f59e0b', cevrimdisi: '#94a3b8' };
+            const statusColors = { cevrimici: '#22c55e', mesgul: '#f59e0b', cevrimdisi: '#ef4444' };
             // Menüyü kapat
             document.getElementById('achat-status-menu').style.display = 'none';
             this.statusMenuOpen = false;
@@ -922,8 +963,7 @@ if (!empty($_yetkiliKullanicilar)) {
             try {
                 const response = await this.apiRequest('set-admin-status', { status: status });
                 this.adminStatus = response.admin_status || status;
-                const dot = document.getElementById('achat-admin-status-dot');
-                if (dot) dot.style.background = statusColors[this.adminStatus] || '#22c55e';
+                this.updateAdminStatusAppearance(this.adminStatus);
             } catch (e) {
                 console.error('Status update error:', e);
                 await this.loadAdminStatus();
@@ -951,10 +991,8 @@ if (!empty($_yetkiliKullanicilar)) {
             try {
                 const response = await this.apiRequest('get-admin-status');
                 if (response.status === 'success' && response.admin_status) {
-                    const statusColors = { cevrimici: '#22c55e', mesgul: '#f59e0b', cevrimdisi: '#94a3b8' };
                     this.adminStatus = response.admin_status;
-                    const dot = document.getElementById('achat-admin-status-dot');
-                    if (dot) dot.style.background = statusColors[response.admin_status] || '#22c55e';
+                    this.updateAdminStatusAppearance(response.admin_status);
                 }
             } catch (e) { }
         },

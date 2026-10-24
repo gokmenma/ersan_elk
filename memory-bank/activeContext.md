@@ -1,10 +1,19 @@
 # Active Context
 
+## Mobil SPA — Özelleştirilebilir Alt Bar (Navbar) ve Sürükle-Bırak Menü Düzeni (2026-10-24)
+- `mobile-spa` içerisindeki tüm modüller (`personnel`, `reports`, `requests`, `invoices`, `cash`, `current_accounts`, `payroll`, `contracts`, `vehicles`, `km_approvals`, `documents`, `notices`, `illegal`, `tasks`, `shifts`, `puantaj`, `logs`, `live_support`, `support`) birleşik katalog (`MODULE_CATALOG`) yapısına kavuşturuldu.
+- "Daha Fazla" (`#more-menu`) çekmecesinin başlığına **Düzenle (`SlidersHorizontal`)** butonu eklendi. Düzenleme modunda:
+  1. **Alt Bar (Navbar) Kısayolları**: Sol başta `Ana Sayfa` ve sağ sonda `Diğer` sabit kalmak üzere ortadaki 3 kısayol slotuna herhangi bir yetkili modül (`Araç Takip`, `Cari Takip`, `Kasa`, `Bordro`, vb.) eklenip çıkarılabiliyor ve sürükle-bırak ile sıralanabiliyor. 3 slot doluyken yeni bir modül seçildiğinde hangi kısayolun yerine geçeceğini soran hızlı seçim barı açılıyor.
+  2. **Grup ve Grup İçi Sürükle-Bırak**: Menü grupları (`FİNANS & MUHASEBE`, `OPERASYON & SAHA`, `PLANLAMA & İK`, `SİSTEM & DESTEK`) grup başlığından tutularak kendi arasında, grup içi menüler ise kendi grubu içinde dokunmatik/fare uyumlu Pointer Events + otomatik kaydırma (auto-scroll) ile sıralanabiliyor.
+  3. **Akıllı Geri Dönüş ve Alt Çekmece Desteği**: Varsayılan olarak alt barda bulunan `Personel`, `Raporlar` veya `Talepler` alt bardan çıkarıldığında otomatik olarak "Daha Fazla" içindeki kendi grubunda listeleniyor. `Araç Takip`, `E-Fatura` ve `KM Onayları` alt bara sabitlendiğinde tıklandığında alt sekme çekmecelerini (`aracState`, `faturaState`, `kmState`) açıp kapatıyor.
+- **Model ve API**: `App\Model\MenuModel` içine `getMobileMenuOrder`, `saveMobileMenuOrder` ve `resetMobileMenuOrder` metotları eklendi; mevcut `user_menu_orders.order_data` JSON sütununda `mobile` anahtarı altında saklanarak masaüstü menü sıralamasıyla çakışması engellendi ve `SystemLogModel` ile loglandı. `mobile-spa/public/api/auth.php` üzerinde `session`, `save-menu-order` ve `reset-menu-order` uçları güncellendi.
+
 ## Masaüstü Canlı Destek — Silinen Konuşma Rozeti ve Yönetici Durumu (2026-10-24)
 - Silinen konuşmaların `okunmamis_yonetici` toplamına dahil kalması düzeltildi: toplam sorgusu artık `deleted_at IS NULL` ve seçili firma kapsamını uygular; soft delete sırasında iki okunmamış sayaç da sıfırlanır.
 - Widget silme sonrasında kalan konuşmaların okunmamış toplamını istemcide hemen yeniden hesaplayarak üst ve başlık rozetlerini beklemeden temizler.
 - Yönetici çevrimiçi/meşgul/çevrimdışı durumu global ayar yerine seçili firmanın `canli_destek_admin_durum` kaydına yazılır ve aynı firma kaydından okunur. Başarısız API yanıtları artık başarı gibi gösterilmez; eski durum yeniden yüklenir.
 - Masaüstü canlı destek liste, polling, detay, mesaj, durum ve silme yollarına firma sahipliği doğrulaması eklendi.
+- Yönetici durum menüsünde aktif seçim artık çerçeve, renkli zemin, kalın metin ve onay işaretiyle görünür; `Çevrimdışı` rengi gri yerine kırmızı olarak standartlaştırıldı.
 
 ## Mobil SPA — Canlı Destek Yönetimi (2026-10-24)
 - Mevcut `destek_konusmalar` / `destek_mesajlar` altyapısına bağlı yönetici ekranı `/canli-destek` eklendi: firma izoleli konuşma listesi, KPI özeti, arama/durum filtreleri, okunmamış sayaçları, sohbet polling'i, görsel gönderme, okundu bilgisi, konuşma durumu ve yönetici müsaitliği.
@@ -13,6 +22,7 @@
 - Yetki haritasına `live_support` eklendi; Daha Fazla > Sistem & Destek menüsü bu sunucu kaynaklı yetkiye göre çiziliyor.
 - Üst destek özeti daha minimal hale getirildi; büyük KPI kutuları yerine kompakt müsaitlik ve satır içi sayaçlar kullanılıyor. Başlığa Ayarlar butonu eklendi.
 - Mobil ayarlar alt paneli masaüstüyle aynı firma bazlı `canli_destek_*` kayıtlarını yönetiyor: sistem açık/kapalı, yetkili kullanıcılar, aktif çalışma günleri ve başlangıç/bitiş saatleri.
+- Konuşma listesi ilk açılışta varsayılan olarak `Aktif` filtresiyle yükleniyor.
 
 ## Araç Takip — Araç İşlem Geçmişi / Ekleyen Bilgisi (2026-10-24)
 - `araclar` tablosuna `olusturan_kullanici_id` ve `guncelleyen_kullanici_id`; araç bazlı log tablosu `arac_islem_loglari` (işlem türü, açıklama, JSON alan farkları, IP). SQL: `database/migrations/2026_10_24_arac_islem_loglari.sql` (tekrarlanabilir; `arac-islem-gecmisi` API politikası `arac_takip_yonetim` yetkisine permission_key ile bağlı).

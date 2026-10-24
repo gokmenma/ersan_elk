@@ -1,10 +1,17 @@
 # Progress
 
+## 2026-10-24 — Mobil SPA Özelleştirilebilir Alt Bar ve Sürükle-Bırak Menü Sıralaması
+- [x] `App\Model\MenuModel` içerisine masaüstü sıralamasını koruyan `getMobileMenuOrder`, `saveMobileMenuOrder`, `resetMobileMenuOrder` metotları ve `SystemLogModel` kaydı eklendi.
+- [x] `mobile-spa/public/api/auth.php` içerisine `menu_order` oturum çıktısı ile `save-menu-order` ve `reset-menu-order` aksiyonları (CSRF ve whitelist doğrulamalı) eklendi.
+- [x] `BottomNav.vue` ve `design-system.css` üzerinde Alt Bar kısayol seçici/sıralayıcı ve "Daha Fazla" menüsünde grup + grup içi sürükle-bırak düzenleme modu tamamlandı.
+- [x] PHP sözdizimi, `MenuModel` birim testi ve `npm run build` üretim derlemesi doğrulandı.
+
 ## 2026-10-24 — Masaüstü Canlı Destek Rozet/Durum Düzeltmesi
 - [x] Soft-delete edilmiş konuşmalar okunmamış rozet toplamından çıkarıldı ve silme anında rozet güncellendi.
 - [x] Yönetici müsaitlik durumu firma bazlı kalıcı ayara bağlandı.
 - [x] Widget API hata yanıtlarını yakalayıp durumu geri yükleyecek şekilde düzeltildi.
 - [x] Masaüstü canlı destek işlemlerine firma kapsamı ve konuşma sahipliği kontrolleri eklendi.
+- [x] Durum menüsünde seçili seçenek görünür hale getirildi ve çevrimdışı gösterimi kırmızıya çevrildi.
 
 ## 2026-10-24 — Mobil SPA Canlı Destek Modülü
 - [x] Mevcut canlı sohbet verileriyle çalışan Soft Bento yönetici ekranı, rota, servis ve yetkili menü girişi eklendi.
@@ -13,6 +20,7 @@
 - [x] Mobil API politikaları mevcut `canli_sohbet_ayarlari_sekmesi` yetkisine bağlandı ve yerel veritabanında doğrulandı.
 - [x] Üst özet kartı minimal hale getirildi; canlı destek ayarları için mobil bottom-sheet eklendi.
 - [x] Masaüstündeki aktiflik, yetkili kullanıcı, çalışma günü ve mesai saati ayarları mobil API üzerinden ortak firma kayıtlarına bağlandı.
+- [x] İlk açılış konuşma filtresi `Aktif` olarak ayarlandı.
 
 ## 2026-10-24 — Araç İşlem Geçmişi
 - [x] SQL yerelde iki kez çalıştırıldı; API ekleme → güncelleme → geçmiş akışı CLI oturumuyla test edildi, test verileri silindi.

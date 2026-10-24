@@ -627,6 +627,11 @@ class MenuModel extends Model
             return false;
         }
         try {
+            $existing = $this->getUserMenuOrder($userId);
+            if (is_array($existing) && isset($existing['mobile']) && !isset($orderData['mobile'])) {
+                $orderData['mobile'] = $existing['mobile'];
+            }
+
             $json = json_encode($orderData, JSON_UNESCAPED_UNICODE);
             $stmt = $this->db->prepare("INSERT INTO user_menu_orders (user_id, order_data) 
                                         VALUES (?, ?) 
@@ -654,8 +659,16 @@ class MenuModel extends Model
             return false;
         }
         try {
-            $stmt = $this->db->prepare("DELETE FROM user_menu_orders WHERE user_id = ?");
-            $res = $stmt->execute([$userId]);
+            $existing = $this->getUserMenuOrder($userId);
+            if (is_array($existing) && !empty($existing['mobile'])) {
+                $preserved = ['mobile' => $existing['mobile']];
+                $json = json_encode($preserved, JSON_UNESCAPED_UNICODE);
+                $stmt = $this->db->prepare("UPDATE user_menu_orders SET order_data = ?, updated_at = NOW() WHERE user_id = ?");
+                $res = $stmt->execute([$json, $userId]);
+            } else {
+                $stmt = $this->db->prepare("DELETE FROM user_menu_orders WHERE user_id = ?");
+                $res = $stmt->execute([$userId]);
+            }
             if ($res) {
                 try {
                     $log = new SystemLogModel();
@@ -665,6 +678,89 @@ class MenuModel extends Model
             return true;
         } catch (\Exception $e) {
             error_log('resetUserMenuOrder Error: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Kullanıcının mobil SPA menü ve alt bar (navbar) tercihlerini getirir.
+     */
+    public function getMobileMenuOrder(int $userId): ?array
+    {
+        $order = $this->getUserMenuOrder($userId);
+        if (!is_array($order) || empty($order['mobile']) || !is_array($order['mobile'])) {
+            return null;
+        }
+        return $order['mobile'];
+    }
+
+    /**
+     * Kullanıcının mobil SPA menü ve alt bar (navbar) tercihlerini kaydeder.
+     */
+    public function saveMobileMenuOrder(int $userId, array $mobileOrder): bool
+    {
+        if ($userId <= 0) {
+            return false;
+        }
+        try {
+            $existing = $this->getUserMenuOrder($userId);
+            if (!is_array($existing)) {
+                $existing = [];
+            }
+            $existing['mobile'] = [
+                'navbar' => array_values($mobileOrder['navbar'] ?? []),
+                'groups' => array_values($mobileOrder['groups'] ?? []),
+                'items' => is_array($mobileOrder['items'] ?? null) ? $mobileOrder['items'] : [],
+            ];
+
+            $json = json_encode($existing, JSON_UNESCAPED_UNICODE);
+            $stmt = $this->db->prepare("INSERT INTO user_menu_orders (user_id, order_data) 
+                                        VALUES (?, ?) 
+                                        ON DUPLICATE KEY UPDATE order_data = VALUES(order_data), updated_at = NOW()");
+            $res = $stmt->execute([$userId, $json]);
+            if ($res) {
+                try {
+                    $log = new SystemLogModel();
+                    $log->logAction($userId, 'Mobil Menü Düzeni', "Kullanıcı mobil menü ve alt bar sırasını özelleştirdi.");
+                } catch (\Exception $e) {}
+            }
+            return $res;
+        } catch (\Exception $e) {
+            error_log('saveMobileMenuOrder Error: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Kullanıcının mobil SPA menü ve alt bar (navbar) tercihlerini varsayılana sıfırlar.
+     */
+    public function resetMobileMenuOrder(int $userId): bool
+    {
+        if ($userId <= 0) {
+            return false;
+        }
+        try {
+            $existing = $this->getUserMenuOrder($userId);
+            if (is_array($existing)) {
+                unset($existing['mobile']);
+                if (!empty($existing)) {
+                    $json = json_encode($existing, JSON_UNESCAPED_UNICODE);
+                    $stmt = $this->db->prepare("UPDATE user_menu_orders SET order_data = ?, updated_at = NOW() WHERE user_id = ?");
+                    $res = $stmt->execute([$json, $userId]);
+                } else {
+                    $stmt = $this->db->prepare("DELETE FROM user_menu_orders WHERE user_id = ?");
+                    $res = $stmt->execute([$userId]);
+                }
+                if ($res) {
+                    try {
+                        $log = new SystemLogModel();
+                        $log->logAction($userId, 'Mobil Menü Düzeni', "Kullanıcı mobil menü ve alt bar sırasını varsayılana sıfırladı.");
+                    } catch (\Exception $e) {}
+                }
+            }
+            return true;
+        } catch (\Exception $e) {
+            error_log('resetMobileMenuOrder Error: ' . $e->getMessage());
             return false;
         }
     }

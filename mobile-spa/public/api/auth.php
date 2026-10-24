@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Helper\Security;
 use App\Model\FirmaModel;
+use App\Model\MenuModel;
 use App\Model\SozlesmeDonemModel;
 use App\Model\SystemLogModel;
 use App\Model\UserModel;
@@ -259,6 +260,7 @@ function sessionPayload(): array
         ] : null,
         'companies' => allowedCompanies($freshUser),
         'permissions' => $permissions,
+        'menu_order' => (new MenuModel())->getMobileMenuOrder((int) $freshUser->id),
     ];
 }
 
@@ -411,6 +413,115 @@ try {
 
         (new SystemLogModel())->logPageView((int) $user->id, $routeNames[$routeName], 'Mobil SPA');
         respond(['success' => true]);
+    }
+
+    if ($action === 'save-menu-order') {
+        $user = $_SESSION['user'] ?? null;
+        if (!$user || empty($user->id)) {
+            respond(['success' => false, 'message' => 'Oturumunuz sona ermiş.'], 401);
+        }
+
+        $allowedModuleKeys = [
+            'personnel',
+            'reports',
+            'requests',
+            'invoices',
+            'cash',
+            'current_accounts',
+            'payroll',
+            'contracts',
+            'vehicles',
+            'km_approvals',
+            'documents',
+            'notices',
+            'illegal',
+            'tasks',
+            'shifts',
+            'puantaj',
+            'logs',
+            'live_support',
+            'support',
+        ];
+        $allowedGroupKeys = ['finans', 'operasyon', 'planlama', 'sistem'];
+
+        $rawNavbar = is_array($data['navbar'] ?? null) ? $data['navbar'] : [];
+        $cleanNavbar = [];
+        foreach ($rawNavbar as $modKey) {
+            $k = trim((string) $modKey);
+            if (in_array($k, $allowedModuleKeys, true) && !in_array($k, $cleanNavbar, true)) {
+                $cleanNavbar[] = $k;
+            }
+            if (count($cleanNavbar) >= 3) {
+                break;
+            }
+        }
+
+        $rawGroups = is_array($data['groups'] ?? null) ? $data['groups'] : [];
+        $cleanGroups = [];
+        foreach ($rawGroups as $grpKey) {
+            $g = trim((string) $grpKey);
+            if (in_array($g, $allowedGroupKeys, true) && !in_array($g, $cleanGroups, true)) {
+                $cleanGroups[] = $g;
+            }
+        }
+        foreach ($allowedGroupKeys as $defGroup) {
+            if (!in_array($defGroup, $cleanGroups, true)) {
+                $cleanGroups[] = $defGroup;
+            }
+        }
+
+        $rawItems = is_array($data['items'] ?? null) ? $data['items'] : [];
+        $cleanItems = [];
+        foreach ($allowedGroupKeys as $grpKey) {
+            $grpList = is_array($rawItems[$grpKey] ?? null) ? $rawItems[$grpKey] : [];
+            $cleanList = [];
+            foreach ($grpList as $modKey) {
+                $k = trim((string) $modKey);
+                if (in_array($k, $allowedModuleKeys, true) && !in_array($k, $cleanList, true)) {
+                    $cleanList[] = $k;
+                }
+            }
+            if (!empty($cleanList)) {
+                $cleanItems[$grpKey] = $cleanList;
+            }
+        }
+
+        $mobileOrder = [
+            'navbar' => $cleanNavbar,
+            'groups' => $cleanGroups,
+            'items' => $cleanItems,
+        ];
+
+        $menuModel = new MenuModel();
+        $saved = $menuModel->saveMobileMenuOrder((int) $user->id, $mobileOrder);
+        if (!$saved) {
+            respond(['success' => false, 'message' => 'Menü düzeni kaydedilirken bir hata oluştu.'], 500);
+        }
+
+        respond([
+            'success' => true,
+            'message' => 'Menü düzeniniz kaydedildi.',
+            'menu_order' => $mobileOrder,
+        ]);
+    }
+
+    if ($action === 'reset-menu-order') {
+        $user = $_SESSION['user'] ?? null;
+        if (!$user || empty($user->id)) {
+            respond(['success' => false, 'message' => 'Oturumunuz sona ermiş.'], 401);
+        }
+
+        $menuModel = new MenuModel();
+        $reset = $menuModel->resetMobileMenuOrder((int) $user->id);
+        if (!$reset) {
+            respond(['success' => false, 'message' => 'Menü düzeni sıfırlanırken bir hata oluştu.'], 500);
+        }
+
+        respond([
+            'success' => true,
+            'message' => 'Menü düzeni varsayılan haline döndürüldü.',
+            'menu_order' => null,
+        ]);
     }
 
     if ($action === 'logout') {
