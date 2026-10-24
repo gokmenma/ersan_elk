@@ -1643,7 +1643,7 @@ onMounted(() => {
   width: 100%;
   height: 6px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--dsx-bg-000000-a005);
   overflow: hidden;
 }
 
@@ -1677,7 +1677,7 @@ onMounted(() => {
 
 .personnel-bar-card:active {
   transform: scale(0.985);
-  background: #f0f7ff;
+  background: var(--dsx-bg-f0f7ff);
 }
 
 .pr-bar-meta {
@@ -1709,20 +1709,20 @@ onMounted(() => {
 }
 
 .rank-badge--gold {
-  background: linear-gradient(135deg, #fef08a, #eab308);
-  color: #713f12;
+  background: linear-gradient(135deg, var(--dsx-bg-fef08a), #eab308);
+  color: var(--dsx-fg-713f12);
   border: none;
 }
 
 .rank-badge--silver {
-  background: linear-gradient(135deg, #f1f5f9, #94a3b8);
-  color: #1e293b;
+  background: linear-gradient(135deg, var(--dsx-bg-f1f5f9), #94a3b8);
+  color: var(--dsx-fg-1e293b);
   border: none;
 }
 
 .rank-badge--bronze {
-  background: linear-gradient(135deg, #fed7aa, #f97316);
-  color: #7c2d12;
+  background: linear-gradient(135deg, var(--dsx-bg-fed7aa), #f97316);
+  color: var(--dsx-fg-7c2d12);
   border: none;
 }
 
@@ -1817,7 +1817,7 @@ onMounted(() => {
   gap: 5px;
   margin-top: 6px;
   padding-top: 6px;
-  border-top: 1px solid rgba(0, 0, 0, 0.04);
+  border-top: 1px solid var(--dsx-bd-000000-a004);
 }
 
 .pr-bd-chip {
@@ -2057,7 +2057,7 @@ onMounted(() => {
 
 .summary-wt-chip .wt-count {
   font-weight: 900;
-  color: var(--ds-primary, #0284c7);
+  color: var(--ds-primary-ink, var(--dsx-fg-0284c7));
 }
 
 .timeline-title-row {
@@ -2135,7 +2135,7 @@ onMounted(() => {
   display: flex;
   align-items: baseline;
   gap: 3px;
-  background: #f0f7ff;
+  background: var(--dsx-bg-f0f7ff);
   border: 1px solid rgba(59, 130, 246, 0.2);
   padding: 3px 9px;
   border-radius: var(--ds-radius-pill);
@@ -2328,8 +2328,8 @@ onMounted(() => {
 }
 
 .custom-date-field:focus {
-  border-color: var(--ds-primary, #0284c7);
-  background: #ffffff;
+  border-color: var(--ds-primary-ink, #0284c7);
+  background: var(--dsx-bg-ffffff);
 }
 
 /* Animasyonlar */
@@ -2402,18 +2402,18 @@ onMounted(() => {
 }
 
 /* Color Helpers linking directly to --ds-* tokens */
-.bg-blue-soft { background: var(--ds-blue-soft, #f0f9ff); }
-.text-blue { color: var(--ds-blue-ink, #0284c7); }
-.bg-emerald-soft { background: var(--ds-emerald-soft, #ecfdf5); }
-.text-emerald { color: var(--ds-emerald-ink, #059669); }
-.bg-amber-soft { background: var(--ds-amber-soft, #fffbeb); }
-.text-amber { color: var(--ds-amber-ink, #d97706); }
-.bg-purple-soft { background: var(--ds-purple-soft, #f5f3ff); }
+.bg-blue-soft { background: var(--ds-blue-soft, var(--dsx-bg-f0f9ff)); }
+.text-blue { color: var(--ds-blue-ink, var(--dsx-fg-0284c7)); }
+.bg-emerald-soft { background: var(--ds-emerald-soft, var(--dsx-bg-ecfdf5)); }
+.text-emerald { color: var(--ds-emerald-ink, var(--dsx-fg-059669)); }
+.bg-amber-soft { background: var(--ds-amber-soft, var(--dsx-bg-fffbeb)); }
+.text-amber { color: var(--ds-amber-ink, var(--dsx-fg-d97706)); }
+.bg-purple-soft { background: var(--ds-purple-soft, var(--dsx-bg-f5f3ff)); }
 .text-purple { color: var(--ds-purple-ink, #7c3aed); }
-.bg-coral-soft { background: var(--ds-coral-soft, #fff1f2); }
-.text-coral { color: var(--ds-coral-ink, #e11d48); }
-.bg-cyan-soft { background: #ecfeff; }
-.text-cyan { color: #0891b2; }
+.bg-coral-soft { background: var(--ds-coral-soft, var(--dsx-bg-fff1f2)); }
+.text-coral { color: var(--ds-coral-ink, var(--dsx-fg-e11d48)); }
+.bg-cyan-soft { background: var(--dsx-bg-ecfeff); }
+.text-cyan { color: var(--dsx-fg-0891b2); }
 
 /* 9. DETAYLI DAĞILIM DÖKÜM SHEET (MOBİL SPA DESİGN SYSTEM) */
 .dist-sheet {
@@ -2618,13 +2618,13 @@ onMounted(() => {
 
 .status-micro-badge--success {
   background: rgba(16, 185, 129, 0.12);
-  color: #059669;
+  color: var(--dsx-fg-059669);
   border: 1px solid rgba(16, 185, 129, 0.25);
 }
 
 .status-micro-badge--danger {
   background: rgba(244, 63, 94, 0.12);
-  color: #e11d48;
+  color: var(--dsx-fg-e11d48);
   border: 1px solid rgba(244, 63, 94, 0.25);
 }
 

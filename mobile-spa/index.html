@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#e6eaef" />
-    <meta name="color-scheme" content="light" />
+    <meta name="color-scheme" content="light dark" />
     <meta name="description" content="Ersan Elektrik mobil yönetim uygulaması" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -19,6 +19,15 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
     <title>Ersan Mobile</title>
+    <style>html[data-theme="dark"] { background: #0e1116; }</style>
+    <script>
+      try {
+        var theme = localStorage.getItem('ersan_mobile_theme_v1');
+        if (theme === 'system') theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : 'light';
+        if (theme === 'dark') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0e1116');
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="app"></div>

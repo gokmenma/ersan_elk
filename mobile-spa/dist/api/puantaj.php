@@ -366,8 +366,8 @@ try {
                     : null,
             ], $calismaDonemleri[$p->id] ?? []);
 
-            // Ham dosya yolu yerine iki fotoğraf sütununu da fiziksel olarak doğrulayan
-            // merkezi servis kullanılır. Böylece alt dizin kurulumu ve bozuk ilk yol sorun olmaz.
+            // Ham dosya yolu yerine yalnız yöneticinin yüklediği fotoğrafı doğrulayan
+            // merkezi servis kullanılır. Böylece alt dizin kurulumu sorun olmaz.
             $resimPath = '/api/personnel-photo.php?id=' . rawurlencode(Security::encrypt((string) $p->id));
 
             $pInfo = [

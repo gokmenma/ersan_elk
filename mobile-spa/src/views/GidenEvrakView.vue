@@ -2064,10 +2064,10 @@ async function imzaGeriAl() {
   text-align: left;
   border: none;
   cursor: pointer;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   border-radius: var(--ds-radius-card);
   box-shadow: var(--ds-shadow-bento);
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--dsx-bd-ffffff-a090);
   padding: 16px;
   display: flex;
   align-items: center;
@@ -2128,10 +2128,10 @@ async function imzaGeriAl() {
 }
 
 .giden-section-card {
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   border-radius: var(--ds-radius-card);
   box-shadow: var(--ds-shadow-bento);
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--dsx-bd-ffffff-a090);
   padding: 20px;
 }
 
@@ -2215,7 +2215,7 @@ async function imzaGeriAl() {
 .evrak-form-label {
   font-size: 11px;
   font-weight: 800;
-  color: #475569;
+  color: var(--dsx-fg-475569);
   letter-spacing: 0.4px;
 }
 
@@ -2224,8 +2224,8 @@ async function imzaGeriAl() {
 .evrak-textarea {
   width: 100%;
   padding: 12px 14px;
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
+  background: var(--dsx-bg-ffffff);
+  border: 1px solid var(--dsx-bd-cbd5e1);
   border-radius: var(--ds-radius-sm, 14px);
   font: 500 14px var(--ds-font-main);
   color: var(--ds-ink);
@@ -2245,8 +2245,8 @@ async function imzaGeriAl() {
 .evrak-input:disabled,
 .evrak-select:disabled,
 .evrak-textarea:disabled {
-  background: #f1f5f9;
-  color: #94a3b8;
+  background: var(--dsx-bg-f1f5f9);
+  color: var(--dsx-fg-94a3b8);
   cursor: not-allowed;
 }
 
@@ -2263,9 +2263,9 @@ async function imzaGeriAl() {
   border-radius: var(--ds-radius-pill, 9999px);
   font-size: 11px;
   font-weight: 700;
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-  color: #334155;
+  border: 1px solid var(--dsx-bd-cbd5e1);
+  background: var(--dsx-bg-ffffff);
+  color: var(--dsx-fg-334155);
   cursor: pointer;
   transition: all 0.15s ease;
 }
@@ -2312,19 +2312,19 @@ async function imzaGeriAl() {
 }
 
 .evrak-btn--primary {
-  background: var(--ds-primary, #181c24);
+  background: var(--ds-primary, var(--dsx-bg-181c24));
   color: #ffffff;
 }
 
 .evrak-btn--secondary {
-  background: #e0f2fe;
-  color: #0369a1;
+  background: var(--dsx-bg-e0f2fe);
+  color: var(--dsx-fg-0369a1);
 }
 
 .evrak-btn--outline {
   background: transparent;
-  border: 1px solid #cbd5e1;
-  color: #475569;
+  border: 1px solid var(--dsx-bd-cbd5e1);
+  color: var(--dsx-fg-475569);
 }
 
 .evrak-btn--emerald {
@@ -2347,8 +2347,8 @@ async function imzaGeriAl() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #ffffff;
-  border: 1px solid var(--ds-border-subtle, rgba(15, 23, 42, 0.06));
+  background: var(--dsx-bg-ffffff);
+  border: 1px solid var(--ds-border-subtle, var(--dsx-bd-0f172a-a006));
   border-radius: var(--ds-radius-tile, 20px);
   padding: 14px 16px;
 }
@@ -2381,7 +2381,7 @@ async function imzaGeriAl() {
 /* Evrak Tipi Switch */
 .evrak-type-switch {
   display: flex;
-  background: #e2e8f0;
+  background: var(--dsx-bg-e2e8f0);
   padding: 4px;
   border-radius: var(--ds-radius-tile, 20px);
   gap: 4px;
@@ -2399,13 +2399,13 @@ async function imzaGeriAl() {
   font-weight: 800;
   border: none;
   background: transparent;
-  color: #475569;
+  color: var(--dsx-fg-475569);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .evrak-switch-opt.is-active {
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   color: var(--ds-ink);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
@@ -2418,9 +2418,9 @@ async function imzaGeriAl() {
   justify-content: center;
   gap: 4px;
   padding: 20px 16px;
-  border: 2px dashed #cbd5e1;
+  border: 2px dashed var(--dsx-bd-cbd5e1);
   border-radius: var(--ds-radius-tile, 20px);
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   cursor: pointer;
   text-align: center;
   transition: border-color 0.15s ease, background 0.15s ease;
@@ -2428,13 +2428,13 @@ async function imzaGeriAl() {
 
 .evrak-upload-dropzone:hover {
   border-color: #0284c7;
-  background: #f0f9ff;
+  background: var(--dsx-bg-f0f9ff);
 }
 
 .evrak-upload-dropzone span {
   font-size: 13px;
   font-weight: 700;
-  color: #0284c7;
+  color: var(--dsx-fg-0284c7);
 }
 
 .evrak-upload-dropzone small {
@@ -2454,23 +2454,23 @@ async function imzaGeriAl() {
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  background: #f1f5f9;
+  background: var(--dsx-bg-f1f5f9);
   border-radius: var(--ds-radius-pill, 9999px);
   font-size: 11px;
   font-weight: 600;
-  color: #334155;
+  color: var(--dsx-fg-334155);
   max-width: 240px;
 }
 
 .evrak-file-chip--new {
-  background: #ecfdf5;
-  color: #065f46;
+  background: var(--dsx-bg-ecfdf5);
+  color: var(--dsx-fg-065f46);
 }
 
 .evrak-chip-del {
   background: none;
   border: none;
-  color: #94a3b8;
+  color: var(--dsx-fg-94a3b8);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -2488,8 +2488,8 @@ async function imzaGeriAl() {
 }
 
 .evrak-file-tile {
-  background: #ffffff;
-  border: 1px solid var(--ds-border-subtle, rgba(15, 23, 42, 0.06));
+  background: var(--dsx-bg-ffffff);
+  border: 1px solid var(--ds-border-subtle, var(--dsx-bd-0f172a-a006));
   border-radius: var(--ds-radius-tile, 20px);
   padding: 10px 14px;
   display: flex;
@@ -2501,7 +2501,7 @@ async function imzaGeriAl() {
   width: 38px;
   height: 38px;
   border-radius: 10px;
-  background: var(--ds-surface-subtle, #f1f5f9);
+  background: var(--ds-surface-subtle, var(--dsx-bg-f1f5f9));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2536,8 +2536,8 @@ async function imzaGeriAl() {
 
 /* E-İmza Stepper */
 .evrak-stepper {
-  background: #ffffff;
-  border: 1px solid var(--ds-border-subtle, rgba(15, 23, 42, 0.06));
+  background: var(--dsx-bg-ffffff);
+  border: 1px solid var(--ds-border-subtle, var(--dsx-bd-0f172a-a006));
   border-radius: var(--ds-radius-tile, 20px);
   padding: 14px 16px;
   display: flex;
@@ -2555,7 +2555,7 @@ async function imzaGeriAl() {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #f1f5f9;
+  background: var(--dsx-bg-f1f5f9);
   color: var(--ds-muted);
   font-size: 12px;
   font-weight: 800;
@@ -2604,11 +2604,11 @@ async function imzaGeriAl() {
   gap: 12px;
   padding: 12px 14px;
   border-radius: var(--ds-radius-sm, 14px);
-  background: #ffffff;
-  border: 1.5px solid var(--ds-border-subtle, #e2e8f0);
+  background: var(--dsx-bg-ffffff);
+  border: 1.5px solid var(--ds-border-subtle, var(--dsx-bd-e2e8f0));
   font-size: 13px;
   font-weight: 600;
-  color: #334155;
+  color: var(--dsx-fg-334155);
   cursor: pointer;
   text-align: left;
   transition: all 0.15s ease;
@@ -2616,15 +2616,15 @@ async function imzaGeriAl() {
 
 .evrak-signer-pill.is-selected {
   border-color: #0284c7;
-  background: #f0f9ff;
-  color: #0369a1;
+  background: var(--dsx-bg-f0f9ff);
+  color: var(--dsx-fg-0369a1);
 }
 
 .evrak-signer-order {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: #e2e8f0;
+  background: var(--dsx-bg-e2e8f0);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2644,9 +2644,9 @@ async function imzaGeriAl() {
   gap: 12px;
   padding: 14px 16px;
   border-radius: var(--ds-radius-tile, 20px);
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  color: #92400e;
+  background: var(--dsx-bg-fffbeb);
+  border: 1px solid var(--dsx-bd-fde68a);
+  color: var(--dsx-fg-92400e);
   margin-bottom: 16px;
 }
 
@@ -2654,7 +2654,7 @@ async function imzaGeriAl() {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: #fef3c7;
+  background: var(--dsx-bg-fef3c7);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2673,9 +2673,9 @@ async function imzaGeriAl() {
 }
 
 .evrak-returned-notice {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #991b1b;
+  background: var(--dsx-bg-fef2f2);
+  border: 1px solid var(--dsx-bd-fecaca);
+  color: var(--dsx-fg-991b1b);
   padding: 14px 16px;
   border-radius: var(--ds-radius-tile, 20px);
   display: flex;
@@ -2729,8 +2729,8 @@ async function imzaGeriAl() {
   gap: 6px;
   padding: 7px 12px;
   border-radius: var(--ds-radius-pill);
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--dsx-bg-eff6ff);
+  color: var(--dsx-fg-1d4ed8);
   font: 700 12px var(--ds-font-main);
   border: 1px solid rgba(59, 130, 246, 0.25);
   cursor: pointer;
@@ -2795,7 +2795,7 @@ async function imzaGeriAl() {
 
 .giden-punto-pills {
   display: flex;
-  background: #e2e8f0;
+  background: var(--dsx-bg-e2e8f0);
   padding: 4px;
   border-radius: var(--ds-radius-tile, 20px);
   gap: 3px;
@@ -2813,13 +2813,13 @@ async function imzaGeriAl() {
   font-weight: 800;
   border: none;
   background: transparent;
-  color: #475569;
+  color: var(--dsx-fg-475569);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .giden-punto-btn.is-active {
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   color: var(--ds-ink);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
@@ -2829,8 +2829,8 @@ async function imzaGeriAl() {
   font-weight: 700;
   padding: 1px 4px;
   border-radius: 4px;
-  background: #e0f2fe;
-  color: #0369a1;
+  background: var(--dsx-bg-e0f2fe);
+  color: var(--dsx-fg-0369a1);
 }
 
 /* Zengin Metin Biçimlendirme Araç Çubuğu */
@@ -2839,16 +2839,16 @@ async function imzaGeriAl() {
   flex-wrap: wrap;
   gap: 8px;
   padding: 8px 10px;
-  background: #f8fafc;
-  border: 1px solid var(--ds-border-subtle, #e2e8f0);
+  background: var(--dsx-bg-f8fafc);
+  border: 1px solid var(--ds-border-subtle, var(--dsx-bd-e2e8f0));
   border-radius: var(--ds-radius-tile, 16px);
 }
 
 .giden-tool-group {
   display: inline-flex;
   align-items: center;
-  background: #ffffff;
-  border: 1px solid var(--ds-border-subtle, #e2e8f0);
+  background: var(--dsx-bg-ffffff);
+  border: 1px solid var(--ds-border-subtle, var(--dsx-bd-e2e8f0));
   border-radius: 10px;
   padding: 2px;
   gap: 2px;
@@ -2860,7 +2860,7 @@ async function imzaGeriAl() {
   border-radius: 8px;
   border: none;
   background: transparent;
-  color: #475569;
+  color: var(--dsx-fg-475569);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2869,7 +2869,7 @@ async function imzaGeriAl() {
 }
 
 .giden-tool-btn:hover:not(:disabled) {
-  background: #f1f5f9;
+  background: var(--dsx-bg-f1f5f9);
   color: var(--ds-ink);
 }
 
@@ -2883,8 +2883,8 @@ async function imzaGeriAl() {
 }
 
 .giden-tool-btn.is-highlight {
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--dsx-bg-eff6ff);
+  color: var(--dsx-fg-1d4ed8);
   font-weight: 700;
 }
 
@@ -2894,9 +2894,9 @@ async function imzaGeriAl() {
   gap: 5px;
   padding: 4px 10px;
   border-radius: var(--ds-radius-pill, 9999px);
-  border: 1px solid var(--ds-border-subtle, #e2e8f0);
-  background: #ffffff;
-  color: #64748b;
+  border: 1px solid var(--ds-border-subtle, var(--dsx-bd-e2e8f0));
+  background: var(--dsx-bg-ffffff);
+  color: var(--dsx-fg-64748b);
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
@@ -2904,7 +2904,7 @@ async function imzaGeriAl() {
 }
 
 .giden-source-toggle-btn.is-active {
-  background: #0f172a;
+  background: var(--dsx-bg-0f172a);
   color: #ffffff;
   border-color: #0f172a;
 }
@@ -2929,9 +2929,9 @@ async function imzaGeriAl() {
   gap: 4px;
   padding: 6px 12px;
   border-radius: var(--ds-radius-pill, 9999px);
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  color: #334155;
+  background: var(--dsx-bg-f1f5f9);
+  border: 1px solid var(--dsx-bd-e2e8f0);
+  color: var(--dsx-fg-334155);
   font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
@@ -2941,9 +2941,9 @@ async function imzaGeriAl() {
 }
 
 .giden-phrase-chip:hover:not(:disabled) {
-  background: #e0f2fe;
+  background: var(--dsx-bg-e0f2fe);
   border-color: #7dd3fc;
-  color: #0369a1;
+  color: var(--dsx-fg-0369a1);
 }
 
 .giden-phrase-chip:active:not(:disabled) {
@@ -2960,13 +2960,13 @@ async function imzaGeriAl() {
   min-height: 280px;
   max-height: 520px;
   overflow-y: auto;
-  background: #ffffff;
-  border: 1.5px solid var(--ds-border-subtle, #cbd5e1);
+  background: var(--dsx-bg-ffffff);
+  border: 1.5px solid var(--ds-border-subtle, var(--dsx-bd-cbd5e1));
   border-radius: var(--ds-radius-tile, 16px);
   padding: 16px;
   font-size: 15px;
   line-height: 1.65;
-  color: #0f172a;
+  color: var(--dsx-fg-0f172a);
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
   text-align: justify;
@@ -2980,7 +2980,7 @@ async function imzaGeriAl() {
 
 .giden-rich-editor:empty::before {
   content: attr(data-placeholder);
-  color: #94a3b8;
+  color: var(--dsx-fg-94a3b8);
   pointer-events: none;
 }
 
@@ -3027,7 +3027,7 @@ async function imzaGeriAl() {
   font-size: 13px !important;
   line-height: 1.5 !important;
   min-height: 280px;
-  background: #0f172a !important;
+  background: var(--dsx-bg-0f172a) !important;
   color: #f8fafc !important;
   border-color: #334155 !important;
 }
@@ -3070,8 +3070,8 @@ async function imzaGeriAl() {
   gap: 8px;
   padding: 14px 16px;
   border-radius: var(--ds-radius-tile, 18px);
-  background: #ffffff;
-  border: 1.5px solid var(--ds-border-subtle, #e2e8f0);
+  background: var(--dsx-bg-ffffff);
+  border: 1.5px solid var(--ds-border-subtle, var(--dsx-bd-e2e8f0));
   text-align: left;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -3079,7 +3079,7 @@ async function imzaGeriAl() {
 
 .giden-template-card:hover {
   border-color: #0284c7;
-  background: #f8fafc;
+  background: var(--dsx-bg-f8fafc);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08);
 }
@@ -3125,16 +3125,16 @@ async function imzaGeriAl() {
 .giden-template-desc {
   margin: 0;
   font-size: 12px;
-  color: #475569;
+  color: var(--dsx-fg-475569);
   line-height: 1.4;
 }
 
 .giden-template-preview {
   padding: 10px 12px;
-  background: #f1f5f9;
+  background: var(--dsx-bg-f1f5f9);
   border-radius: 10px;
   font-size: 11px;
-  color: #64748b;
+  color: var(--dsx-fg-64748b);
   line-height: 1.45;
   max-height: 60px;
   overflow: hidden;
@@ -3145,7 +3145,7 @@ async function imzaGeriAl() {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom, transparent 30%, #f1f5f9 100%);
+  background: linear-gradient(to bottom, transparent 30%, var(--dsx-bg-f1f5f9) 100%);
 }
 
 .giden-template-footer {
@@ -3156,7 +3156,7 @@ async function imzaGeriAl() {
 .giden-template-apply-label {
   font-size: 11px;
   font-weight: 800;
-  color: #0284c7;
+  color: var(--dsx-fg-0284c7);
 }
 
 /* İmza Yetkilileri Listesi */
@@ -3180,7 +3180,7 @@ async function imzaGeriAl() {
 }
 
 .giden-signer-item {
-  background: #f8fafc;
+  background: var(--dsx-bg-f8fafc);
   border: 1px solid var(--ds-border-subtle);
   border-radius: var(--ds-radius-tile);
   padding: 12px 14px;
@@ -3229,7 +3229,7 @@ async function imzaGeriAl() {
 }
 
 .giden-input--subtle {
-  background: #ffffff !important;
+  background: var(--dsx-bg-ffffff) !important;
   font-size: 12px !important;
   padding: 8px 12px !important;
 }
@@ -3261,7 +3261,7 @@ async function imzaGeriAl() {
 .evrak-modal-sheet {
   width: 100%;
   max-width: 540px;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   border-radius: 24px 24px 0 0;
   max-height: 85vh;
   display: flex;
@@ -3278,7 +3278,7 @@ async function imzaGeriAl() {
 .giden-iframe-wrap {
   flex: 1;
   min-height: 0;
-  background: #e2e8f0;
+  background: var(--dsx-bg-e2e8f0);
 }
 
 .evrak-modal-header {
@@ -3315,7 +3315,7 @@ async function imzaGeriAl() {
   border-top: 1px solid var(--ds-border-subtle);
   display: flex;
   gap: 10px;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
 }
 
 .giden-modal-hint {
@@ -3328,8 +3328,8 @@ async function imzaGeriAl() {
 /* Kilitli ve Toast Stilleri */
 .giden-locked-alert {
   margin-bottom: 16px;
-  background: #fffbeb;
-  border: 1px solid #fde68a;
+  background: var(--dsx-bg-fffbeb);
+  border: 1px solid var(--dsx-bd-fde68a);
 }
 
 .evrak-toast {
@@ -3343,7 +3343,7 @@ async function imzaGeriAl() {
   gap: 10px;
   padding: 12px 16px;
   border-radius: var(--ds-radius-tile);
-  background: #1e293b;
+  background: var(--dsx-bg-1e293b);
   color: #fff;
   font-size: 13px;
   font-weight: 600;

@@ -84,7 +84,7 @@ function getAvatarUrl(int $personelId, ?string $resimYolu = null, ?string $perso
 {
     if ($personelId <= 0) return null;
     $hasPhoto = false;
-    $candidates = [trim((string) $personelResimYolu), trim((string) $resimYolu)];
+    $candidates = [trim((string) $resimYolu)];
     $projectRoot = realpath(dirname(__DIR__, 3));
     if ($projectRoot) {
         foreach ($candidates as $cand) {

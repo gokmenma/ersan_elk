@@ -1,5 +1,10 @@
 # Progress
 
+## 2026-10-24 — Yönetici Mobil Profil Sayfası
+- [x] Şifre değiştirme (API + sheet), bağlı cihaz listeleme/kaldırma, görünüm tercihleri, yardım merkezi tamamlandı.
+- [x] PHP sözdizimi, API hata yolları (curl) ve 390px Chrome ekran görüntüleri doğrulandı; `npm run build` başarılı.
+- [x] Koyu tema (Açık / Koyu / Sistem) eklendi; açık tema piksel karşılaştırmasıyla korunmuş olarak doğrulandı.
+
 ## 2026-10-24 — Mobil SPA Hakediş Silme SweetAlert2 ve Tamamlandı Koruması
 - [x] Sistem SweetAlert2 Teması: `mobile-spa` içerisine `sweetalert2` entegre edildi ve masaüstündeki Shadcn/Bento CSS kuralları `design-system.css` içine taşındı.
 - [x] Hakediş Silme Onayı: `SozlesmeDetailView.vue` içerisindeki native `confirm()` ve `alert()` pencereleri SweetAlert2 (`Swal.fire`) ile değiştirildi.
@@ -1869,13 +1874,19 @@
 - [x] Masaüstü SGK onaylanmış ve onay bekleyen rapor sorgularındaki aktif personel kısıtı kaldırıldı.
 - [x] Yönetici mobil SGK raporu sorgusunda silinmemiş pasif personeller T.C. hash eşleştirmesine dahil edildi.
 - [x] Soft-delete filtresi ve aktif kayıt önceliği korundu.
-- [x] Masaüstü ve yönetici mobil puantaj fotoğrafları merkezi, çoklu sütun fallback destekli personel fotoğraf servisine geçirildi.
+- [x] Masaüstü ve yönetici mobil puantaj fotoğrafları merkezi personel fotoğraf servisine geçirildi; servis yalnız yönetici fotoğrafını sunuyor.
 - [x] Fotoğraf endpoint'ine puantaj yetkileri ve Vue görsellerine reaktif baş harf fallback'i eklendi.
 
 # 2026-10-24 — Mobil bildirim merkezi başlık yerleşimi
 
 - [x] “Tümü Okundu” butonunun dar ekranlarda kapatma düğmesinin altında kalması engellendi.
 - [x] 430px ve 350px kırılımlarında kompakt, tek satırlı ve erişilebilir aksiyon görünümü eklendi.
+
+# 2026-10-24 — Personel avatarlarında yönetici fotoğrafı önceliği
+
+- [x] Merkezi personel fotoğraf servisi yalnız `resim_yolu` sunacak şekilde güncellendi.
+- [x] Mobil ve masaüstünde doğrudan fotoğraf seçen avatar akışlarından `personel_resim_yolu` fallback'i kaldırıldı.
+- [x] Yönetici fotoğrafı bulunmadığında personelin yüklediği fotoğraf yerine baş harf/varsayılan avatar davranışı korundu.
 # 2026-10-22 — Personel PWA yıllık izin talep kısıtı
 
 - [x] Hakedişi olmayan personel için yıllık izin seçeneğinin pasifleşmesi kaldırıldı.

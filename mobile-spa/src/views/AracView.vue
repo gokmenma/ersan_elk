@@ -3688,7 +3688,7 @@ onBeforeUnmount(() => {
   align-items: center;
   border: 1.5px solid #1e293b;
   border-radius: 7px;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   padding: 1.5px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   vertical-align: middle;
@@ -3708,7 +3708,7 @@ onBeforeUnmount(() => {
 .plate-text {
   font: 900 13.5px 'Space Grotesk', monospace;
   letter-spacing: 0.05em;
-  color: #0f172a;
+  color: var(--dsx-fg-0f172a);
   padding: 1px 7px 1px 6px;
   line-height: 1.1;
 }
@@ -3734,11 +3734,11 @@ onBeforeUnmount(() => {
 .status-dot--danger  { background: #dc2626; }
 .status-dot--muted   { background: #94a3b8; }
 
-.status-pill--blue    { background: #e0f2fe; color: #0284c7; }
-.status-pill--emerald { background: #dcfce7; color: #16a34a; }
-.status-pill--danger  { background: #fee2e2; color: #dc2626; }
-.status-pill--amber   { background: #fef3c7; color: #d97706; }
-.status-pill--muted   { background: #f1f5f9; color: #64748b; }
+.status-pill--blue    { background: var(--dsx-bg-e0f2fe); color: var(--dsx-fg-0284c7); }
+.status-pill--emerald { background: var(--dsx-bg-dcfce7); color: var(--dsx-fg-16a34a); }
+.status-pill--danger  { background: var(--dsx-bg-fee2e2); color: #dc2626; }
+.status-pill--amber   { background: var(--dsx-bg-fef3c7); color: var(--dsx-fg-d97706); }
+.status-pill--muted   { background: var(--dsx-bg-f1f5f9); color: var(--dsx-fg-64748b); }
 
 .spec-tag {
   display: inline-block;
@@ -3755,7 +3755,7 @@ onBeforeUnmount(() => {
 .vehicle-master-card {
   padding: 16px 16px 14px;
   cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--dsx-bd-ffffff-a090);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -3818,7 +3818,7 @@ onBeforeUnmount(() => {
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   flex-shrink: 0;
 }
@@ -3864,21 +3864,21 @@ onBeforeUnmount(() => {
 }
 
 .evrak-pill-item.is-ok {
-  background: #f0fdf4;
-  border-color: #bbf7d0;
-  color: #166534;
+  background: var(--dsx-bg-f0fdf4);
+  border-color: var(--dsx-bd-bbf7d0);
+  color: var(--dsx-fg-166534);
 }
 
 .evrak-pill-item.is-warning {
-  background: #fff7ed;
-  border-color: #fed7aa;
-  color: #c2410c;
+  background: var(--dsx-bg-fff7ed);
+  border-color: var(--dsx-bd-fed7aa);
+  color: var(--dsx-fg-c2410c);
 }
 
 .evrak-pill-item.is-danger {
-  background: #fef2f2;
-  border-color: #fecaca;
-  color: #b91c1c;
+  background: var(--dsx-bg-fef2f2);
+  border-color: var(--dsx-bd-fecaca);
+  color: var(--dsx-fg-b91c1c);
 }
 
 .evrak-name {
@@ -3894,7 +3894,7 @@ onBeforeUnmount(() => {
    ======================================================== */
 .km-journey-card {
   padding: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--dsx-bd-ffffff-a090);
 }
 
 .km-card-header {
@@ -3935,7 +3935,7 @@ onBeforeUnmount(() => {
   align-items: center;
   padding: 3px 10px;
   border-radius: var(--ds-radius-pill);
-  background: #eef2ff;
+  background: var(--dsx-bg-eef2ff);
   color: #4f46e5;
   font: 900 13px 'Space Grotesk', monospace;
   box-shadow: 0 1px 2px rgba(79, 70, 229, 0.1);
@@ -3988,11 +3988,11 @@ onBeforeUnmount(() => {
 .journey-line {
   flex: 1;
   height: 2px;
-  border-top: 1.5px dashed #cbd5e1;
+  border-top: 1.5px dashed var(--dsx-bd-cbd5e1);
 }
 
 .journey-arrow {
-  color: #94a3b8;
+  color: var(--dsx-fg-94a3b8);
   display: grid;
   place-items: center;
 }
@@ -4019,8 +4019,8 @@ onBeforeUnmount(() => {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: #e2e8f0;
-  color: #334155;
+  background: var(--dsx-bg-e2e8f0);
+  color: var(--dsx-fg-334155);
   font: 700 10px var(--ds-font-mono);
   flex-shrink: 0;
 }
@@ -4070,12 +4070,12 @@ onBeforeUnmount(() => {
 }
 
 .evrak-mini-card.is-warning {
-  background: #fff7ed;
-  border-color: #fed7aa;
+  background: var(--dsx-bg-fff7ed);
+  border-color: var(--dsx-bd-fed7aa);
 }
 
 .evrak-mini-card.is-warning .evrak-val {
-  color: #ea580c;
+  color: var(--dsx-fg-ea580c);
 }
 
 .evrak-label {
@@ -4130,15 +4130,15 @@ onBeforeUnmount(() => {
   cursor: pointer;
 }
 
-.bg-amber-subtle { background: #fef3c7; }
-.text-amber      { color: #d97706; }
-.bg-blue-subtle  { background: #e0f2fe; }
-.text-blue       { color: #0284c7; }
-.bg-coral-subtle { background: #ffe4e6; }
-.text-coral      { color: #e11d48; }
-.bg-emerald-subtle { background: #dcfce7; }
-.text-emerald    { color: #16a34a; }
-.bg-indigo-subtle { background: #e0e7ff; }
+.bg-amber-subtle { background: var(--dsx-bg-fef3c7); }
+.text-amber      { color: var(--dsx-fg-d97706); }
+.bg-blue-subtle  { background: var(--dsx-bg-e0f2fe); }
+.text-blue       { color: var(--dsx-fg-0284c7); }
+.bg-coral-subtle { background: var(--dsx-bg-ffe4e6); }
+.text-coral      { color: var(--dsx-fg-e11d48); }
+.bg-emerald-subtle { background: var(--dsx-bg-dcfce7); }
+.text-emerald    { color: var(--dsx-fg-16a34a); }
+.bg-indigo-subtle { background: var(--dsx-bg-e0e7ff); }
 .text-indigo     { color: #4f46e5; }
 
 /* Yatay Kayar Filtre Hapları */
@@ -4206,8 +4206,8 @@ onBeforeUnmount(() => {
   width: 34px;
   height: 34px;
   border-radius: 10px;
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  background: #ffffff;
+  border: 1px solid var(--dsx-bd-0f172a-a006);
+  background: var(--dsx-bg-ffffff);
   color: var(--ds-ink);
   cursor: pointer;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
@@ -4239,7 +4239,7 @@ onBeforeUnmount(() => {
   justify-content: center;
   height: 46px;
   border-radius: 14px;
-  border: 1px solid rgba(15, 23, 42, 0.06);
+  border: 1px solid var(--dsx-bd-0f172a-a006);
   background: var(--ds-surface-subtle);
   font-size: 12.5px;
   font-weight: 700;
@@ -4261,7 +4261,7 @@ onBeforeUnmount(() => {
 
 .month-grid-btn.is-current:not(.is-active) {
   border-color: #38bdf8;
-  color: #0284c7;
+  color: var(--dsx-fg-0284c7);
   background: rgba(56, 189, 248, 0.08);
 }
 
@@ -4275,7 +4275,7 @@ onBeforeUnmount(() => {
 }
 
 .month-grid-btn.is-active .current-month-dot {
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
 }
 
 .month-shortcuts {
@@ -4289,8 +4289,8 @@ onBeforeUnmount(() => {
 .shortcut-btn {
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background: #ffffff;
+  border: 1px solid var(--dsx-bd-0f172a-a008);
+  background: var(--dsx-bg-ffffff);
   font-size: 11.5px;
   font-weight: 700;
   color: var(--ds-muted);
@@ -4316,7 +4316,7 @@ onBeforeUnmount(() => {
   top: 52px;
   right: 0;
   width: 190px;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   border: 1px solid var(--ds-border);
   border-radius: 18px;
   box-shadow: var(--ds-shadow-float);
@@ -4372,7 +4372,7 @@ onBeforeUnmount(() => {
   width: 100%;
   max-width: 500px;
   max-height: 88svh;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   border-radius: 28px 28px 0 0;
   box-shadow: var(--ds-shadow-float);
   overflow-y: auto;
@@ -4418,7 +4418,7 @@ onBeforeUnmount(() => {
   width: 40px;
   height: 4px;
   border-radius: 99px;
-  background: #cbd5e1;
+  background: var(--dsx-bg-cbd5e1);
   margin: 0 auto 12px;
 }
 
@@ -4429,7 +4429,7 @@ onBeforeUnmount(() => {
   height: 38px;
   border-radius: 12px;
   background: rgba(56, 189, 248, 0.12);
-  color: #0284c7;
+  color: var(--dsx-fg-0284c7);
   flex-shrink: 0;
 }
 
@@ -4444,7 +4444,7 @@ onBeforeUnmount(() => {
   padding: 14px 16px;
   border-radius: 20px;
   background: var(--ds-surface-subtle);
-  border: 1px solid rgba(15, 23, 42, 0.05);
+  border: 1px solid var(--dsx-bd-0f172a-a005);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -4480,17 +4480,17 @@ onBeforeUnmount(() => {
   font-size: 11px;
   font-weight: 700;
   color: var(--ds-muted);
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   padding: 3px 9px;
   border-radius: 99px;
-  border: 1px solid rgba(15, 23, 42, 0.06);
+  border: 1px solid var(--dsx-bd-0f172a-a006);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
 }
 
 .chip-amber {
-  background: #fef3c7 !important;
-  color: #b45309 !important;
-  border-color: #fde68a !important;
+  background: var(--dsx-bg-fef3c7) !important;
+  color: var(--dsx-fg-b45309) !important;
+  border-color: var(--dsx-bd-fde68a) !important;
 }
 
 /* 2. 2x2 Bento Metrik Izgarası */
@@ -4506,8 +4506,8 @@ onBeforeUnmount(() => {
   align-items: flex-start;
   padding: 12px 14px;
   border-radius: 16px;
-  background: #ffffff;
-  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: var(--dsx-bg-ffffff);
+  border: 1px solid var(--dsx-bd-0f172a-a006);
   box-shadow: var(--ds-shadow-tile);
 }
 
@@ -4553,8 +4553,8 @@ onBeforeUnmount(() => {
 .detail-card-panel {
   padding: 14px 16px;
   border-radius: 20px;
-  background: #ffffff;
-  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: var(--dsx-bg-ffffff);
+  border: 1px solid var(--dsx-bd-0f172a-a006);
   box-shadow: var(--ds-shadow-tile);
   display: flex;
   flex-direction: column;
@@ -4621,7 +4621,7 @@ onBeforeUnmount(() => {
   padding: 10px 12px;
   border-radius: 14px;
   background: rgba(16, 185, 129, 0.08);
-  color: #047857;
+  color: var(--dsx-fg-047857);
   font-size: 11.5px;
   font-weight: 600;
 }
@@ -4641,7 +4641,7 @@ onBeforeUnmount(() => {
   padding: 10px 6px;
   border-radius: 14px;
   background: var(--ds-surface-subtle);
-  border: 1px solid rgba(15, 23, 42, 0.05);
+  border: 1px solid var(--dsx-bd-0f172a-a005);
   gap: 4px;
 }
 
@@ -4673,12 +4673,12 @@ onBeforeUnmount(() => {
 
 .detail-doc-tile.is-ok .doc-tile-badge {
   background: rgba(16, 185, 129, 0.14);
-  color: #059669;
+  color: var(--dsx-fg-059669);
 }
 
 .detail-doc-tile.is-warning .doc-tile-badge {
   background: rgba(245, 158, 11, 0.16);
-  color: #b45309;
+  color: var(--dsx-fg-b45309);
 }
 
 .detail-doc-tile.is-expired .doc-tile-badge {
@@ -4688,7 +4688,7 @@ onBeforeUnmount(() => {
 
 .detail-doc-tile.is-expired {
   border-color: rgba(239, 68, 68, 0.3);
-  background: #fef2f2;
+  background: var(--dsx-bg-fef2f2);
 }
 
 .doc-tile-badge.is-muted {
@@ -4702,7 +4702,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 4px;
   font: 800 10px var(--ds-font-mono, monospace);
-  color: #059669;
+  color: var(--dsx-fg-059669);
   background: rgba(16, 185, 129, 0.12);
   padding: 3px 8px;
   border-radius: 99px;
@@ -4716,7 +4716,7 @@ onBeforeUnmount(() => {
   padding: 10px 12px;
   border-radius: 14px;
   background: var(--ds-surface-subtle);
-  border: 1px solid rgba(15, 23, 42, 0.05);
+  border: 1px solid var(--dsx-bd-0f172a-a005);
 }
 
 .ruhsat-file-icon {
@@ -4726,7 +4726,7 @@ onBeforeUnmount(() => {
   height: 36px;
   border-radius: 10px;
   background: rgba(56, 189, 248, 0.15);
-  color: #0284c7;
+  color: var(--dsx-fg-0284c7);
   flex-shrink: 0;
 }
 
@@ -4792,12 +4792,12 @@ onBeforeUnmount(() => {
 }
 
 .ruhsat-delete-btn:active {
-  background: #fee2e2;
+  background: var(--dsx-bg-fee2e2);
   transform: scale(0.92);
 }
 
 .ruhsat-upload-box {
-  border: 1.5px dashed #cbd5e1;
+  border: 1.5px dashed var(--dsx-bd-cbd5e1);
   border-radius: 16px;
   background: var(--ds-surface-subtle);
   text-align: center;
@@ -4824,8 +4824,8 @@ onBeforeUnmount(() => {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: #ffffff;
-  color: #0284c7;
+  background: var(--dsx-bg-ffffff);
+  color: var(--dsx-fg-0284c7);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   margin-bottom: 6px;
 }
@@ -4833,7 +4833,7 @@ onBeforeUnmount(() => {
 .ruhsat-upload-title {
   font-size: 12px;
   font-weight: 700;
-  color: #0284c7;
+  color: var(--dsx-fg-0284c7);
 }
 
 .ruhsat-upload-hint {
@@ -4887,11 +4887,11 @@ onBeforeUnmount(() => {
 }
 
 .detail-action-btn--danger:active {
-  background: #fee2e2;
+  background: var(--dsx-bg-fee2e2);
 }
 
 .clay-confirm-box {
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   border-radius: 24px;
   padding: 24px 20px;
   max-width: 340px;
@@ -4924,7 +4924,7 @@ onBeforeUnmount(() => {
   width: 100%;
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--dsx-bd-cbd5e1);
   background: var(--ds-surface-subtle);
   font: 500 13px var(--ds-font-main);
   color: var(--ds-ink);
@@ -4934,7 +4934,7 @@ onBeforeUnmount(() => {
 
 .form-input:focus {
   border-color: var(--ds-blue-ink);
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
 }
 
@@ -4987,7 +4987,7 @@ onBeforeUnmount(() => {
 }
 
 .clay-toast--success {
-  background: #0f172a;
+  background: var(--dsx-bg-0f172a);
   color: #ffffff;
 }
 
@@ -5048,7 +5048,7 @@ onBeforeUnmount(() => {
   padding: 14px 16px;
   border-radius: var(--ds-radius-card);
   text-decoration: none;
-  background: linear-gradient(135deg, #ffffff, #f0f9ff);
+  background: linear-gradient(135deg, var(--dsx-bg-ffffff), var(--dsx-bg-f0f9ff));
   border: 1px solid rgba(2, 132, 199, 0.15);
   margin-bottom: 12px;
   box-shadow: 0 4px 14px rgba(2, 132, 199, 0.08);
@@ -5063,7 +5063,7 @@ onBeforeUnmount(() => {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: #e0f2fe;
+  background: var(--dsx-bg-e0f2fe);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5079,7 +5079,7 @@ onBeforeUnmount(() => {
   display: block;
   font-size: 13px;
   font-weight: 800;
-  color: #0369a1;
+  color: var(--dsx-fg-0369a1);
   margin-bottom: 2px;
 }
 
@@ -5087,7 +5087,7 @@ onBeforeUnmount(() => {
   display: block;
   font-size: 11px;
   font-weight: 500;
-  color: #64748b;
+  color: var(--dsx-fg-64748b);
   line-height: 1.3;
 }
 
@@ -5099,16 +5099,16 @@ onBeforeUnmount(() => {
 }
 
 .clay-filter-pill--dept {
-  background: #f1f5f9;
+  background: var(--dsx-bg-f1f5f9);
   color: var(--ds-ink);
   font-weight: 700;
-  border-color: rgba(0, 0, 0, 0.06);
+  border-color: var(--dsx-bd-000000-a006);
 }
 
 .clay-filter-pill--dept.is-active {
-  background: #e0f2fe;
-  color: #0369a1;
-  border-color: #bae6fd;
+  background: var(--dsx-bg-e0f2fe);
+  color: var(--dsx-fg-0369a1);
+  border-color: var(--dsx-bd-bae6fd);
 }
 
 /* 4 Bento KPI Kart Izgarası */
@@ -5214,7 +5214,7 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   font-size: 11px;
   font-weight: 700;
-  color: var(--ds-primary);
+  color: var(--ds-primary-ink);
   margin-top: 10px;
   padding-top: 7px;
   border-top: 1px dashed var(--ds-border);
@@ -5344,7 +5344,7 @@ onBeforeUnmount(() => {
 }
 
 .leader-row:active {
-  background: #e2e8f0;
+  background: var(--dsx-bg-e2e8f0);
 }
 
 .leader-rank {
@@ -5360,23 +5360,23 @@ onBeforeUnmount(() => {
 }
 
 .rank--gold {
-  background: #fef3c7;
-  color: #b45309;
+  background: var(--dsx-bg-fef3c7);
+  color: var(--dsx-fg-b45309);
 }
 
 .rank--silver {
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--dsx-bg-f1f5f9);
+  color: var(--dsx-fg-475569);
 }
 
 .rank--bronze {
-  background: #ffedd5;
-  color: #c2410c;
+  background: var(--dsx-bg-ffedd5);
+  color: var(--dsx-fg-c2410c);
 }
 
 .rank--default {
-  background: #e2e8f0;
-  color: #64748b;
+  background: var(--dsx-bg-e2e8f0);
+  color: var(--dsx-fg-64748b);
 }
 
 .leader-info {
@@ -5399,13 +5399,13 @@ onBeforeUnmount(() => {
 }
 
 .expiring-doc-card:active {
-  background: #e2e8f0;
+  background: var(--dsx-bg-e2e8f0);
 }
 
 .tr-plate-badge-xs {
   display: inline-flex;
   align-items: center;
-  background: #fff;
+  background: var(--dsx-bg-ffffff);
   border: 1px solid #1e293b;
   border-radius: 3px;
   overflow: hidden;
@@ -5424,7 +5424,7 @@ onBeforeUnmount(() => {
 .tr-plate-badge-xs .plate-text {
   font-size: 11px;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--dsx-fg-0f172a);
   padding: 2px 5px;
   letter-spacing: 0.04em;
 }
@@ -5440,15 +5440,15 @@ onBeforeUnmount(() => {
 }
 
 .chip--danger {
-  background: #fee2e2;
-  color: #b91c1c;
-  border: 1px solid #fca5a5;
+  background: var(--dsx-bg-fee2e2);
+  color: var(--dsx-fg-b91c1c);
+  border: 1px solid var(--dsx-bd-fca5a5);
 }
 
 .chip--warning {
-  background: #fef3c7;
-  color: #b45309;
-  border: 1px solid #fde68a;
+  background: var(--dsx-bg-fef3c7);
+  color: var(--dsx-fg-b45309);
+  border: 1px solid var(--dsx-bd-fde68a);
 }
 
 .empty-docs-state {
@@ -5468,7 +5468,7 @@ onBeforeUnmount(() => {
 }
 
 .recent-service-row:active {
-  background: #e2e8f0;
+  background: var(--dsx-bg-e2e8f0);
 }
 
 .service-row-icon {
@@ -5500,7 +5500,7 @@ onBeforeUnmount(() => {
 }
 
 .dept-item-btn.is-active {
-  background: #eff6ff;
+  background: var(--dsx-bg-eff6ff);
   border-color: #3b82f6;
 }
 </style>

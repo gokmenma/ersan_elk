@@ -1319,7 +1319,7 @@ onMounted(() => {
   align-items: center;
   gap: 6px;
   font-size: 14px;
-  color: #1e293b;
+  color: var(--dsx-fg-1e293b);
 }
 
 /* 4 Minimal Bento KPI Kartı */
@@ -1335,8 +1335,8 @@ onMounted(() => {
   }
 }
 .nobet-kpi-card {
-  background: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: var(--dsx-bg-ffffff);
+  border: 1px solid var(--dsx-bd-ffffff-a090);
   border-radius: 20px;
   padding: 12px 14px;
   display: flex;
@@ -1363,7 +1363,7 @@ onMounted(() => {
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.05em;
-  color: #64748b;
+  color: var(--dsx-fg-64748b);
 }
 .nobet-kpi-icon {
   width: 26px;
@@ -1373,21 +1373,21 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
 }
-.nobet-kpi-card--amber .nobet-kpi-icon { background: #fef3c7; color: #d97706; }
-.nobet-kpi-card--indigo .nobet-kpi-icon { background: #e0e7ff; color: #4f46e5; }
-.nobet-kpi-card--rose .nobet-kpi-icon { background: #ffe4e6; color: #e11d48; }
-.nobet-kpi-card--blue .nobet-kpi-icon { background: #e0f2fe; color: #0284c7; }
+.nobet-kpi-card--amber .nobet-kpi-icon { background: var(--dsx-bg-fef3c7); color: var(--dsx-fg-d97706); }
+.nobet-kpi-card--indigo .nobet-kpi-icon { background: var(--dsx-bg-e0e7ff); color: #4f46e5; }
+.nobet-kpi-card--rose .nobet-kpi-icon { background: var(--dsx-bg-ffe4e6); color: var(--dsx-fg-e11d48); }
+.nobet-kpi-card--blue .nobet-kpi-icon { background: var(--dsx-bg-e0f2fe); color: var(--dsx-fg-0284c7); }
 
 .nobet-kpi-val {
   font-size: 24px;
   font-weight: 900;
   line-height: 1.1;
-  color: #0f172a;
+  color: var(--dsx-fg-0f172a);
   margin-bottom: 2px;
 }
 .nobet-kpi-sub {
   font-size: 10px;
-  color: #94a3b8;
+  color: var(--dsx-fg-94a3b8);
   font-weight: 600;
 }
 
@@ -1396,11 +1396,11 @@ onMounted(() => {
   display: flex;
   gap: 6px;
   padding: 4px;
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--dsx-bg-ffffff-a070);
   backdrop-filter: blur(8px);
   border-radius: 16px;
   margin-bottom: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  border: 1px solid var(--dsx-bd-ffffff-a080);
 }
 .nobet-tab-btn {
   flex: 1;
@@ -1412,15 +1412,15 @@ onMounted(() => {
   border-radius: 12px;
   font-size: 12px;
   font-weight: 800;
-  color: #64748b;
+  color: var(--dsx-fg-64748b);
   border: none;
   background: transparent;
   transition: all 0.2s ease;
   cursor: pointer;
 }
 .nobet-tab-btn.is-active {
-  background: #ffffff;
-  color: #e11d48;
+  background: var(--dsx-bg-ffffff);
+  color: var(--dsx-fg-e11d48);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 .nobet-tab-badge {
@@ -1447,18 +1447,18 @@ onMounted(() => {
 .nobet-search-icon {
   position: absolute;
   left: 12px;
-  color: #94a3b8;
+  color: var(--dsx-fg-94a3b8);
   pointer-events: none;
 }
 .nobet-search-input {
   width: 100%;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--dsx-bg-ffffff);
+  border: 1px solid var(--dsx-bd-e2e8f0);
   border-radius: 14px;
   padding: 10px 34px 10px 36px;
   font-size: 13px;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--dsx-fg-1e293b);
   outline: none;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
 }
@@ -1468,7 +1468,7 @@ onMounted(() => {
 .nobet-search-clear {
   position: absolute;
   right: 10px;
-  background: #f1f5f9;
+  background: var(--dsx-bg-f1f5f9);
   border: none;
   border-radius: 50%;
   width: 20px;
@@ -1476,7 +1476,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #64748b;
+  color: var(--dsx-fg-64748b);
   cursor: pointer;
 }
 
@@ -1485,18 +1485,18 @@ onMounted(() => {
   align-items: center;
   gap: 6px;
   padding: 0 14px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--dsx-bg-ffffff);
+  border: 1px solid var(--dsx-bd-e2e8f0);
   border-radius: 14px;
   font-size: 12px;
   font-weight: 700;
-  color: #475569;
+  color: var(--dsx-fg-475569);
   cursor: pointer;
 }
 .nobet-select-mode-btn.is-active {
-  background: #ffe4e6;
+  background: var(--dsx-bg-ffe4e6);
   border-color: #f43f5e;
-  color: #e11d48;
+  color: var(--dsx-fg-e11d48);
 }
 
 /* Durum Hapları */
@@ -1517,8 +1517,8 @@ onMounted(() => {
   justify-content: space-between;
   padding: 10px 14px;
   margin-bottom: 12px;
-  background: #fff1f2;
-  border: 1px solid #fecdd3;
+  background: var(--dsx-bg-fff1f2);
+  border: 1px solid var(--dsx-bd-fecdd3);
   border-radius: 16px;
 }
 .nobet-bulk-info {
@@ -1533,7 +1533,7 @@ onMounted(() => {
   gap: 4px;
   background: none;
   border: none;
-  color: #be123c;
+  color: var(--dsx-fg-be123c);
   font-weight: 800;
   cursor: pointer;
 }
@@ -1555,7 +1555,7 @@ onMounted(() => {
 }
 .nobet-card.is-selected {
   border-color: #f43f5e;
-  background: #fff1f2;
+  background: var(--dsx-bg-fff1f2);
 }
 .nobet-card-head {
   display: flex;
@@ -1587,7 +1587,7 @@ onMounted(() => {
   color: #ffffff;
   overflow: hidden;
   flex-shrink: 0;
-  border: 2px solid #ffffff;
+  border: 2px solid var(--dsx-bd-ffffff);
   box-shadow: 0 3px 8px rgba(244, 63, 94, 0.2);
 }
 .nobet-avatar--sm {
@@ -1608,12 +1608,12 @@ onMounted(() => {
 .nobet-user-name {
   font-size: 14px;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--dsx-fg-0f172a);
 }
 .nobet-user-dept {
   font-size: 11px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--dsx-fg-64748b);
   text-transform: uppercase;
 }
 .nobet-card-badges {
@@ -1629,10 +1629,10 @@ onMounted(() => {
   border-radius: 8px;
   text-transform: uppercase;
 }
-.nobet-type-pill--hafta_sonu { background: #e0e7ff; color: #4338ca; }
-.nobet-type-pill--resmi_tatil { background: #ffe4e6; color: #be123c; }
+.nobet-type-pill--hafta_sonu { background: var(--dsx-bg-e0e7ff); color: #4338ca; }
+.nobet-type-pill--resmi_tatil { background: var(--dsx-bg-ffe4e6); color: var(--dsx-fg-be123c); }
 .nobet-type-pill--hafta_ici,
-.nobet-type-pill--standart { background: #f1f5f9; color: #475569; }
+.nobet-type-pill--standart { background: var(--dsx-bg-f1f5f9); color: var(--dsx-fg-475569); }
 
 .nobet-status-pill {
   font-size: 10px;
@@ -1640,8 +1640,8 @@ onMounted(() => {
   padding: 2px 8px;
   border-radius: 8px;
 }
-.nobet-status-pill.is-approved { background: #dcfce7; color: #15803d; }
-.nobet-status-pill.is-pending { background: #fef3c7; color: #b45309; }
+.nobet-status-pill.is-approved { background: var(--dsx-bg-dcfce7); color: var(--dsx-fg-15803d); }
+.nobet-status-pill.is-pending { background: var(--dsx-bg-fef3c7); color: var(--dsx-fg-b45309); }
 .nobet-status-pill--sm { padding: 1px 6px; font-size: 9px; }
 
 /* Bilgi Grid */
@@ -1649,7 +1649,7 @@ onMounted(() => {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-  background: #f8fafc;
+  background: var(--dsx-bg-f8fafc);
   padding: 10px;
   border-radius: 14px;
   margin-bottom: 10px;
@@ -1661,29 +1661,29 @@ onMounted(() => {
 .nobet-info-box-label {
   font-size: 9px;
   font-weight: 800;
-  color: #94a3b8;
+  color: var(--dsx-fg-94a3b8);
   letter-spacing: 0.05em;
   margin-bottom: 2px;
 }
 .nobet-info-box-val {
   font-size: 12px;
   font-weight: 800;
-  color: #1e293b;
+  color: var(--dsx-fg-1e293b);
 }
 .nobet-info-box-val small {
   font-size: 11px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--dsx-fg-64748b);
   margin-left: 4px;
 }
 
 .nobet-card-note {
-  background: #fffbeb;
-  border: 1px dashed #fde68a;
+  background: var(--dsx-bg-fffbeb);
+  border: 1px dashed var(--dsx-bd-fde68a);
   border-radius: 10px;
   padding: 8px 10px;
   font-size: 11px;
-  color: #92400e;
+  color: var(--dsx-fg-92400e);
   font-weight: 600;
   margin-bottom: 10px;
 }
@@ -1726,14 +1726,14 @@ onMounted(() => {
 .nobet-btn--icon {
   width: 38px;
   padding: 0;
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--dsx-bg-f1f5f9);
+  color: var(--dsx-fg-475569);
 }
 .nobet-btn--danger-icon {
   width: 38px;
   padding: 0;
-  background: #ffe4e6;
-  color: #e11d48;
+  background: var(--dsx-bg-ffe4e6);
+  color: var(--dsx-fg-e11d48);
 }
 
 /* TAKVİM BİLEŞENİ */
@@ -1748,7 +1748,7 @@ onMounted(() => {
   text-align: center;
   font-size: 11px;
   font-weight: 800;
-  color: #94a3b8;
+  color: var(--dsx-fg-94a3b8);
   margin-bottom: 8px;
 }
 .nobet-cal-weekdays .is-weekend {
@@ -1763,8 +1763,8 @@ onMounted(() => {
   min-height: 48px;
 }
 .nobet-cal-day-cell {
-  background: #f8fafc;
-  border: 1px solid #f1f5f9;
+  background: var(--dsx-bg-f8fafc);
+  border: 1px solid var(--dsx-bd-f1f5f9);
   border-radius: 12px;
   min-height: 48px;
   padding: 4px 2px;
@@ -1776,8 +1776,8 @@ onMounted(() => {
   transition: all 0.15s ease;
 }
 .nobet-cal-day-cell.is-weekend {
-  background: #fff1f2;
-  border-color: #ffe4e6;
+  background: var(--dsx-bg-fff1f2);
+  border-color: var(--dsx-bd-ffe4e6);
 }
 .nobet-cal-day-cell.is-selected {
   background: #f43f5e;
@@ -1790,7 +1790,7 @@ onMounted(() => {
 .nobet-cal-day-num {
   font-size: 12px;
   font-weight: 800;
-  color: #334155;
+  color: var(--dsx-fg-334155);
   margin-bottom: 2px;
 }
 .nobet-cal-dots {
@@ -1805,7 +1805,7 @@ onMounted(() => {
 }
 .nobet-cal-dot.is-green { background: #10b981; }
 .nobet-cal-dot.is-amber { background: #f59e0b; }
-.nobet-cal-day-cell.is-selected .nobet-cal-dot { background: #ffffff; }
+.nobet-cal-day-cell.is-selected .nobet-cal-dot { background: var(--dsx-bg-ffffff); }
 
 .nobet-cal-detail-sec {
   margin-top: 14px;
@@ -1819,7 +1819,7 @@ onMounted(() => {
 .nobet-cal-detail-title {
   font-size: 15px;
   font-weight: 900;
-  color: #0f172a;
+  color: var(--dsx-fg-0f172a);
 }
 .nobet-cal-shifts-list {
   display: flex;
@@ -1840,11 +1840,11 @@ onMounted(() => {
 }
 .nobet-cal-shift-info strong {
   font-size: 13px;
-  color: #1e293b;
+  color: var(--dsx-fg-1e293b);
 }
 .nobet-cal-shift-info span {
   font-size: 11px;
-  color: #64748b;
+  color: var(--dsx-fg-64748b);
   font-weight: 600;
 }
 .nobet-cal-shift-actions {
@@ -1853,7 +1853,7 @@ onMounted(() => {
   gap: 6px;
 }
 .nobet-btn-mini-danger {
-  background: #fee2e2;
+  background: var(--dsx-bg-fee2e2);
   color: #ef4444;
   border: none;
   width: 28px;
@@ -1898,14 +1898,14 @@ onMounted(() => {
 .nobet-pool-meta strong {
   font-size: 13px;
   font-weight: 800;
-  color: #1e293b;
+  color: var(--dsx-fg-1e293b);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .nobet-pool-meta small {
   font-size: 11px;
-  color: #64748b;
+  color: var(--dsx-fg-64748b);
   font-weight: 600;
 }
 .nobet-pool-right {
@@ -1924,7 +1924,7 @@ onMounted(() => {
 .nobet-pool-count-badge {
   font-size: 12px;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--dsx-fg-0f172a);
 }
 .nobet-pool-count-badge strong {
   font-size: 15px;
@@ -1933,12 +1933,12 @@ onMounted(() => {
 .nobet-pool-pending-badge {
   font-size: 9px;
   font-weight: 700;
-  color: #d97706;
+  color: var(--dsx-fg-d97706);
 }
 .nobet-pool-track {
   width: 100%;
   height: 5px;
-  background: #f1f5f9;
+  background: var(--dsx-bg-f1f5f9);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -1973,7 +1973,7 @@ onMounted(() => {
 .nobet-sheet-drag {
   width: 36px;
   height: 4px;
-  background: #cbd5e1;
+  background: var(--dsx-bg-cbd5e1);
   border-radius: 2px;
   margin: 0 auto 12px auto;
 }
@@ -1986,7 +1986,7 @@ onMounted(() => {
 .nobet-sheet-title {
   font-size: 17px;
   font-weight: 900;
-  color: #0f172a;
+  color: var(--dsx-fg-0f172a);
 }
 .nobet-sheet-body {
   overflow-y: auto;
@@ -2002,7 +2002,7 @@ onMounted(() => {
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.05em;
-  color: #64748b;
+  color: var(--dsx-fg-64748b);
   margin-bottom: 6px;
 }
 .nobet-plan-personnel-scroll {
@@ -2011,8 +2011,8 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--dsx-bg-f8fafc);
+  border: 1px solid var(--dsx-bd-e2e8f0);
   border-radius: 14px;
   padding: 6px;
 }
@@ -2029,7 +2029,7 @@ onMounted(() => {
   transition: all 0.15s ease;
 }
 .nobet-plan-p-tile.is-selected {
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   border-color: #f43f5e;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
 }
@@ -2040,27 +2040,27 @@ onMounted(() => {
 }
 .nobet-plan-p-info strong {
   font-size: 12px;
-  color: #1e293b;
+  color: var(--dsx-fg-1e293b);
 }
 .nobet-plan-p-info small {
   font-size: 10px;
-  color: #64748b;
+  color: var(--dsx-fg-64748b);
 }
 
 .nobet-text-input {
   width: 100%;
   padding: 10px 14px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--dsx-bg-f8fafc);
+  border: 1px solid var(--dsx-bd-e2e8f0);
   border-radius: 12px;
   font-size: 13px;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--dsx-fg-1e293b);
   outline: none;
 }
 .nobet-text-input:focus {
   border-color: #f43f5e;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
 }
 .nobet-textarea {
   resize: none;
@@ -2069,7 +2069,7 @@ onMounted(() => {
 .nobet-type-segmented {
   display: flex;
   gap: 6px;
-  background: #f1f5f9;
+  background: var(--dsx-bg-f1f5f9);
   padding: 3px;
   border-radius: 12px;
 }
@@ -2081,12 +2081,12 @@ onMounted(() => {
   font-weight: 800;
   border: none;
   background: transparent;
-  color: #64748b;
+  color: var(--dsx-fg-64748b);
   cursor: pointer;
 }
 .nobet-seg-btn.is-active {
-  background: #ffffff;
-  color: #e11d48;
+  background: var(--dsx-bg-ffffff);
+  color: var(--dsx-fg-e11d48);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
 }
 
@@ -2097,16 +2097,16 @@ onMounted(() => {
 }
 .nobet-chip {
   padding: 5px 10px;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  background: var(--dsx-bg-f1f5f9);
+  border: 1px solid var(--dsx-bd-e2e8f0);
   border-radius: 10px;
   font-size: 11px;
   font-weight: 700;
-  color: #475569;
+  color: var(--dsx-fg-475569);
   cursor: pointer;
 }
 .nobet-chip:active {
-  background: #e2e8f0;
+  background: var(--dsx-bg-e2e8f0);
 }
 
 .nobet-toggle-row {
@@ -2114,18 +2114,18 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 12px;
-  background: #f8fafc;
+  background: var(--dsx-bg-f8fafc);
   border-radius: 14px;
   margin-top: 6px;
 }
 .nobet-toggle-row strong {
   display: block;
   font-size: 12px;
-  color: #1e293b;
+  color: var(--dsx-fg-1e293b);
 }
 .nobet-toggle-row p {
   font-size: 10px;
-  color: #64748b;
+  color: var(--dsx-fg-64748b);
   margin: 0;
 }
 .nobet-switch {
@@ -2144,7 +2144,7 @@ onMounted(() => {
   position: absolute;
   cursor: pointer;
   inset: 0;
-  background-color: #cbd5e1;
+  background-color: var(--dsx-bg-cbd5e1);
   transition: 0.3s;
   border-radius: 24px;
 }
@@ -2155,7 +2155,7 @@ onMounted(() => {
   width: 18px;
   left: 3px;
   bottom: 3px;
-  background-color: white;
+  background-color: var(--dsx-bg-ffffff);
   transition: 0.3s;
   border-radius: 50%;
 }
@@ -2224,18 +2224,18 @@ onMounted(() => {
   justify-content: center;
   margin: 0 auto 12px auto;
 }
-.nobet-confirm-icon--danger { background: #fee2e2; color: #ef4444; }
-.nobet-confirm-icon--success { background: #dcfce7; color: #16a34a; }
-.nobet-confirm-icon--warning { background: #fef3c7; color: #d97706; }
+.nobet-confirm-icon--danger { background: var(--dsx-bg-fee2e2); color: #ef4444; }
+.nobet-confirm-icon--success { background: var(--dsx-bg-dcfce7); color: var(--dsx-fg-16a34a); }
+.nobet-confirm-icon--warning { background: var(--dsx-bg-fef3c7); color: var(--dsx-fg-d97706); }
 .nobet-confirm-title {
   font-size: 16px;
   font-weight: 900;
-  color: #0f172a;
+  color: var(--dsx-fg-0f172a);
   margin-bottom: 6px;
 }
 .nobet-confirm-msg {
   font-size: 12px;
-  color: #64748b;
+  color: var(--dsx-fg-64748b);
   margin-bottom: 18px;
   line-height: 1.4;
 }
@@ -2251,7 +2251,7 @@ onMounted(() => {
   bottom: 80px;
   left: 50%;
   transform: translateX(-50%);
-  background: #0f172a;
+  background: var(--dsx-bg-0f172a);
   color: #ffffff;
   padding: 10px 18px;
   border-radius: 20px;
@@ -2263,7 +2263,7 @@ onMounted(() => {
 }
 
 .clay-pill-btn--secondary {
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--dsx-bg-f1f5f9);
+  color: var(--dsx-fg-475569);
 }
 </style>

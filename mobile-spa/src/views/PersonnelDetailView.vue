@@ -408,7 +408,7 @@ onMounted(load)
   place-items: center;
   border-radius: 16px;
   background: var(--ds-primary);
-  color: var(--ds-surface);
+  color: var(--ds-ink-light);
   font: 800 16px var(--ds-font-mono);
   overflow: hidden;
   box-shadow: var(--ds-shadow-pill);
@@ -466,7 +466,7 @@ onMounted(load)
   padding: 8px 12px;
   border-radius: var(--ds-radius-sm);
   background: var(--ds-surface-subtle);
-  border: 1px solid var(--ds-border, rgba(0, 0, 0, 0.05));
+  border: 1px solid var(--ds-border, var(--dsx-bd-000000-a005));
 }
 
 .meta-row {
@@ -475,7 +475,7 @@ onMounted(load)
   justify-content: space-between;
   gap: 8px;
   padding: 3px 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.035);
+  border-bottom: 1px solid var(--dsx-bd-000000-a004);
 }
 
 .meta-row:last-child {
@@ -537,7 +537,7 @@ onMounted(load)
   height: 38px;
   place-items: center;
   border-radius: 12px;
-  color: var(--ds-surface);
+  color: var(--ds-ink-light);
   flex-shrink: 0;
 }
 

@@ -1,5 +1,23 @@
 # Active Context
 
+## Yönetici Mobil — Koyu Tema (2026-10-24)
+- Profil > Görünüm ve tema ekranına Açık / Koyu / Sistem seçimi eklendi (`services/preferences.js`, `localStorage: ersan_mobile_theme_v1`). `index.html` içindeki ön betik `html[data-theme]` değerini CSS yüklenmeden uygular; ilk açılışta beyaz sıçrama olmaz. Sistem modu `prefers-color-scheme` değişimini canlı izler.
+- Koyu tema `:root[data-theme="dark"]` altında `--ds-*` token'larının yeniden tanımlanmasıyla çalışır. Yeni token'lar: `--ds-primary-ink` (birincil renk metin/kenarlık olarak), `--ds-ink-fill` (koyu dolgu zemin).
+- Görünümlerdeki ~4.000 sabit renk, açık temadaki değeri birebir aynı olan `--dsx-{bg|fg|bd|sh}-{hex}` token'larına çevrildi (design-system.css sonundaki üretilmiş blok). Açık tema 21 ekranda baseline ekran görüntüleriyle piksel karşılaştırılarak doğrulandı.
+- Kural: yeni mobil kodda sabit renk yazılmayacak; `--ds-*` token'ları kullanılacak. Arka plan için `var(--ds-surface)`, beyaz metin için `var(--ds-ink-light)`, birincil renkli metin/kenarlık için `var(--ds-primary-ink)`. JS'ten inline stil verilen paletlerde `var(--dsx-…, #hex)` kalıbı kullanılır (örnek: PuantajView `tc()`).
+
+## Yönetici Mobil — Profil Sayfası Eksiklerinin Tamamlanması (2026-10-24)
+- Profil satırlarından yalnız bildirim tercihleri çalışıyordu; Görünüm ve tema, Güvenlik, Bağlı cihazlar ve Yardım merkezi sheet'leri eklendi.
+- Güvenlik: `auth.php?action=change-password` (CSRF, mevcut şifre doğrulama, en az 8 karakter + harf + rakam, 5 hatalı denemede 15 dk kilit, `session_regenerate_id`, kritik log). Şifre `UserModel::resetPassword()` ile güncellenir.
+- Bağlı cihazlar: `push_subscriptions` kayıtları `auth.php?action=devices` ile listelenir, `remove-device` yalnız kullanıcının kendi kaydını siler (`PushSubscriptionModel::listDevicesByUser/deleteUserDevice`). Cihaz adı endpoint sağlayıcısından türetilir; "Bu cihaz" eşleşmesi endpoint SHA-256 hash'i ile yapılır, ham endpoint istemciye dönmez. Şema değişikliği yok.
+- Görünüm: koyu tema yok (görünümlerde çok sayıda sabit renk var); bunun yerine "Hareketleri azalt" (`services/preferences.js`, `html.ds-reduce-motion`), menü düzenini sıfırlama ve önbellek temizleyip yenileme eklendi.
+- Yardım merkezi: yetkiye göre Canlı Destek / destek bağlantısı, SSS ve sürüm bilgisi.
+
+## Personel Avatarları — Yönetici Fotoğrafı Tek Kaynak (2026-10-24)
+- Uygulama genelindeki personel avatarlarında yalnız yöneticinin yüklediği `resim_yolu` kullanılır.
+- Personelin yüklediği `personel_resim_yolu` artık avatar fallback'i değildir; yönetici fotoğrafı yoksa baş harf veya varsayılan avatar gösterilir.
+- Merkezi fotoğraf endpoint'i, mobil personel/ana sayfa/nöbet/talep/destek akışları, global arama, personel PWA, personel takip ve araç takip bu kurala getirildi.
+
 ## Yönetici Mobil — Bildirim Başlığı Aksiyon Çakışması (2026-10-24)
 - Bildirim merkezinde “Tümü Okundu” butonunun dar ekranlarda satır kırarak kapatma butonunun altında kalması giderildi.
 - Başlık aksiyonları küçülmeyecek biçimde sabitlendi; 430px altında kısa “Okundu”, 350px altında yalnız erişilebilir çift-onay ikonu gösteriliyor.
@@ -8,7 +26,7 @@
 - Masaüstü ve yönetici mobil SGK vizite raporu sorgularında T.C. hash eşleştirme havuzu artık yalnız aktif personelle sınırlı değildir.
 - Aynı firmadaki silinmemiş pasif personeller de eşleştirilir; soft-delete edilmiş kayıtlar kapsam dışı kalır.
 - Olası mükerrer T.C. kayıtlarında aktif ve daha yeni personel kaydı önceliklendirilir.
-- Masaüstü ve yönetici mobil puantaj personel görselleri ham dosya yolu yerine merkezi `/api/personnel-photo.php` servisine bağlandı; servis iki fotoğraf sütununu fiziksel dosya varlığına göre sırayla dener.
+- Masaüstü ve yönetici mobil puantaj personel görselleri ham dosya yolu yerine merkezi `/api/personnel-photo.php` servisine bağlandı; servis yalnız yöneticinin yüklediği `resim_yolu` dosyasını sunar.
 - Fotoğraf servisine puantaj yetkileri eklendi ve mobil Vue görsel hataları baş harf avatarına reaktif olarak düşürüldü.
 
 ## Mobil SPA — Hakediş Silme SweetAlert2 ve Tamamlandı Durum Koruması (2026-10-24)

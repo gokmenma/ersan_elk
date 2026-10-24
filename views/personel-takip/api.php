@@ -864,7 +864,7 @@ try {
             foreach ($personelList as $p) {
                 $pId = (int)$p['id'];
                 $personelIds[] = $pId;
-                $rawFoto = !empty($p['personel_resim_yolu']) ? $p['personel_resim_yolu'] : (!empty($p['resim_yolu']) ? $p['resim_yolu'] : '');
+                $rawFoto = !empty($p['resim_yolu']) ? $p['resim_yolu'] : '';
                 $fotoUrl = 'assets/images/users/user-dummy-img.jpg';
                 if (!empty($rawFoto) && file_exists($rootPath . '/' . $rawFoto)) {
                     $fotoUrl = $rawFoto;

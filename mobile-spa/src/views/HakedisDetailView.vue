@@ -617,7 +617,7 @@ function exportExcel() {
   top: calc(var(--ds-safe-top) + 16px);
   left: 50%;
   transform: translateX(-50%);
-  background: #0f172a;
+  background: var(--dsx-bg-0f172a);
   color: #fff;
   padding: 10px 18px;
   border-radius: var(--ds-radius-pill);
@@ -720,7 +720,7 @@ function exportExcel() {
 }
 
 .h-kpi-highlight-bar {
-  background: #191d24;
+  background: var(--dsx-bg-191d24);
   color: #fff;
   border-radius: var(--ds-radius-tile);
   padding: 14px 16px;
@@ -746,13 +746,13 @@ function exportExcel() {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.5px;
-  color: #94a3b8;
+  color: var(--dsx-fg-94a3b8);
 }
 
 .hl-sub-kumulatif {
   font-size: 11px;
   font-weight: 500;
-  color: #64748b;
+  color: var(--dsx-fg-64748b);
 }
 
 .hl-val {
@@ -980,7 +980,7 @@ function exportExcel() {
 .cell-v {
   font-size: 13px;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--dsx-fg-0f172a);
 }
 
 .highlight-cell .cell-v {
@@ -1117,7 +1117,7 @@ function exportExcel() {
 
 .param-field input:focus {
   border-color: var(--ds-blue);
-  background: #fff;
+  background: var(--dsx-bg-ffffff);
 }
 
 .switch-row {
@@ -1237,7 +1237,7 @@ function exportExcel() {
 
 .q-cell { display: flex; flex-direction: column; }
 .q-cell span { font-size: 10px; font-weight: 700; color: var(--ds-muted); }
-.q-cell b { font-size: 13px; font-weight: 800; color: #0f172a; margin-top: 2px; }
+.q-cell b { font-size: 13px; font-weight: 800; color: var(--dsx-fg-0f172a); margin-top: 2px; }
 
 .form-grid {
   display: grid;
@@ -1284,13 +1284,13 @@ function exportExcel() {
 .form-field input:focus {
   outline: none;
   border-color: var(--ds-blue, #0284c7);
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
 }
 
 .calc-preview-box {
-  background: #f8fafc;
-  border: 1px dashed #cbd5e1;
+  background: var(--dsx-bg-f8fafc);
+  border: 1px dashed var(--dsx-bd-cbd5e1);
   border-radius: var(--ds-radius-sm);
   padding: 12px 14px;
   display: flex;
@@ -1322,7 +1322,7 @@ function exportExcel() {
 .p-val {
   font-size: 13px;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--dsx-fg-0f172a);
 }
 
 .item-tutar .p-val {

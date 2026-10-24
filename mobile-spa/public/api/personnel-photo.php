@@ -13,7 +13,6 @@ $rawId = (string) ($_GET['id'] ?? '');
 $personelId = ctype_digit($rawId) ? (int) $rawId : (int) Security::decrypt($rawId);
 $row = $personelId > 0 ? (new MobilePersonelModel())->mobileDirectoryDetail($personelId, (int) $_SESSION['firma_id']) : null;
 $candidates = [
-    trim((string) ($row['personel_resim_yolu'] ?? '')),
     trim((string) ($row['resim_yolu'] ?? ''))
 ];
 $projectRoot = realpath(dirname(__DIR__, 3));

@@ -780,7 +780,7 @@ function getStatusLabel(durum) {
 
 .bento-kpi-card.is-active {
   border-color: var(--ds-blue);
-  background: #fdfefe;
+  background: var(--dsx-bg-fdfefe);
 }
 
 .kpi-card-header {
@@ -1029,7 +1029,7 @@ function getStatusLabel(durum) {
 .amount-value {
   font-size: 18px;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--dsx-fg-0f172a);
 }
 
 .text-danger-ink { color: var(--ds-danger-ink); }
@@ -1147,7 +1147,7 @@ function getStatusLabel(durum) {
 }
 
 .action-icon-btn:hover {
-  background: #e2e8f0;
+  background: var(--dsx-bg-e2e8f0);
 }
 
 .btn-chevron-wrap {

@@ -3260,7 +3260,7 @@ onBeforeUnmount(() => {
   padding: 13px 18px;
   border-radius: var(--ds-radius-sm);
   background: var(--ds-primary);
-  color: var(--ds-surface);
+  color: var(--ds-ink-light);
   font-size: 13px;
   font-weight: 600;
   box-shadow: var(--ds-shadow-float);
@@ -3285,7 +3285,7 @@ onBeforeUnmount(() => {
 .fatura-period-pill {
   flex-shrink: 0;
   padding: 8px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--dsx-bd-ffffff-a090);
   border-radius: 999px;
   background: var(--ds-surface);
   color: var(--ds-muted);
@@ -3297,7 +3297,7 @@ onBeforeUnmount(() => {
 }
 .fatura-period-pill.is-active {
   background: var(--ds-surface-dark, var(--ds-surface-dark));
-  color: var(--ds-surface);
+  color: var(--ds-ink-light);
   border-color: var(--ds-surface-dark, var(--ds-surface-dark));
   box-shadow: 0 4px 12px rgba(25, 29, 36, 0.25);
 }
@@ -3332,7 +3332,7 @@ onBeforeUnmount(() => {
 
 /* 1. Hero Obsidian Bento Kartı: Ticari Hacim & Çift Yönlü Bar */
 .fatura-hero-volume-card {
-  background: var(--ds-surface-dark, #191d24);
+  background: var(--ds-surface-dark, var(--dsx-bg-191d24));
   border-radius: var(--ds-radius-card, 28px);
   color: #ffffff;
   padding: 20px 18px;
@@ -3565,7 +3565,7 @@ onBeforeUnmount(() => {
 }
 .fatura-kpi-card {
   padding: 18px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--dsx-bd-ffffff-a090);
   border-radius: 22px;
   background: var(--ds-surface);
   box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
@@ -3621,7 +3621,7 @@ onBeforeUnmount(() => {
 .fatura-kpi-sub {
   margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  border-top: 1px solid var(--dsx-bd-000000-a005);
   font-size: 11px;
 }
 .fatura-kpi-sub div {
@@ -3646,7 +3646,7 @@ onBeforeUnmount(() => {
   border-radius: var(--ds-radius-card, 28px);
   margin-bottom: 14px;
   background: var(--ds-surface);
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--dsx-bd-ffffff-a090);
   box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
 }
 .fatura-kdv-card--payable {
@@ -3727,7 +3727,7 @@ onBeforeUnmount(() => {
   padding: 12px 14px;
   border-radius: 18px;
   background: var(--ds-surface-subtle);
-  border: 1px solid rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--dsx-bd-000000-a004);
 }
 
 .fatura-kdv-gauge-meta {
@@ -3750,7 +3750,7 @@ onBeforeUnmount(() => {
 .fatura-kdv-gauge-track {
   height: 8px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.08);
+  background: var(--dsx-bg-000000-a008);
   margin-top: 6px;
   overflow: hidden;
 }
@@ -3842,7 +3842,7 @@ onBeforeUnmount(() => {
   padding: 14px 8px;
   border-radius: 20px;
   background: var(--ds-surface);
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--dsx-bd-ffffff-a090);
   box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
 }
 
@@ -3881,7 +3881,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   padding: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--dsx-bd-ffffff-a090);
   border-radius: 20px;
   background: var(--ds-surface);
   box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
@@ -3931,7 +3931,7 @@ onBeforeUnmount(() => {
 .fatura-recent-pills {
   display: flex;
   gap: 4px;
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--dsx-bg-ffffff-a070);
   padding: 3px;
   border-radius: 999px;
   border: 1px solid var(--ds-line);
@@ -3947,7 +3947,7 @@ onBeforeUnmount(() => {
 }
 .fatura-recent-pills button.is-active {
   background: var(--ds-primary);
-  color: var(--ds-surface);
+  color: var(--ds-ink-light);
 }
 .fatura-recent-list {
   display: grid;
@@ -3958,7 +3958,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 10px;
   padding: 16px 18px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--dsx-bd-ffffff-a090);
   border-radius: 22px;
   background: var(--ds-surface);
   box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
@@ -4030,7 +4030,7 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   gap: 12px;
   padding-top: 10px;
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  border-top: 1px solid var(--dsx-bd-000000-a005);
 }
 .fatura-row-card__amount-wrap {
   display: flex;
@@ -4062,7 +4062,7 @@ onBeforeUnmount(() => {
   color: var(--ds-ink);
   font-size: 11px;
   font-weight: 700;
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--dsx-bd-000000-a006);
   transition: background 0.15s ease, color 0.15s ease;
   flex-shrink: 0;
 }
@@ -4077,7 +4077,7 @@ onBeforeUnmount(() => {
 /* Minimal Bento Özet Kartı (Giden / Gelen / Taslak) */
 .fatura-mini-bento-strip {
   position: relative;
-  border: 1px solid rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--dsx-bd-ffffff-a095);
   border-radius: 20px;
   background: var(--ds-surface);
   box-shadow: var(--ds-shadow-bento, 0 8px 20px rgba(16, 24, 40, 0.06));
@@ -4164,7 +4164,7 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 .fatura-mini-badge--count {
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--dsx-bg-000000-a005);
   color: var(--ds-ink);
 }
 .fatura-mini-badge--success {
@@ -4189,7 +4189,7 @@ onBeforeUnmount(() => {
   display: flex;
   height: 3px;
   width: 100%;
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--dsx-bg-000000-a004);
 }
 .fatura-mini-strip__fill {
   height: 100%;
@@ -4210,7 +4210,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   height: 42px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--dsx-bd-ffffff-a090);
   border-radius: 999px;
   background: var(--ds-surface);
   box-shadow: var(--ds-shadow-bento, 0 6px 18px rgba(16, 24, 40, 0.05));
@@ -4220,7 +4220,7 @@ onBeforeUnmount(() => {
   height: 46px;
   border-radius: 16px;
   background: var(--ds-surface);
-  border: 1px solid rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--dsx-bd-ffffff-a095);
   box-shadow: 0 4px 18px rgba(15, 23, 42, 0.045);
   padding: 0 12px 0 16px;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -4251,14 +4251,14 @@ onBeforeUnmount(() => {
   height: 26px;
   border-radius: 50%;
   border: 0;
-  background: var(--ds-soft, #f1f5f9);
-  color: var(--ds-muted, #64748b);
+  background: var(--ds-soft, var(--dsx-bg-f1f5f9));
+  color: var(--ds-muted, var(--dsx-fg-64748b));
   cursor: pointer;
   transition: all 0.15s ease;
   margin-left: 6px;
 }
 .fatura-search-clear-btn:active {
-  background: #e2e8f0;
+  background: var(--dsx-bg-e2e8f0);
   transform: scale(0.92);
 }
 .fatura-search-box button {
@@ -4269,7 +4269,7 @@ onBeforeUnmount(() => {
 }
 .fatura-search-box--product {
   background: var(--ds-surface-subtle);
-  border-color: rgba(0, 0, 0, 0.06);
+  border-color: var(--dsx-bd-000000-a006);
 }
 .fatura-product-badge {
   display: inline-flex;
@@ -4300,7 +4300,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 4px;
   padding: 7px 13px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--dsx-bd-ffffff-a090);
   border-radius: 999px;
   background: var(--ds-surface);
   color: var(--ds-muted);
@@ -4312,7 +4312,7 @@ onBeforeUnmount(() => {
 }
 .fatura-filter-pills button.is-active {
   background: var(--ds-surface-dark);
-  color: var(--ds-surface);
+  color: var(--ds-ink-light);
   border-color: var(--ds-surface-dark);
   box-shadow: 0 4px 12px rgba(25, 29, 36, 0.25);
 }
@@ -4322,7 +4322,7 @@ onBeforeUnmount(() => {
   border-radius: 999px;
   font-size: 9.5px;
   font-weight: 800;
-  background: rgba(0, 0, 0, 0.07);
+  background: var(--dsx-bg-000000-a007);
 }
 .fatura-filter-pills button.is-active .fatura-pill-num {
   background: rgba(255, 255, 255, 0.22);
@@ -4338,7 +4338,7 @@ onBeforeUnmount(() => {
   padding: 36px 22px 32px;
   border-radius: 26px;
   background: var(--ds-surface);
-  border: 1px solid rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--dsx-bd-ffffff-a095);
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
   margin: 12px 0 24px;
 }
@@ -4346,8 +4346,8 @@ onBeforeUnmount(() => {
   width: 64px;
   height: 64px;
   border-radius: 20px;
-  background: var(--ds-blue-soft, #e0f2fe);
-  color: var(--ds-blue-ink, #0284c7);
+  background: var(--ds-blue-soft, var(--dsx-bg-e0f2fe));
+  color: var(--ds-blue-ink, var(--dsx-fg-0284c7));
   display: grid;
   place-items: center;
   margin-bottom: 16px;
@@ -4362,29 +4362,29 @@ onBeforeUnmount(() => {
   border: 1.5px dashed rgba(2, 132, 199, 0.25);
 }
 .fatura-empty-bento__icon-wrap--amber {
-  background: var(--ds-amber-soft, #fef3c7);
-  color: var(--ds-amber-ink, #d97706);
+  background: var(--ds-amber-soft, var(--dsx-bg-fef3c7));
+  color: var(--ds-amber-ink, var(--dsx-fg-d97706));
   box-shadow: 0 8px 20px rgba(217, 119, 6, 0.14);
 }
 .fatura-empty-bento__icon-wrap--amber::after {
   border-color: rgba(217, 119, 6, 0.28);
 }
 .fatura-empty-bento__icon-wrap--sky {
-  background: var(--ds-blue-soft, #e0f2fe);
-  color: var(--ds-blue-ink, #0284c7);
+  background: var(--ds-blue-soft, var(--dsx-bg-e0f2fe));
+  color: var(--ds-blue-ink, var(--dsx-fg-0284c7));
 }
 .fatura-empty-bento__title {
   margin: 0 0 8px;
   font-size: 17px;
   font-weight: 800;
-  color: var(--ds-ink, #0f172a);
+  color: var(--ds-ink, var(--dsx-fg-0f172a));
   letter-spacing: -0.02em;
 }
 .fatura-empty-bento__desc {
   margin: 0 0 20px;
   font-size: 12.5px;
   line-height: 1.55;
-  color: var(--ds-muted, #64748b);
+  color: var(--ds-muted, var(--dsx-fg-64748b));
   max-width: 320px;
 }
 .fatura-empty-bento__cta-btn {
@@ -4414,7 +4414,7 @@ onBeforeUnmount(() => {
   gap: 8px;
   margin-top: 22px;
   padding-top: 18px;
-  border-top: 1px dashed var(--ds-line, #e2e8f0);
+  border-top: 1px dashed var(--ds-line, var(--dsx-bd-e2e8f0));
   width: 100%;
 }
 .fatura-tip-badge {
@@ -4424,7 +4424,7 @@ onBeforeUnmount(() => {
   gap: 6px;
   font-size: 11px;
   font-weight: 600;
-  color: var(--ds-slate, #475569);
+  color: var(--ds-slate, var(--dsx-fg-475569));
 }
 
 /* Fatura Kartları */
@@ -4448,7 +4448,7 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
   overflow: hidden;
   padding: 16px 18px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--dsx-bd-ffffff-a090);
   border-radius: 22px;
   background: var(--ds-surface);
   box-shadow: var(--ds-shadow-bento, 0 10px 24px rgba(16, 24, 40, 0.08));
@@ -4481,7 +4481,7 @@ onBeforeUnmount(() => {
   font-family: monospace;
   font-size: 12px;
   font-weight: 700;
-  color: var(--ds-primary);
+  color: var(--ds-primary-ink);
 }
 .fatura-no--emerald {
   color: var(--ds-emerald-ink);
@@ -4531,7 +4531,7 @@ onBeforeUnmount(() => {
   margin-top: 4px;
   padding: 6px 11px;
   border-radius: 10px;
-  background: rgba(245, 243, 255, 0.7);
+  background: var(--dsx-bg-f5f3ff-a070);
   font-size: 11px;
   color: var(--ds-slate);
   overflow: hidden;
@@ -4631,11 +4631,11 @@ onBeforeUnmount(() => {
 }
 .fatura-action-btn--view {
   background: var(--ds-surface-subtle);
-  border-color: rgba(0, 0, 0, 0.08);
+  border-color: var(--dsx-bd-000000-a008);
 }
 .fatura-action-btn--sync {
   background: rgba(14, 165, 233, 0.1);
-  color: #0284c7;
+  color: var(--dsx-fg-0284c7);
   border-color: rgba(14, 165, 233, 0.3);
 }
 .fatura-action-btn--sync:active {
@@ -4652,13 +4652,13 @@ onBeforeUnmount(() => {
   font-size: 10.5px;
   font-weight: 700;
   background: rgba(16, 185, 129, 0.1);
-  color: #059669;
+  color: var(--dsx-fg-059669);
   border: 1px solid rgba(16, 185, 129, 0.28);
   white-space: nowrap;
 }
 .fatura-icon-btn--sync {
   background: rgba(14, 165, 233, 0.12) !important;
-  color: #0284c7 !important;
+  color: var(--dsx-fg-0284c7) !important;
   border-color: rgba(14, 165, 233, 0.3) !important;
 }
 .fatura-preview-synced-badge {
@@ -4671,7 +4671,7 @@ onBeforeUnmount(() => {
   font-size: 11.5px;
   font-weight: 700;
   background: rgba(16, 185, 129, 0.12);
-  color: #059669;
+  color: var(--dsx-fg-059669);
   border: 1px solid rgba(16, 185, 129, 0.28);
   white-space: nowrap;
 }
@@ -4691,7 +4691,7 @@ onBeforeUnmount(() => {
 }
 .fatura-mini-btn--primary {
   background: var(--ds-primary);
-  color: var(--ds-surface);
+  color: var(--ds-ink-light);
   border-color: var(--ds-primary);
 }
 .fatura-icon-action-btn {
@@ -4723,7 +4723,7 @@ onBeforeUnmount(() => {
   border-color: rgba(239, 68, 68, 0.2);
 }
 .fatura-icon-action-btn--sync {
-  color: #0284c7;
+  color: var(--dsx-fg-0284c7);
   background: rgba(14, 165, 233, 0.1);
   border-color: rgba(14, 165, 233, 0.3);
 }
@@ -4731,13 +4731,13 @@ onBeforeUnmount(() => {
   background: rgba(14, 165, 233, 0.2);
 }
 .fatura-icon-action-btn--synced {
-  color: #059669;
+  color: var(--dsx-fg-059669);
   background: rgba(16, 185, 129, 0.1);
   border-color: rgba(16, 185, 129, 0.28);
   cursor: default;
 }
 .fatura-icon-action-btn--view {
-  color: var(--ds-primary, #4338ca);
+  color: var(--ds-primary-ink, #4338ca);
   background: rgba(79, 70, 229, 0.08);
   border-color: rgba(79, 70, 229, 0.22);
 }
@@ -4853,16 +4853,16 @@ onBeforeUnmount(() => {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  border: 1px solid var(--ds-line, #e2e8f0);
-  background: var(--ds-surface, #ffffff);
-  color: var(--ds-slate, #475569);
+  border: 1px solid var(--ds-line, var(--dsx-bd-e2e8f0));
+  background: var(--ds-surface, var(--dsx-bg-ffffff));
+  color: var(--ds-slate, var(--dsx-fg-475569));
   cursor: pointer;
   text-decoration: none;
   transition: all 0.15s ease;
   flex-shrink: 0;
 }
 .fatura-icon-btn:active {
-  background: var(--ds-soft, #f1f5f9);
+  background: var(--ds-soft, var(--dsx-bg-f1f5f9));
   transform: scale(0.94);
 }
 .fatura-icon-btn.is-loading,
@@ -4894,7 +4894,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
   box-shadow: 0 10px 32px rgba(0, 0, 0, 0.35);
   border-radius: 6px;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   flex-shrink: 0;
   transition: width 0.12s ease-out, height 0.12s ease-out;
 }
@@ -4903,7 +4903,7 @@ onBeforeUnmount(() => {
   top: 0;
   left: 0;
   border: 0;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
 }
 .fatura-preview-loading {
   position: absolute;
@@ -4913,7 +4913,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  color: #94a3b8;
+  color: var(--dsx-fg-94a3b8);
   font-weight: 600;
   background: rgba(15, 23, 42, 0.7);
   z-index: 5;
@@ -5059,7 +5059,7 @@ onBeforeUnmount(() => {
 }
 .fatura-month-btn:active {
   background: var(--ds-primary);
-  color: var(--ds-surface);
+  color: var(--ds-ink-light);
 }
 .fatura-custom-range h4 {
   margin: 0 0 8px;
@@ -5104,7 +5104,7 @@ onBeforeUnmount(() => {
 }
 .fatura-response-target span {
   font: 700 13px 'Space Grotesk', sans-serif;
-  color: var(--ds-primary);
+  color: var(--ds-primary-ink);
 }
 .fatura-response-types {
   display: grid;
@@ -5148,8 +5148,8 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px 12px;
-  border-bottom: 1px solid var(--ds-line, #e2e8f0);
-  background: var(--ds-surface, #ffffff);
+  border-bottom: 1px solid var(--ds-line, var(--dsx-bd-e2e8f0));
+  background: var(--ds-surface, var(--dsx-bg-ffffff));
 }
 .fatura-wizard-header__info {
   display: flex;
@@ -5158,7 +5158,7 @@ onBeforeUnmount(() => {
 }
 .fatura-wizard-tag {
   font: 800 9px 'Space Grotesk', sans-serif;
-  color: var(--ds-primary, #4338ca);
+  color: var(--ds-primary-ink, #4338ca);
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -5166,16 +5166,16 @@ onBeforeUnmount(() => {
   margin: 1px 0 2px;
   font-size: 17px;
   font-weight: 800;
-  color: var(--ds-ink, #0f172a);
+  color: var(--ds-ink, var(--dsx-fg-0f172a));
   letter-spacing: -0.02em;
 }
 .fatura-wizard-progress-text {
   margin: 0;
   font-size: 11px;
-  color: var(--ds-muted, #64748b);
+  color: var(--ds-muted, var(--dsx-fg-64748b));
 }
 .fatura-wizard-progress-text strong {
-  color: var(--ds-primary, #4338ca);
+  color: var(--ds-primary-ink, #4338ca);
   margin-right: 4px;
 }
 .fatura-wizard-close-btn {
@@ -5185,27 +5185,27 @@ onBeforeUnmount(() => {
   height: 32px;
   border-radius: 50%;
   border: 0;
-  background: var(--ds-soft, #f1f5f9);
-  color: var(--ds-muted, #64748b);
+  background: var(--ds-soft, var(--dsx-bg-f1f5f9));
+  color: var(--ds-muted, var(--dsx-fg-64748b));
   cursor: pointer;
   transition: all 0.15s ease;
   flex-shrink: 0;
 }
 .fatura-wizard-close-btn:active {
-  background: #e2e8f0;
+  background: var(--dsx-bg-e2e8f0);
 }
 
 /* Stepper Progress Bar & Steps */
 .fatura-stepper-container {
   display: flex;
   flex-direction: column;
-  background: #f8fafc;
-  border-bottom: 1px solid var(--ds-line, #e2e8f0);
+  background: var(--dsx-bg-f8fafc);
+  border-bottom: 1px solid var(--ds-line, var(--dsx-bd-e2e8f0));
 }
 .fatura-stepper-progress-track {
   width: 100%;
   height: 3px;
-  background: #e2e8f0;
+  background: var(--dsx-bg-e2e8f0);
   overflow: hidden;
 }
 .fatura-stepper-progress-fill {
@@ -5237,8 +5237,8 @@ onBeforeUnmount(() => {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: #e2e8f0;
-  color: var(--ds-muted, #64748b);
+  background: var(--dsx-bg-e2e8f0);
+  color: var(--ds-muted, var(--dsx-fg-64748b));
   font: 700 11px 'Space Grotesk', sans-serif;
   transition: all 0.25s ease;
 }
@@ -5247,7 +5247,7 @@ onBeforeUnmount(() => {
 }
 .step-name {
   font: 600 10.5px var(--ds-font-main);
-  color: var(--ds-muted, #64748b);
+  color: var(--ds-muted, var(--dsx-fg-64748b));
   transition: color 0.2s ease;
 }
 .fatura-wizard-step-item.is-active .step-indicator {
@@ -5256,7 +5256,7 @@ onBeforeUnmount(() => {
   box-shadow: 0 4px 12px rgba(67, 56, 202, 0.3);
 }
 .fatura-wizard-step-item.is-active .step-name {
-  color: var(--ds-primary, #4338ca);
+  color: var(--ds-primary-ink, #4338ca);
   font-weight: 700;
 }
 .fatura-wizard-step-item.is-done .step-indicator {
@@ -5264,7 +5264,7 @@ onBeforeUnmount(() => {
   color: #ffffff;
 }
 .fatura-wizard-step-item.is-done .step-name {
-  color: var(--ds-emerald-ink, #059669);
+  color: var(--ds-emerald-ink, var(--dsx-fg-059669));
 }
 
 /* Wizard Body (Scrollbar Hidden!) */
@@ -5272,7 +5272,7 @@ onBeforeUnmount(() => {
   flex: 1;
   overflow-y: auto;
   padding: 16px 18px 24px;
-  background: var(--ds-canvas, #f8fafc);
+  background: var(--ds-canvas, var(--dsx-bg-f8fafc));
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -5291,9 +5291,9 @@ onBeforeUnmount(() => {
   gap: 12px;
   margin: 0 0 16px;
   padding: 12px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--dsx-bd-ffffff-a090);
   border-radius: 16px;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   box-shadow: 0 4px 14px rgba(15, 23, 42, 0.035);
 }
 .wizard-step-intro__icon {
@@ -5303,32 +5303,32 @@ onBeforeUnmount(() => {
   flex: 0 0 38px;
   place-items: center;
   border-radius: 12px;
-  color: var(--ds-blue-ink, #0284c7);
-  background: var(--ds-blue-soft, #e0f2fe);
+  color: var(--ds-blue-ink, var(--dsx-fg-0284c7));
+  background: var(--ds-blue-soft, var(--dsx-bg-e0f2fe));
 }
 .wizard-step-intro__icon--purple {
   color: var(--ds-purple-ink, #7c3aed);
-  background: var(--ds-purple-soft, #ede9fe);
+  background: var(--ds-purple-soft, var(--dsx-bg-ede9fe));
 }
 .wizard-step-intro__icon--amber {
-  color: var(--ds-amber-ink, #d97706);
-  background: var(--ds-amber-soft, #fef3c7);
+  color: var(--ds-amber-ink, var(--dsx-fg-d97706));
+  background: var(--ds-amber-soft, var(--dsx-bg-fef3c7));
 }
 .wizard-step-intro__icon--green {
-  color: var(--ds-emerald-ink, #059669);
-  background: var(--ds-emerald-soft, #d1fae5);
+  color: var(--ds-emerald-ink, var(--dsx-fg-059669));
+  background: var(--ds-emerald-soft, var(--dsx-bg-d1fae5));
 }
 .wizard-step-intro h3 {
   margin: 0;
   font-size: 13.5px;
   font-weight: 800;
-  color: var(--ds-ink, #0f172a);
+  color: var(--ds-ink, var(--dsx-fg-0f172a));
 }
 .wizard-step-intro p {
   margin: 2px 0 0;
   font-size: 11px;
   line-height: 1.35;
-  color: var(--ds-muted, #64748b);
+  color: var(--ds-muted, var(--dsx-fg-64748b));
 }
 
 /* Cari Arama & Dropdown */
@@ -5337,9 +5337,9 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   height: 44px;
-  border: 1px solid var(--ds-line, #e2e8f0);
+  border: 1px solid var(--ds-line, var(--dsx-bd-e2e8f0));
   border-radius: 14px;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   padding: 0 12px;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
 }
@@ -5364,7 +5364,7 @@ onBeforeUnmount(() => {
   border: 1px solid var(--ds-line);
   border-radius: 14px;
   margin-top: 6px;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
 }
 .fatura-customer-item {
@@ -5381,7 +5381,7 @@ onBeforeUnmount(() => {
   transition: background 0.15s ease;
 }
 .fatura-customer-item:active {
-  background: var(--ds-soft, #f1f5f9);
+  background: var(--ds-soft, var(--dsx-bg-f1f5f9));
 }
 .fatura-customer-item:last-child {
   border-bottom: 0;
@@ -5391,8 +5391,8 @@ onBeforeUnmount(() => {
   height: 32px;
   flex-shrink: 0;
   border-radius: 10px;
-  background: var(--ds-blue-soft, #e0f2fe);
-  color: var(--ds-blue-ink, #0284c7);
+  background: var(--ds-blue-soft, var(--dsx-bg-e0f2fe));
+  color: var(--ds-blue-ink, var(--dsx-fg-0284c7));
   display: grid;
   place-items: center;
   font-weight: 800;
@@ -5428,7 +5428,7 @@ onBeforeUnmount(() => {
 .fatura-form-field label {
   display: block;
   font: 700 10px 'Space Grotesk', sans-serif;
-  color: var(--ds-slate, #475569);
+  color: var(--ds-slate, var(--dsx-fg-475569));
   margin-bottom: 4px;
 }
 .fatura-form-field input,
@@ -5436,12 +5436,12 @@ onBeforeUnmount(() => {
 .fatura-form-field textarea {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid var(--ds-line, #e2e8f0);
+  border: 1px solid var(--ds-line, var(--dsx-bd-e2e8f0));
   border-radius: 14px;
   min-height: 44px;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   font: 500 12.5px var(--ds-font-main);
-  color: var(--ds-ink, #0f172a);
+  color: var(--ds-ink, var(--dsx-fg-0f172a));
   outline: 0;
   box-sizing: border-box;
   transition: border-color 0.18s ease;
@@ -5453,7 +5453,7 @@ onBeforeUnmount(() => {
 .fatura-form-field input:focus,
 .fatura-form-field select:focus,
 .fatura-form-field textarea:focus {
-  border-color: var(--ds-primary, #4338ca);
+  border-color: var(--ds-primary-ink, #4338ca);
   box-shadow: 0 0 0 3px rgba(67, 56, 202, 0.08);
 }
 .fatura-form-grid-2 {
@@ -5485,14 +5485,14 @@ onBeforeUnmount(() => {
   padding: 6px 11px;
   border: 0;
   border-radius: 10px;
-  background: var(--ds-primary-soft, #eef2ff);
-  color: var(--ds-primary, #4338ca);
+  background: var(--ds-primary-soft, var(--dsx-bg-eef2ff));
+  color: var(--ds-primary-ink, #4338ca);
   font: 700 11px var(--ds-font-main);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 .fatura-inline-btn:active {
-  background: #e0e7ff;
+  background: var(--dsx-bg-e0e7ff);
 }
 .fatura-inline-btn:disabled {
   opacity: 0.55;
@@ -5520,13 +5520,13 @@ onBeforeUnmount(() => {
   line-height: 1.35;
 }
 .fatura-taxpayer-alert--efatura {
-  background: var(--ds-emerald-soft, #d1fae5);
-  color: var(--ds-emerald-ink, #065f46);
+  background: var(--ds-emerald-soft, var(--dsx-bg-d1fae5));
+  color: var(--ds-emerald-ink, var(--dsx-fg-065f46));
   border: 1px solid rgba(16, 185, 129, 0.25);
 }
 .fatura-taxpayer-alert--earsiv {
-  background: var(--ds-amber-soft, #fef3c7);
-  color: var(--ds-amber-ink, #92400e);
+  background: var(--ds-amber-soft, var(--dsx-bg-fef3c7));
+  color: var(--ds-amber-ink, var(--dsx-fg-92400e));
   border: 1px solid rgba(245, 158, 11, 0.25);
 }
 
@@ -5537,8 +5537,8 @@ onBeforeUnmount(() => {
   gap: 6px;
   padding: 4px;
   border-radius: 14px;
-  background: #f1f5f9;
-  border: 1px solid var(--ds-line, #e2e8f0);
+  background: var(--dsx-bg-f1f5f9);
+  border: 1px solid var(--ds-line, var(--dsx-bd-e2e8f0));
 }
 .fatura-seg-pill-btn {
   display: inline-flex;
@@ -5550,14 +5550,14 @@ onBeforeUnmount(() => {
   border: 0;
   border-radius: 10px;
   background: transparent;
-  color: var(--ds-slate, #475569);
+  color: var(--ds-slate, var(--dsx-fg-475569));
   font: 700 12px var(--ds-font-main);
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .fatura-seg-pill-btn.is-active {
-  background: #ffffff;
-  color: var(--ds-primary, #4338ca);
+  background: var(--dsx-bg-ffffff);
+  color: var(--ds-primary-ink, #4338ca);
   box-shadow: 0 3px 10px rgba(15, 23, 42, 0.08);
 }
 .fatura-pill-selector {
@@ -5567,18 +5567,18 @@ onBeforeUnmount(() => {
 }
 .fatura-sel-pill {
   padding: 8px 14px;
-  border: 1px solid var(--ds-line, #e2e8f0);
+  border: 1px solid var(--ds-line, var(--dsx-bd-e2e8f0));
   border-radius: 12px;
-  background: #ffffff;
-  color: var(--ds-slate, #475569);
+  background: var(--dsx-bg-ffffff);
+  color: var(--ds-slate, var(--dsx-fg-475569));
   font: 600 11.5px var(--ds-font-main);
   cursor: pointer;
   transition: all 0.18s ease;
 }
 .fatura-sel-pill.is-active {
-  border-color: var(--ds-primary, #4338ca);
-  background: var(--ds-primary-soft, #eef2ff);
-  color: var(--ds-primary, #4338ca);
+  border-color: var(--ds-primary-ink, #4338ca);
+  background: var(--ds-primary-soft, var(--dsx-bg-eef2ff));
+  color: var(--ds-primary-ink, #4338ca);
   font-weight: 700;
   box-shadow: 0 2px 8px rgba(67, 56, 202, 0.12);
 }
@@ -5590,9 +5590,9 @@ onBeforeUnmount(() => {
 }
 .fatura-line-card {
   padding: 14px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--dsx-bd-e2e8f0);
   border-radius: 18px;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
   display: grid;
   gap: 10px;
@@ -5607,8 +5607,8 @@ onBeforeUnmount(() => {
   align-items: center;
   padding: 3px 10px;
   border-radius: 999px;
-  background: var(--ds-blue-soft, #e0f2fe);
-  color: var(--ds-blue-ink, #0284c7);
+  background: var(--ds-blue-soft, var(--dsx-bg-e0f2fe));
+  color: var(--ds-blue-ink, var(--dsx-fg-0284c7));
   font: 700 11px 'Space Grotesk', sans-serif;
 }
 .fatura-quick-products-row {
@@ -5627,22 +5627,22 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   padding: 4px 9px;
   border-radius: 999px;
-  border: 1px solid var(--ds-line, #e2e8f0);
-  background: #f8fafc;
+  border: 1px solid var(--ds-line, var(--dsx-bd-e2e8f0));
+  background: var(--dsx-bg-f8fafc);
   color: var(--ds-slate);
   font-size: 10px;
   cursor: pointer;
   transition: background 0.15s ease;
 }
 .fatura-quick-prod-pill:active {
-  background: #e2e8f0;
+  background: var(--dsx-bg-e2e8f0);
 }
 .fatura-line-total {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding-top: 8px;
-  border-top: 1px dashed var(--ds-line, #e2e8f0);
+  border-top: 1px dashed var(--ds-line, var(--dsx-bd-e2e8f0));
   font-size: 11.5px;
 }
 .fatura-line-total__matrah span,
@@ -5654,7 +5654,7 @@ onBeforeUnmount(() => {
   color: var(--ds-slate);
 }
 .fatura-line-total__sum strong {
-  color: var(--ds-primary, #4338ca);
+  color: var(--ds-primary-ink, #4338ca);
   font-size: 13px;
   font-weight: 700;
 }
@@ -5667,7 +5667,7 @@ onBeforeUnmount(() => {
   border: 1.5px dashed rgba(67, 56, 202, 0.35);
   border-radius: 14px;
   background: rgba(67, 56, 202, 0.03);
-  color: var(--ds-primary, #4338ca);
+  color: var(--ds-primary-ink, #4338ca);
   font: 700 12.5px var(--ds-font-main);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -5680,8 +5680,8 @@ onBeforeUnmount(() => {
 .fatura-wizard-summary-card {
   padding: 18px 18px 20px;
   border-radius: 22px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--dsx-bg-ffffff);
+  border: 1px solid var(--dsx-bd-e2e8f0);
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
 }
 .fatura-receipt-header {
@@ -5695,14 +5695,14 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 5px;
   font: 800 10.5px 'Space Grotesk', sans-serif;
-  color: var(--ds-primary, #4338ca);
+  color: var(--ds-primary-ink, #4338ca);
   letter-spacing: 0.05em;
 }
 .fatura-receipt-type-tag {
   display: inline-block;
   padding: 3px 8px;
   border-radius: 8px;
-  background: #f1f5f9;
+  background: var(--dsx-bg-f1f5f9);
   color: var(--ds-slate);
   font: 700 10px 'Space Grotesk', sans-serif;
 }
@@ -5742,12 +5742,12 @@ onBeforeUnmount(() => {
 }
 .fatura-receipt-divider {
   height: 1px;
-  background: var(--ds-line, #e2e8f0);
+  background: var(--ds-line, var(--dsx-bg-e2e8f0));
   margin: 12px 0;
 }
 .fatura-receipt-divider--bold {
   height: 1.5px;
-  background: #cbd5e1;
+  background: var(--dsx-bg-cbd5e1);
 }
 .fatura-receipt-rows {
   display: grid;
@@ -5785,7 +5785,7 @@ onBeforeUnmount(() => {
 .fatura-receipt-total__amount {
   font-size: 18px;
   font-weight: 800;
-  color: var(--ds-primary, #4338ca);
+  color: var(--ds-primary-ink, #4338ca);
 }
 .fatura-receipt-trust-badge {
   display: flex;
@@ -5793,9 +5793,9 @@ onBeforeUnmount(() => {
   gap: 8px;
   padding: 10px 12px;
   border-radius: 12px;
-  background: #f0fdf4;
+  background: var(--dsx-bg-f0fdf4);
   border: 1px solid rgba(16, 185, 129, 0.2);
-  color: #166534;
+  color: var(--dsx-fg-166534);
   font-size: 10.5px;
   line-height: 1.4;
 }
@@ -5806,8 +5806,8 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   padding: 12px 18px calc(12px + var(--ds-safe-bottom, 16px));
-  border-top: 1px solid var(--ds-line, #e2e8f0);
-  background: var(--ds-surface, #ffffff);
+  border-top: 1px solid var(--ds-line, var(--dsx-bd-e2e8f0));
+  background: var(--ds-surface, var(--dsx-bg-ffffff));
   box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.04);
 }
 .fatura-wizard-back-btn {
@@ -5817,16 +5817,16 @@ onBeforeUnmount(() => {
   gap: 6px;
   min-height: 44px;
   padding: 0 16px;
-  border: 1px solid var(--ds-line, #e2e8f0);
+  border: 1px solid var(--ds-line, var(--dsx-bd-e2e8f0));
   border-radius: 14px;
-  background: #ffffff;
-  color: var(--ds-slate, #475569);
+  background: var(--dsx-bg-ffffff);
+  color: var(--ds-slate, var(--dsx-fg-475569));
   font: 700 12.5px var(--ds-font-main);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 .fatura-wizard-back-btn:active {
-  background: #f1f5f9;
+  background: var(--dsx-bg-f1f5f9);
 }
 .fatura-wizard-next-btn {
   display: inline-flex;
@@ -5854,17 +5854,17 @@ onBeforeUnmount(() => {
   gap: 6px;
   min-height: 44px;
   padding: 0 16px;
-  border: 1px solid var(--ds-line, #e2e8f0);
+  border: 1px solid var(--ds-line, var(--dsx-bd-e2e8f0));
   border-radius: 14px;
-  background: #ffffff;
-  color: var(--ds-ink, #0f172a);
+  background: var(--dsx-bg-ffffff);
+  color: var(--ds-ink, var(--dsx-fg-0f172a));
   font: 700 12px var(--ds-font-main);
   cursor: pointer;
   transition: all 0.15s ease;
   margin-left: auto;
 }
 .fatura-wizard-draft-btn:active {
-  background: #f1f5f9;
+  background: var(--dsx-bg-f1f5f9);
 }
 .fatura-wizard-send-btn {
   display: inline-flex;
@@ -5913,16 +5913,16 @@ onBeforeUnmount(() => {
   gap: 6px;
   min-height: 44px;
   padding: 0 16px;
-  border: 1px solid var(--ds-line, #e2e8f0);
+  border: 1px solid var(--ds-line, var(--dsx-bd-e2e8f0));
   border-radius: 14px;
-  background: #ffffff;
-  color: var(--ds-slate, #475569);
+  background: var(--dsx-bg-ffffff);
+  color: var(--ds-slate, var(--dsx-fg-475569));
   font: 700 12.5px var(--ds-font-main);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 .fatura-secondary-btn:active {
-  background: #f1f5f9;
+  background: var(--dsx-bg-f1f5f9);
 }
 
 /* Cari ve Benzer Hareket Modalları */
@@ -5933,7 +5933,7 @@ onBeforeUnmount(() => {
   border-radius: 28px 28px 0 0;
   display: flex;
   flex-direction: column;
-  background: var(--ds-surface, #ffffff);
+  background: var(--ds-surface, var(--dsx-bg-ffffff));
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2);
   overflow: hidden;
   animation: ds-slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1);
@@ -5948,26 +5948,26 @@ onBeforeUnmount(() => {
 .fatura-cari-notice-box {
   padding: 15px 16px;
   border-radius: 16px;
-  background: var(--ds-surface-subtle, #f8fafc);
-  border: 1px solid var(--ds-line, #e2e8f0);
+  background: var(--ds-surface-subtle, var(--dsx-bg-f8fafc));
+  border: 1px solid var(--ds-line, var(--dsx-bd-e2e8f0));
 }
 
 .fatura-cari-notice-box--success {
   background: rgba(16, 185, 129, 0.08);
   border-color: rgba(16, 185, 129, 0.25);
-  color: #065f46;
+  color: var(--dsx-fg-065f46);
 }
 
 .fatura-cari-notice-box--info {
   background: rgba(14, 165, 233, 0.08);
   border-color: rgba(14, 165, 233, 0.25);
-  color: #0369a1;
+  color: var(--dsx-fg-0369a1);
 }
 
 .fatura-cari-notice-box--warning {
-  background: #fffbeb;
-  border-color: #fde68a;
-  color: #92400e;
+  background: var(--dsx-bg-fffbeb);
+  border-color: var(--dsx-bd-fde68a);
+  color: var(--dsx-fg-92400e);
 }
 
 .fatura-alert-warning-callout {
@@ -5977,7 +5977,7 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(245, 158, 11, 0.3);
   font-size: 11.5px;
   line-height: 1.45;
-  color: #b45309;
+  color: var(--dsx-fg-b45309);
 }
 
 .fatura-cari-details-grid {
@@ -5991,15 +5991,15 @@ onBeforeUnmount(() => {
 .fatura-cari-detail-card {
   padding: 12px 14px;
   border-radius: 14px;
-  background: var(--ds-canvas, #f1f5f9);
-  border: 1px solid var(--ds-line, #e2e8f0);
+  background: var(--ds-canvas, var(--dsx-bg-f1f5f9));
+  border: 1px solid var(--ds-line, var(--dsx-bd-e2e8f0));
 }
 
 .fatura-cari-detail-card span {
   display: block;
   font-size: 10px;
   font-weight: 600;
-  color: var(--ds-slate, #64748b);
+  color: var(--ds-slate, var(--dsx-fg-64748b));
   margin-bottom: 3px;
 }
 
@@ -6007,7 +6007,7 @@ onBeforeUnmount(() => {
   display: block;
   font-size: 13.5px;
   font-weight: 700;
-  color: var(--ds-ink, #0f172a);
+  color: var(--ds-ink, var(--dsx-fg-0f172a));
 }
 
 .fatura-sheet-actions {
@@ -6056,8 +6056,8 @@ onBeforeUnmount(() => {
   padding: 32px 20px;
   text-align: center;
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: var(--dsx-bg-ffffff-a072);
+  border: 1px solid var(--dsx-bd-ffffff-a090);
   color: var(--ds-muted);
   font-size: 13px;
   box-shadow: var(--ds-shadow-card);
@@ -6077,7 +6077,7 @@ onBeforeUnmount(() => {
 }
 
 /* Renk Yardımcıları */
-.text-primary { color: var(--ds-primary) !important; }
+.text-primary { color: var(--ds-primary-ink) !important; }
 .text-emerald { color: var(--ds-emerald-ink) !important; }
 .text-sky { color: var(--ds-blue-ink) !important; }
 .text-amber { color: var(--ds-amber-ink) !important; }

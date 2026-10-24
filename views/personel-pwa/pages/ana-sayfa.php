@@ -58,7 +58,7 @@ use App\Helper\Helper;
                     <div
                         class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center overflow-hidden active:scale-90 transition-transform">
                         <?php 
-                        $pResim = !empty($personel->personel_resim_yolu) ? $personel->personel_resim_yolu : ($personel->resim_yolu ?? '');
+                        $pResim = $personel->resim_yolu ?? '';
                         if (!empty($pResim)): ?>
                             <img src="<?php echo Helper::base_url($pResim); ?>" alt="Profil"
                                 class="w-full h-full object-cover">

@@ -126,6 +126,25 @@ export const auth = {
     })
     return payload
   },
+  async devices() {
+    const payload = await request('devices')
+    return payload.devices || []
+  },
+  async removeDevice(id) {
+    const payload = await request('remove-device', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': state.csrfToken },
+      body: JSON.stringify({ id }),
+    })
+    return payload.devices || []
+  },
+  async changePassword(passwords) {
+    return request('change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': state.csrfToken },
+      body: JSON.stringify(passwords),
+    })
+  },
   async logout() {
     await request('logout', {
       method: 'POST',

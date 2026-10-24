@@ -104,7 +104,7 @@ function goBack() {
   color: #ffffff;
   font: 800 10px/17px var(--ds-font-main, sans-serif);
   text-align: center;
-  border: 2px solid var(--ds-surface, #ffffff);
+  border: 2px solid var(--ds-surface, var(--dsx-bd-ffffff));
   box-shadow: 0 2px 5px rgba(239, 68, 68, 0.4);
   pointer-events: none;
   box-sizing: border-box;

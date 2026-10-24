@@ -6,6 +6,9 @@ import './design-system.css'
 import 'sweetalert2/dist/sweetalert2.min.css'
 import { initNotificationsWatcher } from './services/notifications.js'
 import { auth } from './services/auth.js'
+import { preferences } from './services/preferences.js'
+
+preferences.apply()
 
 // Mobil ve masaüstü aynı API'leri kullandığı için denetim loglarında
 // isteğin kaynağını sunucuya her aynı-origin API çağrısında bildir.
@@ -25,8 +28,7 @@ window.fetch = (input, init = {}) => {
 
 // PWA durum çubuğu, merkezi tasarım sisteminin aktif yüzeyini kullanır.
 router.afterEach(() => {
-  const theme = getComputedStyle(document.documentElement).getPropertyValue('--ds-canvas').trim()
-  if (theme) document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme)
+  preferences.syncThemeColorMeta()
 })
 
 createApp(App).use(router).mount('#app')

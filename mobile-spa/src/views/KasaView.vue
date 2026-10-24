@@ -1162,10 +1162,10 @@ onMounted(() => {
   width: 42px;
   height: 42px;
   place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--dsx-bd-ffffff-a090);
   border-radius: 50%;
   color: var(--ds-ink);
-  background: rgba(255, 255, 255, 0.8);
+  background: var(--dsx-bg-ffffff-a080);
   box-shadow: var(--ds-shadow-card);
   backdrop-filter: blur(16px);
   cursor: pointer;
@@ -1177,8 +1177,8 @@ onMounted(() => {
 }
 
 .topbar-btn--primary {
-  background: var(--ds-primary, #11161b);
-  color: var(--ds-surface, #ffffff);
+  background: var(--ds-primary, var(--dsx-bg-11161b));
+  color: var(--ds-ink-light, #ffffff);
   border-color: var(--ds-primary, #11161b);
 }
 
@@ -1214,7 +1214,7 @@ onMounted(() => {
 
 /* 2. HERO OBSIDIAN BENTO KARTI: KASA İŞLEM HACMİ */
 .kasa-hero-volume-card {
-  background: var(--ds-surface-dark, #191d24);
+  background: var(--ds-surface-dark, var(--dsx-bg-191d24));
   border-radius: var(--ds-radius-card, 28px);
   color: #ffffff;
   padding: 20px 18px;
@@ -1458,8 +1458,8 @@ onMounted(() => {
 
 /* RENKLER */
 .text-debt { color: var(--ds-danger-ink, #dc2626) !important; }
-.text-credit { color: var(--ds-emerald-ink, #059669) !important; }
-.text-neutral { color: var(--ds-slate, #516071) !important; }
+.text-credit { color: var(--ds-emerald-ink, var(--dsx-fg-059669)) !important; }
+.text-neutral { color: var(--ds-slate, var(--dsx-fg-516071)) !important; }
 .text-emerald { color: #34d399 !important; }
 .text-sky { color: #38bdf8 !important; }
 
@@ -1480,9 +1480,9 @@ onMounted(() => {
   align-items: center;
   height: 42px;
   padding: 0 12px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--dsx-bd-ffffff-a090);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--dsx-bg-ffffff-a078);
   box-shadow: var(--ds-shadow-card);
   backdrop-filter: blur(16px);
 }
@@ -1510,9 +1510,9 @@ onMounted(() => {
   align-items: center;
   height: 48px;
   padding: 0 14px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--dsx-bd-ffffff-a090);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--dsx-bg-ffffff-a078);
   box-shadow: var(--ds-shadow-card);
   backdrop-filter: blur(16px);
   margin-bottom: 12px;
@@ -1560,9 +1560,9 @@ onMounted(() => {
   gap: 6px;
   height: 38px;
   padding: 0 12px;
-  border: 1px solid rgba(255, 255, 255, 0.85);
+  border: 1px solid var(--dsx-bd-ffffff-a085);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--dsx-bg-ffffff-a070);
   box-shadow: var(--ds-shadow-card);
   color: var(--ds-slate);
   font: 600 10.5px 'Space Grotesk', sans-serif;
@@ -1571,8 +1571,8 @@ onMounted(() => {
 }
 
 .tab-btn.active {
-  background: var(--ds-primary, #11161b);
-  color: var(--ds-surface, #ffffff);
+  background: var(--ds-primary, var(--dsx-bg-11161b));
+  color: var(--ds-ink-light, #ffffff);
   border-color: var(--ds-primary, #11161b);
 }
 
@@ -1585,7 +1585,7 @@ onMounted(() => {
 
 .tab-btn.active .tab-badge {
   background: rgba(255, 255, 255, 0.22);
-  color: var(--ds-surface, #ffffff);
+  color: var(--ds-ink-light, #ffffff);
 }
 
 .dot-indicator {
@@ -1609,9 +1609,9 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   padding: 13px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--dsx-bd-ffffff-a090);
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--dsx-bg-ffffff-a078);
   box-shadow: var(--ds-shadow-card);
   backdrop-filter: blur(16px);
   cursor: pointer;
@@ -1620,7 +1620,7 @@ onMounted(() => {
 
 .kasa-card:active {
   transform: scale(0.985);
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--dsx-bg-ffffff-a092);
 }
 
 .kasa-card__avatar {
@@ -1630,18 +1630,18 @@ onMounted(() => {
   place-items: center;
   border-radius: 15px;
   color: #ffffff;
-  background: var(--ds-primary, #11161b);
+  background: var(--ds-primary, var(--dsx-bg-11161b));
   font: 700 15px 'Space Grotesk', sans-serif;
   box-shadow: 0 6px 16px rgba(17, 22, 27, 0.15);
 }
 
 .avatar--gelir {
-  background: #11161b;
+  background: var(--dsx-bg-11161b);
   border-left: 3px solid #10b981;
 }
 
 .avatar--gider {
-  background: #11161b;
+  background: var(--dsx-bg-11161b);
   border-left: 3px solid #ef4444;
 }
 
@@ -1719,7 +1719,7 @@ onMounted(() => {
 
 .badge-credit {
   background: rgba(16, 185, 129, 0.12);
-  color: #059669;
+  color: var(--dsx-fg-059669);
 }
 
 .kasa-card__actions {
@@ -1737,7 +1737,7 @@ onMounted(() => {
   border-radius: 50%;
   border: 1px solid rgba(16, 185, 129, 0.3);
   background: rgba(16, 185, 129, 0.1);
-  color: #059669;
+  color: var(--dsx-fg-059669);
   cursor: pointer;
   transition: transform 0.12s ease;
 }
@@ -1760,8 +1760,8 @@ onMounted(() => {
   width: 100%;
   height: 42px;
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid var(--dsx-bd-ffffff-a090);
+  background: var(--dsx-bg-ffffff-a080);
   box-shadow: var(--ds-shadow-card);
   color: var(--ds-ink);
   font: 700 12px 'Space Grotesk', sans-serif;
@@ -1788,7 +1788,7 @@ onMounted(() => {
   height: 52px;
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.4);
-  background: var(--ds-primary, #11161b);
+  background: var(--ds-primary, var(--dsx-bg-11161b));
   color: #ffffff;
   box-shadow: 0 10px 24px rgba(17, 22, 27, 0.38);
   display: grid;
@@ -1804,7 +1804,7 @@ onMounted(() => {
 .floating-circle-btn--history {
   width: 46px;
   height: 46px;
-  background: #1e293b;
+  background: var(--dsx-bg-1e293b);
 }
 
 /* 6 & 7 & 8. BOTTOM SHEETS & MODALS (Cari Takip Standartları) */
@@ -1824,7 +1824,7 @@ onMounted(() => {
   width: 100%;
   max-width: 560px;
   max-height: 90vh;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   border-radius: 28px 28px 0 0;
   box-shadow: 0 -16px 48px rgba(0, 0, 0, 0.25);
   display: flex;
@@ -1853,8 +1853,8 @@ onMounted(() => {
   width: 38px;
   height: 38px;
   border-radius: 12px;
-  background: rgba(17, 22, 27, 0.08);
-  color: var(--ds-primary, #11161b);
+  background: var(--dsx-bg-11161b-a008);
+  color: var(--ds-primary-ink, var(--dsx-fg-11161b));
 }
 
 .sheet-title h3 {
@@ -1904,7 +1904,7 @@ onMounted(() => {
   padding: 10px 12px;
   border-radius: 16px;
   border: 1.5px solid rgba(140, 155, 174, 0.2);
-  background: #f8fafc;
+  background: var(--dsx-bg-f8fafc);
   cursor: pointer;
   text-align: left;
   transition: all 0.15s ease;
@@ -1978,13 +1978,13 @@ onMounted(() => {
   padding: 0 12px;
   border: 1.5px solid rgba(140, 155, 174, 0.24);
   border-radius: 14px;
-  background: #f8fafc;
+  background: var(--dsx-bg-f8fafc);
   transition: border-color 0.15s ease;
 }
 
 .input-wrap:focus-within {
-  border-color: var(--ds-primary, #11161b);
-  background: #ffffff;
+  border-color: var(--ds-primary-ink, #11161b);
+  background: var(--dsx-bg-ffffff);
 }
 
 .input-icon {
@@ -2004,8 +2004,8 @@ onMounted(() => {
 }
 
 .amount-wrap {
-  background: #ffffff;
-  border-color: rgba(17, 22, 27, 0.3);
+  background: var(--dsx-bg-ffffff);
+  border-color: var(--dsx-bd-11161b-a030);
 }
 
 .currency-badge {
@@ -2052,14 +2052,14 @@ onMounted(() => {
   padding: 5px 10px;
   border-radius: 999px;
   border: 1px solid rgba(140, 155, 174, 0.25);
-  background: #f1f5f9;
+  background: var(--dsx-bg-f1f5f9);
   font: 700 10.5px 'Space Grotesk', sans-serif;
   color: var(--ds-slate);
   cursor: pointer;
 }
 
 .quick-chip:active {
-  background: #e2e8f0;
+  background: var(--dsx-bg-e2e8f0);
 }
 
 .submit-action-btn {
@@ -2071,7 +2071,7 @@ onMounted(() => {
   height: 48px;
   border-radius: 16px;
   border: none;
-  background: var(--ds-primary, #11161b);
+  background: var(--ds-primary, var(--dsx-bg-11161b));
   color: #ffffff;
   font: 700 14px 'Space Grotesk', sans-serif;
   cursor: pointer;
@@ -2101,7 +2101,7 @@ onMounted(() => {
 .movement-amount-hero {
   text-align: center;
   padding: 18px 14px;
-  background: #f8fafc;
+  background: var(--dsx-bg-f8fafc);
   border-radius: 20px;
   border: 1px solid rgba(140, 155, 174, 0.16);
 }
@@ -2162,7 +2162,7 @@ onMounted(() => {
   border-radius: 14px;
   border: none;
   background: rgba(245, 158, 11, 0.14);
-  color: #d97706;
+  color: var(--dsx-fg-d97706);
   font: 700 13px 'Space Grotesk', sans-serif;
   cursor: pointer;
   display: flex;
@@ -2190,7 +2190,7 @@ onMounted(() => {
 .history-controls-card {
   padding: 12px;
   border-radius: 18px;
-  background: #f8fafc;
+  background: var(--dsx-bg-f8fafc);
   border: 1px solid rgba(140, 155, 174, 0.16);
 }
 
@@ -2200,7 +2200,7 @@ onMounted(() => {
   padding: 0 10px;
   border: 1.5px solid rgba(140, 155, 174, 0.2);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   font-size: 12px;
   color: var(--ds-ink);
   outline: none;
@@ -2218,13 +2218,13 @@ onMounted(() => {
   gap: 10px;
   padding: 10px 12px;
   border-radius: 16px;
-  background: #f8fafc;
+  background: var(--dsx-bg-f8fafc);
   border: 1px solid rgba(140, 155, 174, 0.14);
   cursor: pointer;
 }
 
 .history-row-card:active {
-  background: #f1f5f9;
+  background: var(--dsx-bg-f1f5f9);
 }
 
 .history-row-date {
@@ -2240,7 +2240,7 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
-.day-num { color: var(--ds-primary, #11161b); }
+.day-num { color: var(--ds-primary-ink, var(--dsx-fg-11161b)); }
 .time-str { color: var(--ds-muted); }
 
 .history-row-content {
@@ -2280,7 +2280,7 @@ onMounted(() => {
 
 /* SİLME DİYALOGU */
 .delete-dialog-box {
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   border-radius: 24px;
   padding: 24px 20px;
   max-width: 340px;
@@ -2339,7 +2339,7 @@ onMounted(() => {
   height: 44px;
   border-radius: 14px;
   border: 1.5px solid rgba(140, 155, 174, 0.2);
-  background: #f8fafc;
+  background: var(--dsx-bg-f8fafc);
   color: var(--ds-ink);
   font: 700 13px 'Space Grotesk', sans-serif;
   cursor: pointer;
@@ -2354,7 +2354,7 @@ onMounted(() => {
 .ds-loading i {
   display: block;
   border-radius: 20px;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.4));
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.4), var(--dsx-bg-ffffff-a080), rgba(255, 255, 255, 0.4));
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
@@ -2379,7 +2379,7 @@ onMounted(() => {
   padding: 9px 16px;
   border-radius: 14px;
   border: none;
-  background: var(--ds-primary, #11161b);
+  background: var(--ds-primary, var(--dsx-bg-11161b));
   color: #ffffff;
   font: 700 12px 'Space Grotesk', sans-serif;
   cursor: pointer;
@@ -2389,7 +2389,7 @@ onMounted(() => {
   width: 16px;
   height: 16px;
   border: 2px solid rgba(255, 255, 255, 0.4);
-  border-top-color: #ffffff;
+  border-top-color: var(--dsx-bd-ffffff);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }

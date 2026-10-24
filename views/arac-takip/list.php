@@ -797,7 +797,7 @@ if (!function_exists('getEvrakBadgeStatus')) {
                                                         <?php
                                                         $pAdi = $arac->zimmetli_personel_adi ?? '';
                                                         $pDept = $arac->zimmetli_personel_departman ?? '';
-                                                        $pResim = !empty($arac->zimmetli_personel_resim_yolu) ? $arac->zimmetli_personel_resim_yolu : ($arac->zimmetli_personel_resim ?? '');
+                                                        $pResim = $arac->zimmetli_personel_resim ?? '';
                                                         $rootPath = dirname(__DIR__, 2) . '/';
                                                         $hasImage = !empty($pResim) && file_exists($rootPath . ltrim($pResim, '/'));
                                                         $initials = getInitials($pAdi);

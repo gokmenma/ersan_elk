@@ -88,7 +88,7 @@ class MobileDashboardModel
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
             return array_map(static function (array $row): array {
-                $hasPhoto = !empty($row['personel_resim_yolu']) || !empty($row['resim_yolu']);
+                $hasPhoto = !empty($row['resim_yolu']);
                 $name = trim((string) ($row['adi_soyadi'] ?? ''));
                 $words = preg_split('/\s+/u', $name, -1, PREG_SPLIT_NO_EMPTY) ?: [];
                 $initials = count($words) >= 2
@@ -340,4 +340,3 @@ class MobileDashboardModel
         ], $firmaId, $userId);
     }
 }
-

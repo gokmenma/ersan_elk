@@ -1033,10 +1033,10 @@ async function deleteSelectedMovement() {
   width: 40px;
   height: 40px;
   place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--dsx-bd-ffffff-a090);
   border-radius: 50%;
   color: var(--ds-ink);
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--dsx-bg-ffffff-a085);
   box-shadow: var(--ds-shadow-pill);
   backdrop-filter: blur(16px);
   cursor: pointer;
@@ -1090,7 +1090,7 @@ async function deleteSelectedMovement() {
   padding: 18px;
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-card);
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   box-shadow: var(--ds-shadow-bento);
   margin-bottom: 20px;
 }
@@ -1169,7 +1169,7 @@ async function deleteSelectedMovement() {
   text-align: center;
   padding: 10px 6px;
   border-radius: 16px;
-  background: #f8fafc;
+  background: var(--dsx-bg-f8fafc);
   border: 1px solid var(--ds-line);
   transition: transform 0.15s ease;
 }
@@ -1247,7 +1247,7 @@ async function deleteSelectedMovement() {
   padding: 10px 4px;
   border-radius: 16px;
   border: 1px solid var(--ds-line);
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   box-shadow: var(--ds-shadow-tile);
   color: var(--ds-ink);
   text-decoration: none;
@@ -1341,7 +1341,7 @@ async function deleteSelectedMovement() {
   display: inline-block;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   border: 1px solid var(--ds-line);
   color: var(--ds-muted);
   font: 600 10px 'Space Grotesk', sans-serif;
@@ -1378,7 +1378,7 @@ async function deleteSelectedMovement() {
   padding: 12px 14px;
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-tile);
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   box-shadow: var(--ds-shadow-tile);
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
@@ -1481,9 +1481,9 @@ async function deleteSelectedMovement() {
   justify-content: center;
   gap: 8px;
   padding: 40px 20px;
-  border: 2px dashed #cbd5e1;
+  border: 2px dashed var(--dsx-bd-cbd5e1);
   border-radius: 20px;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   text-align: center;
   color: var(--ds-muted);
 }
@@ -1539,7 +1539,7 @@ async function deleteSelectedMovement() {
   width: 100%;
   max-width: 540px;
   max-height: 88vh;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   border-radius: 28px 28px 0 0;
   box-shadow: var(--ds-shadow-float);
   overflow-y: auto;
@@ -1570,7 +1570,7 @@ async function deleteSelectedMovement() {
   place-items: center;
   border-radius: 12px;
   background: var(--ds-surface-subtle);
-  color: var(--ds-primary);
+  color: var(--ds-primary-ink);
 }
 .sheet-title h3 {
   margin: 0;
@@ -1618,7 +1618,7 @@ async function deleteSelectedMovement() {
   padding: 10px 12px;
   border-radius: 16px;
   border: 1.5px solid var(--ds-line);
-  background: #f8fafc;
+  background: var(--dsx-bg-f8fafc);
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: left;
@@ -1632,7 +1632,7 @@ async function deleteSelectedMovement() {
   border-radius: 10px;
   display: grid;
   place-items: center;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   color: var(--ds-muted);
   flex-shrink: 0;
   transition: all 0.2s ease;
@@ -1660,7 +1660,7 @@ async function deleteSelectedMovement() {
 }
 .seg-btn--debt.is-active .seg-icon-box,
 .seg-btn--aldim.is-active .seg-icon-box {
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   color: var(--ds-danger-ink);
 }
 .seg-btn--debt.is-active .seg-text strong,
@@ -1676,7 +1676,7 @@ async function deleteSelectedMovement() {
 }
 .seg-btn--credit.is-active .seg-icon-box,
 .seg-btn--verdim.is-active .seg-icon-box {
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   color: var(--ds-emerald-ink);
 }
 .seg-btn--credit.is-active .seg-text strong,
@@ -1703,13 +1703,13 @@ async function deleteSelectedMovement() {
   align-items: center;
   border: 1.5px solid var(--ds-line);
   border-radius: 14px;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   padding: 0 12px;
   height: 46px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .input-wrap:focus-within {
-  border-color: var(--ds-primary);
+  border-color: var(--ds-primary-ink);
   box-shadow: 0 0 0 3px rgba(24, 28, 36, 0.08);
 }
 .input-icon {
@@ -1727,7 +1727,7 @@ async function deleteSelectedMovement() {
   background: transparent;
 }
 .amount-wrap {
-  border-color: #cbd5e1;
+  border-color: var(--dsx-bd-cbd5e1);
 }
 .currency-badge {
   font: 800 16px var(--ds-font-main);
@@ -1765,7 +1765,7 @@ async function deleteSelectedMovement() {
   padding: 0 10px;
   border-radius: 999px;
   border: 1px solid var(--ds-line);
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   color: var(--ds-muted);
   font: 700 11px 'Space Grotesk', sans-serif;
   cursor: pointer;
@@ -1799,7 +1799,7 @@ async function deleteSelectedMovement() {
   padding: 2px 8px;
   border-radius: 999px;
   border: 1px solid var(--ds-line);
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   color: var(--ds-muted);
   font-size: 10px;
   font-weight: 600;
@@ -1816,22 +1816,22 @@ async function deleteSelectedMovement() {
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  border: 2px dashed #cbd5e1;
+  border: 2px dashed var(--dsx-bd-cbd5e1);
   border-radius: 16px;
-  background: #f8fafc;
+  background: var(--dsx-bg-f8fafc);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 .upload-dropzone:active {
   transform: scale(0.985);
-  background: #f1f5f9;
+  background: var(--dsx-bg-f1f5f9);
 }
 .dropzone-icon {
   width: 38px;
   height: 38px;
   border-radius: 12px;
-  background: #e0f2fe;
-  color: #0284c7;
+  background: var(--dsx-bg-e0f2fe);
+  color: var(--dsx-fg-0284c7);
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -1840,7 +1840,7 @@ async function deleteSelectedMovement() {
   display: block;
   font-size: 12px;
   font-weight: 700;
-  color: #0284c7;
+  color: var(--dsx-fg-0284c7);
 }
 .dropzone-text small {
   display: block;
@@ -1858,9 +1858,9 @@ async function deleteSelectedMovement() {
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
-  border: 1.5px solid #bbf7d0;
+  border: 1.5px solid var(--dsx-bd-bbf7d0);
   border-radius: 16px;
-  background: #f0fdf4;
+  background: var(--dsx-bg-f0fdf4);
 }
 .selected-file-info {
   display: flex;
@@ -1872,8 +1872,8 @@ async function deleteSelectedMovement() {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: #dcfce7;
-  color: #16a34a;
+  background: var(--dsx-bg-dcfce7);
+  color: var(--dsx-fg-16a34a);
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -1885,7 +1885,7 @@ async function deleteSelectedMovement() {
   display: block;
   font-size: 12px;
   font-weight: 700;
-  color: #166534;
+  color: var(--dsx-fg-166534);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1893,7 +1893,7 @@ async function deleteSelectedMovement() {
 .selected-file-size {
   display: block;
   font-size: 10px;
-  color: #15803d;
+  color: var(--dsx-fg-15803d);
 }
 .selected-file-del-btn {
   display: inline-flex;
@@ -1901,8 +1901,8 @@ async function deleteSelectedMovement() {
   gap: 4px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--dsx-bg-fee2e2);
+  color: var(--dsx-fg-991b1b);
   border: 0;
   font-size: 11px;
   font-weight: 700;
@@ -1948,7 +1948,7 @@ async function deleteSelectedMovement() {
   text-align: center;
   padding: 18px;
   border-radius: 20px;
-  background: #f8fafc;
+  background: var(--dsx-bg-f8fafc);
   border: 1px solid var(--ds-line);
 }
 .hero-type-label {
@@ -1970,7 +1970,7 @@ async function deleteSelectedMovement() {
   padding: 14px;
   border: 1px solid var(--ds-line);
   border-radius: 18px;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
 }
 .detail-data-row {
   display: flex;
@@ -2043,7 +2043,7 @@ async function deleteSelectedMovement() {
   height: 44px;
   border: 1px solid var(--ds-line);
   border-radius: 999px;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   color: var(--ds-muted);
   font: 700 12px var(--ds-font-main);
   cursor: pointer;
@@ -2056,8 +2056,8 @@ async function deleteSelectedMovement() {
   justify-content: space-between;
   padding: 10px 14px;
   border-radius: 14px;
-  background: #f1f5f9;
-  border: 1px dashed #cbd5e1;
+  background: var(--dsx-bg-f1f5f9);
+  border: 1px dashed var(--dsx-bd-cbd5e1);
 }
 .existing-doc-meta {
   display: flex;
@@ -2065,12 +2065,12 @@ async function deleteSelectedMovement() {
   gap: 6px;
   font-size: 11.5px;
   font-weight: 600;
-  color: #475569;
+  color: var(--dsx-fg-475569);
 }
 .existing-doc-link {
   font-size: 11px;
   font-weight: 700;
-  color: var(--ds-primary);
+  color: var(--ds-primary-ink);
   text-decoration: underline;
 }
 

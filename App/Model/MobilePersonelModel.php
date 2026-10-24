@@ -1378,7 +1378,7 @@ class MobilePersonelModel extends Model
         $result = [];
         foreach ($rows as $r) {
             $encId = \App\Helper\Security::encrypt((string) $r['id']);
-            $hasPhoto = trim((string) ($r['personel_resim_yolu'] ?? $r['resim_yolu'] ?? '')) !== '';
+            $hasPhoto = trim((string) ($r['resim_yolu'] ?? '')) !== '';
             $result[] = [
                 'id' => $encId,
                 'name' => trim((string) $r['adi_soyadi']),
@@ -2521,5 +2521,4 @@ class MobilePersonelModel extends Model
         return round($bytes, $precision) . ' ' . $units[$pow];
     }
 }
-
 

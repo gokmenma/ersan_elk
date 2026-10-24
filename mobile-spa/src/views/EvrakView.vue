@@ -2260,7 +2260,7 @@ onMounted(() => {
   color: #fef2f2;
 }
 .evrak-toast--info {
-  background: #1e293b;
+  background: var(--dsx-bg-1e293b);
   color: #f8fafc;
 }
 
@@ -2271,7 +2271,7 @@ onMounted(() => {
   gap: 12px;
   padding: 14px 16px;
   margin-bottom: 16px;
-  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  background: linear-gradient(135deg, var(--dsx-bg-fffbeb) 0%, var(--dsx-bg-fef3c7) 100%);
   border: 1.5px solid #f59e0b;
   border-radius: var(--ds-radius-tile);
   cursor: pointer;
@@ -2299,13 +2299,13 @@ onMounted(() => {
 .evrak-urgent-alert__content strong {
   display: block;
   font-size: 14px;
-  color: #92400e;
+  color: var(--dsx-fg-92400e);
   font-weight: 800;
 }
 .evrak-urgent-alert__content p {
   margin: 2px 0 0;
   font-size: 12px;
-  color: #b45309;
+  color: var(--dsx-fg-b45309);
 }
 .evrak-urgent-alert__badge {
   padding: 6px 12px;
@@ -2337,7 +2337,7 @@ onMounted(() => {
   transition: all 0.2s ease;
 }
 .bento-metric-card.is-selected {
-  border-color: var(--ds-primary);
+  border-color: var(--ds-primary-ink);
   box-shadow: 0 0 0 2px var(--ds-primary);
 }
 .bento-metric-icon {
@@ -2368,15 +2368,15 @@ onMounted(() => {
 }
 
 /* Renk Kutuları */
-.bg-primary-soft { background: #f1f5f9; }
-.bg-emerald-soft { background: #ecfdf5; }
-.bg-blue-soft { background: #eff6ff; }
-.bg-amber-soft { background: #fffbeb; }
-.bg-coral-soft { background: #fff1f2; }
-.text-emerald { color: #059669; }
+.bg-primary-soft { background: var(--dsx-bg-f1f5f9); }
+.bg-emerald-soft { background: var(--dsx-bg-ecfdf5); }
+.bg-blue-soft { background: var(--dsx-bg-eff6ff); }
+.bg-amber-soft { background: var(--dsx-bg-fffbeb); }
+.bg-coral-soft { background: var(--dsx-bg-fff1f2); }
+.text-emerald { color: var(--dsx-fg-059669); }
 .text-blue { color: #2563eb; }
-.text-amber { color: #d97706; }
-.text-coral { color: #e11d48; }
+.text-amber { color: var(--dsx-fg-d97706); }
+.text-coral { color: var(--dsx-fg-e11d48); }
 
 /* Arama ve Filtre Bölümü */
 .evrak-filter-section {
@@ -2472,11 +2472,11 @@ onMounted(() => {
   letter-spacing: 0.3px;
 }
 .evrak-type-badge--gelen {
-  background: #ecfdf5;
-  color: #059669;
+  background: var(--dsx-bg-ecfdf5);
+  color: var(--dsx-fg-059669);
 }
 .evrak-type-badge--giden {
-  background: #eff6ff;
+  background: var(--dsx-bg-eff6ff);
   color: #2563eb;
 }
 .evrak-meta-pill {
@@ -2505,20 +2505,20 @@ onMounted(() => {
   color: #fff;
 }
 .evrak-status-badge--signed {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--dsx-bg-d1fae5);
+  color: var(--dsx-fg-065f46);
 }
 .evrak-status-badge--pending {
-  background: #e0f2fe;
-  color: #0369a1;
+  background: var(--dsx-bg-e0f2fe);
+  color: var(--dsx-fg-0369a1);
 }
 .evrak-status-badge--reply-pending {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--dsx-bg-fef3c7);
+  color: var(--dsx-fg-92400e);
 }
 .evrak-status-badge--draft {
-  background: #f1f5f9;
-  color: #64748b;
+  background: var(--dsx-bg-f1f5f9);
+  color: var(--dsx-fg-64748b);
 }
 
 .evrak-card-subject {
@@ -2539,7 +2539,7 @@ onMounted(() => {
   margin-bottom: 8px;
 }
 .evrak-card-org {
-  color: #1e293b;
+  color: var(--dsx-fg-1e293b);
 }
 .evrak-card-subunit {
   font-size: 12px;
@@ -2562,12 +2562,12 @@ onMounted(() => {
   border-radius: var(--ds-radius-sm);
   background: var(--ds-surface-subtle);
   font-size: 11px;
-  color: #334155;
+  color: var(--dsx-fg-334155);
   font-weight: 600;
 }
 .evrak-person-chip--related {
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--dsx-bg-eff6ff);
+  color: var(--dsx-fg-1d4ed8);
 }
 .evrak-plate-chip {
   display: inline-flex;
@@ -2575,13 +2575,13 @@ onMounted(() => {
   gap: 6px;
   padding: 3px 8px;
   border-radius: var(--ds-radius-sm);
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--dsx-bg-fef3c7);
+  color: var(--dsx-fg-92400e);
   font-size: 11px;
 }
 .evrak-fine-amount {
   font-weight: 800;
-  color: #b45309;
+  color: var(--dsx-fg-b45309);
 }
 
 /* Kart Alt Barı */
@@ -2604,8 +2604,8 @@ onMounted(() => {
   gap: 4px;
   padding: 4px 10px;
   border-radius: var(--ds-radius-pill);
-  background: #e0f2fe;
-  color: #0284c7;
+  background: var(--dsx-bg-e0f2fe);
+  color: var(--dsx-fg-0284c7);
   font-size: 11px;
   font-weight: 700;
   border: none;
@@ -2617,8 +2617,8 @@ onMounted(() => {
   gap: 4px;
   padding: 4px 10px;
   border-radius: var(--ds-radius-pill);
-  background: #ecfdf5;
-  color: #059669;
+  background: var(--dsx-bg-ecfdf5);
+  color: var(--dsx-fg-059669);
   font-size: 11px;
   font-weight: 700;
   border: none;
@@ -2652,8 +2652,8 @@ onMounted(() => {
   color: #fff;
 }
 .evrak-action-btn--return {
-  background: #fef3c7;
-  color: #d97706;
+  background: var(--dsx-bg-fef3c7);
+  color: var(--dsx-fg-d97706);
   width: 32px;
   padding: 0;
 }
@@ -2662,19 +2662,19 @@ onMounted(() => {
   color: #fff;
 }
 .evrak-action-btn--revoke {
-  background: #eff6ff;
-  color: #0284c7;
+  background: var(--dsx-bg-eff6ff);
+  color: var(--dsx-fg-0284c7);
   width: 32px;
   padding: 0;
 }
 .evrak-action-btn--edit {
   background: var(--ds-surface-subtle);
-  color: #475569;
+  color: var(--dsx-fg-475569);
   width: 32px;
   padding: 0;
 }
 .evrak-action-btn--delete {
-  background: #fef2f2;
+  background: var(--dsx-bg-fef2f2);
   color: #dc2626;
   width: 32px;
   padding: 0;
@@ -2722,7 +2722,7 @@ onMounted(() => {
 .evrak-fab-tip {
   position: absolute;
   right: 58px;
-  background: #1e293b;
+  background: var(--dsx-bg-1e293b);
   color: #fff;
   font-size: 11px;
   font-weight: 700;
@@ -2747,7 +2747,7 @@ onMounted(() => {
   backdrop-filter: blur(4px);
 }
 .evrak-drawer-sheet {
-  background: #fff;
+  background: var(--dsx-bg-ffffff);
   border-top-left-radius: 32px;
   border-top-right-radius: 32px;
   max-height: 90svh;
@@ -2762,7 +2762,7 @@ onMounted(() => {
 .evrak-drawer-handle {
   width: 44px;
   height: 5px;
-  background: #cbd5e1;
+  background: var(--dsx-bg-cbd5e1);
   border-radius: 9999px;
   margin: 10px auto 4px;
   cursor: pointer;
@@ -2773,7 +2773,7 @@ onMounted(() => {
   align-items: flex-start;
   justify-content: space-between;
   border-bottom: 1px solid var(--ds-border-subtle);
-  background: #fff;
+  background: var(--dsx-bg-ffffff);
 }
 .evrak-drawer-title-group h2 {
   font-size: 17px;
@@ -2796,11 +2796,11 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  background: #f8fafc;
+  background: var(--dsx-bg-f8fafc);
 }
 .evrak-drawer-footer {
   padding: 12px 20px calc(12px + var(--ds-safe-bottom));
-  background: #fff;
+  background: var(--dsx-bg-ffffff);
   border-top: 1px solid var(--ds-border-subtle);
   display: flex;
   align-items: center;
@@ -2826,7 +2826,7 @@ onMounted(() => {
   justify-content: space-between;
 }
 .evrak-detail-card {
-  background: #fff;
+  background: var(--dsx-bg-ffffff);
   border: 1px solid var(--ds-border-subtle);
   border-radius: var(--ds-radius-tile);
   padding: 12px 14px;
@@ -2849,7 +2849,7 @@ onMounted(() => {
   gap: 10px;
 }
 .evrak-detail-box {
-  background: #fff;
+  background: var(--dsx-bg-ffffff);
   border: 1px solid var(--ds-border-subtle);
   border-radius: var(--ds-radius-tile);
   padding: 10px 12px;
@@ -2874,14 +2874,14 @@ onMounted(() => {
 .evrak-content-box {
   font-size: 13px;
   line-height: 1.5;
-  color: #334155;
+  color: var(--dsx-fg-334155);
   max-height: 220px;
   overflow-y: auto;
 }
 
 /* E-İmza Stepper */
 .evrak-stepper {
-  background: #fff;
+  background: var(--dsx-bg-ffffff);
   border: 1px solid var(--ds-border-subtle);
   border-radius: var(--ds-radius-tile);
   padding: 12px 14px;
@@ -2898,7 +2898,7 @@ onMounted(() => {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: #f1f5f9;
+  background: var(--dsx-bg-f1f5f9);
   color: var(--ds-muted);
   font-size: 11px;
   font-weight: 800;
@@ -2931,7 +2931,7 @@ onMounted(() => {
   gap: 8px;
 }
 .evrak-file-tile {
-  background: #fff;
+  background: var(--dsx-bg-ffffff);
   border: 1px solid var(--ds-border-subtle);
   border-radius: var(--ds-radius-tile);
   padding: 10px 14px;
@@ -2942,7 +2942,7 @@ onMounted(() => {
   transition: background 0.15s;
 }
 .evrak-file-tile:active {
-  background: #f8fafc;
+  background: var(--dsx-bg-f8fafc);
 }
 .evrak-file-icon {
   width: 36px;
@@ -2981,9 +2981,9 @@ onMounted(() => {
 
 /* İade Uyarısı */
 .evrak-returned-notice {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #991b1b;
+  background: var(--dsx-bg-fef2f2);
+  border: 1px solid var(--dsx-bd-fecaca);
+  color: var(--dsx-fg-991b1b);
   padding: 12px 14px;
   border-radius: var(--ds-radius-tile);
   display: flex;
@@ -3001,7 +3001,7 @@ onMounted(() => {
 }
 .evrak-returned-notice small {
   font-size: 10px;
-  color: #b91c1c;
+  color: var(--dsx-fg-b91c1c);
 }
 
 /* Form Elemanları */
@@ -3012,7 +3012,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  background: #f8fafc;
+  background: var(--dsx-bg-f8fafc);
 }
 .evrak-form-group {
   display: flex;
@@ -3027,7 +3027,7 @@ onMounted(() => {
 .evrak-form-label {
   font-size: 11px;
   font-weight: 800;
-  color: #475569;
+  color: var(--dsx-fg-475569);
   letter-spacing: 0.3px;
 }
 .evrak-input,
@@ -3035,7 +3035,7 @@ onMounted(() => {
 .evrak-textarea {
   width: 100%;
   padding: 12px 14px;
-  background: #fff;
+  background: var(--dsx-bg-ffffff);
   border: 1px solid var(--ds-border-subtle);
   border-radius: var(--ds-radius-sm);
   font: 500 14px var(--ds-font-main);
@@ -3053,7 +3053,7 @@ onMounted(() => {
 /* Evrak Tipi Switch */
 .evrak-type-switch {
   display: flex;
-  background: #e2e8f0;
+  background: var(--dsx-bg-e2e8f0);
   padding: 4px;
   border-radius: var(--ds-radius-tile);
   gap: 4px;
@@ -3070,12 +3070,12 @@ onMounted(() => {
   font-weight: 800;
   border: none;
   background: transparent;
-  color: #475569;
+  color: var(--dsx-fg-475569);
   cursor: pointer;
   transition: all 0.2s;
 }
 .evrak-switch-opt.is-active {
-  background: #fff;
+  background: var(--dsx-bg-ffffff);
   color: var(--ds-ink);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
@@ -3092,9 +3092,9 @@ onMounted(() => {
   border-radius: var(--ds-radius-pill);
   font-size: 11px;
   font-weight: 700;
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  color: #334155;
+  border: 1px solid var(--dsx-bd-cbd5e1);
+  background: var(--dsx-bg-ffffff);
+  color: var(--dsx-fg-334155);
   cursor: pointer;
 }
 .evrak-preset-chip.is-selected {
@@ -3108,7 +3108,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #fff;
+  background: var(--dsx-bg-ffffff);
   border: 1px solid var(--ds-border-subtle);
   border-radius: var(--ds-radius-tile);
   padding: 12px 14px;
@@ -3136,7 +3136,7 @@ onMounted(() => {
 
 /* Trafik Bölümü */
 .evrak-traffic-section {
-  background: #fffbeb;
+  background: var(--dsx-bg-fffbeb);
   border: 1px dashed #f59e0b;
   border-radius: var(--ds-radius-tile);
   padding: 14px;
@@ -3157,24 +3157,24 @@ onMounted(() => {
   gap: 10px;
   padding: 10px 12px;
   border-radius: var(--ds-radius-sm);
-  background: #fff;
+  background: var(--dsx-bg-ffffff);
   border: 1.5px solid var(--ds-border-subtle);
   font-size: 13px;
   font-weight: 600;
-  color: #334155;
+  color: var(--dsx-fg-334155);
   cursor: pointer;
   text-align: left;
 }
 .evrak-signer-pill.is-selected {
   border-color: #0284c7;
-  background: #f0f9ff;
-  color: #0369a1;
+  background: var(--dsx-bg-f0f9ff);
+  color: var(--dsx-fg-0369a1);
 }
 .evrak-signer-order {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: #e2e8f0;
+  background: var(--dsx-bg-e2e8f0);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3194,16 +3194,16 @@ onMounted(() => {
   justify-content: center;
   gap: 4px;
   padding: 16px;
-  border: 2px dashed #cbd5e1;
+  border: 2px dashed var(--dsx-bd-cbd5e1);
   border-radius: var(--ds-radius-tile);
-  background: #fff;
+  background: var(--dsx-bg-ffffff);
   cursor: pointer;
   text-align: center;
 }
 .evrak-upload-dropzone span {
   font-size: 13px;
   font-weight: 700;
-  color: #0284c7;
+  color: var(--dsx-fg-0284c7);
 }
 .evrak-upload-dropzone small {
   font-size: 11px;
@@ -3219,21 +3219,21 @@ onMounted(() => {
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  background: #f1f5f9;
+  background: var(--dsx-bg-f1f5f9);
   border-radius: var(--ds-radius-pill);
   font-size: 11px;
   font-weight: 600;
-  color: #334155;
+  color: var(--dsx-fg-334155);
   max-width: 200px;
 }
 .evrak-file-chip--new {
-  background: #ecfdf5;
-  color: #065f46;
+  background: var(--dsx-bg-ecfdf5);
+  color: var(--dsx-fg-065f46);
 }
 .evrak-chip-del {
   background: none;
   border: none;
-  color: #94a3b8;
+  color: var(--dsx-fg-94a3b8);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -3280,17 +3280,17 @@ onMounted(() => {
   flex: 1;
 }
 .evrak-btn--secondary {
-  background: #e0f2fe;
-  color: #0369a1;
+  background: var(--dsx-bg-e0f2fe);
+  color: var(--dsx-fg-0369a1);
 }
 .evrak-btn--subtle {
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--dsx-bg-f1f5f9);
+  color: var(--dsx-fg-475569);
 }
 .evrak-btn--outline {
   background: transparent;
-  border: 1px solid #cbd5e1;
-  color: #475569;
+  border: 1px solid var(--dsx-bd-cbd5e1);
+  color: var(--dsx-fg-475569);
 }
 .evrak-form-footer {
   display: flex;
@@ -3313,7 +3313,7 @@ onMounted(() => {
   width: 100%;
   max-width: 650px;
   height: 85svh;
-  background: #fff;
+  background: var(--dsx-bg-ffffff);
   border-radius: 24px;
   overflow: hidden;
   display: flex;
@@ -3321,8 +3321,8 @@ onMounted(() => {
 }
 .evrak-preview-head {
   padding: 12px 18px;
-  background: #fff;
-  border-bottom: 1px solid #e2e8f0;
+  background: var(--dsx-bg-ffffff);
+  border-bottom: 1px solid var(--dsx-bd-e2e8f0);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3341,7 +3341,7 @@ onMounted(() => {
 }
 .evrak-preview-content {
   flex: 1;
-  background: #0f172a;
+  background: var(--dsx-bg-0f172a);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3356,7 +3356,7 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   border: none;
-  background: #fff;
+  background: var(--dsx-bg-ffffff);
 }
 .evrak-preview-unsupported {
   color: #fff;
@@ -3368,7 +3368,7 @@ onMounted(() => {
   gap: 10px;
 }
 .evrak-preview-unsupported p {
-  color: #94a3b8;
+  color: var(--dsx-fg-94a3b8);
   font-size: 13px;
 }
 
@@ -3387,7 +3387,7 @@ onMounted(() => {
 .evrak-dialog-card {
   width: 100%;
   max-width: 360px;
-  background: #fff;
+  background: var(--dsx-bg-ffffff);
   border-radius: 28px;
   padding: 24px 20px 20px;
   text-align: center;
@@ -3455,7 +3455,7 @@ onMounted(() => {
 
 .evrak-type-badge--kep {
   background: rgba(2, 132, 199, 0.12) !important;
-  color: #0284c7 !important;
+  color: var(--dsx-fg-0284c7) !important;
   border: 1px solid rgba(2, 132, 199, 0.3) !important;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -3478,7 +3478,7 @@ onMounted(() => {
 
 .evrak-preview-pill--kep {
   background: rgba(2, 132, 199, 0.1) !important;
-  color: #0284c7 !important;
+  color: var(--dsx-fg-0284c7) !important;
   border-color: rgba(2, 132, 199, 0.3) !important;
   font-weight: 700;
 }
@@ -3512,12 +3512,12 @@ onMounted(() => {
 
 .kep-status-pill--primary {
   background: rgba(2, 132, 199, 0.12);
-  color: #0284c7;
+  color: var(--dsx-fg-0284c7);
   border: 1px solid rgba(2, 132, 199, 0.25);
 }
 .kep-status-pill--success {
   background: rgba(16, 185, 129, 0.12);
-  color: #059669;
+  color: var(--dsx-fg-059669);
   border: 1px solid rgba(16, 185, 129, 0.25);
 }
 .kep-status-pill--info {
@@ -3532,7 +3532,7 @@ onMounted(() => {
 }
 
 .kep-hero-tile {
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   border: 1px solid var(--ds-border-subtle);
   border-radius: var(--ds-radius-card, 24px);
   padding: 14px 16px;
@@ -3583,7 +3583,7 @@ onMounted(() => {
   transition: all 0.15s ease;
 }
 .kep-mini-copy-btn:active {
-  background: #e2e8f0;
+  background: var(--dsx-bg-e2e8f0);
   color: var(--ds-ink);
 }
 
@@ -3596,7 +3596,7 @@ onMounted(() => {
 .kep-subject-card,
 .kep-body-card,
 .kep-attachments-card {
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   border: 1px solid var(--ds-border-subtle);
   border-radius: var(--ds-radius-tile);
   padding: 14px 16px;
@@ -3635,10 +3635,10 @@ onMounted(() => {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   display: grid;
   place-items: center;
-  color: var(--ds-blue, #0284c7);
+  color: var(--ds-blue, var(--dsx-fg-0284c7));
   flex-shrink: 0;
 }
 
@@ -3676,7 +3676,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: #eff6ff;
+  background: var(--dsx-bg-eff6ff);
   border: 1px solid rgba(59, 130, 246, 0.25);
   border-radius: var(--ds-radius-tile);
   padding: 12px 14px;
@@ -3686,7 +3686,7 @@ onMounted(() => {
   align-items: flex-start;
   gap: 8px;
   font-size: 11.5px;
-  color: #1e40af;
+  color: var(--dsx-fg-1e40af);
   line-height: 1.45;
 }
 
@@ -3704,7 +3704,7 @@ onMounted(() => {
   bottom: 10px;
   left: 19px;
   width: 2px;
-  background: #e2e8f0;
+  background: var(--dsx-bg-e2e8f0);
 }
 
 .kep-timeline-item {
@@ -3720,16 +3720,16 @@ onMounted(() => {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   border: 2px solid #0284c7;
   display: grid;
   place-items: center;
-  color: #0284c7;
+  color: var(--dsx-fg-0284c7);
   flex-shrink: 0;
 }
 .kep-timeline-item--success .kep-timeline-dot {
   border-color: #10b981;
-  color: #10b981;
+  color: var(--dsx-fg-10b981);
 }
 .kep-timeline-item--info .kep-timeline-dot {
   border-color: #6366f1;
@@ -3742,7 +3742,7 @@ onMounted(() => {
 
 .kep-timeline-content {
   flex: 1;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   border: 1px solid var(--ds-border-subtle);
   border-radius: var(--ds-radius-tile);
   padding: 10px 12px;
@@ -3770,7 +3770,7 @@ onMounted(() => {
 
 .kep-timeline-desc {
   font-size: 11px;
-  color: #475569;
+  color: var(--dsx-fg-475569);
   line-height: 1.4;
   margin: 4px 0 6px;
 }
@@ -3782,7 +3782,7 @@ onMounted(() => {
   gap: 8px;
   margin-top: 6px;
   padding-top: 6px;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--dsx-bd-f1f5f9);
 }
 
 .kep-meta-tag {
@@ -3797,7 +3797,7 @@ onMounted(() => {
   gap: 4px;
   font-size: 10.5px;
   font-weight: 700;
-  color: var(--ds-blue, #0284c7);
+  color: var(--ds-blue, var(--dsx-fg-0284c7));
   text-decoration: none;
   background: rgba(2, 132, 199, 0.08);
   padding: 2px 7px;

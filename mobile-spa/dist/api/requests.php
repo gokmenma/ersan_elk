@@ -61,7 +61,6 @@ function resolvePersonelAvatar(int $personelId, ?string $personelResimYolu = nul
 {
     if ($personelId <= 0) return '';
     $candidates = [
-        trim((string) $personelResimYolu),
         trim((string) $resimYolu)
     ];
 

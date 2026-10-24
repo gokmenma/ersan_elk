@@ -33,7 +33,7 @@ use App\Helper\Date;
                 <div
                     class="w-24 h-24 rounded-full bg-slate-200 dark:bg-slate-700 border-4 border-white dark:border-card-dark overflow-hidden shadow-lg">
                     <?php 
-                    $pResim = !empty($personel->personel_resim_yolu) ? $personel->personel_resim_yolu : ($personel->resim_yolu ?? '');
+                    $pResim = $personel->resim_yolu ?? '';
                     if (!empty($pResim)): ?>
                         <img id="profile-image" src="<?php echo Helper::base_url($pResim); ?>" alt="Profil"
                             class="w-full h-full object-cover">

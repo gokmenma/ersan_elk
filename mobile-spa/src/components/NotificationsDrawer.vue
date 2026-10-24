@@ -396,7 +396,7 @@ async function handleEnablePush() {
   padding: 12px 14px;
   margin-bottom: 12px;
   border-radius: var(--ds-radius-card);
-  background: linear-gradient(135deg, #eef5ff, #f8fafc);
+  background: linear-gradient(135deg, var(--dsx-bg-eef5ff), var(--dsx-bg-f8fafc));
   border: 1px solid rgba(59, 130, 246, 0.25);
   flex-shrink: 0;
 }
@@ -522,7 +522,7 @@ async function handleEnablePush() {
 }
 
 .notification-item.is-unread {
-  background: #f7faff;
+  background: var(--dsx-bg-f7faff);
   border-color: rgba(59, 130, 246, 0.35);
   box-shadow: 0 4px 14px rgba(59, 130, 246, 0.08);
 }

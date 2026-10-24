@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Helper\Security;
 use App\Model\FirmaModel;
 use App\Model\MenuModel;
+use App\Model\PushSubscriptionModel;
 use App\Model\SozlesmeDonemModel;
 use App\Model\SystemLogModel;
 use App\Model\UserModel;
@@ -30,6 +31,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 
 const MOBILE_LOGIN_MAX_ATTEMPTS = 5;
 const MOBILE_LOGIN_LOCK_SECONDS = 900;
+const MOBILE_PASSWORD_MIN_LENGTH = 8;
 
 function respond(array $payload, int $status = 200): never
 {
@@ -81,6 +83,41 @@ function publicUser(object $user): array
         'username' => (string) ($user->user_name ?? ''),
         'initials' => $initials ?: 'EE',
     ];
+}
+
+function requireSessionUser(): object
+{
+    $user = $_SESSION['user'] ?? null;
+    if (!$user || empty($user->id)) {
+        respond(['success' => false, 'message' => 'Oturumunuz sona ermiş.'], 401);
+    }
+    return $user;
+}
+
+function pushDeviceInfo(string $endpoint): array
+{
+    $host = strtolower((string) parse_url($endpoint, PHP_URL_HOST));
+    return match (true) {
+        str_contains($host, 'googleapis.com') => ['label' => 'Chrome / Android', 'platform' => 'android'],
+        str_contains($host, 'push.apple.com') => ['label' => 'Safari / iPhone · Mac', 'platform' => 'apple'],
+        str_contains($host, 'mozilla') => ['label' => 'Mozilla Firefox', 'platform' => 'firefox'],
+        str_contains($host, 'windows.com'), str_contains($host, 'microsoft') => ['label' => 'Microsoft Edge', 'platform' => 'windows'],
+        default => ['label' => 'Web tarayıcısı', 'platform' => 'web'],
+    };
+}
+
+function publicDevices(int $userId): array
+{
+    return array_map(static function (object $row): array {
+        $endpoint = (string) $row->endpoint;
+        return [
+            'id' => Security::encrypt((string) $row->id),
+            'endpoint_hash' => hash('sha256', $endpoint),
+            'created_at' => (string) ($row->created_at ?? ''),
+            'last_seen_at' => (string) ($row->updated_at ?? $row->created_at ?? ''),
+            ...pushDeviceInfo($endpoint),
+        ];
+    }, (new PushSubscriptionModel())->listDevicesByUser($userId));
 }
 
 function rawAllowedCompanies(object $user): array
@@ -269,6 +306,11 @@ $action = (string) ($_GET['action'] ?? 'session');
 try {
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && $action === 'session') {
         respond(['success' => true, ...sessionPayload()]);
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && $action === 'devices') {
+        $user = requireSessionUser();
+        respond(['success' => true, 'devices' => publicDevices((int) $user->id)]);
     }
 
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -522,6 +564,85 @@ try {
             'message' => 'Menü düzeni varsayılan haline döndürüldü.',
             'menu_order' => null,
         ]);
+    }
+
+    if ($action === 'remove-device') {
+        $user = requireSessionUser();
+        $deviceId = (int) Security::decrypt((string) ($data['id'] ?? ''));
+        if ($deviceId <= 0) {
+            respond(['success' => false, 'message' => 'Geçersiz cihaz bilgisi.'], 422);
+        }
+
+        if (!(new PushSubscriptionModel())->deleteUserDevice($deviceId, (int) $user->id)) {
+            respond(['success' => false, 'message' => 'Cihaz bulunamadı veya daha önce kaldırılmış.'], 404);
+        }
+
+        (new SystemLogModel())->logAction(
+            (int) $user->id,
+            'Bağlı Cihaz Kaldırıldı (Mobil)',
+            "{$user->adi_soyadi} ({$user->user_name}) bildirim alan bir cihazı hesabından kaldırdı.",
+            SystemLogModel::LEVEL_IMPORTANT
+        );
+
+        respond(['success' => true, 'message' => 'Cihaz kaldırıldı.', 'devices' => publicDevices((int) $user->id)]);
+    }
+
+    if ($action === 'change-password') {
+        $user = requireSessionUser();
+        $current = (string) ($data['current_password'] ?? '');
+        $new = (string) ($data['new_password'] ?? '');
+        $confirm = (string) ($data['new_password_confirm'] ?? '');
+
+        $lockKey = 'mobile_password_change_attempts';
+        $attempt = $_SESSION[$lockKey] ?? ['count' => 0, 'first_attempt' => time()];
+        if ($attempt['count'] >= MOBILE_LOGIN_MAX_ATTEMPTS) {
+            $remaining = MOBILE_LOGIN_LOCK_SECONDS - (time() - (int) $attempt['first_attempt']);
+            if ($remaining > 0) {
+                respond(['success' => false, 'message' => 'Çok fazla hatalı deneme. ' . (int) ceil($remaining / 60) . ' dakika sonra tekrar deneyin.'], 429);
+            }
+            $attempt = ['count' => 0, 'first_attempt' => time()];
+        }
+
+        if ($current === '' || $new === '' || $confirm === '') {
+            respond(['success' => false, 'message' => 'Tüm şifre alanları zorunludur.'], 422);
+        }
+        if (mb_strlen($new) < MOBILE_PASSWORD_MIN_LENGTH || !preg_match('/\p{L}/u', $new) || !preg_match('/\d/', $new)) {
+            respond(['success' => false, 'message' => 'Yeni şifre en az ' . MOBILE_PASSWORD_MIN_LENGTH . ' karakter olmalı; harf ve rakam içermelidir.'], 422);
+        }
+        if (!hash_equals($new, $confirm)) {
+            respond(['success' => false, 'message' => 'Yeni şifre ile tekrarı eşleşmiyor.'], 422);
+        }
+
+        $userModel = new UserModel();
+        $freshUser = $userModel->find((int) $user->id);
+        if (!$freshUser || !password_verify($current, (string) $freshUser->password)) {
+            $attempt['count']++;
+            if ($attempt['count'] === 1) {
+                $attempt['first_attempt'] = time();
+            }
+            $_SESSION[$lockKey] = $attempt;
+            respond(['success' => false, 'message' => 'Mevcut şifre hatalı.'], 422);
+        }
+        if (password_verify($new, (string) $freshUser->password)) {
+            respond(['success' => false, 'message' => 'Yeni şifre mevcut şifrenizle aynı olamaz.'], 422);
+        }
+
+        if (!$userModel->resetPassword((int) $freshUser->id, password_hash($new, PASSWORD_BCRYPT))) {
+            respond(['success' => false, 'message' => 'Şifre güncellenemedi.'], 500);
+        }
+
+        unset($_SESSION[$lockKey]);
+        session_regenerate_id(true);
+
+        $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
+        (new SystemLogModel())->logAction(
+            (int) $freshUser->id,
+            'Şifre Değiştirildi (Mobil)',
+            "{$freshUser->adi_soyadi} ({$freshUser->user_name}) mobil uygulamadan şifresini değiştirdi. IP: {$ip}",
+            SystemLogModel::LEVEL_CRITICAL
+        );
+
+        respond(['success' => true, 'message' => 'Şifreniz başarıyla güncellendi.']);
     }
 
     if ($action === 'logout') {

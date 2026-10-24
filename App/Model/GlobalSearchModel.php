@@ -248,7 +248,7 @@ class GlobalSearchModel extends Model
                 $avatarColor = $this->getAvatarColor($row['adi_soyadi'] ?? '');
 
                 $avatarUrl = null;
-                $imgPath = $row['personel_resim_yolu'] ?: $row['resim_yolu'];
+                $imgPath = $row['resim_yolu'];
                 if (!empty($imgPath)) {
                     $rawPath = ltrim($imgPath, '/');
                     if (file_exists($_SERVER['DOCUMENT_ROOT'] . '/ersan_elk/' . $rawPath) || file_exists(dirname(__DIR__, 2) . '/' . $rawPath)) {

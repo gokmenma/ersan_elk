@@ -137,6 +137,22 @@ class PushSubscriptionModel extends Model
         $stmt->execute([$userId]);
         return (int) $stmt->fetchColumn() > 0;
     }
+    public function listDevicesByUser(int $userId): array
+    {
+        $stmt = $this->db->prepare("SELECT id, endpoint, created_at, updated_at FROM {$this->table}
+                                   WHERE user_id = ?
+                                   ORDER BY COALESCE(updated_at, created_at) DESC");
+        $stmt->execute([$userId]);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    public function deleteUserDevice(int $id, int $userId): bool
+    {
+        $stmt = $this->db->prepare("DELETE FROM {$this->table} WHERE id = ? AND user_id = ?");
+        $stmt->execute([$id, $userId]);
+        return $stmt->rowCount() > 0;
+    }
+
     /**
      * Personelin aboneliği var mı kontrol eder
      */

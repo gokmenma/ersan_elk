@@ -1558,7 +1558,7 @@ onMounted(() => {
   height: 38px;
   place-items: center;
   border-radius: 12px;
-  background: var(--ds-surface-subtle, #f1f5f9);
+  background: var(--ds-surface-subtle, var(--dsx-bg-f1f5f9));
   flex-shrink: 0;
 }
 
@@ -1575,7 +1575,7 @@ onMounted(() => {
   gap: 4px;
   font-size: 10.5px;
   font-weight: 700;
-  color: var(--ds-muted, #64748b);
+  color: var(--ds-muted, var(--dsx-fg-64748b));
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -1583,7 +1583,7 @@ onMounted(() => {
 .date-range-sub-dates {
   font-size: 10px;
   font-weight: 600;
-  color: #94a3b8;
+  color: var(--dsx-fg-94a3b8);
   text-transform: none;
   letter-spacing: normal;
 }
@@ -1607,20 +1607,20 @@ onMounted(() => {
 }
 
 .period-mini-status--closed {
-  background: #fee2e2;
+  background: var(--dsx-bg-fee2e2);
   color: #dc2626;
 }
 
 .period-mini-status--open {
-  background: #dcfce7;
-  color: #16a34a;
+  background: var(--dsx-bg-dcfce7);
+  color: var(--dsx-fg-16a34a);
 }
 
 .date-range-text {
   display: block;
   font-size: 13.5px;
   font-weight: 800;
-  color: var(--ds-ink, #0f172a);
+  color: var(--ds-ink, var(--dsx-fg-0f172a));
   letter-spacing: -0.01em;
   white-space: nowrap;
   overflow: hidden;
@@ -1631,8 +1631,8 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: var(--ds-surface-subtle, #f1f5f9);
-  border: 1px solid var(--ds-border-subtle, #e2e8f0);
+  background: var(--ds-surface-subtle, var(--dsx-bg-f1f5f9));
+  border: 1px solid var(--ds-border-subtle, var(--dsx-bd-e2e8f0));
   padding: 6px 12px;
   border-radius: var(--ds-radius-pill, 9999px);
   color: var(--ds-blue-ink, #2563eb);
@@ -1785,8 +1785,8 @@ onMounted(() => {
   justify-content: space-between;
   padding: 12px 14px;
   border-radius: 16px;
-  background: #f8fafc;
-  border: 1.5px solid #e2e8f0;
+  background: var(--dsx-bg-f8fafc);
+  border: 1.5px solid var(--dsx-bd-e2e8f0);
   cursor: pointer;
   text-align: left;
   transition: all 0.15s ease;
@@ -1798,7 +1798,7 @@ onMounted(() => {
 }
 
 .period-sheet-item--active {
-  background: #eff6ff;
+  background: var(--dsx-bg-eff6ff);
   border-color: #3b82f6;
   box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
 }
@@ -1817,9 +1817,9 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  color: #64748b;
+  background: var(--dsx-bg-ffffff);
+  border: 1px solid var(--dsx-bd-e2e8f0);
+  color: var(--dsx-fg-64748b);
   flex-shrink: 0;
 }
 
@@ -1838,13 +1838,13 @@ onMounted(() => {
 .period-sheet-name {
   font-size: 13.5px;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--dsx-fg-0f172a);
 }
 
 .period-sheet-dates {
   font-size: 11px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--dsx-fg-64748b);
 }
 
 .period-sheet-item__right {
@@ -1882,21 +1882,21 @@ onMounted(() => {
   left: 14px;
   top: 50%;
   transform: translateY(-50%);
-  color: #94a3b8;
+  color: var(--dsx-fg-94a3b8);
   pointer-events: none;
 }
 
 .payroll-search-input {
   width: 100%;
   height: 44px;
-  background: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: var(--dsx-bg-ffffff);
+  border: 1px solid var(--dsx-bd-ffffff-a090);
   box-shadow: var(--ds-shadow-bento);
   border-radius: var(--ds-radius-pill, 9999px);
   padding: 0 40px 0 42px;
   font-size: 13px;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--dsx-fg-1e293b);
   outline: none;
 }
 
@@ -1912,8 +1912,8 @@ onMounted(() => {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: #f1f5f9;
-  color: #64748b;
+  background: var(--dsx-bg-f1f5f9);
+  color: var(--dsx-fg-64748b);
   border: none;
   display: flex;
   align-items: center;
@@ -1956,7 +1956,7 @@ onMounted(() => {
   border-radius: 14px;
   overflow: hidden;
   flex-shrink: 0;
-  background: #f1f5f9;
+  background: var(--dsx-bg-f1f5f9);
 }
 
 .payroll-avatar-img {
@@ -1973,8 +1973,8 @@ onMounted(() => {
   justify-content: center;
   font-size: 14px;
   font-weight: 800;
-  color: #475569;
-  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+  color: var(--dsx-fg-475569);
+  background: linear-gradient(135deg, var(--dsx-bg-e2e8f0) 0%, var(--dsx-bg-cbd5e1) 100%);
 }
 
 .payroll-person-meta {
@@ -1992,7 +1992,7 @@ onMounted(() => {
 .payroll-person-name {
   font-size: 14px;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--dsx-fg-0f172a);
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -2009,19 +2009,19 @@ onMounted(() => {
 }
 
 .payroll-status-pill--calc {
-  background: #dcfce7;
-  color: #15803d;
+  background: var(--dsx-bg-dcfce7);
+  color: var(--dsx-fg-15803d);
 }
 
 .payroll-status-pill--pending {
-  background: #fef3c7;
-  color: #b45309;
+  background: var(--dsx-bg-fef3c7);
+  color: var(--dsx-fg-b45309);
 }
 
 .payroll-person-sub {
   font-size: 11px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--dsx-fg-64748b);
   margin: 2px 0 0;
   white-space: nowrap;
   overflow: hidden;
@@ -2037,7 +2037,7 @@ onMounted(() => {
   display: block;
   font-size: 8px;
   font-weight: 800;
-  color: #94a3b8;
+  color: var(--dsx-fg-94a3b8);
   letter-spacing: 0.05em;
 }
 
@@ -2056,7 +2056,7 @@ onMounted(() => {
 }
 
 .breakdown-item {
-  background: #f8fafc;
+  background: var(--dsx-bg-f8fafc);
   border-radius: 10px;
   padding: 6px 8px;
   display: flex;
@@ -2065,19 +2065,19 @@ onMounted(() => {
 }
 
 .breakdown-item--danger {
-  background: #fff1f2;
+  background: var(--dsx-bg-fff1f2);
 }
 
 .breakdown-item--blue {
-  background: #eff6ff;
+  background: var(--dsx-bg-eff6ff);
 }
 
 .breakdown-item--cyan {
-  background: #ecfeff;
+  background: var(--dsx-bg-ecfeff);
 }
 
 .breakdown-item--amber {
-  background: #fffbeb;
+  background: var(--dsx-bg-fffbeb);
 }
 
 .breakdown-label {
@@ -2086,14 +2086,14 @@ onMounted(() => {
   gap: 4px;
   font-size: 9px;
   font-weight: 700;
-  color: #64748b;
+  color: var(--dsx-fg-64748b);
   text-transform: uppercase;
 }
 
 .breakdown-value {
   font-size: 11px;
   font-weight: 800;
-  color: #1e293b;
+  color: var(--dsx-fg-1e293b);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2105,7 +2105,7 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   padding-top: 4px;
-  border-top: 1px dashed #f1f5f9;
+  border-top: 1px dashed var(--dsx-bd-f1f5f9);
 }
 
 .payroll-action-btn {
@@ -2118,8 +2118,8 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  background: #f1f5f9;
-  color: #334155;
+  background: var(--dsx-bg-f1f5f9);
+  color: var(--dsx-fg-334155);
   border: none;
   cursor: pointer;
   transition: all var(--ds-transition-fast);
@@ -2132,12 +2132,12 @@ onMounted(() => {
 
 .payroll-action-btn--primary {
   flex: 1;
-  background: #eff6ff;
+  background: var(--dsx-bg-eff6ff);
   color: #2563eb;
 }
 
 .payroll-action-btn--primary:hover {
-  background: #dbeafe;
+  background: var(--dsx-bg-dbeafe);
 }
 
 .payroll-quick-adj-group {
@@ -2163,12 +2163,12 @@ onMounted(() => {
 }
 
 .payroll-icon-action--income {
-  background: #dcfce7;
-  color: #16a34a;
+  background: var(--dsx-bg-dcfce7);
+  color: var(--dsx-fg-16a34a);
 }
 
 .payroll-icon-action--deduct {
-  background: #fee2e2;
+  background: var(--dsx-bg-fee2e2);
   color: #dc2626;
 }
 
@@ -2189,7 +2189,7 @@ onMounted(() => {
   max-width: 540px;
   height: 94vh;
   max-height: 94vh;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   border-top-left-radius: 28px;
   border-top-right-radius: 28px;
   box-shadow: 0 -8px 32px rgba(15, 23, 42, 0.2);
@@ -2211,14 +2211,14 @@ onMounted(() => {
 .sheet-drag-handle {
   width: 36px;
   height: 4px;
-  background: #cbd5e1;
+  background: var(--dsx-bg-cbd5e1);
   border-radius: 9999px;
   margin: 8px auto 2px;
 }
 
 .payroll-sheet-header {
   padding: 10px 16px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--dsx-bd-f1f5f9);
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -2228,14 +2228,14 @@ onMounted(() => {
 .payroll-sheet-title {
   font-size: 15px;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--dsx-fg-0f172a);
   margin: 1px 0 0;
 }
 
 .payroll-sheet-subtitle {
   font-size: 11px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--dsx-fg-64748b);
   margin: 1px 0 0;
 }
 
@@ -2255,7 +2255,7 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  color: #64748b;
+  color: var(--dsx-fg-64748b);
   font-size: 12px;
   font-weight: 700;
 }
@@ -2263,7 +2263,7 @@ onMounted(() => {
 .payroll-spinner {
   width: 32px;
   height: 32px;
-  border: 3px solid #e2e8f0;
+  border: 3px solid var(--dsx-bd-e2e8f0);
   border-top-color: #3b82f6;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -2277,8 +2277,8 @@ onMounted(() => {
 
 /* ==================== KOMPAKT BENTO ÖZET BANDI ==================== */
 .detail-summary-strip {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--dsx-bg-ffffff);
+  border: 1px solid var(--dsx-bd-e2e8f0);
   border-radius: 16px;
   padding: 8px 10px;
   box-shadow: var(--ds-shadow-bento);
@@ -2297,7 +2297,7 @@ onMounted(() => {
 }
 
 .strip-net-badge {
-  background: #0f172a;
+  background: var(--dsx-bg-0f172a);
   color: #ffffff;
   padding: 5px 10px;
   border-radius: 10px;
@@ -2310,7 +2310,7 @@ onMounted(() => {
 .strip-net-eyebrow {
   font-size: 8px;
   font-weight: 800;
-  color: #94a3b8;
+  color: var(--dsx-fg-94a3b8);
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
@@ -2349,36 +2349,36 @@ onMounted(() => {
 }
 
 .strip-pill--bank {
-  background: #eff6ff;
-  color: #1e40af;
-  border-color: #bfdbfe;
+  background: var(--dsx-bg-eff6ff);
+  color: var(--dsx-fg-1e40af);
+  border-color: var(--dsx-bd-bfdbfe);
 }
 
 .strip-pill--cash {
-  background: #fffbeb;
-  color: #92400e;
-  border-color: #fde68a;
+  background: var(--dsx-bg-fffbeb);
+  color: var(--dsx-fg-92400e);
+  border-color: var(--dsx-bd-fde68a);
 }
 
 .strip-pill--sodexo {
-  background: #ecfeff;
-  color: #155e75;
-  border-color: #a5f3fc;
+  background: var(--dsx-bg-ecfeff);
+  color: var(--dsx-fg-155e75);
+  border-color: var(--dsx-bd-a5f3fc);
 }
 
 .strip-pill--other {
-  background: #f8fafc;
-  color: #334155;
-  border-color: #e2e8f0;
+  background: var(--dsx-bg-f8fafc);
+  color: var(--dsx-fg-334155);
+  border-color: var(--dsx-bd-e2e8f0);
 }
 
 .strip-toggle-btn {
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-  color: #64748b;
+  border: 1px solid var(--dsx-bd-e2e8f0);
+  background: var(--dsx-bg-f8fafc);
+  color: var(--dsx-fg-64748b);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2388,14 +2388,14 @@ onMounted(() => {
 
 .strip-toggle-btn.is-expanded {
   transform: rotate(180deg);
-  background: #e2e8f0;
-  color: #0f172a;
+  background: var(--dsx-bg-e2e8f0);
+  color: var(--dsx-fg-0f172a);
 }
 
 .summary-expanded-drawer {
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px dashed #e2e8f0;
+  border-top: 1px dashed var(--dsx-bd-e2e8f0);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -2414,10 +2414,10 @@ onMounted(() => {
 }
 
 .drawer-stat-item {
-  background: #f8fafc;
+  background: var(--dsx-bg-f8fafc);
   padding: 6px 10px;
   border-radius: 8px;
-  border: 1px solid #edf2f7;
+  border: 1px solid var(--dsx-bd-edf2f7);
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -2426,7 +2426,7 @@ onMounted(() => {
 .drawer-stat-label {
   font-size: 8.5px;
   font-weight: 800;
-  color: #64748b;
+  color: var(--dsx-fg-64748b);
   letter-spacing: 0.04em;
 }
 
@@ -2438,7 +2438,7 @@ onMounted(() => {
 .banka-tooltip-box {
   margin-top: 4px;
   padding: 8px 10px;
-  background: #1e293b;
+  background: var(--dsx-bg-1e293b);
   color: #f1f5f9;
   font-size: 10.5px;
   line-height: 1.4;
@@ -2453,7 +2453,7 @@ onMounted(() => {
 
 /* Detay Sekme Çubuğu (Apple iOS Segmented Control) */
 .payroll-detail-tabs-bar {
-  background: #e2e8f0;
+  background: var(--dsx-bg-e2e8f0);
   border-radius: 14px;
   padding: 3px;
   display: flex;
@@ -2467,7 +2467,7 @@ onMounted(() => {
   flex: 1;
   border: none !important;
   background: transparent !important;
-  color: #64748b !important;
+  color: var(--dsx-fg-64748b) !important;
   border-radius: 11px !important;
   min-height: 38px !important;
   font-size: 12px !important;
@@ -2482,8 +2482,8 @@ onMounted(() => {
 }
 
 .payroll-detail-tabs-bar .clay-filter-pill.active {
-  background: #ffffff !important;
-  color: #0f172a !important;
+  background: var(--dsx-bg-ffffff) !important;
+  color: var(--dsx-fg-0f172a) !important;
   font-weight: 800 !important;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08) !important;
 }
@@ -2496,7 +2496,7 @@ onMounted(() => {
 .payroll-legacy-container {
   padding: 4px 0 12px 0;
   font-size: 11px;
-  color: #334155;
+  color: var(--dsx-fg-334155);
   line-height: 1.5;
   overflow-x: hidden;
 }
@@ -2555,7 +2555,7 @@ onMounted(() => {
   width: 16px !important;
   height: 16px !important;
   margin-left: 6px !important;
-  color: #64748b !important;
+  color: var(--dsx-fg-64748b) !important;
   vertical-align: middle !important;
   flex-shrink: 0 !important;
   transition: color 0.2s ease !important;
@@ -2605,9 +2605,9 @@ onMounted(() => {
 
 /* Bento Kart Görünümü */
 .payroll-comparison-container :deep(.main-card) {
-  background: #ffffff !important;
+  background: var(--dsx-bg-ffffff) !important;
   border-radius: 16px !important;
-  border: 1px solid #e2e8f0 !important;
+  border: 1px solid var(--dsx-bd-e2e8f0) !important;
   box-shadow: var(--ds-shadow-bento, 0 4px 14px rgba(0, 0, 0, 0.03)) !important;
   overflow: hidden !important;
   margin-bottom: 0 !important;
@@ -2622,7 +2622,7 @@ onMounted(() => {
   display: flex !important;
   justify-content: space-between !important;
   align-items: center !important;
-  border-bottom: 1px solid #eef2f6 !important;
+  border-bottom: 1px solid var(--dsx-bd-eef2f6) !important;
   letter-spacing: 0.02em !important;
   gap: 10px !important;
   min-height: 48px !important;
@@ -2663,21 +2663,21 @@ onMounted(() => {
 }
 
 .payroll-comparison-container :deep(.tint-hakedis) {
-  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%) !important;
-  color: #166534 !important;
+  background: linear-gradient(135deg, var(--dsx-bg-f0fdf4) 0%, var(--dsx-bg-ecfdf5) 100%) !important;
+  color: var(--dsx-fg-166534) !important;
   border-left: 4px solid #10b981 !important;
 }
 
 .payroll-comparison-container :deep(.tint-resmi) {
-  background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%) !important;
-  color: #1e40af !important;
+  background: linear-gradient(135deg, var(--dsx-bg-eff6ff) 0%, var(--dsx-bg-f0f9ff) 100%) !important;
+  color: var(--dsx-fg-1e40af) !important;
   border-left: 4px solid #3b82f6 !important;
 }
 
 .payroll-comparison-container :deep(.card-header-tint:has(.text-danger)),
 .payroll-comparison-container :deep(.card-header-tint.bg-danger-subtle) {
-  background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%) !important;
-  color: #9f1239 !important;
+  background: linear-gradient(135deg, var(--dsx-bg-fff1f2) 0%, var(--dsx-bg-ffe4e6) 100%) !important;
+  color: var(--dsx-fg-9f1239) !important;
   border-left: 4px solid #f43f5e !important;
 }
 
@@ -2745,7 +2745,7 @@ onMounted(() => {
   width: 100% !important;
   padding: 10px 14px !important;
   box-sizing: border-box !important;
-  border-bottom: 1px solid #f1f5f9 !important;
+  border-bottom: 1px solid var(--dsx-bd-f1f5f9) !important;
   transition: background-color 0.15s ease !important;
 }
 
@@ -2773,12 +2773,12 @@ onMounted(() => {
   white-space: nowrap !important;
   font-size: 13.5px !important;
   font-weight: 800 !important;
-  color: #0f172a !important;
+  color: var(--dsx-fg-0f172a) !important;
 }
 
 /* Parent Row (Ana Başlık / Akordiyon Satırı) */
 .payroll-comparison-container :deep(.unified-table .parent-row) {
-  background: #ffffff !important;
+  background: var(--dsx-bg-ffffff) !important;
   transition: background-color 0.15s ease !important;
 }
 
@@ -2791,29 +2791,29 @@ onMounted(() => {
 
 .payroll-comparison-container :deep(.unified-table .parent-row[data-bs-target]:active),
 .payroll-comparison-container :deep(.unified-table .parent-row[data-target]:active) {
-  background: #f1f5f9 !important;
+  background: var(--dsx-bg-f1f5f9) !important;
 }
 
 .payroll-comparison-container :deep(.unified-table .parent-row[data-bs-target][aria-expanded="true"]),
 .payroll-comparison-container :deep(.unified-table .parent-row[data-target][aria-expanded="true"]) {
-  background: #f8fafc !important;
-  border-bottom: 1px solid #e2e8f0 !important;
+  background: var(--dsx-bg-f8fafc) !important;
+  border-bottom: 1px solid var(--dsx-bd-e2e8f0) !important;
 }
 
 .payroll-comparison-container :deep(.unified-table .parent-row[data-bs-target][aria-expanded="true"] > td:first-child) {
-  color: #1e3a8a !important;
+  color: var(--dsx-fg-1e3a8a) !important;
 }
 
 .payroll-comparison-container :deep(.unified-table .parent-row > td:first-child) {
   font-size: 13px !important;
   font-weight: 700 !important;
-  color: #0f172a !important;
+  color: var(--dsx-fg-0f172a) !important;
 }
 
 .payroll-comparison-container :deep(.unified-table .parent-row .calculation-note) {
   display: block !important;
   font-size: 10.5px !important;
-  color: #64748b !important;
+  color: var(--dsx-fg-64748b) !important;
   font-weight: 500 !important;
   margin-top: 3px !important;
   line-height: 1.35 !important;
@@ -2824,15 +2824,15 @@ onMounted(() => {
   font-weight: 700 !important;
   padding: 2px 7px !important;
   border-radius: 6px !important;
-  background: #f1f5f9 !important;
-  color: #475569 !important;
-  border: 1px solid #e2e8f0 !important;
+  background: var(--dsx-bg-f1f5f9) !important;
+  color: var(--dsx-fg-475569) !important;
+  border: 1px solid var(--dsx-bd-e2e8f0) !important;
 }
 
 /* Child Row (Alt Kırılım / Puantaj Kalemleri) */
 .payroll-comparison-container :deep(.unified-table .child-row) {
-  background: #f8fafc !important;
-  border-bottom: 1px solid #edf2f7 !important;
+  background: var(--dsx-bg-f8fafc) !important;
+  border-bottom: 1px solid var(--dsx-bd-edf2f7) !important;
   padding: 8px 14px 8px 20px !important;
   position: relative !important;
 }
@@ -2844,13 +2844,13 @@ onMounted(() => {
   top: 10px !important;
   bottom: 10px !important;
   width: 3px !important;
-  background: #cbd5e1 !important;
+  background: var(--dsx-bg-cbd5e1) !important;
   border-radius: 9999px !important;
 }
 
 .payroll-comparison-container :deep(.unified-table .child-row > td:first-child) {
   font-size: 11.5px !important;
-  color: #334155 !important;
+  color: var(--dsx-fg-334155) !important;
   line-height: 1.35 !important;
   padding-left: 0 !important;
 }
@@ -2858,7 +2858,7 @@ onMounted(() => {
 .payroll-comparison-container :deep(.unified-table .child-row small) {
   display: block !important;
   font-size: 10.5px !important;
-  color: #64748b !important;
+  color: var(--dsx-fg-64748b) !important;
   font-weight: 500 !important;
   margin-top: 2px !important;
 }
@@ -2866,14 +2866,14 @@ onMounted(() => {
 .payroll-comparison-container :deep(.unified-table .child-row > td:last-child) {
   font-size: 12.5px !important;
   font-weight: 700 !important;
-  color: #1e293b !important;
+  color: var(--dsx-fg-1e293b) !important;
   padding-right: 0 !important;
 }
 
 /* Footer Row (Toplam Satırı) */
 .payroll-comparison-container :deep(.unified-table .footer-row) {
-  background: #f8fafc !important;
-  border-top: 1.5px solid #e2e8f0 !important;
+  background: var(--dsx-bg-f8fafc) !important;
+  border-top: 1.5px solid var(--dsx-bd-e2e8f0) !important;
   border-bottom: none !important;
   padding: 12px 14px !important;
 }
@@ -2892,9 +2892,9 @@ onMounted(() => {
 
 /* Section Row (Eklenenler / Kesilenler Başlık Şeridi) */
 .payroll-comparison-container :deep(.unified-table .section-row) {
-  background: #f1f5f9 !important;
+  background: var(--dsx-bg-f1f5f9) !important;
   padding: 6px 14px !important;
-  border-bottom: 1px solid #e2e8f0 !important;
+  border-bottom: 1px solid var(--dsx-bd-e2e8f0) !important;
 }
 
 .payroll-comparison-container :deep(.unified-table .section-row > td) {
@@ -2902,7 +2902,7 @@ onMounted(() => {
   font-weight: 800 !important;
   letter-spacing: 0.06em !important;
   text-transform: uppercase !important;
-  color: #475569 !important;
+  color: var(--dsx-fg-475569) !important;
   width: 100% !important;
 }
 
@@ -2913,7 +2913,7 @@ onMounted(() => {
 
 .payroll-comparison-container :deep(.calculation-note) {
   font-size: 10.5px !important;
-  color: #64748b !important;
+  color: var(--dsx-fg-64748b) !important;
   margin-top: 2px !important;
   font-weight: 500 !important;
   display: block !important;
@@ -2942,9 +2942,9 @@ onMounted(() => {
 }
 
 .payroll-comparison-container :deep(.badge.bg-light) {
-  background: #f1f5f9 !important;
-  color: #334155 !important;
-  border: 1px solid #e2e8f0 !important;
+  background: var(--dsx-bg-f1f5f9) !important;
+  color: var(--dsx-fg-334155) !important;
+  border: 1px solid var(--dsx-bd-e2e8f0) !important;
 }
 
 /* ==================== BORDRO REFERANS GÖRÜNÜMÜ MOBİL HARMONİZASYONU ==================== */
@@ -2984,20 +2984,20 @@ onMounted(() => {
 }
 
 .payroll-legacy-container :deep(.section-title.gains) {
-  color: #15803d !important;
-  background: #f0fdf4 !important;
+  color: var(--dsx-fg-15803d) !important;
+  background: var(--dsx-bg-f0fdf4) !important;
   border-left: 3px solid #16a34a !important;
 }
 
 .payroll-legacy-container :deep(.section-title.deductions) {
-  color: #be123c !important;
-  background: #fff1f2 !important;
+  color: var(--dsx-fg-be123c) !important;
+  background: var(--dsx-bg-fff1f2) !important;
   border-left: 3px solid #e11d48 !important;
 }
 
 .payroll-legacy-container :deep(.ref-card) {
-  background: #ffffff !important;
-  border: 1px solid #e2e8f0 !important;
+  background: var(--dsx-bg-ffffff) !important;
+  border: 1px solid var(--dsx-bd-e2e8f0) !important;
   border-radius: 16px !important;
   padding: 12px 14px !important;
   box-shadow: var(--ds-shadow-bento, 0 2px 8px rgba(0, 0, 0, 0.04)) !important;
@@ -3009,10 +3009,10 @@ onMounted(() => {
 .payroll-legacy-container :deep(.ref-card-title) {
   font-size: 11.5px !important;
   font-weight: 800 !important;
-  color: #334155 !important;
+  color: var(--dsx-fg-334155) !important;
   letter-spacing: 0.04em !important;
   text-transform: uppercase !important;
-  border-bottom: 1px solid #f1f5f9 !important;
+  border-bottom: 1px solid var(--dsx-bd-f1f5f9) !important;
   padding-bottom: 8px !important;
   margin-bottom: 4px !important;
 }
@@ -3028,9 +3028,9 @@ onMounted(() => {
   justify-content: space-between !important;
   align-items: center !important;
   font-size: 12px !important;
-  color: #1e293b !important;
+  color: var(--dsx-fg-1e293b) !important;
   padding: 5px 0 !important;
-  border-bottom: 1px solid #f8fafc !important;
+  border-bottom: 1px solid var(--dsx-bd-f8fafc) !important;
 }
 
 .payroll-legacy-container :deep(.ref-card-item:last-child) {
@@ -3038,29 +3038,29 @@ onMounted(() => {
 }
 
 .payroll-legacy-container :deep(.ref-card-item .label) {
-  color: #475569 !important;
+  color: var(--dsx-fg-475569) !important;
   font-weight: 600 !important;
 }
 
 .payroll-legacy-container :deep(.ref-card-item .value) {
   font-weight: 800 !important;
-  color: #0f172a !important;
+  color: var(--dsx-fg-0f172a) !important;
   text-align: right !important;
   font-variant-numeric: tabular-nums !important;
 }
 
 .payroll-legacy-container :deep(.ref-card-item .value .subval) {
   font-size: 10.5px !important;
-  color: #64748b !important;
+  color: var(--dsx-fg-64748b) !important;
   font-weight: 600 !important;
   margin-right: 8px !important;
-  background: #f1f5f9;
+  background: var(--dsx-bg-f1f5f9);
   padding: 2px 6px;
   border-radius: 6px;
 }
 
 .payroll-legacy-container :deep(.ref-card-item.total-row) {
-  border-top: 1.5px solid #e2e8f0 !important;
+  border-top: 1.5px solid var(--dsx-bd-e2e8f0) !important;
   padding-top: 8px !important;
   margin-top: 6px !important;
   font-weight: 800 !important;
@@ -3068,7 +3068,7 @@ onMounted(() => {
 }
 
 .payroll-legacy-container :deep(.ref-card-item.total-row .label) {
-  color: #0f172a !important;
+  color: var(--dsx-fg-0f172a) !important;
   font-weight: 800 !important;
 }
 
@@ -3080,8 +3080,8 @@ onMounted(() => {
 }
 
 .payroll-legacy-container :deep(.panel-card) {
-  background: #f8fafc !important;
-  border: 1px solid #e2e8f0 !important;
+  background: var(--dsx-bg-f8fafc) !important;
+  border: 1px solid var(--dsx-bd-e2e8f0) !important;
   border-radius: 14px !important;
   padding: 12px 14px !important;
 }
@@ -3089,14 +3089,14 @@ onMounted(() => {
 .payroll-legacy-container :deep(.panel-card-title) {
   font-size: 11px !important;
   font-weight: 800 !important;
-  color: #475569 !important;
-  border-bottom: 1px dashed #e2e8f0 !important;
+  color: var(--dsx-fg-475569) !important;
+  border-bottom: 1px dashed var(--dsx-bd-e2e8f0) !important;
   padding-bottom: 6px !important;
   margin-bottom: 8px !important;
 }
 
 .payroll-legacy-container :deep(.green-text) {
-  color: #16a34a !important;
+  color: var(--dsx-fg-16a34a) !important;
   font-weight: 700 !important;
 }
 
@@ -3127,7 +3127,7 @@ onMounted(() => {
 .form-group label {
   font-size: 11px;
   font-weight: 800;
-  color: #475569;
+  color: var(--dsx-fg-475569);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -3135,22 +3135,22 @@ onMounted(() => {
 .clay-form-input {
   height: 44px;
   border-radius: 12px;
-  border: 1px solid #cbd5e1;
-  background: #f8fafc;
+  border: 1px solid var(--dsx-bd-cbd5e1);
+  background: var(--dsx-bg-f8fafc);
   padding: 0 14px;
   font-size: 14px;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--dsx-fg-0f172a);
   outline: none;
 }
 
 .clay-form-input:focus {
   border-color: #3b82f6;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
 }
 
 .payment-preview-box {
-  background: #f0fdf4;
+  background: var(--dsx-bg-f0fdf4);
   border: 1px dashed #86efac;
   border-radius: 12px;
   padding: 10px 14px;
@@ -3159,7 +3159,7 @@ onMounted(() => {
   justify-content: space-between;
   font-size: 12px;
   font-weight: 700;
-  color: #15803d;
+  color: var(--dsx-fg-15803d);
 }
 
 .modal-form-actions {
@@ -3185,8 +3185,8 @@ onMounted(() => {
 }
 
 .clay-btn--cancel {
-  background: #f1f5f9;
-  color: #64748b;
+  background: var(--dsx-bg-f1f5f9);
+  color: var(--dsx-fg-64748b);
 }
 
 .clay-btn--primary {
@@ -3218,15 +3218,15 @@ onMounted(() => {
   gap: 12px;
   padding: 12px 14px;
   border-radius: 16px;
-  background: #f8fafc;
-  border: 1px solid #f1f5f9;
+  background: var(--dsx-bg-f8fafc);
+  border: 1px solid var(--dsx-bd-f1f5f9);
   text-align: left;
   cursor: pointer;
   transition: background-color var(--ds-transition-fast);
 }
 
 .payroll-action-row:hover {
-  background: #f1f5f9;
+  background: var(--dsx-bg-f1f5f9);
 }
 
 .payroll-action-row:disabled {
@@ -3235,22 +3235,22 @@ onMounted(() => {
 }
 
 .payroll-action-row--open {
-  background: #ecfdf5;
-  border-color: #a7f3d0;
-  color: #065f46;
+  background: var(--dsx-bg-ecfdf5);
+  border-color: var(--dsx-bd-a7f3d0);
+  color: var(--dsx-fg-065f46);
 }
 
 .payroll-action-row--close {
-  background: #fef2f2;
-  border-color: #fecaca;
-  color: #991b1b;
+  background: var(--dsx-bg-fef2f2);
+  border-color: var(--dsx-bd-fecaca);
+  color: var(--dsx-fg-991b1b);
 }
 
 .action-row-icon {
   width: 40px;
   height: 40px;
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3259,7 +3259,7 @@ onMounted(() => {
 }
 
 .action-row-icon--amber {
-  color: #d97706;
+  color: var(--dsx-fg-d97706);
 }
 
 .action-row-icon--blue {
@@ -3281,19 +3281,19 @@ onMounted(() => {
   display: block;
   font-size: 10px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--dsx-fg-64748b);
   margin-top: 1px;
 }
 
 .action-row-chevron {
-  color: #94a3b8;
+  color: var(--dsx-fg-94a3b8);
 }
 
 /* ==================== ONAY MODALI ==================== */
 .payroll-confirm-dialog {
   width: 90%;
   max-width: 360px;
-  background: #ffffff;
+  background: var(--dsx-bg-ffffff);
   border-radius: 24px;
   padding: 24px 20px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
@@ -3329,26 +3329,26 @@ onMounted(() => {
 }
 
 .confirm-dialog-icon--info {
-  background: #eff6ff;
+  background: var(--dsx-bg-eff6ff);
   color: #2563eb;
 }
 
 .confirm-dialog-icon--danger {
-  background: #fef2f2;
+  background: var(--dsx-bg-fef2f2);
   color: #dc2626;
 }
 
 .confirm-dialog-title {
   font-size: 16px;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--dsx-fg-0f172a);
   margin: 0;
 }
 
 .confirm-dialog-message {
   font-size: 12px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--dsx-fg-64748b);
   line-height: 1.45;
   margin: 0;
 }
@@ -3357,12 +3357,12 @@ onMounted(() => {
   width: 100%;
   max-height: 120px;
   overflow-y: auto;
-  background: #fff1f2;
+  background: var(--dsx-bg-fff1f2);
   border-radius: 12px;
   padding: 8px 12px;
   text-align: left;
   font-size: 11px;
-  color: #be123c;
+  color: var(--dsx-fg-be123c);
 }
 
 .confirm-warnings-box ul {

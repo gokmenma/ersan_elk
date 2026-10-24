@@ -962,7 +962,7 @@ function getHakedisBadgeLabel(durum) {
 .m-val {
   font-size: 16px;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--dsx-fg-0f172a);
 }
 
 .m-sub {
@@ -1196,7 +1196,7 @@ function getHakedisBadgeLabel(durum) {
 }
 
 .action-icon-btn:hover:not(:disabled) {
-  background: #e2e8f0;
+  background: var(--dsx-bg-e2e8f0);
 }
 
 .action-icon-btn.text-danger {
@@ -1212,7 +1212,7 @@ function getHakedisBadgeLabel(durum) {
 .action-icon-btn:disabled {
   opacity: 0.32 !important;
   cursor: not-allowed !important;
-  color: #94a3b8 !important;
+  color: var(--dsx-fg-94a3b8) !important;
   background: var(--ds-surface-subtle) !important;
   border-color: rgba(203, 213, 225, 0.5) !important;
 }
@@ -1567,7 +1567,7 @@ function getHakedisBadgeLabel(durum) {
   width: 100%;
   border-radius: var(--ds-radius-sm);
   border: 1px solid var(--ds-border-subtle);
-  background: #fff;
+  background: var(--dsx-bg-ffffff);
   padding: 0 8px;
   text-align: center;
   font-weight: 700;

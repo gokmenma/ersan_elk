@@ -362,13 +362,13 @@ onMounted(() => load(true))
 .stat-pill-btn.is-active {
   background: var(--ds-primary) !important;
   border-color: var(--ds-primary) !important;
-  color: var(--ds-surface) !important;
+  color: var(--ds-ink-light) !important;
   box-shadow: 0 4px 12px rgba(24, 28, 36, 0.2);
 }
 
 .stat-pill-btn.is-active strong,
 .stat-pill-btn.is-active small {
-  color: var(--ds-surface) !important;
+  color: var(--ds-ink-light) !important;
 }
 
 .pill-dot {
@@ -469,7 +469,7 @@ onMounted(() => load(true))
   place-items: center;
   border-radius: 14px;
   background: var(--ds-primary);
-  color: var(--ds-surface);
+  color: var(--ds-ink-light);
   flex-shrink: 0;
   overflow: hidden;
 }
@@ -482,7 +482,7 @@ onMounted(() => load(true))
 
 .personnel-initials {
   font: 800 13px var(--ds-font-mono);
-  color: var(--ds-surface);
+  color: var(--ds-ink-light);
 }
 
 .dot-online, .dot-offline {
@@ -561,7 +561,7 @@ onMounted(() => load(true))
   border-radius: 18px;
   border: 2px solid var(--ds-surface);
   background: var(--ds-primary);
-  color: var(--ds-surface);
+  color: var(--ds-ink-light);
   box-shadow: var(--ds-shadow-float);
   cursor: pointer;
   transition: transform 0.15s ease;
