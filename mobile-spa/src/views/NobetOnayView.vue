@@ -1233,12 +1233,13 @@ onMounted(() => {
             </button>
             <button
               type="button"
-              class="clay-pill-action clay-pill-action--primary flex-1"
+              class="nobet-save-plan-btn"
               :disabled="actionLoading || !planForm.personelId"
               @click="savePlan"
             >
-              <Check :size="16" />
-              <span>Planlamayı Kaydet</span>
+              <RefreshCw v-if="actionLoading" :size="17" class="nobet-spin" />
+              <Check v-else :size="17" />
+              <span>{{ actionLoading ? 'Kaydediliyor...' : 'Planlamayı Kaydet' }}</span>
             </button>
           </div>
         </div>
@@ -2169,6 +2170,39 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+.nobet-save-plan-btn {
+  flex: 1;
+  min-height: 44px;
+  border: 0;
+  border-radius: 14px;
+  background: #f43f5e;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(244, 63, 94, 0.28);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 18px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+.nobet-save-plan-btn:active:not(:disabled) {
+  transform: scale(0.98);
+  box-shadow: 0 4px 10px rgba(244, 63, 94, 0.24);
+}
+.nobet-save-plan-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  box-shadow: none;
+}
+.nobet-spin {
+  animation: nobet-spin 0.8s linear infinite;
+}
+@keyframes nobet-spin {
+  to { transform: rotate(360deg); }
 }
 
 /* ONAY DIALOG */

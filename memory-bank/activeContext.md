@@ -1,5 +1,13 @@
 # Active Context
 
+## Mobil SPA — Canlı Destek Yönetimi (2026-10-24)
+- Mevcut `destek_konusmalar` / `destek_mesajlar` altyapısına bağlı yönetici ekranı `/canli-destek` eklendi: firma izoleli konuşma listesi, KPI özeti, arama/durum filtreleri, okunmamış sayaçları, sohbet polling'i, görsel gönderme, okundu bilgisi, konuşma durumu ve yönetici müsaitliği.
+- Mobil API `mobile-spa/public/api/support.php`; konuşma ID'leri `Security::encrypt/decrypt`, POST işlemleri CSRF ve bütün aksiyonlar `canli_sohbet_ayarlari_sekmesi` Gate politikasıyla korunuyor. Personel görselleri yalnız merkezi `/api/personnel-photo.php` endpoint'inden sunuluyor.
+- `DestekModel::getConversation/getAllConversations` opsiyonel firma kapsamı ve `getAdminSummary()` kazandı. Politika scripti: `database/migrations/2026_10_24_mobile_live_support_policies.sql`.
+- Yetki haritasına `live_support` eklendi; Daha Fazla > Sistem & Destek menüsü bu sunucu kaynaklı yetkiye göre çiziliyor.
+- Üst destek özeti daha minimal hale getirildi; büyük KPI kutuları yerine kompakt müsaitlik ve satır içi sayaçlar kullanılıyor. Başlığa Ayarlar butonu eklendi.
+- Mobil ayarlar alt paneli masaüstüyle aynı firma bazlı `canli_destek_*` kayıtlarını yönetiyor: sistem açık/kapalı, yetkili kullanıcılar, aktif çalışma günleri ve başlangıç/bitiş saatleri.
+
 ## Araç Takip — Araç İşlem Geçmişi / Ekleyen Bilgisi (2026-10-24)
 - `araclar` tablosuna `olusturan_kullanici_id` ve `guncelleyen_kullanici_id`; araç bazlı log tablosu `arac_islem_loglari` (işlem türü, açıklama, JSON alan farkları, IP). SQL: `database/migrations/2026_10_24_arac_islem_loglari.sql` (tekrarlanabilir; `arac-islem-gecmisi` API politikası `arac_takip_yonetim` yetkisine permission_key ile bağlı).
 - Model `App/Model/AracIslemLogModel` (`ekle`, `farklariBul`, `aracGecmisi`); `AracModel::getKayitBilgileri()` liste için ekleyen/güncelleyen adlarını tek sorguda getirir.
@@ -3117,3 +3125,7 @@
 
 - Nöbet Onay sayfasındaki aylık takvimin ayın 1. gününü daima Pazartesi sütunundan başlatması giderildi.
 - Pazartesi başlangıçlı hafta düzeninde ayın gerçek ilk gününe göre boş ön hücreler üretilerek gün numaraları doğru hafta günleriyle hizalandı.
+# 2026-10-24 — Mobil nöbet planlama kayıt düzeltmesi
+
+- Mobil Nöbet Onay planlama formunun gönderdiği `hafta_ici` değeri, `nobetler.nobet_tipi` ENUM sözleşmesindeki `standart` değerine sunucu tarafında eşlendi; kayıt sırasında oluşan SQL veri kesilmesi hatası giderildi.
+- Planlamayı Kaydet aksiyonu belirgin, tam genişlikte birincil butona dönüştürüldü ve işlem süresince yükleniyor durumu eklendi.

@@ -27,6 +27,7 @@ import LogView from './views/LogView.vue'
 import SozlesmeHakedisView from './views/SozlesmeHakedisView.vue'
 import SozlesmeDetailView from './views/SozlesmeDetailView.vue'
 import HakedisDetailView from './views/HakedisDetailView.vue'
+import SupportView from './views/SupportView.vue'
 import { auth } from './services/auth.js'
 
 const router = createRouter({
@@ -81,6 +82,7 @@ const router = createRouter({
     { path: '/ihbar-yonetimi', redirect: '/ihbar' },
     { path: '/ihbarlar', redirect: '/ihbar' },
     { path: '/loglar', name: 'logs', component: LogView, meta: { requiresAuth: true, requiresCompany: true, permission: 'logs' } },
+    { path: '/canli-destek', name: 'live-support', component: SupportView, meta: { requiresAuth: true, requiresCompany: true, permission: 'live_support' } },
     { path: '/log-kayitlari', redirect: '/loglar' },
     { path: '/sistem-loglari', redirect: '/loglar' },
     { path: '/:pathMatch(.*)*', redirect: '/' },

@@ -53,31 +53,49 @@ class DestekModel extends Model
     /**
      * Konuşma detayını getir
      */
-    public function getConversation($id)
+    public function getConversation($id, ?int $firmaId = null)
     {
-        $sql = "SELECT dk.*, p.adi_soyadi as personel_adi, p.resim_yolu, p.departman, p.cep_telefonu
+        $sql = "SELECT dk.*, p.adi_soyadi as personel_adi, p.resim_yolu, p.personel_resim_yolu, p.departman, p.cep_telefonu
                 FROM destek_konusmalar dk
                 LEFT JOIN personel p ON p.id = dk.personel_id
-                WHERE dk.id = ?";
+                WHERE dk.id = ? AND dk.deleted_at IS NULL";
+        $params = [$id];
+        if ($firmaId !== null) {
+            $sql .= " AND p.firma_id = ?";
+            $params[] = $firmaId;
+        }
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$id]);
+        $stmt->execute($params);
         return $stmt->fetch(PDO::FETCH_OBJ) ?: null;
     }
 
     /**
      * Tüm konuşmaları listele (yönetici için)
      */
-    public function getAllConversations($durum = null, $limit = 50)
+    public function getAllConversations($durum = null, $limit = 50, ?int $firmaId = null, string $search = '')
     {
-        $sql = "SELECT dk.*, p.adi_soyadi as personel_adi, p.resim_yolu, p.departman
+        $sql = "SELECT dk.*, p.adi_soyadi as personel_adi, p.resim_yolu, p.personel_resim_yolu, p.departman
                 FROM destek_konusmalar dk
                 LEFT JOIN personel p ON p.id = dk.personel_id
                 WHERE dk.deleted_at IS NULL";
 
         $params = [];
-        if ($durum) {
+        if ($firmaId !== null) {
+            $sql .= " AND p.firma_id = ?";
+            $params[] = $firmaId;
+        }
+        if (is_array($durum) && $durum) {
+            $placeholders = implode(',', array_fill(0, count($durum), '?'));
+            $sql .= " AND dk.durum IN ({$placeholders})";
+            array_push($params, ...$durum);
+        } elseif ($durum) {
             $sql .= " AND dk.durum = ?";
             $params[] = $durum;
+        }
+        if ($search !== '') {
+            $sql .= " AND (p.adi_soyadi LIKE ? OR dk.konu LIKE ? OR dk.son_mesaj_onizleme LIKE ?)";
+            $term = '%' . $search . '%';
+            array_push($params, $term, $term, $term);
         }
 
         $sql .= " ORDER BY dk.son_mesaj_zamani DESC LIMIT ?";
@@ -89,6 +107,37 @@ class DestekModel extends Model
         $stmt->bindValue(count($params) + 1, $limit, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    public function getAdminSummary(int $firmaId): object
+    {
+        $sql = "SELECT COUNT(*) AS toplam,
+                       SUM(dk.durum IN ('acik', 'beklemede')) AS aktif,
+                       SUM(dk.durum = 'beklemede') AS bekleyen,
+                       SUM(dk.durum IN ('cozuldu', 'kapali')) AS kapali,
+                       COALESCE(SUM(CASE WHEN dk.durum IN ('acik', 'beklemede') THEN dk.okunmamis_yonetici ELSE 0 END), 0) AS okunmamis
+                FROM destek_konusmalar dk
+                INNER JOIN personel p ON p.id = dk.personel_id
+                WHERE dk.deleted_at IS NULL AND p.firma_id = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$firmaId]);
+        return $stmt->fetch(PDO::FETCH_OBJ) ?: (object) [
+            'toplam' => 0, 'aktif' => 0, 'bekleyen' => 0, 'kapali' => 0, 'okunmamis' => 0
+        ];
+    }
+
+    public function getSupportUsers(int $firmaId, int $ownerId): array
+    {
+        $sql = "SELECT id, adi_soyadi, user_name
+                FROM users
+                WHERE silinme_tarihi IS NULL
+                  AND durum = 'Aktif'
+                  AND owner_id = ?
+                  AND FIND_IN_SET(?, COALESCE(firma_ids, '')) > 0
+                ORDER BY adi_soyadi";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$ownerId, $firmaId]);
+        return $stmt->fetchAll(PDO::FETCH_OBJ) ?: [];
     }
 
     /**

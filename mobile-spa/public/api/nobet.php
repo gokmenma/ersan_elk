@@ -269,9 +269,19 @@ try {
                 }
 
                 $tip = trim((string) ($input['nobet_tipi'] ?? 'standart'));
-                if ($tip === '' || $tip === 'standart') {
+                if ($tip === '' || $tip === 'standart' || $tip === 'hafta_ici') {
                     $gunNum = (int) date('N', strtotime($nobetTarihi));
                     $tip = ($gunNum >= 6) ? 'hafta_sonu' : 'hafta_ici';
+                }
+
+                // nobetler.nobet_tipi ENUM alanında hafta içi nöbetler
+                // "standart" değeriyle saklanır. Arayüzde kullanılan
+                // "hafta_ici" etiketi doğrudan veritabanına gönderilemez.
+                if ($tip === 'hafta_ici') {
+                    $tip = 'standart';
+                }
+                if (!in_array($tip, ['standart', 'hafta_sonu', 'resmi_tatil', 'ozel'], true)) {
+                    nobetApiResponse(['success' => false, 'message' => 'Geçersiz nöbet tipi seçildi.'], 400);
                 }
 
                 $baslangicSaati = trim((string) ($input['baslangic_saati'] ?? '18:00'));

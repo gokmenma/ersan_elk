@@ -1,5 +1,13 @@
 # Progress
 
+## 2026-10-24 — Mobil SPA Canlı Destek Modülü
+- [x] Mevcut canlı sohbet verileriyle çalışan Soft Bento yönetici ekranı, rota, servis ve yetkili menü girişi eklendi.
+- [x] Firma izolasyonu, şifreli konuşma kimlikleri, CSRF, Gate/politika kontrolleri ve merkezi personel fotoğraf servisi uygulandı.
+- [x] Liste/arama/filtre/KPI, polling tabanlı sohbet, görsel gönderimi, durum ve müsaitlik yönetimi tamamlandı.
+- [x] Mobil API politikaları mevcut `canli_sohbet_ayarlari_sekmesi` yetkisine bağlandı ve yerel veritabanında doğrulandı.
+- [x] Üst özet kartı minimal hale getirildi; canlı destek ayarları için mobil bottom-sheet eklendi.
+- [x] Masaüstündeki aktiflik, yetkili kullanıcı, çalışma günü ve mesai saati ayarları mobil API üzerinden ortak firma kayıtlarına bağlandı.
+
 ## 2026-10-24 — Araç İşlem Geçmişi
 - [x] SQL yerelde iki kez çalıştırıldı; API ekleme → güncelleme → geçmiş akışı CLI oturumuyla test edildi, test verileri silindi.
 - [ ] Sunucuda `database/migrations/2026_10_24_arac_islem_loglari.sql` çalıştırılmalı (çalıştırılmadan araç kaydetme hata verir).
@@ -1869,3 +1877,8 @@
 
 - [x] Aylık takvime Pazartesi başlangıçlı gerçek gün ofseti eklendi.
 - [x] Gün numaralarının hafta başlıklarıyla kaymasına neden olan sıfır ofsetli grid düzeltildi.
+# 2026-10-24 — Mobil nöbet planlama kayıt düzeltmesi
+
+- [x] `hafta_ici` istemci değeri veritabanındaki `standart` nöbet tipine güvenli biçimde eşlendi.
+- [x] Geçersiz nöbet tipi değerleri API katmanında reddedilir hale getirildi.
+- [x] Planlama kaydetme aksiyonu 44px dokunma alanlı ana buton ve yükleniyor göstergesi kazandı.

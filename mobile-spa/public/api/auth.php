@@ -244,6 +244,7 @@ function sessionPayload(): array
         'illegal_cancel' => Gate::allows('kacak_iptal_ekle') || Gate::isSuperAdmin(),
         'illegal_revert_cancel' => Gate::allows('kacak_iptal') || Gate::isSuperAdmin(),
         'support' => mobileCan(['admin_destek_talebi', 'Destek Taleplerim (Kullanıcı)']),
+        'live_support' => mobileCan(['canli_sohbet_ayarlari_sekmesi']),
         'logs' => mobileCan(['log_kayitlari']),
     ];
     return [

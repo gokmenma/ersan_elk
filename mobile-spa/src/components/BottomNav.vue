@@ -29,6 +29,7 @@ import {
   LayoutGrid,
   LogOut,
   Megaphone,
+  MessageCircle,
   ReceiptText,
   Send,
   ShieldAlert,
@@ -365,6 +366,15 @@ const operationGroups = [
         icon: ShieldCheck,
         theme: 'blue',
         to: '/loglar',
+      },
+      {
+        permission: 'live_support',
+        label: 'Canlı Destek',
+        eyebrow: 'ANLIK İLETİŞİM',
+        subtitle: 'Personel mesajları ve destek kuyruğu',
+        icon: MessageCircle,
+        theme: 'emerald',
+        to: '/canli-destek',
       },
       {
         permission: 'support',
