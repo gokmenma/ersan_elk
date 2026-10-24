@@ -336,7 +336,9 @@ try {
                     ? $donem['isten_cikis_tarihi']
                     : null,
             ], $calisma_donemleri[$p->id] ?? []);
-            $resimPath = !empty($p->personel_resim_yolu) ? $p->personel_resim_yolu : ($p->resim_yolu ?? '');
+            // Ham dosya yolu yerine iki fotoğraf sütununu da fiziksel olarak doğrulayan
+            // merkezi servis kullanılır. Böylece ilk sütundaki bozuk yol ikinci fotoğrafı engellemez.
+            $resimPath = '/api/personnel-photo.php?id=' . rawurlencode(Security::encrypt((string) $p->id));
             $p_info = [
                 'id' => $p->id,
                 'encrypt_id' => Security::encrypt($p->id),

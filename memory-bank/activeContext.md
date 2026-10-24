@@ -1,9 +1,15 @@
 # Active Context
 
+## Yönetici Mobil — Bildirim Başlığı Aksiyon Çakışması (2026-10-24)
+- Bildirim merkezinde “Tümü Okundu” butonunun dar ekranlarda satır kırarak kapatma butonunun altında kalması giderildi.
+- Başlık aksiyonları küçülmeyecek biçimde sabitlendi; 430px altında kısa “Okundu”, 350px altında yalnız erişilebilir çift-onay ikonu gösteriliyor.
+
 ## Puantaj — Pasif Personelin SGK T.C. Eşleşmesi (2026-10-24)
 - Masaüstü ve yönetici mobil SGK vizite raporu sorgularında T.C. hash eşleştirme havuzu artık yalnız aktif personelle sınırlı değildir.
 - Aynı firmadaki silinmemiş pasif personeller de eşleştirilir; soft-delete edilmiş kayıtlar kapsam dışı kalır.
 - Olası mükerrer T.C. kayıtlarında aktif ve daha yeni personel kaydı önceliklendirilir.
+- Masaüstü ve yönetici mobil puantaj personel görselleri ham dosya yolu yerine merkezi `/api/personnel-photo.php` servisine bağlandı; servis iki fotoğraf sütununu fiziksel dosya varlığına göre sırayla dener.
+- Fotoğraf servisine puantaj yetkileri eklendi ve mobil Vue görsel hataları baş harf avatarına reaktif olarak düşürüldü.
 
 ## Mobil SPA — Hakediş Silme SweetAlert2 ve Tamamlandı Durum Koruması (2026-10-24)
 - **Kullanıcı Talebi**:

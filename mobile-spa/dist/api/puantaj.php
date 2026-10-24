@@ -366,10 +366,9 @@ try {
                     : null,
             ], $calismaDonemleri[$p->id] ?? []);
 
-            $resimPath = !empty($p->personel_resim_yolu) ? $p->personel_resim_yolu : ($p->resim_yolu ?? '');
-            if (!empty($resimPath) && !str_starts_with($resimPath, 'http') && !str_starts_with($resimPath, '/')) {
-                $resimPath = '/' . ltrim($resimPath, './');
-            }
+            // Ham dosya yolu yerine iki fotoğraf sütununu da fiziksel olarak doğrulayan
+            // merkezi servis kullanılır. Böylece alt dizin kurulumu ve bozuk ilk yol sorun olmaz.
+            $resimPath = '/api/personnel-photo.php?id=' . rawurlencode(Security::encrypt((string) $p->id));
 
             $pInfo = [
                 'id'                 => (int) $p->id,

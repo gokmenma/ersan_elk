@@ -631,6 +631,18 @@ use App\Service\Gate;
             font-size: 11px;
             font-weight: 700;
             letter-spacing: -0.02em;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .personel-avatar-mini-img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: inherit;
+            z-index: 1;
         }
 
         .personel-avatar-tone-0 { background: #eff6ff; color: #2563eb; }

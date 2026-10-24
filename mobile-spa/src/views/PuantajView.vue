@@ -1360,7 +1360,7 @@ onMounted(async () => {
               :src="p.resim"
               :alt="p.adi_soyadi"
               class="project-avatar-img"
-              @error="$event.target.style.display = 'none'"
+              @error="p.resim = null"
             />
             <div class="project-avatar-txt">
               {{ getInitials(p.adi_soyadi) }}
@@ -1543,7 +1543,7 @@ onMounted(async () => {
                   :src="selectedPersonel.resim"
                   :alt="selectedPersonel.adi_soyadi"
                   class="project-avatar-img"
-                  @error="$event.target.style.display = 'none'"
+                  @error="selectedPersonel.resim = null"
                 />
                 <div class="project-avatar-txt">
                   {{ getInitials(selectedPersonel.adi_soyadi) }}
@@ -1932,7 +1932,7 @@ onMounted(async () => {
                   :src="pickerTargetPersonel.resim"
                   :alt="pickerTargetPersonel.adi_soyadi"
                   class="project-avatar-img"
-                  @error="$event.target.style.display = 'none'"
+                  @error="pickerTargetPersonel.resim = null"
                 />
                 <div class="project-avatar-txt">
                   {{ getInitials(pickerTargetPersonel.adi_soyadi) }}

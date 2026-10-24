@@ -168,7 +168,8 @@ async function handleEnablePush() {
               @click="markAllAsRead"
             >
               <CheckCheck :size="16" />
-              <span>Tümü Okundu</span>
+              <span class="notifications-mark-all-label--full">Tümü Okundu</span>
+              <span class="notifications-mark-all-label--compact">Okundu</span>
             </button>
             <button
               type="button"
@@ -271,8 +272,13 @@ async function handleEnablePush() {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   margin-bottom: 14px;
   flex-shrink: 0;
+}
+
+.notifications-sheet__header > :first-child {
+  min-width: 0;
 }
 
 .notifications-eyebrow {
@@ -303,6 +309,7 @@ async function handleEnablePush() {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 0 0 auto;
 }
 
 .notifications-mark-all-btn {
@@ -318,6 +325,12 @@ async function handleEnablePush() {
   font: 700 11.5px var(--ds-font-main);
   cursor: pointer;
   transition: all 0.15s ease;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.notifications-mark-all-label--compact {
+  display: none;
 }
 
 .notifications-mark-all-btn:active {
@@ -335,6 +348,45 @@ async function handleEnablePush() {
   background: var(--ds-surface-subtle);
   color: var(--ds-ink);
   cursor: pointer;
+  flex: 0 0 36px;
+}
+
+@media (max-width: 430px) {
+  .notifications-sheet__header {
+    gap: 6px;
+  }
+
+  .notifications-header-actions {
+    gap: 6px;
+  }
+
+  .notifications-mark-all-btn {
+    height: 36px;
+    padding: 0 9px;
+    gap: 4px;
+    font-size: 11px;
+  }
+
+  .notifications-mark-all-label--full {
+    display: none;
+  }
+
+  .notifications-mark-all-label--compact {
+    display: inline;
+  }
+}
+
+@media (max-width: 350px) {
+  .notifications-mark-all-btn {
+    width: 36px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+  }
+
+  .notifications-mark-all-label--compact {
+    display: none;
+  }
 }
 
 .push-banner {

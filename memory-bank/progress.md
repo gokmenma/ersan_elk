@@ -1869,6 +1869,13 @@
 - [x] Masaüstü SGK onaylanmış ve onay bekleyen rapor sorgularındaki aktif personel kısıtı kaldırıldı.
 - [x] Yönetici mobil SGK raporu sorgusunda silinmemiş pasif personeller T.C. hash eşleştirmesine dahil edildi.
 - [x] Soft-delete filtresi ve aktif kayıt önceliği korundu.
+- [x] Masaüstü ve yönetici mobil puantaj fotoğrafları merkezi, çoklu sütun fallback destekli personel fotoğraf servisine geçirildi.
+- [x] Fotoğraf endpoint'ine puantaj yetkileri ve Vue görsellerine reaktif baş harf fallback'i eklendi.
+
+# 2026-10-24 — Mobil bildirim merkezi başlık yerleşimi
+
+- [x] “Tümü Okundu” butonunun dar ekranlarda kapatma düğmesinin altında kalması engellendi.
+- [x] 430px ve 350px kırılımlarında kompakt, tek satırlı ve erişilebilir aksiyon görünümü eklendi.
 # 2026-10-22 — Personel PWA yıllık izin talep kısıtı
 
 - [x] Hakedişi olmayan personel için yıllık izin seçeneğinin pasifleşmesi kaldırıldı.

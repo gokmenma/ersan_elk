@@ -491,7 +491,10 @@ $(document).ready(function () {
                   bodyHtml += `<tr data-personel-adi="${turkceKucukHarf(p.adi_soyadi)}" data-personel-adi-raw="${safeAdi}" data-departman="${safeDepartman}">
                         <td class="personel-info sticky-col" title="${p.adi_soyadi}" data-personel-id="${p.id}" data-gg-toplam-gun="${p.gg_toplam_gun || 0}" data-gorev-gecmisi="${p.gorev_gecmisi_var || 0}">
                             <div class="d-flex align-items-center">
-                                <span class="personel-avatar-mini ${getPersonAvatarTone(p.adi_soyadi)}">${getPersonInitials(p.adi_soyadi)}</span>
+                                <span class="personel-avatar-mini ${getPersonAvatarTone(p.adi_soyadi)}">
+                                    <img src="${p.resim}" alt="" class="personel-avatar-mini-img" onerror="this.remove()">
+                                    <span>${getPersonInitials(p.adi_soyadi)}</span>
+                                </span>
                                 <a href="?p=personel/manage&id=${p.encrypt_id}" class="text-truncate-name text-primary fw-bold" style="text-decoration: none;">${p.adi_soyadi}</a>
                             </div>
                         </td>`;
