@@ -17,6 +17,7 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preload" as="image" href="/images/logo-3d.png?v=3" />
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
     <title>Ersan Mobile</title>
     <style>
@@ -48,6 +49,8 @@
         display: grid;
         place-items: center;
         perspective: 900px;
+        opacity: 0;
+        animation: splash-stage-entry 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
       }
       .splash-glow {
         position: absolute;
@@ -81,7 +84,8 @@
         transform-style: preserve-3d;
         box-shadow: 0 22px 44px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.18);
         overflow: hidden;
-        animation: splash-logo-3d-motion 3.4s ease-in-out infinite alternate, splash-logo-entry 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        opacity: 0;
+        animation: splash-logo-entry 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards, splash-logo-3d-motion 3.4s 0.75s ease-in-out infinite alternate;
       }
       .splash-logo-card-3d img {
         width: 100%;
@@ -104,7 +108,8 @@
       .splash-meta {
         margin-top: 26px;
         text-align: center;
-        animation: splash-meta-fade 0.7s 0.15s cubic-bezier(0.16, 1, 0.3, 1) both;
+        opacity: 0;
+        animation: splash-meta-fade 0.7s 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
       }
       .splash-kicker {
         display: block;
@@ -137,6 +142,10 @@
         border-radius: inherit;
         background: linear-gradient(90deg, #fbbf24, #38bdf8);
         animation: splash-bar-slide 1.15s ease-in-out infinite alternate;
+      }
+      @keyframes splash-stage-entry {
+        0% { opacity: 0; transform: scale(0.8); }
+        100% { opacity: 1; transform: scale(1); }
       }
       @keyframes splash-logo-entry {
         0% { opacity: 0; transform: translateY(18px) scale(0.68) rotateY(-32deg) rotateX(18deg); }
@@ -178,7 +187,7 @@
         if (theme === 'dark') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0e1116');
       } catch (e) {}
     </script>
-    <script type="module" crossorigin src="/assets/index-BC0Jbe3Q.js"></script>
+    <script type="module" crossorigin src="/assets/index-D3lif8OC.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-BYw5u6B3.css">
   </head>
   <body>

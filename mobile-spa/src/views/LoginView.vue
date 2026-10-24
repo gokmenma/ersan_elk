@@ -53,9 +53,6 @@ async function submit() {
         </div>
         <span class="auth-status"><i></i> Sistem aktif</span>
       </div>
-      <div class="auth-hero-3d-stage" aria-hidden="true">
-        <img src="/images/login-hero-3d.jpg?v=3" alt="" class="auth-hero-3d-img" />
-      </div>
       <div class="auth-message">
         <span class="auth-kicker">ERSAN MOBILE</span>
         <h1>İşin sahada,<br><em>kontrol sende.</em></h1>

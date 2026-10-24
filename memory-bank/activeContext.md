@@ -7,6 +7,9 @@
   - `CompanySelectView.vue`, `TopBar.vue` ve `PwaInstallPrompt.vue` marka görselleri 3D logo ile güncellendi.
 - **Animasyonlu 3D Açılış Ekranı (Splash Screen) ve Etkileşimli 3D Logo**:
   - `mobile-spa/index.html` içerisine uygulama yüklenirken çalışan `#app-splash` tam ekran 3D açılış sahnesi eklendi (3D perspektif süzülme/eğim, çift yönlü altın/mavi enerji halkaları, metalik ışık yansıması ve yükleme çubuğu); `src/main.js` içinde `router.isReady()` sonrasında yumuşak geçişle kapanması sağlandı.
+  - Açılışta animasyon öncesinde statik resim görünmesi (FOUC parlaması) başlangıç `opacity: 0` ve senkron giriş animasyonlarıyla (`splash-stage-entry`, `splash-logo-entry`) tamamen engellendi.
+  - Giriş ekranındaki (`LoginView.vue`) statik `login-hero-3d.jpg` resim bloğu kaldırıldı; açılış ve girişte yalnızca animasyonlu 3D logo korundu.
+  - `manifest.webmanifest` arka planı `#070c18` koyu temaya uyarlandı, `sw.js` önbellek sürümü `ersan-mobile-shell-v25` olarak güncellendi.
   - `LoginView.vue`, `CompanySelectView.vue` ve `src/design-system.css` üzerinde `.brand-mark--animated` bileşeniyle sürekli 3D perspektif salınımı (`brand3dTilt`), dönen enerji halkası (`brandOrbitSpin`), metalik parlama (`brandMetallicSheen`) ve dokunulduğunda 360° 3D tam tur dönüş (`triggerLogoSpin` / `brand3dFlipSpin`) animasyonları eklendi (`ds-reduce-motion` ve `prefers-reduced-motion` uyumlu).
 
 ## Yönetici Mobil — Koyu Tema (2026-10-24)
