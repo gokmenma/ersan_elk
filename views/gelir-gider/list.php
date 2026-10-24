@@ -428,7 +428,7 @@ tr.table-row-loading > td {
 /* macOS Koyu Tema & Genel Dark Tema Uyumu */
 [data-bs-theme="dark"] .summary-kpi-card,
 html[data-theme-preset="macos-dark"] .summary-kpi-card {
-    background: rgba(28, 30, 38, 0.72) !important;
+    background: var(--datatable-dark-surface, var(--bs-sidebar-bg, #1c2228)) !important;
     border-color: rgba(255, 255, 255, 0.09) !important;
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45) !important;
 }
@@ -460,7 +460,7 @@ html[data-theme-preset="macos-dark"] h5.text-dark {
 [data-bs-theme="dark"] .top-icon-btn.bg-white,
 html[data-theme-preset="macos-dark"] .top-action-btn.bg-white,
 html[data-theme-preset="macos-dark"] .top-icon-btn.bg-white {
-    background-color: rgba(35, 36, 42, 0.8) !important;
+    background-color: var(--datatable-dark-surface, var(--bs-sidebar-bg, #1c2228)) !important;
     border-color: rgba(255, 255, 255, 0.12) !important;
     color: rgba(235, 238, 245, 0.88) !important;
     box-shadow: none !important;
@@ -469,7 +469,7 @@ html[data-theme-preset="macos-dark"] .top-icon-btn.bg-white {
 /* Header Filtre Select2 (Yıl & Ay) */
 [data-bs-theme="dark"] .header-filter-wrapper .form-floating > .select2-container--default .select2-selection--single,
 html[data-theme-preset="macos-dark"] .header-filter-wrapper .form-floating > .select2-container--default .select2-selection--single {
-    background-color: rgba(28, 30, 38, 0.85) !important;
+    background-color: var(--datatable-dark-surface, var(--bs-sidebar-bg, #1c2228)) !important;
     border-color: rgba(255, 255, 255, 0.12) !important;
 }
 [data-bs-theme="dark"] .header-filter-wrapper .form-floating > .select2-container--default .select2-selection--single .select2-selection__rendered,
@@ -485,7 +485,8 @@ html[data-theme-preset="macos-dark"] .header-filter-wrapper .form-floating > lab
 [data-bs-theme="dark"] #gelirGiderTable thead tr:first-child > th,
 html[data-theme-preset="macos-dark"] #gelirGiderTable thead tr:first-child > th,
 html[data-theme-preset="macos-dark"] .table-responsive #gelirGiderTable thead tr:first-child > th {
-    background-color: rgba(39, 40, 44, .96) !important;
+    background-color: var(--datatable-dark-surface, var(--bs-sidebar-bg, #1c2228)) !important;
+    --bs-table-bg: var(--datatable-dark-surface, var(--bs-sidebar-bg, #1c2228)) !important;
     color: rgba(224, 225, 229, .88) !important;
     border-color: rgba(255, 255, 255, .08) !important;
 }
@@ -496,7 +497,8 @@ html[data-theme-preset="macos-dark"] .table-responsive #gelirGiderTable thead tr
 html[data-theme-preset="macos-dark"] #gelirGiderTable thead .dt-filter-row th,
 html[data-theme-preset="macos-dark"] .dt-filter-row > th,
 html[data-theme-preset="macos-dark"] .table-responsive #gelirGiderTable thead .dt-filter-row th {
-    background-color: rgba(30, 32, 38, .98) !important;
+    background-color: var(--datatable-dark-surface, var(--bs-sidebar-bg, #1c2228)) !important;
+    --bs-table-bg: var(--datatable-dark-surface, var(--bs-sidebar-bg, #1c2228)) !important;
     background-image: none !important;
     color: rgba(224, 225, 229, .72) !important;
     border-color: rgba(255, 255, 255, .08) !important;
@@ -579,7 +581,8 @@ html[data-theme-preset="macos-dark"] .table-responsive {
 }
 [data-bs-theme="dark"] #gelirGiderTable tbody td,
 html[data-theme-preset="macos-dark"] #gelirGiderTable tbody td {
-    background-color: rgba(30, 32, 38, .85) !important;
+    background-color: var(--datatable-dark-surface, var(--bs-sidebar-bg, #1c2228)) !important;
+    --bs-table-bg: var(--datatable-dark-surface, var(--bs-sidebar-bg, #1c2228)) !important;
     color: rgba(232, 233, 236, .85) !important;
     border-color: rgba(255, 255, 255, .08) !important;
 }

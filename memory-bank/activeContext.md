@@ -3088,3 +3088,18 @@
 - Personel PWA'da yıllık izin türü, personelin kalan hakedişi sıfır veya talep edilen günden az olsa da seçilebilir ve onaya gönderilebilir hale getirildi.
 - İstemci ve API aynı Model kuralına uyumlu hale getirildi; yıllık izin dışındaki ücretli izinlerin hakediş kısıtı korundu.
 - Yıllık izinlerde 3 günü aşan talepler için uygulanan 14 günlük ön bildirim şartı istemci ve API'den kaldırıldı; 20 günlük tek talep üst sınırı korundu.
+# 2026-10-24 — Koyu tema DataTables/sidebar yüzey bütünlüğü
+
+- Koyu temadaki DataTables gövde arka planı sabit nötr renkten çıkarılarak sidebar yüzey rengine bağlandı.
+- macOS koyu tema için sidebar'ın ana yüzeyiyle aynı `--datatable-dark-surface` tonu merkezi tema değişkeni olarak tanımlandı; diğer koyu temalar `--bs-sidebar-bg` değerini kullanıyor.
+- Aktif Slate koyu temanın sidebar'ı `#282f36` kullandığı için aynı DataTables yüzey değişkeni Slate tema kapsamında da doğrudan tanımlandı; böylece sidebar'ın görünür rengiyle tablo gövdesi birebir eşlendi.
+- Evrak Takip listesinde merkezi tablo temasını ezen başlık, filtre ve `#15171f` / `#12141a` tek-çift satır renkleri kaldırıldı; tablonun tüm ana yüzeyleri ortak koyu DataTables/sidebar değişkenini kullanıyor.
+- Cari listesinde farkın sayfa stilinden değil seçili `data-sidebar="slate"` yüzeyinin (`#252526`) genel koyu tema fallback'iyle eşleşmemesinden kaynaklandığı belirlendi. DataTables yüzeyi Slate ve Dark sidebar seçimlerinin gerçek renklerine merkezi olarak bağlandı; macOS koyu preset kapsamı korunuyor.
+- Gelir-Gider ve Gelen Faturalar listelerindeki sayfaya özel koyu tablo başlık/filtre/gövde renkleri merkezi `--datatable-dark-surface` değişkenine bağlandı. Gelen Faturalar'ın yalnız macOS presetinde çalışan koyu başlık düzeltmesi standart Bootstrap koyu temayı da kapsayacak şekilde genişletildi.
+- Kapsam tablo dışına genişletildi: Gelir-Gider ve Gelen Faturalar sayfalarındaki KPI/liste kartları, kart başlık ve gövdeleri, üst aksiyon düğmeleri, tarih-ürün filtreleri ve Select2 başlık filtreleri de merkezi sidebar yüzey paletine alındı. Girdi ve etkileşim alanlarında okunabilirlik için sınır/metin kontrastı korundu.
+- Giden Faturalar sayfası da aynı bütünsel koyu tema standardına geçirildi: KPI/liste kartları, tablo başlık-filtre-gövde alanları, aksiyon ve filtre kontrolleri ile DataTables sayfalama/boyut seçimi sidebar yüzey paletini kullanıyor.
+- Kullanıcı geri bildirimiyle hedef, tüm yüzeyleri tek renge boyamak yerine macOS temasındaki katmanlı renk uyumu olarak netleştirildi. Standart koyu tema için merkezi canvas, ana yüzey, yükseltilmiş yüzey, kontrol, sınır, metin ve soluk metin tokenları eklendi; kart, modal, dropdown, popover, Select2, Flatpickr, form ve araç çubuğu bileşenleri bu sistemle bütünleştirildi. macOS preset kendi kurallarından etkilenmiyor.
+- İlk katmanlı palette yüzeyin mevcut koyu sidebar renginden türetilmesi nedeniyle farkın görsel olarak kaybolduğu doğrulandı. Palet belirgin sabit katmanlara ayrıldı: `#181b20` canvas, `#25282d` kart/tablo, `#2b2e34` yükseltilmiş yüzey ve `#1e2126` kontrol/topbar. Ana içerik, sidebar ve topbar da bu tokenlara bağlandı.
+- Sidebar kullanıcı talebiyle ana yüzey yerine yükseltilmiş yüzey tokenına geçirildi; standart koyu temada sidebar artık `#2b2e34` kullanıyor.
+
+- Koyu tema (standart, macOS preset hariç) tamamlayıcı kuralları `assets/css/style.css` sonuna eklendi: sidebar/topbar/kart aynı `--dark-ui-surface`, tablo kenarlıkları, `thead.table-light`, filtre inputları, satır içi açık renkli `style=""` tanımları ve apexcharts menüleri koyu yüzeye bağlandı. Sayfa içi `#id` kurallarını aşmak için `:not(#_)` kullanıldı.

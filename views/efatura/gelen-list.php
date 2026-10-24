@@ -801,15 +801,19 @@ $title = 'Gelen Faturalar';
     display: inline-flex !important;
 }
 
-/* macOS koyu tema: sayfaya ozel acik renkleri Finder paletine uyarla */
+/* Koyu temalar: sayfaya özel renkleri merkezi DataTables/sidebar yüzeyine uyarla */
+[data-bs-theme="dark"] #tblGelenFaturalar,
 html[data-theme-preset="macos-dark"] #tblGelenFaturalar {
     background: transparent !important;
     border-color: rgba(255,255,255,.12) !important;
 }
+[data-bs-theme="dark"] #tblGelenFaturalar thead th,
+[data-bs-theme="dark"] #tblGelenFaturalar thead .dt-filter-row th,
 html[data-theme-preset="macos-dark"] #tblGelenFaturalar thead th,
 html[data-theme-preset="macos-dark"] #tblGelenFaturalar thead .dt-filter-row th,
 html[data-theme-preset="macos-dark"] .datatable-premium-shell table.dataTable thead .dt-filter-row th {
-    background-color: rgba(39, 40, 44, .96) !important;
+    background-color: var(--datatable-dark-surface, var(--bs-sidebar-bg, #1c2228)) !important;
+    --bs-table-bg: var(--datatable-dark-surface, var(--bs-sidebar-bg, #1c2228)) !important;
     background-image: none !important;
     color: rgba(224, 225, 229, .72) !important;
     border-color: rgba(255,255,255,.08) !important;
@@ -825,8 +829,10 @@ html[data-theme-preset="macos-dark"] #tblGelenFaturalar thead .dt-filter-row inp
 html[data-theme-preset="macos-dark"] .dt-filter-control::placeholder {
     color: rgba(202, 209, 222, .42) !important;
 }
+[data-bs-theme="dark"] #tblGelenFaturalar tbody tr td,
 html[data-theme-preset="macos-dark"] #tblGelenFaturalar tbody tr td {
-    background-color: rgba(33, 34, 39, .9) !important;
+    background-color: var(--datatable-dark-surface, var(--bs-sidebar-bg, #1c2228)) !important;
+    --bs-table-bg: var(--datatable-dark-surface, var(--bs-sidebar-bg, #1c2228)) !important;
     color: rgba(232, 233, 236, .78) !important;
     border-color: rgba(255,255,255,.085) !important;
 }
@@ -858,7 +864,7 @@ html[data-theme-preset="macos-dark"] .product-search-box,
 html[data-theme-preset="macos-dark"] .period-filter-dropdown-btn,
 html[data-theme-preset="macos-dark"] #btnHeaderColVis,
 html[data-theme-preset="macos-dark"] .btn-subtle-secondary {
-    background-color: rgba(28, 30, 38, 0.72) !important;
+    background-color: var(--datatable-dark-surface, var(--bs-sidebar-bg, #1c2228)) !important;
     border: 1px solid rgba(255, 255, 255, 0.09) !important;
     color: rgba(235, 238, 245, 0.88) !important;
     box-shadow: none !important;
@@ -868,7 +874,7 @@ html[data-theme-preset="macos-dark"] .product-search-box input {
     color: rgba(235, 238, 245, 0.88) !important;
 }
 html[data-theme-preset="macos-dark"] .summary-kpi-card {
-    background: rgba(28, 30, 38, 0.72) !important;
+    background: var(--datatable-dark-surface, var(--bs-sidebar-bg, #1c2228)) !important;
     border-color: rgba(255, 255, 255, 0.09) !important;
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45) !important;
 }
@@ -883,6 +889,30 @@ html[data-theme-preset="macos-dark"] .summary-kpi-subtext {
 }
 html[data-theme-preset="macos-dark"] h4.text-dark {
     color: rgba(240, 242, 246, 0.95) !important;
+}
+
+/* Standart koyu tema: sayfanın tüm ana yüzeylerini sidebar paletinde birleştir. */
+[data-bs-theme="dark"] .summary-kpi-card,
+[data-bs-theme="dark"] #faturaListCard,
+[data-bs-theme="dark"] #faturaListCard .card-header,
+[data-bs-theme="dark"] #faturaListCard .card-body,
+[data-bs-theme="dark"] #faturaListCard .table-responsive,
+[data-bs-theme="dark"] .top-action-btn.bg-white,
+[data-bs-theme="dark"] .top-icon-btn.bg-white,
+[data-bs-theme="dark"] .date-filter-box,
+[data-bs-theme="dark"] .product-search-box,
+[data-bs-theme="dark"] .period-filter-dropdown-btn,
+[data-bs-theme="dark"] #btnHeaderColVis,
+[data-bs-theme="dark"] .btn-subtle-secondary {
+    background-color: var(--datatable-dark-surface, var(--bs-sidebar-bg, #1c2228)) !important;
+    border-color: rgba(255, 255, 255, 0.10) !important;
+    color: rgba(235, 238, 245, 0.88) !important;
+    box-shadow: none !important;
+}
+
+[data-bs-theme="dark"] .date-filter-box input,
+[data-bs-theme="dark"] .product-search-box input {
+    color: rgba(235, 238, 245, 0.88) !important;
 }
 </style>
 

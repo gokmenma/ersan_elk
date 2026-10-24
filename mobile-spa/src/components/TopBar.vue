@@ -11,6 +11,7 @@ const props = defineProps({
   subtitle: { type: String, default: '' },
   back: { type: Boolean, default: null },
   search: { type: Boolean, default: false },
+  backHandler: { type: Function, default: null },
 })
 const router = useRouter()
 const route = useRoute()
@@ -20,6 +21,7 @@ const initials = computed(() => auth.state.user?.initials || username.value.slic
 const heading = computed(() => props.title || `Merhaba, ${username.value.split(' ')[0]}`)
 const emit = defineEmits(['search'])
 function goBack() {
+  if (props.backHandler && props.backHandler() === true) return
   if (window.history.state?.back) router.back()
   else router.push('/')
 }

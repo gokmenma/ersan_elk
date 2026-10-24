@@ -4,17 +4,19 @@ import {
   BriefcaseBusiness, Building2, ChevronDown, ChevronRight, Mail,
   MapPin, Pencil, Phone, Plus, RefreshCw, Search, SlidersHorizontal, UserRoundCheck, UsersRound, X,
 } from '@lucide/vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { personnelApi } from '../services/personnel.js'
 import TopBar from '../components/TopBar.vue'
 
 const router = useRouter()
+const route = useRoute()
+const specialStatuses = { working: 'Sahada', on_leave: 'İzinli', late: 'Geç Kalan' }
 const items = ref([])
 const summary = ref({ total: 0, active: 0, passive: 0, departments: 0 })
 const departments = ref([])
 const pagination = ref({ page: 1, has_more: false, total: 0 })
 const search = ref('')
-const status = ref('active')
+const status = ref(Object.hasOwn(specialStatuses, String(route.query.durum || '')) ? String(route.query.durum) : 'active')
 const department = ref('')
 const loading = ref(true)
 const loadingMore = ref(false)
@@ -161,6 +163,19 @@ onMounted(() => load(true))
           <div class="stat-pill-copy">
             <strong>{{ summary.passive }}</strong>
             <small>Ayrılan</small>
+          </div>
+        </button>
+
+        <button
+          v-if="specialStatuses[status]"
+          type="button"
+          class="stat-pill-btn is-active"
+          @click="status = 'active'"
+        >
+          <span class="pill-dot dot-active"></span>
+          <div class="stat-pill-copy">
+            <strong>{{ pagination.total }}</strong>
+            <small>{{ specialStatuses[status] }} ✕</small>
           </div>
         </button>
       </div>

@@ -879,18 +879,18 @@ onMounted(() => {
 
               <!-- 3'lü Kompakt Alt Metrik -->
               <div class="personnel-minimal-stats">
-                <div class="personnel-stat-col">
+                <RouterLink :to="{ path: '/personel', query: { durum: 'working' } }" class="personnel-stat-col">
                   <span><i class="ds-dot ds-dot--blue"></i>Sahada</span>
                   <strong>{{ personnel.working }}</strong>
-                </div>
-                <div class="personnel-stat-col">
+                </RouterLink>
+                <RouterLink :to="{ path: '/personel', query: { durum: 'on_leave' } }" class="personnel-stat-col">
                   <span><i class="ds-dot ds-dot--yellow"></i>İzinli</span>
                   <strong>{{ personnel.on_leave }}</strong>
-                </div>
-                <div class="personnel-stat-col">
+                </RouterLink>
+                <RouterLink :to="{ path: '/personel', query: { durum: 'late' } }" class="personnel-stat-col">
                   <span><i class="ds-dot ds-dot--coral"></i>Geç Kalan</span>
                   <strong>{{ personnel.late || 0 }}</strong>
-                </div>
+                </RouterLink>
               </div>
             </section>
 
@@ -1028,9 +1028,9 @@ onMounted(() => {
                 <span class="seg-pill seg-pill--amber" :style="{ width: vehicleSegments.idle }"></span>
               </div>
               <div class="bento-team-metrics">
-                <div><span><i class="ds-dot ds-dot--emerald"></i>Sahada</span><strong>{{ vehicles.field }}</strong></div>
-                <div><span><i class="ds-dot ds-dot--coral"></i>Serviste</span><strong>{{ vehicles.service }}</strong></div>
-                <div><span><i class="ds-dot ds-dot--amber"></i>Boşta</span><strong>{{ vehicles.idle }}</strong></div>
+                <RouterLink :to="{ path: '/arac-takip', query: { durum: 'zimmetli' } }"><span><i class="ds-dot ds-dot--emerald"></i>Sahada</span><strong>{{ vehicles.field }}</strong></RouterLink>
+                <RouterLink :to="{ path: '/arac-takip', query: { durum: 'serviste' } }"><span><i class="ds-dot ds-dot--coral"></i>Serviste</span><strong>{{ vehicles.service }}</strong></RouterLink>
+                <RouterLink :to="{ path: '/arac-takip', query: { durum: 'bosta' } }"><span><i class="ds-dot ds-dot--amber"></i>Boşta</span><strong>{{ vehicles.idle }}</strong></RouterLink>
               </div>
             </section>
 

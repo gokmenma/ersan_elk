@@ -746,10 +746,10 @@ body[data-layout-mode="dark"] #evrakTable td,
 html[data-theme-preset="macos-dark"] #evrakTable thead tr:first-child > th,
 body[data-layout-mode="dark"] #evrakTable thead tr:first-child > th,
 [data-theme-mode="dark"] #evrakTable thead tr:first-child > th {
-    background-color: #1e222d !important;
+    background-color: var(--datatable-dark-surface, var(--bs-sidebar-bg, #1c2228)) !important;
     color: #f1f5f9 !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.14) !important;
-    --bs-table-bg: #1e222d !important;
+    --bs-table-bg: var(--datatable-dark-surface, var(--bs-sidebar-bg, #1c2228)) !important;
     --bs-table-color: #f1f5f9 !important;
 }
 
@@ -757,9 +757,9 @@ body[data-layout-mode="dark"] #evrakTable thead tr:first-child > th,
 html[data-theme-preset="macos-dark"] #evrakTable thead .dt-filter-row th,
 body[data-layout-mode="dark"] #evrakTable thead .dt-filter-row th,
 [data-theme-mode="dark"] #evrakTable thead .dt-filter-row th {
-    background-color: #171922 !important;
+    background-color: var(--datatable-dark-surface, var(--bs-sidebar-bg, #1c2228)) !important;
     border-bottom: 2px solid rgba(255, 255, 255, 0.18) !important;
-    --bs-table-bg: #171922 !important;
+    --bs-table-bg: var(--datatable-dark-surface, var(--bs-sidebar-bg, #1c2228)) !important;
 }
 
 [data-bs-theme="dark"] #evrakTable thead .dt-filter-row input,
@@ -786,9 +786,9 @@ html[data-theme-preset="macos-dark"] #evrakTable thead .dt-filter-row select:foc
 html[data-theme-preset="macos-dark"] #evrakTable tbody td,
 body[data-layout-mode="dark"] #evrakTable tbody td,
 [data-theme-mode="dark"] #evrakTable tbody td {
-    background-color: #15171f !important;
+    background-color: var(--datatable-dark-surface, var(--bs-sidebar-bg, #1c2228)) !important;
     color: rgba(235, 238, 245, 0.9) !important;
-    --bs-table-bg: #15171f !important;
+    --bs-table-bg: var(--datatable-dark-surface, var(--bs-sidebar-bg, #1c2228)) !important;
     --bs-table-color: rgba(235, 238, 245, 0.9) !important;
 }
 
@@ -796,8 +796,8 @@ body[data-layout-mode="dark"] #evrakTable tbody td,
 html[data-theme-preset="macos-dark"] #evrakTable tbody tr:nth-child(even) td,
 body[data-layout-mode="dark"] #evrakTable tbody tr:nth-child(even) td,
 [data-theme-mode="dark"] #evrakTable tbody tr:nth-child(even) td {
-    background-color: #12141a !important;
-    --bs-table-bg: #12141a !important;
+    background-color: var(--datatable-dark-surface, var(--bs-sidebar-bg, #1c2228)) !important;
+    --bs-table-bg: var(--datatable-dark-surface, var(--bs-sidebar-bg, #1c2228)) !important;
 }
 
 [data-bs-theme="dark"] #evrakTable tbody tr:hover td,

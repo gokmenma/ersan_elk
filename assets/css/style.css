@@ -317,6 +317,7 @@ body {
   --bs-card-bg: #222830;
   --bs-card-border-color: #2b333e;
   --bs-primary: #1c84ee;
+  --datatable-dark-surface: #282f36;
 }
 
 /* Sidebar, Topbar & Main Content Unified Dark Background */
@@ -1624,6 +1625,10 @@ body[data-sidebar="dark"] {
   --sidebar-accent: #6d5dfc;
 }
 
+html:not([data-theme-preset="macos-dark"]) body[data-sidebar="dark"] {
+  --datatable-dark-surface: #191e22;
+}
+
 body[data-sidebar="dark"] .vertical-menu,
 body[data-sidebar="dark"] .sidebar-sticky-top {
   background-color: #191e22 !important;
@@ -1741,6 +1746,10 @@ body[data-topbar="slate"] #page-topbar,
 body[data-topbar="slate"] .navbar-brand-box {
   background-color: #252526 !important;
   border-color: #252526 !important;
+}
+
+html:not([data-theme-preset="macos-dark"]) body[data-sidebar="slate"] {
+  --datatable-dark-surface: #252526;
 }
 body[data-sidebar="emerald"] .vertical-menu,
 body[data-topbar="emerald"] #page-topbar,
@@ -7025,6 +7034,7 @@ html[data-theme-preset="macos-dark"] {
   --mac-glass-border: rgba(255, 255, 255, 0.16);
   --mac-glass-divider: rgba(255, 255, 255, 0.085);
   --mac-glass-highlight: rgba(255, 255, 255, 0.13);
+  --datatable-dark-surface: rgba(34, 35, 40, 0.97);
   --mac-glass-shadow: 0 24px 70px rgba(0, 0, 0, 0.42), 0 2px 8px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   --bs-card-bg: var(--mac-glass);
   --content-surface: var(--mac-glass);
@@ -8144,9 +8154,289 @@ html[data-theme-preset="macos-dark"] body .dropdown-item,
   margin-left: auto !important;
 }
 
+/* ==========================================================================
+   Standart Koyu Tema Yüzey Sistemi
+   macOS presetindeki tutarlı katman yaklaşımını normal koyu temaya taşır.
+   ========================================================================== */
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body {
+  --dark-ui-canvas: #181b20;
+  --dark-ui-surface: #25282d;
+  --dark-ui-surface-raised: #2b2e34;
+  --dark-ui-control: #1e2126;
+  --dark-ui-border: rgba(255, 255, 255, 0.10);
+  --dark-ui-text: rgba(240, 242, 246, 0.92);
+  --dark-ui-muted: rgba(200, 205, 218, 0.62);
+  --datatable-dark-surface: var(--dark-ui-surface);
+  background-color: var(--dark-ui-canvas) !important;
+}
+
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .main-content,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .page-content {
+  background-color: var(--dark-ui-canvas) !important;
+}
+
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .vertical-menu,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .sidebar-sticky-top {
+  background-color: var(--dark-ui-surface) !important;
+  border-color: var(--dark-ui-border) !important;
+}
+
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body #page-topbar,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .navbar-brand-box,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .quick-favorites-bar {
+  background-color: var(--dark-ui-surface) !important;
+  border-color: var(--dark-ui-border) !important;
+}
+
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .card,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .summary-kpi-card,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .modal-content,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .offcanvas,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .custom-context-menu {
+  background-color: var(--dark-ui-surface) !important;
+  border-color: var(--dark-ui-border) !important;
+  color: var(--dark-ui-text) !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.24) !important;
+}
+
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .card-header,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .card-footer,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .modal-header,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .modal-footer {
+  background-color: transparent !important;
+  border-color: var(--dark-ui-border) !important;
+}
+
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .dropdown-menu,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .popover,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .select2-dropdown,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .flatpickr-calendar {
+  background-color: var(--dark-ui-surface-raised) !important;
+  border-color: var(--dark-ui-border) !important;
+  color: var(--dark-ui-text) !important;
+}
+
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .form-control,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .form-select,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .select2-selection,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .date-filter-box,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .product-search-box,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .period-filter-dropdown-btn,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .top-action-btn.bg-white,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .top-icon-btn.bg-white {
+  background-color: var(--dark-ui-control) !important;
+  border-color: var(--dark-ui-border) !important;
+  color: var(--dark-ui-text) !important;
+  box-shadow: none !important;
+}
+
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .text-dark,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .card-title,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .modal-title {
+  color: var(--dark-ui-text) !important;
+}
+
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .text-muted,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .summary-kpi-label,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .summary-kpi-subtext {
+  color: var(--dark-ui-muted) !important;
+}
 
 
+/* Koyu tema: tablo, kenarlık ve satır içi açık renk tanımları için tamamlayıcı kurallar */
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body table.table,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body table.table-bordered,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body table.dataTable,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .table > :not(caption) > * > *,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .table-bordered > :not(caption) > * > *,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body table.dataTable tbody tr,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body table.dataTable tbody td,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body table.dataTable thead th,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body table.dataTable tfoot th {
+  border-color: var(--dark-ui-border) !important;
+}
 
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body table.dataTable thead.table-light,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .table > thead.table-light,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .table-light,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body table.dataTable thead tr {
+  --bs-table-bg: var(--dark-ui-surface);
+  background-color: var(--dark-ui-surface) !important;
+  border-color: var(--dark-ui-border) !important;
+  color: var(--dark-ui-text) !important;
+}
 
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .dt-filter-control,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .form-check-input:not(:checked),
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .page-link {
+  background-color: var(--dark-ui-control) !important;
+  border-color: var(--dark-ui-border) !important;
+  color: var(--dark-ui-text) !important;
+}
 
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .nav-tabs,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .nav-pills,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .list-group-item,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .accordion-item,
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .accordion-button:not(.collapsed) {
+  background-color: transparent;
+  border-color: var(--dark-ui-border) !important;
+  color: var(--dark-ui-text);
+}
 
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background: #fff"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background:#fff"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color: #fff"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color:#fff"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background: #ffffff"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background:#ffffff"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color: #ffffff"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color:#ffffff"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background: white"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background:white"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color: white"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color:white"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background: #f8fafc"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background:#f8fafc"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color: #f8fafc"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color:#f8fafc"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background: #f1f5f9"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background:#f1f5f9"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color: #f1f5f9"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color:#f1f5f9"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background: #f8f9fa"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background:#f8f9fa"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color: #f8f9fa"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color:#f8f9fa"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background: #f9fafb"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background:#f9fafb"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color: #f9fafb"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color:#f9fafb"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background: #f4f6f8"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background:#f4f6f8"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color: #f4f6f8"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color:#f4f6f8"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background: #f3f4f6"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background:#f3f4f6"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color: #f3f4f6"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color:#f3f4f6"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background: #f5f7fa"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background:#f5f7fa"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color: #f5f7fa"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color:#f5f7fa"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background: rgba(255,255,255,0.5"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background: rgba(255, 255, 255, 0.9"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background: rgba(255,255,255,0.8"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background:rgba(255,255,255,0.7"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background: rgba(255,255,255,0.7"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background: rgba(255, 255, 255, 0.98"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background: rgba(255,255,255,0.52"] {
+  background: var(--dark-ui-surface-raised) !important;
+  border-color: var(--dark-ui-border) !important;
+}
+
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="color: #0f172a"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="color: #1e293b"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="color: #334155"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="color: #212529"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="color: #111827"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="color: #1f2937"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="color:#0f172a"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="color:#1e293b"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="color:#334155"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="color:#212529"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="color:#111827"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="color:#1f2937"] {
+  color: var(--dark-ui-text) !important;
+}
+
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="color: #475569"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="color: #64748b"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="color: #6b7280"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="color: #495057"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="color:#475569"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="color:#64748b"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="color:#6b7280"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="color:#495057"] {
+  color: var(--dark-ui-muted) !important;
+}
+
+/* Sayfa içi #id kurallarını geçersiz kılmak için :not(#_) ile özgüllük artırılır */
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body table:not(#_),
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body table:not(#_) :is(thead, tbody, tfoot, tr, th, td) {
+  border-color: var(--dark-ui-border) !important;
+}
+
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body table:not(#_) :is(thead, thead tr, thead th, thead td) {
+  background-color: var(--dark-ui-surface) !important;
+  color: var(--dark-ui-text) !important;
+}
+
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body :is(input, select, textarea, .form-control, .form-select).dt-filter-control:not(#_) {
+  background-color: var(--dark-ui-control) !important;
+  border-color: var(--dark-ui-border) !important;
+  color: var(--dark-ui-text) !important;
+}
+
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .nav-link.active:not(#_) {
+  background-color: var(--dark-ui-surface-raised) !important;
+  border-color: var(--dark-ui-border) !important;
+  color: var(--dark-ui-text) !important;
+}
+
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .page-content .tab-content ~ *, html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .nav-link:not(.active, #_)[data-bs-toggle="tab"] {
+  background-color: transparent !important;
+  border-color: var(--dark-ui-border) !important;
+  color: var(--dark-ui-muted) !important;
+}
+
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body .badge:is(.bg-light, .bg-secondary-subtle, .bg-white):not(#_) {
+  background-color: var(--dark-ui-surface-raised) !important;
+  color: var(--dark-ui-text) !important;
+}
+
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body :is(.apexcharts-menu, .apexcharts-toolbar, .apexcharts-tooltip, .apexcharts-tooltip-arrow, .apexcharts-xaxistooltip) {
+  background: var(--dark-ui-surface-raised) !important;
+  border-color: var(--dark-ui-border) !important;
+  color: var(--dark-ui-text) !important;
+}
+
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background: #e2e8f0"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background:#e2e8f0"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color: #e2e8f0"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color:#e2e8f0"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background: #e5e7eb"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background:#e5e7eb"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color: #e5e7eb"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color:#e5e7eb"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background: #eef2f6"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background:#eef2f6"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color: #eef2f6"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color:#eef2f6"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background: #f1f3f5"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background:#f1f3f5"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color: #f1f3f5"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color:#f1f3f5"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background: #dee2e6"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background:#dee2e6"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color: #dee2e6"],
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body [style*="background-color:#dee2e6"] {
+  background: var(--dark-ui-surface-raised) !important;
+  color: var(--dark-ui-text) !important;
+}
+
+/* Slate ve renkli tema modlarının koyu yüzey sistemini bozmasını engeller */
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body:not(#_) :is(.vertical-menu, .sidebar-sticky-top, .navbar-brand-box, #page-topbar, .quick-favorites-bar) {
+  background-color: var(--dark-ui-surface) !important;
+  background-image: none !important;
+  border-color: var(--dark-ui-border) !important;
+}
+
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body:not(#_) :is(.main-content, .page-content) {
+  background-color: var(--dark-ui-canvas) !important;
+}
+
+html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body:not(#_) :is(.card, .summary-kpi-card, .summary-card, .modal-content, .offcanvas) {
+  background-color: var(--dark-ui-surface) !important;
+  border-color: var(--dark-ui-border) !important;
+}

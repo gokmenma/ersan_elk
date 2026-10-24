@@ -487,6 +487,12 @@ function loadCurrentTab(reset = true) {
   }
 }
 
+function handleTopBarBack() {
+  if (activeTab.value === 'ozet' || !invoiceTabPermissions.value.ozet) return false
+  switchTab('ozet')
+  return true
+}
+
 function switchTab(tab) {
   if (!invoiceTabPermissions.value[tab]) return
   activeTab.value = tab
@@ -1196,6 +1202,7 @@ onBeforeUnmount(() => {
       title="E-Fatura & Finans"
       eyebrow="E-DÖNÜŞÜM & MALİ YÖNETİM"
       subtitle="E-Fatura, E-Arşiv ve KDV Yönetimi"
+      :back-handler="handleTopBarBack"
     >
       <template #actions>
         <button

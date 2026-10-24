@@ -21,7 +21,7 @@ class MobilePersonelModel extends Model
         $page = max(1, (int) ($filters['page'] ?? 1));
         $limit = min(50, max(10, (int) ($filters['limit'] ?? 24)));
         $offset = ($page - 1) * $limit;
-        $status = in_array(($filters['status'] ?? 'active'), ['all', 'active', 'passive'], true) ? $filters['status'] : 'active';
+        $status = in_array(($filters['status'] ?? 'active'), ['all', 'active', 'passive', 'working', 'on_leave', 'late'], true) ? $filters['status'] : 'active';
         $search = mb_substr(trim((string) ($filters['search'] ?? '')), 0, 80);
         $department = mb_substr(trim((string) ($filters['department'] ?? '')), 0, 100);
         $baseParams = ['firma_id' => $firmaId, 'modul' => 'personel'];
@@ -44,6 +44,21 @@ class MobilePersonelModel extends Model
         $where = $baseWhere;
         if ($status === 'active') $where .= " AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '0000-00-00')";
         if ($status === 'passive') $where .= " AND (p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi <> '0000-00-00')";
+        $activeSql = " AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '0000-00-00')";
+        $leaveSql = "AND EXISTS (SELECT 1 FROM personel_izinleri pi LEFT JOIN tanimlamalar it ON it.id = pi.izin_tipi_id
+            WHERE pi.personel_id = p.id AND pi.baslangic_tarihi <= CURDATE() AND pi.bitis_tarihi >= CURDATE()
+            AND pi.onay_durumu = 'Onaylandı' AND pi.silinme_tarihi IS NULL
+            AND (it.kisa_kod IS NULL OR (it.kisa_kod NOT IN ('X', 'x') AND (it.normal_mesai_sayilir IS NULL OR it.normal_mesai_sayilir = 0))))";
+        if ($status === 'working') $where .= $activeSql . ' ' . str_replace('AND EXISTS', 'AND NOT EXISTS', $leaveSql);
+        if ($status === 'on_leave') $where .= $activeSql . ' ' . $leaveSql;
+        if ($status === 'late') {
+            $where .= $activeSql . " AND p.saha_takibi = 1 AND (
+                (SELECT MIN(ph.zaman) FROM personel_hareketleri ph WHERE ph.personel_id = p.id AND ph.islem_tipi = 'BASLA'
+                    AND ph.silinme_tarihi IS NULL AND ph.zaman >= CURDATE() AND ph.zaman < CURDATE() + INTERVAL 1 DAY) IS NULL
+                    AND CURTIME() > '08:30:00'
+                OR TIME((SELECT MIN(ph2.zaman) FROM personel_hareketleri ph2 WHERE ph2.personel_id = p.id AND ph2.islem_tipi = 'BASLA'
+                    AND ph2.silinme_tarihi IS NULL AND ph2.zaman >= CURDATE() AND ph2.zaman < CURDATE() + INTERVAL 1 DAY)) > '08:30:00')";
+        }
         if ($department !== '') { $where .= ' AND TRIM(p.departman) = :department'; $params['department'] = $department; }
         if ($search !== '') {
             $where .= ' AND (p.adi_soyadi LIKE :s1 OR p.cep_telefonu LIKE :s2 OR p.email_adresi LIKE :s3 OR p.gorev LIKE :s4 OR p.departman LIKE :s5 OR p.ekip_bolge LIKE :s6)';

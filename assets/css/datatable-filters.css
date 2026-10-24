@@ -1019,9 +1019,9 @@ html[data-theme-preset="macos-dark"] .dataTables_wrapper table.dataTable tbody t
 html[data-theme-preset="macos-dark"] .dataTables_wrapper > .table-responsive table.dataTable tbody td,
 [data-theme-preset="macos-dark"] table.dataTable tbody td {
   border-color: rgba(255, 255, 255, 0.08) !important;
-  background-color: rgba(33, 34, 39, 0.88) !important;
+  background-color: var(--datatable-dark-surface, var(--bs-sidebar-bg, #1c2228)) !important;
   color: rgba(232, 233, 236, 0.85) !important;
-  --bs-table-bg: rgba(33, 34, 39, 0.88) !important;
+  --bs-table-bg: var(--datatable-dark-surface, var(--bs-sidebar-bg, #1c2228)) !important;
   --bs-table-color: rgba(232, 233, 236, 0.85) !important;
 }
 

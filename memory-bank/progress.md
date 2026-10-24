@@ -1839,3 +1839,18 @@
 - [x] Yıllık izin talebinin kalan bakiyeyi aşmasını engelleyen istemci kontrolü kaldırıldı.
 - [x] API tarafındaki yıllık izin hakediş reddi kaldırılırken diğer ücretli izin kısıtı korundu ve birim testle güvenceye alındı.
 - [x] Üç günü aşan yıllık izinlerdeki 14 günlük ön bildirim zorunluluğu ve arayüz hatırlatması kaldırıldı; 20 günlük azami talep sınırı korundu.
+# 2026-10-24 — Koyu tema DataTables/sidebar yüzey bütünlüğü
+
+- [x] Koyu temada DataTables satır/hücre zemini sidebar yüzey tokenına bağlandı.
+- [x] macOS koyu temada tablo ve sidebar ana tonu ortak tema değişkeni üzerinden eşitlendi.
+- [x] Slate koyu temadaki gerçek sidebar rengi (`#282f36`) DataTables yüzeyine birebir uygulandı.
+- [x] Evrak Takip listesindeki sayfaya özel koyu başlık, filtre ve zebra satır renkleri merkezi sidebar yüzeyiyle eşitlendi.
+- [x] Cari liste ve diğer standart DataTables sayfaları için Slate/Dark sidebar seçimine göre gerçek sidebar rengi merkezi tablo yüzeyine aktarıldı.
+- [x] Gelir-Gider ve Gelen Faturalar tablolarının başlık, filtre ve gövde yüzeyleri seçili koyu sidebar rengiyle eşitlendi.
+- [x] Gelir-Gider ve Gelen Faturalar sayfalarının kart, araç çubuğu ve filtre yüzeyleri de aynı koyu sidebar paletiyle bütünleştirildi.
+- [x] Giden Faturalar sayfasındaki genel koyu mod yüzeyleri merkezi sidebar paletiyle uyumlu hale getirildi.
+- [x] Standart koyu tema, macOS temasına benzer merkezi ve katmanlı yüzey tokenlarıyla sayfa geneline yayıldı; kartlar, modallar, menüler ve form kontrolleri ortak palete alındı.
+- [x] Standart koyu tema katmanları görsel ayrımı belirgin sabit tonlarla güncellendi; canvas, sidebar/kart/tablo, yükseltilmiş menü ve kontrol yüzeyleri net biçimde ayrıştırıldı.
+- [x] Sidebar rengi yükseltilmiş alanların `#2b2e34` yüzeyiyle eşitlendi.
+
+- [x] Koyu tema uyum turu: sidebar, topbar, kart, tablo, modal ve satır içi açık renkler tek yüzey sistemine bağlandı (Playwright ile giden-list, gelen-list, bordro, personel, cari, home taraması temiz).

@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   AlertTriangle,
   ArrowLeft,
@@ -55,6 +55,7 @@ import { auth } from '../services/auth.js'
 import TopBar from '../components/TopBar.vue'
 
 const router = useRouter()
+const route = useRoute()
 
 // Aktif Sekme: 'dashboard' | 'araclar' | 'zimmet' | 'yakit' | 'km' | 'servis'
 const activeTab = ref(aracState.activeTab || 'dashboard')
@@ -983,6 +984,13 @@ async function executeDelete() {
 
 onMounted(() => {
   openAracDrawer()
+  const durum = String(route.query.durum || '')
+  if (['zimmetli', 'bosta', 'serviste'].includes(durum)) {
+    aracState.activeTab = 'araclar'
+    activeTab.value = 'araclar'
+    statusFilter.value = durum
+    router.replace({ query: {} })
+  }
   if (aracState.activeTab && aracState.activeTab !== activeTab.value) {
     activeTab.value = aracState.activeTab
   }
