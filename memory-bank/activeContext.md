@@ -3103,3 +3103,7 @@
 - Sidebar kullanıcı talebiyle ana yüzey yerine yükseltilmiş yüzey tokenına geçirildi; standart koyu temada sidebar artık `#2b2e34` kullanıyor.
 
 - Koyu tema (standart, macOS preset hariç) tamamlayıcı kuralları `assets/css/style.css` sonuna eklendi: sidebar/topbar/kart aynı `--dark-ui-surface`, tablo kenarlıkları, `thead.table-light`, filtre inputları, satır içi açık renkli `style=""` tanımları ve apexcharts menüleri koyu yüzeye bağlandı. Sayfa içi `#id` kurallarını aşmak için `:not(#_)` kullanıldı.
+
+- Hakediş (sozlesme-detay): iş artışı, tamamlanan ve taslak hakediş özet kartları eklendi (HakedisDonemModel::ozet, online-api getHakedisler summary).
+- Hakediş sözleşme listesi (hakedisler/index): iş artışı, tamamlanan/taslak hakediş KPI kartları, tablo kolonları ve ilerleme çubuğu eklendi (HakedisDonemModel::ozetToplu).
+- Mobil SPA (SozlesmeHakedisView + public/api/sozlesme-hakedis.php contracts_list): 4 KPI kart (güncel hacim/iş artışı, tamamlanan, taslak hakediş) ve sözleşme kartlarında segmentli ilerleme çubuğu eklendi.

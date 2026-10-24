@@ -140,10 +140,33 @@ try {
         $stmt->execute();
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+        $donemModel = new HakedisDonemModel();
+        $ozetler = $donemModel->ozetToplu($firmId, array_map(static fn($r) => (int) $r['id'], $rows));
+        $tlFormat = static fn(float $v): string => number_format($v, 2, ',', '.') . ' ₺';
+
         $contracts = [];
         foreach ($rows as $r) {
             $rawId = (int) $r['id'];
+            $ozet = $ozetler[$rawId] ?? $donemModel->bosOzet();
+            $guncelBedel = (float) ($r['sozlesme_bedeli'] ?? 0) + $ozet['is_artis_tutari'];
+            $tamamYuzde = $guncelBedel > 0 ? min(100.0, $ozet['tamamlanan_imalat'] / $guncelBedel * 100) : 0.0;
+            $taslakYuzde = $guncelBedel > 0 ? min(100.0 - $tamamYuzde, $ozet['taslak_imalat'] / $guncelBedel * 100) : 0.0;
             $contracts[] = [
+                'is_artis_tutari' => $ozet['is_artis_tutari'],
+                'is_artis_tutari_formatted' => ($ozet['is_artis_tutari'] > 0 ? '+' : '') . $tlFormat($ozet['is_artis_tutari']),
+                'is_artis_adet' => $ozet['is_artis_adet'],
+                'guncel_bedel' => $guncelBedel,
+                'guncel_bedel_formatted' => $tlFormat($guncelBedel),
+                'tamamlanan_imalat' => $ozet['tamamlanan_imalat'],
+                'tamamlanan_imalat_formatted' => $tlFormat($ozet['tamamlanan_imalat']),
+                'tamamlanan_ff_formatted' => $tlFormat($ozet['tamamlanan_ff']),
+                'tamamlanan_adet' => $ozet['tamamlanan_adet'],
+                'taslak_imalat' => $ozet['taslak_imalat'],
+                'taslak_imalat_formatted' => $tlFormat($ozet['taslak_imalat']),
+                'taslak_ff_formatted' => $tlFormat($ozet['taslak_ff']),
+                'taslak_adet' => $ozet['taslak_adet'],
+                'tamamlanan_yuzde' => round($tamamYuzde, 1),
+                'taslak_yuzde' => round($taslakYuzde, 1),
                 'id' => Security::encrypt((string) $rawId),
                 'raw_id' => $rawId,
                 'idare_adi' => (string) ($r['idare_adi'] ?? ''),
@@ -172,6 +195,12 @@ try {
 
         // Özet İstatistikler (KPI Kartları)
         $summary = $sozlesmeModel->summary($firmId);
+        $artis = (float) ($summary->is_artis_tutari ?? 0);
+        $guncelHacim = (float) ($summary->toplam_bedel ?? 0) + $artis;
+        $tamamToplam = (float) ($summary->tamamlanan_imalat ?? 0);
+        $taslakToplam = (float) ($summary->taslak_imalat ?? 0);
+        $tamamOran = $guncelHacim > 0 ? min(100.0, $tamamToplam / $guncelHacim * 100) : 0.0;
+        $taslakOran = $guncelHacim > 0 ? min(100.0 - $tamamOran, $taslakToplam / $guncelHacim * 100) : 0.0;
 
         contractsApiResponse([
             'success' => true,
@@ -187,6 +216,19 @@ try {
                 'pasif_bedel' => (float) ($summary->pasif_bedel ?? 0),
                 'toplam_bedel' => (float) ($summary->toplam_bedel ?? 0),
                 'toplam_bedel_formatted' => number_format((float) ($summary->toplam_bedel ?? 0), 2, ',', '.') . ' ₺',
+                'is_artis_tutari' => $artis,
+                'is_artis_tutari_formatted' => ($artis > 0 ? '+' : '') . number_format($artis, 2, ',', '.') . ' ₺',
+                'is_artis_adet' => (int) ($summary->is_artis_adet ?? 0),
+                'guncel_hacim' => $guncelHacim,
+                'guncel_hacim_formatted' => number_format($guncelHacim, 2, ',', '.') . ' ₺',
+                'tamamlanan_imalat_formatted' => number_format($tamamToplam, 2, ',', '.') . ' ₺',
+                'tamamlanan_ff_formatted' => number_format((float) ($summary->tamamlanan_ff ?? 0), 2, ',', '.') . ' ₺',
+                'tamamlanan_adet' => (int) ($summary->tamamlanan_adet ?? 0),
+                'taslak_imalat_formatted' => number_format($taslakToplam, 2, ',', '.') . ' ₺',
+                'taslak_ff_formatted' => number_format((float) ($summary->taslak_ff ?? 0), 2, ',', '.') . ' ₺',
+                'taslak_adet' => (int) ($summary->taslak_adet ?? 0),
+                'tamamlanan_yuzde' => round($tamamOran, 1),
+                'taslak_yuzde' => round($taslakOran, 1),
             ],
             'contracts' => $contracts,
             'pagination' => [

@@ -67,75 +67,77 @@ $aylar = [
                         </div>
                     </div>
                     <h3 class="summary-kpi-value my-1" id="stat_toplam_sozlesme">0</h3>
-                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex justify-content-between align-items-center gap-1">
                         <span class="summary-kpi-subtext" id="stat_sub_durum">Aktif: 0 | Tamamlanan: 0</span>
-                        <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" data-status="all">
-                            <i class="bx bx-layer"></i> Tümü
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Kart 2: AKTİF SÖZLEŞMELER -->
-        <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card summary-kpi-card h-100 mb-0">
-                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">AKTİF SÖZLEŞMELER</span>
-                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
-                            <i class="bx bx-trending-up"></i>
+                        <div class="d-flex gap-1">
+                            <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" data-status="all" title="Tümü">
+                                <i class="bx bx-layer"></i> Tümü
+                            </button>
+                            <button type="button" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="aktif" title="Aktif">
+                                <i class="bx bx-check-circle"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-subtle-info rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="tamamlandi" title="Tamamlanan">
+                                <i class="bx bx-check-double"></i>
+                            </button>
                         </div>
                     </div>
-                    <h3 class="summary-kpi-value my-1 text-success" id="stat_aktif_bedel">0,00 ₺</h3>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-subtext text-success fw-semibold" id="stat_sub_aktif_sayi">0 Aktif Sözleşme</span>
-                        <button type="button" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="aktif">
-                            <i class="bx bx-check-circle"></i> Aktif
-                        </button>
-                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Kart 3: TAMAMLANANLAR -->
+        <!-- Kart 2: GÜNCEL SÖZLEŞME HACMİ (iş artışı dahil) -->
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
                     <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">TAMAMLANANLAR</span>
-                        <div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
-                            <i class="bx bx-task"></i>
-                        </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-info" id="stat_tamamlanan_bedel">0,00 ₺</h3>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-subtext text-info fw-semibold" id="stat_sub_tamamlanan_sayi">0 Tamamlanan Sözleşme</span>
-                        <button type="button" class="btn btn-sm btn-subtle-info rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="tamamlandi">
-                            <i class="bx bx-check-double"></i> Tamamlanan
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Kart 4: TOPLAM SÖZLEŞME HACMİ -->
-        <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card summary-kpi-card h-100 mb-0">
-                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">TOPLAM SÖZLEŞME HACMİ</span>
+                        <span class="summary-kpi-label">GÜNCEL SÖZLEŞME HACMİ</span>
                         <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
                             <i class="bx bx-wallet"></i>
                         </div>
                     </div>
                     <h3 class="summary-kpi-value my-1" id="stat_toplam_bedel">0,00 ₺</h3>
                     <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-subtext text-muted" id="stat_bedel_durum_metni">Genel Sözleşme Hacmi</span>
-                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold" id="stat_sozlesme_bilgi">
-                            0 Sözleşme
+                        <span class="summary-kpi-subtext text-muted" id="stat_bedel_durum_metni">Sözleşme + iş artışı</span>
+                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold" id="stat_is_artis">
+                            İş artışı: 0,00 ₺
                         </span>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kart 3: TAMAMLANAN HAKEDİŞ -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">TAMAMLANAN HAKEDİŞ</span>
+                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                            <i class="bx bx-check-double"></i>
+                        </div>
+                    </div>
+                    <h3 class="summary-kpi-value my-1 text-success" id="stat_tamamlanan_hakedis">0,00 ₺</h3>
+                    <div class="progress mb-1" style="height: 6px;">
+                        <div class="progress-bar bg-success" id="stat_hakedis_progress_tamam" style="width: 0%"></div>
+                        <div class="progress-bar bg-secondary" id="stat_hakedis_progress_taslak" style="width: 0%"></div>
+                    </div>
+                    <span class="summary-kpi-subtext" id="stat_tamamlanan_hakedis_sub">-</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kart 4: TASLAK HAKEDİŞ -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">TASLAK HAKEDİŞ</span>
+                        <div class="summary-kpi-icon bg-secondary-subtle text-secondary border border-secondary-subtle">
+                            <i class="bx bx-edit"></i>
+                        </div>
+                    </div>
+                    <h3 class="summary-kpi-value my-1 text-secondary" id="stat_taslak_hakedis">0,00 ₺</h3>
+                    <span class="summary-kpi-subtext" id="stat_taslak_hakedis_sub">-</span>
                 </div>
             </div>
         </div>
@@ -173,6 +175,10 @@ $aylar = [
                             <th data-filter="date" class="text-center" style="width: 130px;">SÖZLEŞME TARİHİ</th>
                             <th data-filter="date" class="text-center" style="width: 130px;">BİTİŞ TARİHİ</th>
                             <th data-filter="number" class="text-end" style="width: 150px;">SÖZLEŞME BEDELİ</th>
+                            <th data-filter="none" class="text-end" style="width: 150px;">İŞ ARTIŞI</th>
+                            <th data-filter="none" class="text-end" style="width: 170px;">TAMAMLANAN HAKEDİŞ</th>
+                            <th data-filter="none" class="text-end" style="width: 170px;">TASLAK HAKEDİŞ</th>
+                            <th data-filter="none" style="width: 180px;">HAKEDİŞ İLERLEMESİ</th>
                             <th data-filter="select" class="text-center" style="width: 120px;">DURUM</th>
                             <th data-filter="none" style="width: 120px;" class="text-center">İŞLEMLER</th>
                         </tr>

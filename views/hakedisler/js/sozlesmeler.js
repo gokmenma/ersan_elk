@@ -67,6 +67,10 @@ $(document).ready(function () {
   });
 });
 
+function fmtTl(value) {
+  return parseFloat(value || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " ₺";
+}
+
 function initSozlesmelerTable() {
   const options = applyLengthStateSave({
     ...getDatatableOptions(),
@@ -93,17 +97,27 @@ function initSozlesmelerTable() {
           $('#stat_toplam_sozlesme').text(s.toplam_sozlesme || 0);
           $('#stat_sub_durum').text(`Aktif: ${s.aktif_sayisi || 0} | Tamamlanan: ${s.tamamlanan_sayisi || 0}`);
 
-          // Kart 2: Aktif Sözleşmeler
-          $('#stat_aktif_bedel').text(formatMoney(s.aktif_bedel) + ' ₺');
-          $('#stat_sub_aktif_sayi').text(`${s.aktif_sayisi || 0} Aktif Sözleşme`);
+          const artis = parseFloat(s.is_artis_tutari || 0);
+          const guncelHacim = parseFloat(s.toplam_bedel || 0) + artis;
 
-          // Kart 3: Tamamlananlar
-          $('#stat_tamamlanan_bedel').text(formatMoney(s.tamamlanan_bedel) + ' ₺');
-          $('#stat_sub_tamamlanan_sayi').text(`${s.tamamlanan_sayisi || 0} Tamamlanan Sözleşme`);
+          // Kart 2: Güncel Sözleşme Hacmi (iş artışı dahil)
+          $('#stat_toplam_bedel').text(formatMoney(guncelHacim) + ' ₺');
+          $('#stat_bedel_durum_metni').text(`${s.toplam_sozlesme || 0} sözleşme | ${formatMoney(s.toplam_bedel)} ₺`);
+          $('#stat_is_artis')
+            .text(`İş artışı: ${artis > 0 ? '+' : ''}${formatMoney(artis)} ₺`)
+            .toggleClass('bg-warning-subtle text-warning border-warning-subtle', artis >= 0)
+            .toggleClass('bg-danger-subtle text-danger border-danger-subtle', artis < 0);
 
-          // Kart 4: Toplam Sözleşme Hacmi
-          $('#stat_toplam_bedel').text(formatMoney(s.toplam_bedel) + ' ₺');
-          $('#stat_sozlesme_bilgi').text(`${s.toplam_sozlesme || 0} Sözleşme`);
+          // Kart 3-4: Hakedişler
+          $('#stat_tamamlanan_hakedis').text(formatMoney(s.tamamlanan_imalat) + ' ₺');
+          $('#stat_tamamlanan_hakedis_sub').text(`${s.tamamlanan_adet || 0} hakediş | FF: ${formatMoney(s.tamamlanan_ff)} ₺`);
+          $('#stat_taslak_hakedis').text(formatMoney(s.taslak_imalat) + ' ₺');
+          $('#stat_taslak_hakedis_sub').text(`${s.taslak_adet || 0} hakediş | FF: ${formatMoney(s.taslak_ff)} ₺`);
+
+          const tamamYuzde = guncelHacim > 0 ? Math.min(100, (parseFloat(s.tamamlanan_imalat || 0) / guncelHacim) * 100) : 0;
+          const taslakYuzde = guncelHacim > 0 ? Math.min(100 - tamamYuzde, (parseFloat(s.taslak_imalat || 0) / guncelHacim) * 100) : 0;
+          $('#stat_hakedis_progress_tamam').css('width', tamamYuzde + '%');
+          $('#stat_hakedis_progress_taslak').css('width', taslakYuzde + '%');
         }
         return json.data;
       }
@@ -159,6 +173,60 @@ function initSozlesmelerTable() {
           return data
             ? `<span class="fw-bold text-dark font-size-13">${parseFloat(data).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺</span>`
             : '<span class="text-muted">-</span>';
+        }
+      },
+      {
+        data: "is_artis_tutari",
+        className: "text-end",
+        width: "150px",
+        orderable: false,
+        searchable: false,
+        render: function (data, type, row) {
+          const v = parseFloat(data || 0);
+          if (!row.is_artis_adet) return '<span class="text-muted">-</span>';
+          const cls = v < 0 ? 'text-danger' : 'text-warning';
+          return `<span class="fw-bold ${cls} font-size-13">${v > 0 ? '+' : ''}${fmtTl(v)}</span>`;
+        }
+      },
+      {
+        data: "tamamlanan_imalat",
+        className: "text-end",
+        width: "170px",
+        orderable: false,
+        searchable: false,
+        render: function (data, type, row) {
+          return `<div><strong class="font-size-13 text-success">${fmtTl(data)}</strong></div>
+                  <div class="text-muted font-size-11" style="line-height: 1.2;">${row.tamamlanan_adet || 0} hakediş | FF: ${fmtTl(row.tamamlanan_ff)}</div>`;
+        }
+      },
+      {
+        data: "taslak_imalat",
+        className: "text-end",
+        width: "170px",
+        orderable: false,
+        searchable: false,
+        render: function (data, type, row) {
+          return `<div><strong class="font-size-13 text-secondary">${fmtTl(data)}</strong></div>
+                  <div class="text-muted font-size-11" style="line-height: 1.2;">${row.taslak_adet || 0} hakediş | FF: ${fmtTl(row.taslak_ff)}</div>`;
+        }
+      },
+      {
+        data: null,
+        width: "180px",
+        orderable: false,
+        searchable: false,
+        render: function (data, type, row) {
+          const guncel = parseFloat(row.sozlesme_bedeli || 0) + parseFloat(row.is_artis_tutari || 0);
+          const tamam = guncel > 0 ? Math.min(100, (parseFloat(row.tamamlanan_imalat || 0) / guncel) * 100) : 0;
+          const taslak = guncel > 0 ? Math.min(100 - tamam, (parseFloat(row.taslak_imalat || 0) / guncel) * 100) : 0;
+          return `<div class="d-flex justify-content-between font-size-11 mb-1">
+                    <span class="fw-semibold text-success">%${tamam.toLocaleString('tr-TR', { maximumFractionDigits: 1 })}</span>
+                    <span class="text-muted">Taslak %${taslak.toLocaleString('tr-TR', { maximumFractionDigits: 1 })}</span>
+                  </div>
+                  <div class="progress" style="height: 6px;" title="Güncel sözleşme bedeli: ${fmtTl(guncel)}">
+                    <div class="progress-bar bg-success" style="width: ${tamam}%"></div>
+                    <div class="progress-bar bg-secondary" style="width: ${taslak}%"></div>
+                  </div>`;
         }
       },
       {

@@ -36,6 +36,25 @@ $(document).ready(function () {
 
 let hakedisTable;
 
+function formatTl(value) {
+  return parseFloat(value || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " ₺";
+}
+
+function renderHakedisOzet(s) {
+  const artis = parseFloat(s.is_artis_tutari || 0);
+  $("#stat_is_artis")
+    .text((artis > 0 ? "+" : "") + formatTl(artis))
+    .toggleClass("text-warning", artis >= 0)
+    .toggleClass("text-danger", artis < 0);
+  $("#stat_is_artis_sub").text(`${s.is_artis_adet || 0} iş artış/azalış işlemi`);
+
+  $("#stat_tamamlanan_hakedis").text(formatTl(s.tamamlanan_imalat));
+  $("#stat_tamamlanan_hakedis_sub").text(`${s.tamamlanan_adet || 0} hakediş | FF: ${formatTl(s.tamamlanan_ff)}`);
+
+  $("#stat_taslak_hakedis").text(formatTl(s.taslak_imalat));
+  $("#stat_taslak_hakedis_sub").text(`${s.taslak_adet || 0} hakediş | FF: ${formatTl(s.taslak_ff)}`);
+}
+
 function initHakedisTable() {
   const options = applyLengthStateSave({
     ...getDatatableOptions(),
@@ -161,6 +180,10 @@ function initHakedisTable() {
     drawCallback: function (settings) {
       let api = this.api();
       let json = api.ajax.json();
+
+      if (json && json.summary) {
+        renderHakedisOzet(json.summary);
+      }
 
       if (json && json.data) {
         let totalImalat = 0;

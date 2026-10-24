@@ -252,6 +252,51 @@ $aylar = [
     </div>
 
     <div class="col-xl-8">
+        <div class="row g-3 mb-3" id="hakedisOzetKartlari">
+            <div class="col-12 col-md-4">
+                <div class="card summary-kpi-card h-100 mb-0">
+                    <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="summary-kpi-label">İŞ ARTIŞI / AZALIŞI</span>
+                            <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                                <i class="bx bx-trending-up"></i>
+                            </div>
+                        </div>
+                        <h3 class="summary-kpi-value my-1 text-warning" id="stat_is_artis">0,00 ₺</h3>
+                        <span class="summary-kpi-subtext" id="stat_is_artis_sub">-</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="card summary-kpi-card h-100 mb-0">
+                    <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="summary-kpi-label">TAMAMLANAN HAKEDİŞ</span>
+                            <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                                <i class="bx bx-check-double"></i>
+                            </div>
+                        </div>
+                        <h3 class="summary-kpi-value my-1 text-success" id="stat_tamamlanan_hakedis">0,00 ₺</h3>
+                        <span class="summary-kpi-subtext" id="stat_tamamlanan_hakedis_sub">-</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="card summary-kpi-card h-100 mb-0">
+                    <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="summary-kpi-label">TASLAK HAKEDİŞ</span>
+                            <div class="summary-kpi-icon bg-secondary-subtle text-secondary border border-secondary-subtle">
+                                <i class="bx bx-edit"></i>
+                            </div>
+                        </div>
+                        <h3 class="summary-kpi-value my-1 text-secondary" id="stat_taslak_hakedis">0,00 ₺</h3>
+                        <span class="summary-kpi-subtext" id="stat_taslak_hakedis_sub">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Hakediş Dönemleri Listesi Kartı -->
         <div class="card summary-kpi-card mb-3" id="hakedisListCard">
             <div class="card-header bg-transparent border-0 px-3 py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">

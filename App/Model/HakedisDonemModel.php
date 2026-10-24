@@ -146,4 +146,120 @@ class HakedisDonemModel extends Model
             'kdv_orani' => $kdvRate
         ];
     }
+
+    public function ozet(int $sozlesmeId): array
+    {
+        $db = $this->getDb();
+        $stmt = $db->prepare("SELECT firma_id FROM hakedis_sozlesmeler WHERE id = :id");
+        $stmt->execute([':id' => $sozlesmeId]);
+        $firmaId = (int) $stmt->fetchColumn();
+
+        return $this->ozetToplu($firmaId, [$sozlesmeId])[$sozlesmeId] ?? $this->bosOzet();
+    }
+
+    public function bosOzet(): array
+    {
+        return [
+            'tamamlanan_imalat' => 0.0, 'tamamlanan_ff' => 0.0, 'tamamlanan_adet' => 0,
+            'taslak_imalat' => 0.0, 'taslak_ff' => 0.0, 'taslak_adet' => 0,
+            'is_artis_tutari' => 0.0, 'is_artis_adet' => 0,
+        ];
+    }
+
+    public function ozetToplu(int $firmaId, ?array $sozlesmeIds = null): array
+    {
+        $db = $this->getDb();
+        $sonuc = [];
+
+        $filtre = '';
+        $params = [':firma_id' => $firmaId];
+        if ($sozlesmeIds !== null) {
+            if (!$sozlesmeIds) {
+                return [];
+            }
+            $ph = [];
+            foreach (array_values($sozlesmeIds) as $i => $id) {
+                $ph[] = ":sid{$i}";
+                $params[":sid{$i}"] = (int) $id;
+            }
+            $filtre = ' AND s.id IN (' . implode(',', $ph) . ')';
+        }
+
+        $stmt = $db->prepare("SELECT hd.*,
+            (SELECT SUM(m.miktar * k.teklif_edilen_birim_fiyat)
+             FROM hakedis_miktarlari m
+             JOIN hakedis_kalemleri k ON m.kalem_id = k.id
+             WHERE m.hakedis_donem_id = hd.id) as imalat_donem
+            FROM hakedis_donemleri hd
+            JOIN hakedis_sozlesmeler s ON s.id = hd.sozlesme_id
+            WHERE s.firma_id = :firma_id AND s.silinme_tarihi IS NULL AND hd.silinme_tarihi IS NULL{$filtre}");
+        $stmt->execute($params);
+
+        foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $row) {
+            $sid = (int) $row['sozlesme_id'];
+            $sonuc[$sid] = $sonuc[$sid] ?? $this->bosOzet();
+            $imalat = floatval($row['imalat_donem'] ?? 0);
+            $pn = 0;
+            if (floatval($row['asgari_ucret_temel']) > 0 || floatval($row['a1_katsayisi']) > 0) {
+                $a1 = floatval($row['a1_katsayisi'] ?: 0.28);
+                if (!empty($row['asgari_farki_dahil_edilsin']) && floatval($row['asgari_ucret_temel']) > 0) {
+                    $pn += $a1 * (floatval($row['asgari_ucret_guncel']) / floatval($row['asgari_ucret_temel']));
+                } else {
+                    $pn += $a1;
+                }
+            }
+            if (floatval($row['motorin_temel']) > 0) {
+                $pn += floatval($row['b1_katsayisi'] ?: 0.22) * (floatval($row['motorin_guncel']) / floatval($row['motorin_temel']));
+            }
+            if (floatval($row['ufe_genel_temel']) > 0) {
+                $pn += floatval($row['b2_katsayisi'] ?: 0.25) * (floatval($row['ufe_genel_guncel']) / floatval($row['ufe_genel_temel']));
+            }
+            if (floatval($row['makine_ekipman_temel']) > 0) {
+                $pn += floatval($row['c_katsayisi'] ?: 0.25) * (floatval($row['makine_ekipman_guncel']) / floatval($row['makine_ekipman_temel']));
+            }
+            $ff = $pn > 1 ? $imalat * 0.90 * ($pn - 1) : 0.0;
+
+            if ($row['durum'] === 'tamamlandi') {
+                $sonuc[$sid]['tamamlanan_imalat'] += $imalat;
+                $sonuc[$sid]['tamamlanan_ff'] += $ff;
+                $sonuc[$sid]['tamamlanan_adet']++;
+            } elseif ($row['durum'] === 'taslak') {
+                $sonuc[$sid]['taslak_imalat'] += $imalat;
+                $sonuc[$sid]['taslak_ff'] += $ff;
+                $sonuc[$sid]['taslak_adet']++;
+            }
+        }
+
+        try {
+            $stmt = $db->prepare("SELECT r.sozlesme_id, COALESCE(SUM(d.degisim_miktari * d.birim_fiyat), 0) AS tutar, COUNT(DISTINCT r.id) AS adet
+                FROM hakedis_is_revizyonlari r
+                JOIN hakedis_sozlesmeler s ON s.id = r.sozlesme_id
+                LEFT JOIN hakedis_is_revizyon_kalemleri d ON d.revizyon_id = r.id
+                WHERE s.firma_id = :firma_id AND s.silinme_tarihi IS NULL{$filtre}
+                GROUP BY r.sozlesme_id");
+            $stmt->execute($params);
+            foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $artis) {
+                $sid = (int) $artis['sozlesme_id'];
+                $sonuc[$sid] = $sonuc[$sid] ?? $this->bosOzet();
+                $sonuc[$sid]['is_artis_tutari'] = floatval($artis['tutar']);
+                $sonuc[$sid]['is_artis_adet'] = intval($artis['adet']);
+            }
+        } catch (\Throwable $e) {
+            error_log('HakedisDonemModel::ozetToplu is artis: ' . $e->getMessage());
+        }
+
+        return $sonuc;
+    }
+
+    public function firmaToplami(int $firmaId): array
+    {
+        $toplam = $this->bosOzet();
+        foreach ($this->ozetToplu($firmaId) as $ozet) {
+            foreach ($toplam as $k => $v) {
+                $toplam[$k] += $ozet[$k];
+            }
+        }
+
+        return $toplam;
+    }
 }

@@ -175,3 +175,8 @@ Tüm DataTables tablolarında satıra sağ tıklandığında modern floating con
   - Vue bileşenlerindeki tüm avatar/fotoğraf `<img>` etiketlerine `@error="obj.avatar = null"` (veya ilgili reaktif değişkeni null yapan) hata yakalayıcı eklenmelidir.
   - Görsel bulunamadığında veya bağlantı koptuğunda tarayıcının kırık görsel simgesi ve `alt` metni görünmemeli; `v-else` bloğundaki gradyanlı baş harf avatarı (`initials`) otomatik ve temiz bir şekilde devreye girmelidir.
 
+
+## 13. Terim Sözlüğü (Kısayol Adlandırmaları)
+- "mobil", "mobil SPA" veya "yönetici mobil" → `mobile-spa/` (yönetici mobil SPA, Vue). Bölüm 10 ve 12 bu uygulama için geçerlidir.
+- "personel mobil" veya "personel PWA" → `views/personel-pwa/` (personel PWA).
+- Kullanıcı yalnızca "mobil" dediğinde `mobile-spa/` anlaşılacak; `views/personel-pwa/`, `mobile/` ve `ersan_rn_test` (React Native prototip worktree'si) kapsam dışıdır.

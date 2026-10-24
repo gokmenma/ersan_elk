@@ -48,6 +48,18 @@ const summary = ref({
   pasif_bedel: 0,
   toplam_bedel: 0,
   toplam_bedel_formatted: '0,00 ₺',
+  is_artis_tutari: 0,
+  is_artis_tutari_formatted: '0,00 ₺',
+  is_artis_adet: 0,
+  guncel_hacim_formatted: '0,00 ₺',
+  tamamlanan_imalat_formatted: '0,00 ₺',
+  tamamlanan_ff_formatted: '0,00 ₺',
+  tamamlanan_adet: 0,
+  taslak_imalat_formatted: '0,00 ₺',
+  taslak_ff_formatted: '0,00 ₺',
+  taslak_adet: 0,
+  tamamlanan_yuzde: 0,
+  taslak_yuzde: 0,
 })
 
 const pagination = ref({ page: 1, limit: 20, total: 0, has_more: false })
@@ -321,40 +333,46 @@ function getStatusLabel(durum) {
         <div class="kpi-subtext">Aktif: {{ summary.aktif_sayisi }} | Biten: {{ summary.tamamlanan_sayisi }}</div>
       </div>
 
-      <!-- 2. Aktif Sözleşmeler -->
-      <div class="bento-kpi-card" :class="{ 'is-active': activeStatus === 'aktif' }" @click="activeStatus = 'aktif'">
-        <div class="kpi-card-header">
-          <span class="kpi-label">AKTİF SÖZLEŞMELER</span>
-          <div class="kpi-icon-pill bg-emerald-soft">
-            <TrendingUp :size="16" class="text-emerald" />
-          </div>
-        </div>
-        <div class="kpi-value text-emerald">{{ summary.aktif_bedel_formatted }}</div>
-        <div class="kpi-subtext">{{ summary.aktif_sayisi }} Aktif Sözleşme</div>
-      </div>
-
-      <!-- 3. Tamamlananlar -->
-      <div class="bento-kpi-card" :class="{ 'is-active': activeStatus === 'tamamlandi' }" @click="activeStatus = 'tamamlandi'">
-        <div class="kpi-card-header">
-          <span class="kpi-label">TAMAMLANANLAR</span>
-          <div class="kpi-icon-pill bg-indigo-soft">
-            <CheckCircle2 :size="16" class="text-indigo" />
-          </div>
-        </div>
-        <div class="kpi-value text-indigo">{{ summary.tamamlanan_bedel_formatted }}</div>
-        <div class="kpi-subtext">{{ summary.tamamlanan_sayisi }} Biten Sözleşme</div>
-      </div>
-
-      <!-- 4. Toplam Hacim -->
+      <!-- 2. Güncel Sözleşme Hacmi (iş artışı dahil) -->
       <div class="bento-kpi-card">
         <div class="kpi-card-header">
-          <span class="kpi-label">TOPLAM HACİM</span>
+          <span class="kpi-label">GÜNCEL HACİM</span>
           <div class="kpi-icon-pill bg-amber-soft">
             <Wallet :size="16" class="text-amber" />
           </div>
         </div>
-        <div class="kpi-value">{{ summary.toplam_bedel_formatted }}</div>
-        <div class="kpi-subtext">Genel Portföy Bedeli</div>
+        <div class="kpi-value">{{ summary.guncel_hacim_formatted }}</div>
+        <div class="kpi-subtext" :class="{ 'text-danger-ink': summary.is_artis_tutari < 0 }">
+          İş artışı: {{ summary.is_artis_tutari_formatted }}
+        </div>
+      </div>
+
+      <!-- 3. Tamamlanan Hakediş -->
+      <div class="bento-kpi-card">
+        <div class="kpi-card-header">
+          <span class="kpi-label">TAMAMLANAN HAKEDİŞ</span>
+          <div class="kpi-icon-pill bg-emerald-soft">
+            <CheckCircle2 :size="16" class="text-emerald" />
+          </div>
+        </div>
+        <div class="kpi-value text-emerald">{{ summary.tamamlanan_imalat_formatted }}</div>
+        <div class="segmented-track kpi-progress">
+          <span v-if="summary.tamamlanan_yuzde > 0" class="seg-pill seg-pill--emerald" :style="{ width: summary.tamamlanan_yuzde + '%' }"></span>
+          <span v-if="summary.taslak_yuzde > 0" class="seg-pill seg-pill--amber" :style="{ width: summary.taslak_yuzde + '%' }"></span>
+        </div>
+        <div class="kpi-subtext">{{ summary.tamamlanan_adet }} hakediş | FF: {{ summary.tamamlanan_ff_formatted }}</div>
+      </div>
+
+      <!-- 4. Taslak Hakediş -->
+      <div class="bento-kpi-card">
+        <div class="kpi-card-header">
+          <span class="kpi-label">TASLAK HAKEDİŞ</span>
+          <div class="kpi-icon-pill bg-indigo-soft">
+            <FileText :size="16" class="text-indigo" />
+          </div>
+        </div>
+        <div class="kpi-value text-indigo">{{ summary.taslak_imalat_formatted }}</div>
+        <div class="kpi-subtext">{{ summary.taslak_adet }} hakediş | FF: {{ summary.taslak_ff_formatted }}</div>
       </div>
     </section>
 
@@ -471,6 +489,33 @@ function getStatusLabel(durum) {
             <div v-if="contract.hakedis_sayisi > 0" class="hakedis-stat-pill">
               <span class="h-count">{{ contract.hakedis_sayisi }} Hakediş</span>
               <span class="h-sum">{{ contract.toplam_hakedis_tutari_formatted }}</span>
+            </div>
+          </div>
+
+          <div class="contract-hakedis-block">
+            <div class="segmented-track contract-progress">
+              <span v-if="contract.tamamlanan_yuzde > 0" class="seg-pill seg-pill--emerald" :style="{ width: contract.tamamlanan_yuzde + '%' }"></span>
+              <span v-if="contract.taslak_yuzde > 0" class="seg-pill seg-pill--amber" :style="{ width: contract.taslak_yuzde + '%' }"></span>
+            </div>
+            <div class="contract-progress-legend">
+              <span class="text-emerald">%{{ contract.tamamlanan_yuzde }} tamamlandı</span>
+              <span v-if="contract.taslak_yuzde > 0" class="text-amber">%{{ contract.taslak_yuzde }} taslak</span>
+            </div>
+            <div class="contract-hakedis-grid">
+              <div>
+                <span class="amount-label">İŞ ARTIŞI</span>
+                <strong>{{ contract.is_artis_adet ? contract.is_artis_tutari_formatted : '-' }}</strong>
+              </div>
+              <div>
+                <span class="amount-label">TAMAMLANAN</span>
+                <strong class="text-emerald">{{ contract.tamamlanan_imalat_formatted }}</strong>
+                <small>{{ contract.tamamlanan_adet }} hakediş</small>
+              </div>
+              <div>
+                <span class="amount-label">TASLAK</span>
+                <strong>{{ contract.taslak_imalat_formatted }}</strong>
+                <small>{{ contract.taslak_adet }} hakediş</small>
+              </div>
             </div>
           </div>
 
@@ -954,6 +999,55 @@ function getStatusLabel(durum) {
   font-size: 18px;
   font-weight: 800;
   color: #0f172a;
+}
+
+.text-danger-ink { color: var(--ds-danger-ink); }
+
+.kpi-progress {
+  margin: 6px 0 0;
+  height: 10px;
+}
+
+.contract-hakedis-block {
+  margin-top: 10px;
+}
+
+.contract-progress {
+  margin-bottom: 6px;
+  height: 10px;
+}
+
+.contract-progress-legend {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.contract-hakedis-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.contract-hakedis-grid > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.contract-hakedis-grid strong {
+  font-size: 12px;
+  color: var(--ds-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contract-hakedis-grid small {
+  font-size: 10px;
+  color: var(--ds-muted);
 }
 
 .hakedis-stat-pill {

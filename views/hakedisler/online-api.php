@@ -719,7 +719,8 @@ try {
                 "draw" => intval($_POST['draw'] ?? 0),
                 "recordsTotal" => intval($totalRecords),
                 "recordsFiltered" => intval($filteredRecords),
-                "data" => $data
+                "data" => $data,
+                "summary" => $model->ozet($sozlesme_id)
             ]);
             break;
 

@@ -53,7 +53,7 @@ class HakedisSozlesmeModel extends Model
                 3 => 's.sozlesme_tarihi',
                 4 => 's.isin_bitecegi_tarih',
                 5 => 's.sozlesme_bedeli',
-                6 => 's.durum'
+                10 => 's.durum'
             ];
 
             foreach ($columns as $i => $column) {
@@ -185,7 +185,7 @@ class HakedisSozlesmeModel extends Model
                 3 => 's.sozlesme_tarihi',
                 4 => 's.isin_bitecegi_tarih',
                 5 => 's.sozlesme_bedeli',
-                6 => 's.durum'
+                10 => 's.durum'
             ];
             foreach ($orders as $order) {
                 $colIdx = (int) ($order['column'] ?? 0);
@@ -209,6 +209,13 @@ class HakedisSozlesmeModel extends Model
         $stmt->bindValue(':length', (int) $length, PDO::PARAM_INT);
         $stmt->execute();
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $donemModel = new HakedisDonemModel();
+        $ozetler = $donemModel->ozetToplu($firma_id, array_column($data, 'id'));
+        foreach ($data as &$satir) {
+            $satir = array_merge($satir, $ozetler[(int) $satir['id']] ?? $donemModel->bosOzet());
+        }
+        unset($satir);
 
         return [
             "draw" => intval($draw),
@@ -248,6 +255,11 @@ class HakedisSozlesmeModel extends Model
                 'tamamlanan_bedel' => 0,
                 'pasif_bedel' => 0
             ];
+        }
+
+        $donemOzet = (new HakedisDonemModel())->firmaToplami($firma_id);
+        foreach ($donemOzet as $k => $v) {
+            $summary->$k = $v;
         }
 
         return $summary;

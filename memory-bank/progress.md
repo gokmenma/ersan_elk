@@ -1854,3 +1854,7 @@
 - [x] Sidebar rengi yükseltilmiş alanların `#2b2e34` yüzeyiyle eşitlendi.
 
 - [x] Koyu tema uyum turu: sidebar, topbar, kart, tablo, modal ve satır içi açık renkler tek yüzey sistemine bağlandı (Playwright ile giden-list, gelen-list, bordro, personel, cari, home taraması temiz).
+
+- Hakediş (sozlesme-detay): iş artışı, tamamlanan ve taslak hakediş özet kartları eklendi (HakedisDonemModel::ozet, online-api getHakedisler summary).
+- Hakediş sözleşme listesi (hakedisler/index): iş artışı, tamamlanan/taslak hakediş KPI kartları, tablo kolonları ve ilerleme çubuğu eklendi (HakedisDonemModel::ozetToplu).
+- Mobil SPA (SozlesmeHakedisView + public/api/sozlesme-hakedis.php contracts_list): 4 KPI kart (güncel hacim/iş artışı, tamamlanan, taslak hakediş) ve sözleşme kartlarında segmentli ilerleme çubuğu eklendi.
