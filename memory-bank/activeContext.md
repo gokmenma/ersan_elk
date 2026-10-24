@@ -3113,3 +3113,7 @@
 - Galeri görseli artık nesne token eşleşmesine bağlı kalmadan doğrudan görsel indeksinden tam ekran önizlemeyi açıyor. Önizlemeye mobil sağ/sol kaydırma, klavye okları, Escape ile kapatma ve çoklu görseller için gezinme kontrolleri eklendi.
 - Tam ekran sahnesi viewport ölçülerine sabitlendi; görsel en-boy oranını koruyarak ekran içine sığıyor ve sağ üstteki yüksek kontrastlı kapatma düğmesi safe-area içinde daima görünür kalıyor.
 - Çok sayıda fotoğrafta galeri sheet gövdesinin kaymaması giderildi; gövde flex içinde küçülebilen bağımsız bir dikey scroll alanına ve iOS momentum kaydırmasına geçirildi.
+# 2026-10-24 — Mobil Nöbet Onay takvim hizalaması
+
+- Nöbet Onay sayfasındaki aylık takvimin ayın 1. gününü daima Pazartesi sütunundan başlatması giderildi.
+- Pazartesi başlangıçlı hafta düzeninde ayın gerçek ilk gününe göre boş ön hücreler üretilerek gün numaraları doğru hafta günleriyle hizalandı.

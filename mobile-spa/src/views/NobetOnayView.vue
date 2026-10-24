@@ -99,6 +99,29 @@ const currentMonthLabel = computed(() => {
   return `${monthNames[nobetState.selectedMonth - 1]} ${nobetState.selectedYear}`
 })
 
+// Takvim Pazartesi ile başlar. Ayın ilk gününden önceki sütunları boş
+// bırakarak gün numaralarının gerçek hafta günleriyle hizalanmasını sağla.
+const calendarCells = computed(() => {
+  const firstDay = new Date(
+    nobetState.selectedYear,
+    nobetState.selectedMonth - 1,
+    1,
+  ).getDay()
+  const leadingEmptyCellCount = (firstDay + 6) % 7
+
+  return [
+    ...Array.from({ length: leadingEmptyCellCount }, (_, index) => ({
+      key: `empty-${index}`,
+      isEmpty: true,
+    })),
+    ...calendarDays.value.map(day => ({
+      ...day,
+      key: day.date,
+      isEmpty: false,
+    })),
+  ]
+})
+
 // KPI Kartları
 const kpiStats = computed(() => nobetState.stats)
 
@@ -864,29 +887,35 @@ onMounted(() => {
         </div>
 
         <div class="nobet-cal-days-grid">
-          <button
-            v-for="d in calendarDays"
-            :key="d.date"
-            type="button"
-            class="nobet-cal-day-cell"
-            :class="{
-              'is-weekend': d.is_weekend,
-              'has-shifts': d.duty_count > 0,
-              'is-selected': selectedCalendarDate === d.date
-            }"
-            @click="selectedCalendarDate = d.date"
-          >
-            <span class="nobet-cal-day-num">{{ d.day }}</span>
-            <div v-if="d.duty_count > 0" class="nobet-cal-dots">
-              <span
-                v-for="(s, idx) in d.shifts.slice(0, 3)"
-                :key="idx"
-                class="nobet-cal-dot"
-                :class="s.yonetici_onayi ? 'is-green' : 'is-amber'"
-              ></span>
-              <small v-if="d.duty_count > 3">+{{ d.duty_count - 3 }}</small>
-            </div>
-          </button>
+          <template v-for="cell in calendarCells" :key="cell.key">
+            <span
+              v-if="cell.isEmpty"
+              class="nobet-cal-day-placeholder"
+              aria-hidden="true"
+            ></span>
+            <button
+              v-else
+              type="button"
+              class="nobet-cal-day-cell"
+              :class="{
+                'is-weekend': cell.is_weekend,
+                'has-shifts': cell.duty_count > 0,
+                'is-selected': selectedCalendarDate === cell.date
+              }"
+              @click="selectedCalendarDate = cell.date"
+            >
+              <span class="nobet-cal-day-num">{{ cell.day }}</span>
+              <div v-if="cell.duty_count > 0" class="nobet-cal-dots">
+                <span
+                  v-for="(s, idx) in cell.shifts.slice(0, 3)"
+                  :key="idx"
+                  class="nobet-cal-dot"
+                  :class="s.yonetici_onayi ? 'is-green' : 'is-amber'"
+                ></span>
+                <small v-if="cell.duty_count > 3">+{{ cell.duty_count - 3 }}</small>
+              </div>
+            </button>
+          </template>
         </div>
       </div>
 
@@ -1728,6 +1757,9 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 4px;
+}
+.nobet-cal-day-placeholder {
+  min-height: 48px;
 }
 .nobet-cal-day-cell {
   background: #f8fafc;

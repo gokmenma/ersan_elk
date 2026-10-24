@@ -1865,3 +1865,7 @@
 - [x] Dokunmatik kaydırma, klavye gezinmesi, sayaç, indirme ve kapatma davranışları tamamlandı.
 - [x] Büyük görselin viewport dışına taşması giderildi ve sabit, yüksek kontrastlı kapatma kontrolü eklendi.
 - [x] Çok fotoğraflı galeri sheet'inde dokunmatik dikey scroll etkinleştirildi.
+# 2026-10-24 — Mobil Nöbet Onay takvim hizalaması
+
+- [x] Aylık takvime Pazartesi başlangıçlı gerçek gün ofseti eklendi.
+- [x] Gün numaralarının hafta başlıklarıyla kaymasına neden olan sıfır ofsetli grid düzeltildi.
