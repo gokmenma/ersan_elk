@@ -914,21 +914,23 @@ if (!empty($_yetkiliKullanicilar)) {
 
         async setAdminStatus(status) {
             const statusColors = { cevrimici: '#22c55e', mesgul: '#f59e0b', cevrimdisi: '#94a3b8' };
-            this.adminStatus = status;
-
-            // Dot güncelle
-            const dot = document.getElementById('achat-admin-status-dot');
-            if (dot) dot.style.background = statusColors[status] || '#22c55e';
-
             // Menüyü kapat
             document.getElementById('achat-status-menu').style.display = 'none';
             this.statusMenuOpen = false;
 
             // API'ye kaydet
             try {
-                await this.apiRequest('set-admin-status', { status: status });
+                const response = await this.apiRequest('set-admin-status', { status: status });
+                this.adminStatus = response.admin_status || status;
+                const dot = document.getElementById('achat-admin-status-dot');
+                if (dot) dot.style.background = statusColors[this.adminStatus] || '#22c55e';
             } catch (e) {
                 console.error('Status update error:', e);
+                await this.loadAdminStatus();
+                if (typeof Toastify !== 'undefined') {
+                    Toastify({ text: e.message || 'Durum kaydedilemedi', duration: 2500, gravity: 'top', position: 'right', style: { background: '#ef4444' } }).showToast();
+                }
+                return;
             }
 
             if (typeof Toastify !== 'undefined') {
@@ -1130,6 +1132,11 @@ if (!empty($_yetkiliKullanicilar)) {
                 this.closeChatWindow(konusmaId);
                 this.allConversations = this.allConversations.filter(c => c.id != konusmaId);
                 this.applyFilterAndSearch();
+                const remainingUnread = this.allConversations.reduce((total, conv) => {
+                    if (conv.durum !== 'acik' && conv.durum !== 'beklemede') return total;
+                    return total + (parseInt(conv.okunmamis_yonetici) || 0);
+                }, 0);
+                this.updateBadges(remainingUnread);
 
                 if (typeof Toastify !== 'undefined') {
                     const safeMsg = typeof 'Konuşma silindi' === 'string' ? 'Konuşma silindi' : String('Konuşma silindi');
@@ -1715,8 +1722,11 @@ if (!empty($_yetkiliKullanicilar)) {
                 method: 'POST',
                 body: formData
             });
-
-            return await response.json();
+            const payload = await response.json().catch(() => ({ status: 'error', message: 'Sunucudan geçersiz yanıt alındı' }));
+            if (!response.ok || payload.status !== 'success') {
+                throw new Error(payload.message || 'Canlı destek işlemi tamamlanamadı');
+            }
+            return payload;
         },
 
         scrollToBottom(konusmaId) {

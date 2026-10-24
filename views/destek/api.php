@@ -41,14 +41,20 @@ if ($permissionPolicy->isReady()) {
     exit;
 }
 $destekModel = new DestekModel();
+$firmaId = (int) ($_SESSION['firma_id'] ?? 0);
+if ($firmaId <= 0) {
+    http_response_code(400);
+    echo json_encode(['status' => 'error', 'message' => 'Lütfen önce firma seçin.'], JSON_UNESCAPED_UNICODE);
+    exit;
+}
 
 try {
     switch ($action) {
 
         // Aktif konuşmaları listele
         case 'get-conversations':
-            $conversations = $destekModel->getActiveConversations();
-            $totalUnread = $destekModel->getTotalUnreadForAdmin();
+            $conversations = $destekModel->getActiveConversations($firmaId);
+            $totalUnread = $destekModel->getTotalUnreadForAdmin($firmaId);
 
             echo json_encode([
                 'status' => 'success',
@@ -60,7 +66,7 @@ try {
         // Tüm konuşmaları listele (filtrelenebilir)
         case 'get-all-conversations':
             $durum = $_POST['durum'] ?? null;
-            $conversations = $destekModel->getAllConversations($durum);
+            $conversations = $destekModel->getAllConversations($durum, 50, $firmaId);
 
             echo json_encode([
                 'status' => 'success',
@@ -77,7 +83,8 @@ try {
                 throw new Exception('Konuşma ID gerekli');
             }
 
-            $conversation = $destekModel->getConversation($konusmaId);
+            $conversation = $destekModel->getConversation($konusmaId, $firmaId);
+            if (!$conversation) throw new Exception('Konuşma bulunamadı');
             $messages = $destekModel->getMessages($konusmaId, $afterId);
 
             // Mesajları okundu olarak işaretle
@@ -101,6 +108,9 @@ try {
             if (!$konusmaId || empty($mesaj)) {
                 throw new Exception('Konuşma ID ve mesaj gerekli');
             }
+            if (!$destekModel->getConversation($konusmaId, $firmaId)) {
+                throw new Exception('Konuşma bulunamadı');
+            }
 
             $userId = $_SESSION['user_id'] ?? $_SESSION['user']->id ?? 0;
 
@@ -120,11 +130,11 @@ try {
 
             // Yönetici mesaj attığında durumu otomatikman çevrimiçi yap
             $settingsModel = new \App\Model\SettingsModel();
-            $settingsModel->upsertSetting('canli_destek_admin_durum', 'cevrimici');
+            $settingsModel->upsertMultipleSettings(['canli_destek_admin_durum' => 'cevrimici'], $firmaId, null);
 
             // Push bildirim gönder
             try {
-                $conversation = $destekModel->getConversation($konusmaId);
+                $conversation = $destekModel->getConversation($konusmaId, $firmaId);
                 if ($conversation) {
                     $pushService = new PushNotificationService();
                     $pushService->sendToPersonel($conversation->personel_id, [
@@ -151,6 +161,9 @@ try {
             if (!$konusmaId) {
                 throw new Exception('Konuşma ID gerekli');
             }
+            if (!$destekModel->getConversation($konusmaId, $firmaId)) {
+                throw new Exception('Konuşma bulunamadı');
+            }
 
             if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
                 throw new Exception('Resim dosyası gerekli');
@@ -166,7 +179,7 @@ try {
 
             // Yönetici mesaj attığında durumu otomatikman çevrimiçi yap
             $settingsModel = new \App\Model\SettingsModel();
-            $settingsModel->upsertSetting('canli_destek_admin_durum', 'cevrimici');
+            $settingsModel->upsertMultipleSettings(['canli_destek_admin_durum' => 'cevrimici'], $firmaId, null);
 
             echo json_encode([
                 'status' => 'success',
@@ -183,6 +196,9 @@ try {
             if (!$konusmaId || !in_array($durum, ['acik', 'beklemede', 'cozuldu', 'kapali'])) {
                 throw new Exception('Geçersiz parametreler');
             }
+            if (!$destekModel->getConversation($konusmaId, $firmaId)) {
+                throw new Exception('Konuşma bulunamadı');
+            }
 
             $destekModel->updateStatus($konusmaId, $durum);
 
@@ -196,7 +212,7 @@ try {
 
         // Okunmamış sayısını getir
         case 'get-unread-count':
-            $totalUnread = $destekModel->getTotalUnreadForAdmin();
+            $totalUnread = $destekModel->getTotalUnreadForAdmin($firmaId);
             echo json_encode([
                 'status' => 'success',
                 'count' => $totalUnread
@@ -213,9 +229,9 @@ try {
                 $lastCheck = date('Y-m-d H:i:s', strtotime('-5 seconds'));
             }
 
-            $newMessages = $destekModel->checkNewMessagesForAdmin($lastCheck);
-            $totalUnread = $destekModel->getTotalUnreadForAdmin();
-            $conversations = $destekModel->getAllConversations();
+            $newMessages = $destekModel->checkNewMessagesForAdmin($lastCheck, $firmaId);
+            $totalUnread = $destekModel->getTotalUnreadForAdmin($firmaId);
+            $conversations = $destekModel->getAllConversations(null, 50, $firmaId);
 
             echo json_encode([
                 'status' => 'success',
@@ -233,6 +249,10 @@ try {
 
             if (!$konusmaId) {
                 throw new Exception('Konuşma ID gerekli');
+            }
+
+            if (!$destekModel->getConversation($konusmaId, $firmaId)) {
+                throw new Exception('Konuşma bulunamadı');
             }
 
             $messages = $destekModel->getMessages($konusmaId, $afterId);
@@ -257,6 +277,10 @@ try {
                 throw new Exception('Konuşma ID gerekli');
             }
 
+            if (!$destekModel->getConversation($konusmaId, $firmaId)) {
+                throw new Exception('Konuşma bulunamadı');
+            }
+
             $destekModel->softDeleteConversation($konusmaId);
 
             echo json_encode(['status' => 'success']);
@@ -268,13 +292,14 @@ try {
             if (!in_array($status, ['cevrimici', 'mesgul', 'cevrimdisi'])) {
                 $status = 'cevrimici';
             }
-            $settingsModel->upsertSetting('canli_destek_admin_durum', $status);
-            echo json_encode(['status' => 'success']);
+            $saved = $settingsModel->upsertMultipleSettings(['canli_destek_admin_durum' => $status], $firmaId, null);
+            if (!$saved) throw new Exception('Durum kaydedilemedi');
+            echo json_encode(['status' => 'success', 'admin_status' => $status]);
             break;
 
         case 'get-admin-status':
             $settingsModel = new \App\Model\SettingsModel();
-            $adminStatus = $settingsModel->getSettings('canli_destek_admin_durum') ?: 'cevrimici';
+            $adminStatus = $settingsModel->getSettings('canli_destek_admin_durum', $firmaId) ?: 'cevrimici';
             echo json_encode(['status' => 'success', 'admin_status' => $adminStatus]);
             break;
 

@@ -178,7 +178,7 @@ try {
         if ($message === '' && !$upload) supportResponse(['success' => false, 'message' => 'Mesaj veya görsel ekleyin.'], 422);
         if ($message === '') $message = '📷 Görsel';
         $messageId = $model->sendMessage($id, ['tip' => 'yonetici', 'id' => (int) $_SESSION['user_id']], $message, $upload['url'] ?? null, $upload['type'] ?? null);
-        $settings->upsertSetting('canli_destek_admin_durum', 'cevrimici');
+        $settings->upsertMultipleSettings(['canli_destek_admin_durum' => 'cevrimici'], $firmaId, null);
         try {
             (new PushNotificationService())->sendToPersonel((int) $conversation->personel_id, [
                 'title' => 'Canlı Destek', 'body' => mb_substr($message, 0, 100), 'url' => '?page=ana-sayfa', 'tag' => 'destek-' . $id,
@@ -200,7 +200,7 @@ try {
     if ($method === 'POST' && $action === 'set_availability') {
         $status = (string) ($input['status'] ?? '');
         if (!in_array($status, ['cevrimici', 'mesgul', 'cevrimdisi'], true)) supportResponse(['success' => false, 'message' => 'Geçersiz müsaitlik durumu.'], 422);
-        $settings->upsertSetting('canli_destek_admin_durum', $status);
+        $settings->upsertMultipleSettings(['canli_destek_admin_durum' => $status], $firmaId, null);
         supportResponse(['success' => true, 'availability' => $status]);
     }
 

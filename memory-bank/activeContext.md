@@ -1,5 +1,11 @@
 # Active Context
 
+## Masaüstü Canlı Destek — Silinen Konuşma Rozeti ve Yönetici Durumu (2026-10-24)
+- Silinen konuşmaların `okunmamis_yonetici` toplamına dahil kalması düzeltildi: toplam sorgusu artık `deleted_at IS NULL` ve seçili firma kapsamını uygular; soft delete sırasında iki okunmamış sayaç da sıfırlanır.
+- Widget silme sonrasında kalan konuşmaların okunmamış toplamını istemcide hemen yeniden hesaplayarak üst ve başlık rozetlerini beklemeden temizler.
+- Yönetici çevrimiçi/meşgul/çevrimdışı durumu global ayar yerine seçili firmanın `canli_destek_admin_durum` kaydına yazılır ve aynı firma kaydından okunur. Başarısız API yanıtları artık başarı gibi gösterilmez; eski durum yeniden yüklenir.
+- Masaüstü canlı destek liste, polling, detay, mesaj, durum ve silme yollarına firma sahipliği doğrulaması eklendi.
+
 ## Mobil SPA — Canlı Destek Yönetimi (2026-10-24)
 - Mevcut `destek_konusmalar` / `destek_mesajlar` altyapısına bağlı yönetici ekranı `/canli-destek` eklendi: firma izoleli konuşma listesi, KPI özeti, arama/durum filtreleri, okunmamış sayaçları, sohbet polling'i, görsel gönderme, okundu bilgisi, konuşma durumu ve yönetici müsaitliği.
 - Mobil API `mobile-spa/public/api/support.php`; konuşma ID'leri `Security::encrypt/decrypt`, POST işlemleri CSRF ve bütün aksiyonlar `canli_sohbet_ayarlari_sekmesi` Gate politikasıyla korunuyor. Personel görselleri yalnız merkezi `/api/personnel-photo.php` endpoint'inden sunuluyor.
@@ -3129,3 +3135,10 @@
 
 - Mobil Nöbet Onay planlama formunun gönderdiği `hafta_ici` değeri, `nobetler.nobet_tipi` ENUM sözleşmesindeki `standart` değerine sunucu tarafında eşlendi; kayıt sırasında oluşan SQL veri kesilmesi hatası giderildi.
 - Planlamayı Kaydet aksiyonu belirgin, tam genişlikte birincil butona dönüştürüldü ve işlem süresince yükleniyor durumu eklendi.
+
+# 2026-10-24 — Personel PWA iPhone kaçak fotoğraf gönderimi
+
+- iOS/WebKit'te ardışık multipart fotoğraf yüklemelerinin service worker `fetch` vekilinde kesilerek sahte çevrimdışı yanıta dönüşmesi giderildi.
+- API yazma ve dosya yükleme istekleri service worker `respondWith` hattından çıkarılıp doğrudan tarayıcı ağ katmanına bırakıldı; GET çevrimdışı fallback davranışı korundu.
+- Güvenilir ve idempotent aktarım isteklerine, `AbortError` dışındaki geçici ağ kopmalarında 700 ms sonra tek otomatik yeniden deneme eklendi.
+- Service worker/kuyruk önbellek sürümü `33` olarak artırıldı; cihazdaki mevcut kuyruk ve fotoğraf ilerlemesi korunuyor.

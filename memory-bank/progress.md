@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-10-24 — Masaüstü Canlı Destek Rozet/Durum Düzeltmesi
+- [x] Soft-delete edilmiş konuşmalar okunmamış rozet toplamından çıkarıldı ve silme anında rozet güncellendi.
+- [x] Yönetici müsaitlik durumu firma bazlı kalıcı ayara bağlandı.
+- [x] Widget API hata yanıtlarını yakalayıp durumu geri yükleyecek şekilde düzeltildi.
+- [x] Masaüstü canlı destek işlemlerine firma kapsamı ve konuşma sahipliği kontrolleri eklendi.
+
 ## 2026-10-24 — Mobil SPA Canlı Destek Modülü
 - [x] Mevcut canlı sohbet verileriyle çalışan Soft Bento yönetici ekranı, rota, servis ve yetkili menü girişi eklendi.
 - [x] Firma izolasyonu, şifreli konuşma kimlikleri, CSRF, Gate/politika kontrolleri ve merkezi personel fotoğraf servisi uygulandı.
@@ -1882,3 +1888,11 @@
 - [x] `hafta_ici` istemci değeri veritabanındaki `standart` nöbet tipine güvenli biçimde eşlendi.
 - [x] Geçersiz nöbet tipi değerleri API katmanında reddedilir hale getirildi.
 - [x] Planlama kaydetme aksiyonu 44px dokunma alanlı ana buton ve yükleniyor göstergesi kazandı.
+
+# 2026-10-24 — Personel PWA iPhone kaçak fotoğraf gönderimi
+
+- [x] API POST/dosya yükleme istekleri iOS'ta kopmaya neden olan service worker ağ vekilinden çıkarıldı.
+- [x] Güvenilir aktarımda geçici ağ hatası için tek kontrollü yeniden deneme eklendi.
+- [x] Service worker sürümü artırılarak güncel kuyruk kodunun cihazlara ulaşması sağlandı.
+- [x] JavaScript sözdizimi ve `git diff --check` doğrulamaları geçti.
+- [ ] Playwright tarayıcı paketi ortamda kurulu olmadığı için mevcut browser entegrasyon testi çalıştırılamadı; gerçek iPhone doğrulaması gerekli.

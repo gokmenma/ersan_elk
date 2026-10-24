@@ -391,15 +391,30 @@
         // action hem gövdede hem adreste gönderilir: gövde ayrıştırılamazsa
         // sunucu isteği yine de doğru uca yönlendirebilir, ayrıca erişim
         // kayıtlarında hangi işlemin denendiği görünür.
-        var controller = new AbortController();
-        var timer = setTimeout(function () { controller.abort(); }, 120000);
-        return fetch(API_URL + "?action=" + encodeURIComponent(action), {
-            signal: controller.signal,
-            method: "POST",
-            body: fd,
-            credentials: "same-origin",
-            cache: "no-store",
-        }).then(function (yanit) {
+        function fetchDene(deneme) {
+            var controller = new AbortController();
+            var timer = setTimeout(function () { controller.abort(); }, 120000);
+            return fetch(API_URL + "?action=" + encodeURIComponent(action), {
+                signal: controller.signal,
+                method: "POST",
+                body: fd,
+                credentials: "same-origin",
+                cache: "no-store",
+            }).catch(function (e) {
+                // iOS Safari, ozellikle art arda fotograf yuklerken, saglikli
+                // baglantida dahi tek bir multipart istegini TypeError ile
+                // dusurebiliyor. Guvenilir aktarim anahtarlari sunucu tarafinda
+                // idempotent oldugu icin bir kez yeniden denemek guvenlidir.
+                if (deneme === 0 && (!e || e.name !== "AbortError")) {
+                    return new Promise(function (resolve) {
+                        setTimeout(resolve, 700);
+                    }).then(function () { return fetchDene(1); });
+                }
+                throw e;
+            }).finally(function () { clearTimeout(timer); });
+        }
+
+        return fetchDene(0).then(function (yanit) {
             if (yanit.redirected || /text\/html/i.test(yanit.headers.get("Content-Type") || "")) return { sonuc: "oturum", mesaj: "Oturumu yenilemek için yeniden giriş yapın." };
             if (yanit.status === 401 || yanit.status === 403) return { sonuc: "oturum", mesaj: "Oturum veya kayıt yetkisi doğrulanamadı [" + etiket + "]" };
             if (!yanit.ok) {
@@ -426,7 +441,7 @@
         }).catch(function (e) {
             var sebep = (e && e.message) || "bilinmeyen";
             return { sonuc: "bekle", mesaj: "Ağ hatası: " + sebep + " [" + etiket + "]" };
-        }).finally(function () { clearTimeout(timer); });
+        });
     }
 
     function mbMetni(blob) {

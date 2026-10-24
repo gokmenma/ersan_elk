@@ -143,15 +143,21 @@ class DestekModel extends Model
     /**
      * Aktif konuşmaları getir (yönetici için - okunmamış dahil)
      */
-    public function getActiveConversations()
+    public function getActiveConversations(?int $firmaId = null)
     {
         $sql = "SELECT dk.*, p.adi_soyadi as personel_adi, p.resim_yolu, p.departman
                 FROM destek_konusmalar dk
                 LEFT JOIN personel p ON p.id = dk.personel_id
-                WHERE dk.durum IN ('acik', 'beklemede') AND dk.deleted_at IS NULL
+                WHERE dk.durum IN ('acik', 'beklemede') AND dk.deleted_at IS NULL";
+        $params = [];
+        if ($firmaId !== null) {
+            $sql .= " AND p.firma_id = ?";
+            $params[] = $firmaId;
+        }
+        $sql .= "
                 ORDER BY dk.okunmamis_yonetici DESC, dk.son_mesaj_zamani DESC";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute();
+        $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
@@ -160,7 +166,9 @@ class DestekModel extends Model
      */
     public function softDeleteConversation($id)
     {
-        $sql = "UPDATE destek_konusmalar SET deleted_at = NOW() WHERE id = ?";
+        $sql = "UPDATE destek_konusmalar
+                SET deleted_at = NOW(), okunmamis_yonetici = 0, okunmamis_personel = 0
+                WHERE id = ?";
         $stmt = $this->db->prepare($sql);
         return $stmt->execute([$id]);
     }
@@ -188,11 +196,19 @@ class DestekModel extends Model
     /**
      * Toplam okunmamış mesaj sayısı (yönetici için)
      */
-    public function getTotalUnreadForAdmin()
+    public function getTotalUnreadForAdmin(?int $firmaId = null)
     {
-        $sql = "SELECT SUM(okunmamis_yonetici) as toplam FROM destek_konusmalar WHERE durum IN ('acik', 'beklemede')";
+        $sql = "SELECT COALESCE(SUM(dk.okunmamis_yonetici), 0) as toplam
+                FROM destek_konusmalar dk
+                LEFT JOIN personel p ON p.id = dk.personel_id
+                WHERE dk.durum IN ('acik', 'beklemede') AND dk.deleted_at IS NULL";
+        $params = [];
+        if ($firmaId !== null) {
+            $sql .= " AND p.firma_id = ?";
+            $params[] = $firmaId;
+        }
         $stmt = $this->db->prepare($sql);
-        $stmt->execute();
+        $stmt->execute($params);
         $result = $stmt->fetch(PDO::FETCH_OBJ);
         return $result ? (int) $result->toplam : 0;
     }
@@ -353,7 +369,7 @@ class DestekModel extends Model
     /**
      * Yönetici için yeni mesajları kontrol et (SSE polling)
      */
-    public function checkNewMessagesForAdmin($lastCheckTime)
+    public function checkNewMessagesForAdmin($lastCheckTime, ?int $firmaId = null)
     {
         $sql = "SELECT dk.id as konusma_id, dk.personel_id, dk.okunmamis_yonetici,
                        p.adi_soyadi as personel_adi, p.resim_yolu,
@@ -362,10 +378,17 @@ class DestekModel extends Model
                 JOIN destek_konusmalar dk ON dk.id = dm.konusma_id
                 LEFT JOIN personel p ON p.id = dk.personel_id
                 WHERE dm.created_at > ? AND dm.gonderen_tip = 'personel'
+                  AND dk.deleted_at IS NULL";
+        $params = [$lastCheckTime];
+        if ($firmaId !== null) {
+            $sql .= " AND p.firma_id = ?";
+            $params[] = $firmaId;
+        }
+        $sql .= "
                 ORDER BY dm.created_at DESC
                 LIMIT 10";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$lastCheckTime]);
+        $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 

@@ -7,7 +7,7 @@
 // temizlenir hem de importScripts ve precache URL'leri değişir. Kayıt tarafında
 // updateViaCache="none" kullanılarak worker bağımlılıklarının eski HTTP
 // önbelleğinden gelmesi de engellenir.
-const KUYRUK_SURUM = "32";
+const KUYRUK_SURUM = "33";
 const CACHE_NAME = "personel-pwa-v" + KUYRUK_SURUM;
 const SAYFA_CACHE = "personel-pwa-sayfa-v5";
 const OFFLINE_URL = "offline.html";
@@ -206,8 +206,18 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // API isteklerini her zaman networkten al
-  if (url.includes("api.php") || url.includes("kacak-foto") || url.includes("foto-goruntule")) {
+  // iOS/WebKit, service worker uzerinden art arda gecirilen multipart POST
+  // govdelerini zaman zaman PHP'ye ulasmadan iptal ediyor. Yazma/yukleme
+  // isteklerini respondWith ile vekillemeyip dogrudan tarayicinin ag
+  // katmanina birak. Kuyruk zaten cevrimdisi ve tekrar deneme durumlarini
+  // yonetiyor; GET isteklerinde ise cevrimdisi JSON fallback'i korunur.
+  const apiIstegi = url.includes("api.php") || url.includes("kacak-foto") || url.includes("foto-goruntule");
+  if (apiIstegi && event.request.method !== "GET") {
+    return;
+  }
+
+  // API GET isteklerini her zaman networkten al
+  if (apiIstegi) {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
