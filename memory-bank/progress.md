@@ -1858,3 +1858,8 @@
 - Hakediş (sozlesme-detay): iş artışı, tamamlanan ve taslak hakediş özet kartları eklendi (HakedisDonemModel::ozet, online-api getHakedisler summary).
 - Hakediş sözleşme listesi (hakedisler/index): iş artışı, tamamlanan/taslak hakediş KPI kartları, tablo kolonları ve ilerleme çubuğu eklendi (HakedisDonemModel::ozetToplu).
 - Mobil SPA (SozlesmeHakedisView + public/api/sozlesme-hakedis.php contracts_list): 4 KPI kart (güncel hacim/iş artışı, tamamlanan, taslak hakediş) ve sözleşme kartlarında segmentli ilerleme çubuğu eklendi.
+# 2026-10-24 — Mobil Kaçak Kontrol fotoğraf galerisi
+
+- [x] Kart fotoğraf badge'i galeri açma işlemine bağlandı.
+- [x] Galeri görsellerinin tam ekran büyütülmesi güvenilir indeks tabanlı akışa geçirildi.
+- [x] Dokunmatik kaydırma, klavye gezinmesi, sayaç, indirme ve kapatma davranışları tamamlandı.

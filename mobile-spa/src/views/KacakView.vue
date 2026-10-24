@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import {
   AlertCircle,
   Award,
@@ -134,6 +134,7 @@ const galleryPhotos = ref([])
 const galleryLoading = ref(false)
 const lightboxOpen = ref(false)
 const lightboxIndex = ref(0)
+const lightboxTouchStartX = ref(null)
 
 // Aksiyon Modalı (Onayla / Reddet / İptal / Geri Al)
 const actionModal = ref({
@@ -285,18 +286,17 @@ async function openGallery(token) {
 }
 
 function closeGallery() {
+  closeLightbox()
   galleryOpen.value = false
   galleryPhotos.value = []
 }
 
 const imageOnlyPhotos = computed(() => galleryPhotos.value.filter((p) => !p.pdf))
 
-function openLightbox(photo) {
-  const idx = imageOnlyPhotos.value.findIndex((p) => p.token === photo.token)
-  if (idx !== -1) {
-    lightboxIndex.value = idx
-    lightboxOpen.value = true
-  }
+function openLightbox(index) {
+  if (!imageOnlyPhotos.value[index]) return
+  lightboxIndex.value = index
+  lightboxOpen.value = true
 }
 
 function closeLightbox() {
@@ -312,6 +312,28 @@ function prevPhoto() {
   if (!imageOnlyPhotos.value.length) return
   lightboxIndex.value =
     (lightboxIndex.value - 1 + imageOnlyPhotos.value.length) % imageOnlyPhotos.value.length
+}
+
+function handleLightboxTouchStart(event) {
+  lightboxTouchStartX.value = event.changedTouches?.[0]?.clientX ?? null
+}
+
+function handleLightboxTouchEnd(event) {
+  if (lightboxTouchStartX.value === null) return
+  const endX = event.changedTouches?.[0]?.clientX
+  if (typeof endX !== 'number') return
+
+  const deltaX = endX - lightboxTouchStartX.value
+  lightboxTouchStartX.value = null
+  if (Math.abs(deltaX) < 45) return
+  deltaX < 0 ? nextPhoto() : prevPhoto()
+}
+
+function handleGalleryKeydown(event) {
+  if (!lightboxOpen.value) return
+  if (event.key === 'Escape') closeLightbox()
+  if (event.key === 'ArrowRight') nextPhoto()
+  if (event.key === 'ArrowLeft') prevPhoto()
 }
 
 // Aksiyon Başlat
@@ -428,7 +450,10 @@ function getStatusBadge(item) {
 onMounted(() => {
   initDates()
   loadData()
+  window.addEventListener('keydown', handleGalleryKeydown)
 })
+
+onUnmounted(() => window.removeEventListener('keydown', handleGalleryKeydown))
 </script>
 
 <template>
@@ -792,10 +817,16 @@ onMounted(() => {
               <span v-if="item.endeks" class="mini-tag">
                 Endeks: {{ item.endeks }}
               </span>
-              <span v-if="item.foto_sayisi > 0" class="mini-tag mini-tag--foto">
+              <button
+                v-if="item.foto_sayisi > 0"
+                type="button"
+                class="mini-tag mini-tag--foto"
+                :aria-label="`${item.foto_sayisi} fotoğrafı önizle`"
+                @click.stop="openGallery(item.token)"
+              >
                 <ImageIcon :size="12" />
                 {{ item.foto_sayisi }} Fotoğraf
-              </span>
+              </button>
               <a
                 v-if="item.foto_sayisi > 0"
                 :href="kacakApi.getZipUrl(item.token)"
@@ -1106,7 +1137,8 @@ onMounted(() => {
               v-else
               type="button"
               class="w-full h-full p-0 border-0 bg-transparent"
-              @click="openLightbox(photo)"
+              :aria-label="`${photo.ad || 'Fotoğraf'} görselini büyüt`"
+              @click="openLightbox(imageOnlyPhotos.indexOf(photo))"
             >
               <img
                 :src="photo.thumbnail_url"
@@ -1126,8 +1158,13 @@ onMounted(() => {
     <!-- Lightbox Tam Ekran Görünüm -->
     <div
       v-if="lightboxOpen && imageOnlyPhotos[lightboxIndex]"
-      class="fixed inset-0 z-[120] bg-black/95 flex flex-col justify-between p-4"
+      class="photo-lightbox"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Fotoğraf önizleme"
       @click.self="closeLightbox"
+      @touchstart.passive="handleLightboxTouchStart"
+      @touchend.passive="handleLightboxTouchEnd"
     >
       <header class="flex items-center justify-between text-white pt-2">
         <span class="text-xs font-bold">
@@ -1159,7 +1196,7 @@ onMounted(() => {
         />
       </div>
 
-      <footer class="flex items-center justify-between text-white pb-6">
+      <footer v-if="imageOnlyPhotos.length > 1" class="flex items-center justify-between text-white pb-6">
         <button
           type="button"
           class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-white"
@@ -1724,6 +1761,14 @@ onMounted(() => {
 .mini-tag--foto {
   background: #fdf2f8;
   color: #be185d;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+  touch-action: manipulation;
+}
+
+.mini-tag--foto:active {
+  transform: scale(0.96);
 }
 
 .mini-tag--download {
@@ -1835,6 +1880,19 @@ onMounted(() => {
 .ihbar-stats-sheet.is-open,
 .modal-dialog-sheet.is-open {
   transform: translateY(0);
+}
+
+.photo-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.96);
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 
 .drawer-drag-handle {
