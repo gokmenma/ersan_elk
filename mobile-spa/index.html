@@ -17,7 +17,6 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="preload" as="image" href="/images/logo-3d.png?v=3" />
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
     <title>Ersan Mobile</title>
     <style>
@@ -189,16 +188,16 @@
     </script>
   </head>
   <body>
-    <div id="app-splash" aria-hidden="true">
-      <div class="splash-stage-3d">
+    <div id="app-splash" aria-hidden="true" style="position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 38%, #17294d 0%, #0d1629 62%, #070c18 100%);color:#f8fafc;overflow:hidden;">
+      <div class="splash-stage-3d" style="position:relative;width:156px;height:156px;max-width:156px;max-height:156px;display:grid;place-items:center;opacity:0;">
         <div class="splash-glow"></div>
         <div class="splash-orbit"></div>
         <div class="splash-orbit splash-orbit--inner"></div>
-        <div class="splash-logo-card-3d">
-          <img src="/images/logo-3d.png?v=3" alt="Ersan Elektrik" />
+        <div class="splash-logo-card-3d" style="position:relative;width:104px;height:104px;max-width:104px;max-height:104px;border-radius:24px;overflow:hidden;opacity:0;">
+          <img src="/images/logo-3d-splash.png?v=3" width="104" height="104" style="width:104px;height:104px;max-width:104px;max-height:104px;object-fit:cover;display:block;" alt="Ersan Elektrik" />
         </div>
       </div>
-      <div class="splash-meta">
+      <div class="splash-meta" style="margin-top:26px;text-align:center;opacity:0;">
         <span class="splash-kicker">ERSAN ELEKTRİK</span>
         <strong class="splash-title">Mobil Yönetim Sistemi</strong>
         <div class="splash-loader"><i></i></div>

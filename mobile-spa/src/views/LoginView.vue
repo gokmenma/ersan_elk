@@ -38,9 +38,13 @@ async function submit() {
 <template>
   <section class="auth-screen">
     <div class="auth-visual">
-      <div class="auth-brand-row">
+      <div class="auth-top-bar">
+        <span class="auth-status"><i></i> Sistem aktif</span>
+      </div>
+
+      <div class="auth-brand-content">
         <div
-          class="brand-mark brand-mark--3d brand-mark--animated"
+          class="brand-mark brand-mark--3d brand-mark--animated brand-mark--hero"
           :class="{ 'is-spinning-3d': logoSpinning }"
           title="Ersan Elektrik 3D"
           @click="triggerLogoSpin"
@@ -51,12 +55,12 @@ async function submit() {
             <img src="/images/logo-3d.png?v=3" alt="Ersan Elektrik" class="brand-logo-3d" />
           </span>
         </div>
-        <span class="auth-status"><i></i> Sistem aktif</span>
-      </div>
-      <div class="auth-message">
-        <span class="auth-kicker">ERSAN MOBILE</span>
-        <h1>İşin sahada,<br><em>kontrol sende.</em></h1>
-        <p>Görevler, ekipler ve raporlar. İhtiyacın olan her şey tek dokunuş uzağında.</p>
+
+        <div class="auth-brand-titles">
+          <h1 class="auth-brand-name">ER-SAN ELEKTRİK</h1>
+          <p class="auth-brand-sub">Yönetim Paneli</p>
+          <p class="auth-brand-slogan">İşin Sahada, Kontrol Sende</p>
+        </div>
       </div>
     </div>
 

@@ -1,5 +1,5 @@
-const CACHE_NAME = 'ersan-mobile-shell-v25'
-const SHELL = ['/', '/manifest.webmanifest', '/pwa-icons/icon-192.png', '/pwa-icons/icon-512.png']
+const CACHE_NAME = 'ersan-mobile-shell-v28'
+const SHELL = ['/', '/manifest.webmanifest', '/pwa-icons/icon-192.png', '/pwa-icons/icon-512.png', '/images/logo-3d-splash.png']
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()))

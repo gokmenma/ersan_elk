@@ -2,7 +2,7 @@
 
 ## 2026-10-24 — Mobil SPA 3 Boyutlu Logo, 3D Açılış Görseli ve Animasyonlu 3D Açılış Ekranı
 - [x] Kurumsal `ER` logosunun 3 boyutlu altın/titanyum versiyonu (`images/logo-3d.png`) ve tüm PWA/uygulama ikonları (`icon-512.png`, `icon-192.png`, `icon-maskable-512.png`, `apple-touch-icon.png`, `favicon.svg`, `favicon.ico`) üretildi.
-- [x] Açılış ekranında önce statik resmin çıkması ve FOUC parlaması giderildi; giriş sayfasındaki statik resim kaldırılarak doğrudan ve sadece animasyonlu 3D logo ve açılış sahnesi aktif kılındı.
+- [x] Giriş ekranı üst görsel alanı ana sayfa özet kartı (Obsidian `#191d24`) rengine uyarlandı; sola yaslı 126px 3D animasyonlu logo, logodaki sıcak hardal tonunda (`#c99738`) kurumsal başlıklar (`ER-SAN ELEKTRİK / Yönetim Paneli`) ve `İşin Sahada, Kontrol Sende` sloganı uygulandı.
 - [x] `index.html` ve `main.js` içerisine 3D perspektif süzülme, enerji halkaları ve metalik ışık yansımalı tam ekran animasyonlu açılış ekranı (`#app-splash`) eklendi.
 - [x] `LoginView.vue`, `CompanySelectView.vue` ve `design-system.css` içerisine sürekli 3D perspektif hareketli ve dokunulduğunda 360° 3D dönen etkileşimli logo animasyonu eklendi.
 - [x] `npm run build` ile üretim derlemesi (`dist/`) tamamlandı ve doğrulandı.
