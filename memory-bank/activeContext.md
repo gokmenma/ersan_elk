@@ -1,5 +1,25 @@
 # Active Context
 
+## Mobil SPA — Hakediş Silme SweetAlert2 ve Tamamlandı Durum Koruması (2026-10-24)
+- **Kullanıcı Talebi**:
+  1. Hakediş silme işleminde tarayıcı yerel `confirm()` ve `alert()` pencereleri yerine sistemde kullanılan SweetAlert tasarımının uygulanması.
+  2. "Tamamlandı" durumundaki hakedişlerde silme butonunun pasif (disabled/soluk) olması ve tıklandığında masaüstündeki SweetAlert uyarısı verilmesi; backend tarafında da hakediş silme API'sinde kontrol edilerek silinmesinin engellenmesi.
+- **Yapılan İyileştirmeler**:
+  - **Backend (`mobile-spa/public/api/sozlesme-hakedis.php` & `dist/api/sozlesme-hakedis.php`)**:
+    - `delete_hakedis` aksiyonunda hakedişin durumu kontrol edildi; eğer `durum === 'tamamlandi'` ise HTTP 422 ve `"Tamamlanmış hakedişler silinemez. Lütfen önce durumu 'Taslak' veya 'Hazırlandı' olarak değiştirin."` hata mesajı döndürüldü.
+  - **Tasarım Sistemi (`mobile-spa/src/design-system.css` & `mobile-spa/src/main.js`)**:
+    - `sweetalert2` paketi kuruldu ve `sweetalert2.min.css` `main.js` içine dahil edildi.
+    - `assets/css/style.css`'teki Shadcn/Bento SweetAlert2 kuralları (sola dayalı ikon, 17px kalın başlık, 13.5px mat metin, 12px yuvarlatılmış eylem butonları, blur backdrop) `design-system.css` içine taşındı.
+  - **Vue Arayüzleri (`SozlesmeDetailView.vue` & `SozlesmeHakedisView.vue`)**:
+    - `SozlesmeDetailView.vue`:
+      - Hakediş kartlarında silme butonu durum kontrolü: `:class="d.durum === 'tamamlandi' ? 'action-icon-btn--disabled' : 'text-danger'"` ve `:disabled="d.durum === 'tamamlandi'"`.
+      - `.action-icon-btn--disabled` CSS sınıfı ile `opacity: 0.32`, gri renk ve `not-allowed` imleç uygulandı.
+      - `deleteHakedis` fonksiyonu `Swal.fire` onay ve uyarı pencerelerine dönüştürüldü. Tamamlanmış hakediş silinmek istendiğinde `Swal.fire("İşlem Engellendi", "Tamamlanmış hakedişler silinemez...", "warning")` uyarısı eklendi.
+    - `SozlesmeHakedisView.vue`: Sözleşme silme onayı yerel `confirm` yerine SweetAlert2 ile modernize edildi.
+  - **Derleme & Doğrulama**:
+    - `cd mobile-spa && npm run build` ile üretim derlemesi 0 hata ile tamamlandı.
+    - CLI üzerinden CSRF ve tamamlandı durumu silme simülasyonu çalıştırılarak doğrulandı.
+
 ## Mobil SPA — Özelleştirilebilir Alt Bar (Navbar) ve Sürükle-Bırak Menü Düzeni (2026-10-24)
 - `mobile-spa` içerisindeki tüm modüller (`personnel`, `reports`, `requests`, `invoices`, `cash`, `current_accounts`, `payroll`, `contracts`, `vehicles`, `km_approvals`, `documents`, `notices`, `illegal`, `tasks`, `shifts`, `puantaj`, `logs`, `live_support`, `support`) birleşik katalog (`MODULE_CATALOG`) yapısına kavuşturuldu.
 - "Daha Fazla" (`#more-menu`) çekmecesinin başlığına **Düzenle (`SlidersHorizontal`)** butonu eklendi. Düzenleme modunda:
@@ -3158,3 +3178,8 @@
 - `HomeView.vue` + `services/dashboard.js`: Dashboard yanıtı kullanıcı+firma bazlı `localStorage` anahtarına yazılıyor; açılışta önce önbellek çiziliyor, arkada sunucu verisi yenileniyor. Çıkışta `clearDashboardCache()` ile temizleniyor.
 - `MobileDashboardModel::operationalTimestamps()` istek içi önbelleğe alındı (iki kez çalışan 3 alt sorgu teke indi).
 - `database/2026_10_24_personel_hareketleri_zaman_indeks.sql`: `personel_hareketleri` için kapsayan `idx_zaman_kapsayan` indeksi; `getGecKalanlarCount` 83 ms → 2,6 ms. Canlı veritabanında çalıştırılmalı.
+
+## Mobil SPA navbar rozetleri
+- badges.php (canlı destek okunmamış + e-fatura gelen/giden "son görülen ID" mantığı), MobilRozetModel, services/badges.js, BottomNav rozeti. SQL: sql/mobil_rozet_durumlari.sql (çalıştırılmalı).
+- Rozetler genişletildi: km_approvals, kacak (onay bekleyen), ihbar (yeni), evrak (imzamda bekleyen), requests (avans+izin+talep bekleyen).
+- Rozet mantığı "görülmemiş"e çevrildi: KM, kaçak, ihbar, evrak, talepler de son görülen ID ile çalışır; sayfa açılınca düşer (canlı destek hâlâ gerçek okunmamış).

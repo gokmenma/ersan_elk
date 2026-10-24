@@ -1,4 +1,5 @@
 import { reactive } from 'vue'
+import { fetchBadges } from './badges.js'
 
 export const notificationsState = reactive({
   unreadCount: 0,
@@ -232,12 +233,14 @@ async function saveSubscriptionToBackend(sub) {
 let pollTimer = null
 export function initNotificationsWatcher() {
   fetchUnreadCount()
+  fetchBadges()
   checkPushStatus()
 
   if (pollTimer) clearInterval(pollTimer)
   pollTimer = setInterval(() => {
     if (typeof document !== 'undefined' && !document.hidden) {
       fetchUnreadCount()
+      fetchBadges()
     }
   }, 45000)
 }

@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import Swal from 'sweetalert2'
 import {
   AlertTriangle,
   ArrowLeft,
@@ -157,17 +158,60 @@ async function submitHakedis() {
 
 async function deleteHakedis(d, event) {
   event?.stopPropagation?.()
-  if (!confirm(`Hakediş #${d.hakedis_no} kaydını silmek istediğinize emin misiniz?`)) return
+
+  if (d.durum === 'tamamlandi') {
+    Swal.fire({
+      icon: 'warning',
+      title: 'İşlem Engellendi',
+      text: "Tamamlanmış hakedişler silinemez. Lütfen önce durumu 'Taslak' veya 'Hazırlandı' olarak değiştirin.",
+      confirmButtonText: 'Tamam',
+      confirmButtonColor: '#0284c7',
+    })
+    return
+  }
+
+  const result = await Swal.fire({
+    title: 'Emin misiniz?',
+    text: `Hakediş #${d.hakedis_no} (${d.donem_adi}) kaydının tüm imalat ve detay verileri silinecektir. Bu işlem geri alınamaz!`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#ef4444',
+    cancelButtonColor: '#64748b',
+    confirmButtonText: 'Evet, Sil!',
+    cancelButtonText: 'Vazgeç',
+    reverseButtons: true,
+  })
+
+  if (!result.isConfirmed) return
 
   try {
     const res = await sozlesmeApi.deleteHakedis(d.id, auth.state.csrfToken)
     if (res.success) {
+      await Swal.fire({
+        icon: 'success',
+        title: 'Silindi!',
+        text: res.message || 'Hakediş başarıyla silindi.',
+        timer: 1800,
+        showConfirmButton: false,
+      })
       await loadDetail()
     } else {
-      alert(res.message || 'Silme işlemi başarısız.')
+      Swal.fire({
+        icon: 'error',
+        title: 'Hata!',
+        text: res.message || 'Silme işlemi başarısız.',
+        confirmButtonText: 'Tamam',
+        confirmButtonColor: '#ef4444',
+      })
     }
   } catch (err) {
-    alert(err.message || 'Hata oluştu.')
+    Swal.fire({
+      icon: 'error',
+      title: 'Hata!',
+      text: err.message || 'Hata oluştu.',
+      confirmButtonText: 'Tamam',
+      confirmButtonColor: '#ef4444',
+    })
   }
 }
 
@@ -463,8 +507,11 @@ function getHakedisBadgeLabel(durum) {
               <div class="h-actions" @click.stop>
                 <button
                   type="button"
-                  class="action-icon-btn text-danger"
-                  title="Sil"
+                  class="action-icon-btn"
+                  :class="d.durum === 'tamamlandi' ? 'action-icon-btn--disabled' : 'text-danger'"
+                  :disabled="d.durum === 'tamamlandi'"
+                  :title="d.durum === 'tamamlandi' ? 'Tamamlanmış hakedişler silinemez' : 'Hakedişi Sil'"
+                  :aria-disabled="d.durum === 'tamamlandi'"
                   @click="deleteHakedis(d, $event)"
                 >
                   <Trash2 :size="14" />
@@ -1132,6 +1179,49 @@ function getHakedisBadgeLabel(durum) {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.action-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--ds-radius-sm);
+  border: 1px solid var(--ds-border-subtle);
+  background: var(--ds-surface-subtle);
+  color: var(--ds-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.action-icon-btn:hover:not(:disabled) {
+  background: #e2e8f0;
+}
+
+.action-icon-btn.text-danger {
+  color: #ef4444;
+}
+
+.action-icon-btn.text-danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.action-icon-btn--disabled,
+.action-icon-btn:disabled {
+  opacity: 0.32 !important;
+  cursor: not-allowed !important;
+  color: #94a3b8 !important;
+  background: var(--ds-surface-subtle) !important;
+  border-color: rgba(203, 213, 225, 0.5) !important;
+}
+
+.action-icon-btn--disabled:hover,
+.action-icon-btn:disabled:hover {
+  background: var(--ds-surface-subtle) !important;
+  transform: none !important;
+  border-color: rgba(203, 213, 225, 0.5) !important;
 }
 
 .btn-enter-arrow {

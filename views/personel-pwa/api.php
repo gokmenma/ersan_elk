@@ -2562,34 +2562,6 @@ try {
                 }
             } catch (\Throwable $e) {}
 
-            // 4. İlişkili kullanıcı varsa bildirimler tablosundan al
-            if ($associatedUserId > 0) {
-                try {
-                    $bStmt = $db->prepare("SELECT * FROM bildirimler WHERE user_id = :user_id ORDER BY created_at DESC LIMIT 20");
-                    $bStmt->execute([':user_id' => $associatedUserId]);
-                    $userBildirimler = $bStmt->fetchAll(PDO::FETCH_OBJ);
-                    foreach ($userBildirimler as $ub) {
-                        $sig = md5(($ub->title ?? '') . '_' . substr($ub->created_at ?? '', 0, 16));
-                        if (isset($seenSignatures[$sig])) {
-                            continue;
-                        }
-                        $seenSignatures[$sig] = true;
-
-                        $data[] = [
-                            'id' => 'sys_' . $ub->id,
-                            'type' => 'system',
-                            'title' => $ub->title ?: 'Sistem Bildirimi',
-                            'body' => $ub->message ?: '',
-                            'image' => null,
-                            'url' => $ub->link ?: null,
-                            'time_ago' => $getTimeAgo($ub->created_at),
-                            'created_at' => $ub->created_at,
-                            'okundu' => (bool) $ub->is_read
-                        ];
-                    }
-                } catch (\Throwable $e) {}
-            }
-
             // 5. Tarihe Göre Sırala (En yeniden eskiye)
             usort($data, function($a, $b) {
                 return strtotime($b['created_at']) - strtotime($a['created_at']);
@@ -2616,9 +2588,7 @@ try {
                 $stmt = $db->prepare($sql);
                 $stmt->execute([':personel_id' => $personel_id, ':mesaj_log_id' => -$nId]);
             } elseif (strpos($rawId, 'sys_') === 0) {
-                $sId = (int) str_replace('sys_', '', $rawId);
-                $stmt = $db->prepare("UPDATE bildirimler SET is_read = 1 WHERE id = :id");
-                $stmt->execute([':id' => $sId]);
+                response(false, null, 'Geçersiz bildirim');
             } else {
                 $mesaj_log_id = (int) $rawId;
                 $sql = "INSERT INTO personel_bildirim_durumu (personel_id, mesaj_log_id, okundu, okunma_tarihi)
@@ -2697,12 +2667,6 @@ try {
                 }
             } catch (\Throwable $e) {}
 
-            if ($associatedUserId > 0) {
-                try {
-                    $db->prepare("UPDATE bildirimler SET is_read = 1 WHERE user_id = :user_id")->execute([':user_id' => $associatedUserId]);
-                } catch (\Throwable $e) {}
-            }
-
             response(true, null, 'Tüm bildirimler okundu olarak işaretlendi');
             break;
 
@@ -2724,9 +2688,7 @@ try {
                 $stmt = $db->prepare($sql);
                 $stmt->execute([':personel_id' => $personel_id, ':mesaj_log_id' => -$nId]);
             } elseif (strpos($rawId, 'sys_') === 0) {
-                $sId = (int) str_replace('sys_', '', $rawId);
-                $stmt = $db->prepare("DELETE FROM bildirimler WHERE id = :id");
-                $stmt->execute([':id' => $sId]);
+                response(false, null, 'Geçersiz bildirim');
             } else {
                 $mesaj_log_id = (int) $rawId;
                 $sql = "INSERT INTO personel_bildirim_durumu (personel_id, mesaj_log_id, silindi, silme_tarihi)

@@ -998,6 +998,10 @@ try {
             contractsApiResponse(['success' => false, 'message' => 'Hakediş bulunamadı.'], 404);
         }
 
+        if (($hkd['durum'] ?? '') === 'tamamlandi') {
+            contractsApiResponse(['success' => false, 'message' => "Tamamlanmış hakedişler silinemez. Lütfen önce durumu 'Taslak' veya 'Hazırlandı' olarak değiştirin."], 422);
+        }
+
         if (!empty($hkd['fatura_id']) && !empty($hkd['entegrator_durum_kodu']) && $hkd['entegrator_durum_kodu'] !== 'TASLAK') {
             contractsApiResponse(['success' => false, 'message' => 'Bu hakedişe ait resmi e-fatura EDM/GİB sistemine iletilmiştir. Silinemez.'], 422);
         }

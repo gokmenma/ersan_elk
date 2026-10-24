@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import Swal from 'sweetalert2'
 import {
   AlertTriangle,
   ArrowRight,
@@ -251,19 +252,49 @@ async function submitContract() {
 
 async function handleDeleteContract(item, event) {
   event?.stopPropagation?.()
-  if (!confirm(`"${item.idare_adi}" sözleşmesini silmek istediğinize emin misiniz?`)) {
-    return
-  }
+
+  const result = await Swal.fire({
+    title: 'Emin misiniz?',
+    text: `"${item.idare_adi}" sözleşmesi ve bağlı tüm hakediş verileri silinecektir. Bu işlem geri alınamaz!`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#ef4444',
+    cancelButtonColor: '#64748b',
+    confirmButtonText: 'Evet, Sil!',
+    cancelButtonText: 'Vazgeç',
+    reverseButtons: true,
+  })
+
+  if (!result.isConfirmed) return
 
   try {
     const res = await sozlesmeApi.deleteContract(item.id, auth.state.csrfToken)
     if (res.success) {
+      await Swal.fire({
+        icon: 'success',
+        title: 'Silindi!',
+        text: res.message || 'Sözleşme başarıyla silindi.',
+        timer: 1800,
+        showConfirmButton: false,
+      })
       await loadContracts(false)
     } else {
-      alert(res.message || 'Silme başarısız.')
+      Swal.fire({
+        icon: 'error',
+        title: 'Hata!',
+        text: res.message || 'Silme işlemi başarısız.',
+        confirmButtonText: 'Tamam',
+        confirmButtonColor: '#ef4444',
+      })
     }
   } catch (err) {
-    alert(err.message || 'Silme işlemi sırasında hata oluştu.')
+    Swal.fire({
+      icon: 'error',
+      title: 'Hata!',
+      text: err.message || 'Silme işlemi sırasında hata oluştu.',
+      confirmButtonText: 'Tamam',
+      confirmButtonColor: '#ef4444',
+    })
   }
 }
 

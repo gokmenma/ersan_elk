@@ -3,6 +3,7 @@ import App from './App.vue'
 import router from './router.js'
 import './styles.css'
 import './design-system.css'
+import 'sweetalert2/dist/sweetalert2.min.css'
 import { initNotificationsWatcher } from './services/notifications.js'
 import { auth } from './services/auth.js'
 

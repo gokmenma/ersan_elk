@@ -1,5 +1,13 @@
 # Progress
 
+## 2026-10-24 — Mobil SPA Hakediş Silme SweetAlert2 ve Tamamlandı Koruması
+- [x] Sistem SweetAlert2 Teması: `mobile-spa` içerisine `sweetalert2` entegre edildi ve masaüstündeki Shadcn/Bento CSS kuralları `design-system.css` içine taşındı.
+- [x] Hakediş Silme Onayı: `SozlesmeDetailView.vue` içerisindeki native `confirm()` ve `alert()` pencereleri SweetAlert2 (`Swal.fire`) ile değiştirildi.
+- [x] Tamamlandı Durum Koruması (Frontend): "Tamamlandı" durumundaki hakedişlerde silme butonu pasif/soluk (`.action-icon-btn--disabled`, `:disabled="true"`) yapıldı; tıklandığında SweetAlert ile bilgilendirici uyarı verildi.
+- [x] Tamamlandı Durum Koruması (Backend): `mobile-spa/public/api/sozlesme-hakedis.php` dosyasında `delete_hakedis` aksiyonunda `tamamlandi` durumundaki hakedişlerin silinmesi bloklanarak 422 HTTP koduyla hata döndürüldü.
+- [x] Sözleşme Silme Onayı: `SozlesmeHakedisView.vue` içindeki sözleşme silme onayı da SweetAlert2'ye geçirildi.
+- [x] Derleme ve Test: Vite üretim derlemesi (`npm run build`) ve PHP CLI testleri hatasız tamamlandı.
+
 ## 2026-10-24 — Mobil SPA Özelleştirilebilir Alt Bar ve Sürükle-Bırak Menü Sıralaması
 - [x] `App\Model\MenuModel` içerisine masaüstü sıralamasını koruyan `getMobileMenuOrder`, `saveMobileMenuOrder`, `resetMobileMenuOrder` metotları ve `SystemLogModel` kaydı eklendi.
 - [x] `mobile-spa/public/api/auth.php` içerisine `menu_order` oturum çıktısı ile `save-menu-order` ve `reset-menu-order` aksiyonları (CSRF ve whitelist doğrulamalı) eklendi.
@@ -1906,3 +1914,8 @@
 - [ ] Playwright tarayıcı paketi ortamda kurulu olmadığı için mevcut browser entegrasyon testi çalıştırılamadı; gerçek iPhone doğrulaması gerekli.
 - [x] Yönetici mobil ana sayfa: rota tembel yükleme, dashboard stale-while-revalidate önbelleği, zaman damgası sorgusu tekilleştirme ve `personel_hareketleri` indeksi eklendi.
 - [ ] Canlı sunucuda indeks SQL'i çalıştırılmalı; `auth.php?action=session` her geçişte zorla yenilenmesi (madde 1) henüz yapılmadı.
+
+## Mobil SPA navbar rozetleri
+- badges.php (canlı destek okunmamış + e-fatura gelen/giden "son görülen ID" mantığı), MobilRozetModel, services/badges.js, BottomNav rozeti. SQL: sql/mobil_rozet_durumlari.sql (çalıştırılmalı).
+- Rozetler genişletildi: km_approvals, kacak (onay bekleyen), ihbar (yeni), evrak (imzamda bekleyen), requests (avans+izin+talep bekleyen).
+- Rozet mantığı "görülmemiş"e çevrildi: KM, kaçak, ihbar, evrak, talepler de son görülen ID ile çalışır; sayfa açılınca düşer (canlı destek hâlâ gerçek okunmamış).

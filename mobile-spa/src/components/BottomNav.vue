@@ -50,6 +50,7 @@ import {
   ZapOff,
 } from '@lucide/vue'
 import { auth } from '../services/auth.js'
+import { BADGE_MODULES, badgesState, moduleBadge, fetchBadges, markSeen } from '../services/badges.js'
 import {
   requestsState,
   closeRequestsDrawer,
@@ -88,6 +89,7 @@ let previousOverflow = ''
 let returnFocus = null
 watch(menuOpen, async (open) => {
   if (open) {
+    fetchBadges()
     returnFocus = document.activeElement
     previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -614,6 +616,55 @@ const visibleItems = computed(() => {
   return list
 })
 
+function itemBadge(item) {
+  if (item.center) {
+    const shown = new Set(permittedNavbarItems.value.map(mod => mod.key))
+    return Object.keys(BADGE_MODULES)
+      .filter(key => !shown.has(key) && isModulePermitted(key))
+      .reduce((sum, key) => sum + moduleBadge(key), 0)
+  }
+  return item.key ? moduleBadge(item.key) : 0
+}
+
+const SEEN_ROUTES = {
+  '/talepler': 'requests',
+  '/km-onaylari': 'km_approvals',
+  '/km-onay': 'km_approvals',
+  '/kacak-kontrol': 'kacak',
+  '/kacak': 'kacak',
+  '/ihbar': 'ihbar',
+  '/evrak-takip': 'evrak',
+  '/giden-evrak': 'evrak',
+}
+
+function currentSeenKey() {
+  if (route.path === '/fatura' || route.path === '/efatura') {
+    if (faturaState.activeTab === 'gelen') return 'efatura_gelen'
+    if (faturaState.activeTab === 'giden') return 'efatura_giden'
+    return null
+  }
+  return SEEN_ROUTES[route.path] || null
+}
+
+watch(
+  () => [route.path, faturaState.activeTab],
+  () => {
+    fetchBadges().then(() => {
+      const key = currentSeenKey()
+      if (key) markSeen(key)
+    })
+  },
+  { immediate: true },
+)
+
+watch(
+  () => ({ ...badgesState.counts }),
+  () => {
+    const key = currentSeenKey()
+    if (key) markSeen(key)
+  },
+)
+
 function isItemActive(item) {
   if (item.center) return menuOpen.value
   if (menuOpen.value) return false
@@ -1134,7 +1185,10 @@ async function handleLogout() {
                     <Pin :size="14" />
                     <span>{{ isModulePinnedInDraft(op.key) ? 'Alt Barda' : 'Alt Bar' }}</span>
                   </span>
-                  <ChevronRight v-else :size="16" class="nav-sheet-item__arrow" />
+                  <template v-else>
+                    <span v-if="moduleBadge(op.key) > 0" class="nav-sheet-item__badge" :aria-label="`${moduleBadge(op.key)} bekleyen`">{{ moduleBadge(op.key) > 99 ? '99+' : moduleBadge(op.key) }}</span>
+                    <ChevronRight :size="16" class="nav-sheet-item__arrow" />
+                  </template>
                 </button>
               </div>
             </section>
@@ -1207,6 +1261,7 @@ async function handleLogout() {
             >
               <span class="nav-icon">
                 <component :is="item.icon" :size="21" :stroke-width="isItemActive(item) ? 2.4 : 1.9" />
+                <span v-if="itemBadge(item) > 0" class="nav-badge" aria-hidden="true">{{ itemBadge(item) > 99 ? '99+' : itemBadge(item) }}</span>
               </span>
               <span class="nav-label">{{ item.label }}</span>
             </button>
@@ -1220,6 +1275,7 @@ async function handleLogout() {
             >
               <span class="nav-icon">
                 <component :is="item.icon" :size="21" :stroke-width="isItemActive(item) ? 2.4 : 1.9" />
+                <span v-if="itemBadge(item) > 0" class="nav-badge" aria-hidden="true">{{ itemBadge(item) > 99 ? '99+' : itemBadge(item) }}</span>
               </span>
               <span class="nav-label">{{ item.label }}</span>
             </button>
@@ -1233,6 +1289,7 @@ async function handleLogout() {
             >
               <span class="nav-icon">
                 <component :is="item.icon" :size="21" :stroke-width="isItemActive(item) ? 2.4 : 1.9" />
+                <span v-if="itemBadge(item) > 0" class="nav-badge" aria-hidden="true">{{ itemBadge(item) > 99 ? '99+' : itemBadge(item) }}</span>
               </span>
               <span class="nav-label">{{ item.label }}</span>
             </RouterLink>
