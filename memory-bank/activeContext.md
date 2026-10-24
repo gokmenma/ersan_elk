@@ -8,10 +8,9 @@
 - **Animasyonlu 3D Açılış Ekranı (Splash Screen) ve Etkileşimli 3D Logo**:
   - `mobile-spa/index.html` içerisine uygulama yüklenirken çalışan `#app-splash` tam ekran 3D açılış sahnesi eklendi (3D perspektif süzülme/eğim, çift yönlü altın/mavi enerji halkaları, metalik ışık yansıması ve yükleme çubuğu); `src/main.js` içinde `router.isReady()` sonrasında yumuşak geçişle kapanması sağlandı.
   - Açılışta animasyondan hemen önce 1024x1024 boyutlu logonun ham HTML'de tam sayfa olarak parlaması (un-styled blowout) giderildi; `#app-splash`, `.splash-stage-3d` ve `.splash-logo-card-3d` elemanlarına satır içi (`inline`) 104x104px sabit sınırlar, `overflow: hidden` ve `opacity: 0` verildi.
-  - Giriş ekranındaki (`LoginView.vue`) üst görsel alanının lacivert rengi kaldırılarak ana sayfadaki özet kartının (Personel Durumu) koyu rengi olan Obsidian Bento zeminine (`var(--ds-surface-dark)` / `#191d24`) uyarlandı.
-  - 3D animasyonlu logo `126x126px` boyutuna büyütüldü ve sola yaslandı (`.brand-mark--hero`).
-  - Logonun hemen altına sola yaslı olarak `ER-SAN ELEKTRİK` (logodaki sıcak hardal metalik tonu `#c99738` ile), `Yönetim Paneli` (`#d4b478`) ve altın çizgi vurgulu `İşin Sahada, Kontrol Sende` sloganı eklendi.
-  - `sw.js` önbellek sürümü `ersan-mobile-shell-v28` olarak güncellendi.
+  - Giriş / ana açılış ekranındaki logo, `app-splash` ekranındaki 3D sahne mimarisine (`.auth-splash-stage`, `.splash-glow`, `.splash-orbit`, `.splash-orbit--inner`, `.splash-logo-card-3d`) birebir kavuşturuldu. Hardal ve beyaz dönen zarif enerji halkaları, altın aurası, 3D perspektif eğim/salınım ve metalik ışık süzülmesi (sheen) ile donatıldı.
+  - Açılış sahnesinin (`#app-splash`) arka planı Obsidian (`#191d24`) rengine uyarlandı; kenarındaki dönen enerji halkaları kurumsal hardal (`#c99738`) ve beyaz (`#ffffff`) yapıldı.
+  - PWA önbelleği `ersan-mobile-shell-v30` sürümüne yükseltilip prodüksiyon paketi derlendi.
   - `LoginView.vue`, `CompanySelectView.vue` ve `src/design-system.css` üzerinde `.brand-mark--animated` bileşeniyle sürekli 3D perspektif salınımı (`brand3dTilt`), dönen enerji halkası (`brandOrbitSpin`), metalik parlama (`brandMetallicSheen`) ve dokunulduğunda 360° 3D tam tur dönüş (`triggerLogoSpin` / `brand3dFlipSpin`) animasyonları eklendi (`ds-reduce-motion` ve `prefers-reduced-motion` uyumlu).
 
 ## Yönetici Mobil — Koyu Tema (2026-10-24)

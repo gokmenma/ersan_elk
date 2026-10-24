@@ -34,7 +34,7 @@ async function logout() {
         <span class="brand-3d-halo" aria-hidden="true"></span>
         <span class="brand-3d-orbit" aria-hidden="true"></span>
         <span class="brand-logo-3d-inner">
-          <img src="/images/logo-3d.png?v=3" alt="Ersan Elektrik" class="brand-logo-3d" />
+          <img src="/images/logo-3d-splash.png?v=3" alt="Ersan Elektrik" class="brand-logo-3d" />
         </span>
       </div>
       <button type="button" aria-label="Güvenli çıkış" @click="logout"><LogOut :size="18" /></button>

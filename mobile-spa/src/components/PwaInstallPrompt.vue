@@ -31,7 +31,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeinstallprompt', onInstal
   <Transition name="install-prompt">
     <aside v-if="visible" class="pwa-install" aria-label="Uygulama yükleme önerisi">
       <span class="pwa-install__icon pwa-install__icon--3d">
-        <img src="/images/logo-3d.png?v=3" alt="" class="pwa-install__logo-img" />
+        <img src="/images/logo-3d-splash.png?v=3" alt="" class="pwa-install__logo-img" />
       </span>
       <span class="pwa-install__copy"><strong>Ersan Mobile</strong><small>Ana ekranınıza ekleyin</small></span>
       <button class="pwa-install__button" type="button" @click="install">Yükle</button>

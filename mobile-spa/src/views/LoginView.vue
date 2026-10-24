@@ -44,16 +44,20 @@ async function submit() {
 
       <div class="auth-brand-content">
         <div
-          class="brand-mark brand-mark--3d brand-mark--animated brand-mark--hero"
+          class="auth-splash-stage"
           :class="{ 'is-spinning-3d': logoSpinning }"
           title="Ersan Elektrik 3D"
+          role="button"
+          tabindex="0"
           @click="triggerLogoSpin"
+          @keydown.enter="triggerLogoSpin"
         >
-          <span class="brand-3d-halo" aria-hidden="true"></span>
-          <span class="brand-3d-orbit" aria-hidden="true"></span>
-          <span class="brand-logo-3d-inner">
-            <img src="/images/logo-3d.png?v=3" alt="Ersan Elektrik" class="brand-logo-3d" />
-          </span>
+          <div class="splash-glow"></div>
+          <div class="splash-orbit"></div>
+          <div class="splash-orbit splash-orbit--inner"></div>
+          <div class="splash-logo-card-3d">
+            <img src="/images/logo-3d-splash.png?v=3" alt="Er-San Elektrik" width="104" height="104" />
+          </div>
         </div>
 
         <div class="auth-brand-titles">

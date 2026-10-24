@@ -36,7 +36,7 @@ function goBack() {
         </button>
         <button v-else type="button" class="clay-company-chip" aria-label="Firma seçimini aç" @click="router.push('/firma-secimi')">
           <span class="clay-brand-icon clay-brand-icon--3d">
-            <img src="/images/logo-3d.png?v=3" alt="" class="clay-brand-logo-img" />
+            <img src="/images/logo-3d-splash.png?v=3" alt="" class="clay-brand-logo-img" />
           </span>
           <span>{{ auth.state.company?.name || 'Ersan Elektrik' }}</span>
           <ChevronDown :size="14" />

@@ -2170,31 +2170,125 @@
   width: 100%;
 }
 
-.brand-mark--hero {
-  width: 126px !important;
-  height: 126px !important;
-  border-radius: 34px !important;
-  margin-left: 0;
+.auth-splash-stage {
+  position: relative;
+  width: 156px;
+  height: 156px;
+  display: grid;
+  place-items: center;
+  perspective: 900px;
+  margin-left: -12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
-.brand-mark--hero .brand-3d-halo {
-  inset: -18px;
-  filter: blur(16px);
-  background: radial-gradient(circle, rgba(201, 151, 56, 0.46) 0%, rgba(56, 189, 248, 0.2) 52%, transparent 72%);
+.auth-splash-stage .splash-glow {
+  position: absolute;
+  inset: -20px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(201, 151, 56, 0.38) 0%, rgba(255, 255, 255, 0.12) 48%, transparent 72%);
+  filter: blur(14px);
+  animation: splash-glow-pulse 2.6s ease-in-out infinite alternate;
+  pointer-events: none;
 }
-.brand-mark--hero .brand-3d-orbit {
-  inset: -10px;
-  border-radius: 40px;
-  border-width: 2px;
+.auth-splash-stage .splash-orbit {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
   border-top-color: #c99738;
-  border-right-color: rgba(56, 189, 248, 0.75);
+  border-right-color: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 20px rgba(201, 151, 56, 0.22);
+  animation: splash-orbit-spin 3.2s linear infinite;
+  pointer-events: none;
+}
+.auth-splash-stage .splash-orbit--inner {
+  inset: 12px;
+  border: 1px dashed rgba(201, 151, 56, 0.35);
+  border-bottom-color: #ffffff;
+  animation: splash-orbit-spin-rev 4.4s linear infinite;
+  pointer-events: none;
+}
+.auth-splash-stage .splash-logo-card-3d {
+  position: relative;
+  width: 104px;
+  height: 104px;
+  border-radius: 24px;
+  transform-style: preserve-3d;
+  box-shadow: 0 22px 44px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.18);
+  overflow: hidden;
+  opacity: 1;
+  animation: splash-logo-3d-motion 3.4s ease-in-out infinite alternate;
+}
+.auth-splash-stage .splash-logo-card-3d img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.auth-splash-stage .splash-logo-card-3d::after {
+  content: '';
+  position: absolute;
+  top: -40%;
+  left: -120%;
+  width: 75%;
+  height: 180%;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.58) 50%, transparent 100%);
+  transform: rotate(28deg);
+  animation: splash-logo-sheen 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+.auth-splash-stage.is-spinning-3d .splash-logo-card-3d {
+  animation: splash-logo-3d-click-spin 0.85s cubic-bezier(0.22, 1, 0.36, 1) forwards !important;
+}
+
+@keyframes splash-orbit-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes splash-orbit-spin-rev {
+  to { transform: rotate(-360deg); }
+}
+@keyframes splash-glow-pulse {
+  0% { transform: scale(0.92); opacity: 0.6; }
+  100% { transform: scale(1.08); opacity: 0.95; }
+}
+@keyframes splash-logo-3d-motion {
+  0% { transform: translateY(-3px) rotateY(-12deg) rotateX(9deg) scale(1); box-shadow: 12px 22px 42px rgba(0, 0, 0, 0.55), 0 0 24px rgba(201, 151, 56, 0.22); }
+  50% { transform: translateY(3px) rotateY(12deg) rotateX(-7deg) scale(1.03); box-shadow: -12px 24px 44px rgba(0, 0, 0, 0.58), 0 0 28px rgba(255, 255, 255, 0.24); }
+  100% { transform: translateY(-2px) rotateY(-6deg) rotateX(11deg) scale(1.01); box-shadow: 6px 20px 38px rgba(0, 0, 0, 0.52), 0 0 22px rgba(201, 151, 56, 0.25); }
+}
+@keyframes splash-logo-sheen {
+  0% { left: -120%; }
+  55%, 100% { left: 165%; }
+}
+@keyframes splash-logo-3d-click-spin {
+  0% { transform: scale(1) rotateY(0deg) rotateX(0deg); }
+  50% { transform: scale(1.15) rotateY(180deg) rotateX(12deg); }
+  100% { transform: scale(1) rotateY(360deg) rotateX(0deg); }
+}
+
+.brand-mark--hero {
+  width: 124px !important;
+  height: 124px !important;
+  border-radius: 28px !important;
+  margin-left: 0;
+  display: block;
+  perspective: 700px;
+}
+.brand-mark--hero .brand-3d-halo,
+.brand-mark--hero .brand-3d-orbit {
+  display: none !important;
 }
 .brand-mark--hero .brand-logo-3d-inner {
-  border-radius: 28px;
-  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.2);
+  width: 100%;
+  height: 100%;
+  border-radius: 28px !important;
+  overflow: hidden;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.42), 0 0 0 1px rgba(255, 255, 255, 0.12);
+  display: block;
 }
 
 .auth-brand-titles {
-  margin-top: 18px;
+  margin-top: 14px;
   text-align: left;
   width: 100%;
 }
