@@ -14,6 +14,7 @@ use App\Model\AracServisModel;
 use App\Model\AracKmBildirimModel;
 use App\Model\AracDashboardModel;
 use App\Model\SystemLogModel;
+use App\Model\AracIslemLogModel;
 use App\Model\PermissionPolicyModel;
 use App\Service\Gate;
 
@@ -50,6 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
     $Km = new AracKmModel();
     $Servis = new AracServisModel();
     $KmBildirim = new AracKmBildirimModel();
+    $AracLog = new AracIslemLogModel();
 
     // Zimmet teslim/iade fotoğraflarını şifreleyerek diske yazan ve meta bilgisini kaydeden yardımcı
     $zimmetFotoIsle = function ($zimmetId, $fileKey, $tur) use ($ZimmetFoto) {
@@ -198,9 +200,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 }
 
                 // Veriyi hazırla
-                unset($data['action']);
+                unset($data['action'], $data['olusturan_kullanici_id'], $data['guncelleyen_kullanici_id']);
                 $data['plaka'] = $plaka;
                 $data['firma_id'] = $_SESSION['firma_id'];
+                $eskiArac = $arac_id > 0 ? $Arac->getById($arac_id) : null;
+                if ($arac_id > 0 && !$eskiArac) {
+                    throw new Exception("Araç bulunamadı.");
+                }
+                if ($arac_id > 0) {
+                    $data['guncelleyen_kullanici_id'] = $_SESSION['user_id'] ?? null;
+                } else {
+                    $data['olusturan_kullanici_id'] = $_SESSION['user_id'] ?? null;
+                }
 
                 // Tarih formatları
                 if (!empty($data['muayene_bitis_tarihi'])) {
@@ -230,7 +241,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     }
                 }
 
-                $Arac->saveWithAttr($data);
+                $kayitliAracId = (int) Security::decrypt($Arac->saveWithAttr($data));
+
+                $SystemLog = new SystemLogModel();
+                if ($eskiArac) {
+                    $farklar = $AracLog->farklariBul($eskiArac, $data);
+                    $islemTuru = $mevcutPasifAracGuncelleniyor ? 'Yeniden Aktifleştirme' : 'Güncelleme';
+                    $ozet = $farklar
+                        ? count($farklar) . ' alan değiştirildi: ' . implode(', ', array_column($farklar, 'alan'))
+                        : 'Kayıt kaydedildi, alan değişikliği yok.';
+                    $AracLog->ekle($kayitliAracId, $islemTuru, $ozet, $farklar);
+                    $SystemLog->logAction($_SESSION['user_id'] ?? 0, 'Araç Güncelleme', "{$plaka} plakalı araç güncellendi. {$ozet}", SystemLogModel::LEVEL_INFO);
+                } else {
+                    $AracLog->ekle($kayitliAracId, 'Ekleme', "{$plaka} plakalı araç sisteme eklendi.");
+                    $SystemLog->logAction($_SESSION['user_id'] ?? 0, 'Araç Ekleme', "{$plaka} plakalı araç eklendi (Araç ID: {$kayitliAracId}).", SystemLogModel::LEVEL_IMPORTANT);
+                }
 
                 $message = $mevcutPasifAracGuncelleniyor
                     ? ((int) ($data['aktif_mi'] ?? 0) === 1
@@ -334,6 +359,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                         'Açıklama: ' . $aciklama,
                     ]);
                     $SystemLog->logAction($userId, 'Araç Silme', $logDetayi, SystemLogModel::LEVEL_IMPORTANT);
+                    $AracLog->ekle($id, 'Silme', 'Araç silindi. Açıklama: ' . $aciklama);
 
                     $pdo->commit();
 
@@ -359,6 +385,38 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 }
 
                 echo json_encode(['status' => 'success', 'data' => $arac]);
+                break;
+
+            case 'arac-islem-gecmisi':
+                $aracId = intval($_POST['arac_id'] ?? 0);
+                $aracKayit = $aracId > 0 ? $Arac->getById($aracId) : null;
+                if (!$aracKayit) {
+                    throw new Exception("Araç bulunamadı.");
+                }
+
+                $kayitBilgisi = $Arac->getKayitBilgileri([$aracId])[$aracId] ?? null;
+                $loglar = array_map(function ($log) {
+                    return [
+                        'islem_turu' => $log->islem_turu,
+                        'aciklama' => $log->aciklama,
+                        'degisiklikler' => $log->degisiklikler ? (json_decode($log->degisiklikler, true) ?: []) : [],
+                        'kullanici' => $log->kullanici_adi ?: 'Bilinmiyor',
+                        'ip' => $log->ip_adresi,
+                        'tarih' => date('d.m.Y H:i', strtotime($log->created_at)),
+                    ];
+                }, $AracLog->aracGecmisi($aracId, (int) $_SESSION['firma_id']));
+
+                echo json_encode([
+                    'status' => 'success',
+                    'data' => [
+                        'plaka' => $aracKayit->plaka,
+                        'olusturan' => $kayitBilgisi->olusturan_kullanici_adi ?? null,
+                        'olusturma_tarihi' => !empty($aracKayit->olusturma_tarihi) ? date('d.m.Y H:i', strtotime($aracKayit->olusturma_tarihi)) : null,
+                        'guncelleyen' => $kayitBilgisi->guncelleyen_kullanici_adi ?? null,
+                        'guncelleme_tarihi' => !empty($aracKayit->guncelleme_tarihi) ? date('d.m.Y H:i', strtotime($aracKayit->guncelleme_tarihi)) : null,
+                        'loglar' => $loglar,
+                    ],
+                ], JSON_UNESCAPED_UNICODE);
                 break;
 
             case 'arac-ruhsat-yukle':
@@ -433,6 +491,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
 
                 $SystemLog = new SystemLogModel();
                 $SystemLog->logAction($yukleyenId ?? 0, 'Araç Ruhsat Yükleme', "{$mevcutArac->plaka} plakalı araç için ruhsat görseli yüklendi.", SystemLogModel::LEVEL_IMPORTANT);
+                $AracLog->ekle($aracId, 'Ruhsat Yükleme', 'Ruhsat görseli yüklendi: ' . $file['name']);
 
                 echo json_encode([
                     'status' => 'success',
@@ -471,6 +530,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 $kullaniciId = $_SESSION['user_id'] ?? 0;
                 $SystemLog = new SystemLogModel();
                 $SystemLog->logAction($kullaniciId, 'Araç Ruhsat Silme', "{$mevcutArac->plaka} plakalı araca ait ruhsat görseli silindi.", SystemLogModel::LEVEL_IMPORTANT);
+                $AracLog->ekle($aracId, 'Ruhsat Silme', 'Ruhsat görseli silindi.');
 
                 echo json_encode(['status' => 'success', 'message' => 'Ruhsat görseli silindi.']);
                 break;
@@ -645,6 +705,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     $fotoSayisi = $zimmetFotoIsle($yeniZimmetId, 'teslim_fotograflari', 'teslim');
                 }
 
+                $zimmetPersonelAdi = $Zimmet->getAktifZimmetByArac($arac_id)->personel_adi ?? ('Personel #' . $personel_id);
+                $AracLog->ekle($arac_id, 'Zimmet Verme', "{$zimmetPersonelAdi} adlı personele zimmetlendi. Tarih: " . date('d.m.Y', strtotime($data['zimmet_tarihi'])) . ", Teslim KM: {$teslim_km}");
+                (new SystemLogModel())->logAction($_SESSION['user_id'] ?? 0, 'Araç Zimmet Verme', "Araç ID: {$arac_id}, {$zimmetPersonelAdi} adlı personele zimmetlendi (Zimmet ID: {$yeniZimmetId}).", SystemLogModel::LEVEL_INFO);
+
                 $mesaj = 'Araç başarıyla zimmetlendi.';
                 if ($fotoSayisi > 0) {
                     $mesaj .= " {$fotoSayisi} teslim fotoğrafı şifreli olarak kaydedildi.";
@@ -692,6 +756,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                             'aktif_mi' => 0
                         ]);
                     }
+                }
+
+                if ($zimmetBilgi) {
+                    $AracLog->ekle((int) $zimmetBilgi->arac_id, 'Zimmet İade', "Zimmet (#{$zimmet_id}) iade alındı. Tarih: " . date('d.m.Y', strtotime($iade_tarihi)) . ", İade KM: {$iade_km}");
+                    (new SystemLogModel())->logAction($_SESSION['user_id'] ?? 0, 'Araç Zimmet İade', "Araç ID: {$zimmetBilgi->arac_id}, zimmet (#{$zimmet_id}) iade alındı.", SystemLogModel::LEVEL_INFO);
                 }
 
                 $iadeMesaj = 'Araç iadesi başarıyla tamamlandı.';
@@ -1929,12 +1998,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 if (!isset($colIndices['plaka'])) {
                     throw new Exception("'Plaka' sütunu bulunamadı.");
                 }
+                if (!isset($colIndices['yakit_miktari']) && !isset($colIndices['toplam_tutar']) && !isset($colIndices['brut_tutar'])) {
+                    throw new Exception("Yakıt miktarı (Litre/Miktar) veya tutar sütunu bulunamadı. Lütfen yakıt satış Excel'ini yükleyin.");
+                }
 
                 $addedCount = 0;
                 $updatedCount = 0;
                 $errorDetails = [];
                 $addedDetails = [];
                 $updatedDetails = [];
+                $otomatikEklenenAraclar = [];
+                $pdo = $Arac->getDb();
 
                 $cleanNum = function ($val) {
                     if ($val === null || $val === '')
@@ -1979,32 +2053,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     if (empty($plaka))
                         continue;
 
-                    // Araç bul veya ekle (Silinenler dahil kontrol et)
-                    $mevcutArac = $Arac->plakaKontrol($plaka, null, true);
-                    if (!$mevcutArac) {
-                        try {
-                            $encryptedId = $Arac->saveWithAttr([
-                                'firma_id' => $_SESSION['firma_id'],
-                                'plaka' => $plaka,
-                                'aktif_mi' => 1
-                            ]);
-                            $aracId = (int) Security::decrypt($encryptedId);
-                        } catch (Exception $e) {
-                            $errorDetails[] = "Satır $rowNum ($plaka): Araç eklenemedi - " . $e->getMessage();
-                            continue;
-                        }
-                    } else {
-                        $aracId = $mevcutArac->id;
-                        // Eğer araç silinmişse geri getir
-                        $pdo = $Arac->getDb();
-                        $stmtRestore = $pdo->prepare("UPDATE araclar SET silinme_tarihi = NULL, aktif_mi = 1 WHERE id = ?");
-                        $stmtRestore->execute([$aracId]);
-                    }
+                    $satirSonucu = null;
+                    $satirDetayi = '';
+                    $yeniAracEklendi = false;
 
                     try {
                         $newData = [
                             'firma_id' => $_SESSION['firma_id'],
-                            'arac_id' => $aracId,
                             'olusturan_kullanici_id' => $_SESSION['user_id'] ?? null
                         ];
 
@@ -2055,6 +2110,49 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                                 $newData['toplam_tutar'] = round($net, 2);
                             }
                         }
+
+                        if (floatval($newData['yakit_miktari'] ?? 0) <= 0 && floatval($newData['toplam_tutar'] ?? 0) <= 0 && floatval($newData['brut_tutar'] ?? 0) <= 0) {
+                            throw new Exception("Yakıt miktarı ve tutarı boş; satır yakıt kaydı olarak işlenmedi, araç eklenmedi.");
+                        }
+                        foreach (['km', 'yakit_miktari', 'toplam_tutar'] as $zorunluSayi) {
+                            if (!isset($newData[$zorunluSayi])) {
+                                $newData[$zorunluSayi] = 0;
+                            }
+                        }
+
+                        if (!empty($newData['external_id'])) {
+                            $stmtExt = $Yakit->getDb()->prepare("SELECT firma_id FROM arac_yakit_kayitlari WHERE external_id = ? LIMIT 1");
+                            $stmtExt->execute([$newData['external_id']]);
+                            $extFirmaId = $stmtExt->fetchColumn();
+                            if ($extFirmaId !== false && (int) $extFirmaId !== (int) $_SESSION['firma_id']) {
+                                throw new Exception("Fiş ({$newData['external_id']}) başka bir firmada kayıtlı; satır atlandı.");
+                            }
+                        }
+
+                        $pdo->beginTransaction();
+
+                        $mevcutArac = $Arac->plakaKontrol($plaka, null, true);
+                        if (!$mevcutArac) {
+                            $aracId = (int) Security::decrypt($Arac->saveWithAttr([
+                                'firma_id' => $_SESSION['firma_id'],
+                                'plaka' => $plaka,
+                                'aktif_mi' => 1,
+                                'olusturan_kullanici_id' => $_SESSION['user_id'] ?? null
+                            ]));
+                            if ($aracId <= 0) {
+                                throw new Exception("Araç eklenemedi.");
+                            }
+                            $yeniAracEklendi = true;
+                            $AracLog->ekle($aracId, 'Yakıt Excel ile Ekleme', "{$plaka} plakalı araç yakıt Excel yüklemesinde sistemde bulunamadığı için otomatik eklendi (Satır {$rowNum}).");
+                        } else {
+                            $aracId = (int) $mevcutArac->id;
+                            if (!empty($mevcutArac->silinme_tarihi)) {
+                                $AracLog->ekle($aracId, 'Yakıt Excel ile Geri Getirme', "Silinmiş araç yakıt Excel yüklemesi ile geri getirildi (Satır {$rowNum}).");
+                            }
+                            $stmtRestore = $pdo->prepare("UPDATE araclar SET silinme_tarihi = NULL, aktif_mi = 1 WHERE id = ?");
+                            $stmtRestore->execute([$aracId]);
+                        }
+                        $newData['arac_id'] = $aracId;
 
                         // Önceki KM
                         $oncekiKm = $Yakit->getOncekiKm($aracId);
@@ -2109,13 +2207,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                                 ':olusturan_kullanici_id' => $newData['olusturan_kullanici_id']
                             ]);
 
-                            if ($stmt->rowCount() == 1) {
-                                $addedCount++;
-                                $addedDetails[] = "Satır $rowNum (Plaka: $plaka, Fiş: " . ($newData['external_id'] ?? '-') . ")";
-                            } else {
-                                $updatedCount++;
-                                $updatedDetails[] = "Satır $rowNum (Plaka: $plaka, Fiş: " . ($newData['external_id'] ?? '-') . ")";
-                            }
+                            $satirSonucu = $stmt->rowCount() == 1 ? 'eklendi' : 'guncellendi';
+                            $satirDetayi = "Satır $rowNum (Plaka: $plaka, Fiş: " . ($newData['external_id'] ?? '-') . ")";
                         } else {
                             $checkSql = "SELECT id FROM arac_yakit_kayitlari 
                                           WHERE arac_id = ? AND tarih = ? AND silinme_tarihi IS NULL";
@@ -2140,12 +2233,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                             if ($var_mi) {
                                 $newData['id'] = $var_mi->id;
                                 $Yakit->saveWithAttr($newData);
-                                $updatedCount++;
-                                $updatedDetails[] = "Güncellendi: Satır $rowNum (Plaka: $plaka, Tarih: " . $newData['tarih'] . ")";
+                                $satirSonucu = 'guncellendi';
+                                $satirDetayi = "Güncellendi: Satır $rowNum (Plaka: $plaka, Tarih: " . $newData['tarih'] . ")";
                             } else {
                                 $Yakit->saveWithAttr($newData);
-                                $addedCount++;
-                                $addedDetails[] = "Eklendi: Satır $rowNum (Plaka: $plaka, Tarih: " . $newData['tarih'] . ")";
+                                $satirSonucu = 'eklendi';
+                                $satirDetayi = "Eklendi: Satır $rowNum (Plaka: $plaka, Tarih: " . $newData['tarih'] . ")";
                             }
                         }
 
@@ -2154,12 +2247,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                             $Arac->updateKm($aracId, $newData['km']);
                         }
 
-                    } catch (Exception $e) {
-                        $errorDetails[] = "Satır $rowNum ($plaka): " . $e->getMessage();
+                        $pdo->commit();
+
+                        if ($satirSonucu === 'eklendi') {
+                            $addedCount++;
+                            $addedDetails[] = $satirDetayi;
+                        } else {
+                            $updatedCount++;
+                            $updatedDetails[] = $satirDetayi;
+                        }
+                        if ($yeniAracEklendi) {
+                            $otomatikEklenenAraclar[$plaka] = true;
+                        }
+
+                    } catch (Throwable $e) {
+                        if ($pdo->inTransaction()) {
+                            $pdo->rollBack();
+                        }
+                        error_log("Yakıt Excel satır $rowNum ($plaka) hata: " . $e->getMessage());
+                        $errorDetails[] = "Satır $rowNum ($plaka): " . ($e instanceof PDOException ? 'Kayıt veritabanına yazılamadı, satır atlandı.' : $e->getMessage());
                     }
                 }
 
                 $responseMessage = "İşlem tamamlandı. Eklenen: $addedCount, Güncellenen: $updatedCount";
+                if ($otomatikEklenenAraclar) {
+                    $responseMessage .= ", Yeni araç: " . count($otomatikEklenenAraclar) . " (" . implode(', ', array_keys($otomatikEklenenAraclar)) . ")";
+                }
                 if (count($errorDetails) > 0) {
                     $responseMessage .= ", Hatalı: " . count($errorDetails);
                 }
@@ -2167,7 +2280,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 // Yakıt Excel yükleme logla
                 $SystemLog = new SystemLogModel();
                 $userId = $_SESSION['user_id'] ?? 0;
-                $SystemLog->logAction($userId, 'Yakıt Excel Yükleme', "Excel'den {$addedCount} adet yakıt kaydı eklendi, {$updatedCount} adet güncellendi.", SystemLogModel::LEVEL_IMPORTANT);
+                $SystemLog->logAction($userId, 'Yakıt Excel Yükleme', "Excel'den {$addedCount} adet yakıt kaydı eklendi, {$updatedCount} adet güncellendi, " . count($errorDetails) . " satır hatalı." . ($otomatikEklenenAraclar ? " Otomatik eklenen araçlar: " . implode(', ', array_keys($otomatikEklenenAraclar)) : ''), SystemLogModel::LEVEL_IMPORTANT);
 
                 echo json_encode([
                     'status' => 'success',
@@ -2323,11 +2436,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                             $newData['baslangic_km'] = $newData['guncel_km'];
                         }
 
-                        $Arac->saveWithAttr($newData);
+                        $excelEskiArac = $mevcutArac ? $Arac->getById($mevcutArac->id) : null;
+                        if ($mevcutArac) {
+                            $newData['guncelleyen_kullanici_id'] = $_SESSION['user_id'] ?? null;
+                        } else {
+                            $newData['olusturan_kullanici_id'] = $_SESSION['user_id'] ?? null;
+                        }
+                        $excelAracId = (int) Security::decrypt($Arac->saveWithAttr($newData));
 
                         if ($mevcutArac) {
+                            $excelFarklar = $AracLog->farklariBul($excelEskiArac ?: $mevcutArac, $newData);
+                            $AracLog->ekle($excelAracId, 'Excel Güncelleme', $excelFarklar
+                                ? "Excel ile " . count($excelFarklar) . ' alan güncellendi: ' . implode(', ', array_column($excelFarklar, 'alan'))
+                                : 'Excel ile işlendi, alan değişikliği yok.', $excelFarklar);
                             $updatedCount++;
                         } else {
+                            $AracLog->ekle($excelAracId, 'Excel Ekleme', "{$plaka} plakalı araç Excel ile eklendi.");
                             $addedCount++;
                         }
 

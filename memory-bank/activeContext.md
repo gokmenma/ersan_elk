@@ -1,5 +1,11 @@
 # Active Context
 
+## Araç Takip — Araç İşlem Geçmişi / Ekleyen Bilgisi (2026-10-24)
+- `araclar` tablosuna `olusturan_kullanici_id` ve `guncelleyen_kullanici_id`; araç bazlı log tablosu `arac_islem_loglari` (işlem türü, açıklama, JSON alan farkları, IP). SQL: `database/migrations/2026_10_24_arac_islem_loglari.sql` (tekrarlanabilir; `arac-islem-gecmisi` API politikası `arac_takip_yonetim` yetkisine permission_key ile bağlı).
+- Model `App/Model/AracIslemLogModel` (`ekle`, `farklariBul`, `aracGecmisi`); `AracModel::getKayitBilgileri()` liste için ekleyen/güncelleyen adlarını tek sorguda getirir.
+- Loglanan işlemler: araç ekleme/güncelleme (alan farklarıyla), pasif aracı yeniden aktifleştirme, silme, Excel ekleme/güncelleme, ruhsat yükleme/silme, zimmet verme/iade. Aynı işlemler `system_logs`'a da yazılıyor.
+- Liste: plaka hücresinde ekleyen kullanıcı, işlem menüsünde “İşlem Geçmişi” modalı (`modal/arac-islem-gecmisi-modal.php`, `AracTakip.aracIslemGecmisi`). Bu özellikten önce eklenen araçlarda ekleyen bilgisi yok (“Kayıt tutulmamış”).
+
 ## Turkcell Mobil İmza ile Giden Evrak PAdES İmzası (2026-10-23)
 - Turkcell MSSP yalnız SHA-256 özeti imzalar; PDF ve CMS yapısı sunucuda kuruluyor. Akış: ProfileQuery (sertifika özeti) → `PdfIncrementalSigner::prepare` (incremental update ile imza alanı + 16 KB `/Contents`, klasik xref ve xref stream/object stream destekli) → `CmsSignedDataBuilder::signedAttributes` (contentType, signingTime, messageDigest, signingCertificateV2) → `MSS_Signature` (`asynchClientServer`, PKCS7) → istemci 3 sn’de bir `evrak-mobil-imza-durum` → `MSS_StatusQuery` 500 olunca PKCS7’den imza+sertifika alınır, `openssl_verify` ile özet doğrulanır, CMS SignedData kurulup PDF’e gömülür → `PadesEImzaService::finalize()` (mevcut openssl cms doğrulaması, sertifika bağlama, şifreli depolama, `approveWithPades`).
 - Servisler: `TurkcellMobilImzaClient`, `MobilImzaPadesService`, `PdfIncrementalSigner`, `CmsSignedDataBuilder`; model `MobilImzaModel` (`mobil_imza_islemleri`, şifreli `users.mobil_imza_msisdn`).

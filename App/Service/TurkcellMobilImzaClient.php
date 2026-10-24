@@ -9,7 +9,9 @@ final class TurkcellMobilImzaClient
     private const STATUS_URL = 'https://msign.turkcell.com.tr/MSSP2/services/MSS_StatusPort';
     private const NS_ETSI = 'http://uri.etsi.org/TS102204/v1.1.2#';
     private const NS_SOAP = 'http://turkcelltech.com/mobilesignature/validation/soap';
-    private const FORMAT_PKCS7 = 'http://uri.etsi.org/TS102204/v1.1.2#PKCS7';
+    private const FORMAT_XML_SIGNATURE = 'http://uri.etsi.org/TS102204/v1.1.2#XML-Signature';
+    private const SOAP11 = 'http://schemas.xmlsoap.org/soap/envelope/';
+    private const SOAP12 = 'http://www.w3.org/2003/05/soap-envelope';
     public const ERROR_CONNECTION_REFUSED = 1001;
 
     private const STATUS_MESSAGES = [
@@ -29,6 +31,7 @@ final class TurkcellMobilImzaClient
         404 => 'SIM kartta imza anahtarı bulunamadı.',
         406 => 'Telefonda imza oluşturulurken hata oluştu.',
         422 => 'Hatta tanımlı mobil imza sertifikası bulunamadı.',
+        425 => 'Mobil imza sertifikası geçersiz veya süresi dolmuş.',
         501 => 'Mobil imza sertifikası iptal edilmiş.',
         503 => 'Mobil imza geçersiz.',
         900 => 'Turkcell mobil imza servisinde iç hata oluştu.',
@@ -48,6 +51,30 @@ final class TurkcellMobilImzaClient
     public static function isConfigured(): bool
     {
         return trim((string) ($_ENV['TURKCELL_MIMZA_AP_ID'] ?? '')) !== '' && trim((string) ($_ENV['TURKCELL_MIMZA_AP_PWD'] ?? '')) !== '';
+    }
+
+    public static function connectionDiagnostics(): string
+    {
+        $host = (string) parse_url((string) ($_ENV['TURKCELL_MIMZA_PROFILE_URL'] ?? '') ?: self::PROFILE_URL, PHP_URL_HOST);
+        $resolved = gethostbyname($host);
+        $probe = static function (string $target, int $port): string {
+            $started = microtime(true);
+            $socket = @fsockopen($target, $port, $errno, $error, 5);
+            if ($socket) {
+                fclose($socket);
+                return 'açık (' . (int) round((microtime(true) - $started) * 1000) . ' ms)';
+            }
+            return $errno === 0 || stripos((string) $error, 'timed out') !== false ? 'zaman aşımı' : 'reddedildi';
+        };
+        $items = [
+            $host . ' DNS: ' . ($resolved !== $host ? $resolved : 'çözümlenemedi'),
+        ];
+        if ($resolved !== $host) {
+            $items[] = $resolved . ':443 ' . $probe($resolved, 443);
+            $items[] = $resolved . ':80 ' . $probe($resolved, 80);
+        }
+        $items[] = 'www.turkcell.com.tr:443 ' . $probe('www.turkcell.com.tr', 443);
+        return implode('; ', $items);
     }
 
     public static function outboundIp(): string
@@ -87,7 +114,7 @@ final class TurkcellMobilImzaClient
             . '<v1:MSSP_Info Instant="' . $this->instant() . '"><v1:MSSP_ID>' . $msisdn . '</v1:MSSP_ID></v1:MSSP_Info>'
             . '<v1:MobileUser><v1:UserIdentifier>http://www.w3.org/2001/04/xmlenc#sha256</v1:UserIdentifier><v1:MSISDN>' . $msisdn . '</v1:MSISDN></v1:MobileUser>'
             . '</MSS_ProfileReq></soap:MSS_ProfileQuery>';
-        $xpath = $this->call(self::PROFILE_URL, $body);
+        $xpath = $this->call(self::PROFILE_URL, $body, self::SOAP11);
         $status = $this->status($xpath);
         if ($status['code'] !== 100) {
             throw new \RuntimeException($this->statusMessage($status));
@@ -115,9 +142,9 @@ final class TurkcellMobilImzaClient
             . '<v1:DataToBeSigned Encoding="Base64" MimeType="application/octet-stream">' . base64_encode($hash) . '</v1:DataToBeSigned>'
             . '<v1:DataToBeDisplayed Encoding="UTF-8" MimeType="text/plain">' . $this->escape($displayText) . '</v1:DataToBeDisplayed>'
             . '<v1:SignatureProfile><v1:mssURI>' . $this->escape($profile) . '</v1:mssURI></v1:SignatureProfile>'
-            . '<v1:MSS_Format><v1:mssURI>' . self::FORMAT_PKCS7 . '</v1:mssURI></v1:MSS_Format>'
+            . '<v1:MSS_Format><v1:mssURI>' . self::FORMAT_XML_SIGNATURE . '</v1:mssURI></v1:MSS_Format>'
             . '</MSS_SignatureReq></soap:MSS_Signature>';
-        $xpath = $this->call(self::SIGNATURE_URL, $body);
+        $xpath = $this->call(self::SIGNATURE_URL, $body, self::SOAP12);
         $status = $this->status($xpath);
         if (!in_array($status['code'], [500, 502, 504], true)) {
             throw new \RuntimeException($this->statusMessage($status));
@@ -139,7 +166,7 @@ final class TurkcellMobilImzaClient
             . $this->apInfo(true)
             . '<v1:MSSP_Info Instant="' . $this->instant() . '"><v1:MSSP_ID><v1:DNSName></v1:DNSName></v1:MSSP_ID></v1:MSSP_Info>'
             . '</MSS_StatusReq></soap:MSS_StatusQuery>';
-        $xpath = $this->call(self::STATUS_URL, $body);
+        $xpath = $this->call(self::STATUS_URL, $body, self::SOAP12);
         $status = $this->status($xpath);
         $state = match (true) {
             in_array($status['code'], [500, 502], true) => 'imzalandi',
@@ -180,10 +207,10 @@ final class TurkcellMobilImzaClient
             . ' Instant="' . $this->instant() . '"/>';
     }
 
-    private function call(string $url, string $body): \DOMXPath
+    private function call(string $url, string $body, string $soapNamespace): \DOMXPath
     {
         $envelope = '<?xml version="1.0" encoding="UTF-8"?>'
-            . '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:soap="' . self::NS_SOAP . '" xmlns:v1="' . self::NS_ETSI . '">'
+            . '<soapenv:Envelope xmlns:soapenv="' . $soapNamespace . '" xmlns:soap="' . self::NS_SOAP . '" xmlns:v1="' . self::NS_ETSI . '">'
             . '<soapenv:Header/><soapenv:Body>' . $body . '</soapenv:Body></soapenv:Envelope>';
         $url = (string) ($_ENV[match ($url) {
             self::PROFILE_URL => 'TURKCELL_MIMZA_PROFILE_URL',
@@ -201,7 +228,9 @@ final class TurkcellMobilImzaClient
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
             CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
-            CURLOPT_HTTPHEADER => ['Content-Type: text/xml; charset=utf-8', 'SOAPAction: ""'],
+            CURLOPT_HTTPHEADER => $soapNamespace === self::SOAP12
+                ? ['Content-Type: application/soap+xml; charset=utf-8; action=""']
+                : ['Content-Type: text/xml; charset=utf-8', 'SOAPAction: ""'],
         ]);
         $response = curl_exec($ch);
         $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);

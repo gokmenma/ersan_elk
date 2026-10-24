@@ -1,7 +1,8 @@
 (function (window) {
   "use strict";
 
-  const POLL_INTERVAL = 3000;
+  const FIRST_POLL_DELAY = 20000;
+  const POLL_INTERVAL = 10000;
   const MAX_NETWORK_ERRORS = 5;
 
   function escapeHtml(value) {
@@ -110,7 +111,7 @@
           const counter = container && container.querySelector("[data-mobil-imza-sure]");
           if (counter) counter.textContent = remaining;
         }, 1000);
-        pollTimer = setTimeout(poll, POLL_INTERVAL);
+        pollTimer = setTimeout(poll, FIRST_POLL_DELAY);
       })
       .catch(() => fail("Bağlantı Hatası", "Sunucu ile iletişim kurulamadı."));
   }

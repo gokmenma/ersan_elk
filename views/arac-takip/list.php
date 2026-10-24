@@ -91,6 +91,14 @@ if ($filter === 'muayene') {
     $araclar = $Arac->getAktifAraclar();
 }
 
+$aracKayitBilgileri = $Arac->getKayitBilgileri(array_column($araclar, 'id'));
+foreach ($araclar as $arac) {
+    $kayitBilgisi = $aracKayitBilgileri[(int) $arac->id] ?? null;
+    $arac->olusturan_kullanici_adi = $kayitBilgisi->olusturan_kullanici_adi ?? null;
+    $arac->guncelleyen_kullanici_adi = $kayitBilgisi->guncelleyen_kullanici_adi ?? null;
+}
+unset($arac);
+
 // Yakıt işlemlerindeki araç kaynağı, araç listesi sekmesinin aktif filtresinden
 // bağımsızdır. İkame araçlar ana listede bilinçli olarak gizlense de yakıt
 // filtresinde ve yakıt kayıt formunda seçilebilir olmalıdır.
@@ -751,7 +759,7 @@ if (!function_exists('getEvrakBadgeStatus')) {
                                                 'hibrit' => '<span class="badge bg-warning text-dark">Hibrit</span>'
                                             ];
                                             ?>
-                                            <tr data-created-by="<?php echo htmlspecialchars($arac->olusturan_kullanici_adi ?? ''); ?>" data-created-at="<?php echo !empty($arac->olusturma_tarihi) ? htmlspecialchars(date('d.m.Y H:i', strtotime($arac->olusturma_tarihi))) : ''; ?>">
+                                            <tr data-created-by="<?php echo htmlspecialchars($arac->olusturan_kullanici_adi ?? '', ENT_QUOTES, 'UTF-8'); ?>" data-created-at="<?php echo !empty($arac->olusturma_tarihi) ? htmlspecialchars(date('d.m.Y H:i', strtotime($arac->olusturma_tarihi)), ENT_QUOTES, 'UTF-8') : ''; ?>">
                                                 <td class="text-center">
                                                     <?php echo $i; ?>
                                                 </td>
@@ -771,6 +779,11 @@ if (!function_exists('getEvrakBadgeStatus')) {
                                                         <?php endif; ?>
                                                         <span
                                                             class="model-label"><?php echo ($arac->marka ?? '-') . ' ' . ($arac->model ?? ''); ?></span>
+                                                        <?php if (!empty($arac->olusturan_kullanici_adi)): ?>
+                                                            <span class="d-block text-muted arac-ekleyen-label" style="font-size: 10.5px;" title="Ekleyen: <?php echo htmlspecialchars($arac->olusturan_kullanici_adi, ENT_QUOTES, 'UTF-8'); ?><?php echo !empty($arac->olusturma_tarihi) ? ' • ' . date('d.m.Y H:i', strtotime($arac->olusturma_tarihi)) : ''; ?>">
+                                                                <i class="bx bx-user-plus"></i> <?php echo htmlspecialchars($arac->olusturan_kullanici_adi, ENT_QUOTES, 'UTF-8'); ?>
+                                                            </span>
+                                                        <?php endif; ?>
                                                     </div>
                                                 </td>
                                                 <td>
@@ -907,6 +920,11 @@ if (!function_exists('getEvrakBadgeStatus')) {
                                                             <li>
                                                                 <a class="dropdown-item text-info arac-zimmet-gecmisi" href="javascript:void(0);" data-id="<?php echo $arac->id; ?>" data-plaka="<?php echo htmlspecialchars($arac->plaka, ENT_QUOTES, 'UTF-8'); ?>">
                                                                     <i class="bx bx-history me-2"></i> Zimmet Geçmişi
+                                                                </a>
+                                                            </li>
+                                                            <li>
+                                                                <a class="dropdown-item text-secondary arac-islem-gecmisi" href="javascript:void(0);" data-id="<?php echo $arac->id; ?>" data-plaka="<?php echo htmlspecialchars($arac->plaka, ENT_QUOTES, 'UTF-8'); ?>">
+                                                                    <i class="bx bx-list-check me-2"></i> İşlem Geçmişi
                                                                 </a>
                                                             </li>
                                                             <li>
@@ -1600,6 +1618,7 @@ if (!function_exists('getEvrakBadgeStatus')) {
     }
 </style>
 <?php include_once "modal/zimmet-gecmisi-modal.php"; ?>
+<?php include_once "modal/arac-islem-gecmisi-modal.php"; ?>
 <?php include_once "modal/zimmet-duzenle-modal.php"; ?>
 <?php include_once "modal/yakit-modal.php"; ?>
 <?php include_once "modal/km-modal.php"; ?>

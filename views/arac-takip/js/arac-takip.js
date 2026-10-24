@@ -741,6 +741,71 @@ const AracTakip = {
     });
   },
 
+  aracIslemGecmisi: function (aracId, plaka) {
+    const esc = (v) =>
+      $("<div>").text(v === null || v === undefined || v === "" ? "-" : String(v)).html();
+    const liste = $("#islemGecmisiListe");
+    $("#islemGecmisiPlaka").text(plaka || "");
+    $("#islemGecmisiEkleyen, #islemGecmisiGuncelleyen").text("-");
+    $("#islemGecmisiEklemeTarihi, #islemGecmisiGuncellemeTarihi").text("");
+    liste.html('<div class="text-center p-4 text-muted"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Yükleniyor...</div>');
+
+    const modalEl = document.getElementById("aracIslemGecmisiModal");
+    if (!modalEl) return;
+    (bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl)).show();
+
+    const turRenk = {
+      "Ekleme": "success", "Excel Ekleme": "success", "Güncelleme": "primary",
+      "Excel Güncelleme": "primary", "Yeniden Aktifleştirme": "info", "Silme": "danger",
+      "Zimmet Verme": "warning", "Zimmet İade": "secondary",
+      "Ruhsat Yükleme": "info", "Ruhsat Silme": "danger",
+    };
+
+    $.post(this.apiUrl, { action: "arac-islem-gecmisi", arac_id: aracId }, (response) => {
+      if (response.status !== "success") {
+        liste.html(`<div class="alert alert-danger mb-0">${esc(response.message || "İşlem geçmişi alınamadı.")}</div>`);
+        return;
+      }
+      const d = response.data || {};
+      $("#islemGecmisiEkleyen").text(d.olusturan || "Kayıt tutulmamış");
+      $("#islemGecmisiEklemeTarihi").text(d.olusturma_tarihi || "");
+      $("#islemGecmisiGuncelleyen").text(d.guncelleyen || "-");
+      $("#islemGecmisiGuncellemeTarihi").text(d.guncelleyen ? d.guncelleme_tarihi || "" : "");
+
+      if (!d.loglar || d.loglar.length === 0) {
+        liste.html('<div class="text-center p-4 text-muted"><i class="bx bx-info-circle me-1"></i>Bu araç için henüz işlem kaydı bulunmuyor. Kayıtlar bu özellik eklendikten sonraki işlemlerden itibaren tutulur.</div>');
+        return;
+      }
+
+      let html = '<ul class="list-group list-group-flush">';
+      d.loglar.forEach((l) => {
+        const renk = turRenk[l.islem_turu] || "secondary";
+        let farkHtml = "";
+        if (l.degisiklikler && l.degisiklikler.length) {
+          farkHtml = '<div class="table-responsive mt-2"><table class="table table-sm table-bordered mb-0 font-size-12"><thead class="table-light"><tr><th>Alan</th><th>Eski</th><th>Yeni</th></tr></thead><tbody>';
+          l.degisiklikler.forEach((f) => {
+            farkHtml += `<tr><td class="fw-semibold">${esc(f.alan)}</td><td class="text-danger">${esc(f.eski)}</td><td class="text-success">${esc(f.yeni)}</td></tr>`;
+          });
+          farkHtml += "</tbody></table></div>";
+        }
+        html += `<li class="list-group-item px-0">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+              <div>
+                <span class="badge bg-${renk}-subtle text-${renk} border border-${renk}-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">${esc(l.islem_turu)}</span>
+                <span class="ms-2 fw-semibold"><i class="bx bx-user me-1 text-muted"></i>${esc(l.kullanici)}</span>
+              </div>
+              <span class="text-muted font-size-12 text-nowrap" title="IP: ${esc(l.ip)}"><i class="bx bx-time-five me-1"></i>${esc(l.tarih)}</span>
+            </div>
+            <div class="text-muted font-size-12 mt-1">${esc(l.aciklama)}</div>
+            ${farkHtml}
+          </li>`;
+      });
+      liste.html(html + "</ul>");
+    }, "json").fail(() => {
+      liste.html('<div class="alert alert-danger mb-0">İşlem geçmişi alınamadı.</div>');
+    });
+  },
+
   zimmetGecmisi: function(aracId, plaka) {
     console.log("Arac Takip: Zimmet geçmişi isteniyor.", {aracId, plaka});
     $("#gecmisAracPlaka").text(plaka);
@@ -3233,6 +3298,11 @@ $(document).ready(function () {
     const id = $(this).data("id");
     const plaka = $(this).data("plaka");
     if (id) AracTakip.zimmetGecmisi(id, plaka);
+  });
+  $(document).on("click", ".arac-islem-gecmisi", function (e) {
+    e.preventDefault();
+    const id = $(this).data("id");
+    if (id) AracTakip.aracIslemGecmisi(id, $(this).data("plaka"));
   });
   $(document).on("click", ".yakit-duzenle", function (e) {
     e.preventDefault();

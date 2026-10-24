@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-10-24 — Araç İşlem Geçmişi
+- [x] SQL yerelde iki kez çalıştırıldı; API ekleme → güncelleme → geçmiş akışı CLI oturumuyla test edildi, test verileri silindi.
+- [ ] Sunucuda `database/migrations/2026_10_24_arac_islem_loglari.sql` çalıştırılmalı (çalıştırılmadan araç kaydetme hata verir).
+- [x] Yakıt Excel yükleme: araç oluşturma + yakıt kaydı satır bazında tek transaction; tutarsız satır ve litre/tutar sütunu olmayan dosya reddediliyor; başka firmaya ait `external_id` atlanıyor (önceden kaydı diğer firmadan bu araca taşıyordu). Otomatik eklenen araçlar mesajda ve araç işlem geçmişinde görünüyor.
+- [ ] Sunucuda `database/migrations/2026_10_24_yakit_excel_sahipsiz_arac_temizligi.sql` önce önizleme SELECT'i ile kontrol edilip çalıştırılmalı.
+
 ## 2026-10-23 — Turkcell Mobil İmza Entegrasyonu
 - [x] SQL `sql/2026_10_23_add_turkcell_mobil_imza.sql` yerelde iki kez çalıştırıldı (tekrarlanabilir); yetki Yetki Kataloğu ve Yetki Grubu Düzenleme verisinde görünüyor, Süper Admin ve Firma Sahibi rollerine atandı.
 - [x] Incremental PAdES imzalayıcı: mPDF (klasik xref) ve Ghostscript (xref stream + object stream) PDF’lerinde art arda iki imza `pdfsig` ile “Signature is Valid”.

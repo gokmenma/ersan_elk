@@ -159,8 +159,14 @@ final class MobilImzaPadesService
 
     private function complete(object $transaction, string $pkcs7, int $userId, string $ipAddress): array
     {
-        $response = CmsSignedDataBuilder::parsePkcs7($pkcs7);
+        $response = $this->parseSignatureResponse($pkcs7);
         $certificate = $response['certificate'];
+        foreach ($response['certificates'] as $candidate) {
+            if (hash_equals((string) $transaction->sertifika_ozeti, hash('sha256', $candidate))) {
+                $certificate = $candidate;
+                break;
+            }
+        }
         if (!hash_equals((string) $transaction->sertifika_ozeti, hash('sha256', $certificate))) {
             throw new \RuntimeException('İmzalayan sertifika, profil sorgusunda bildirilen sertifika ile eşleşmiyor. Lütfen yeniden deneyiniz.');
         }
@@ -186,6 +192,35 @@ final class MobilImzaPadesService
         $signedPdf = (new PdfIncrementalSigner())->embed($preparedPdf, (array) ($layout['range'] ?? []), $cms);
 
         return (new PadesEImzaService())->finalize((int) $transaction->evrak_id, $userId, $sourcePdf, $signedPdf, $ipAddress, 'mobil_imza');
+    }
+
+    private function parseSignatureResponse(string $raw): array
+    {
+        if ($raw !== '' && ord($raw[0]) === 0x30) {
+            return CmsSignedDataBuilder::parsePkcs7($raw);
+        }
+        $document = new \DOMDocument();
+        if (!@$document->loadXML('<MobilImzaYaniti>' . preg_replace('/^<\?xml[^>]*\?>/', '', trim($raw)) . '</MobilImzaYaniti>', LIBXML_NONET)) {
+            throw new \RuntimeException('Mobil imza yanıtı çözülemedi.');
+        }
+        $xpath = new \DOMXPath($document);
+        $read = static function (string $name) use ($xpath): string {
+            $nodes = $xpath->query('//*[local-name()="' . $name . '"]');
+            return ($nodes && $nodes->length > 0) ? preg_replace('/\s+/', '', (string) $nodes->item(0)->nodeValue) : '';
+        };
+        $signature = base64_decode($read('SignatureValue'), true);
+        $certificates = [];
+        $nodes = $xpath->query('//*[local-name()="X509Certificate"]');
+        foreach ($nodes ?: [] as $node) {
+            $der = base64_decode(preg_replace('/\s+/', '', (string) $node->nodeValue), true);
+            if ($der !== false && $der !== '') {
+                $certificates[] = $der;
+            }
+        }
+        if ($signature === false || $signature === '' || $certificates === []) {
+            throw new \RuntimeException('Mobil imza yanıtında imza veya sertifika bulunamadı.');
+        }
+        return ['signature' => $signature, 'certificate' => $certificates[0], 'certificates' => $certificates, 'has_signed_attributes' => false];
     }
 
     private function validateCertificate(string $certificate, array $bundled, int $userId): void

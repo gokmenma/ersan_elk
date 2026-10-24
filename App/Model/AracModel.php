@@ -310,6 +310,32 @@ class AracModel extends Model
         return $sql->fetch(PDO::FETCH_OBJ) ?: (object) [];
     }
 
+    public function getKayitBilgileri(array $aracIdleri): array
+    {
+        $aracIdleri = array_values(array_unique(array_filter(array_map('intval', $aracIdleri))));
+        if (!$aracIdleri) {
+            return [];
+        }
+
+        $yerTutucular = implode(',', array_fill(0, count($aracIdleri), '?'));
+        $sql = $this->db->prepare("
+            SELECT a.id, a.olusturma_tarihi, a.guncelleme_tarihi,
+                   uo.adi_soyadi AS olusturan_kullanici_adi,
+                   ug.adi_soyadi AS guncelleyen_kullanici_adi
+            FROM {$this->table} a
+            LEFT JOIN users uo ON uo.id = a.olusturan_kullanici_id
+            LEFT JOIN users ug ON ug.id = a.guncelleyen_kullanici_id
+            WHERE a.firma_id = ? AND a.id IN ({$yerTutucular})
+        ");
+        $sql->execute(array_merge([(int) ($_SESSION['firma_id'] ?? 0)], $aracIdleri));
+
+        $sonuc = [];
+        foreach ($sql->fetchAll(PDO::FETCH_OBJ) as $satir) {
+            $sonuc[(int) $satir->id] = $satir;
+        }
+        return $sonuc;
+    }
+
     /**
      * Boşta olan araçları getirir
      */
