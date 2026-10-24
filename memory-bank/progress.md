@@ -1863,3 +1863,4 @@
 - [x] Kart fotoğraf badge'i galeri açma işlemine bağlandı.
 - [x] Galeri görsellerinin tam ekran büyütülmesi güvenilir indeks tabanlı akışa geçirildi.
 - [x] Dokunmatik kaydırma, klavye gezinmesi, sayaç, indirme ve kapatma davranışları tamamlandı.
+- [x] Büyük görselin viewport dışına taşması giderildi ve sabit, yüksek kontrastlı kapatma kontrolü eklendi.

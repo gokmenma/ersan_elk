@@ -1166,47 +1166,51 @@ onUnmounted(() => window.removeEventListener('keydown', handleGalleryKeydown))
       @touchstart.passive="handleLightboxTouchStart"
       @touchend.passive="handleLightboxTouchEnd"
     >
-      <header class="flex items-center justify-between text-white pt-2">
-        <span class="text-xs font-bold">
+      <header class="photo-lightbox-head">
+        <span class="photo-lightbox-counter">
           {{ lightboxIndex + 1 }} / {{ imageOnlyPhotos.length }}
         </span>
-        <div class="flex items-center gap-2">
+        <div class="photo-lightbox-actions">
           <a
             :href="imageOnlyPhotos[lightboxIndex].full_url"
             download
-            class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white"
+            class="photo-lightbox-action"
+            aria-label="Fotoğrafı indir"
           >
             <Download :size="18" />
           </a>
           <button
             type="button"
-            class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white"
+            class="photo-lightbox-action photo-lightbox-close"
+            aria-label="Önizlemeyi kapat"
             @click="closeLightbox"
           >
-            <X :size="18" />
+            <X :size="22" />
           </button>
         </div>
       </header>
 
-      <div class="flex-1 flex items-center justify-center p-2 min-h-0">
+      <div class="photo-lightbox-stage">
         <img
           :src="imageOnlyPhotos[lightboxIndex].full_url"
           :alt="imageOnlyPhotos[lightboxIndex].ad"
-          class="max-w-full max-h-full object-contain rounded-xl"
+          class="photo-lightbox-image"
         />
       </div>
 
-      <footer v-if="imageOnlyPhotos.length > 1" class="flex items-center justify-between text-white pb-6">
+      <footer v-if="imageOnlyPhotos.length > 1" class="photo-lightbox-nav">
         <button
           type="button"
-          class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-white"
+          class="photo-lightbox-nav-button"
+          aria-label="Önceki fotoğraf"
           @click="prevPhoto"
         >
           <ChevronLeft :size="24" />
         </button>
         <button
           type="button"
-          class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-white"
+          class="photo-lightbox-nav-button"
+          aria-label="Sonraki fotoğraf"
           @click="nextPhoto"
         >
           <ChevronRight :size="24" />
@@ -1886,13 +1890,99 @@ onUnmounted(() => window.removeEventListener('keydown', handleGalleryKeydown))
   position: fixed;
   inset: 0;
   z-index: 120;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 16px;
   background: rgba(0, 0, 0, 0.96);
+  overflow: hidden;
   overscroll-behavior: contain;
   touch-action: pan-y;
+}
+
+.photo-lightbox-head {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  left: 0;
+  right: 0;
+  min-height: 68px;
+  padding: max(12px, env(safe-area-inset-top)) 16px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #fff;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.78), transparent);
+}
+
+.photo-lightbox-counter {
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.photo-lightbox-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.photo-lightbox-action,
+.photo-lightbox-nav-button {
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  background: rgba(20, 24, 31, 0.76);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+.photo-lightbox-action {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.photo-lightbox-close {
+  background: rgba(255, 255, 255, 0.96);
+  color: #111827;
+}
+
+.photo-lightbox-stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 72px 8px 76px;
+}
+
+.photo-lightbox-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  object-fit: contain;
+}
+
+.photo-lightbox-nav {
+  position: absolute;
+  z-index: 3;
+  left: 16px;
+  right: 16px;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.photo-lightbox-nav-button {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border-radius: 50%;
+  pointer-events: auto;
 }
 
 .drawer-drag-handle {
