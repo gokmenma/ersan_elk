@@ -311,6 +311,10 @@ onMounted(() => load(true))
             <p class="clay-lightbox-role">
               {{ [photoModalPerson.job, photoModalPerson.department].filter(Boolean).join(' · ') || 'Görev bilgisi bulunmuyor' }}
             </p>
+            <p class="clay-lightbox-role clay-lightbox-region">
+              <MapPin :size="13" />
+              {{ [photoModalPerson.team, photoModalPerson.region].filter(Boolean).join(' · ') || 'Ekip / Bölge atanmamış' }}
+            </p>
           </div>
 
           <div class="clay-lightbox-actions">

@@ -93,6 +93,14 @@ if ($currentUser && isset($currentUser->firma_ids)) {
 
 // Varsayılan firma cookie kontrolü - otomatik yönlendirme
 $defaultFirma = $Firma->resolveDefaultFirmaFromCookies($_COOKIE, $branchs);
+if (!$defaultFirma) {
+    foreach ($branchs as $branch) {
+        if (!empty($branch->varsayilan_mi) && is_null($branch->silinme_tarihi ?? null)) {
+            $defaultFirma = $branch;
+            break;
+        }
+    }
+}
 if ($defaultFirma && !isset($_GET['change'])) {
     $_SESSION['firma_id'] = (int) $defaultFirma->id;
     $redirect = "set-session.php?firma_id=" . (int) $defaultFirma->id;
@@ -813,6 +821,23 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
             </button>
         </div>
 
+        <?php
+$preselectId = 0;
+$preselectDefault = false;
+$oncekiFirmaId = (int) ($_SESSION['onceki_firma_id'] ?? 0);
+unset($_SESSION['onceki_firma_id']);
+foreach ($branchs as $b) {
+    if ($oncekiFirmaId > 0 && (int) $b->id === $oncekiFirmaId) {
+        $preselectId = (int) $b->id;
+        $preselectDefault = !empty($b->varsayilan_mi);
+        break;
+    }
+    if ($preselectId === 0 && !empty($b->varsayilan_mi)) {
+        $preselectId = (int) $b->id;
+        $preselectDefault = true;
+    }
+}
+?>
         <div class="branch-list">
             <?php foreach ($branchs as $branch) { ?>
                 <div class="branch-item" data-id="<?php echo (int) $branch->id; ?>"
@@ -983,6 +1008,15 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof feather !== 'undefined') {
                 feather.replace();
+            }
+
+            const preselectId = <?php echo (int) $preselectId; ?>;
+            if (preselectId > 0) {
+                const el = document.querySelector('.branch-item[data-id="' + preselectId + '"]');
+                if (el) {
+                    selectBranch(el);
+                    document.getElementById('varsayilan-firma').checked = <?php echo $preselectDefault ? 'true' : 'false'; ?>;
+                }
             }
 
             const observer = new MutationObserver(() => {

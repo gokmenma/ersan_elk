@@ -366,6 +366,10 @@ onMounted(load)
               <p class="clay-lightbox-role">
                 {{ [person.job, person.department].filter(Boolean).join(' · ') || 'Çalışma bilgisi tanımlanmamış' }}
               </p>
+              <p class="clay-lightbox-role clay-lightbox-region">
+                <MapPin :size="13" />
+                {{ [person.team, person.region].filter(Boolean).join(' · ') || 'Ekip / Bölge atanmamış' }}
+              </p>
             </div>
 
             <div class="clay-lightbox-actions">

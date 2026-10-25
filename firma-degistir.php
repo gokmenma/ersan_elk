@@ -16,9 +16,10 @@ if (isset($_COOKIE['varsayilan_firma_kodu'])) {
 
 // Mevcut firma session'ını temizle
 if (isset($_SESSION['firma_id'])) {
+    $_SESSION['onceki_firma_id'] = (int) $_SESSION['firma_id'];
     unset($_SESSION['firma_id']);
 }
 
 // Firma seçim sayfasına yönlendir
-header("Location: firma-secim.php");
+header("Location: firma-secim.php?change=1");
 exit;

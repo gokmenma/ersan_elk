@@ -1,5 +1,12 @@
 # Progress
 
+## 2026-10-25 — Mobil SPA Ana Sayfa Kartları Sürükle-Bırak (Drag & Drop) Düzeltmesi
+- [x] Tutamaç Dokunmatik & Pointer Desteği: 7 ana sayfa kartının tutamaçlarına (`.card-inner-handle`) `@pointerdown.stop` ve `@touchstart.stop` eklenerek `startHandleDrag()` fonksiyonu ile mobil dokunmatik ekranlar için sürükle-bırak desteği sağlandı.
+- [x] Akıllı Hedef Belirleme & Auto-scroll: Kartların dikey sınır koordinatları (`findCardUnderPoint`) anlık hesaplanarak parmak altındaki kart ve konum (`top`/`bottom`) tespit edildi; ekran kenarlarında otomatik sayfa kaydırma eklendi.
+- [x] İndeks Kayması Hatası Giderildi: `reorderCards()` metodu yazılarak eleman indeks kayması olmadan sıralama garantilendi, hem dokunmatik hem de masaüstü HTML5 drop bu metoda bağlandı.
+- [x] Görsel Geri Bildirim ve Titreşim: Sürükleme sırasında saydamlık/küçülme efekti, hedef konuma parlak 4px kapsül çizgisi, haptic titreşim (`navigator.vibrate`) ve toast bildirimi eklendi.
+- [x] Vite üretim paketi (`npm run build`) derlendi ve doğrulandı.
+
 ## 2026-10-24 — Mobil SPA 3 Boyutlu Logo, 3D Açılış Görseli ve Animasyonlu 3D Açılış Ekranı
 - [x] Kurumsal `ER` logosunun 3 boyutlu altın/titanyum versiyonu (`images/logo-3d.png`) ve tüm PWA/uygulama ikonları (`icon-512.png`, `icon-192.png`, `icon-maskable-512.png`, `apple-touch-icon.png`, `favicon.svg`, `favicon.ico`) üretildi.
 - [x] Giriş ekranı logosu köşeleri yuvarlatılmış kare (squircle `124x124px`) yapıldı, dönen halka kaldırılarak yalnızca shine efekti bırakıldı; app-splash arka planı Obsidian (`#191d24`) yapıldı ve dönen çizgiler hardal-beyaz olarak güncellendi.

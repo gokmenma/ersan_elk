@@ -549,10 +549,171 @@ function resetToDefault() {
   persistSettings()
 }
 
-// Sürükle - Bırak (HTML5 Drag & Touch)
+// Sürükle - Bırak (Mobil Dokunmatik + Masaüstü Pointer & Drag)
 const draggedCard = ref(null)
 const dragOverCard = ref(null)
 const dragOverPosition = ref(null) // 'top' | 'bottom'
+const isDraggingHandle = ref(false)
+
+function reorderCards(draggedId, targetId, position) {
+  if (!draggedId || !targetId || draggedId === targetId) return false
+
+  const currentOrder = [...cardOrder.value]
+  const fromIndex = currentOrder.indexOf(draggedId)
+  if (fromIndex === -1) return false
+
+  const [item] = currentOrder.splice(fromIndex, 1)
+
+  const targetIndex = currentOrder.indexOf(targetId)
+  if (targetIndex === -1) return false
+
+  const insertIndex = position === 'bottom' ? targetIndex + 1 : targetIndex
+  currentOrder.splice(insertIndex, 0, item)
+
+  cardOrder.value = currentOrder
+  return true
+}
+
+function findCardUnderPoint(clientY) {
+  const wrappers = Array.from(document.querySelectorAll('.home-sections-stack .home-card-wrapper'))
+  if (!wrappers.length) return null
+
+  for (const wrapper of wrappers) {
+    const cid = wrapper.dataset.cardId
+    if (!cid) continue
+    const rect = wrapper.getBoundingClientRect()
+    if (clientY >= rect.top && clientY <= rect.bottom) {
+      const isBottom = clientY > (rect.top + rect.height / 2)
+      return { cardId: cid, position: isBottom ? 'bottom' : 'top' }
+    }
+  }
+
+  const firstRect = wrappers[0].getBoundingClientRect()
+  if (clientY < firstRect.top) {
+    return { cardId: wrappers[0].dataset.cardId, position: 'top' }
+  }
+
+  const lastWrapper = wrappers[wrappers.length - 1]
+  const lastRect = lastWrapper.getBoundingClientRect()
+  if (clientY > lastRect.bottom) {
+    return { cardId: lastWrapper.dataset.cardId, position: 'bottom' }
+  }
+
+  return null
+}
+
+function startHandleDrag(cardId, event) {
+  if (isDraggingHandle.value) return
+  if (event.button && event.button !== 0) return
+  if (event.cancelable) event.preventDefault()
+
+  draggedCard.value = cardId
+  dragOverCard.value = null
+  dragOverPosition.value = null
+  isDraggingHandle.value = true
+
+  const startY = event.clientY || (event.touches && event.touches[0]?.clientY) || 0
+  let hasMoved = false
+  const pointerId = event.pointerId
+  const targetEl = event.currentTarget
+
+  document.body.classList.add('is-card-dragging')
+
+  try {
+    if (pointerId !== undefined && targetEl?.setPointerCapture) {
+      targetEl.setPointerCapture(pointerId)
+    }
+  } catch (err) {}
+
+  if (navigator.vibrate) {
+    try { navigator.vibrate(12) } catch (e) {}
+  }
+
+  function handleMoveCoord(clientY) {
+    if (!hasMoved && Math.abs(clientY - startY) > 5) {
+      hasMoved = true
+    }
+    if (!hasMoved) return
+
+    const found = findCardUnderPoint(clientY)
+    if (found && found.cardId !== draggedCard.value) {
+      dragOverCard.value = found.cardId
+      dragOverPosition.value = found.position
+    } else {
+      dragOverCard.value = null
+      dragOverPosition.value = null
+    }
+
+    const edgeMargin = 70
+    if (clientY < edgeMargin) {
+      window.scrollBy({ top: -8, behavior: 'instant' })
+    } else if (clientY > window.innerHeight - edgeMargin) {
+      window.scrollBy({ top: 8, behavior: 'instant' })
+    }
+  }
+
+  function onPointerMove(e) {
+    if (pointerId !== undefined && e.pointerId !== pointerId) return
+    handleMoveCoord(e.clientY)
+  }
+
+  function onTouchMove(e) {
+    if (e.cancelable) e.preventDefault()
+    if (e.touches && e.touches[0]) {
+      handleMoveCoord(e.touches[0].clientY)
+    }
+  }
+
+  function finishDrag() {
+    cleanup()
+
+    if (hasMoved && draggedCard.value && dragOverCard.value && draggedCard.value !== dragOverCard.value) {
+      const changed = reorderCards(draggedCard.value, dragOverCard.value, dragOverPosition.value)
+      if (changed) {
+        persistSettings()
+        if (navigator.vibrate) {
+          try { navigator.vibrate(25) } catch (ve) {}
+        }
+        showToast('Kart sıralaması güncellendi.')
+      }
+    }
+
+    resetDragState()
+  }
+
+  function onPointerUp(e) {
+    if (pointerId !== undefined && e.pointerId !== pointerId) return
+    finishDrag()
+  }
+
+  function onTouchEnd() {
+    finishDrag()
+  }
+
+  function cleanup() {
+    try {
+      if (pointerId !== undefined && targetEl?.releasePointerCapture) {
+        targetEl.releasePointerCapture(pointerId)
+      }
+    } catch (err) {}
+
+    window.removeEventListener('pointermove', onPointerMove)
+    window.removeEventListener('pointerup', onPointerUp)
+    window.removeEventListener('pointercancel', finishDrag)
+    window.removeEventListener('touchmove', onTouchMove)
+    window.removeEventListener('touchend', onTouchEnd)
+    window.removeEventListener('touchcancel', finishDrag)
+    document.body.classList.remove('is-card-dragging')
+    isDraggingHandle.value = false
+  }
+
+  window.addEventListener('pointermove', onPointerMove, { passive: false })
+  window.addEventListener('pointerup', onPointerUp)
+  window.addEventListener('pointercancel', finishDrag)
+  window.addEventListener('touchmove', onTouchMove, { passive: false })
+  window.addEventListener('touchend', onTouchEnd)
+  window.addEventListener('touchcancel', finishDrag)
+}
 
 function handleDragStart(cardId, event) {
   draggedCard.value = cardId
@@ -586,26 +747,12 @@ function handleDrop(cardId, event) {
     return
   }
 
-  const fromIndex = cardOrder.value.indexOf(draggedCard.value)
-  let toIndex = cardOrder.value.indexOf(cardId)
-  if (fromIndex === -1 || toIndex === -1) {
-    resetDragState()
-    return
+  const changed = reorderCards(draggedCard.value, cardId, dragOverPosition.value)
+  if (changed) {
+    persistSettings()
+    showToast('Kart sıralaması güncellendi.')
   }
-
-  if (dragOverPosition.value === 'bottom' && fromIndex < toIndex) {
-    // Aynı kalır
-  } else if (dragOverPosition.value === 'bottom') {
-    toIndex += 1
-  }
-
-  const newOrder = [...cardOrder.value]
-  const [item] = newOrder.splice(fromIndex, 1)
-  newOrder.splice(toIndex > fromIndex ? toIndex - 1 : toIndex, 0, item)
-  cardOrder.value = newOrder
-
   resetDragState()
-  persistSettings()
 }
 
 function handleDragEnd() {
@@ -616,6 +763,8 @@ function resetDragState() {
   draggedCard.value = null
   dragOverCard.value = null
   dragOverPosition.value = null
+  isDraggingHandle.value = false
+  document.body.classList.remove('is-card-dragging')
 }
 
 // Ayarları Yerel Depolama ve Sunucuya Kaydetme
@@ -816,6 +965,7 @@ onMounted(() => {
         <template v-for="cardId in visibleCardList" :key="cardId">
           <div
             class="home-card-wrapper"
+            :data-card-id="cardId"
             :class="{
               'is-dragging': draggedCard === cardId,
               'drag-over-top': dragOverCard === cardId && dragOverPosition === 'top',
@@ -843,8 +993,12 @@ onMounted(() => {
                 <div class="card-inner-controls">
                   <span
                     class="card-inner-handle"
+                    role="button"
+                    tabindex="0"
                     title="Sürükle ve taşı"
-                    aria-label="Sürükle"
+                    aria-label="Sürükle ve taşı"
+                    @pointerdown.stop="startHandleDrag(cardId, $event)"
+                    @touchstart.stop="startHandleDrag(cardId, $event)"
                   >
                     <GripVertical :size="14" />
                   </span>
@@ -922,7 +1076,17 @@ onMounted(() => {
                   <span class="clay-pill-tag ms-1">{{ pendingApprovals.total }} İşlem</span>
                 </div>
                 <div class="card-inner-controls">
-                  <span class="card-inner-handle" title="Sürükle ve taşı"><GripVertical :size="14" /></span>
+                  <span
+                    class="card-inner-handle"
+                    role="button"
+                    tabindex="0"
+                    title="Sürükle ve taşı"
+                    aria-label="Sürükle ve taşı"
+                    @pointerdown.stop="startHandleDrag(cardId, $event)"
+                    @touchstart.stop="startHandleDrag(cardId, $event)"
+                  >
+                    <GripVertical :size="14" />
+                  </span>
                   <button type="button" class="card-inner-btn" title="Yukarı taşı" @click.stop="moveCard(cardId, 'up')"><ChevronUp :size="14" /></button>
                   <button type="button" class="card-inner-btn" title="Aşağı taşı" @click.stop="moveCard(cardId, 'down')"><ChevronDown :size="14" /></button>
                 </div>
@@ -968,7 +1132,17 @@ onMounted(() => {
                   <RouterLink to="/nobet-onay" class="clay-section-link text-[11px] me-1">
                     Takvim <ChevronRight :size="12" />
                   </RouterLink>
-                  <span class="card-inner-handle" title="Sürükle ve taşı"><GripVertical :size="14" /></span>
+                  <span
+                    class="card-inner-handle"
+                    role="button"
+                    tabindex="0"
+                    title="Sürükle ve taşı"
+                    aria-label="Sürükle ve taşı"
+                    @pointerdown.stop="startHandleDrag(cardId, $event)"
+                    @touchstart.stop="startHandleDrag(cardId, $event)"
+                  >
+                    <GripVertical :size="14" />
+                  </span>
                   <button type="button" class="card-inner-btn" title="Yukarı taşı" @click.stop="moveCard(cardId, 'up')"><ChevronUp :size="14" /></button>
                   <button type="button" class="card-inner-btn" title="Aşağı taşı" @click.stop="moveCard(cardId, 'down')"><ChevronDown :size="14" /></button>
                 </div>
@@ -1027,7 +1201,17 @@ onMounted(() => {
                   <RouterLink to="/arac-takip" class="clay-section-link text-[11px] me-1">
                     Filo <ChevronRight :size="12" />
                   </RouterLink>
-                  <span class="card-inner-handle" title="Sürükle ve taşı"><GripVertical :size="14" /></span>
+                  <span
+                    class="card-inner-handle"
+                    role="button"
+                    tabindex="0"
+                    title="Sürükle ve taşı"
+                    aria-label="Sürükle ve taşı"
+                    @pointerdown.stop="startHandleDrag(cardId, $event)"
+                    @touchstart.stop="startHandleDrag(cardId, $event)"
+                  >
+                    <GripVertical :size="14" />
+                  </span>
                   <button type="button" class="card-inner-btn" title="Yukarı taşı" @click.stop="moveCard(cardId, 'up')"><ChevronUp :size="14" /></button>
                   <button type="button" class="card-inner-btn" title="Aşağı taşı" @click.stop="moveCard(cardId, 'down')"><ChevronDown :size="14" /></button>
                 </div>
@@ -1091,7 +1275,17 @@ onMounted(() => {
                   </button>
                 </div>
                 <div class="card-inner-controls">
-                  <span class="card-inner-handle" title="Sürükle ve taşı"><GripVertical :size="14" /></span>
+                  <span
+                    class="card-inner-handle"
+                    role="button"
+                    tabindex="0"
+                    title="Sürükle ve taşı"
+                    aria-label="Sürükle ve taşı"
+                    @pointerdown.stop="startHandleDrag(cardId, $event)"
+                    @touchstart.stop="startHandleDrag(cardId, $event)"
+                  >
+                    <GripVertical :size="14" />
+                  </span>
                   <button type="button" class="card-inner-btn" title="Yukarı taşı" @click.stop="moveCard(cardId, 'up')"><ChevronUp :size="14" /></button>
                   <button type="button" class="card-inner-btn" title="Aşağı taşı" @click.stop="moveCard(cardId, 'down')"><ChevronDown :size="14" /></button>
                 </div>
@@ -1157,7 +1351,17 @@ onMounted(() => {
                     <SlidersHorizontal :size="11" />
                     <span>Özelleştir</span>
                   </button>
-                  <span class="card-inner-handle" title="Sürükle ve taşı"><GripVertical :size="14" /></span>
+                  <span
+                    class="card-inner-handle"
+                    role="button"
+                    tabindex="0"
+                    title="Sürükle ve taşı"
+                    aria-label="Sürükle ve taşı"
+                    @pointerdown.stop="startHandleDrag(cardId, $event)"
+                    @touchstart.stop="startHandleDrag(cardId, $event)"
+                  >
+                    <GripVertical :size="14" />
+                  </span>
                   <button type="button" class="card-inner-btn" title="Yukarı taşı" @click.stop="moveCard(cardId, 'up')"><ChevronUp :size="14" /></button>
                   <button type="button" class="card-inner-btn" title="Aşağı taşı" @click.stop="moveCard(cardId, 'down')"><ChevronDown :size="14" /></button>
                 </div>
@@ -1198,7 +1402,17 @@ onMounted(() => {
                   <span class="text-[10px] text-white/70">{{ formatDate(announcements[0].date) }}</span>
                 </div>
                 <div class="card-inner-controls" @click.stop>
-                  <span class="card-inner-handle" title="Sürükle ve taşı"><GripVertical :size="14" /></span>
+                  <span
+                    class="card-inner-handle"
+                    role="button"
+                    tabindex="0"
+                    title="Sürükle ve taşı"
+                    aria-label="Sürükle ve taşı"
+                    @pointerdown.stop="startHandleDrag(cardId, $event)"
+                    @touchstart.stop="startHandleDrag(cardId, $event)"
+                  >
+                    <GripVertical :size="14" />
+                  </span>
                   <button type="button" class="card-inner-btn" title="Yukarı taşı" @click.stop="moveCard(cardId, 'up')"><ChevronUp :size="14" /></button>
                   <button type="button" class="card-inner-btn" title="Aşağı taşı" @click.stop="moveCard(cardId, 'down')"><ChevronDown :size="14" /></button>
                 </div>

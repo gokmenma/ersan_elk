@@ -2224,6 +2224,16 @@ onBeforeUnmount(() => {
               <h3>{{ previewTitle }}</h3>
             </div>
 
+            <button
+              type="button"
+              class="fatura-icon-btn fatura-preview-close"
+              title="Kapat"
+              aria-label="Kapat"
+              @click="closePreview"
+            >
+              <X :size="20" />
+            </button>
+
             <div class="fatura-preview-header__actions">
               <!-- Cariye İşle Butonu / Rozeti (Önizleme Başlığı) -->
               <template v-if="previewInvoice && previewInvoice.entegrator_durum_kodu !== 'TASLAK' && previewInvoice.entegrator_durum_kodu !== 'IPTAL'">
@@ -2285,14 +2295,6 @@ onBeforeUnmount(() => {
               >
                 <Download :size="17" />
               </a>
-              <button
-                type="button"
-                class="fatura-icon-btn"
-                title="Kapat"
-                @click="closePreview"
-              >
-                <X :size="18" />
-              </button>
             </div>
           </header>
 
@@ -4827,8 +4829,9 @@ onBeforeUnmount(() => {
 }
 .fatura-preview-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
+  gap: 10px;
   padding: 14px 18px;
   border-bottom: 1px solid var(--ds-line);
 }
@@ -4836,6 +4839,17 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.fatura-preview-header__title h3 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fatura-preview-close {
+  width: 44px;
+  height: 44px;
 }
 .fatura-preview-header__title h3 {
   margin: 0;
@@ -4846,6 +4860,8 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex: 0 0 100%;
+  overflow-x: auto;
 }
 .fatura-icon-btn {
   display: grid;

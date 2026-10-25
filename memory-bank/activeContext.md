@@ -1,5 +1,21 @@
 # Active Context
 
+## Yönetici Mobil — Ana Sayfa Kartlarının Sürükle-Bırak (Drag & Drop) Düzeltmesi (2026-10-25)
+- **Sorun**: Yönetici mobil ana sayfasındaki kartların başlıklarında yer alan sürükleme tutamaçları (`.card-inner-handle`) yalnızca biçimsel bir `<span>` olarak kalmıştı; HTML5 `draggable="true"` olayları mobil dokunmatik ekranlarda tetiklenmediği ve tutamaca pointer/touch olay dinleyicisi bağlanmadığı için kartlar mobilde sürüklenemiyordu. Ayrıca HTML5 drop hesaplamasında aşağı yönde taşımada eleman indeks kayması nedeniyle sıralamanın değişmemesine yol açan bir mantık hatası mevcuttu.
+- **Çözüm**:
+  - `mobile-spa/src/views/HomeView.vue`:
+    - `startHandleDrag(cardId, event)` metodu eklendi: Pointer Events ve Touch Events (`pointerdown`, `pointermove`, `pointerup`, `touchmove`, `touchend`) desteği sağlandı.
+    - Sürükleme sırasında `findCardUnderPoint(clientY)` ile dikey yığındaki kartların sınır koordinatları anlık taranarak hedef kart ve üst/alt yerleşim (`top` / `bottom`) belirlendi.
+    - Ekranın üst ve alt kenarlarına yaklaşıldığında otomatik sayfa kaydırma (`auto-scroll`) desteği eklendi.
+    - `reorderCards(draggedId, targetId, position)` metodu yazılarak eleman indeks kayması/kaybı olmadan pürüzsüz sıralama sağlandı; hem mobil dokunmatik hem de masaüstü HTML5 drop bu metoda bağlandı.
+    - Sürükleme başladığında ve tamamlandığında hafif titreşim (`navigator.vibrate`) ve başarı bildirimi ("Kart sıralaması güncellendi.") eklendi; sıralama `persistSettings()` ile hem `localStorage`'a hem sunucuya kaydedildi.
+    - 7 ana kartın (`personnel`, `pending_approvals`, `shifts`, `vehicles`, `operations`, `quick_actions`, `announcements`) tutamaçlarına `@pointerdown.stop` ve `@touchstart.stop` bağlandı.
+  - `mobile-spa/src/design-system.css`:
+    - Sürükleme sırasında metin seçilmesini önleyen `body.is-card-dragging` kuralı eklendi.
+    - Sürüklenen kart için zarif yükseklik/saydamlık efekti (`.home-card-wrapper.is-dragging`) uygulandı.
+    - Hedef konum için düzen kayması yapmayan, kartın üst/alt sınırında parlayan 4px kapsül yerleşim göstergesi (`.drag-over-top::before` / `.drag-over-bottom::after`) tanımlandı.
+    - `npm run build` ile prodüksiyon paketi derlendi.
+
 ## Mobil SPA — 3 Boyutlu (3D) Uygulama Logosu, 3D Açılış Görseli ve Animasyonlu 3D Açılış Ekranı (2026-10-24)
 - **3D Kurumsal Logo ve PWA İkon Seti**:
   - Mevcut Ersan Elektrik `ER` logosunun birebir geometrisi korunarak fırçalanmış altın (`E`) ve titanyum-obsidyen (`R`) 3 boyutlu kabartma dokusuyla `mobile-spa/public/images/logo-3d.png` ve tüm PWA ikonları (`pwa-icons/icon-512.png`, `icon-192.png`, `icon-maskable-512.png`, `apple-touch-icon.png`, `favicon.svg`, `favicon.ico`) üretildi.
