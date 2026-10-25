@@ -40,7 +40,8 @@ function supportId(string $encrypted): int
 function supportAvatar(object $conversation): ?string
 {
     if ((int) ($conversation->personel_id ?? 0) <= 0) return null;
-    if (trim((string) ($conversation->resim_yolu ?? '')) === '') return null;
+    $photoPath = trim((string) ($conversation->resim_yolu ?? ''));
+    if ($photoPath === '' || !is_file(dirname(__DIR__, 3) . '/' . ltrim(str_replace('\\', '/', $photoPath), '/'))) return null;
     return '/api/personnel-photo.php?id=' . rawurlencode(Security::encrypt((string) $conversation->personel_id));
 }
 

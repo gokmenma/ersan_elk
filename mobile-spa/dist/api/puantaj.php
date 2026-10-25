@@ -368,7 +368,7 @@ try {
 
             // Ham dosya yolu yerine yalnız yöneticinin yüklediği fotoğrafı doğrulayan
             // merkezi servis kullanılır. Böylece alt dizin kurulumu sorun olmaz.
-            $resimPath = '/api/personnel-photo.php?id=' . rawurlencode(Security::encrypt((string) $p->id));
+            $resimPath = trim((string) ($p->resim_yolu ?? '')) !== '' && is_file(dirname(__DIR__, 3) . '/' . ltrim(str_replace('\\', '/', trim((string) ($p->resim_yolu))), '/')) ? '/api/personnel-photo.php?id=' . rawurlencode(Security::encrypt((string) $p->id)) : '';
 
             $pInfo = [
                 'id'                 => (int) $p->id,

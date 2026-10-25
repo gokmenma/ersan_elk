@@ -239,7 +239,7 @@ try {
                 ? '/api/km-onaylari.php?action=foto&token=' . $rToken
                 : null;
             $pid = (int) ($r->personel_id ?? 0);
-            $r->personel_resim_url = $pid > 0
+            $r->personel_resim_url = $pid > 0 && trim((string) ($r->personel_resim ?? '')) !== '' && is_file(dirname(__DIR__, 3) . '/' . ltrim(str_replace('\\', '/', trim((string) ($r->personel_resim))), '/'))
                 ? '/api/personnel-photo.php?id=' . Security::encrypt((string) $pid)
                 : null;
         }
