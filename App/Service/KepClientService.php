@@ -519,6 +519,132 @@ class KepClientService
         }
     }
 
+    public function paketSorgula(string $baslangic, string $bitis, string $dizin = 'INBOX'): array
+    {
+        try {
+            $client = $this->getSoapClient();
+            $params = [
+                'param0' => [
+                    'kepHesap' => $this->getAuthParams(),
+                    'ilktarih' => date('c', strtotime($baslangic)),
+                    'sontarih' => date('c', strtotime($bitis)),
+                    'dizin' => $dizin,
+                ],
+            ];
+
+            $res = $client->PaketSorgula3($params);
+            $ret = $res->return ?? null;
+            if ($ret === null) {
+                return ['status' => 'error', 'paketler' => [], 'message' => 'PTT KEP paket sorgulama yanıtı alınamadı.'];
+            }
+
+            $durum = isset($ret->durum) ? (int) (is_array($ret->durum) ? ($ret->durum[0] ?? 0) : $ret->durum) : 0;
+            $hata = is_array($ret->hataaciklama ?? null) ? implode('; ', array_filter(array_map('strval', $ret->hataaciklama))) : (string) ($ret->hataaciklama ?? '');
+            if ($durum !== 0) {
+                return ['status' => 'error', 'paketler' => [], 'message' => $hata ?: "Paket sorgulama hatası (Kod: {$durum})"];
+            }
+
+            $kepIds = (array) ($ret->kepId ?? []);
+            $orgIds = (array) ($ret->OrgMesajId ?? []);
+            $siralar = (array) ($ret->kepSiraNo ?? []);
+            $from = (array) ($ret->from ?? []);
+            $fromKep = (array) ($ret->fromKep ?? []);
+            $konular = (array) ($ret->konu ?? []);
+            $turler = (array) ($ret->tur ?? []);
+
+            $paketler = [];
+            foreach ($kepIds as $i => $kepId) {
+                $kepId = trim((string) $kepId);
+                if ($kepId === '') {
+                    continue;
+                }
+                $paketler[] = [
+                    'kep_id' => $kepId,
+                    'org_mesaj_id' => (string) ($orgIds[$i] ?? ''),
+                    'kep_sira_no' => (int) ($siralar[$i] ?? 0),
+                    'gonderen' => (string) ($from[$i] ?? ''),
+                    'gonderen_kep' => (string) ($fromKep[$i] ?? ''),
+                    'konu' => (string) ($konular[$i] ?? ''),
+                    'tur' => (string) ($turler[$i] ?? ''),
+                ];
+            }
+
+            return ['status' => 'success', 'paketler' => $paketler, 'message' => count($paketler) . ' adet KEP iletisi bulundu.'];
+        } catch (Throwable $e) {
+            error_log("KepClientService::paketSorgula error: " . $e->getMessage());
+            return ['status' => 'error', 'paketler' => [], 'message' => 'Paket sorgulama hatası: ' . $e->getMessage()];
+        }
+    }
+
+    public function indir(string $kepId, int $kepSiraNo = 0, string $dizin = 'INBOX'): array
+    {
+        try {
+            $client = $this->getSoapClient();
+            $params = [
+                'param0' => [
+                    'kepHesap' => $this->getAuthParams(),
+                    'kepId' => $kepId,
+                    'kepSiraNo' => $kepSiraNo,
+                    'ePart' => 'ALL',
+                    'dizin' => $dizin,
+                ],
+            ];
+
+            $res = $client->Indir($params);
+            $ret = $res->return ?? null;
+            if ($ret === null) {
+                throw new Exception('PTT KEP indirme yanıtı alınamadı.');
+            }
+
+            $durum = isset($ret->durum) ? (int) $ret->durum : -1;
+            $hata = (string) ($ret->hataaciklama ?? '');
+            $rawPaket = $ret->ePaket ?? '';
+            if (is_array($rawPaket)) {
+                $rawPaket = $rawPaket[0] ?? '';
+            }
+            $ePaket = is_object($rawPaket) ? (string) ($rawPaket->_ ?? '') : (string) $rawPaket;
+
+            return [
+                'status' => $durum === 0 && $ePaket !== '' ? 'success' : 'error',
+                'durum' => $durum,
+                'ePaket' => $ePaket,
+                'message' => $durum === 0 ? 'KEP iletisi indirildi.' : ($hata ?: "İndirme hatası (Kod: {$durum})"),
+            ];
+        } catch (Throwable $e) {
+            error_log("KepClientService::indir error: " . $e->getMessage());
+            return ['status' => 'error', 'durum' => -1, 'ePaket' => '', 'message' => 'Indir hatası: ' . $e->getMessage()];
+        }
+    }
+
+    public function alindiOnay(string $kepId, int $kepSiraNo = 0, string $dizin = 'INBOX'): array
+    {
+        try {
+            $client = $this->getSoapClient();
+            $params = [
+                'param0' => [
+                    'kepHesap' => $this->getAuthParams(),
+                    'kepId' => $kepId,
+                    'kepSiraNo' => $kepSiraNo,
+                    'dizin' => $dizin,
+                ],
+            ];
+
+            $res = $client->AlindiOnay($params);
+            $ret = $res->return ?? null;
+            $durum = isset($ret->durum) ? (int) $ret->durum : -1;
+            $hata = (string) ($ret->hataaciklama ?? '');
+
+            return [
+                'status' => $durum === 0 ? 'success' : 'error',
+                'durum' => $durum,
+                'message' => $durum === 0 ? 'Alındı onayı gönderildi.' : ($hata ?: "Alındı onayı hatası (Kod: {$durum})"),
+            ];
+        } catch (Throwable $e) {
+            error_log("KepClientService::alindiOnay error: " . $e->getMessage());
+            return ['status' => 'error', 'durum' => -1, 'message' => 'AlindiOnay hatası: ' . $e->getMessage()];
+        }
+    }
+
     /**
      * Ek 5'te yer alan DelilTurID değerlerine ait standart Türkçe açıklamalar
      */

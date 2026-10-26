@@ -1049,6 +1049,158 @@ class KepService
         ];
     }
 
+    public function previewIncoming(int $firmId, int $gun = 30): array
+    {
+        $gun = max(1, min($gun, 180));
+        $client = $this->getClient($firmId);
+        $res = $client->paketSorgula(date('Y-m-d 00:00:00', strtotime("-{$gun} days")), date('Y-m-d H:i:s'));
+        if ($res['status'] !== 'success') {
+            return ['status' => 'error', 'message' => $res['message']];
+        }
+
+        $imported = array_flip($this->mesajModel->getImportedKepIds($firmId, array_column($res['paketler'], 'kep_id')));
+        $rows = [];
+        foreach ($res['paketler'] as $paket) {
+            $rows[] = [
+                'selection_id' => Security::encrypt($paket['kep_id'] . '|' . $paket['kep_sira_no']),
+                'konu' => $paket['konu'] !== '' ? $paket['konu'] : 'Konusuz KEP İletisi',
+                'gonderen' => $paket['gonderen'],
+                'gonderen_kep' => $paket['gonderen_kep'],
+                'tur' => $paket['tur'],
+                'aktarildi' => isset($imported[$paket['kep_id']]),
+            ];
+        }
+
+        return ['status' => 'success', 'data' => $rows, 'message' => count($rows) . ' KEP iletisi kontrol edildi.'];
+    }
+
+    public function syncIncoming(int $firmId, int $userId, array $selections, bool $alindiOnay = false): array
+    {
+        $client = $this->getClient($firmId);
+        $settings = $this->settingsModel->getSettings($firmId, $userId);
+        $ownKep = (string) ($settings['kep_adresi'] ?? '');
+        $parser = new KepMimeParserService();
+        $baseDir = dirname(__DIR__, 2) . '/uploads/evrak-takip';
+        $kepDir = $baseDir . '/kep';
+        if (!is_dir($kepDir)) {
+            mkdir($kepDir, 0755, true);
+        }
+
+        $aktarilan = 0;
+        $atlanan = 0;
+        $hatalar = [];
+
+        foreach ($selections as $selection) {
+            [$kepId, $siraNo] = array_pad(explode('|', $selection, 2), 2, '0');
+            $kepId = trim($kepId);
+            $siraNo = (int) $siraNo;
+            if ($kepId === '' || $this->mesajModel->getByKepId($firmId, $kepId)) {
+                $atlanan++;
+                continue;
+            }
+
+            try {
+                $indir = $client->indir($kepId, $siraNo);
+                if ($indir['status'] !== 'success') {
+                    throw new Exception($indir['message']);
+                }
+
+                $raw = base64_decode($indir['ePaket'], true);
+                if ($raw === false || $raw === '') {
+                    $raw = $indir['ePaket'];
+                }
+                $parsed = $parser->parse($raw);
+                $headers = $parsed['headers'];
+
+                $konu = trim((string) ($headers['subject'] ?? ''));
+                $konu = $konu !== '' ? (function_exists('iconv_mime_decode') ? (string) @iconv_mime_decode($konu, 0, 'UTF-8') : $konu) : 'KEP İletisi';
+                $from = trim((string) ($headers['from'] ?? ''));
+                $from = function_exists('iconv_mime_decode') ? (string) @iconv_mime_decode($from, 0, 'UTF-8') : $from;
+                $fromAddress = preg_match('/<([^>]+)>/', $from, $fm) ? $fm[1] : $from;
+                $fromName = trim(preg_replace('/<[^>]*>/', '', $from), " \t\"");
+                $kurumAdi = $fromName !== '' ? $fromName : $fromAddress;
+                $tarih = !empty($headers['date']) && strtotime($headers['date']) ? date('Y-m-d', strtotime($headers['date'])) : date('Y-m-d');
+
+                $mesajHtml = $parsed['html'] !== '' ? RichTextSanitizer::sanitize($parsed['html']) : nl2br(htmlspecialchars($parsed['text'], ENT_QUOTES, 'UTF-8'));
+                $safeId = preg_replace('/[^a-zA-Z0-9_-]/', '', $kepId);
+
+                $hamName = 'kep_gelen_' . $safeId . '.enc';
+                file_put_contents($kepDir . '/' . $hamName, Security::encryptFile($raw));
+
+                $mesajId = $this->mesajModel->saveIncoming($firmId, [
+                    'kep_id' => $kepId,
+                    'kep_sira_no' => $siraNo,
+                    'gonderen_kep' => mb_substr($fromAddress, 0, 100),
+                    'alici_kep' => mb_substr($ownKep, 0, 255),
+                    'alici_unvan' => mb_substr($kurumAdi, 0, 255),
+                    'konu' => mb_substr($konu, 0, 255),
+                    'icerik' => $mesajHtml,
+                    'ham_paket_yolu' => 'uploads/evrak-takip/kep/' . $hamName,
+                ]);
+
+                $dosyaYolu = null;
+                $ekKayitlari = [];
+                foreach ($parsed['ekler'] as $idx => $ek) {
+                    $safeName = preg_replace('/[^a-zA-Z0-9_.-]/', '_', $ek['name']);
+                    $ekFile = 'kep_gelen_ek_' . $safeId . '_' . ($idx + 1) . '_' . uniqid() . '_' . $safeName;
+                    file_put_contents($baseDir . '/' . $ekFile, Security::encryptFile($ek['content']));
+                    $relPath = 'uploads/evrak-takip/' . $ekFile;
+                    if ($dosyaYolu === null && strcasecmp(pathinfo($ek['name'], PATHINFO_EXTENSION), 'pdf') === 0) {
+                        $dosyaYolu = $relPath;
+                    }
+                    $ekKayitlari[] = [
+                        'firma_id' => $firmId,
+                        'dosya_adi' => $ek['name'],
+                        'dosya_yolu' => $relPath,
+                        'mime_tipi' => $ek['mime'],
+                        'dosya_boyutu' => strlen($ek['content']),
+                        'sira' => $idx + 1,
+                    ];
+                }
+
+                $evrakId = $this->evrakModel->createFromKepGelen($firmId, [
+                    'kep_id' => $kepId,
+                    'tarih' => $tarih,
+                    'evrak_no' => (string) $this->evrakModel->getMaxEvrakNo('gelen'),
+                    'konu' => $konu,
+                    'kurum_adi' => $kurumAdi,
+                    'aciklama' => "KEP Mesaj ID: {$kepId}\nGönderen KEP: {$fromAddress}\nAlıcı KEP: {$ownKep}",
+                    'dosya_yolu' => $dosyaYolu,
+                    'mesaj_metni' => $mesajHtml,
+                ]);
+                foreach ($ekKayitlari as $kayit) {
+                    $this->evrakModel->saveAttachment($evrakId, $kayit);
+                }
+
+                $this->mesajModel->updateLocalFiles($mesajId, $dosyaYolu, 'uploads/evrak-takip/kep/' . $hamName);
+                $this->mesajModel->linkToEvrak($mesajId, $evrakId);
+
+                if ($alindiOnay) {
+                    $onay = $client->alindiOnay($kepId, $siraNo);
+                    if ($onay['status'] === 'success') {
+                        $this->mesajModel->markAcknowledged($mesajId);
+                    } else {
+                        $hatalar[] = "{$konu}: alındı onayı gönderilemedi ({$onay['message']})";
+                    }
+                }
+
+                (new SystemLogModel())->logAction($userId, 'KEP_GELEN_AKTAR', "Gelen KEP aktarıldı. KEP ID: {$kepId}, Evrak ID: {$evrakId}");
+                $aktarilan++;
+            } catch (Throwable $e) {
+                error_log("KepService::syncIncoming [{$kepId}] " . $e->getMessage());
+                $hatalar[] = "KEP {$kepId} aktarılamadı.";
+            }
+        }
+
+        return [
+            'status' => $aktarilan > 0 || !$hatalar ? 'success' : 'error',
+            'aktarilan' => $aktarilan,
+            'atlanan' => $atlanan,
+            'hatalar' => $hatalar,
+            'message' => "{$aktarilan} gelen KEP iletisi aktarıldı" . ($atlanan ? ", {$atlanan} tanesi zaten kayıtlıydı" : '') . '.',
+        ];
+    }
+
     /**
      * KEP iletisine ait canlı delilleri PTT sunucusundan çeker ve yerel veritabanını günceller
      */

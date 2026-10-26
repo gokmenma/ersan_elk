@@ -1997,6 +1997,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 echo json_encode($result, JSON_UNESCAPED_UNICODE);
                 break;
 
+            case 'kep-gelen-onizleme':
+                $firmaId = (int) $_SESSION['firma_id'];
+                $gun = (int) ($_POST['gun'] ?? 30);
+                $res = (new KepService())->previewIncoming($firmaId, $gun);
+                echo json_encode($res, JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'kep-gelen-aktar':
+                $firmaId = (int) $_SESSION['firma_id'];
+                $encryptedIds = $_POST['selection_ids'] ?? [];
+                if (!is_array($encryptedIds) || count($encryptedIds) < 1 || count($encryptedIds) > 50) {
+                    throw new Exception('Aktarılacak 1 ile 50 arasında KEP iletisi seçiniz.');
+                }
+                $selections = [];
+                foreach ($encryptedIds as $encryptedId) {
+                    $decrypted = trim((string) Security::decrypt((string) $encryptedId));
+                    if ($decrypted === '' || mb_strlen($decrypted) > 160 || !preg_match('/^[^|]+\|\d+$/', $decrypted)) {
+                        throw new Exception('KEP seçimi geçersiz. Listeyi yenileyip tekrar deneyiniz.');
+                    }
+                    $selections[] = $decrypted;
+                }
+                $alindiOnay = filter_var($_POST['alindi_onay'] ?? false, FILTER_VALIDATE_BOOLEAN);
+                $res = (new KepService())->syncIncoming($firmaId, $currentUserId, array_values(array_unique($selections)), $alindiOnay);
+                echo json_encode($res, JSON_UNESCAPED_UNICODE);
+                break;
+
             case 'kep-delil-listesi':
                 $firmaId = (int) $_SESSION['firma_id'];
                 $kepId = trim((string) ($_POST['kep_id'] ?? ''));

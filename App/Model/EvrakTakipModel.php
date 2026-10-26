@@ -855,6 +855,31 @@ class EvrakTakipModel extends Model
         return (int) $this->db->lastInsertId();
     }
 
+    public function createFromKepGelen(int $firmaId, array $data): int
+    {
+        $stmt = $this->db->prepare("
+            INSERT INTO evrak_takip
+                (firma_id, evrak_tipi, gonderim_kanali, kaynak_tipi, kep_mesaj_id, tarih, evrak_no, konu, kurum_adi,
+                 aciklama, dosya_yolu, ust_yazi_gerekli_degil, kep_mesaj_metni, onay_durumu, olusturma_tarihi)
+            VALUES
+                (:firma_id, 'gelen', 'kep', 'kep', :kep_mesaj_id, :tarih, :evrak_no, :konu, :kurum_adi,
+                 :aciklama, :dosya_yolu, 1, :kep_mesaj_metni, 'onaylandi', NOW())
+        ");
+        $stmt->execute([
+            'firma_id' => $firmaId,
+            'kep_mesaj_id' => (string) $data['kep_id'],
+            'tarih' => (string) $data['tarih'],
+            'evrak_no' => mb_substr((string) $data['evrak_no'], 0, 100),
+            'konu' => mb_substr((string) $data['konu'], 0, 250),
+            'kurum_adi' => mb_substr((string) $data['kurum_adi'], 0, 255),
+            'aciklama' => (string) $data['aciklama'],
+            'dosya_yolu' => $data['dosya_yolu'] ?: null,
+            'kep_mesaj_metni' => (string) ($data['mesaj_metni'] ?? ''),
+        ]);
+
+        return (int) $this->db->lastInsertId();
+    }
+
     public function createStandaloneKep(int $firmaId, int $userId, array $data): int
     {
         $evrakNo = !empty($data['evrak_no']) ? (string) $data['evrak_no'] : (string) $this->getMaxEvrakNo('giden');

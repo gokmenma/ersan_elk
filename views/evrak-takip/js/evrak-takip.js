@@ -1264,6 +1264,101 @@ $(document).ready(function () {
     });
   });
 
+  function updateKepSelectionSummary() {
+    const selectedCount = $(".kep-incoming-check:checked").length;
+    const availableCount = $(".kep-incoming-check:not(:disabled)").length;
+    $("#kepSelectionSummary").text(selectedCount + " / " + availableCount + " uygun ileti seçildi");
+    $("#btnKepSelectedImport").prop("disabled", selectedCount === 0);
+    $("#kepSelectAll").prop("checked", availableCount > 0 && selectedCount === availableCount);
+  }
+
+  function renderKepIncomingRows(rows) {
+    const $body = $("#kepGelenSecimBody").empty();
+    if (!Array.isArray(rows) || rows.length === 0) {
+      $body.append($("<tr>").append($("<td>", { colspan: 5, class: "text-center text-muted py-5", text: "Gelen kutusunda aktarılabilecek KEP iletisi bulunamadı." })));
+      updateKepSelectionSummary();
+      return;
+    }
+    rows.forEach(function (row) {
+      const $check = $("<input>", {
+        type: "checkbox",
+        class: "form-check-input kep-incoming-check",
+        value: row.selection_id || "",
+        disabled: Boolean(row.aktarildi),
+        "aria-label": (row.konu || "KEP iletisi") + " seç",
+      });
+      const $sender = $("<div>").append($("<span>", { class: "d-block fw-semibold", text: row.gonderen || "-" }));
+      if (row.gonderen_kep) {
+        $sender.append($("<small>", { class: "text-muted font-monospace", text: row.gonderen_kep }));
+      }
+      const $status = row.aktarildi
+        ? $("<span>", { class: "badge bg-success-subtle text-success border border-success-subtle", text: "Zaten aktarıldı" })
+        : $("<span>", { class: "badge bg-primary-subtle text-primary border border-primary-subtle", text: "Yeni" });
+      $("<tr>")
+        .append($("<td>", { class: "text-center" }).append($check))
+        .append($("<td>").append($("<span>", { class: "fw-semibold", text: row.konu || "Konusuz KEP İletisi" })))
+        .append($("<td>").append($sender))
+        .append($("<td>", { text: row.tur || "-" }))
+        .append($("<td>").append($status))
+        .appendTo($body);
+    });
+    updateKepSelectionSummary();
+  }
+
+  $(document).on("change", ".kep-incoming-check", updateKepSelectionSummary);
+  $("#kepSelectAll").on("change", function () {
+    $(".kep-incoming-check:not(:disabled)").prop("checked", this.checked);
+    updateKepSelectionSummary();
+  });
+
+  $("#btnKepGelenSync").on("click", function () {
+    Swal.fire({ title: "KEP Gelen Kutusu Alınıyor...", text: "PTT KEP iletileri kontrol ediliyor.", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    $.ajax({
+      url: "views/evrak-takip/api.php",
+      type: "POST",
+      data: { action: "kep-gelen-onizleme" },
+      dataType: "json",
+    }).done(function (res) {
+      if (res.status !== "success") {
+        Swal.fire("Hata", res.message || "KEP gelen kutusu alınamadı.", "error");
+        return;
+      }
+      Swal.close();
+      $("#kepSelectAll").prop("checked", false);
+      renderKepIncomingRows(res.data || []);
+      $("#modalKepGelenSecim").modal("show");
+    }).fail(function (xhr) {
+      const message = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : "KEP servisine bağlanılamadı.";
+      Swal.fire("Hata", message, "error");
+    });
+  });
+
+  $("#btnKepSelectedImport").on("click", function () {
+    const selectionIds = $(".kep-incoming-check:checked").map(function () { return this.value; }).get();
+    if (!selectionIds.length) return;
+    const $button = $(this).prop("disabled", true);
+    $.ajax({
+      url: "views/evrak-takip/api.php",
+      type: "POST",
+      data: { action: "kep-gelen-aktar", selection_ids: selectionIds, alindi_onay: $("#kepAlindiOnay").is(":checked") ? 1 : 0 },
+      dataType: "json",
+    }).done(function (res) {
+      if (res.status !== "success") {
+        Swal.fire("Hata", res.message || "Seçilen iletiler aktarılamadı.", "error");
+        return;
+      }
+      $("#modalKepGelenSecim").modal("hide");
+      const warn = Array.isArray(res.hatalar) && res.hatalar.length ? "\n" + res.hatalar.join("\n") : "";
+      Swal.fire(warn ? "Kısmen Tamamlandı" : "Aktarım Tamamlandı", (res.message || "") + warn, warn ? "warning" : "success").then(() => location.reload());
+    }).fail(function (xhr) {
+      const message = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : "Aktarım sırasında sunucu hatası oluştu.";
+      Swal.fire("Hata", message, "error");
+    }).always(function () {
+      $button.prop("disabled", false);
+      updateKepSelectionSummary();
+    });
+  });
+
   function pttKepFormData(action) {
     return {
       action: action,

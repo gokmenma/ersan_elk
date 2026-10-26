@@ -1961,3 +1961,5 @@
 - 2026-10-24: Araç takip Zimmetler ve Araçlar sekmelerine "Zimmet Formu Yazdır" eklendi (api action zimmet-form-yazdir, sql/2026_10_24_arac_zimmet_form_yazdir_permission.sql).
 
 - 2026-10-24: Araç takip Araçlar sekmesi server-side DataTables yapıldı (AracModel::ajaxList/listeBenzersizDegerler, api actions arac-ajax-list + get-unique-values, satır HTML views/arac-takip/arac-satir-render.php, sql/2026_10_24_arac_liste_serverside_policy.sql canlıda çalıştırılmalı). Eski filtre getter metotları excel export için duruyor.
+
+- 2026-10-26: Evrak takip sayfasına PTT KEP gelen kutusu eklendi (KepClientService::paketSorgula/indir/alindiOnay, KepService::previewIncoming/syncIncoming, KepMimeParserService, api actions kep-gelen-onizleme + kep-gelen-aktar, İşlemler menüsünde "KEP Gelen Kutusunu Al"). sql/2026_10_26_kep_gelen_kutusu.sql çalıştırılmalı; gerçek KEP hesabıyla uçtan uca test edilmedi, cron yok (kimlik bilgileri kullanıcı bazlı).

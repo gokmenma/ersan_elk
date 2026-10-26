@@ -102,4 +102,57 @@ class KepMesajModel extends Model
         $stmt = $this->db->prepare("UPDATE {$this->table} SET yerel_dosya_yolu = :yerel_dosya_yolu, ham_paket_yolu = :ham_paket_yolu, updated_at = NOW() WHERE id = :id");
         return $stmt->execute(['id' => $id, 'yerel_dosya_yolu' => $dosyaYolu, 'ham_paket_yolu' => $hamPaketYolu]);
     }
+
+    public function saveIncoming(int $firmId, array $data): int
+    {
+        $stmt = $this->db->prepare("INSERT INTO {$this->table} (
+                    firm_id, evrak_id, kep_id, kep_sira_no, org_mesaj_id, yon,
+                    gonderen_kep, alici_kep, alici_unvan, konu, icerik,
+                    paket_turu, durum, yerel_dosya_yolu, ham_paket_yolu, created_at
+                ) VALUES (
+                    :firm_id, NULL, :kep_id, :kep_sira_no, :org_mesaj_id, 'gelen',
+                    :gonderen_kep, :alici_kep, :alici_unvan, :konu, :icerik,
+                    'Standart', :durum, :yerel_dosya_yolu, :ham_paket_yolu, NOW()
+                )");
+        $stmt->execute([
+            'firm_id' => $firmId,
+            'kep_id' => $data['kep_id'],
+            'kep_sira_no' => (int) ($data['kep_sira_no'] ?? 0),
+            'org_mesaj_id' => $data['org_mesaj_id'] ?? null,
+            'gonderen_kep' => (string) ($data['gonderen_kep'] ?? ''),
+            'alici_kep' => (string) ($data['alici_kep'] ?? ''),
+            'alici_unvan' => $data['alici_unvan'] ?? null,
+            'konu' => (string) ($data['konu'] ?? ''),
+            'icerik' => $data['icerik'] ?? null,
+            'durum' => $data['durum'] ?? 'alindi',
+            'yerel_dosya_yolu' => $data['yerel_dosya_yolu'] ?? null,
+            'ham_paket_yolu' => $data['ham_paket_yolu'] ?? null,
+        ]);
+
+        return (int) $this->db->lastInsertId();
+    }
+
+    public function linkToEvrak(int $id, int $evrakId): bool
+    {
+        $stmt = $this->db->prepare("UPDATE {$this->table} SET evrak_id = :evrak_id, updated_at = NOW() WHERE id = :id");
+        return $stmt->execute(['id' => $id, 'evrak_id' => $evrakId]);
+    }
+
+    public function markAcknowledged(int $id): bool
+    {
+        $stmt = $this->db->prepare("UPDATE {$this->table} SET durum = 'alindi_onaylandi', updated_at = NOW() WHERE id = :id");
+        return $stmt->execute(['id' => $id]);
+    }
+
+    public function getImportedKepIds(int $firmId, array $kepIds): array
+    {
+        $kepIds = array_values(array_unique(array_filter(array_map('strval', $kepIds))));
+        if (!$kepIds) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($kepIds), '?'));
+        $stmt = $this->db->prepare("SELECT kep_id FROM {$this->table} WHERE firm_id = ? AND yon = 'gelen' AND deleted_at IS NULL AND kep_id IN ({$placeholders})");
+        $stmt->execute(array_merge([$firmId], $kepIds));
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
 }

@@ -130,7 +130,10 @@ $title = "Evrak Listesi";
                     </button>
                     <div class="dropdown-divider"></div>
                     <button type="button" class="dropdown-item d-flex align-items-center" id="btnUetsSync">
-                        <i class="bx bx-sync me-2 text-primary font-size-16"></i> UETS / KEP Senkronize Et
+                        <i class="bx bx-sync me-2 text-primary font-size-16"></i> UETS Senkronize Et
+                    </button>
+                    <button type="button" class="dropdown-item d-flex align-items-center" id="btnKepGelenSync">
+                        <i class="bx bx-mail-send me-2 text-primary font-size-16"></i> KEP Gelen Kutusunu Al
                     </button>
                     <button type="button" class="dropdown-item d-flex align-items-center" id="btnUetsSettings">
                         <i class="bx bx-slider me-2 text-secondary font-size-16"></i> UETS / KEP Ayarları
