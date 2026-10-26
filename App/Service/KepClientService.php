@@ -532,40 +532,36 @@ class KepClientService
                 ],
             ];
 
-            $res = $client->PaketSorgula3($params);
-            $ret = $res->return ?? null;
+            $ret = $client->PaketSorgula2($params);
             if ($ret === null) {
                 return ['status' => 'error', 'paketler' => [], 'message' => 'PTT KEP paket sorgulama yanıtı alınamadı.'];
             }
 
-            $durum = isset($ret->durum) ? (int) (is_array($ret->durum) ? ($ret->durum[0] ?? 0) : $ret->durum) : 0;
-            $hata = is_array($ret->hataaciklama ?? null) ? implode('; ', array_filter(array_map('strval', $ret->hataaciklama))) : (string) ($ret->hataaciklama ?? '');
+            $durum = isset($ret->durum) ? (int) $ret->durum : 0;
+            $hata = (string) ($ret->hataaciklama ?? '');
             if ($durum !== 0) {
                 return ['status' => 'error', 'paketler' => [], 'message' => $hata ?: "Paket sorgulama hatası (Kod: {$durum})"];
             }
 
-            $kepIds = (array) ($ret->kepId ?? []);
-            $orgIds = (array) ($ret->OrgMesajId ?? []);
-            $siralar = (array) ($ret->kepSiraNo ?? []);
-            $from = (array) ($ret->from ?? []);
-            $fromKep = (array) ($ret->fromKep ?? []);
-            $konular = (array) ($ret->konu ?? []);
-            $turler = (array) ($ret->tur ?? []);
+            $iletiler = $ret->iletiler ?? [];
+            if (is_object($iletiler)) {
+                $iletiler = [$iletiler];
+            }
 
             $paketler = [];
-            foreach ($kepIds as $i => $kepId) {
-                $kepId = trim((string) $kepId);
+            foreach ((array) $iletiler as $ileti) {
+                $kepId = trim((string) ($ileti->kepId ?? ''));
                 if ($kepId === '') {
                     continue;
                 }
                 $paketler[] = [
                     'kep_id' => $kepId,
-                    'org_mesaj_id' => (string) ($orgIds[$i] ?? ''),
-                    'kep_sira_no' => (int) ($siralar[$i] ?? 0),
-                    'gonderen' => (string) ($from[$i] ?? ''),
-                    'gonderen_kep' => (string) ($fromKep[$i] ?? ''),
-                    'konu' => (string) ($konular[$i] ?? ''),
-                    'tur' => (string) ($turler[$i] ?? ''),
+                    'org_mesaj_id' => (string) ($ileti->OrgMesajId ?? ''),
+                    'kep_sira_no' => (int) ($ileti->kepSiraNo ?? 0),
+                    'gonderen' => (string) ($ileti->from ?? ''),
+                    'gonderen_kep' => (string) ($ileti->fromKep ?? ''),
+                    'konu' => (string) ($ileti->konu ?? ''),
+                    'tur' => (string) ($ileti->tur ?? ''),
                 ];
             }
 
