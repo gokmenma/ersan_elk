@@ -158,6 +158,45 @@ class GelirGiderModel extends Model
         </tr>';
     }
 
+    public function bsmvCocukKosulu(string $a = 'g'): string
+    {
+        return "({$a}.aciklama LIKE 'BSMV %' AND EXISTS (
+                    SELECT 1 FROM {$this->table} bp
+                    WHERE bp.silinme_tarihi IS NULL
+                      AND bp.id < {$a}.id
+                      AND bp.type = {$a}.type
+                      AND bp.tarih = {$a}.tarih
+                      AND bp.kategori = {$a}.kategori
+                      AND {$a}.aciklama = CONCAT('BSMV ', bp.aciklama)
+                ))";
+    }
+
+    public function bsmvTutarSelect(string $a = 'g'): string
+    {
+        return "(SELECT CAST(bc.tutar AS DECIMAL(15,2)) FROM {$this->table} bc
+                 WHERE bc.silinme_tarihi IS NULL
+                   AND bc.id > {$a}.id
+                   AND bc.type = {$a}.type
+                   AND bc.tarih = {$a}.tarih
+                   AND bc.kategori = {$a}.kategori
+                   AND bc.aciklama = CONCAT('BSMV ', {$a}.aciklama)
+                 ORDER BY bc.id LIMIT 1) AS bsmv_tutar";
+    }
+
+    public function bsmvBirlestir(object $row): object
+    {
+        $bsmv = (float) ($row->bsmv_tutar ?? 0);
+        $row->birlesik_adet = $bsmv > 0 ? 2 : 1;
+        if ($bsmv > 0) {
+            $yon = ((int) ($row->type ?? 2)) === 1 ? 1 : -1;
+            $row->tutar = round((float) $row->tutar + $bsmv, 2);
+            if (isset($row->bakiye)) {
+                $row->bakiye = round((float) $row->bakiye + $yon * $bsmv, 2);
+            }
+        }
+        return $row;
+    }
+
     //Toplam gelir, gider ve bakiye getir
     public function summary($params = [])
     {
@@ -165,12 +204,13 @@ class GelirGiderModel extends Model
         $bindParams = [];
         
         $this->prepareFilters($params, $where, $bindParams);
+        $bsmvCocuk = $this->bsmvCocukKosulu('g');
         
         $sql = $this->db->prepare("
             SELECT 
-                COUNT(*) AS toplam_islem,
-                COALESCE(SUM(CASE WHEN g.type = 1 THEN 1 ELSE 0 END), 0) AS gelir_adet,
-                COALESCE(SUM(CASE WHEN g.type = 2 THEN 1 ELSE 0 END), 0) AS gider_adet,
+                COALESCE(SUM(CASE WHEN NOT {$bsmvCocuk} THEN 1 ELSE 0 END), 0) AS toplam_islem,
+                COALESCE(SUM(CASE WHEN g.type = 1 AND NOT {$bsmvCocuk} THEN 1 ELSE 0 END), 0) AS gelir_adet,
+                COALESCE(SUM(CASE WHEN g.type = 2 AND NOT {$bsmvCocuk} THEN 1 ELSE 0 END), 0) AS gider_adet,
                 ROUND(COALESCE(SUM(CASE WHEN g.type = 1 THEN CAST(g.tutar AS DECIMAL(15,2)) ELSE 0 END), 0), 2) AS toplam_gelir,
                 ROUND(COALESCE(SUM(CASE WHEN g.type = 2 THEN CAST(g.tutar AS DECIMAL(15,2)) ELSE 0 END), 0), 2) AS toplam_gider,
                 ROUND(COALESCE(SUM(CASE WHEN g.type = 1 THEN CAST(g.tutar AS DECIMAL(15,2)) ELSE 0 END), 0) - COALESCE(SUM(CASE WHEN g.type = 2 THEN CAST(g.tutar AS DECIMAL(15,2)) ELSE 0 END), 0), 2) AS bakiye
@@ -214,9 +254,11 @@ class GelirGiderModel extends Model
         $bindParams = [];
 
         $this->prepareFilters($params, $where, $bindParams);
+        $bsmvCocuk = $this->bsmvCocukKosulu('g');
+        $where .= " AND NOT {$bsmvCocuk}";
 
         // Toplam Kayıt Sayısı
-        $totalSql = "SELECT COUNT(*) FROM {$this->table} WHERE silinme_tarihi IS NULL";
+        $totalSql = "SELECT COUNT(*) FROM {$this->table} g WHERE g.silinme_tarihi IS NULL AND NOT {$bsmvCocuk}";
         $totalCount = $this->db->query($totalSql)->fetchColumn();
 
         // View, yürüyen bakiyeyi tüm aktif kayıtlar üzerinden hesaplar. Filtreler
@@ -247,7 +289,7 @@ class GelirGiderModel extends Model
         }
 
         // Ana Sorgu
-        $sql = "SELECT g.*, g.kategori AS kategori_adi
+        $sql = "SELECT g.*, g.kategori AS kategori_adi, {$this->bsmvTutarSelect('g')}
                 FROM {$this->sql_table} g
                 WHERE $where $orderQuery LIMIT :start, :length";
         $stmt = $this->db->prepare($sql);
@@ -257,7 +299,7 @@ class GelirGiderModel extends Model
         $stmt->bindValue('start', (int)$start, PDO::PARAM_INT);
         $stmt->bindValue('length', (int)$length, PDO::PARAM_INT);
         $stmt->execute();
-        $data = $stmt->fetchAll(PDO::FETCH_OBJ);
+        $data = array_map([$this, 'bsmvBirlestir'], $stmt->fetchAll(PDO::FETCH_OBJ));
 
         return [
             "draw" => intval($draw),

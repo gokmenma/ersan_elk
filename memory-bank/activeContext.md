@@ -3253,3 +3253,8 @@
 - 2026-10-26: Otomatik KEP alım/okundu ayarları KEP ayarları sekmesine taşındı (kep_ayarlar.gelen_alindi_onay_otomatik); okundu önce gönderilir, başarılıysa aktarılır; cron bu ayarları okur.
 
 - 2026-10-26: KEP ayarlarına "otomatik aktarım hesabı" göstergesi ve "Hesabı ben olarak ayarla" eklendi; cron hata verince firma KEP yetkililerine bildirim (6 saatte bir). BildirimModel::sendToFirmAdmins yok, broadcastByPermissionForFirm kullanıldı.
+
+
+## 2026-10-26 — Gelir-Gider EFT + BSMV birleştirme
+- Bankanın böldüğü EFT ücreti (ana kayıt) ve "BSMV " önekli vergi kaydı (aynı tarih/kategori/tür, açıklama = "BSMV " + ana açıklama) liste ve mobilde tek kayıt gösterilir; tutarlar toplanır.
+- Kayıtlar veritabanında ayrı kalır; birleştirme GelirGiderModel::bsmvCocukKosulu/bsmvTutarSelect/bsmvBirlestir ile gösterimde yapılır (ajaxList, summary adetleri, mobil list ve tum_hareketler).

@@ -84,6 +84,8 @@ try {
             $bind['search'] = "%{$search}%";
         }
 
+        $where .= " AND NOT " . $GelirGider->bsmvCocukKosulu('g');
+
         // Toplam filtrelenen kayıt sayısı
         $countSql = "SELECT COUNT(*) FROM sql_gelir_gider g WHERE {$where}";
         $countStmt = $db->prepare($countSql);
@@ -94,7 +96,7 @@ try {
         $totalItems = (int) $countStmt->fetchColumn();
 
         // Sayfalanmış veri çekimi
-        $sql = "SELECT g.* 
+        $sql = "SELECT g.*, " . $GelirGider->bsmvTutarSelect('g') . "
                 FROM sql_gelir_gider g 
                 WHERE {$where} 
                 ORDER BY g.tarih DESC, g.id DESC 
@@ -106,7 +108,7 @@ try {
         $stmt->bindValue('offset', $offset, PDO::PARAM_INT);
         $stmt->bindValue('limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
-        $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
+        $rows = array_map([$GelirGider, 'bsmvBirlestir'], $stmt->fetchAll(PDO::FETCH_OBJ));
 
         $items = [];
         foreach ($rows as $r) {
@@ -253,7 +255,9 @@ try {
             $bind['bitis'] = $bitis;
         }
 
-        $sql = "SELECT g.*, 
+        $where .= " AND NOT " . $GelirGider->bsmvCocukKosulu('g');
+
+        $sql = "SELECT g.*, " . $GelirGider->bsmvTutarSelect('g') . ",
                 (SELECT SUM(CASE WHEN g2.type = 1 THEN CAST(g2.tutar AS DECIMAL(15,2)) ELSE -CAST(g2.tutar AS DECIMAL(15,2)) END) 
                  FROM gelir_gider g2 
                  WHERE g2.silinme_tarihi IS NULL
@@ -266,11 +270,14 @@ try {
             $stmt->bindValue($k, $v);
         }
         $stmt->execute();
-        $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
+        $rows = array_map([$GelirGider, 'bsmvBirlestir'], $stmt->fetchAll(PDO::FETCH_OBJ));
 
         $formatted = [];
         foreach ($rows as $row) {
             $yuruyen = (float) ($row->global_yuruyen_bakiye ?? 0);
+            if (($row->birlesik_adet ?? 1) > 1) {
+                $yuruyen += ((int) $row->type === 1 ? 1 : -1) * (float) $row->bsmv_tutar;
+            }
             $formatted[] = [
                 'id' => Security::encrypt((string) $row->id),
                 'kategori_adi' => (string) ($row->kategori ?? 'Kategorisiz'),

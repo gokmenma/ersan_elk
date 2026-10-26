@@ -214,7 +214,8 @@ if ($_POST["action"] == "gelir-gider-ajax-list") {
 
             $tutar = (float)($row->tutar ?? $row->TUTAR ?? 0);
             $tutarColor = ($typeVal === 1) ? 'text-success' : 'text-danger';
-            $tutarFormatted = '<span class="' . $tutarColor . ' fw-semibold">' . Helper::formattedMoney($tutar) . '</span>';
+            $birlesikIpucu = ((int)($row->birlesik_adet ?? 1) > 1) ? ' title="Ücret + BSMV birleştirilmiş tutar"' : '';
+            $tutarFormatted = '<span class="' . $tutarColor . ' fw-semibold"' . $birlesikIpucu . '>' . Helper::formattedMoney($tutar) . '</span>';
 
             $chk = '<div class="form-check text-center mb-0"><input class="form-check-input row-check" type="checkbox" value="' . $enc_id . '"></div>';
 
