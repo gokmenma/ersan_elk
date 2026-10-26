@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   AlertTriangle,
@@ -705,6 +705,31 @@ async function handleRuhsatUpload(e) {
 }
 
 const ruhsatLightbox = ref({ open: false, loading: false, src: '', isPdf: false, name: '' })
+const ruhsatPdfPages = ref(null)
+
+async function renderRuhsatPdf(blob) {
+  const pdfjs = await import('pdfjs-dist/build/pdf.min.mjs')
+  const { default: workerUrl } = await import('pdfjs-dist/build/pdf.worker.min.mjs?url')
+  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
+  const pdf = await pdfjs.getDocument({ data: new Uint8Array(await blob.arrayBuffer()) }).promise
+  await nextTick()
+  const host = ruhsatPdfPages.value
+  if (!host) return
+  host.innerHTML = ''
+  const width = Math.max(host.clientWidth, 280)
+  const ratio = Math.min(window.devicePixelRatio || 1, 2)
+  for (let n = 1; n <= pdf.numPages; n += 1) {
+    const page = await pdf.getPage(n)
+    const base = page.getViewport({ scale: 1 })
+    const viewport = page.getViewport({ scale: (width / base.width) * ratio })
+    const canvas = document.createElement('canvas')
+    canvas.width = viewport.width
+    canvas.height = viewport.height
+    canvas.className = 'ruhsat-lightbox-canvas'
+    host.appendChild(canvas)
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise
+  }
+}
 
 function closeRuhsatLightbox() {
   if (ruhsatLightbox.value.src) URL.revokeObjectURL(ruhsatLightbox.value.src)
@@ -720,7 +745,12 @@ async function openRuhsatLightbox() {
     if (!res.ok) throw new Error('Ruhsat belgesi yüklenemedi.')
     const blob = await res.blob()
     ruhsatLightbox.value.isPdf = blob.type === 'application/pdf'
-    ruhsatLightbox.value.src = URL.createObjectURL(blob)
+    if (ruhsatLightbox.value.isPdf) {
+      ruhsatLightbox.value.loading = false
+      await renderRuhsatPdf(blob)
+    } else {
+      ruhsatLightbox.value.src = URL.createObjectURL(blob)
+    }
   } catch (err) {
     closeRuhsatLightbox()
     showToast(err.message || 'Ruhsat belgesi yüklenemedi.', 'error')
@@ -3646,7 +3676,7 @@ onBeforeUnmount(() => {
         </div>
         <div class="ruhsat-lightbox-body" @click.self="closeRuhsatLightbox">
           <span v-if="ruhsatLightbox.loading" class="ruhsat-lightbox-loading">Belge çözülüyor…</span>
-          <iframe v-else-if="ruhsatLightbox.isPdf" :src="ruhsatLightbox.src" class="ruhsat-lightbox-pdf" title="Ruhsat Belgesi"></iframe>
+          <div v-else-if="ruhsatLightbox.isPdf" ref="ruhsatPdfPages" class="ruhsat-lightbox-pdf"></div>
           <img v-else-if="ruhsatLightbox.src" :src="ruhsatLightbox.src" class="ruhsat-lightbox-img" alt="Ruhsat Belgesi" />
         </div>
       </div>
@@ -4879,8 +4909,17 @@ onBeforeUnmount(() => {
 .ruhsat-lightbox-pdf {
   width: 100%;
   height: 100%;
-  border: 0;
-  border-radius: 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ruhsat-lightbox-canvas {
+  width: 100%;
+  height: auto;
+  flex-shrink: 0;
+  border-radius: 8px;
   background: #ffffff;
 }
 

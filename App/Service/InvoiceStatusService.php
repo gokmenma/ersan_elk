@@ -10,6 +10,13 @@ final class InvoiceStatusService
         };
     }
 
+    public static function incomingRespondable(array $status): bool
+    {
+        $raw = strtoupper(trim($status['status'] ?? $status['status_code'] ?? ''));
+        if ($raw === '' || str_contains($raw, 'FAILED') || str_contains($raw, 'ERROR') || str_contains($raw, 'CANCEL')) return false;
+        return str_starts_with($raw, 'RECEIVE') && (str_contains($raw, 'SUCCEED') || str_contains($raw, 'WAIT_APPLICATION_RESPONSE'));
+    }
+
     public static function map(array $status): array
     {
         $raw = strtoupper(trim($status['status'] ?? $status['status_code'] ?? ''));

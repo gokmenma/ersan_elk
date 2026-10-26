@@ -84,7 +84,7 @@ const searchInput = ref('')
 const selectedIlce = ref('')
 const selectedTur = ref('') // '' | 'Kaçak' | 'Abonesiz' | 'Usülsüz' | 'Pasif Abone'
 const activeStatus = ref('') // '' (tümü) | 'beklemede' | 'onaylandi' | 'reddedildi' | 'iptal'
-const datePreset = ref('30days') // 'month' | '30days' | 'year' | 'all'
+const datePreset = ref('thismonth') // 'thismonth' | 'month' | '30days' | 'year' | 'all'
 const baslangicTarihi = ref('')
 const bitisTarihi = ref('')
 
@@ -151,11 +151,9 @@ const actionModal = ref({
 function initDates() {
   const now = new Date()
   bitisTarihi.value = now.toISOString().slice(0, 10)
-  // Varsayılan son 30 gün
-  const d30 = new Date(now)
-  d30.setDate(d30.getDate() - 30)
-  baslangicTarihi.value = d30.toISOString().slice(0, 10)
-  datePreset.value = '30days'
+  baslangicTarihi.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+  bitisTarihi.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  datePreset.value = 'thismonth'
 }
 
 function applyDatePreset(preset) {
@@ -163,7 +161,10 @@ function applyDatePreset(preset) {
   const now = new Date()
   bitisTarihi.value = now.toISOString().slice(0, 10)
 
-  if (preset === 'month') {
+  if (preset === 'thismonth') {
+    baslangicTarihi.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+    bitisTarihi.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  } else if (preset === 'month') {
     const oneMonthAgo = new Date(now)
     oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
     baslangicTarihi.value = oneMonthAgo.toISOString().slice(0, 10)
@@ -579,6 +580,14 @@ onUnmounted(() => window.removeEventListener('keydown', handleGalleryKeydown))
           @wheel.passive="handleWheelScroll"
           @mousedown="startDragScroll"
         >
+          <button
+            type="button"
+            class="clay-filter-pill"
+            :class="{ 'is-active': datePreset === 'thismonth' }"
+            @click="applyDatePreset('thismonth')"
+          >
+            Bu Ay
+          </button>
           <button
             type="button"
             class="clay-filter-pill"

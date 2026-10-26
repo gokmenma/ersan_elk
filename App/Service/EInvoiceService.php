@@ -928,7 +928,7 @@ class EInvoiceService
                     $this->saveState($invoiceId, $firmId, ['ticari_yanit' => $prior]);
                     throw new \InvalidArgumentException('Bu faturaya EDM’de zaten yanıt verilmiş.');
                 }
-                if (InvoiceStatusService::map($status)['entegrator_durum_kodu'] !== 'ONAYLANDI') throw new \InvalidArgumentException('Ticari yanıt için tamamlanmış gelen fatura gereklidir.');
+                if (!InvoiceStatusService::incomingRespondable($status)) throw new \InvalidArgumentException('Ticari yanıt için tamamlanmış gelen fatura gereklidir.');
             } else {
                 if ($invoice['yon'] !== 'GIDEN' || trim($reason) === '') throw new \InvalidArgumentException('Giden fatura ve iptal gerekçesi gereklidir.');
                 if (empty($invoice['ubl_xml_path']) && empty($invoice['kaynak_xml']) && empty($invoice['edm_referans_no'])) throw new \InvalidArgumentException('Yerel taslak için Taslak Sil işlemini kullanın.');
