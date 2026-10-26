@@ -88,29 +88,29 @@ $avanslar = [];
 $izinler = [];
 $talepler = [];
 if ($showApproved) {
-    if ($currentTab === 'avans' && $canAvans) $avanslar = $avansModel->getIslenmisAvanslar(50);
+    if ($canAvans) $avanslar = $avansModel->getIslenmisAvanslar(50);
     try {
-        if ($currentTab === 'izin' && $canIzin) $izinler = $izinModel->getIslenmisIzinler(50);
+        if ($canIzin) $izinler = $izinModel->getIslenmisIzinler(50);
     } catch (\Exception $e) {
         $izinler = [];
     }
-    if ($currentTab === 'talepler' && $canAriza) $talepler = $talepModel->getCozulmusTalepler(50);
+    if ($canAriza) $talepler = $talepModel->getCozulmusTalepler(50);
 } elseif ($showDeleted) {
-    if ($currentTab === 'avans' && $canAvans) $avanslar = $avansModel->getSilinmisAvanslar(50);
+    if ($canAvans) $avanslar = $avansModel->getSilinmisAvanslar(50);
     try {
-        if ($currentTab === 'izin' && $canIzin) $izinler = $izinModel->getSilinmisIzinler(50);
+        if ($canIzin) $izinler = $izinModel->getSilinmisIzinler(50);
     } catch (\Exception $e) {
         $izinler = [];
     }
-    if ($currentTab === 'talepler' && $canAriza) $talepler = $talepModel->getSilinmisTalepler(50);
+    if ($canAriza) $talepler = $talepModel->getSilinmisTalepler(50);
 } else {
-    if ($currentTab === 'avans' && $canAvans) $avanslar = $avansModel->getButunBekleyenAvanslar();
+    if ($canAvans) $avanslar = $avansModel->getButunBekleyenAvanslar();
     try {
-        if ($currentTab === 'izin' && $canIzin) $izinler = $izinModel->getButunBekleyenIzinler();
+        if ($canIzin) $izinler = $izinModel->getButunBekleyenIzinler();
     } catch (\Exception $e) {
         $izinler = [];
     }
-    if ($currentTab === 'talepler' && $canAriza) $talepler = $talepModel->getButunBekleyenTalepler();
+    if ($canAriza) $talepler = $talepModel->getButunBekleyenTalepler();
 }
 
 $maintitle = "Talepler";
