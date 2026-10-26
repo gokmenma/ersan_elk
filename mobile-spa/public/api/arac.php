@@ -157,6 +157,34 @@ try {
         ]);
     }
 
+    if ($action === 'ruhsat_goruntule') {
+        $aracId = (int) Security::decrypt((string) ($_GET['id'] ?? ''));
+        $arac = $aracId > 0 ? $Arac->getRuhsatSahibiArac($aracId) : null;
+        $sifreliYol = $arac ? dirname(__DIR__, 3) . '/files/arac_ruhsat/' . $arac->id . '/' . basename((string) $arac->ruhsat_dosya_adi) : '';
+        if (!$arac || empty($arac->ruhsat_dosya_adi) || !is_file($sifreliYol)) {
+            http_response_code(404);
+            header('Content-Type: text/plain; charset=utf-8');
+            exit('Ruhsat belgesi bulunamadı.');
+        }
+
+        try {
+            $binaryData = Security::decryptFile((string) file_get_contents($sifreliYol));
+        } catch (\Throwable $e) {
+            error_log('Ruhsat görseli çözülemedi: ' . $e->getMessage());
+            http_response_code(500);
+            header('Content-Type: text/plain; charset=utf-8');
+            exit('Belge görüntülenemedi.');
+        }
+
+        $SystemLog->logAction($currentUserId, 'Araç Ruhsat Görüntüleme', "{$arac->plaka} plakalı araca ait ruhsat belgesi görüntülendi.", SystemLogModel::LEVEL_INFO);
+
+        header('Content-Type: ' . ($arac->ruhsat_mime_tipi ?: 'application/octet-stream'));
+        header('Content-Disposition: inline; filename="' . rawurlencode((string) ($arac->ruhsat_orijinal_ad ?: 'ruhsat')) . '"');
+        header('Content-Length: ' . strlen($binaryData));
+        echo $binaryData;
+        exit;
+    }
+
     // -------------------------------------------------------------
     // 1. LİSTE & ÖZET METRİKLER (GET)
     // -------------------------------------------------------------
@@ -676,7 +704,7 @@ try {
                 'ruhsat_dosya_adi' => (string) ($arac->ruhsat_orijinal_ad ?? ''),
                 'ruhsat_mime' => (string) ($arac->ruhsat_mime_tipi ?? ''),
                 'ruhsat_boyutu' => (int) ($arac->ruhsat_boyutu ?? 0),
-                'ruhsat_url' => !empty($arac->ruhsat_dosya_adi) ? ('/views/arac-takip/ruhsat-goruntule.php?id=' . Security::encrypt((string) $arac->id)) : null,
+                'ruhsat_url' => !empty($arac->ruhsat_dosya_adi) ? ('/api/arac.php?action=ruhsat_goruntule&id=' . rawurlencode(Security::encrypt((string) $arac->id))) : null,
                 'zimmetli_personel' => $arac->zimmetli_personel_adi ? [
                     'id' => Security::encrypt((string) $arac->zimmetli_personel_id),
                     'adi_soyadi' => (string) $arac->zimmetli_personel_adi,
@@ -949,7 +977,7 @@ try {
             aracApiResponse([
                 'success' => true,
                 'message' => 'Ruhsat görseli şifrelenerek yüklendi.',
-                'ruhsat_url' => '/views/arac-takip/ruhsat-goruntule.php?id=' . Security::encrypt((string) $aracId),
+                'ruhsat_url' => '/api/arac.php?action=ruhsat_goruntule&id=' . rawurlencode(Security::encrypt((string) $aracId)),
             ]);
         }
 
