@@ -75,6 +75,9 @@
 ## 7. Sistem ve Git İletişimi (SSH Port 443)
 - Geliştirme ortamındaki ağ kısıtlamaları nedeniyle GitHub SSH (Port 22) zaman aşımına uğrayabilmektedir. Git SSH işlemleri `~/.ssh/config` üzerinden `Host github.com -> Hostname ssh.github.com, Port 443` üzerinden yürütülmelidir.
 
+### 7.1. PHP CLI Konumu
+- `php` komutu PATH'te değildir; PHP CLI `/opt/lampp/bin/php` (PHP 8.2.12) yolundadır. Sözdizimi kontrolü ve CLI betikleri `/opt/lampp/bin/php -l dosya.php` biçiminde tam yolla çalıştırılacaktır.
+
 ## 8. Yeni Sayfa Tasarım ve DataTables Standartları (Cari / Sözleşme Standardı)
 Kullanıcı "yeni sayfa standardı", "varsayılan datatable", "cari sayfasına benzer" veya yeni bir liste/yönetim sayfası talep ettiğinde aşağıdaki mimari ve görsel standartlar **birebir uygulanacaktır**:
 

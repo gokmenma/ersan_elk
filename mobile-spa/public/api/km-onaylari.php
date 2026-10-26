@@ -85,6 +85,10 @@ $SystemLog = new SystemLogModel();
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $action = (string) ($_GET['action'] ?? $_POST['action'] ?? 'list');
 
+if ($method === 'GET') {
+    session_write_close();
+}
+
 try {
     if ($method === 'GET' && $action === 'list') {
         $status = (string) ($_GET['status'] ?? 'pending');

@@ -38,9 +38,9 @@ class KepService
     /**
      * Firma ayarlarından KepClientService oluşturur
      */
-    public function getClient(int $firmId, ?array $overrideSettings = null): KepClientService
+    public function getClient(int $firmId, ?array $overrideSettings = null, ?int $userId = null): KepClientService
     {
-        $settings = $overrideSettings ?: $this->settingsModel->getSettings($firmId);
+        $settings = $overrideSettings ?: $this->settingsModel->getSettings($firmId, $userId);
         if (!$settings || empty($settings['kep_adresi'])) {
             throw new Exception('Firma için PTT KEP ayarları yapılandırılmamış.');
         }
@@ -1049,10 +1049,10 @@ class KepService
         ];
     }
 
-    public function previewIncoming(int $firmId, int $gun = 30): array
+    public function previewIncoming(int $firmId, int $gun = 30, ?int $userId = null): array
     {
         $gun = max(1, min($gun, 180));
-        $client = $this->getClient($firmId);
+        $client = $this->getClient($firmId, null, $userId);
         $res = $client->paketSorgula(date('Y-m-d 00:00:00', strtotime("-{$gun} days")), date('Y-m-d H:i:s'));
         if ($res['status'] !== 'success') {
             return ['status' => 'error', 'message' => $res['message']];
@@ -1076,7 +1076,7 @@ class KepService
 
     public function syncIncoming(int $firmId, int $userId, array $selections, bool $alindiOnay = false): array
     {
-        $client = $this->getClient($firmId);
+        $client = $this->getClient($firmId, null, $userId);
         $settings = $this->settingsModel->getSettings($firmId, $userId);
         $ownKep = (string) ($settings['kep_adresi'] ?? '');
         $parser = new KepMimeParserService();
@@ -1103,6 +1103,13 @@ class KepService
                 $indir = $client->indir($kepId, $siraNo);
                 if ($indir['status'] !== 'success') {
                     throw new Exception($indir['message']);
+                }
+
+                if ($alindiOnay) {
+                    $onay = $client->alindiOnay($kepId, $siraNo);
+                    if ($onay['status'] !== 'success') {
+                        throw new Exception('Alındı onayı gönderilemedi: ' . $onay['message']);
+                    }
                 }
 
                 $raw = base64_decode($indir['ePaket'], true);
@@ -1176,19 +1183,14 @@ class KepService
                 $this->mesajModel->linkToEvrak($mesajId, $evrakId);
 
                 if ($alindiOnay) {
-                    $onay = $client->alindiOnay($kepId, $siraNo);
-                    if ($onay['status'] === 'success') {
-                        $this->mesajModel->markAcknowledged($mesajId);
-                    } else {
-                        $hatalar[] = "{$konu}: alındı onayı gönderilemedi ({$onay['message']})";
-                    }
+                    $this->mesajModel->markAcknowledged($mesajId);
                 }
 
                 (new SystemLogModel())->logAction($userId, 'KEP_GELEN_AKTAR', "Gelen KEP aktarıldı. KEP ID: {$kepId}, Evrak ID: {$evrakId}");
                 $aktarilan++;
             } catch (Throwable $e) {
                 error_log("KepService::syncIncoming [{$kepId}] " . $e->getMessage());
-                $hatalar[] = "KEP {$kepId} aktarılamadı.";
+                $hatalar[] = "KEP {$kepId} aktarılamadı (ayrıntı sunucu günlüğünde).";
             }
         }
 
@@ -1199,6 +1201,43 @@ class KepService
             'hatalar' => $hatalar,
             'message' => "{$aktarilan} gelen KEP iletisi aktarıldı" . ($atlanan ? ", {$atlanan} tanesi zaten kayıtlıydı" : '') . '.',
         ];
+    }
+
+    public function autoSyncIncoming(int $firmId, int $userId, int $gun = 7): array
+    {
+        $preview = $this->previewIncoming($firmId, $gun, $userId);
+        if ($preview['status'] !== 'success') {
+            return $preview;
+        }
+
+        $selections = [];
+        foreach ($preview['data'] as $row) {
+            if (!$row['aktarildi']) {
+                $selections[] = (string) Security::decrypt($row['selection_id']);
+            }
+        }
+
+        $result = $selections
+            ? $this->syncIncoming($firmId, $userId, $selections, $this->settingsModel->getGelenOtomasyon($firmId)['okundu_otomatik'])
+            : ['status' => 'success', 'aktarilan' => 0, 'atlanan' => 0, 'hatalar' => [], 'message' => 'Yeni KEP iletisi yok.'];
+
+        $this->settingsModel->touchGelenSync($firmId);
+
+        if (($result['aktarilan'] ?? 0) > 0) {
+            try {
+                (new \App\Model\BildirimModel())->broadcastByPermissionForFirm(
+                    $firmId,
+                    'evrak-takip/kep',
+                    'Yeni Gelen KEP',
+                    $result['aktarilan'] . ' yeni KEP iletisi Gelen Evrak olarak kaydedildi.',
+                    'evrak-takip/list'
+                );
+            } catch (Throwable $e) {
+                error_log('KepService::autoSyncIncoming bildirim: ' . $e->getMessage());
+            }
+        }
+
+        return $result;
     }
 
     /**

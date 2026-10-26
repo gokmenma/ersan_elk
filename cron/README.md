@@ -113,3 +113,9 @@ Log dosyaları `cron/logs/` klasöründe aylık olarak tutulur:
 - Log dosyalarını periyodik olarak kontrol edin
 - 6 aydan eski log dosyalarını silebilirsiniz
 - Test scripti ile sistemi düzenli aralıklarla kontrol edin
+
+## KEP Gelen Kutusu
+
+`*/15 * * * * /opt/lampp/bin/php /opt/lampp/htdocs/ersan_elk/cron/kep_gelen_sync.php`
+
+Evrak Takip > İşlemler > UETS / KEP Ayarları > KEP sekmesindeki "Gelen KEP Otomasyonu" anahtarları: otomatik aktarım açıldığında, ayarı açan kullanıcının KEP bilgileriyle son 7 günün yeni iletileri Gelen Evrak olarak aktarılır. Önce sql/2026_10_26_kep_gelen_kutusu.sql çalıştırılmalıdır.

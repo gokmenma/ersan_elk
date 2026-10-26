@@ -192,6 +192,24 @@ $canManagePttKep = !empty($canSendKep);
                             <div class="col-md-4">
                                 <?php echo Form::FormSelect2(name: 'ptt_ortam', options: ['prod' => 'Canlı Ortam', 'test' => 'Test Ortamı'], selectedValue: 'prod', label: 'Servis Ortamı', icon: 'bx bx-globe', valueField: 'key', textField: '', class: 'form-select select2', required: true, style: 'width:100%', attributes: '', id: 'ptt_ortam'); ?>
                             </div>
+                            <div class="col-12">
+                                <div class="border rounded-3 p-3">
+                                    <div class="fw-semibold font-size-13 mb-2"><i class="bx bx-envelope-open me-1 text-primary"></i> Gelen KEP Otomasyonu</div>
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="ptt_gelen_okundu_otomatik">
+                                        <label class="form-check-label font-size-12" for="ptt_gelen_okundu_otomatik">Okundu (alındı) bilgisini otomatik gönder</label>
+                                    </div>
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="ptt_gelen_otomatik_aktar">
+                                        <label class="form-check-label font-size-12" for="ptt_gelen_otomatik_aktar">Gelen KEP'leri onaylandıktan sonra otomatik sisteme aktar (cron, 15 dakikada bir)</label>
+                                    </div>
+                                    <div class="d-flex align-items-center justify-content-between gap-2 mt-2 font-size-12">
+                                        <span><i class="bx bx-user me-1"></i>Otomatik aktarım hesabı: <strong id="pttKepGelenHesap">-</strong></span>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnPttKepGelenHesapBana"><i class="bx bx-user-check me-1"></i> Hesabı ben olarak ayarla</button>
+                                    </div>
+                                    <small class="text-muted font-size-11 d-block mt-2" id="pttKepGelenHelpText">Otomatik aktarım, bu ayarı açan kullanıcının KEP giriş bilgileriyle çalışır. Okundu bilgisi açıksa önce onay gönderilir, başarılı olursa evrak aktarılır.</small>
+                                </div>
+                            </div>
                             <div class="col-12 text-end mt-2">
                                 <button type="button" class="btn btn-sm btn-outline-primary" id="btnPttKepTestConnection"><i class="bx bx-check-circle me-1"></i> Bağlantıyı ve Girişi Test Et</button>
                                 <button type="button" class="btn btn-sm btn-outline-info ms-1" id="btnPttKepCheckBalance"><i class="bx bx-wallet me-1"></i> Bakiye / Kontör Sorgula</button>

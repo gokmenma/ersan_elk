@@ -3247,3 +3247,9 @@
 - 2026-10-24: Araç takip Araçlar sekmesi server-side DataTables yapıldı (AracModel::ajaxList/listeBenzersizDegerler, api actions arac-ajax-list + get-unique-values, satır HTML views/arac-takip/arac-satir-render.php, sql/2026_10_24_arac_liste_serverside_policy.sql canlıda çalıştırılmalı). Eski filtre getter metotları excel export için duruyor.
 
 - 2026-10-26: Evrak takip sayfasına PTT KEP gelen kutusu eklendi (KepClientService::paketSorgula/indir/alindiOnay, KepService::previewIncoming/syncIncoming, KepMimeParserService, api actions kep-gelen-onizleme + kep-gelen-aktar, İşlemler menüsünde "KEP Gelen Kutusunu Al"). sql/2026_10_26_kep_gelen_kutusu.sql çalıştırılmalı; gerçek KEP hesabıyla uçtan uca test edilmedi, cron yok (kimlik bilgileri kullanıcı bazlı).
+
+- 2026-10-26: KEP gelen kutusu için PaketSorgula3 yerine PaketSorgula2 kullanıldı (PTT PaketSorgula3 "Geliştirme Aşamasında" dönüyor). Otomatik alım: cron/kep_gelen_sync.php (15 dk), kep_ayarlar.otomatik_senkron_user_id (anahtarı açan kullanıcının kimlik bilgileri kullanılır), api action kep-gelen-otomatik-ayarla; SQL aynı dosyaya eklendi.
+
+- 2026-10-26: Otomatik KEP alım/okundu ayarları KEP ayarları sekmesine taşındı (kep_ayarlar.gelen_alindi_onay_otomatik); okundu önce gönderilir, başarılıysa aktarılır; cron bu ayarları okur.
+
+- 2026-10-26: KEP ayarlarına "otomatik aktarım hesabı" göstergesi ve "Hesabı ben olarak ayarla" eklendi; cron hata verince firma KEP yetkililerine bildirim (6 saatte bir). BildirimModel::sendToFirmAdmins yok, broadcastByPermissionForFirm kullanıldı.

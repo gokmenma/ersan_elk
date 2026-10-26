@@ -188,4 +188,56 @@ class KepSettingsModel extends Model
             return false;
         }
     }
+
+    public function getAutoSyncInfo(int $firmId): array
+    {
+        $stmt = $this->db->prepare("SELECT otomatik_senkron_user_id, son_gelen_senkron FROM {$this->table} WHERE firm_id = :firm_id AND is_active = 1 LIMIT 1");
+        $stmt->execute(['firm_id' => $firmId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        return [
+            'user_id' => !empty($row['otomatik_senkron_user_id']) ? (int) $row['otomatik_senkron_user_id'] : null,
+            'son_senkron' => $row['son_gelen_senkron'] ?? null,
+        ];
+    }
+
+    public function getGelenOtomasyon(int $firmId): array
+    {
+        $stmt = $this->db->prepare("SELECT otomatik_senkron_user_id, gelen_alindi_onay_otomatik FROM {$this->table} WHERE firm_id = :firm_id AND is_active = 1 LIMIT 1");
+        $stmt->execute(['firm_id' => $firmId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        return [
+            'otomatik_aktar' => !empty($row['otomatik_senkron_user_id']),
+            'aktar_user_id' => !empty($row['otomatik_senkron_user_id']) ? (int) $row['otomatik_senkron_user_id'] : null,
+            'okundu_otomatik' => !empty($row['gelen_alindi_onay_otomatik']),
+            'aktar_kullanici' => !empty($row['otomatik_senkron_user_id']) ? $this->getUserName((int) $row['otomatik_senkron_user_id']) : null,
+        ];
+    }
+
+    private function getUserName(int $userId): ?string
+    {
+        $stmt = $this->db->prepare("SELECT adi_soyadi FROM users WHERE id = :id LIMIT 1");
+        $stmt->execute(['id' => $userId]);
+        $name = $stmt->fetchColumn();
+        return $name !== false ? (string) $name : null;
+    }
+
+    public function saveGelenOtomasyon(int $firmId, bool $aktar, bool $okundu, int $userId, bool $hesabiDegistir = false): bool
+    {
+        $current = $this->getGelenOtomasyon($firmId);
+        $syncUser = $aktar ? ($hesabiDegistir ? $userId : ($current['aktar_user_id'] ?? $userId)) : null;
+        $stmt = $this->db->prepare("UPDATE {$this->table} SET otomatik_senkron_user_id = :user_id, gelen_alindi_onay_otomatik = :okundu WHERE firm_id = :firm_id AND is_active = 1");
+        return $stmt->execute(['firm_id' => $firmId, 'user_id' => $syncUser, 'okundu' => $okundu ? 1 : 0]);
+    }
+
+    public function getAutoSyncTargets(): array
+    {
+        $stmt = $this->db->query("SELECT firm_id, otomatik_senkron_user_id AS user_id FROM {$this->table} WHERE is_active = 1 AND otomatik_senkron_user_id IS NOT NULL");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function touchGelenSync(int $firmId): bool
+    {
+        $stmt = $this->db->prepare("UPDATE {$this->table} SET son_gelen_senkron = NOW() WHERE firm_id = :firm_id AND is_active = 1");
+        return $stmt->execute(['firm_id' => $firmId]);
+    }
 }

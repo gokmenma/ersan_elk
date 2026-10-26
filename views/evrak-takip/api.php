@@ -922,6 +922,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if (($deleteDocument->onay_durumu ?? 'taslak') !== 'taslak') {
                     throw new Exception('Elektronik imza onay süreci başlamış evrak silinemez.');
                 }
+                if (!empty($deleteDocument->kep_mesaj_id) || (($deleteDocument->evrak_tipi ?? '') === 'gelen' && ($deleteDocument->kaynak_tipi ?? '') === 'kep')) {
+                    throw new Exception('KEP ile gönderilmiş veya KEP\'ten alınmış evrak silinemez.');
+                }
                 $Model->softDelete($id);
 
                 // Evrak silindiğinde ilişkili trafik cezası kesintisini de otomatik sil (soft delete)
@@ -1260,7 +1263,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $actionItems .= '<a href="index?p=evrak-takip/giden-evrak&amp;id=' . $esc($encryptedId) . '&amp;islem=imzala" class="dropdown-item d-flex align-items-center gap-2" title="' . $signActionLabel . '"><i class="bx bx-check text-success"></i><span>' . $signActionLabel . '</span></a><button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-e-imza-iade" data-id="' . $esc($encryptedId) . '" title="Düzeltilmek Üzere İade Et"><i class="bx bx-undo text-warning"></i><span>Düzeltilmek Üzere İade Et</span></button>';
                     }
                     if ($locked && $approvalStatus === 'onay_bekliyor' && (int) ($evrak->olusturan_kullanici_id ?? 0) === $currentUserId) $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-e-imza-geri-al" data-id="' . $esc($encryptedId) . '" title="Evrakı Üzerime Geri Al"><i class="bx bx-revision text-info"></i><span>Evrakı Üzerime Geri Al</span></button>';
-                    if (!$locked && !$isKep) $actionItems .= '<div class="dropdown-divider"></div><button type="button" class="dropdown-item d-flex align-items-center gap-2 text-danger evrak-sil cm-danger" data-id="' . $esc($encryptedId) . '" title="Sil"><i class="bx bx-trash"></i><span>Sil</span></button>';
+                    if (!$locked && (!$isKep || ($type === 'giden' && empty($evrak->kep_mesaj_id)))) $actionItems .= '<div class="dropdown-divider"></div><button type="button" class="dropdown-item d-flex align-items-center gap-2 text-danger evrak-sil cm-danger" data-id="' . $esc($encryptedId) . '" title="Sil"><i class="bx bx-trash"></i><span>Sil</span></button>';
                     $actions = '<div class="action-btn-group d-flex align-items-center justify-content-center"><div class="dropdown"><button type="button" class="btn btn-sm btn-outline-secondary bg-white dropdown-toggle" data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false" title="İşlemler"><i class="bx bx-cog me-1"></i> İşlemler</button><div class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-1">' . $actionItems . '</div></div></div>';
                     $createdTime = !empty($evrak->olusturma_tarihi) ? date('H:i', strtotime((string) $evrak->olusturma_tarihi)) : '-';
                     $operatorName = trim((string) ($evrak->islem_yapan_adi ?? ''));
@@ -1688,6 +1691,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $firmaId = (int) $_SESSION['firma_id'];
                 $kepSettingsModel = new KepSettingsModel();
                 $kepSettings = $kepSettingsModel->getSettings($firmaId, $currentUserId);
+                $gelenOtomasyon = $kepSettingsModel->getGelenOtomasyon($firmaId);
                 $hasSecrets = !empty($kepSettings['sifre_decrypted']);
                 $maskedTc = '';
                 if (!empty($kepSettings['yetkili_tcno_decrypted'])) {
@@ -1704,6 +1708,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         'credentials_owner' => 'current_user',
                         'wsdl_url' => $kepSettings['wsdl_url'] ?? KepClientService::DEFAULT_WSDL,
                         'ortam' => $kepSettings['ortam'] ?? 'prod',
+                        'gelen_otomatik_aktar' => $gelenOtomasyon['otomatik_aktar'],
+                        'gelen_okundu_otomatik' => $gelenOtomasyon['okundu_otomatik'],
+                        'gelen_aktar_kullanici' => $gelenOtomasyon['aktar_kullanici'],
+                        'gelen_aktar_baska_kullanici' => $gelenOtomasyon['otomatik_aktar'] && $gelenOtomasyon['aktar_user_id'] !== $currentUserId,
                         'bakiye_kontor' => $kepSettings['bakiye_kontor'] ?? null,
                         'bakiye_cins' => $kepSettings['bakiye_cins'] ?? 'Adet',
                         'son_bakiye_sorgu' => !empty($kepSettings['son_bakiye_sorgu']) ? date('d.m.Y H:i', strtotime($kepSettings['son_bakiye_sorgu'])) : null,
@@ -1749,6 +1757,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if (!$saved) {
                     throw new Exception('KEP ayarları kaydedilemedi.');
                 }
+
+                $gelenAktar = filter_var($_POST['gelen_otomatik_aktar'] ?? false, FILTER_VALIDATE_BOOLEAN);
+                $gelenOkundu = filter_var($_POST['gelen_okundu_otomatik'] ?? false, FILTER_VALIDATE_BOOLEAN);
+                $gelenHesapBana = filter_var($_POST['gelen_hesap_bana'] ?? false, FILTER_VALIDATE_BOOLEAN);
+                $kepSettingsModel->saveGelenOtomasyon($firmaId, $gelenAktar, $gelenOkundu, $currentUserId, $gelenHesapBana);
 
                 echo json_encode(['status' => 'success', 'message' => 'KEP entegrasyon ayarları başarıyla kaydedildi.']);
                 break;
@@ -2001,6 +2014,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $firmaId = (int) $_SESSION['firma_id'];
                 $gun = (int) ($_POST['gun'] ?? 30);
                 $res = (new KepService())->previewIncoming($firmaId, $gun);
+                $autoInfo = (new KepSettingsModel())->getAutoSyncInfo($firmaId);
+                $res['okundu_otomatik'] = (new KepSettingsModel())->getGelenOtomasyon($firmaId)['okundu_otomatik'];
+                $res['son_senkron'] = !empty($autoInfo['son_senkron']) ? date('d.m.Y H:i', strtotime($autoInfo['son_senkron'])) : null;
                 echo json_encode($res, JSON_UNESCAPED_UNICODE);
                 break;
 

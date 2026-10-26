@@ -907,6 +907,7 @@ $(document).ready(function () {
     const baseOptions = typeof getDatatableOptions === "function" ? getDatatableOptions() : {};
     const dtOptions = typeof applyLengthStateSave === "function" ? applyLengthStateSave({
       ...baseOptions,
+      responsive: false,
       processing: true,
       serverSide: true,
       ajax: {
@@ -1326,6 +1327,7 @@ $(document).ready(function () {
       Swal.close();
       $("#kepSelectAll").prop("checked", false);
       renderKepIncomingRows(res.data || []);
+      $("#kepAlindiOnay").prop("checked", Boolean(res.okundu_otomatik));
       $("#modalKepGelenSecim").modal("show");
     }).fail(function (xhr) {
       const message = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : "KEP servisine bağlanılamadı.";
@@ -1359,8 +1361,11 @@ $(document).ready(function () {
     });
   });
 
+  let pttKepGelenHesapBana = 0;
+
   function pttKepFormData(action) {
     return {
+      gelen_hesap_bana: pttKepGelenHesapBana,
       action: action,
       kep_adresi: $("#ptt_kep_adresi").val() || "",
       yetkili_tcno: $("#ptt_yetkili_tcno").val() || "",
@@ -1368,6 +1373,8 @@ $(document).ready(function () {
       sifre: $("#ptt_sifre").val() || "",
       wsdl_url: $("#ptt_wsdl_url").val() || "",
       ortam: $("#ptt_ortam").val() || "prod",
+      gelen_otomatik_aktar: $("#ptt_gelen_otomatik_aktar").is(":checked") ? 1 : 0,
+      gelen_okundu_otomatik: $("#ptt_gelen_okundu_otomatik").is(":checked") ? 1 : 0,
     };
   }
 
@@ -1387,6 +1394,11 @@ $(document).ready(function () {
       $("#ptt_yetkili_tcno, #ptt_parola, #ptt_sifre").val("");
       $("#ptt_wsdl_url").val(d.wsdl_url || "https://eyazisma.hs01.kep.tr/KepEYazismaV1.1/KepEYazismaCOREWSDL.php?wsdl");
       $("#ptt_ortam").val(d.ortam || "prod").trigger("change");
+      $("#ptt_gelen_otomatik_aktar").prop("checked", Boolean(d.gelen_otomatik_aktar));
+      $("#ptt_gelen_okundu_otomatik").prop("checked", Boolean(d.gelen_okundu_otomatik));
+      pttKepGelenHesapBana = 0;
+      $("#pttKepGelenHesap").text(d.gelen_otomatik_aktar ? (d.gelen_aktar_kullanici || "Bilinmiyor") : "Kapalı");
+      $("#pttKepGelenHelpText").text(d.gelen_aktar_baska_kullanici ? "Otomatik aktarım başka bir kullanıcının KEP bilgileriyle çalışıyor." : "Otomatik aktarım, bu ayarı açan kullanıcının KEP giriş bilgileriyle çalışır. Okundu bilgisi açıksa önce onay gönderilir, başarılı olursa evrak aktarılır.");
       $("#pttKepTcHelpText").text(d.yetkili_tcno ? "Bu kullanıcı için kayıtlı TCKN: " + d.yetkili_tcno + " — değiştirmeyecekseniz boş bırakın." : "Bu kullanıcı için henüz yetkili TCKN kaydedilmemiş.");
       $("#pttKepParolaHelpText").text(d.has_secrets ? "Bu kullanıcıya ait parola kayıtlı; değiştirmeyecekseniz boş bırakın." : "Bu kullanıcı için henüz parola kaydedilmemiş.");
       $("#pttKepSifreHelpText").text(d.has_secrets ? "Bu kullanıcıya ait web servis şifresi kayıtlı; değiştirmeyecekseniz boş bırakın." : "Bu kullanıcı için henüz web servis şifresi kaydedilmemiş.");
@@ -1484,6 +1496,12 @@ $(document).ready(function () {
       }).fail(function (xhr) {
         Swal.fire("Hata", xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : "Bakiye servisine erişilemedi.", "error");
       }).always(function () { $btn.prop("disabled", false).html(original); });
+  });
+
+  $("#btnPttKepGelenHesapBana").on("click", function () {
+    pttKepGelenHesapBana = 1;
+    $("#ptt_gelen_otomatik_aktar").prop("checked", true);
+    $("#pttKepGelenHesap").text("Siz (kaydedince geçerli olur)");
   });
 
   $("#formPttKepAyarlar").on("submit", function (e) {

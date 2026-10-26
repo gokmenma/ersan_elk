@@ -8,6 +8,7 @@ use App\Service\Gate;
 require_once dirname(__DIR__, 3) . '/Autoloader.php';
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 if (empty($_SESSION['user_id']) || empty($_SESSION['firma_id']) || (!Gate::allowsAny(['personel_listesi', 'personel/puantaj', 'puantaj_sgk_rapor_islemleri', 'arac_takip', 'arac_km_onaylari', 'yonetici_onayi', 'nobet/list', 'talepler', 'avans_talepleri', 'izin_talepleri', 'ariza_talepleri', 'canli_sohbet_ayarlari_sekmesi']) && !Gate::isSuperAdmin())) { http_response_code(403); exit; }
+session_write_close();
 
 $rawId = (string) ($_GET['id'] ?? '');
 $personelId = ctype_digit($rawId) ? (int) $rawId : (int) Security::decrypt($rawId);
