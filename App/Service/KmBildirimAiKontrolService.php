@@ -207,10 +207,11 @@ class KmBildirimAiKontrolService
             ],
             // GPT-5 ailesinde muhakeme token'lari da ayni butceden dusulur.
             // Dusuk limit, gorsel okunabildigi halde bos/yarim JSON uretebiliyordu.
-            'max_tokens' => 1200,
+            'max_tokens' => 4000,
+            'reasoning_effort' => 'medium',
         ];
 
-        return $this->sendAiRequest($payload);
+        return $this->sendAiRequest($payload, 'ana okuma');
     }
 
     /**
@@ -297,10 +298,11 @@ class KmBildirimAiKontrolService
                     ],
                 ],
             ],
-            'max_tokens' => 600,
+            'max_tokens' => 3000,
+            'reasoning_effort' => 'medium',
         ];
 
-        $ikinciAnaliz = $this->sendAiRequest($payload);
+        $ikinciAnaliz = $this->sendAiRequest($payload, 'yakın okuma');
         error_log(sprintf(
             'KM AI yakın okuma: bildirim_id=%d model=%s ilk_km=%s ilk_guven=%d ikinci_km=%s ikinci_guven=%d bbox_guven=%d',
             (int) $bildirim->id,
@@ -402,10 +404,11 @@ class KmBildirimAiKontrolService
                     ],
                 ],
             ],
-            'max_tokens' => 400,
+            'max_tokens' => 1500,
+            'reasoning_effort' => 'low',
         ];
 
-        $hakem = $this->sendAiRequest($payload);
+        $hakem = $this->sendAiRequest($payload, 'aday hakemliği');
         $adayKesin = !empty($hakem['candidate_exact']) && (int) ($hakem['confidence'] ?? 0) >= 90;
         error_log(sprintf(
             'KM AI yakın aday hakemliği: bildirim_id=%d ilk_okuma=%s aday=%s sonuc=%s guven=%d',
@@ -478,7 +481,7 @@ class KmBildirimAiKontrolService
         return is_string($jpeg) && $jpeg !== '' ? 'data:image/jpeg;base64,' . base64_encode($jpeg) : null;
     }
 
-    private function sendAiRequest(array $payload): array
+    private function sendAiRequest(array $payload, string $asama = 'analiz'): array
     {
         // GPT-5 ailesinde Chat Completions çıktı sınırı max_completion_tokens
         // alanıyla verilir ve varsayılan reasoning=none kullanımında temperature
@@ -489,9 +492,9 @@ class KmBildirimAiKontrolService
                 unset($payload['max_tokens']);
             }
             unset($payload['temperature']);
-            // Odometre hanelerinde hizdan cok dikkat onemlidir. Otomatik onay
-            // esikleri degismeden modelin gorseli daha dikkatli incelemesini saglar.
-            $payload['reasoning_effort'] = 'medium';
+            $payload['reasoning_effort'] = $payload['reasoning_effort'] ?? 'medium';
+        } else {
+            unset($payload['reasoning_effort']);
         }
 
         $body = false;
@@ -539,7 +542,8 @@ class KmBildirimAiKontrolService
 
         $finishReason = (string) ($response['choices'][0]['finish_reason'] ?? '');
         if ($finishReason === 'length') {
-            throw new Exception('Yapay zekâ analizi çıktı sınırına ulaştı; eksik sonuçla otomatik onay yapılmadı.');
+            error_log('KM AI çıktı sınırı aşıldı: aşama=' . $asama . ' model=' . ($payload['model'] ?? '') . ' kullanım=' . json_encode($response['usage'] ?? []));
+            throw new Exception('Yapay zekâ analizi (' . $asama . ' aşaması) çıktı sınırına ulaştı; eksik sonuçla otomatik onay yapılmadı.');
         }
         if ($finishReason === 'content_filter') {
             throw new Exception('Görsel içerik filtresine takıldığı için otomatik analiz tamamlanamadı.');
