@@ -704,6 +704,31 @@ async function handleRuhsatUpload(e) {
   }
 }
 
+const ruhsatLightbox = ref({ open: false, loading: false, src: '', isPdf: false, name: '' })
+
+function closeRuhsatLightbox() {
+  if (ruhsatLightbox.value.src) URL.revokeObjectURL(ruhsatLightbox.value.src)
+  ruhsatLightbox.value = { open: false, loading: false, src: '', isPdf: false, name: '' }
+}
+
+async function openRuhsatLightbox() {
+  const detail = selectedAracDetail.value
+  if (!detail?.ruhsat_url) return
+  ruhsatLightbox.value = { open: true, loading: true, src: '', isPdf: false, name: detail.ruhsat_dosya_adi || 'Ruhsat Belgesi' }
+  try {
+    const res = await fetch(detail.ruhsat_url, { credentials: 'same-origin' })
+    if (!res.ok) throw new Error('Ruhsat belgesi yüklenemedi.')
+    const blob = await res.blob()
+    ruhsatLightbox.value.isPdf = blob.type === 'application/pdf'
+    ruhsatLightbox.value.src = URL.createObjectURL(blob)
+  } catch (err) {
+    closeRuhsatLightbox()
+    showToast(err.message || 'Ruhsat belgesi yüklenemedi.', 'error')
+  } finally {
+    ruhsatLightbox.value.loading = false
+  }
+}
+
 async function deleteRuhsat() {
   if (!selectedAracDetail.value || !confirm('Ruhsat görselini silmek istediğinize emin misiniz?')) return
   detailLoading.value = true
@@ -2785,15 +2810,15 @@ onBeforeUnmount(() => {
                 </span>
               </div>
               <div class="ruhsat-file-actions">
-                <a
-                  :href="selectedAracDetail.ruhsat_url"
-                  target="_blank"
+                <button
+                  type="button"
                   class="ruhsat-view-btn"
                   title="Şifreli Belgeyi Aç"
+                  @click="openRuhsatLightbox"
                 >
                   <Eye :size="13" />
                   <span>Görüntüle</span>
-                </a>
+                </button>
                 <button
                   type="button"
                   class="ruhsat-delete-btn"
@@ -3610,6 +3635,22 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </div>
+
+    <Teleport to="body">
+      <div v-if="ruhsatLightbox.open" class="ruhsat-lightbox" @click.self="closeRuhsatLightbox">
+        <div class="ruhsat-lightbox-bar">
+          <strong class="ruhsat-lightbox-title">{{ ruhsatLightbox.name }}</strong>
+          <button type="button" class="ruhsat-lightbox-close" aria-label="Kapat" @click="closeRuhsatLightbox">
+            <X :size="20" />
+          </button>
+        </div>
+        <div class="ruhsat-lightbox-body" @click.self="closeRuhsatLightbox">
+          <span v-if="ruhsatLightbox.loading" class="ruhsat-lightbox-loading">Belge çözülüyor…</span>
+          <iframe v-else-if="ruhsatLightbox.isPdf" :src="ruhsatLightbox.src" class="ruhsat-lightbox-pdf" title="Ruhsat Belgesi"></iframe>
+          <img v-else-if="ruhsatLightbox.src" :src="ruhsatLightbox.src" class="ruhsat-lightbox-img" alt="Ruhsat Belgesi" />
+        </div>
+      </div>
+    </Teleport>
   </section>
 </template>
 
@@ -4772,6 +4813,80 @@ onBeforeUnmount(() => {
   text-decoration: none;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   transition: transform 0.15s ease;
+}
+
+.ruhsat-view-btn {
+  border: 0;
+  cursor: pointer;
+}
+
+.ruhsat-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  background: rgba(10, 12, 16, 0.92);
+  padding-top: var(--ds-safe-top, 0px);
+  padding-bottom: var(--ds-safe-bottom, 0px);
+}
+
+.ruhsat-lightbox-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  color: #ffffff;
+}
+
+.ruhsat-lightbox-title {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ruhsat-lightbox-close {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+.ruhsat-lightbox-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px 12px;
+  overflow: auto;
+}
+
+.ruhsat-lightbox-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 12px;
+}
+
+.ruhsat-lightbox-pdf {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.ruhsat-lightbox-loading {
+  color: #ffffff;
+  font-size: 13px;
 }
 
 .ruhsat-view-btn:active {
