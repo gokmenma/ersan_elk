@@ -158,9 +158,23 @@ class GelirGiderModel extends Model
         </tr>';
     }
 
+    private function eftOncekiSayisi(string $a): string
+    {
+        return "(SELECT COUNT(*) FROM {$this->table} ep
+                 WHERE ep.silinme_tarihi IS NULL
+                   AND ep.id < {$a}.id
+                   AND ep.type = {$a}.type
+                   AND ep.tarih = {$a}.tarih
+                   AND ep.kategori = {$a}.kategori
+                   AND ep.hesap_adi <=> {$a}.hesap_adi
+                   AND ep.aciklama <=> {$a}.aciklama)";
+    }
+
     public function bsmvCocukKosulu(string $a = 'g'): string
     {
-        return "({$a}.aciklama LIKE 'BSMV %' AND EXISTS (
+        $oncekiSayisi = $this->eftOncekiSayisi($a);
+        return "(({$a}.kategori = 'EFT ÜCRETİ' AND {$oncekiSayisi} % 2 = 1)
+                OR ({$a}.aciklama LIKE 'BSMV %' AND EXISTS (
                     SELECT 1 FROM {$this->table} bp
                     WHERE bp.silinme_tarihi IS NULL
                       AND bp.id < {$a}.id
@@ -168,19 +182,31 @@ class GelirGiderModel extends Model
                       AND bp.tarih = {$a}.tarih
                       AND bp.kategori = {$a}.kategori
                       AND {$a}.aciklama = CONCAT('BSMV ', bp.aciklama)
-                ))";
+                )))";
     }
 
     public function bsmvTutarSelect(string $a = 'g'): string
     {
-        return "(SELECT CAST(bc.tutar AS DECIMAL(15,2)) FROM {$this->table} bc
+        return "COALESCE(
+                (SELECT CAST(ec.tutar AS DECIMAL(15,2)) FROM {$this->table} ec
+                 WHERE {$a}.kategori = 'EFT ÜCRETİ'
+                   AND ec.silinme_tarihi IS NULL
+                   AND ec.id > {$a}.id
+                   AND ec.type = {$a}.type
+                   AND ec.tarih = {$a}.tarih
+                   AND ec.kategori = {$a}.kategori
+                   AND ec.hesap_adi <=> {$a}.hesap_adi
+                   AND ec.aciklama <=> {$a}.aciklama
+                 ORDER BY ec.id LIMIT 1),
+                (SELECT CAST(bc.tutar AS DECIMAL(15,2)) FROM {$this->table} bc
                  WHERE bc.silinme_tarihi IS NULL
                    AND bc.id > {$a}.id
                    AND bc.type = {$a}.type
                    AND bc.tarih = {$a}.tarih
                    AND bc.kategori = {$a}.kategori
                    AND bc.aciklama = CONCAT('BSMV ', {$a}.aciklama)
-                 ORDER BY bc.id LIMIT 1) AS bsmv_tutar";
+                 ORDER BY bc.id LIMIT 1)
+            ) AS bsmv_tutar";
     }
 
     public function bsmvBirlestir(object $row): object
