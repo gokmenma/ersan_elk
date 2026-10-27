@@ -3268,3 +3268,7 @@
 ## 2026-10-27 — Mobil SPA Evrak Takip özet kartı
 - `EvrakView.vue`: Araç Takip'teki koyu bento özet kartı (segmentli çubuk + 4 metrik hücresi) kullanıldı; hücreler filtre görevi görür, filtre hapları kaldırıldı, kart arası boşluk 8px.
 - Ortak sınıflar `design-system.css` sonuna eklendi: `.bento-card--summary`, `.metric-cell--filter` (diğer sayfalar zamanla bu standarda geçirilecek).
+
+## 2026-10-27 — Mobil imza ayarları Evrak Takip'e taşındı + KEP varsayılan imzacı
+- Evrak Takip > İşlemler > "Mobil İmza Ayarları" modalı (`views/evrak-takip/modal/mobil-imza-ayarlari-modal.php`), içerik Ayarlar sekmesiyle ortak partial: `views/ayarlar/icerik/mobil-imza-ayarlari.php` (kaydetme/profil sorgusu `views/ayarlar/api.php`).
+- Yeni ayar anahtarı `mobil_imza_kep_varsayilan_kullanici`: oturumdaki kullanıcının hattı yoksa KEP iletisi bu kullanıcının mobil imzasıyla imzalanır (`MobilImzaPadesService::kepSigner()`); sertifika T.C. doğrulaması gerçek imzacıya göre yapılır (işlem kaydında `imzaci`).

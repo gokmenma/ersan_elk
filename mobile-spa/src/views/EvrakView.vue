@@ -732,12 +732,24 @@ onMounted(() => {
     >
       <template #actions>
         <button
+          v-if="auth.state.permissions.incoming_documents"
           type="button"
-          class="clay-circle-btn evrak-add-btn"
-          aria-label="Yeni evrak ekle"
+          class="clay-circle-btn evrak-add-btn evrak-add-btn--gelen"
+          title="Gelen Evrak Ekle"
+          aria-label="Gelen evrak ekle"
           @click="openCreateForm('gelen')"
         >
-          <Plus :size="20" />
+          <ArrowDownLeft :size="20" />
+        </button>
+        <button
+          v-if="auth.state.permissions.outgoing_documents"
+          type="button"
+          class="clay-circle-btn evrak-add-btn evrak-add-btn--giden"
+          title="Giden Evrak Ekle"
+          aria-label="Giden evrak ekle"
+          @click="openCreateForm('giden')"
+        >
+          <ArrowUpRight :size="20" />
         </button>
       </template>
     </TopBar>
@@ -1118,33 +1130,6 @@ onMounted(() => {
           </button>
         </div>
       </div>
-    </div>
-
-    <!-- FAB: Hızlı Ekleme Çift Buton Grubu -->
-    <div v-if="auth.state.permissions.incoming_documents || auth.state.permissions.outgoing_documents" class="evrak-fab-group">
-      <!-- Gelen Evrak Ekle -->
-      <button
-        v-if="auth.state.permissions.incoming_documents"
-        type="button"
-        class="evrak-fab evrak-fab--gelen"
-        title="Gelen Evrak Ekle"
-        @click="openCreateForm('gelen')"
-      >
-        <ArrowDownLeft :size="22" />
-        <span class="evrak-fab-tip">Gelen</span>
-      </button>
-
-      <!-- Giden Evrak Ekle -->
-      <button
-        v-if="auth.state.permissions.outgoing_documents"
-        type="button"
-        class="evrak-fab evrak-fab--giden"
-        title="Giden Evrak Ekle"
-        @click="openCreateForm('giden')"
-      >
-        <ArrowUpRight :size="22" />
-        <span class="evrak-fab-tip">Giden</span>
-      </button>
     </div>
 
     <!-- ======================================================== -->
@@ -2191,9 +2176,15 @@ onMounted(() => {
 }
 
 .evrak-add-btn {
-  background: var(--ds-primary) !important;
   color: #fff !important;
-  border-color: var(--ds-primary) !important;
+}
+.evrak-add-btn--gelen {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  border-color: #059669 !important;
+}
+.evrak-add-btn--giden {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+  border-color: #0369a1 !important;
 }
 
 /* Toast Bildirimi */
@@ -2592,52 +2583,6 @@ onMounted(() => {
   padding: 0;
 }
 
-/* FAB Çift Buton Grubu */
-.evrak-fab-group {
-  position: fixed;
-  bottom: calc(var(--ds-nav-clearance) + 12px);
-  right: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  z-index: 80;
-}
-.evrak-fab {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  border: none;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
-  cursor: pointer;
-  position: relative;
-  transition: transform 0.2s ease;
-}
-.evrak-fab:active {
-  transform: scale(0.92);
-}
-.evrak-fab--gelen {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-}
-.evrak-fab--giden {
-  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
-}
-.evrak-fab-tip {
-  position: absolute;
-  right: 58px;
-  background: var(--dsx-bg-1e293b);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: var(--ds-radius-pill);
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0.9;
-}
 
 /* ======================================================== */
 /* ÇEKMECE VE MODAL STİLLERİ (DRAWER & MODAL)               */

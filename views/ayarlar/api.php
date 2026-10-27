@@ -555,9 +555,18 @@ switch ($action) {
             }
 
             $mobilImza = new \App\Model\MobilImzaModel();
+            $kepVarsayilanId = (int) Security::decrypt((string) ($_POST['mobil_imza_kep_varsayilan'] ?? ''));
+            if ($kepVarsayilanId > 0) {
+                $gecerliImzacilar = array_map(static fn($imzaci): int => (int) $imzaci->id, $mobilImza->getSigners($owner_id, $firma_id));
+                if (!in_array($kepVarsayilanId, $gecerliImzacilar, true)) {
+                    $response['message'] = 'Seçilen varsayılan imzacı geçersiz.';
+                    break;
+                }
+            }
             if (!$Settings->upsertMultipleSettings([
                 'mobil_imza_aktif' => $aktif,
                 'mobil_imza_gosterim_metni' => $gosterimMetni,
+                'mobil_imza_kep_varsayilan_kullanici' => $kepVarsayilanId > 0 ? (string) $kepVarsayilanId : '',
             ], $firma_id, null)) {
                 throw new \RuntimeException('Mobil imza ayarları kaydedilemedi.');
             }

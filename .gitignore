@@ -35,3 +35,5 @@ node_modules/
 vendor/
 .phpunit.cache/
 mobile-app/
+# /*Mobile spa dist klasoru her seferinde gitmesin, gönderileceğinde kapat
+#/mobile-spa/dist/*

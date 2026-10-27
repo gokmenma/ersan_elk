@@ -101,7 +101,7 @@ final class MobilImzaPadesService
         }
         $draft = $this->kepDraft($tempId, $firmaId, $userId);
         $digest = $this->kepDigest((string) ($draft['eHash'] ?? ''));
-        $msisdn = $this->userMsisdn($userId);
+        [$signerId, $msisdn] = $this->kepSigner($userId, $firmaId);
         $this->purgeExpiredFiles();
 
         $profile = $this->client->profileQuery($msisdn);
@@ -120,7 +120,7 @@ final class MobilImzaPadesService
             'mssp_trans_id' => $request['transaction_id'],
             'kaynak_pdf_sha256' => hash('sha256', $digest),
             'hazir_pdf_yolu' => '',
-            'byte_range' => json_encode(['kep' => $tempId]),
+            'byte_range' => json_encode(['kep' => $tempId, 'imzaci' => $signerId]),
             'imzali_oznitelikler' => base64_encode($signedAttributes),
             'sertifika_ozeti' => bin2hex($profile['cert_hash']),
             'son_gecerlilik' => date('Y-m-d H:i:s', time() + self::SIGN_TIMEOUT + 60),
@@ -216,9 +216,10 @@ final class MobilImzaPadesService
             || openssl_verify($signedAttributes, $response['signature'], CmsSignedDataBuilder::pem($certificate), OPENSSL_ALGO_SHA256) !== 1) {
             throw new \RuntimeException('Mobil imza, gönderilen evrak özetine ait değil.');
         }
-        $this->validateCertificate($certificate, $response['certificates'], $userId);
-
         $layout = json_decode((string) $transaction->byte_range, true);
+        $signerId = is_array($layout) && !empty($layout['imzaci']) ? (int) $layout['imzaci'] : $userId;
+        $this->validateCertificate($certificate, $response['certificates'], $signerId);
+
         if (is_array($layout) && !empty($layout['kep'])) {
             return [
                 'kep_temp_id' => (string) $layout['kep'],
@@ -248,6 +249,22 @@ final class MobilImzaPadesService
             throw new \RuntimeException('Mobil imza hattınız tanımlı değil. Ayarlar > Mobil İmza sekmesinden hattınızı tanımlatınız.');
         }
         return $msisdn;
+    }
+
+    private function kepSigner(int $userId, int $firmaId): array
+    {
+        $ownMsisdn = $this->model->getUserMsisdn($userId, (int) ($_SESSION['owner_id'] ?? 0));
+        if ($ownMsisdn !== '') {
+            return [$userId, $ownMsisdn];
+        }
+        $defaultId = (int) ((new SettingsModel())->getSettings('mobil_imza_kep_varsayilan_kullanici', $firmaId) ?? 0);
+        if ($defaultId > 0) {
+            $defaultMsisdn = $this->model->getUserMsisdn($defaultId, (int) ($_SESSION['owner_id'] ?? 0));
+            if ($defaultMsisdn !== '') {
+                return [$defaultId, $defaultMsisdn];
+            }
+        }
+        throw new \RuntimeException('Mobil imza hattınız tanımlı değil ve KEP için varsayılan mobil imza kullanıcısı seçilmemiş. Evrak Takip > İşlemler > Mobil İmza Ayarları bölümünden tanımlayınız.');
     }
 
     private function kepDraft(string $tempId, int $firmaId, int $userId): array

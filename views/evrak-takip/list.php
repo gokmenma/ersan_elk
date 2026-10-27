@@ -19,6 +19,7 @@ $gelen_evraklar = $Evrak->getGelenEvraklar();
 
 $currentUserId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
 $canSendKep = Gate::allows('evrak-takip/kep');
+$canMobilImzaAyar = Gate::allows('mobil_imza_ayarlari_sekmesi');
 $onayMap = [];
 $imzamiBekleyenSayisi = $Evrak->countPendingSignatureForUser($currentUserId);
 $onayDetayMap = [];
@@ -138,6 +139,11 @@ $title = "Evrak Listesi";
                     <button type="button" class="dropdown-item d-flex align-items-center" id="btnUetsSettings">
                         <i class="bx bx-slider me-2 text-secondary font-size-16"></i> UETS / KEP Ayarları
                     </button>
+                    <?php if ($canMobilImzaAyar): ?>
+                    <button type="button" class="dropdown-item d-flex align-items-center" id="btnMobilImzaAyarlari" data-bs-toggle="modal" data-bs-target="#modalMobilImzaAyarlari">
+                        <i class="bx bx-mobile-alt me-2 text-info font-size-16"></i> Mobil İmza Ayarları
+                    </button>
+                    <?php endif; ?>
                     <div class="dropdown-divider"></div>
                     <a class="dropdown-item d-flex align-items-center py-2" href="downloads/ErsanEImza.jar?v=1.3.1" download="ErsanEImza.jar" title="E-İmza Java uygulamasını indir">
                         <i class="bx bxl-java me-2 text-danger font-size-18"></i>
@@ -1042,6 +1048,7 @@ body[data-layout-mode="dark"] #evrakImzaOnayAction {
 <?php include_once "modal/evrak-modal.php"; ?>
 <?php include_once "modal/uets-modals.php"; ?>
 <?php if ($canSendKep) include_once "modal/kep-send-modal.php"; ?>
+<?php if ($canMobilImzaAyar) include_once "modal/mobil-imza-ayarlari-modal.php"; ?>
 <?php include_once "modal/kep-preview-modal.php"; ?>
 
 <script>window.evrakMobilImzaAktif = <?= \App\Service\MobilImzaPadesService::isEnabled((int) ($_SESSION['firma_id'] ?? 0)) ? 'true' : 'false'; ?>;</script>

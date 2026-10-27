@@ -14,6 +14,16 @@ $mobilImzaAktif = ($allSettings['mobil_imza_aktif'] ?? '0') === '1';
 $mobilImzaGosterimMetni = $allSettings['mobil_imza_gosterim_metni'] ?? '{evrak_no} sayılı evrakı imzalıyorsunuz';
 $mobilImzaServisHazir = TurkcellMobilImzaClient::isConfigured();
 $mobilImzaciler = (new MobilImzaModel())->getSigners((int) ($_SESSION['owner_id'] ?? 0), (int) ($firma_id ?? 0));
+$mobilImzaKepVarsayilanId = (int) ($allSettings['mobil_imza_kep_varsayilan_kullanici'] ?? 0);
+$mobilImzaKepSecenekler = ['' => 'Seçilmedi'];
+$mobilImzaKepSecili = '';
+foreach ($mobilImzaciler as $imzaci) {
+    $sifreliId = Security::encrypt((int) $imzaci->id);
+    $mobilImzaKepSecenekler[$sifreliId] = (string) $imzaci->adi_soyadi . ($imzaci->msisdn === '' ? ' (hat tanımsız)' : '');
+    if ((int) $imzaci->id === $mobilImzaKepVarsayilanId) {
+        $mobilImzaKepSecili = $sifreliId;
+    }
+}
 
 ?>
 
@@ -101,6 +111,22 @@ $mobilImzaciler = (new MobilImzaModel())->getSigners((int) ($_SESSION['owner_id'
         </div>
     </div>
 
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0 text-primary"><i class="bx bx-mail-send me-2"></i>KEP Gönderisi Varsayılan İmzacı</h5>
+        </div>
+        <div class="card-body p-4">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <?php echo Form::FormSelect2('mobil_imza_kep_varsayilan', $mobilImzaKepSecenekler, $mobilImzaKepSecili, 'Varsayılan mobil imza kullanıcısı', 'user', 'key', '', 'form-select select2', false); ?>
+                </div>
+                <div class="col-12">
+                    <div class="form-text">Sistemde oturum açan kullanıcının mobil imza hattı tanımlı olmadığında KEP iletisi bu kullanıcının mobil imzasıyla imzalanır. Telefona gelen onay isteği bu kullanıcıya gider.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row mt-4 mb-3">
         <div class="col-md-12 text-end">
             <button type="button" id="saveMobilImzaAyarlariButton" class="btn btn-success waves-effect btn-label waves-light">
@@ -126,6 +152,12 @@ $mobilImzaciler = (new MobilImzaModel())->getSigners((int) ($_SESSION['owner_id'
             label.classList.toggle('bg-danger', !this.checked);
         });
 
+        if (window.jQuery && jQuery.fn.select2) {
+            const kepSelect = jQuery('#mobil_imza_kep_varsayilan');
+            const kepModal = jQuery('#modalMobilImzaAyarlari');
+            kepSelect.select2({ width: '100%', dropdownParent: kepModal.length ? kepModal : jQuery(document.body) });
+        }
+
         const post = formData => fetch('views/ayarlar/api.php', { method: 'POST', body: formData }).then(response => response.json());
 
         saveButton.addEventListener('click', function () {
@@ -139,6 +171,9 @@ $mobilImzaciler = (new MobilImzaModel())->getSigners((int) ($_SESSION['owner_id'
                 .then(data => {
                     if (data.status === 'success') {
                         Swal.fire({ icon: 'success', title: 'Başarılı', text: data.message, timer: 2000, showConfirmButton: false });
+                        if (document.getElementById('modalMobilImzaAyarlari')) {
+                            setTimeout(() => window.location.reload(), 1200);
+                        }
                     } else {
                         Swal.fire({ icon: 'error', title: 'Hata', text: data.message });
                     }
