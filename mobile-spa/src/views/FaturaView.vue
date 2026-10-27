@@ -1182,7 +1182,14 @@ onMounted(() => {
     activeTab.value = invoiceTabPermissions.value[activeTab.value] ? activeTab.value : firstAllowedInvoiceTab()
     faturaState.activeTab = activeTab.value
   }
-  initDatesForPeriod('this_month')
+  const initialSearch = String(route.query.search || '').trim()
+  if (initialSearch) {
+    currentPeriod.value = 'all'
+    initDatesForPeriod('all')
+    searchQuery.value = initialSearch
+  } else {
+    initDatesForPeriod('this_month')
+  }
   loadCurrentTab(true)
 })
 

@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, Bell, ChevronDown, ClipboardList, Search, Zap } from '@lucide/vue'
 import { auth } from '../services/auth.js'
 import { notificationsState, toggleNotificationsDrawer } from '../services/notifications.js'
+import { canGlobalSearch, openSearchSheet } from '../services/search.js'
 
 const props = defineProps({
   eyebrow: { type: String, default: '' },
@@ -51,6 +52,16 @@ function goBack() {
 
       <div class="clay-actions-row">
         <slot name="actions">
+          <button
+            v-if="canGlobalSearch"
+            type="button"
+            class="clay-circle-btn"
+            aria-label="Genel arama"
+            title="Genel Arama"
+            @click="openSearchSheet"
+          >
+            <Search :size="19" />
+          </button>
           <button
             type="button"
             class="clay-circle-btn topbar-bell-btn"

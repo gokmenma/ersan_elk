@@ -4,6 +4,7 @@ import BottomNav from './components/BottomNav.vue'
 import PwaInstallPrompt from './components/PwaInstallPrompt.vue'
 import NotificationsDrawer from './components/NotificationsDrawer.vue'
 import NavigationProgress from './components/NavigationProgress.vue'
+import GlobalSearchSheet from './components/GlobalSearchSheet.vue'
 </script>
 
 <template>
@@ -19,6 +20,7 @@ import NavigationProgress from './components/NavigationProgress.vue'
       <NavigationProgress />
       <PwaInstallPrompt />
       <NotificationsDrawer />
+      <GlobalSearchSheet />
       <BottomNav v-if="$route.meta.chrome !== false" />
     </div>
   </div>

@@ -130,7 +130,7 @@ const summary = ref({
 })
 
 // Filtreler
-const searchQuery = ref('')
+const searchQuery = ref(String(route.query.search || '').trim())
 let searchDebounce = null
 const statusFilter = ref('all') // all, aktif, zimmetli, bosta, serviste, ikame, evrak_uyari, pasif
 const periodFilter = ref('this_month') // today, this_month, all, custom
@@ -1045,6 +1045,10 @@ onMounted(() => {
     activeTab.value = 'araclar'
     statusFilter.value = durum
     router.replace({ query: {} })
+  }
+  if (searchQuery.value) {
+    aracState.activeTab = 'araclar'
+    statusFilter.value = 'all'
   }
   if (aracState.activeTab && aracState.activeTab !== activeTab.value) {
     activeTab.value = aracState.activeTab

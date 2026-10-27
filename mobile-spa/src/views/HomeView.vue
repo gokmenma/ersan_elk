@@ -35,6 +35,7 @@ import {
   Phone,
   Plus,
   RefreshCw,
+  Search,
   RotateCcw,
   ShieldAlert,
   ShieldCheck,
@@ -51,6 +52,7 @@ import TopBar from '../components/TopBar.vue'
 import { auth } from '../services/auth.js'
 import { getDashboard, readDashboardCache, saveDashboardSettings, syncDailyOperations, writeDashboardCache } from '../services/dashboard.js'
 import { notificationsState, toggleNotificationsDrawer } from '../services/notifications.js'
+import { canGlobalSearch, openSearchSheet } from '../services/search.js'
 
 const router = useRouter()
 const loading = ref(true)
@@ -957,6 +959,16 @@ onMounted(() => {
         >
           <span class="edit-icon-wrap"><SlidersHorizontal :size="13" /></span>
           <span>Kartları Düzenle</span>
+        </button>
+        <button
+          v-if="canGlobalSearch"
+          type="button"
+          class="clay-circle-btn"
+          aria-label="Genel arama"
+          title="Genel Arama"
+          @click="openSearchSheet"
+        >
+          <Search :size="19" />
         </button>
         <button
           type="button"

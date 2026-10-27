@@ -1990,3 +1990,5 @@
 - [x] 2026-10-27 Sistem Aktiviteleri: Cron İşlemleri ayrı hızlı filtre/rozet; kep_gelen_sync.php ve efatura_incoming_sync.php Cron - önekli log yazıyor (tarayıcıda test bekliyor)
 - [x] 2026-10-27 Personel listesi doğum tarihi filtre/sıralama düzeltildi; doğum günü push bildirimi (cron + log tablosu SQL) ve ana sayfa Doğum Günleri kartı (personel_listesi yetkisi) eklendi; SQL uygulama, cron kurulumu ve tarayıcı testi bekliyor
 - [x] 2026-10-27 Mobil SPA ana sayfa Doğum Günleri takvim kartı (personel yetkisi); dist derlendi, cihazda test bekliyor
+- [x] 2026-10-27 Mail & SMS gönderim geçmişi sayfası server-side DataTables + yeni sayfa standardına çevrildi (api/log.php, MesajLogModel::ajaxList/summary/getDetail, policy SQL); tarayıcıda test bekliyor
+- [x] 2026-10-27 Mobil SPA Genel Arama (search.php + MobileGlobalSearchModel + MobileSearchAccess + GlobalSearchSheet); sunucu tarafı yetki doğrulandı, dist derlendi; cihazda test ve Pest/Playwright testi bekliyor

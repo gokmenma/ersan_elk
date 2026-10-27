@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   AlertCircle,
   ArrowDownLeft,
@@ -47,6 +47,7 @@ import { auth } from '../services/auth.js'
 import { evrakApi } from '../services/evrak.js'
 
 const router = useRouter()
+const route = useRoute()
 
 // Liste & Sayfa Durumu
 const items = ref([])
@@ -959,6 +960,7 @@ function toggleSigner(userId) {
 }
 
 onMounted(() => {
+  searchQuery.value = String(route.query.search || '').trim()
   loadList(true)
   loadMeta()
 })

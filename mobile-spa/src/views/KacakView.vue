@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   AlertCircle,
   Award,
@@ -41,6 +42,8 @@ import {
 import TopBar from '../components/TopBar.vue'
 import { auth } from '../services/auth.js'
 import { kacakApi, kacakState } from '../services/kacak.js'
+
+const route = useRoute()
 
 // UI Yükleme & İşlem Durumları
 const loading = ref(false)
@@ -450,6 +453,12 @@ function getStatusBadge(item) {
 
 onMounted(() => {
   initDates()
+  const initialSearch = String(route.query.search || '').trim()
+  if (initialSearch) {
+    searchInput.value = initialSearch
+    baslangicTarihi.value = '2020-01-01'
+    datePreset.value = 'all'
+  }
   loadData()
   window.addEventListener('keydown', handleGalleryKeydown)
 })

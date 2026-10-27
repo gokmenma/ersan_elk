@@ -3294,3 +3294,13 @@
 
 ## 2026-10-27 Mobil SPA Doğum Günleri kartı
 - `mobile-spa` ana sayfaya `birthdays` kartı: `MobileDashboardModel::birthdays()` + `public/api/dashboard.php` (yalnızca `personel_listesi` yetkisiyle, `personnel` izni) + `HomeView.vue` aylık takvim/gün filtresi + `design-system.css` `.bday-*` sınıfları. dist yeniden derlendi; telefonda test bekliyor.
+
+## 2026-10-27 Mail & SMS Gönderim Geçmişi — server-side + yeni sayfa standardı
+- `views/mail-sms/list.php` Cari standardına çevrildi (başlık satırı, 4 KPI kartı: Toplam/E-posta/SMS/Push, `mesajlog-summary-hidden` toggle, tarih aralığı Form::FormDate). Tüm kayıtlar sayfaya basılmıyor; `views/mail-sms/api/log.php` (`log-ajax-list`, `log-detay`) DataTables server-side besliyor.
+- `MesajLogModel`: `ajaxList()`, `summary()`, `getDetail()` eklendi; listede mesaj gövdesi yerine `LEFT(message,300)` çekilir, detay tıklanınca ID şifreli (Security) olarak tek kayıt getirilir. E-posta gövdesi sandbox'lı iframe'de gösterilir (XSS koruması). CDN'den Turkish.json çekimi kalktı.
+- SQL: `sql/2026_10_27_mail_sms_log_serverside_policy.sql` (api resource `mail-sms/api/log` → `mail-sms/list` yetkisi + `idx_firma_created` indeksi) yerel DB'de uygulandı; canlıda uygulanmalı. Tarayıcıda test bekliyor.
+
+## 2026-10-27 Mobil SPA Genel Arama
+- Yeni `mobile-spa/public/api/search.php` (GET, oturum+firma zorunlu) → `App/Service/MobileSearchAccess::modules()` (mobil Gate anahtarlarıyla modül/alt-tip izni) → `App/Model/MobileGlobalSearchModel::search()` (yalnız yetkili modül sorgulanır; masaüstü `GlobalSearchModel` değişmedi). Kategoriler: personnel, invoices (taslak/gelen/giden alt yetkisi), vehicles, current_accounts, documents (gelen/giden alt yetkisi), illegal. Demirbaş/Aparat/Görevler kapsam dışı (mobilde sayfa yok / Görevler ekranı statik taslak).
+- Frontend: `services/search.js`, `components/GlobalSearchSheet.vue` (App.vue'de), TopBar + HomeView arama butonu; Fatura/Evrak/Araç/Kaçak ekranları `?search=` okur. `cari` tablosunda firma_id yok (ortak tablo, mobil Cari ekranıyla aynı kapsam).
+- Yerelde kullanıcı 1 ve 63 ile doğrulandı: 63 numaralı kullanıcıda fatura/cari kategorisi hiç dönmüyor. dist derlendi; telefonda test bekliyor.
