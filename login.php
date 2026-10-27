@@ -16,13 +16,18 @@ session_start();
 unset($_SESSION['permission_cache']);
 unset($_SESSION['topbar_firma_option_cache']);
 
+if (isset($_GET['returnurl'])) {
+    \App\Helper\ReturnUrl::store($_GET['returnurl']);
+}
+
 // Check if the user is already logged in, if yes then redirect him to index page
 if (isset($_SESSION["loggedin"]) && $_SESSION["loggedin"] === true) {
     if (($_SESSION['portal_scope'] ?? '') === 'kaski') {
         header('location: kaski/index.php');
         exit;
     }
-    header("location: index?p=home");
+    $returnUrlTarget = \App\Helper\ReturnUrl::consume();
+    header("location: " . ($returnUrlTarget ?? "index?p=home"));
     exit;
 }
 

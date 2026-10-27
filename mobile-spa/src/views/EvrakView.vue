@@ -340,8 +340,51 @@ function handleSearch(val) {
 }
 
 // Detay Modalını Aç
+const detailTab = ref('info')
+const detailKep = ref(null)
+const detailKepLoading = ref(false)
+const detailKepError = ref('')
+const detailKepSyncing = ref(false)
+
+async function loadDetailKep() {
+  const doc = selectedDetail.value
+  if (!doc) return
+  detailKepLoading.value = true
+  detailKepError.value = ''
+  try {
+    const res = await evrakApi.kepDetail(doc.id, doc.kep_mesaj_id || '')
+    detailKep.value = res.data
+  } catch (err) {
+    detailKepError.value = err.message || 'PTT delilleri yüklenemedi.'
+  } finally {
+    detailKepLoading.value = false
+  }
+}
+
+function selectDetailTab(tab) {
+  detailTab.value = tab
+  if (tab === 'evidence' && !detailKep.value && !detailKepLoading.value) loadDetailKep()
+}
+
+async function syncDetailKep() {
+  if (detailKepSyncing.value || !detailKep.value) return
+  detailKepSyncing.value = true
+  try {
+    const res = await evrakApi.syncKepDelil(detailKep.value.evrak_id, detailKep.value.kep_id, auth.state.csrfToken)
+    showToast(res.message || 'PTT delilleri güncellendi.')
+    await loadDetailKep()
+  } catch (err) {
+    showToast(err.message || 'PTT delilleri güncellenirken hata oluştu.', 'error')
+  } finally {
+    detailKepSyncing.value = false
+  }
+}
+
 async function openDetail(doc) {
   selectedDetail.value = doc
+  detailTab.value = 'info'
+  detailKep.value = null
+  detailKepError.value = ''
   isDetailOpen.value = true
   detailLoading.value = true
 
@@ -604,7 +647,7 @@ async function triggerOnayaSun(doc) {
     const res = await evrakApi.eImzaOnayaSun(doc.id, auth.state.csrfToken)
     showToast(res.message || 'Evrak onaya sunuldu.')
     if (isDetailOpen.value) isDetailOpen.value = false
-    loadList(false)
+    loadList(true)
   } catch (err) {
     showToast(err.message || 'İşlem başarısız.', 'error')
   } finally {
@@ -648,7 +691,13 @@ function scheduleMobileSignPoll(pollFn) {
         mobileSign.value.phase = 'done'
         mobileSign.value.message = res.message || 'İmza tamamlandı.'
         mobileSign.value.kepReady = !!data.kep_gonderilebilir
-        loadList(false)
+        if (mobileSign.value.kind === 'kep') {
+          isKepFormOpen.value = false
+          if (['gelen', 'bekleyen', 'imzam'].includes(activeFilter.value)) {
+            activeFilter.value = 'giden'
+          }
+        }
+        loadList(true)
         return
       }
       if (['iptal', 'zaman_asimi', 'hata'].includes(data.state)) {
@@ -805,7 +854,6 @@ async function submitKepForm() {
     form.files.forEach((file) => fd.append('ekler[]', file, file.name))
     const prepared = await evrakApi.kepHazirla(fd, auth.state.csrfToken)
     const tempId = prepared.data.temp_id
-    isKepFormOpen.value = false
     await startMobileSign(
       'kep',
       form.id,
@@ -847,7 +895,7 @@ async function confirmIade() {
     showToast(res.message || 'Evrak iade edildi.')
     isReturnConfirmOpen.value = false
     if (isDetailOpen.value) isDetailOpen.value = false
-    loadList(false)
+    loadList(true)
   } catch (err) {
     showToast(err.message || 'İade işlemi başarısız.', 'error')
   } finally {
@@ -865,7 +913,7 @@ async function triggerGeriAl(doc) {
     const res = await evrakApi.eImzaGeriAl(doc.id, auth.state.csrfToken)
     showToast(res.message || 'Evrak geri alındı.')
     if (isDetailOpen.value) isDetailOpen.value = false
-    loadList(false)
+    loadList(true)
   } catch (err) {
     showToast(err.message || 'Geri alma başarısız.', 'error')
   } finally {
@@ -886,7 +934,7 @@ async function confirmDelete() {
     showToast(res.message || 'Evrak silindi.')
     isDeleteConfirmOpen.value = false
     if (isDetailOpen.value) isDetailOpen.value = false
-    loadList(false)
+    loadList(true)
   } catch (err) {
     showToast(err.message || 'Silme işlemi başarısız.', 'error')
   } finally {
@@ -1383,9 +1431,97 @@ onBeforeUnmount(stopMobileSignTimer)
 
           <!-- Çekmece İçeriği -->
           <div class="evrak-drawer-body">
+            <div v-if="selectedDetail?.is_kep && !detailLoading" class="clay-tabs-wrap">
+              <button
+                type="button"
+                class="clay-tab-pill"
+                :class="{ 'is-active': detailTab === 'info' }"
+                @click="selectDetailTab('info')"
+              >
+                <FileText :size="13" />
+                <span>Evrak Bilgisi</span>
+              </button>
+              <button
+                type="button"
+                class="clay-tab-pill"
+                :class="{ 'is-active': detailTab === 'evidence' }"
+                @click="selectDetailTab('evidence')"
+              >
+                <ShieldCheck :size="13" />
+                <span>PTT Delilleri</span>
+                <span v-if="detailKep" class="clay-tab-count clay-tab-count--accent">
+                  {{ detailKep.delil_sayisi || 0 }}
+                </span>
+              </button>
+            </div>
+
             <!-- Yükleniyor -->
             <div v-if="detailLoading" class="clay-skeleton-grid">
               <div class="clay-skeleton-card clay-skeleton-card--sm"></div>
+            </div>
+
+            <div v-else-if="selectedDetail?.is_kep && detailTab === 'evidence'" class="kep-tab-body">
+              <div v-if="detailKepLoading" class="clay-skeleton-grid">
+                <div class="clay-skeleton-card clay-skeleton-card--sm"></div>
+              </div>
+              <div v-else-if="detailKepError" class="evrak-returned-notice">
+                <AlertCircle :size="18" />
+                <span>{{ detailKepError }}</span>
+              </div>
+              <template v-else-if="detailKep">
+                <div class="kep-evidence-banner">
+                  <div class="kep-evidence-banner-text">
+                    <ShieldCheck :size="18" class="text-primary flex-shrink-0" />
+                    <span>PTT KEP yasal delilleri ETSI TS 02640 ve REM standardında zaman damgalı resmi ispat belgeleridir.</span>
+                  </div>
+                  <button
+                    type="button"
+                    class="clay-pill-btn clay-pill-btn--sm"
+                    :disabled="detailKepSyncing"
+                    @click="syncDetailKep"
+                  >
+                    <RefreshCw :size="12" :class="{ 'clay-spin-icon': detailKepSyncing }" />
+                    <span>{{ detailKepSyncing ? 'Sorgulanıyor...' : 'PTT\'den Güncelle' }}</span>
+                  </button>
+                </div>
+
+                <div v-if="detailKep.deliller?.length" class="kep-timeline">
+                  <div
+                    v-for="delil in detailKep.deliller"
+                    :key="delil.id"
+                    class="kep-timeline-item"
+                    :class="`kep-timeline-item--${delil.badge || 'primary'}`"
+                  >
+                    <div class="kep-timeline-dot">
+                      <CheckCircle v-if="delil.delil_tur_id === 10 || delil.delil_tur_id === 40 || delil.delil_tur_id === 60" :size="14" />
+                      <FileCheck v-else :size="14" />
+                    </div>
+                    <div class="kep-timeline-content">
+                      <div class="kep-timeline-header">
+                        <strong class="kep-timeline-title">{{ delil.tur_adi }}</strong>
+                        <span class="kep-timeline-time">{{ delil.olay_zamani }}</span>
+                      </div>
+                      <p v-if="delil.aciklama" class="kep-timeline-desc">{{ delil.aciklama }}</p>
+                      <div class="kep-timeline-meta">
+                        <span class="kep-meta-tag">{{ delil.kephs }}</span>
+                        <a
+                          v-if="delil.xml_url"
+                          :href="delil.xml_url"
+                          class="kep-xml-link"
+                          download
+                          title="ETSI XML İndir"
+                        >
+                          <Download :size="11" />
+                          <span>Delil XML</span>
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div v-else class="text-xs text-muted text-center py-4">
+                  Kayıtlı PTT delili bulunmuyor. "PTT'den Güncelle" butonuna basarak kontrol edebilirsiniz.
+                </div>
+              </template>
             </div>
 
             <template v-else-if="selectedDetail">

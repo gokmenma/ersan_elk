@@ -202,6 +202,11 @@ class Gate
             return;
         }
 
+        $sessionUser = AuthController::user();
+        if ((int) ($sessionUser->id ?? 0) <= 0 && (int) ($_SESSION['personel_id'] ?? 0) <= 0) {
+            \App\Helper\ReturnUrl::respondSessionExpired();
+        }
+
         http_response_code(403);
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode([

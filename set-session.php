@@ -52,6 +52,11 @@ if (isset($_SESSION["id"]) && !empty($_SESSION["id"])) {
         }
     }
 
+    $returnUrlTarget = \App\Helper\ReturnUrl::consume();
+    if ($activeDonem && $returnUrlTarget !== null) {
+        header("location: " . $returnUrlTarget);
+        exit;
+    }
     header("location:index?p=$targetPage");
 } else {
     header("location:login.php");

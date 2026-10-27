@@ -9,6 +9,7 @@ $page = $_GET['p'] ?? 'home';
 ?>
 <script src="<?= in_array($page, ['bordro/list', 'gelir-gider/list'], true) ? 'assets/libs/jquery-validation/jquery.validate.min.js' : 'https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.js' ?>"></script>
 <script src="assets/libs/imask/imask.min.js"></script>
+<script src="<?php echo Helper::assetVersion('assets/js/session-guard.js'); ?>"></script>
 
 <!-- Sayfalara Özel Scriptler -->
 <!--***************************************-->

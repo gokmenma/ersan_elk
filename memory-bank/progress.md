@@ -1984,3 +1984,6 @@
 - [x] 2026-10-27 Mobil imza sertifika onbellek karsilastirmasi duzeltildi (hash ham ikili, hash_equals ikinci arguman true)
 - [x] 2026-10-27 Mobil SPA: evrak onayi mobil imza ile (mobil-imza-baslat/durum/iptal), sanal e-imza-onayla kapatildi, KEP iletisi mobil imzayla gonderme (kep-hazirla/kep-mobil-imza-baslat/durum), EvrakView.vue arayuzu; dist yeniden derlenmedi, gercek hatla test bekliyor
 - [x] 2026-10-27 Mobil SPA KEP formu bottom sheet oldu, adres defterinden secim (kep-adres-defteri) ve Vazgec solda
+- [x] 2026-10-27 Mobil SPA: KEP sheet imza istegi sirasinda acik kalir, gonderim sonrasi liste yenilenir (loadList(false) yuklenen-daha-fazla hatasi islem sonrasi cagrilarda loadList(true) yapildi)
+- [x] 2026-10-27 Mobil SPA evrak detayinda KEP (gelen/giden) icin Evrak Bilgisi / PTT Delilleri sekmeleri
+- [x] 2026-10-27 returnurl: oturum dusunce/beni hatirla ile giris sonrasi kullanici bulundugu sayfaya doner (App/Helper/ReturnUrl.php, layouts/session.php, login.php, set-session.php); oturumsuz AJAX/API 401 + session_expired, assets/js/session-guard.js ile login'e yonlenir; logout.php status beyaz listesi. Tarayicida tam giris akisi (DB kullanicisiyla) test bekliyor

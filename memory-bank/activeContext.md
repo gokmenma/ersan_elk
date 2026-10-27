@@ -3277,3 +3277,8 @@
 - mobile-spa/public/api/evrak.php: mobil-imza-* ve kep-* aksiyonlari eklendi; e-imza-onayla 410 doner; onaya sunma mobil_imza turunde.
 - EvrakView.vue: bekleme/sonuc diyalogu, KEP formu, ust cubukta KEP butonu (meta.kep_mobil_imza).
 - Yetki: evrak-takip/kep (Gate) + MobilImzaPadesService::isEnabled.
+
+## 2026-10-27 returnurl (dönüş adresi)
+- Hedef adres `$_SESSION['return_url']` içinde tutulur (login → firma-secim → set-session zinciri boyunca); `ReturnUrl::sanitize()` yalnızca aynı site göreli yollarını kabul eder (`//`, şema, CRLF, login/logout/api/kaski/mobile reddedilir).
+- `layouts/session.php`: oturum yoksa GET için `login.php?returnurl=...`, AJAX/fetch için 401 JSON. `Gate::authorizeApiPolicy` oturum yoksa 401 (`session_expired`), yetkisiz 403 aynen kalır.
+- `set-session.php`: dönem yoksa `donem_yok` yönlendirmesi returnurl'i ezer. `kaski/` ve `mobile/` kapsam dışı.

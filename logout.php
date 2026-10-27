@@ -5,7 +5,7 @@ session_destroy();
 if (isset($_COOKIE['remember_me'])) {
     setcookie('remember_me', '', ['expires' => time() - 3600, 'path' => '/', 'secure' => true, 'httponly' => true, 'samesite' => 'Lax']);
 }
-$status = isset($_GET['status']) ? '?status=' . $_GET['status'] : '';
+$status = (isset($_GET['status']) && $_GET['status'] === 'inactive') ? '?status=inactive' : '';
 header("Location: login.php" . $status);
 exit;
 ?>
