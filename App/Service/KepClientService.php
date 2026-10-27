@@ -225,6 +225,10 @@ class KepClientService
                 ];
             }
 
+            $isTest = strpos($this->kepHesap, 'testkep') !== false || strpos($this->wsdlUrl, 'test') !== false;
+            if ($isTest && stripos($recipientAddress, '@testkep.pttkep.gov.tr') === false) {
+                $hata = 'Sistem PTT KEP TEST ortamına bağlı; canlı KEP adreslerine (' . $recipientAddress . ') ileti ulaşmaz. Canlı gönderim için KEP ayarlarında canlı hesap ve canlı servis adresi tanımlanmalıdır. (PTT: ' . ($hata !== '' ? $hata : 'Hata kodu ' . $durum) . ')';
+            }
             return [
                 'status' => 'error',
                 'exist' => false,

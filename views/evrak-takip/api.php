@@ -45,6 +45,9 @@ if (empty($_SESSION['loggedin']) || empty($_SESSION['firma_id']) || empty($_SESS
 
 $currentUserId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
 $action = (string) ($_POST['action'] ?? '');
+if ($action === '' && ($_GET['action'] ?? '') === 'kep-delil-indir') {
+    $action = 'kep-delil-indir';
+}
 $permissionPolicy = new PermissionPolicyModel();
 if ($permissionPolicy->isReady()) {
     Gate::authorizeApiPolicy('evrak-takip/api', $action);

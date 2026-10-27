@@ -1973,3 +1973,7 @@
 - [x] Gelir-Gider: EFT ücreti + BSMV tek kayıt gösterimi (masaüstü + mobil SPA)
 
 - [x] 2026-10-27 Evrak Takip: işlemler sütunu sticky, KEP iletisi için mobil imza seçeneği (SQL policy scripti çalıştırılmalı, gerçek cihazla test bekliyor).
+
+- [x] 2026-10-27 Mobil imza ayarlari Evrak Takip Islemler modalina tasindi; KEP varsayilan mobil imza kullanicisi eklendi (test bekliyor)
+- [x] 2026-10-27 KEP adres dogrulamada test ortami + canli adres uyarisi eklendi (KepClientService::rehberTopluKontrol)
+- [x] 2026-10-27 KEP delil XML indirme (GET) yetki hatasi duzeltildi: api.php action GET fallback yalniz kep-delil-indir icin
