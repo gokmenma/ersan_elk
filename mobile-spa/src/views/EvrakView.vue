@@ -1,11 +1,12 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   AlertCircle,
   ArrowDownLeft,
   ArrowLeft,
   ArrowUpRight,
+  BookUser,
   Building2,
   Calendar,
   Car,
@@ -80,6 +81,8 @@ const meta = ref({
   signing_users: [],
   gelen_evraklar: [],
   next_evrak_no: { gelen: 1, giden: 1 },
+  kep_mobil_imza: false,
+  mobil_imza_aktif: false,
 })
 const metaLoading = ref(false)
 
@@ -615,19 +618,211 @@ function promptImzala(doc) {
   isSignConfirmOpen.value = true
 }
 
-async function confirmImzala() {
-  actionLoading.value = true
-  try {
-    const res = await evrakApi.eImzaOnayla(activeDocId.value, auth.state.csrfToken)
-    showToast(res.message || 'Elektronik imza onayınız kaydedildi.')
-    isSignConfirmOpen.value = false
-    if (isDetailOpen.value) isDetailOpen.value = false
-    loadList(false)
-  } catch (err) {
-    showToast(err.message || 'Onay verilemedi.', 'error')
-  } finally {
-    actionLoading.value = false
+const mobileSign = ref({
+  open: false,
+  kind: 'evrak',
+  phase: 'idle',
+  message: '',
+  msisdn: '',
+  token: '',
+  docId: '',
+  kepReady: false,
+})
+let mobileSignTimer = null
+let mobileSignDeadline = 0
+
+function stopMobileSignTimer() {
+  if (mobileSignTimer) {
+    clearTimeout(mobileSignTimer)
+    mobileSignTimer = null
   }
+}
+
+function scheduleMobileSignPoll(pollFn) {
+  stopMobileSignTimer()
+  mobileSignTimer = setTimeout(async () => {
+    try {
+      const res = await pollFn(mobileSign.value.token)
+      const data = res.data || {}
+      if (data.state === 'imzalandi' || data.state === 'gonderildi') {
+        mobileSign.value.phase = 'done'
+        mobileSign.value.message = res.message || 'İmza tamamlandı.'
+        mobileSign.value.kepReady = !!data.kep_gonderilebilir
+        loadList(false)
+        return
+      }
+      if (['iptal', 'zaman_asimi', 'hata'].includes(data.state)) {
+        mobileSign.value.phase = 'error'
+        mobileSign.value.message = data.message || 'Mobil imza tamamlanamadı.'
+        return
+      }
+      if (Date.now() > mobileSignDeadline) {
+        mobileSign.value.phase = 'error'
+        mobileSign.value.message = 'Mobil imza onayı süresi içinde verilmedi.'
+        return
+      }
+      scheduleMobileSignPoll(pollFn)
+    } catch (err) {
+      mobileSign.value.phase = 'error'
+      mobileSign.value.message = err.message || 'Mobil imza durumu sorgulanamadı.'
+    }
+  }, 3000)
+}
+
+async function startMobileSign(kind, docId, startFn, pollFn) {
+  mobileSign.value = {
+    open: true,
+    kind,
+    phase: 'starting',
+    message: '',
+    msisdn: '',
+    token: '',
+    docId,
+    kepReady: false,
+  }
+  try {
+    const res = await startFn()
+    mobileSign.value.token = res.data.token
+    mobileSign.value.msisdn = res.data.msisdn
+    mobileSign.value.phase = 'waiting'
+    mobileSignDeadline = Date.now() + ((Number(res.data.timeout) || 120) + 30) * 1000
+    scheduleMobileSignPoll(pollFn)
+  } catch (err) {
+    mobileSign.value.phase = 'error'
+    mobileSign.value.message = err.message || 'Mobil imza isteği başlatılamadı.'
+  }
+}
+
+async function closeMobileSign() {
+  stopMobileSignTimer()
+  const current = mobileSign.value
+  if (current.phase === 'waiting' && current.token) {
+    try {
+      await evrakApi.mobilImzaIptal(current.token, auth.state.csrfToken)
+    } catch {
+      current.message = ''
+    }
+  }
+  mobileSign.value = { ...current, open: false, phase: 'idle' }
+}
+
+async function confirmImzala() {
+  const docId = activeDocId.value
+  isSignConfirmOpen.value = false
+  if (isDetailOpen.value) isDetailOpen.value = false
+  await startMobileSign(
+    'evrak',
+    docId,
+    () => evrakApi.mobilImzaBaslat(docId, auth.state.csrfToken),
+    (token) => evrakApi.mobilImzaDurum(token, auth.state.csrfToken)
+  )
+}
+
+const isKepFormOpen = ref(false)
+const kepSubmitting = ref(false)
+const kepFormError = ref('')
+const kepForm = ref({ id: '', alicilar: '', konu: '', icerik: '', detay: '', files: [] })
+
+const kepAddressBook = ref([])
+const kepBookOpen = ref(false)
+const kepBookSearch = ref('')
+
+const filteredKepBook = computed(() => {
+  const term = kepBookSearch.value.trim().toLowerCase()
+  return term ? kepAddressBook.value.filter((a) => a.toLowerCase().includes(term)) : kepAddressBook.value
+})
+
+const kepSelectedAddresses = computed(() =>
+  kepForm.value.alicilar
+    .split(/[;,\s]+/)
+    .map((a) => a.trim().toLowerCase())
+    .filter(Boolean)
+)
+
+function toggleKepAddress(address) {
+  const current = kepForm.value.alicilar.split(/[;,\s]+/).filter(Boolean)
+  const key = address.toLowerCase()
+  const next = current.some((a) => a.toLowerCase() === key)
+    ? current.filter((a) => a.toLowerCase() !== key)
+    : [...current, address]
+  kepForm.value.alicilar = next.join('; ')
+}
+
+async function loadKepAddressBook() {
+  try {
+    const res = await evrakApi.kepAdresDefteri()
+    kepAddressBook.value = Array.isArray(res.data) ? res.data : []
+  } catch {
+    kepAddressBook.value = []
+  }
+}
+
+function openKepForm(doc = null) {
+  kepBookOpen.value = false
+  kepBookSearch.value = ''
+  loadKepAddressBook()
+  kepFormError.value = ''
+  kepForm.value = {
+    id: doc?.id || '',
+    alicilar: doc?.alici_kep || '',
+    konu: doc?.konu || '',
+    icerik: '',
+    detay: '',
+    files: [],
+  }
+  if (isDetailOpen.value) isDetailOpen.value = false
+  isKepFormOpen.value = true
+}
+
+function onKepFilesChange(event) {
+  kepForm.value.files = Array.from(event.target.files || [])
+}
+
+async function submitKepForm() {
+  const form = kepForm.value
+  const addresses = form.alicilar.split(/[;,\s]+/).filter(Boolean)
+  if (!addresses.length || addresses.some((a) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a))) {
+    kepFormError.value = 'Geçerli bir alıcı KEP adresi giriniz.'
+    return
+  }
+  if (!form.konu.trim()) {
+    kepFormError.value = 'Konu zorunludur.'
+    return
+  }
+  if (!form.id && !form.icerik.trim()) {
+    kepFormError.value = 'İleti metni zorunludur.'
+    return
+  }
+  kepFormError.value = ''
+  kepSubmitting.value = true
+  try {
+    const fd = new FormData()
+    if (form.id) fd.append('id', form.id)
+    fd.append('alicilar', addresses.join(';'))
+    fd.append('konu', form.konu.trim())
+    fd.append('icerik', form.icerik)
+    fd.append('detay', form.detay)
+    form.files.forEach((file) => fd.append('ekler[]', file, file.name))
+    const prepared = await evrakApi.kepHazirla(fd, auth.state.csrfToken)
+    const tempId = prepared.data.temp_id
+    isKepFormOpen.value = false
+    await startMobileSign(
+      'kep',
+      form.id,
+      () => evrakApi.kepMobilImzaBaslat(tempId, auth.state.csrfToken),
+      (token) => evrakApi.kepMobilImzaDurum(token, auth.state.csrfToken)
+    )
+  } catch (err) {
+    kepFormError.value = err.message || 'KEP paketi hazırlanamadı.'
+  } finally {
+    kepSubmitting.value = false
+  }
+}
+
+function sendKepForApproved() {
+  const doc = items.value.find((item) => item.id === mobileSign.value.docId)
+  mobileSign.value = { ...mobileSign.value, open: false, phase: 'idle' }
+  if (doc) openKepForm(doc)
 }
 
 // E-İmza İade Et
@@ -719,6 +914,8 @@ onMounted(() => {
   loadList(true)
   loadMeta()
 })
+
+onBeforeUnmount(stopMobileSignTimer)
 </script>
 
 <template>
@@ -750,6 +947,16 @@ onMounted(() => {
           @click="openCreateForm('giden')"
         >
           <ArrowUpRight :size="20" />
+        </button>
+        <button
+          v-if="meta.kep_mobil_imza"
+          type="button"
+          class="clay-circle-btn evrak-add-btn evrak-add-btn--kep"
+          title="KEP İletisi Gönder"
+          aria-label="KEP iletisi gönder"
+          @click="openKepForm()"
+        >
+          <Mail :size="20" />
         </button>
       </template>
     </TopBar>
@@ -1082,6 +1289,17 @@ onMounted(() => {
                 <RotateCcw :size="14" />
               </button>
 
+              <button
+                v-if="item.kep_gonderime_hazir"
+                type="button"
+                class="evrak-action-btn evrak-action-btn--submit"
+                title="KEP ile Gönder"
+                @click="openKepForm(item)"
+              >
+                <Mail :size="14" />
+                <span>KEP Gönder</span>
+              </button>
+
               <!-- Düzenle (Kilitli Değilse) -->
               <button
                 v-if="!item.kilitli"
@@ -1378,6 +1596,17 @@ onMounted(() => {
                 <span>Taslağa Geri Al</span>
               </button>
             </template>
+
+            <button
+              v-if="selectedDetail.kep_gonderime_hazir"
+              type="button"
+              class="evrak-btn evrak-btn--primary"
+              :disabled="actionLoading"
+              @click="openKepForm(selectedDetail)"
+            >
+              <Mail :size="18" />
+              <span>Mobil İmza ile KEP Gönder</span>
+            </button>
 
             <!-- KEP Gönderisi ise KEP Önizlemesi Aç -->
             <button
@@ -2063,9 +2292,9 @@ onMounted(() => {
           <div class="evrak-dialog-icon bg-emerald-soft text-emerald">
             <CheckCircle2 :size="28" />
           </div>
-          <h3>E-İmza ile Onayla</h3>
+          <h3>Mobil İmza ile Onayla</h3>
           <p>
-            Evrakı elektronik imza ile onaylıyorsunuz.<br />
+            Telefonunuza Turkcell Mobil İmza onay mesajı gönderilecek.<br />
             Tüm imzacılar onayladığında evrak değiştirilemez biçimde kilitlenir.
           </p>
           <div class="evrak-dialog-actions">
@@ -2075,7 +2304,7 @@ onMounted(() => {
               :disabled="actionLoading"
               @click="confirmImzala"
             >
-              {{ actionLoading ? 'İşleniyor...' : 'Evet, Onayla' }}
+              {{ actionLoading ? 'İşleniyor...' : 'İmza İsteği Gönder' }}
             </button>
             <button
               type="button"
@@ -2083,6 +2312,145 @@ onMounted(() => {
               @click="isSignConfirmOpen = false"
             >
               Vazgeç
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- ======================================================== -->
+    <!-- KEP İLETİSİ GÖNDER (MOBİL İMZA)                          -->
+    <!-- ======================================================== -->
+    <Transition name="drawer">
+      <div v-if="isKepFormOpen" class="evrak-drawer-layer" @click.self="isKepFormOpen = false">
+        <form class="evrak-drawer-sheet evrak-drawer-sheet--form" @submit.prevent="submitKepForm">
+          <div class="evrak-drawer-handle" @click="isKepFormOpen = false"></div>
+          <header class="evrak-drawer-header">
+            <div>
+              <span class="clay-topbar-eyebrow">MOBİL İMZA İLE KEP</span>
+              <h2>{{ kepForm.id ? 'Evrakı KEP ile Gönder' : 'KEP İletisi Gönder' }}</h2>
+            </div>
+            <button
+              type="button"
+              class="clay-circle-btn evrak-drawer-close"
+              aria-label="Kapat"
+              @click="isKepFormOpen = false"
+            >
+              <X :size="18" />
+            </button>
+          </header>
+
+          <div class="evrak-form-body">
+            <p class="evrak-kep-hint">İleti, Turkcell Mobil İmza ile imzalanarak PTT KEP üzerinden gönderilir.</p>
+
+            <div v-if="kepFormError" class="evrak-returned-notice">
+              <AlertCircle :size="18" />
+              <span>{{ kepFormError }}</span>
+            </div>
+
+            <div class="evrak-form-group">
+              <label class="evrak-form-label">ALICI KEP ADRESİ *</label>
+              <input
+                v-model="kepForm.alicilar"
+                type="text"
+                class="evrak-input"
+                inputmode="email"
+                autocapitalize="off"
+                placeholder="ornek@hs01.kep.tr (birden fazlası için ; ile ayırın)"
+              />
+              <button
+                v-if="kepAddressBook.length"
+                type="button"
+                class="evrak-kep-book-toggle"
+                @click="kepBookOpen = !kepBookOpen"
+              >
+                <BookUser :size="14" />
+                <span>Adres Defterinden Seç ({{ kepAddressBook.length }})</span>
+              </button>
+              <div v-if="kepBookOpen" class="evrak-kep-book">
+                <input
+                  v-model="kepBookSearch"
+                  type="search"
+                  class="evrak-input"
+                  placeholder="Adres ara..."
+                />
+                <div class="evrak-kep-book-list">
+                  <button
+                    v-for="address in filteredKepBook"
+                    :key="address"
+                    type="button"
+                    class="evrak-kep-book-item"
+                    :class="{ 'is-selected': kepSelectedAddresses.includes(address) }"
+                    @click="toggleKepAddress(address)"
+                  >
+                    <span>{{ address }}</span>
+                    <Check v-if="kepSelectedAddresses.includes(address)" :size="14" />
+                  </button>
+                  <p v-if="!filteredKepBook.length" class="evrak-kep-hint">Eşleşen adres yok.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="evrak-form-group">
+              <label class="evrak-form-label">KONU *</label>
+              <input v-model="kepForm.konu" type="text" class="evrak-input" placeholder="İleti konusu" />
+            </div>
+            <div v-if="!kepForm.id" class="evrak-form-group">
+              <label class="evrak-form-label">İLETİ METNİ *</label>
+              <textarea v-model="kepForm.icerik" rows="4" class="evrak-textarea" placeholder="Alıcıya iletilecek açıklama"></textarea>
+            </div>
+            <div v-if="!kepForm.id" class="evrak-form-group">
+              <label class="evrak-form-label">EKLER</label>
+              <input type="file" multiple class="evrak-input" @change="onKepFilesChange" />
+            </div>
+          </div>
+
+          <footer class="evrak-drawer-footer evrak-kep-footer">
+            <button type="button" class="evrak-btn evrak-btn--outline" :disabled="kepSubmitting" @click="isKepFormOpen = false">
+              Vazgeç
+            </button>
+            <button type="submit" class="evrak-btn evrak-btn--emerald evrak-kep-submit" :disabled="kepSubmitting">
+              {{ kepSubmitting ? 'Hazırlanıyor...' : 'Mobil İmza ile İmzala ve Gönder' }}
+            </button>
+          </footer>
+        </form>
+      </div>
+    </Transition>
+
+    <!-- ======================================================== -->
+    <!-- MOBİL İMZA BEKLEME / SONUÇ                               -->
+    <!-- ======================================================== -->
+    <Transition name="fade">
+      <div v-if="mobileSign.open" class="evrak-dialog-layer">
+        <div class="evrak-dialog-card">
+          <div
+            class="evrak-dialog-icon"
+            :class="mobileSign.phase === 'error' ? 'bg-coral-soft text-coral' : 'bg-emerald-soft text-emerald'"
+          >
+            <AlertCircle v-if="mobileSign.phase === 'error'" :size="28" />
+            <CheckCircle2 v-else-if="mobileSign.phase === 'done'" :size="28" />
+            <RefreshCw v-else :size="28" class="animate-spin" />
+          </div>
+          <h3 v-if="mobileSign.phase === 'starting'">İmza isteği gönderiliyor</h3>
+          <h3 v-else-if="mobileSign.phase === 'waiting'">Telefonunuzu kontrol edin</h3>
+          <h3 v-else-if="mobileSign.phase === 'done'">İmza tamamlandı</h3>
+          <h3 v-else>Mobil imza tamamlanamadı</h3>
+          <p v-if="mobileSign.phase === 'waiting'">
+            {{ mobileSign.msisdn }} hattına Turkcell Mobil İmza isteği gönderildi.<br />
+            Telefondaki mesajı onaylayıp mobil imza PIN kodunuzu giriniz.
+          </p>
+          <p v-else-if="mobileSign.message">{{ mobileSign.message }}</p>
+          <div class="evrak-dialog-actions">
+            <button
+              v-if="mobileSign.phase === 'done' && mobileSign.kepReady"
+              type="button"
+              class="evrak-btn evrak-btn--emerald"
+              @click="sendKepForApproved"
+            >
+              KEP ile Gönder
+            </button>
+            <button type="button" class="evrak-btn evrak-btn--outline" @click="closeMobileSign">
+              {{ mobileSign.phase === 'waiting' ? 'İptal Et' : 'Kapat' }}
             </button>
           </div>
         </div>
@@ -2185,6 +2553,73 @@ onMounted(() => {
 .evrak-add-btn--giden {
   background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
   border-color: #0369a1 !important;
+}
+.evrak-add-btn--kep {
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%) !important;
+  border-color: #6d28d9 !important;
+}
+.evrak-drawer-sheet--form > .evrak-form-body {
+  flex: 1;
+  min-height: 0;
+}
+.evrak-kep-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--dsx-fg-475569);
+}
+.evrak-kep-footer {
+  flex-wrap: nowrap;
+}
+.evrak-kep-submit {
+  flex: 1;
+}
+.evrak-kep-book-toggle {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  min-height: 44px;
+  border-radius: var(--ds-radius-pill);
+  border: 1px solid var(--dsx-bd-cbd5e1);
+  background: var(--dsx-bg-ffffff);
+  color: var(--dsx-fg-475569);
+  font: 700 12px var(--ds-font-main);
+  cursor: pointer;
+}
+.evrak-kep-book {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+.evrak-kep-book-list {
+  max-height: 180px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.evrak-kep-book-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: var(--ds-radius-sm);
+  border: 1px solid var(--dsx-bd-cbd5e1);
+  background: var(--dsx-bg-ffffff);
+  color: var(--dsx-fg-475569);
+  font: 600 12px var(--ds-font-main);
+  text-align: left;
+  cursor: pointer;
+}
+.evrak-kep-book-item.is-selected {
+  border-color: #10b981;
+  color: #047857;
+  background: #ecfdf5;
 }
 
 /* Toast Bildirimi */

@@ -12,6 +12,7 @@ use App\Model\SystemLogModel;
 use App\Model\UserModel;
 use App\Service\EvrakOnayBildirimService;
 use App\Service\Gate;
+use App\Service\MobilImzaPadesService;
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -75,6 +76,9 @@ $decryptId = static function ($value): int {
 
 $EvrakModel = new EvrakTakipModel();
 $db = $EvrakModel->getDb();
+$kepMobilYetkisi = in_array($action, ['list', 'detail', 'meta'], true)
+    && Gate::allows('evrak-takip/kep')
+    && MobilImzaPadesService::isEnabled($firmaId);
 
 try {
     // -------------------------------------------------------------
@@ -375,6 +379,8 @@ try {
                 'kilitli' => $kilitli,
                 'onaya_sunulabilir' => $onayaSunulabilir,
                 'geri_alinabilir' => $geriAlinabilir,
+                'kep_gonderime_hazir' => $kepMobilYetkisi && !$isGelen && ($row->gonderim_kanali ?? '') === 'kep'
+                    && $onayDurumu === 'onaylandi' && empty($row->kep_mesaj_id),
                 'ust_yazi_gerekli_degil' => !empty($row->ust_yazi_gerekli_degil),
                 'plaka' => (string) ($row->plaka ?: ''),
                 'ceza_tutari' => !empty($row->ceza_tutari) ? (float) $row->ceza_tutari : null,
@@ -486,6 +492,8 @@ try {
                 'signing_users' => $signersList,
                 'gelen_evraklar' => $gelenList,
                 'icra_personeller' => $icraPersoneller,
+                'kep_mobil_imza' => $kepMobilYetkisi,
+                'mobil_imza_aktif' => MobilImzaPadesService::isEnabled($firmaId),
                 'next_evrak_no' => [
                     'gelen' => $EvrakModel->getMaxEvrakNo('gelen'),
                     'giden' => $EvrakModel->getMaxEvrakNo('giden'),
@@ -601,6 +609,8 @@ try {
             'onay_durumu' => $onayDurumu,
             'sira_bende' => $siraBende,
             'can_revoke' => $canRevoke,
+            'kep_gonderime_hazir' => $kepMobilYetkisi && !$isGelen && ($evrak->gonderim_kanali ?? '') === 'kep'
+                && $onayDurumu === 'onaylandi' && empty($evrak->kep_mesaj_id),
             'approval_steps' => $approvalSteps,
             'iade_gerekcesi' => (string) ($evrak->e_imza_iade_gerekcesi ?: ''),
             'iade_eden' => $returnedBy,
@@ -1166,11 +1176,15 @@ try {
             evrakApiResponse(['success' => false, 'message' => 'Geçersiz evrak ID.'], 400);
         }
 
-        $submission = $EvrakModel->submitForApproval($id, $currentUserId, (string) ($_SERVER['REMOTE_ADDR'] ?? ''));
+        if (!MobilImzaPadesService::isEnabled($firmaId)) {
+            evrakApiResponse(['success' => false, 'message' => 'Mobil imza hizmeti etkin değil. Evrak mobilden onaya sunulamaz.'], 422);
+        }
+
+        $submission = $EvrakModel->submitForApproval($id, $currentUserId, (string) ($_SERVER['REMOTE_ADDR'] ?? ''), 'mobil_imza');
 
         (new SystemLogModel())->logAction(
             $currentUserId,
-            'Evrak E-İmza Onayına Sunma',
+            'Evrak Mobil İmza Onayına Sunma',
             "Evrak ID: {$id} onaya sunuldu. İmzacılar: " . implode(', ', $submission['signers']),
             SystemLogModel::LEVEL_IMPORTANT
         );
@@ -1204,25 +1218,69 @@ try {
     // -------------------------------------------------------------
     if ($method === 'POST' && $action === 'e-imza-onayla') {
         verifyCsrfToken();
+        evrakApiResponse(['success' => false, 'message' => 'Sanal onay kaldırıldı. Mobil imza ile imzalayınız.'], 410);
+    }
 
-        $id = $decryptId($_POST['id'] ?? '');
-        if ($id <= 0) {
-            evrakApiResponse(['success' => false, 'message' => 'Geçersiz evrak ID.'], 400);
+    // -------------------------------------------------------------
+    // 10.1. MOBİL İMZA (POST mobil-imza-baslat / mobil-imza-durum / mobil-imza-iptal)
+    // -------------------------------------------------------------
+    if ($method === 'POST' && in_array($action, ['mobil-imza-baslat', 'mobil-imza-durum', 'mobil-imza-iptal'], true)) {
+        verifyCsrfToken();
+        $mobilImza = new MobilImzaPadesService();
+        $log = new SystemLogModel();
+        $remoteAddr = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+
+        if ($action === 'mobil-imza-baslat') {
+            $id = $decryptId($_POST['id'] ?? '');
+            if ($id <= 0) {
+                evrakApiResponse(['success' => false, 'message' => 'Geçersiz evrak ID.'], 400);
+            }
+            try {
+                $started = $mobilImza->start($id, $currentUserId);
+            } catch (\RuntimeException $e) {
+                $log->logAction($currentUserId, 'Evrak Mobil İmza Hatası', "Evrak ID: {$id} mobil imza isteği başlatılamadı: " . $e->getMessage(), SystemLogModel::LEVEL_IMPORTANT);
+                evrakApiResponse(['success' => false, 'message' => $e->getMessage()], 422);
+            }
+            $log->logAction($currentUserId, 'Evrak Mobil İmza İsteği', "Evrak ID: {$id} için {$started['msisdn']} hattına mobil imza isteği gönderildi.", SystemLogModel::LEVEL_IMPORTANT);
+            evrakApiResponse(['success' => true, 'message' => 'İmza isteği telefonunuza gönderildi.', 'data' => $started]);
         }
 
-        $approval = $EvrakModel->approveWithWorkflow($id, $currentUserId, (string) ($_SERVER['REMOTE_ADDR'] ?? ''));
+        if ($action === 'mobil-imza-iptal') {
+            $mobilImza->cancel((string) ($_POST['token'] ?? ''), $currentUserId);
+            $log->logAction($currentUserId, 'Evrak Mobil İmza İptali', 'Bekleyen mobil imza isteği mobil uygulamadan iptal edildi.', SystemLogModel::LEVEL_INFO);
+            evrakApiResponse(['success' => true, 'message' => 'Mobil imza isteği iptal edildi.']);
+        }
 
-        (new SystemLogModel())->logAction(
+        try {
+            $result = $mobilImza->poll((string) ($_POST['token'] ?? ''), $currentUserId, $remoteAddr);
+        } catch (\RuntimeException $e) {
+            $log->logAction($currentUserId, 'Evrak Mobil İmza Hatası', 'Mobil imza tamamlanamadı: ' . $e->getMessage(), SystemLogModel::LEVEL_IMPORTANT);
+            evrakApiResponse(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+        if (in_array($result['state'], ['iptal', 'zaman_asimi', 'hata'], true)) {
+            $log->logAction($currentUserId, 'Evrak Mobil İmza Sonucu', 'Mobil imza tamamlanmadı: ' . $result['message'], SystemLogModel::LEVEL_INFO);
+        }
+        if ($result['state'] !== 'imzalandi') {
+            evrakApiResponse(['success' => true, 'data' => $result]);
+        }
+
+        $approval = $result['approval'];
+        $id = (int) $result['evrak_id'];
+        $log->logAction(
             $currentUserId,
-            'Evrak E-İmza Onayı',
-            "Evrak ID: {$id} onaylandı ({$approval['approved']}/{$approval['total']} imza).",
+            'Evrak Mobil İmza Onayı',
+            "Evrak ID: {$id} Turkcell mobil imza ile doğrulanmış PAdES imzası olarak onaylandı ({$approval['approved']}/{$approval['total']} imza).",
             SystemLogModel::LEVEL_IMPORTANT
         );
 
         $onayBildirim = new EvrakOnayBildirimService();
         $doc = $EvrakModel->getById($id);
+        $kepGonderilebilir = false;
         if ($approval['completed']) {
             $onayBildirim->onayTamamlandi($doc);
+            $kepGonderilebilir = (($doc->gonderim_kanali ?? 'normal') === 'kep')
+                && trim((string) ($doc->kep_alicilar ?: $doc->alici_kep)) !== ''
+                && Gate::allows('evrak-takip/kep');
         } else {
             $siradaki = $EvrakModel->getNextPendingSigner($id);
             if ($siradaki) {
@@ -1233,9 +1291,151 @@ try {
         evrakApiResponse([
             'success' => true,
             'message' => $approval['completed']
-                ? 'Tüm imzalar tamamlandı. Evrak elektronik imzalı olarak kilitlendi.'
-                : 'İmzanız kaydedildi. Evrak sonraki imzacının onayını bekliyor.',
-            'data' => $approval,
+                ? 'Tüm imzalar doğrulandı. Evrak elektronik imzalı olarak kilitlendi.'
+                : 'Mobil imzanız doğrulandı. Evrak diğer imzacıların imzasını bekliyor.',
+            'data' => [
+                'state' => 'imzalandi',
+                'completed' => (bool) $approval['completed'],
+                'approved' => (int) $approval['approved'],
+                'total' => (int) $approval['total'],
+                'kep_gonderilebilir' => $kepGonderilebilir,
+            ],
+        ]);
+    }
+
+    if ($method === 'GET' && $action === 'kep-adres-defteri') {
+        if (!Gate::allows('evrak-takip/kep')) {
+            evrakApiResponse(['success' => false, 'message' => 'KEP adres defterini görüntüleme yetkiniz bulunmuyor.'], 403);
+        }
+        $adresler = array_map(
+            static fn(array $row): string => (string) $row['kep_adresi'],
+            (new \App\Model\KepAdresDefteriModel())->listActive($firmaId)
+        );
+        evrakApiResponse(['success' => true, 'data' => array_values($adresler)]);
+    }
+
+    // -------------------------------------------------------------
+    // 10.2. KEP MOBİL İMZA İLE GÖNDERİM (POST kep-hazirla / kep-mobil-imza-baslat / kep-mobil-imza-durum)
+    // -------------------------------------------------------------
+    if ($method === 'POST' && in_array($action, ['kep-hazirla', 'kep-mobil-imza-baslat', 'kep-mobil-imza-durum'], true)) {
+        verifyCsrfToken();
+        if (!Gate::allows('evrak-takip/kep')) {
+            evrakApiResponse(['success' => false, 'message' => 'KEP gönderme yetkiniz bulunmuyor.'], 403);
+        }
+        $log = new SystemLogModel();
+        $kepService = new \App\Service\KepService();
+
+        if ($action === 'kep-hazirla') {
+            if (!MobilImzaPadesService::isEnabled($firmaId)) {
+                evrakApiResponse(['success' => false, 'message' => 'Mobil imza hizmeti etkin değil.'], 422);
+            }
+            $evrakId = $decryptId($_POST['id'] ?? '');
+            if ($evrakId > 0) {
+                $res = $kepService->prepareOutgoingKepMime($firmaId, $evrakId, [
+                    'alici_kep' => (string) ($_POST['alicilar'] ?? ''),
+                    'paket_turu' => 'Standart',
+                    'kep_konu' => (string) ($_POST['konu'] ?? ''),
+                    'kep_icerik' => (string) ($_POST['icerik'] ?? ''),
+                    'kep_ileti_tipi' => 'standart',
+                    'kep_ileti_detayi' => (string) ($_POST['detay'] ?? ''),
+                    'kep_paket_turu' => 'Standart',
+                ]);
+            } else {
+                $uploadedFiles = [];
+                $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'doc', 'docx', 'xls', 'xlsx', 'odt', 'ods', 'zip', 'eyp'];
+                if (!empty($_FILES['ekler']['name']) && is_array($_FILES['ekler']['name'])) {
+                    if (count($_FILES['ekler']['name']) > 20) {
+                        evrakApiResponse(['success' => false, 'message' => 'Bir KEP iletisine en fazla 20 dosya eklenebilir.'], 422);
+                    }
+                    foreach ($_FILES['ekler']['name'] as $index => $originalName) {
+                        $error = (int) ($_FILES['ekler']['error'][$index] ?? UPLOAD_ERR_NO_FILE);
+                        if ($error === UPLOAD_ERR_NO_FILE) continue;
+                        $tmpPath = (string) ($_FILES['ekler']['tmp_name'][$index] ?? '');
+                        $size = (int) ($_FILES['ekler']['size'][$index] ?? 0);
+                        $extension = strtolower(pathinfo((string) $originalName, PATHINFO_EXTENSION));
+                        if ($error !== UPLOAD_ERR_OK || !is_uploaded_file($tmpPath) || $size <= 0 || !in_array($extension, $allowedExtensions, true)) {
+                            evrakApiResponse(['success' => false, 'message' => 'Geçersiz KEP eki: ' . basename((string) $originalName)], 422);
+                        }
+                        $uploadedFiles[] = [
+                            'path' => $tmpPath,
+                            'name' => basename((string) $originalName),
+                            'mime' => (new \finfo(FILEINFO_MIME_TYPE))->file($tmpPath) ?: 'application/octet-stream',
+                            'size' => $size,
+                        ];
+                    }
+                }
+                $res = $kepService->prepareStandaloneKepMime($firmaId, [
+                    'alici_kep' => trim((string) ($_POST['alicilar'] ?? '')),
+                    'konu' => trim((string) ($_POST['konu'] ?? '')),
+                    'icerik' => (string) ($_POST['icerik'] ?? ''),
+                    'ileti_detayi' => mb_substr(trim((string) ($_POST['detay'] ?? '')), 0, 500),
+                    'ileti_tipi' => in_array(($_POST['ileti_tipi'] ?? ''), ['resmi', 'standart'], true) ? $_POST['ileti_tipi'] : 'standart',
+                    'paket_turu' => 'Standart',
+                ], $uploadedFiles);
+            }
+            if (($res['status'] ?? '') !== 'success' || empty($res['temp_id'])) {
+                evrakApiResponse(['success' => false, 'message' => (string) ($res['message'] ?? 'KEP paketi hazırlanamadı.')], 422);
+            }
+            evrakApiResponse(['success' => true, 'data' => ['temp_id' => (string) $res['temp_id']]]);
+        }
+
+        $mobilImza = new MobilImzaPadesService();
+
+        if ($action === 'kep-mobil-imza-baslat') {
+            try {
+                $started = $mobilImza->startKep((string) ($_POST['temp_id'] ?? ''), $currentUserId);
+            } catch (\RuntimeException $e) {
+                $log->logAction($currentUserId, 'KEP Mobil İmza Hatası', 'KEP mobil imza isteği başlatılamadı: ' . $e->getMessage(), SystemLogModel::LEVEL_IMPORTANT);
+                evrakApiResponse(['success' => false, 'message' => $e->getMessage()], 422);
+            }
+            $log->logAction($currentUserId, 'KEP Mobil İmza İsteği', "KEP iletisi için {$started['msisdn']} hattına mobil imza isteği gönderildi.", SystemLogModel::LEVEL_IMPORTANT);
+            evrakApiResponse(['success' => true, 'message' => 'İmza isteği telefonunuza gönderildi.', 'data' => $started]);
+        }
+
+        try {
+            $result = $mobilImza->poll((string) ($_POST['token'] ?? ''), $currentUserId, (string) ($_SERVER['REMOTE_ADDR'] ?? ''));
+        } catch (\RuntimeException $e) {
+            $log->logAction($currentUserId, 'KEP Mobil İmza Hatası', 'KEP mobil imzası tamamlanamadı: ' . $e->getMessage(), SystemLogModel::LEVEL_IMPORTANT);
+            evrakApiResponse(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+        if ($result['state'] !== 'imzalandi') {
+            evrakApiResponse(['success' => true, 'data' => ['state' => $result['state'], 'message' => $result['message'] ?? '']]);
+        }
+        if (empty($result['kep_signature']) || empty($result['kep_temp_id'])) {
+            evrakApiResponse(['success' => false, 'message' => 'Bu mobil imza işlemi KEP iletisine ait değil.'], 422);
+        }
+
+        $tempId = (string) $result['kep_temp_id'];
+        $draft = $_SESSION['kep_draft_' . $tempId] ?? null;
+        if (!$draft) {
+            $tmpDir = $projectRoot . '/uploads/evrak-takip/tmp/';
+            foreach (['draft_', 'draft_evrak_'] as $prefix) {
+                if (is_file($tmpDir . $prefix . $tempId . '.json')) {
+                    $draft = json_decode((string) file_get_contents($tmpDir . $prefix . $tempId . '.json'), true);
+                    break;
+                }
+            }
+        }
+        $log->logAction($currentUserId, 'KEP Mobil İmza Onayı', 'KEP iletisi Turkcell mobil imza ile imzalandı; PTT KEP sevki yapılıyor.', SystemLogModel::LEVEL_IMPORTANT);
+        try {
+            if (($draft['type'] ?? '') === 'evrak') {
+                $sent = $kepService->completeOutgoingKepSend($firmaId, $tempId, (string) $result['kep_signature']);
+            } else {
+                $sent = $kepService->completeStandaloneKepSend($firmaId, $tempId, (string) $result['kep_signature']);
+                if (($sent['status'] ?? '') === 'success' && !empty($draft['recipients'])) {
+                    (new \App\Model\KepAdresDefteriModel())->markUsed($firmaId, $draft['recipients']);
+                }
+            }
+        } catch (\RuntimeException $e) {
+            evrakApiResponse(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+        if (($sent['status'] ?? '') !== 'success') {
+            evrakApiResponse(['success' => false, 'message' => (string) ($sent['message'] ?? 'PTT KEP sevki başarısız.')], 422);
+        }
+        evrakApiResponse([
+            'success' => true,
+            'message' => 'KEP iletisi mobil imzanızla imzalanıp PTT KEP ağına sevk edildi.',
+            'data' => ['state' => 'gonderildi', 'kep_id' => (string) ($sent['kep_id'] ?? '')],
         ]);
     }
 

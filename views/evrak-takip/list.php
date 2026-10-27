@@ -603,8 +603,26 @@ $title = "Evrak Listesi";
 
 <style>
 /* Tablo Tipografi ve Temel Stiller */
+#evrakTable_wrapper {
+    overflow: visible !important;
+}
 #evrakTable {
     font-size: 13px !important;
+}
+#evrakTable thead .dt-filter-row input,
+#evrakTable thead .dt-filter-row select {
+    min-width: 0 !important;
+    width: 100% !important;
+}
+#evrakTable thead tr:first-child th:nth-child(1),
+#evrakTable thead tr:first-child th:nth-child(2),
+#evrakTable thead tr:first-child th:nth-child(3),
+#evrakTable thead tr:first-child th:nth-child(4),
+#evrakTable thead tr:first-child th:nth-child(10),
+#evrakTable thead tr:first-child th:nth-child(11),
+#evrakTable thead tr:first-child th:nth-child(12),
+#evrakTable thead tr:first-child th:nth-child(13) {
+    width: 1px !important;
 }
 #evrakTable thead th {
     font-size: 11.5px !important;
@@ -617,27 +635,8 @@ html:not([data-theme-preset="macos-dark"]):not([data-bs-theme="dark"]) body:not(
     background-color: #f8fafc;
 }
 #evrakTable tbody td {
-    padding: 8px 12px !important;
+    padding: 8px 8px !important;
     vertical-align: middle !important;
-}
-
-/* İşlemler sütunu yatay kaydırmada da her zaman görünür */
-#evrakTable thead th:last-child,
-#evrakTable tbody td:last-child {
-    position: sticky;
-    right: 0;
-    z-index: 3;
-    min-width: 130px;
-    box-shadow: -6px 0 8px -6px rgba(15, 23, 42, 0.18);
-}
-#evrakTable thead th:last-child {
-    background-color: #f8fafc;
-}
-#evrakTable tbody td:last-child {
-    background-color: var(--bs-card-bg, #fff);
-}
-#evrakTable tbody tr:hover td:last-child {
-    background-color: #f1f5f9;
 }
 
 /* Tablo Butonları Standartları */

@@ -1982,3 +1982,5 @@
 - [x] 2026-10-27 KEP mobil imza reddi (InvalidUserSignature: issuer serial yok) giderildi: ESSCertIDv2 yayinci+seri eklendi, sertifika settings tablosunda onbelleklenir; ilk KEP imzasinda sertifika taninir, bir kez daha imzalama istenir (test bekliyor)
 - [x] 2026-10-27 Mobil imza sertifika onbellek anahtari settings.set_name varchar(50) siniri icin kisaltildi (mimza_sert_<32 hex>)
 - [x] 2026-10-27 Mobil imza sertifika onbellek karsilastirmasi duzeltildi (hash ham ikili, hash_equals ikinci arguman true)
+- [x] 2026-10-27 Mobil SPA: evrak onayi mobil imza ile (mobil-imza-baslat/durum/iptal), sanal e-imza-onayla kapatildi, KEP iletisi mobil imzayla gonderme (kep-hazirla/kep-mobil-imza-baslat/durum), EvrakView.vue arayuzu; dist yeniden derlenmedi, gercek hatla test bekliyor
+- [x] 2026-10-27 Mobil SPA KEP formu bottom sheet oldu, adres defterinden secim (kep-adres-defteri) ve Vazgec solda

@@ -3272,3 +3272,8 @@
 ## 2026-10-27 — Mobil imza ayarları Evrak Takip'e taşındı + KEP varsayılan imzacı
 - Evrak Takip > İşlemler > "Mobil İmza Ayarları" modalı (`views/evrak-takip/modal/mobil-imza-ayarlari-modal.php`), içerik Ayarlar sekmesiyle ortak partial: `views/ayarlar/icerik/mobil-imza-ayarlari.php` (kaydetme/profil sorgusu `views/ayarlar/api.php`).
 - Yeni ayar anahtarı `mobil_imza_kep_varsayilan_kullanici`: oturumdaki kullanıcının hattı yoksa KEP iletisi bu kullanıcının mobil imzasıyla imzalanır (`MobilImzaPadesService::kepSigner()`); sertifika T.C. doğrulaması gerçek imzacıya göre yapılır (işlem kaydında `imzaci`).
+
+## 2026-10-27 Mobil SPA mobil imza
+- mobile-spa/public/api/evrak.php: mobil-imza-* ve kep-* aksiyonlari eklendi; e-imza-onayla 410 doner; onaya sunma mobil_imza turunde.
+- EvrakView.vue: bekleme/sonuc diyalogu, KEP formu, ust cubukta KEP butonu (meta.kep_mobil_imza).
+- Yetki: evrak-takip/kep (Gate) + MobilImzaPadesService::isEnabled.

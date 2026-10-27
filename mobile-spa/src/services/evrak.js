@@ -88,6 +88,37 @@ export const evrakApi = {
     fd.append('id', id)
     return request('e-imza-onayla', { method: 'POST', body: fd, csrfToken })
   },
+  kepAdresDefteri() {
+    return request('kep-adres-defteri')
+  },
+  mobilImzaBaslat(id, csrfToken) {
+    const fd = new FormData()
+    fd.append('id', id)
+    return request('mobil-imza-baslat', { method: 'POST', body: fd, csrfToken })
+  },
+  mobilImzaDurum(token, csrfToken) {
+    const fd = new FormData()
+    fd.append('token', token)
+    return request('mobil-imza-durum', { method: 'POST', body: fd, csrfToken })
+  },
+  mobilImzaIptal(token, csrfToken) {
+    const fd = new FormData()
+    fd.append('token', token)
+    return request('mobil-imza-iptal', { method: 'POST', body: fd, csrfToken })
+  },
+  kepHazirla(formData, csrfToken) {
+    return request('kep-hazirla', { method: 'POST', body: formData, csrfToken })
+  },
+  kepMobilImzaBaslat(tempId, csrfToken) {
+    const fd = new FormData()
+    fd.append('temp_id', tempId)
+    return request('kep-mobil-imza-baslat', { method: 'POST', body: fd, csrfToken })
+  },
+  kepMobilImzaDurum(token, csrfToken) {
+    const fd = new FormData()
+    fd.append('token', token)
+    return request('kep-mobil-imza-durum', { method: 'POST', body: fd, csrfToken })
+  },
   eImzaIade(id, gerekce, csrfToken) {
     const fd = new FormData()
     fd.append('id', id)
