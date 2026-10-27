@@ -19,6 +19,7 @@ set_time_limit(0);
 
 use App\Model\KepSettingsModel;
 use App\Model\BildirimModel;
+use App\Model\SystemLogModel;
 use App\Service\KepService;
 
 $lockPath = sys_get_temp_dir() . '/ersan_kep_gelen_sync_' . md5(dirname(__DIR__)) . '.lock';
@@ -38,6 +39,15 @@ if (!$targets) {
 }
 
 $failed = 0;
+$auditLog = new SystemLogModel();
+
+$writeAudit = static function (int $firmId, int $userId, string $message, int $level) use ($auditLog): void {
+    try {
+        $auditLog->logActionForFirm($firmId, $userId, 'Cron - KEP Gelen Kutusu Senkronizasyonu', mb_substr($message, 0, 1000), $level);
+    } catch (\Throwable $e) {
+        error_log('cron/kep_gelen_sync.php log: ' . $e->getMessage());
+    }
+};
 
 $notifyFailure = static function (int $firmId): void {
     $stampPath = sys_get_temp_dir() . '/ersan_kep_gelen_hata_' . md5(dirname(__DIR__)) . '_' . $firmId;
@@ -68,18 +78,27 @@ foreach ($targets as $target) {
         $result = (new KepService())->autoSyncIncoming($firmId, $userId);
         if (($result['status'] ?? '') === 'success') {
             fwrite(STDOUT, sprintf("Firma %d: %s\n", $firmId, $result['message'] ?? ''));
+            $uyarilar = $result['hatalar'] ?? [];
+            $writeAudit(
+                $firmId,
+                $userId,
+                'Firma ' . $firmId . ': ' . ($result['message'] ?? 'Tamamlandı') . ($uyarilar ? ' Uyarılar: ' . implode(' | ', array_map('strval', $uyarilar)) : ''),
+                $uyarilar ? SystemLogModel::LEVEL_IMPORTANT : SystemLogModel::LEVEL_INFO
+            );
             foreach ($result['hatalar'] ?? [] as $hata) {
                 fwrite(STDERR, sprintf("Firma %d uyarı: %s\n", $firmId, $hata));
             }
         } else {
             $failed++;
             fwrite(STDERR, sprintf("Firma %d hata: %s\n", $firmId, $result['message'] ?? 'Bilinmeyen hata'));
+            $writeAudit($firmId, $userId, 'Başarısız: ' . ($result['message'] ?? 'Bilinmeyen hata'), SystemLogModel::LEVEL_CRITICAL);
             $notifyFailure($firmId);
         }
     } catch (\Throwable $e) {
         $failed++;
         error_log("cron/kep_gelen_sync.php [Firma {$firmId}]: " . $e->getMessage());
         fwrite(STDERR, sprintf("Firma %d hata oluştu.\n", $firmId));
+        $writeAudit($firmId, $userId, 'Başarısız: ' . $e->getMessage(), SystemLogModel::LEVEL_CRITICAL);
         $notifyFailure($firmId);
     }
 }

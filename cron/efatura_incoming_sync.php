@@ -52,7 +52,7 @@ try {
             $auditLog->logActionForFirm(
                 $firmId,
                 0,
-                'EDM Gelen Fatura Senkronizasyonu',
+                'Cron - EDM Gelen Fatura Senkronizasyonu',
                 sprintf('CREATE %s - %s aralığı: %d yeni, %d güncellenen fatura, %d bildirim. Tamamlandı: %s.', $startDate, $endDate, (int)($result['added_count'] ?? 0), (int)($result['updated_count'] ?? 0), $notificationCount, !empty($result['complete']) ? 'Evet' : 'Hayır'),
                 empty($result['success']) ? SystemLogModel::LEVEL_IMPORTANT : SystemLogModel::LEVEL_INFO
             );
@@ -60,7 +60,7 @@ try {
             $failed++;
             error_log(sprintf('[efatura_incoming_sync] Firma %d: %s', $firmId, $e->getMessage()));
             try {
-                $auditLog->logActionForFirm($firmId, 0, 'EDM Gelen Fatura Senkronizasyonu', 'Başarısız: ' . mb_substr($e->getMessage(), 0, 1000), SystemLogModel::LEVEL_CRITICAL);
+                $auditLog->logActionForFirm($firmId, 0, 'Cron - EDM Gelen Fatura Senkronizasyonu', 'Başarısız: ' . mb_substr($e->getMessage(), 0, 1000), SystemLogModel::LEVEL_CRITICAL);
             } catch (Throwable $logError) {
                 error_log('[efatura_incoming_sync] Audit kaydı yazılamadı: ' . $logError->getMessage());
             }

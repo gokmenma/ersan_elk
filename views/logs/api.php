@@ -80,6 +80,7 @@ try {
                 'login' => ['bx-log-in', 'Giriş', 'audit-badge-login'],
                 'critical' => ['bx-error-circle', 'Kritik Olay', 'audit-badge-critical'],
                 'delete' => ['bx-trash', 'Silme', 'audit-badge-delete'],
+                'cron' => ['bx-time-five', 'Cron', 'audit-badge-cron'],
                 'ai' => ['bx-bot', 'Yapay Zeka', 'audit-badge-ai'],
                 'operation' => ['bx-pointer', 'İşlem', 'audit-badge-operation'],
             ];

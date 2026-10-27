@@ -78,7 +78,7 @@ if (Gate::allows("log_kayitlari")) {
             .audit-date{display:flex;flex-direction:column;gap:2px;white-space:nowrap}.audit-date strong{font-size:11px;font-weight:600}.audit-date small{color:#7c8aa0;font-size:10px}
             .audit-user{display:flex;align-items:center;gap:9px;white-space:nowrap}.audit-user strong{font-size:11px}.audit-avatar{width:27px;height:27px;border-radius:50%;display:grid;place-items:center;background:#e4e8ff;color:#4f46e5;font-size:10px;font-weight:700}
             .audit-event-badge,.audit-module-badge,.audit-related-badge{display:inline-flex;align-items:center;gap:4px;border-radius:7px;padding:4px 8px;font-size:10px;font-weight:650;white-space:nowrap;border:1px solid transparent}
-            .audit-badge-view{background:#66758c;color:#fff}.audit-badge-login{background:#e8fbf3;color:#07875d;border-color:#c6f1df}.audit-badge-critical,.audit-badge-delete{background:#fff0f1;color:#dc3545;border-color:#ffd5d9}.audit-badge-ai{background:#f0ecff;color:#6941c6;border-color:#dfd5ff}.audit-badge-operation{background:#eaf2ff;color:#2563eb;border-color:#cfdef8}
+            .audit-badge-view{background:#66758c;color:#fff}.audit-badge-login{background:#e8fbf3;color:#07875d;border-color:#c6f1df}.audit-badge-critical,.audit-badge-delete{background:#fff0f1;color:#dc3545;border-color:#ffd5d9}.audit-badge-ai{background:#f0ecff;color:#6941c6;border-color:#dfd5ff}.audit-badge-cron{background:#fff6e5;color:#b76e00;border-color:#fde3b0}.audit-badge-operation{background:#eaf2ff;color:#2563eb;border-color:#cfdef8}
             .audit-module-badge{background:#f8fafc;color:#475569;border-color:#dbe4ef}.audit-related-badge{background:#f1f5f9;color:#475569;border-color:#dbe4ef;font-family:monospace;font-weight:500}
             .audit-detail-btn{display:inline-flex;align-items:center;gap:4px;background:#fff;color:#0878ff;border:1px solid #1682ff;border-radius:6px;padding:4px 8px;font-size:10px;margin-right:8px}.audit-detail-text{font-size:11px;color:#334155}
             @media(max-width:991px){.audit-kpi-grid,.audit-insight-grid{grid-template-columns:repeat(2,1fr)}.audit-detail-grid{grid-template-columns:1fr}.audit-view-switch{margin-top:14px}.audit-hero{text-align:left}}
@@ -109,6 +109,7 @@ if (Gate::allows("log_kayitlari")) {
                     <span class="audit-quick-label"><i class="bx bx-bolt-circle me-1"></i> Hızlı filtreler:</span>
                     <button type="button" class="audit-filter active" data-category=""><i class="bx bx-menu me-1"></i> Tüm Kayıtlar</button>
                     <button type="button" class="audit-filter" data-category="operation"><i class="bx bx-pointer me-1"></i> Kullanıcı İşlemleri</button>
+                    <button type="button" class="audit-filter" data-category="cron"><i class="bx bx-time-five me-1"></i> Cron İşlemleri</button>
                     <button type="button" class="audit-filter" data-category="login"><i class="bx bx-log-in me-1"></i> Girişler</button>
                     <button type="button" class="audit-filter" data-category="delete"><i class="bx bx-trash me-1"></i> Silmeler</button>
                     <button type="button" class="audit-filter" data-category="view"><i class="bx bx-show me-1"></i> Sayfa Ziyaretleri</button>

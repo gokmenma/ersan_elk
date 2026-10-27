@@ -3282,3 +3282,7 @@
 - Hedef adres `$_SESSION['return_url']` içinde tutulur (login → firma-secim → set-session zinciri boyunca); `ReturnUrl::sanitize()` yalnızca aynı site göreli yollarını kabul eder (`//`, şema, CRLF, login/logout/api/kaski/mobile reddedilir).
 - `layouts/session.php`: oturum yoksa GET için `login.php?returnurl=...`, AJAX/fetch için 401 JSON. `Gate::authorizeApiPolicy` oturum yoksa 401 (`session_expired`), yetkisiz 403 aynen kalır.
 - `set-session.php`: dönem yoksa `donem_yok` yönlendirmesi returnurl'i ezer. `kaski/` ve `mobile/` kapsam dışı.
+
+## 2026-10-27 Sistem Aktiviteleri — Cron kategorisi
+- `SystemLogModel::cronActionSql()`: `action_type LIKE 'Cron - %'` (eski kayıt uyumu için `EDM Gelen Fatura Senkronizasyonu` dahil) → kategori `cron`, modül `Cron`; "Kullanıcı İşlemleri" filtresinden cron hariç tutuldu. `views/logs/list.php` hızlı filtre "Cron İşlemleri", `views/logs/api.php` rozet `audit-badge-cron`.
+- `cron/kep_gelen_sync.php` her firma için `Cron - KEP Gelen Kutusu Senkronizasyonu` logu yazar (başarı INFO, uyarılı IMPORTANT, hata CRITICAL); `cron/efatura_incoming_sync.php` adı `Cron - EDM Gelen Fatura Senkronizasyonu` oldu.

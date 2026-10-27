@@ -1987,3 +1987,4 @@
 - [x] 2026-10-27 Mobil SPA: KEP sheet imza istegi sirasinda acik kalir, gonderim sonrasi liste yenilenir (loadList(false) yuklenen-daha-fazla hatasi islem sonrasi cagrilarda loadList(true) yapildi)
 - [x] 2026-10-27 Mobil SPA evrak detayinda KEP (gelen/giden) icin Evrak Bilgisi / PTT Delilleri sekmeleri
 - [x] 2026-10-27 returnurl: oturum dusunce/beni hatirla ile giris sonrasi kullanici bulundugu sayfaya doner (App/Helper/ReturnUrl.php, layouts/session.php, login.php, set-session.php); oturumsuz AJAX/API 401 + session_expired, assets/js/session-guard.js ile login'e yonlenir; logout.php status beyaz listesi. Tarayicida tam giris akisi (DB kullanicisiyla) test bekliyor
+- [x] 2026-10-27 Sistem Aktiviteleri: Cron İşlemleri ayrı hızlı filtre/rozet; kep_gelen_sync.php ve efatura_incoming_sync.php Cron - önekli log yazıyor (tarayıcıda test bekliyor)

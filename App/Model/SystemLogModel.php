@@ -19,6 +19,7 @@ class SystemLogModel extends Model
     const LEVEL_WARNING = 1; // Uyarı / önemli işlem aliası
     const LEVEL_CRITICAL = 2; // Kritik (toplu silme, güvenlik olayları)
     const LEVEL_PAGE_VIEW = 3; // Sayfa görüntüleme logları
+    const CRON_ACTION_PREFIX = 'Cron - ';
 
     /**
      * Personel PWA, users hesabı yerine personel oturumuyla çalışır ve
@@ -621,6 +622,11 @@ class SystemLogModel extends Model
         return $result;
     }
 
+    private function cronActionSql(string $alias): string
+    {
+        return "({$alias}action_type LIKE 'Cron - %' OR {$alias}action_type = 'EDM Gelen Fatura Senkronizasyonu')";
+    }
+
     private function getUnifiedActivitiesFastCount(array $filters): int
     {
         $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
@@ -634,7 +640,8 @@ class SystemLogModel extends Model
             elseif ($category === 'login') $systemWhere .= " AND action_type = 'Başarılı Giriş'";
             elseif ($category === 'critical') $systemWhere .= ' AND level = 2';
             elseif ($category === 'delete') $systemWhere .= " AND action_type LIKE '%Sil%'";
-            elseif ($category === 'operation') $systemWhere .= " AND COALESCE(level, 0) <> 3 AND action_type <> 'Başarılı Giriş' AND level <> 2 AND action_type NOT LIKE '%Sil%'";
+            elseif ($category === 'cron') $systemWhere .= " AND " . $this->cronActionSql('');
+            elseif ($category === 'operation') $systemWhere .= " AND COALESCE(level, 0) <> 3 AND action_type <> 'Başarılı Giriş' AND level <> 2 AND action_type NOT LIKE '%Sil%' AND NOT (" . $this->cronActionSql('') . ")";
             $systemWhere .= $this->activityScope($filters, '', 'created_at', 'system_count', $params);
             $queries[] = "SELECT COUNT(*) AS cnt FROM system_logs WHERE {$systemWhere}";
             $params[':firma_system_count'] = $firmaId;
@@ -660,6 +667,7 @@ class SystemLogModel extends Model
         $includeSystem = !in_array($category, ['ai'], true);
         $includePersonnel = in_array($category, ['', 'login'], true);
         $includeAi = !empty($filters['include_ai']) && in_array($category, ['', 'ai'], true);
+        $cronL = $this->cronActionSql('l.');
         $systemCategorySql = '';
         if ($category === 'view') {
             $systemCategorySql = ' AND l.level = 3';
@@ -669,8 +677,10 @@ class SystemLogModel extends Model
             $systemCategorySql = ' AND l.level = 2';
         } elseif ($category === 'delete') {
             $systemCategorySql = " AND l.action_type LIKE '%Sil%'";
+        } elseif ($category === 'cron') {
+            $systemCategorySql = " AND {$cronL}";
         } elseif ($category === 'operation') {
-            $systemCategorySql = " AND COALESCE(l.level, 0) <> 3 AND l.action_type <> 'Başarılı Giriş' AND l.level <> 2 AND l.action_type NOT LIKE '%Sil%'";
+            $systemCategorySql = " AND COALESCE(l.level, 0) <> 3 AND l.action_type <> 'Başarılı Giriş' AND l.level <> 2 AND l.action_type NOT LIKE '%Sil%' AND NOT ({$cronL})";
         }
 
         $parts = [];
@@ -689,10 +699,10 @@ class SystemLogModel extends Model
                        WHEN l.level = 2 THEN 'Kritik Olay'
                        ELSE COALESCE(NULLIF(l.action_type, ''), 'Sistem İşlemi')
                    END AS event_type,
-                   CASE WHEN l.level = 3 THEN 'Navigasyon' WHEN l.action_type = 'Başarılı Giriş' THEN 'Oturum' ELSE 'Sistem' END AS module_name,
+                   CASE WHEN l.level = 3 THEN 'Navigasyon' WHEN l.action_type = 'Başarılı Giriş' THEN 'Oturum' WHEN {$cronL} THEN 'Cron' ELSE 'Sistem' END AS module_name,
                    l.description AS detail,
                    CASE WHEN l.level = 3 THEN 'Sayfa' WHEN l.action_type = 'Başarılı Giriş' THEN 'Yönetici Oturumu' ELSE CONCAT('Log #', l.id) END AS related_record,
-                   CASE WHEN l.level = 3 THEN 'view' WHEN l.action_type = 'Başarılı Giriş' THEN 'login' WHEN l.level = 2 THEN 'critical' WHEN l.action_type LIKE '%Sil%' THEN 'delete' ELSE 'operation' END AS category,
+                   CASE WHEN l.level = 3 THEN 'view' WHEN l.action_type = 'Başarılı Giriş' THEN 'login' WHEN {$cronL} THEN 'cron' WHEN l.level = 2 THEN 'critical' WHEN l.action_type LIKE '%Sil%' THEN 'delete' ELSE 'operation' END AS category,
                    COALESCE(l.level, 0) AS severity
             FROM system_logs l
             LEFT JOIN users u ON u.id = l.user_id
