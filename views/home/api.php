@@ -253,6 +253,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             $data['istatistik'] = $personelModel->personelSayilari('personel');
                             $data['extraStats'] = $personelModel->getAdvancedDashboardStats();
                             $data['gec_kalan_sayisi'] = $hareketModel->getGecKalanlarCount($firmaId);
+                        } elseif ($widgetId == 'widget-dogum-gunleri') {
+                            if (!\App\Service\Gate::allows('personel_listesi')) {
+                                continue;
+                            }
+                            $data['dogum_gunleri'] = (new \App\Model\DogumGunuBildirimModel())->getTumDogumGunleri((int) $firmaId);
                         } elseif ($widgetId == 'widget-arac-ozet' || $widgetId == 'widget-arac-ozeti') {
                             $aracStats = $aracModel->getStats();
                             $data['toplam_aktif_arac'] = $aracStats->aktif_arac ?? 0;

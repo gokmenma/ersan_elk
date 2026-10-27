@@ -3286,3 +3286,8 @@
 ## 2026-10-27 Sistem Aktiviteleri — Cron kategorisi
 - `SystemLogModel::cronActionSql()`: `action_type LIKE 'Cron - %'` (eski kayıt uyumu için `EDM Gelen Fatura Senkronizasyonu` dahil) → kategori `cron`, modül `Cron`; "Kullanıcı İşlemleri" filtresinden cron hariç tutuldu. `views/logs/list.php` hızlı filtre "Cron İşlemleri", `views/logs/api.php` rozet `audit-badge-cron`.
 - `cron/kep_gelen_sync.php` her firma için `Cron - KEP Gelen Kutusu Senkronizasyonu` logu yazar (başarı INFO, uyarılı IMPORTANT, hata CRITICAL); `cron/efatura_incoming_sync.php` adı `Cron - EDM Gelen Fatura Senkronizasyonu` oldu.
+
+## 2026-10-27 Doğum günü bildirimi ve ana sayfa kartı
+- `PersonelModel` kolon eşlemesine doğum tarihi (13) eklendi: filtre + sıralama çalışır.
+- `App/Model/DogumGunuBildirimModel.php`: `sendDogumGunuBildirimleri()` (push, `dogum_gunu_bildirim_loglari` ile yılda tek gönderim), `getYaklasanDogumGunleri()` (bugün + 7 gün). `cron/dogum_gunu_bildirim.php` günlük çalıştırılacak; SQL: `sql/dogum_gunu_bildirim_loglari.sql` (uygulanmayı bekliyor).
+- Ana sayfa `widget-dogum-gunleri` kartı `personel_listesi` yetkisiyle (home.php iskelet + api.php batch-load-all sunucu kontrolü + render_widgets.php). Tarayıcıda test bekliyor.

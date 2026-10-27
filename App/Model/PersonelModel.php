@@ -841,6 +841,7 @@ class PersonelModel extends Model
             10 => "CONCAT_WS(' ', t_all.tur_adi, t_all.ekip_bolge, p.ekip_bolge)",
             11 => 'bildirim_abonesi',
             12 => 'p.isten_cikis_tarihi',
+            13 => 'p.dogum_tarihi',
             23 => 'p.sgk_yapilan_firma'
         ];
 
@@ -868,7 +869,7 @@ class PersonelModel extends Model
 
                         if ($val !== '' || $val2 !== null || in_array($mode, ['null', 'not_null', 'multi'])) {
                             // Tarih sütunları için d.m.Y -> Y-m-d dönüşümü
-                            if ($i == 4 || $i == 5) {
+                            if (in_array($i, [4, 5, 13])) {
                                 if ($val && strpos($val, '.') !== false)
                                     $val = \App\Helper\Date::Ymd($val, 'Y-m-d');
                                 if ($val2 && strpos($val2, '.') !== false)
@@ -907,7 +908,7 @@ class PersonelModel extends Model
                                                 $params[$vParam] = $mappedVal;
                                             } else {
                                                 // Eğer tarih sütunuysa ve değer nokta içeriyorsa dönüştür
-                                                if (($i == 4 || $i == 5) && strpos($v, '.') !== false) {
+                                                if ((in_array($i, [4, 5, 13])) && strpos($v, '.') !== false) {
                                                     $v = \App\Helper\Date::Ymd($v, 'Y-m-d');
                                                     $orConditions[] = "$field = :$vParam";
                                                     $params[$vParam] = $v;
@@ -1000,7 +1001,7 @@ class PersonelModel extends Model
                         } elseif ($i == 10) { // Ekip / Bölge
                             $filterSql .= " AND (t_all.tur_adi LIKE :$paramName OR t_all.ekip_bolge LIKE :$paramName OR p.ekip_bolge LIKE :$paramName)";
                             $params[$paramName] = "%$searchValue%";
-                        } elseif ($i == 4 || $i == 5) { // Tarih (DataTables sütun indexine göre)
+                        } elseif (in_array($i, [4, 5, 13])) { // Tarih (DataTables sütun indexine göre)
                             $filterSql .= " AND DATE_FORMAT($field, '%d.%m.%Y') LIKE :$paramName";
                             $params[$paramName] = "%$searchValue%";
                         } else {
@@ -1042,7 +1043,7 @@ class PersonelModel extends Model
         // Sıralama
         if (isset($request['order'][0])) {
             $orderColIdx = $request['order'][0]['column'];
-            $orderDir = $request['order'][0]['dir'];
+            $orderDir = strtolower($request['order'][0]['dir']) === 'desc' ? 'DESC' : 'ASC';
             if (isset($colMap[$orderColIdx])) {
                 $sql .= " ORDER BY " . $colMap[$orderColIdx] . " " . $orderDir;
             } else {

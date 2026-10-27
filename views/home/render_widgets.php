@@ -462,6 +462,106 @@ function renderWidget(string $widgetId, array $data = []) {
             <?php
             break;
 
+        case 'widget-dogum-gunleri':
+            if (!Gate::allows('personel_listesi')) {
+                break;
+            }
+            $dogumGunleri = $dogum_gunleri ?? [];
+            $dgAylar = [1 => 'Ocak', 2 => 'Şubat', 3 => 'Mart', 4 => 'Nisan', 5 => 'Mayıs', 6 => 'Haziran', 7 => 'Temmuz', 8 => 'Ağustos', 9 => 'Eylül', 10 => 'Ekim', 11 => 'Kasım', 12 => 'Aralık'];
+            $dgYil = (int) date('Y');
+            $dgAy = (int) date('n');
+            $dgBugun = (int) date('j');
+            $dgGunSayisi = (int) date('t');
+            $dgIlkGun = (int) date('N', mktime(0, 0, 0, $dgAy, 1, $dgYil));
+            $dgGunler = [];
+            foreach ($dogumGunleri as $dgKayit) {
+                $dgGun = $dgKayit['gun'];
+                if ($dgKayit['ay'] === $dgAy) {
+                    if ($dgGun > $dgGunSayisi) {
+                        $dgGun = $dgGunSayisi;
+                    }
+                    $dgGunler[$dgGun][] = $dgKayit;
+                }
+            }
+            ksort($dgGunler);
+            $dgToplam = 0;
+            foreach ($dgGunler as $dgListe) {
+                $dgToplam += count($dgListe);
+            }
+            ?>
+            <div class="<?php echo getWidgetWidthClass($widgetDomId, 'col-md-4 col-xl-4'); ?> widget-item" id="<?php echo $widgetDomId; ?>" style="<?php echo getWidgetStyle($widgetDomId); ?>">
+                <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card cal-alarm-card dg-card" data-dogum="<?php echo htmlspecialchars(json_encode($dogumGunleri, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>" data-yil="<?php echo $dgYil; ?>" data-ay="<?php echo $dgAy; ?>" style="border-radius: 12px; background: #fff; overflow: hidden; height: 260px !important; min-height: 260px !important; max-height: 260px !important;">
+                    <div class="card-body p-2 px-3 d-flex flex-column h-100" style="overflow: hidden;">
+                        <div class="row g-2 h-100 align-items-stretch">
+                            <div class="col-7 cal-left-col d-flex flex-column justify-content-between">
+                                <div class="cal-mini-header d-flex align-items-center justify-content-between px-2 py-1 text-white rounded-2 shadow-xs" style="background: #1c2430;">
+                                    <button type="button" class="btn btn-link btn-sm text-white-50 p-0 text-decoration-none cal-nav-btn" onclick="navigateDogumTakvimi(this, -1)" title="Önceki Ay">
+                                        <i class="bx bx-chevron-left" style="font-size: 15px;"></i>
+                                    </button>
+                                    <span class="fw-bold cal-month-title dg-month-title" style="font-size: 0.8rem; letter-spacing: -0.01em;"><?php echo htmlspecialchars($dgAylar[$dgAy] . ' ' . $dgYil, ENT_QUOTES, 'UTF-8'); ?></span>
+                                    <button type="button" class="btn btn-link btn-sm text-white-50 p-0 text-decoration-none cal-nav-btn" onclick="navigateDogumTakvimi(this, 1)" title="Sonraki Ay">
+                                        <i class="bx bx-chevron-right" style="font-size: 15px;"></i>
+                                    </button>
+                                </div>
+                                <div class="cal-weekdays-grid my-1">
+                                    <span>P</span><span>S</span><span>Ç</span><span>P</span><span>C</span><span>C</span><span>P</span>
+                                </div>
+                                <div class="cal-days-grid flex-grow-1 dg-days-grid">
+                                    <?php
+                                    for ($i = 1; $i < $dgIlkGun; $i++) {
+                                        echo '<div class="cal-day-cell cal-empty"></div>';
+                                    }
+                                    for ($day = 1; $day <= $dgGunSayisi; $day++) {
+                                        $classes = ['cal-day-cell'];
+                                        if (isset($dgGunler[$day])) {
+                                            $classes[] = 'has-alarm';
+                                        }
+                                        if ($day === $dgBugun) {
+                                            $classes[] = 'is-today';
+                                        }
+                                        echo '<div class="' . implode(' ', $classes) . '" data-day="' . $day . '" onclick="selectDogumGunu(this, ' . $day . ')"><span class="cal-day-num">' . $day . '</span></div>';
+                                    }
+                                    ?>
+                                </div>
+                            </div>
+                            <div class="col-5 cal-right-col d-flex flex-column border-start ps-2">
+                                <div class="d-flex flex-column align-items-center mb-1 cal-alarm-header">
+                                    <div class="mb-0"><i class="bx bx-cake" style="font-size: 17px; color: #bd6b5c;"></i></div>
+                                    <div class="d-flex align-items-center gap-1">
+                                        <span class="cal-alarm-count-badge fw-bold dg-count"><?php echo $dgToplam; ?> DOĞUM GÜNÜ</span>
+                                        <button type="button" class="btn btn-link btn-sm p-0 text-muted dg-reset d-none" onclick="resetDogumGunu(this)" title="Tümünü Göster">
+                                            <i class="bx bx-x-circle" style="font-size: 13px;"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="cal-alarm-items-list flex-grow-1 overflow-auto dg-list" style="max-height: 168px;">
+                                    <?php if (empty($dgGunler)): ?>
+                                        <div class="text-center py-3 text-muted" style="font-size: 0.72rem;">
+                                            <i class="bx bx-cake text-muted opacity-50 fs-3 d-block mb-1"></i>
+                                            <span>Bu ay doğum günü yok</span>
+                                        </div>
+                                    <?php else: ?>
+                                        <?php foreach ($dgGunler as $gunNo => $gunListe): ?>
+                                            <?php foreach ($gunListe as $dgKayit): ?>
+                                                <div class="cal-alarm-item d-block mb-1" data-day="<?php echo (int) $gunNo; ?>" title="<?php echo htmlspecialchars($dgKayit['ad'], ENT_QUOTES, 'UTF-8'); ?>">
+                                                    <div class="d-flex align-items-center justify-content-between">
+                                                        <span class="cal-alarm-date fw-bold"><?php echo (int) $gunNo . ' ' . htmlspecialchars(mb_substr($dgAylar[$dgAy], 0, 3, 'UTF-8'), ENT_QUOTES, 'UTF-8'); ?></span>
+                                                        <span class="badge bg-warning-subtle text-warning-emphasis cal-mini-pill"><?php echo $dgYil - (int) $dgKayit['yil']; ?>. yaş</span>
+                                                    </div>
+                                                    <div class="cal-alarm-text text-truncate fw-semibold text-dark"><?php echo htmlspecialchars($dgKayit['ad'], ENT_QUOTES, 'UTF-8'); ?></div>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php
+            break;
+
         case 'widget-nobetciler':
             ?>
             <div class="<?php echo getWidgetWidthClass($widgetDomId, 'col-6 col-md-2'); ?> widget-item" id="<?php echo $widgetDomId; ?>" style="<?php echo getWidgetStyle($widgetDomId); ?>">

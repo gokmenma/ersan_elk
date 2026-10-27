@@ -431,6 +431,10 @@ if (Gate::allows("ana_sayfa")) {
         $widgets['widget-personel-ozet'] = renderSkeleton('widget-personel-ozet', 'col-md-4 col-xl-4', '260px');
     }
 
+    if (\App\Service\Gate::allows("personel_listesi")) {
+        $widgets['widget-dogum-gunleri'] = renderSkeleton('widget-dogum-gunleri', getWidgetWidth('widget-dogum-gunleri', 'col-md-4 col-xl-4'), '260px');
+    }
+
     if (\App\Service\Gate::allows("arac_takip_yonetim")) {
         $widgets['widget-arac-ozet'] = renderSkeleton('widget-arac-ozet', 'col-md-4 col-xl-4', '260px');
     }
@@ -1748,6 +1752,14 @@ if (Gate::allows("ana_sayfa")) {
                                             <span style="font-size: 13px;">Personel Durumu</span>
                                         </label>
                                     </li>
+                                    <?php if (Gate::allows("personel_listesi")): ?>
+                                    <li>
+                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
+                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-dogum-gunleri" checked>
+                                            <span style="font-size: 13px;">Doğum Günleri</span>
+                                        </label>
+                                    </li>
+                                    <?php endif; ?>
                                     <li>
                                         <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
                                             <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-arac-ozet" checked>
@@ -3655,6 +3667,7 @@ if (Gate::allows("ana_sayfa")) {
                 const criticalWidgetIds = new Set([
                     'widget-ana-slider',
                     'widget-personel-ozet',
+                    'widget-dogum-gunleri',
                     'widget-arac-ozet',
                     'widget-bekleyen-talepler',
                     'widget-gec-kalanlar',
@@ -4195,6 +4208,7 @@ if (Gate::allows("ana_sayfa")) {
                     'widget-ana-slider': 'col-md-4 col-xl-4',
                     'widget-personel-ozet': 'col-md-4 col-xl-4',
                     'widget-personel-ozeti': 'col-md-4 col-xl-4',
+                    'widget-dogum-gunleri': 'col-md-4 col-xl-4',
                     'widget-arac-ozet': 'col-md-4 col-xl-4',
                     'widget-arac-ozeti': 'col-md-4 col-xl-4',
                     'widget-bekleyen-talepler': 'col-6 col-md-2',
@@ -4765,6 +4779,7 @@ if (Gate::allows("ana_sayfa")) {
                             'widget-ana-slider'              : 'Haberler & Duyurular',
                             'widget-personel-ozeti'          : 'Personel Durumu',
                             'widget-personel-ozet'           : 'Personel Durumu',
+                            'widget-dogum-gunleri'           : 'Doğum Günleri',
                             'widget-arac-ozeti'              : 'Araç Durumu',
                             'widget-arac-ozet'               : 'Araç Durumu',
                             'widget-takvim-alarmlar'         : 'Görev & Evrak Takvimi',
@@ -5327,7 +5342,7 @@ if (Gate::allows("ana_sayfa")) {
 
                     // 1. Client-Side Cache (Instant Feel)
                     const isFreeLayout = $('#switch-free-layout').is(':checked');
-                    const cacheKey = 'dashboard_cache_v6_<?php echo $_SESSION['user_id']; ?>' + (isFreeLayout ? '_free' : '_grid');
+                    const cacheKey = 'dashboard_cache_v8_<?php echo $_SESSION['user_id']; ?>' + (isFreeLayout ? '_free' : '_grid');
                     const cachedData = localStorage.getItem(cacheKey);
                     
                     if (cachedData && !force) {
@@ -6366,6 +6381,81 @@ if (Gate::allows("ana_sayfa")) {
                     $items.removeClass('d-none');
                     $card.find('#calAlarmCountTitle').text($items.length + ' ALARM');
                     $card.find('#btnCalResetFilter').addClass('d-none');
+                };
+
+                const dogumAylar = ['', 'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+
+                window.renderDogumTakvimi = function($card, secilenGun) {
+                    const yil = parseInt($card.attr('data-yil'), 10);
+                    const ay = parseInt($card.attr('data-ay'), 10);
+                    let veri = [];
+                    try { veri = JSON.parse($card.attr('data-dogum') || '[]'); } catch (e) { veri = []; }
+
+                    const gunSayisi = new Date(yil, ay, 0).getDate();
+                    const ilkGun = (new Date(yil, ay - 1, 1).getDay() + 6) % 7;
+                    const bugun = new Date();
+                    const buAy = bugun.getFullYear() === yil && (bugun.getMonth() + 1) === ay;
+
+                    const gunler = {};
+                    veri.forEach(function (k) {
+                        if (k.ay !== ay) return;
+                        const g = Math.min(k.gun, gunSayisi);
+                        (gunler[g] = gunler[g] || []).push(k);
+                    });
+
+                    let grid = '';
+                    for (let i = 0; i < ilkGun; i++) grid += '<div class="cal-day-cell cal-empty"></div>';
+                    for (let d = 1; d <= gunSayisi; d++) {
+                        let cls = 'cal-day-cell';
+                        if (gunler[d]) cls += ' has-alarm';
+                        if (buAy && d === bugun.getDate()) cls += ' is-today';
+                        if (d === secilenGun) cls += ' is-selected';
+                        grid += '<div class="' + cls + '" data-day="' + d + '" onclick="selectDogumGunu(this, ' + d + ')"><span class="cal-day-num">' + d + '</span></div>';
+                    }
+                    $card.find('.dg-days-grid').html(grid);
+                    $card.find('.dg-month-title').text(dogumAylar[ay] + ' ' + yil);
+
+                    const gunNoListe = Object.keys(gunler).map(Number).sort(function (a, b) { return a - b; })
+                        .filter(function (g) { return !secilenGun || g === secilenGun; });
+                    let html = '';
+                    let adet = 0;
+                    gunNoListe.forEach(function (g) {
+                        gunler[g].forEach(function (k) {
+                            adet++;
+                            html += $('<div class="cal-alarm-item d-block mb-1"></div>').append(
+                                $('<div class="d-flex align-items-center justify-content-between"></div>').append(
+                                    $('<span class="cal-alarm-date fw-bold"></span>').text(g + ' ' + dogumAylar[ay].substring(0, 3)),
+                                    $('<span class="badge bg-warning-subtle text-warning-emphasis cal-mini-pill"></span>').text((yil - k.yil) + '. yaş')
+                                ),
+                                $('<div class="cal-alarm-text text-truncate fw-semibold text-dark"></div>').text(k.ad).attr('title', k.ad + (k.bilgi ? ' · ' + k.bilgi : ''))
+                            )[0].outerHTML;
+                        });
+                    });
+                    if (!html) {
+                        html = '<div class="text-center py-3 text-muted" style="font-size: 0.72rem;"><i class="bx bx-cake text-muted opacity-50 fs-3 d-block mb-1"></i><span>' + (secilenGun ? 'Bu gün doğum günü yok' : 'Bu ay doğum günü yok') + '</span></div>';
+                    }
+                    $card.find('.dg-list').html(html);
+                    $card.find('.dg-count').text(adet + ' DOĞUM GÜNÜ');
+                    $card.find('.dg-reset').toggleClass('d-none', !secilenGun);
+                    $card.data('secili', secilenGun || 0);
+                };
+
+                window.navigateDogumTakvimi = function(btn, yon) {
+                    const $card = $(btn).closest('.dg-card');
+                    let yil = parseInt($card.attr('data-yil'), 10);
+                    let ay = parseInt($card.attr('data-ay'), 10) + yon;
+                    if (ay < 1) { ay = 12; yil--; } else if (ay > 12) { ay = 1; yil++; }
+                    $card.attr('data-yil', yil).attr('data-ay', ay);
+                    renderDogumTakvimi($card, 0);
+                };
+
+                window.selectDogumGunu = function(cell, gun) {
+                    const $card = $(cell).closest('.dg-card');
+                    renderDogumTakvimi($card, $card.data('secili') === gun ? 0 : gun);
+                };
+
+                window.resetDogumGunu = function(btn) {
+                    renderDogumTakvimi($(btn).closest('.dg-card'), 0);
                 };
 
                 window.navigateHomeCalendar = function(year, month) {
