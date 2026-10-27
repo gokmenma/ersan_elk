@@ -1980,3 +1980,4 @@
 - [x] 2026-10-27 KEP SmimeGonder icin 45 sn socket timeout, sure logu ve istemci 90 sn timeout mesaji eklendi
 - [x] 2026-10-27 KEP delil XML indirme dayanikli hale getirildi (bos onbellek yok sayilir, gzip/zip/BOM, bos icerikte acik hata)
 - [x] 2026-10-27 KEP mobil imza reddi (InvalidUserSignature: issuer serial yok) giderildi: ESSCertIDv2 yayinci+seri eklendi, sertifika settings tablosunda onbelleklenir; ilk KEP imzasinda sertifika taninir, bir kez daha imzalama istenir (test bekliyor)
+- [x] 2026-10-27 Mobil imza sertifika onbellek anahtari settings.set_name varchar(50) siniri icin kisaltildi (mimza_sert_<32 hex>)

@@ -247,16 +247,21 @@ final class MobilImzaPadesService
         return (new PadesEImzaService())->finalize((int) $transaction->evrak_id, $userId, $sourcePdf, $signedPdf, $ipAddress, 'mobil_imza');
     }
 
+    private static function certificateSettingName(string $certHash): string
+    {
+        return 'mimza_sert_' . substr(bin2hex($certHash), 0, 32);
+    }
+
     private function knownCertificate(string $certHash, int $firmaId): ?string
     {
-        $stored = (new SettingsModel())->getSettings('mobil_imza_sertifika_' . bin2hex($certHash), $firmaId);
+        $stored = (new SettingsModel())->getSettings(self::certificateSettingName($certHash), $firmaId);
         $der = $stored ? base64_decode($stored, true) : false;
         return ($der !== false && $der !== '' && hash_equals($certHash, hash('sha256', $der))) ? $der : null;
     }
 
     private function rememberCertificate(string $certificate, int $firmaId): void
     {
-        $name = 'mobil_imza_sertifika_' . hash('sha256', $certificate);
+        $name = self::certificateSettingName(hash('sha256', $certificate, true));
         if ((new SettingsModel())->getSettings($name, $firmaId) === null) {
             (new SettingsModel())->upsertMultipleSettings([$name => base64_encode($certificate)], $firmaId);
         }
