@@ -1291,7 +1291,9 @@ class KepService
                 } catch (Throwable $e) {
                     $xml = $raw;
                 }
-                return ['status' => 'success', 'xml' => $xml, 'filename' => "delil_{$delilId}.xml"];
+                if (trim((string) $xml) !== '' && str_contains((string) $xml, '<')) {
+                    return ['status' => 'success', 'xml' => $xml, 'filename' => "delil_{$delilId}.xml"];
+                }
             }
         }
 
@@ -1304,11 +1306,34 @@ class KepService
         }
 
         $rawXml = (string) $res['eDelil'];
-        if (!str_starts_with(trim($rawXml), '<?xml')) {
-            $decoded = base64_decode($rawXml);
+        if (!str_contains(substr($rawXml, 0, 200), '<')) {
+            $decoded = base64_decode(preg_replace('/\s+/', '', $rawXml), true);
             if ($decoded !== false && $decoded !== '') {
                 $rawXml = $decoded;
             }
+        }
+        if (str_starts_with($rawXml, "\x1f\x8b")) {
+            $unzipped = @gzdecode($rawXml);
+            if ($unzipped !== false && $unzipped !== '') {
+                $rawXml = $unzipped;
+            }
+        } elseif (str_starts_with($rawXml, 'PK') && class_exists('ZipArchive')) {
+            $tmpZip = tempnam(sys_get_temp_dir(), 'delil');
+            file_put_contents($tmpZip, $rawXml);
+            $zip = new \ZipArchive();
+            if ($zip->open($tmpZip) === true && $zip->numFiles > 0) {
+                $entry = $zip->getFromIndex(0);
+                if ($entry !== false && $entry !== '') {
+                    $rawXml = $entry;
+                }
+                $zip->close();
+            }
+            @unlink($tmpZip);
+        }
+        $rawXml = ltrim($rawXml, "\xEF\xBB\xBF \t\r\n");
+        if ($rawXml === '' || !str_contains($rawXml, '<')) {
+            error_log('KepService::downloadEvidenceXml geçersiz delil içeriği, uzunluk: ' . strlen((string) $res['eDelil']));
+            throw new Exception('PTT delil dosyası boş veya okunamayan biçimde döndü.');
         }
 
         // ISO 27001 standardı gereği AES-256-GCM ile şifreleyerek diske yaz

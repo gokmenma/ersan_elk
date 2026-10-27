@@ -2338,7 +2338,8 @@ $(document).ready(function () {
                 mesajid: mimeRes.mesajid,
                 signature: signRes.signature
               },
-              dataType: "json"
+              dataType: "json",
+              timeout: 90000
             }).done(sendRes => {
               if (sendRes.status !== "success") {
                 Swal.fire({
@@ -2366,7 +2367,7 @@ $(document).ready(function () {
                 target: document.getElementById("modalKepGonderisi"),
                 icon: "error",
                 title: "Gönderim Hatası",
-                text: xhr.responseJSON?.message || "PTT KEP servisine bağlanılamadı."
+                text: xhr.responseJSON?.message || (xhr.statusText === "timeout" ? "PTT KEP servisi zamanında yanıt vermedi. İleti iletilmiş olabilir; Evrak Takip listesinden durumu kontrol edip tekrar göndermeden önce doğrulayın." : "PTT KEP servisine bağlanılamadı.")
               });
               kepSendDone();
             });

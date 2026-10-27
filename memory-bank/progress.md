@@ -1977,3 +1977,5 @@
 - [x] 2026-10-27 Mobil imza ayarlari Evrak Takip Islemler modalina tasindi; KEP varsayilan mobil imza kullanicisi eklendi (test bekliyor)
 - [x] 2026-10-27 KEP adres dogrulamada test ortami + canli adres uyarisi eklendi (KepClientService::rehberTopluKontrol)
 - [x] 2026-10-27 KEP delil XML indirme (GET) yetki hatasi duzeltildi: api.php action GET fallback yalniz kep-delil-indir icin
+- [x] 2026-10-27 KEP SmimeGonder icin 45 sn socket timeout, sure logu ve istemci 90 sn timeout mesaji eklendi
+- [x] 2026-10-27 KEP delil XML indirme dayanikli hale getirildi (bos onbellek yok sayilir, gzip/zip/BOM, bos icerikte acik hata)

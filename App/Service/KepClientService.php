@@ -50,6 +50,7 @@ class KepClientService
                 'cache_wsdl' => WSDL_CACHE_NONE,
                 'connection_timeout' => 20,
             ];
+            ini_set('default_socket_timeout', '45');
 
             try {
                 $this->client = new MtomSoapClient($this->wsdlUrl, $options);
@@ -320,6 +321,7 @@ class KepClientService
     {
         try {
             $client = $this->getSoapClient();
+            $baslangic = microtime(true);
             $imzaData = $imza;
             if (preg_match('%^[a-zA-Z0-9/+\r\n]*={0,2}$%', trim($imza))) {
                 $decoded = base64_decode(str_replace(["\r", "\n", ' '], '', $imza), true);
@@ -337,6 +339,7 @@ class KepClientService
             ];
 
             $res = $client->SmimeGonder($params);
+            error_log(sprintf('KepClientService::smimeGonder PTT yanıt süresi: %.1f sn', microtime(true) - $baslangic));
             $ret = $res->return ?? null;
 
             if ($ret === null) {
