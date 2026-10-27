@@ -256,7 +256,7 @@ final class MobilImzaPadesService
     {
         $stored = (new SettingsModel())->getSettings(self::certificateSettingName($certHash), $firmaId);
         $der = $stored ? base64_decode($stored, true) : false;
-        return ($der !== false && $der !== '' && hash_equals($certHash, hash('sha256', $der))) ? $der : null;
+        return ($der !== false && $der !== '' && hash_equals($certHash, hash('sha256', $der, true))) ? $der : null;
     }
 
     private function rememberCertificate(string $certificate, int $firmaId): void
