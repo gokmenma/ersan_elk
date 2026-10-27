@@ -1989,3 +1989,4 @@
 - [x] 2026-10-27 returnurl: oturum dusunce/beni hatirla ile giris sonrasi kullanici bulundugu sayfaya doner (App/Helper/ReturnUrl.php, layouts/session.php, login.php, set-session.php); oturumsuz AJAX/API 401 + session_expired, assets/js/session-guard.js ile login'e yonlenir; logout.php status beyaz listesi. Tarayicida tam giris akisi (DB kullanicisiyla) test bekliyor
 - [x] 2026-10-27 Sistem Aktiviteleri: Cron İşlemleri ayrı hızlı filtre/rozet; kep_gelen_sync.php ve efatura_incoming_sync.php Cron - önekli log yazıyor (tarayıcıda test bekliyor)
 - [x] 2026-10-27 Personel listesi doğum tarihi filtre/sıralama düzeltildi; doğum günü push bildirimi (cron + log tablosu SQL) ve ana sayfa Doğum Günleri kartı (personel_listesi yetkisi) eklendi; SQL uygulama, cron kurulumu ve tarayıcı testi bekliyor
+- [x] 2026-10-27 Mobil SPA ana sayfa Doğum Günleri takvim kartı (personel yetkisi); dist derlendi, cihazda test bekliyor

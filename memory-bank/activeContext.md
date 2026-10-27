@@ -3291,3 +3291,6 @@
 - `PersonelModel` kolon eşlemesine doğum tarihi (13) eklendi: filtre + sıralama çalışır.
 - `App/Model/DogumGunuBildirimModel.php`: `sendDogumGunuBildirimleri()` (push, `dogum_gunu_bildirim_loglari` ile yılda tek gönderim), `getYaklasanDogumGunleri()` (bugün + 7 gün). `cron/dogum_gunu_bildirim.php` günlük çalıştırılacak; SQL: `sql/dogum_gunu_bildirim_loglari.sql` (uygulanmayı bekliyor).
 - Ana sayfa `widget-dogum-gunleri` kartı `personel_listesi` yetkisiyle (home.php iskelet + api.php batch-load-all sunucu kontrolü + render_widgets.php). Tarayıcıda test bekliyor.
+
+## 2026-10-27 Mobil SPA Doğum Günleri kartı
+- `mobile-spa` ana sayfaya `birthdays` kartı: `MobileDashboardModel::birthdays()` + `public/api/dashboard.php` (yalnızca `personel_listesi` yetkisiyle, `personnel` izni) + `HomeView.vue` aylık takvim/gün filtresi + `design-system.css` `.bday-*` sınıfları. dist yeniden derlendi; telefonda test bekliyor.

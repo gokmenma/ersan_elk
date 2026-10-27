@@ -361,6 +361,36 @@ if (Gate::allows("ana_sayfa")) {
         ];
     }
 
+    if (\App\Service\Gate::allows("personel_listesi")) {
+        try {
+            $bugunAy = (int) date('n');
+            $bugunGun = (int) date('j');
+            $bugunDogumlar = array_values(array_filter(
+                (new \App\Model\DogumGunuBildirimModel())->getTumDogumGunleri((int) $firmaId),
+                static fn(array $k): bool => $k['ay'] === $bugunAy && $k['gun'] === $bugunGun
+            ));
+            if (!empty($bugunDogumlar)) {
+                $isimler = array_map(
+                    static fn(array $k): string => htmlspecialchars($k['ad'], ENT_QUOTES, 'UTF-8'),
+                    array_slice($bugunDogumlar, 0, 3)
+                );
+                $digerSayisi = count($bugunDogumlar) - count($isimler);
+                $dogumAciklama = '<strong>' . implode(', ', $isimler) . '</strong>' . ($digerSayisi > 0 ? ' ve ' . $digerSayisi . ' kişi daha' : '') . ' için mutlu yıllar dileriz.';
+                array_unshift($slider_notifications, [
+                    'id' => 0,
+                    'title' => '🎂 Bugün ' . count($bugunDogumlar) . ' kişinin doğum günü',
+                    'description' => $dogumAciklama,
+                    'icon' => 'bx-cake',
+                    'gradient' => 'linear-gradient(135deg, #5b21b6 0%, #a78bfa 100%)',
+                    'link_action' => "onclick=\"window.location.href='index.php?p=personel/list'\"",
+                    'link_class' => 'cursor-pointer'
+                ]);
+            }
+        } catch (\Throwable $e) {
+            error_log('Doğum günü slaytı hatası: ' . $e->getMessage());
+        }
+    }
+
     // Widget İçeriklerini Tanımla
     $widgets = [];
 
@@ -5342,7 +5372,7 @@ if (Gate::allows("ana_sayfa")) {
 
                     // 1. Client-Side Cache (Instant Feel)
                     const isFreeLayout = $('#switch-free-layout').is(':checked');
-                    const cacheKey = 'dashboard_cache_v8_<?php echo $_SESSION['user_id']; ?>' + (isFreeLayout ? '_free' : '_grid');
+                    const cacheKey = 'dashboard_cache_v10_<?php echo $_SESSION['user_id']; ?>' + (isFreeLayout ? '_free' : '_grid');
                     const cachedData = localStorage.getItem(cacheKey);
                     
                     if (cachedData && !force) {
@@ -6409,14 +6439,16 @@ if (Gate::allows("ana_sayfa")) {
                         let cls = 'cal-day-cell';
                         if (gunler[d]) cls += ' has-alarm';
                         if (buAy && d === bugun.getDate()) cls += ' is-today';
+                        else if (yil * 100 + ay < bugun.getFullYear() * 100 + bugun.getMonth() + 1 || (buAy && d < bugun.getDate())) cls += ' dg-past';
                         if (d === secilenGun) cls += ' is-selected';
                         grid += '<div class="' + cls + '" data-day="' + d + '" onclick="selectDogumGunu(this, ' + d + ')"><span class="cal-day-num">' + d + '</span></div>';
                     }
                     $card.find('.dg-days-grid').html(grid);
                     $card.find('.dg-month-title').text(dogumAylar[ay] + ' ' + yil);
 
+                    const gosterilenGun = secilenGun || (buAy ? bugun.getDate() : 0);
                     const gunNoListe = Object.keys(gunler).map(Number).sort(function (a, b) { return a - b; })
-                        .filter(function (g) { return !secilenGun || g === secilenGun; });
+                        .filter(function (g) { return g === gosterilenGun; });
                     let html = '';
                     let adet = 0;
                     gunNoListe.forEach(function (g) {
@@ -6425,17 +6457,17 @@ if (Gate::allows("ana_sayfa")) {
                             html += $('<div class="cal-alarm-item d-block mb-1"></div>').append(
                                 $('<div class="d-flex align-items-center justify-content-between"></div>').append(
                                     $('<span class="cal-alarm-date fw-bold"></span>').text(g + ' ' + dogumAylar[ay].substring(0, 3)),
-                                    $('<span class="badge bg-warning-subtle text-warning-emphasis cal-mini-pill"></span>').text((yil - k.yil) + '. yaş')
+                                    $('<span class="badge dg-pill cal-mini-pill"></span>').text((yil - k.yil) + '. yaş')
                                 ),
                                 $('<div class="cal-alarm-text text-truncate fw-semibold text-dark"></div>').text(k.ad).attr('title', k.ad + (k.bilgi ? ' · ' + k.bilgi : ''))
                             )[0].outerHTML;
                         });
                     });
                     if (!html) {
-                        html = '<div class="text-center py-3 text-muted" style="font-size: 0.72rem;"><i class="bx bx-cake text-muted opacity-50 fs-3 d-block mb-1"></i><span>' + (secilenGun ? 'Bu gün doğum günü yok' : 'Bu ay doğum günü yok') + '</span></div>';
+                        html = '<div class="text-center py-3 text-muted" style="font-size: 0.72rem;"><i class="bx bx-cake text-muted opacity-50 fs-3 d-block mb-1"></i><span>' + (secilenGun ? 'Bu gün doğum günü yok' : (buAy ? 'Bugün doğum günü yok' : 'Günü seçerek görün')) + '</span></div>';
                     }
                     $card.find('.dg-list').html(html);
-                    $card.find('.dg-count').text(adet + ' DOĞUM GÜNÜ');
+                    $card.find('.dg-count').text(secilenGun || !buAy ? adet + ' DOĞUM GÜNÜ' : 'BUGÜN · ' + adet + ' KİŞİ');
                     $card.find('.dg-reset').toggleClass('d-none', !secilenGun);
                     $card.data('secili', secilenGun || 0);
                 };

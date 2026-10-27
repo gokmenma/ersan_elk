@@ -9,6 +9,7 @@ import {
   Bell,
   Briefcase,
   CalendarCheck,
+  Cake,
   CalendarDays,
   CarFront,
   ChartNoAxesCombined,
@@ -92,6 +93,7 @@ const initials = computed(() => auth.state.user?.initials || username.value.slic
 // Kart Tanımları ve Varsayılan Sıralama
 const DEFAULT_CARD_ORDER = [
   'personnel',
+  'birthdays',
   'pending_approvals',
   'shifts',
   'vehicles',
@@ -106,6 +108,12 @@ const CARD_DEFINITIONS = {
     title: 'Personel Durumu',
     icon: UsersRound,
     description: 'Saha, izinli ve geç kalan personel dökümü',
+  },
+  birthdays: {
+    id: 'birthdays',
+    title: 'Doğum Günleri',
+    icon: Cake,
+    description: 'Aylık takvimde personel doğum günleri',
   },
   pending_approvals: {
     id: 'pending_approvals',
@@ -407,6 +415,37 @@ const personnel = computed(() => (auth.state.permissions.personnel ? dashboard.v
 const vehicles = computed(() => (auth.state.permissions.vehicles ? dashboard.value.vehicles : null))
 const shifts = computed(() => (auth.state.permissions.shift_schedule ? (dashboard.value.shifts || []) : []))
 const pendingApprovals = computed(() => (auth.state.permissions.requests ? (dashboard.value.pending_approvals || { requests: 0, advances: 0, leaves: 0, total: 0 }) : null))
+const BDAY_MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
+const bdayNow = new Date()
+const bdayYear = ref(bdayNow.getFullYear())
+const bdayMonth = ref(bdayNow.getMonth() + 1)
+const bdaySelectedDay = ref(0)
+const birthdays = computed(() => (auth.state.permissions.personnel ? dashboard.value.birthdays || null : null))
+const bdayDaysInMonth = computed(() => new Date(bdayYear.value, bdayMonth.value, 0).getDate())
+const bdayLeadingBlanks = computed(() => (new Date(bdayYear.value, bdayMonth.value - 1, 1).getDay() + 6) % 7)
+const bdayByDay = computed(() => {
+  const map = {}
+  ;(birthdays.value || []).forEach((item) => {
+    if (item.month !== bdayMonth.value) return
+    const day = Math.min(item.day, bdayDaysInMonth.value)
+    ;(map[day] = map[day] || []).push({ ...item, shownDay: day })
+  })
+  return map
+})
+const bdayVisibleList = computed(() => {
+  const hedefGun = bdaySelectedDay.value || (isBdayCurrentMonth.value ? bdayNow.getDate() : 0)
+  return hedefGun ? bdayByDay.value[hedefGun] || [] : []
+})
+const isBdayCurrentMonth = computed(() => bdayNow.getFullYear() === bdayYear.value && bdayNow.getMonth() + 1 === bdayMonth.value)
+function bdayShiftMonth(step) {
+  let month = bdayMonth.value + step
+  if (month < 1) { month = 12; bdayYear.value-- } else if (month > 12) { month = 1; bdayYear.value++ }
+  bdayMonth.value = month
+  bdaySelectedDay.value = 0
+}
+function isBdayToday(day) {
+  return bdayNow.getFullYear() === bdayYear.value && bdayNow.getMonth() + 1 === bdayMonth.value && bdayNow.getDate() === day
+}
 const announcements = computed(() => dashboard.value.announcements || [])
 const opSortOrder = {
   reading: 1,
@@ -502,6 +541,7 @@ function isCardVisible(cardId) {
   if (cardId === 'pending_approvals') return Boolean(pendingApprovals.value)
   if (cardId === 'shifts') return Boolean(auth.state.permissions.shift_schedule)
   if (cardId === 'personnel') return Boolean(personnel.value)
+  if (cardId === 'birthdays') return Boolean(birthdays.value)
   if (cardId === 'vehicles') return Boolean(vehicles.value)
   if (cardId === 'operations') return operations.value.length > 0
   if (cardId === 'quick_actions') return actions.value.length > 0
@@ -1113,6 +1153,67 @@ onMounted(() => {
                   <span>İncele</span>
                   <ChevronRight :size="13" />
                 </RouterLink>
+              </div>
+            </section>
+
+            <!-- 2.5 DOĞUM GÜNLERİ -->
+            <section
+              v-else-if="cardId === 'birthdays' && birthdays"
+              class="bento-card bento-card--white"
+            >
+              <div class="card-inner-head">
+                <div class="card-inner-title">
+                  <Cake :size="16" class="text-primary" />
+                  <span>Doğum Günleri</span>
+                  <span class="clay-pill-tag ms-1">{{ !bdaySelectedDay && isBdayCurrentMonth ? 'Bugün · ' : '' }}{{ bdayVisibleList.length }} Kişi</span>
+                </div>
+                <div class="card-inner-controls">
+                  <span
+                    class="card-inner-handle"
+                    role="button"
+                    tabindex="0"
+                    title="Sürükle ve taşı"
+                    aria-label="Sürükle ve taşı"
+                    @pointerdown.stop="startHandleDrag(cardId, $event)"
+                    @touchstart.stop="startHandleDrag(cardId, $event)"
+                  >
+                    <GripVertical :size="14" />
+                  </span>
+                  <button type="button" class="card-inner-btn" title="Yukarı taşı" @click.stop="moveCard(cardId, 'up')"><ChevronUp :size="14" /></button>
+                  <button type="button" class="card-inner-btn" title="Aşağı taşı" @click.stop="moveCard(cardId, 'down')"><ChevronDown :size="14" /></button>
+                </div>
+              </div>
+
+              <div class="bday-nav">
+                <button type="button" class="bday-nav-btn" aria-label="Önceki ay" @click="bdayShiftMonth(-1)"><ChevronLeft :size="16" /></button>
+                <strong>{{ BDAY_MONTHS[bdayMonth - 1] }} {{ bdayYear }}</strong>
+                <button type="button" class="bday-nav-btn" aria-label="Sonraki ay" @click="bdayShiftMonth(1)"><ChevronRight :size="16" /></button>
+              </div>
+              <div class="bday-weekdays"><span v-for="(d, i) in ['P','S','Ç','P','C','C','P']" :key="i">{{ d }}</span></div>
+              <div class="bday-grid">
+                <span v-for="n in bdayLeadingBlanks" :key="`b${n}`" class="bday-cell bday-cell--empty"></span>
+                <button
+                  v-for="day in bdayDaysInMonth"
+                  :key="day"
+                  type="button"
+                  class="bday-cell"
+                  :class="{ 'has-bday': bdayByDay[day], 'is-today': isBdayToday(day), 'is-selected': bdaySelectedDay === day }"
+                  @click="bdaySelectedDay = bdaySelectedDay === day ? 0 : day"
+                >{{ day }}</button>
+              </div>
+
+              <div v-if="bdayVisibleList.length" class="bday-list">
+                <div v-for="(item, index) in bdayVisibleList" :key="`${item.name}-${index}`" class="bday-row">
+                  <div class="bday-date">{{ item.shownDay }} {{ BDAY_MONTHS[bdayMonth - 1].slice(0, 3) }}</div>
+                  <div class="bday-meta">
+                    <strong>{{ item.name }}</strong>
+                    <span v-if="item.info">{{ item.info }}</span>
+                  </div>
+                  <span class="clay-pill-tag">{{ bdayYear - item.year }}. yaş</span>
+                </div>
+              </div>
+              <div v-else class="text-center py-3 text-xs text-muted">
+                {{ bdaySelectedDay ? 'Bu gün doğum günü yok.' : (isBdayCurrentMonth ? 'Bugün doğum günü yok.' : 'Doğum günlerini görmek için bir gün seçin.') }}
               </div>
             </section>
 

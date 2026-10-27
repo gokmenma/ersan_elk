@@ -51,6 +51,18 @@ class MobileDashboardModel
         ];
     }
 
+    public function birthdays(): array
+    {
+        $rows = $this->safely(fn() => (new DogumGunuBildirimModel())->getTumDogumGunleri((int) ($_SESSION['firma_id'] ?? 0)), []);
+        return array_map(static fn(array $row): array => [
+            'name' => $row['ad'],
+            'info' => $row['bilgi'],
+            'year' => $row['yil'],
+            'month' => $row['ay'],
+            'day' => $row['gun'],
+        ], $rows);
+    }
+
     public function vehicles(): array
     {
         $model = new AracModel();
@@ -305,6 +317,7 @@ class MobileDashboardModel
             'pending_approvals',
             'shifts',
             'personnel',
+            'birthdays',
             'vehicles',
             'operations',
             'quick_actions',

@@ -66,6 +66,7 @@ try {
 
     if ($permissions['personnel']) {
         $data['personnel'] = $model->personnel();
+        $data['birthdays'] = $model->birthdays();
     }
 
     if ($permissions['vehicles']) {

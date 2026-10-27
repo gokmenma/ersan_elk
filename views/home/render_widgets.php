@@ -484,6 +484,8 @@ function renderWidget(string $widgetId, array $data = []) {
                 }
             }
             ksort($dgGunler);
+            $dgAyGunleri = $dgGunler;
+            $dgGunler = isset($dgAyGunleri[$dgBugun]) ? [$dgBugun => $dgAyGunleri[$dgBugun]] : [];
             $dgToplam = 0;
             foreach ($dgGunler as $dgListe) {
                 $dgToplam += count($dgListe);
@@ -494,7 +496,7 @@ function renderWidget(string $widgetId, array $data = []) {
                     <div class="card-body p-2 px-3 d-flex flex-column h-100" style="overflow: hidden;">
                         <div class="row g-2 h-100 align-items-stretch">
                             <div class="col-7 cal-left-col d-flex flex-column justify-content-between">
-                                <div class="cal-mini-header d-flex align-items-center justify-content-between px-2 py-1 text-white rounded-2 shadow-xs" style="background: #1c2430;">
+                                <div class="cal-mini-header d-flex align-items-center justify-content-between px-2 py-1 text-white rounded-2 shadow-xs" style="background: #5b21b6;">
                                     <button type="button" class="btn btn-link btn-sm text-white-50 p-0 text-decoration-none cal-nav-btn" onclick="navigateDogumTakvimi(this, -1)" title="Önceki Ay">
                                         <i class="bx bx-chevron-left" style="font-size: 15px;"></i>
                                     </button>
@@ -513,11 +515,13 @@ function renderWidget(string $widgetId, array $data = []) {
                                     }
                                     for ($day = 1; $day <= $dgGunSayisi; $day++) {
                                         $classes = ['cal-day-cell'];
-                                        if (isset($dgGunler[$day])) {
+                                        if (isset($dgAyGunleri[$day])) {
                                             $classes[] = 'has-alarm';
                                         }
                                         if ($day === $dgBugun) {
                                             $classes[] = 'is-today';
+                                        } elseif ($day < $dgBugun) {
+                                            $classes[] = 'dg-past';
                                         }
                                         echo '<div class="' . implode(' ', $classes) . '" data-day="' . $day . '" onclick="selectDogumGunu(this, ' . $day . ')"><span class="cal-day-num">' . $day . '</span></div>';
                                     }
@@ -526,9 +530,9 @@ function renderWidget(string $widgetId, array $data = []) {
                             </div>
                             <div class="col-5 cal-right-col d-flex flex-column border-start ps-2">
                                 <div class="d-flex flex-column align-items-center mb-1 cal-alarm-header">
-                                    <div class="mb-0"><i class="bx bx-cake" style="font-size: 17px; color: #bd6b5c;"></i></div>
+                                    <div class="mb-0"><i class="bx bx-cake" style="font-size: 17px; color: #7c3aed;"></i></div>
                                     <div class="d-flex align-items-center gap-1">
-                                        <span class="cal-alarm-count-badge fw-bold dg-count"><?php echo $dgToplam; ?> DOĞUM GÜNÜ</span>
+                                        <span class="cal-alarm-count-badge fw-bold dg-count">BUGÜN · <?php echo $dgToplam; ?> KİŞİ</span>
                                         <button type="button" class="btn btn-link btn-sm p-0 text-muted dg-reset d-none" onclick="resetDogumGunu(this)" title="Tümünü Göster">
                                             <i class="bx bx-x-circle" style="font-size: 13px;"></i>
                                         </button>
@@ -538,7 +542,7 @@ function renderWidget(string $widgetId, array $data = []) {
                                     <?php if (empty($dgGunler)): ?>
                                         <div class="text-center py-3 text-muted" style="font-size: 0.72rem;">
                                             <i class="bx bx-cake text-muted opacity-50 fs-3 d-block mb-1"></i>
-                                            <span>Bu ay doğum günü yok</span>
+                                            <span>Bugün doğum günü yok</span>
                                         </div>
                                     <?php else: ?>
                                         <?php foreach ($dgGunler as $gunNo => $gunListe): ?>
@@ -546,7 +550,7 @@ function renderWidget(string $widgetId, array $data = []) {
                                                 <div class="cal-alarm-item d-block mb-1" data-day="<?php echo (int) $gunNo; ?>" title="<?php echo htmlspecialchars($dgKayit['ad'], ENT_QUOTES, 'UTF-8'); ?>">
                                                     <div class="d-flex align-items-center justify-content-between">
                                                         <span class="cal-alarm-date fw-bold"><?php echo (int) $gunNo . ' ' . htmlspecialchars(mb_substr($dgAylar[$dgAy], 0, 3, 'UTF-8'), ENT_QUOTES, 'UTF-8'); ?></span>
-                                                        <span class="badge bg-warning-subtle text-warning-emphasis cal-mini-pill"><?php echo $dgYil - (int) $dgKayit['yil']; ?>. yaş</span>
+                                                        <span class="badge dg-pill cal-mini-pill"><?php echo $dgYil - (int) $dgKayit['yil']; ?>. yaş</span>
                                                     </div>
                                                     <div class="cal-alarm-text text-truncate fw-semibold text-dark"><?php echo htmlspecialchars($dgKayit['ad'], ENT_QUOTES, 'UTF-8'); ?></div>
                                                 </div>
@@ -559,6 +563,20 @@ function renderWidget(string $widgetId, array $data = []) {
                     </div>
                 </div>
             </div>
+            <style>
+                .dg-card .cal-mini-header { background: linear-gradient(135deg, #5b21b6, #7c3aed) !important; }
+                .dg-card .cal-day-cell.has-alarm { background-color: #8b5cf6 !important; box-shadow: 0 1px 3px rgba(124, 58, 237, 0.35); }
+                .dg-card .cal-day-cell.is-today { border-color: #f59e0b !important; }
+                .dg-card .cal-day-cell.dg-past { opacity: 0.38; }
+                .dg-card .cal-day-cell.is-selected { outline-color: #f59e0b; }
+                .dg-card .cal-alarm-count-badge,
+                .dg-card .cal-alarm-date { color: #6d28d9; }
+                .dg-card .cal-alarm-item { background: #f5f3ff; border-color: #ddd6fe; }
+                .dg-card .cal-alarm-item:hover { border-color: #8b5cf6; box-shadow: 0 2px 5px rgba(124, 58, 237, 0.15); }
+                .dg-card .dg-pill { background: #ede9fe; color: #6d28d9; }
+                [data-bs-theme="dark"] .dg-card .cal-alarm-item { background: #1e1b3a; border-color: rgba(139, 92, 246, 0.35); }
+                [data-bs-theme="dark"] .dg-card .dg-pill { background: rgba(139, 92, 246, 0.2); color: #c4b5fd; }
+            </style>
             <?php
             break;
 
