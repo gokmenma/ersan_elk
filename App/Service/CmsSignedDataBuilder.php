@@ -14,17 +14,34 @@ final class CmsSignedDataBuilder
     private const OID_RSA = '1.2.840.113549.1.1.1';
     private const OID_ECDSA_SHA256 = '1.2.840.10045.4.3.2';
 
-    public static function signedAttributes(string $contentDigest, string $certHash, int $signingTime): string
+    public static function signedAttributes(string $contentDigest, string $certHash, int $signingTime, ?string $certificate = null): string
     {
+        if ($certificate !== null) {
+            [$issuer, $serial] = self::issuerAndSerial($certificate);
+            $essCertId = self::sequence(
+                self::sequence(self::oid(self::OID_SHA256))
+                . self::tlv(0x04, $certHash)
+                . self::sequence(self::sequence(self::tlv(0xA4, $issuer)) . $serial)
+            );
+        } else {
+            $essCertId = self::sequence(self::tlv(0x04, $certHash));
+        }
         $attributes = [
             self::sequence(self::oid(self::OID_CONTENT_TYPE) . self::set([self::oid(self::OID_DATA)])),
             self::sequence(self::oid(self::OID_SIGNING_TIME) . self::set([self::tlv(0x17, gmdate('ymdHis', $signingTime) . 'Z')])),
             self::sequence(self::oid(self::OID_MESSAGE_DIGEST) . self::set([self::tlv(0x04, $contentDigest)])),
             self::sequence(self::oid(self::OID_SIGNING_CERTIFICATE_V2) . self::set([
-                self::sequence(self::sequence(self::sequence(self::tlv(0x04, $certHash)))),
+                self::sequence(self::sequence($essCertId)),
             ])),
         ];
         return self::set($attributes);
+    }
+
+    private static function issuerAndSerial(string $certificate): array
+    {
+        $tbs = self::children(self::children($certificate)[0]['raw']);
+        $offset = ($tbs[0]['tag'] === 0xA0) ? 1 : 0;
+        return [$tbs[$offset + 2]['raw'], $tbs[$offset]['raw']];
     }
 
     public static function signedData(string $signedAttributes, string $signature, string $signerCertificate, array $extraCertificates = []): string

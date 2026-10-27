@@ -105,7 +105,8 @@ final class MobilImzaPadesService
         $this->purgeExpiredFiles();
 
         $profile = $this->client->profileQuery($msisdn);
-        $signedAttributes = CmsSignedDataBuilder::signedAttributes($digest, $profile['cert_hash'], time());
+        $knownCertificate = $this->knownCertificate($profile['cert_hash'], $firmaId);
+        $signedAttributes = CmsSignedDataBuilder::signedAttributes($digest, $profile['cert_hash'], time(), $knownCertificate);
         $token = bin2hex(random_bytes(24));
         $subject = trim(preg_replace('/\s+/u', ' ', (string) ($draft['subject'] ?? '')));
         $displayText = mb_substr('KEP iletisini imzalıyorsunuz' . ($subject !== '' ? ': ' . $subject : ''), 0, self::DISPLAY_MAX_LENGTH);
@@ -120,7 +121,7 @@ final class MobilImzaPadesService
             'mssp_trans_id' => $request['transaction_id'],
             'kaynak_pdf_sha256' => hash('sha256', $digest),
             'hazir_pdf_yolu' => '',
-            'byte_range' => json_encode(['kep' => $tempId, 'imzaci' => $signerId]),
+            'byte_range' => json_encode(['kep' => $tempId, 'imzaci' => $signerId, 'ess' => $knownCertificate !== null]),
             'imzali_oznitelikler' => base64_encode($signedAttributes),
             'sertifika_ozeti' => bin2hex($profile['cert_hash']),
             'son_gecerlilik' => date('Y-m-d H:i:s', time() + self::SIGN_TIMEOUT + 60),
@@ -219,8 +220,12 @@ final class MobilImzaPadesService
         $layout = json_decode((string) $transaction->byte_range, true);
         $signerId = is_array($layout) && !empty($layout['imzaci']) ? (int) $layout['imzaci'] : $userId;
         $this->validateCertificate($certificate, $response['certificates'], $signerId);
+        $this->rememberCertificate($certificate, (int) $transaction->firma_id);
 
         if (is_array($layout) && !empty($layout['kep'])) {
+            if (empty($layout['ess'])) {
+                throw new \RuntimeException('Mobil imza sertifikanız ilk kez tanındı. PTT KEP, imzalayan sertifika bilgisini zorunlu tuttuğu için lütfen KEP iletisini bir kez daha imzalayarak gönderiniz.');
+            }
             return [
                 'kep_temp_id' => (string) $layout['kep'],
                 'kep_signature' => base64_encode(CmsSignedDataBuilder::signedData($signedAttributes, $response['signature'], $certificate, $response['certificates'])),
@@ -240,6 +245,21 @@ final class MobilImzaPadesService
         $signedPdf = (new PdfIncrementalSigner())->embed($preparedPdf, (array) ($layout['range'] ?? []), $cms);
 
         return (new PadesEImzaService())->finalize((int) $transaction->evrak_id, $userId, $sourcePdf, $signedPdf, $ipAddress, 'mobil_imza');
+    }
+
+    private function knownCertificate(string $certHash, int $firmaId): ?string
+    {
+        $stored = (new SettingsModel())->getSettings('mobil_imza_sertifika_' . bin2hex($certHash), $firmaId);
+        $der = $stored ? base64_decode($stored, true) : false;
+        return ($der !== false && $der !== '' && hash_equals($certHash, hash('sha256', $der))) ? $der : null;
+    }
+
+    private function rememberCertificate(string $certificate, int $firmaId): void
+    {
+        $name = 'mobil_imza_sertifika_' . hash('sha256', $certificate);
+        if ((new SettingsModel())->getSettings($name, $firmaId) === null) {
+            (new SettingsModel())->upsertMultipleSettings([$name => base64_encode($certificate)], $firmaId);
+        }
     }
 
     private function userMsisdn(int $userId): string
