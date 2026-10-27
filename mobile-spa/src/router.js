@@ -1,5 +1,6 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import HomeView from './views/HomeView.vue'
+import { startNavigation, finishNavigation } from './services/navigation.js'
 const TasksView = () => import('./views/TasksView.vue')
 const ReportsView = () => import('./views/ReportsView.vue')
 const ProfileView = () => import('./views/ProfileView.vue')
@@ -90,9 +91,10 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
 })
 
-router.beforeEach(async (to) => {
+router.beforeEach(async (to, from) => {
+  if (to.fullPath !== from.fullPath) startNavigation()
   try {
-    await auth.bootstrap(true)
+    if (!auth.isFresh()) await auth.bootstrap(true)
   } catch {
     if (to.name !== 'login') return { name: 'login' }
   }
@@ -104,7 +106,10 @@ router.beforeEach(async (to) => {
   if (to.name === 'personnel-section' && to.params.section === 'evraklar' && !auth.state.permissions.personnel_documents) return { name: 'personnel-detail', params: { id: to.params.id } }
 })
 
+router.afterEach(() => finishNavigation())
+
 router.onError((error, to) => {
+  finishNavigation()
   if (/Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i.test(String(error?.message))) {
     window.location.assign(router.resolve(to.fullPath).href)
   }

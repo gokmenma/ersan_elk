@@ -3,6 +3,7 @@ import { RouterView } from 'vue-router'
 import BottomNav from './components/BottomNav.vue'
 import PwaInstallPrompt from './components/PwaInstallPrompt.vue'
 import NotificationsDrawer from './components/NotificationsDrawer.vue'
+import NavigationProgress from './components/NavigationProgress.vue'
 </script>
 
 <template>
@@ -15,6 +16,7 @@ import NotificationsDrawer from './components/NotificationsDrawer.vue'
           </Transition>
         </RouterView>
       </main>
+      <NavigationProgress />
       <PwaInstallPrompt />
       <NotificationsDrawer />
       <BottomNav v-if="$route.meta.chrome !== false" />

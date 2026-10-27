@@ -3258,3 +3258,13 @@
 ## 2026-10-26 — Gelir-Gider EFT + BSMV birleştirme
 - Bankanın böldüğü EFT ücreti (ana kayıt) ve "BSMV " önekli vergi kaydı (aynı tarih/kategori/tür, açıklama = "BSMV " + ana açıklama) liste ve mobilde tek kayıt gösterilir; tutarlar toplanır.
 - Kayıtlar veritabanında ayrı kalır; birleştirme GelirGiderModel::bsmvCocukKosulu/bsmvTutarSelect/bsmvBirlestir ile gösterimde yapılır (ajaxList, summary adetleri, mobil list ve tum_hareketler).
+
+## 2026-10-27 — Evrak Takip: İşlemler sütunu ve KEP mobil imza
+- `evrakTable` işlemler sütunu sticky (sağa yapışık); `responsive: false`.
+- KEP iletisi gönderiminde E-İmza yanında Turkcell Mobil İmza seçeneği: `MobilImzaPadesService::startKep()` MIME özetini (eHash) CAdES signedAttributes olarak imzalatır, `poll()` KEP için base64 CMS döner, ardından mevcut `kep-smime-sevk` çağrılır.
+- Yeni API aksiyonları: `kep-mobil-imza-baslat`, `kep-mobil-imza-durum` (policy: `sql/2026_10_27_add_kep_mobil_imza_policy.sql`, `evrak-takip/kep` yetkisi).
+- Taslak (KEP gönderilmemiş) giden evrak silinebilir; KEP'e gönderilmiş/alınmış evrak sunucuda silinemez.
+
+## 2026-10-27 — Mobil SPA Evrak Takip özet kartı
+- `EvrakView.vue`: Araç Takip'teki koyu bento özet kartı (segmentli çubuk + 4 metrik hücresi) kullanıldı; hücreler filtre görevi görür, filtre hapları kaldırıldı, kart arası boşluk 8px.
+- Ortak sınıflar `design-system.css` sonuna eklendi: `.bento-card--summary`, `.metric-cell--filter` (diğer sayfalar zamanla bu standarda geçirilecek).

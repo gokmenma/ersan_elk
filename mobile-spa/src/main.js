@@ -23,7 +23,22 @@ window.fetch = (input, init = {}) => {
   const inheritedHeaders = input instanceof Request ? input.headers : undefined
   const headers = new Headers(init.headers || inheritedHeaders)
   headers.set('X-Client-Source', 'mobile-spa')
-  return nativeFetch(input, { ...init, headers })
+  return nativeFetch(input, { ...init, headers }).then((response) => {
+    handleAuthStatus(response.status, url)
+    return response
+  })
+}
+
+function handleAuthStatus(status, url) {
+  const action = url.searchParams.get('action') || 'session'
+  if (url.pathname.endsWith('/auth.php') && ['login', 'session'].includes(action)) return
+  if (status === 403) {
+    auth.invalidate()
+    return
+  }
+  if (status !== 401 || !auth.state.authenticated) return
+  auth.expire()
+  router.replace({ name: 'login', query: { expired: '1' } })
 }
 
 // PWA durum çubuğu, merkezi tasarım sisteminin aktif yüzeyini kullanır.

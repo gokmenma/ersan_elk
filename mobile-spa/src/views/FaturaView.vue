@@ -13,7 +13,6 @@ import {
   Building2,
   Calendar,
   Check,
-  CheckCheck,
   CheckCircle2,
   ChevronRight,
   Clock,
@@ -819,7 +818,7 @@ async function deleteDraft(inv) {
 // CARİYE İŞLE İŞLEMLERİ (DESKTOP İLE BİREBİR PARİTE)
 // ----------------------------------------------------
 async function openSyncToCariModal(inv) {
-  if (!inv || !inv.encrypted_id) return
+  if (!inv || !inv.encrypted_id || isCariyeIslePasif(inv)) return
   cariConfirmInvoice.value = inv
   cariConfirmInfo.value = null
   cariCheckingLoading.value = true
@@ -839,6 +838,16 @@ async function openSyncToCariModal(inv) {
   } finally {
     cariCheckingLoading.value = false
   }
+}
+
+function isCariyeIslePasif(inv) {
+  return inv.cariye_islendi == 1 || inv.ticari_yanit === 'RED' || /^RED/.test(String(inv.entegrator_durum_kodu || '').toUpperCase())
+}
+
+function cariyeIsleBaslik(inv) {
+  if (inv.cariye_islendi == 1) return 'Cariye işlendi'
+  if (isCariyeIslePasif(inv)) return 'Reddedilen fatura cariye işlenemez'
+  return 'Cariye İşle'
 }
 
 async function confirmSyncToCari(force = false) {
@@ -1657,21 +1666,13 @@ onBeforeUnmount(() => {
                 <div class="fatura-row-card__actions" @click.stop>
                   <!-- Cariye İşle Butonu / Rozeti (Özet Kartı) -->
                   <template v-if="rg.entegrator_durum_kodu !== 'IPTAL'">
-                    <span
-                      v-if="rg.cariye_islendi == 1"
-                      class="fatura-icon-action-btn fatura-icon-action-btn--synced"
-                      title="Cari hareketlerine işlendi"
-                    >
-                      <CheckCheck :size="15" />
-                    </span>
                     <button
-                      v-else
                       type="button"
                       class="fatura-icon-action-btn fatura-icon-action-btn--sync"
                       :class="{ 'is-loading': syncingInvoiceId === rg.encrypted_id }"
-                      :disabled="syncingInvoiceId === rg.encrypted_id"
-                      title="Cariye İşle"
-                      aria-label="Cariye İşle"
+                      :disabled="syncingInvoiceId === rg.encrypted_id || isCariyeIslePasif(rg)"
+                      :title="cariyeIsleBaslik(rg)"
+                      :aria-label="cariyeIsleBaslik(rg)"
                       @click="openSyncToCariModal(rg)"
                     >
                       <ArrowLeftRight v-if="syncingInvoiceId !== rg.encrypted_id" :size="15" />
@@ -1738,21 +1739,13 @@ onBeforeUnmount(() => {
                 <div class="fatura-row-card__actions" @click.stop>
                   <!-- Cariye İşle Butonu / Rozeti (Özet Kartı) -->
                   <template v-if="rg.entegrator_durum_kodu !== 'IPTAL'">
-                    <span
-                      v-if="rg.cariye_islendi == 1"
-                      class="fatura-icon-action-btn fatura-icon-action-btn--synced"
-                      title="Cari hareketlerine işlendi"
-                    >
-                      <CheckCheck :size="15" />
-                    </span>
                     <button
-                      v-else
                       type="button"
                       class="fatura-icon-action-btn fatura-icon-action-btn--sync"
                       :class="{ 'is-loading': syncingInvoiceId === rg.encrypted_id }"
-                      :disabled="syncingInvoiceId === rg.encrypted_id"
-                      title="Cariye İşle"
-                      aria-label="Cariye İşle"
+                      :disabled="syncingInvoiceId === rg.encrypted_id || isCariyeIslePasif(rg)"
+                      :title="cariyeIsleBaslik(rg)"
+                      :aria-label="cariyeIsleBaslik(rg)"
                       @click="openSyncToCariModal(rg)"
                     >
                       <ArrowLeftRight v-if="syncingInvoiceId !== rg.encrypted_id" :size="15" />
@@ -2159,21 +2152,13 @@ onBeforeUnmount(() => {
               <template v-else>
                 <!-- Cariye İşle (İkon Buton / Rozet) -->
                 <template v-if="inv.entegrator_durum_kodu !== 'IPTAL'">
-                  <span
-                    v-if="inv.cariye_islendi == 1"
-                    class="fatura-icon-action-btn fatura-icon-action-btn--synced"
-                    title="Cari hareketlerine işlendi"
-                  >
-                    <CheckCheck :size="15" />
-                  </span>
                   <button
-                    v-else
                     type="button"
                     class="fatura-icon-action-btn fatura-icon-action-btn--sync"
                     :class="{ 'is-loading': syncingInvoiceId === inv.encrypted_id }"
-                    :disabled="syncingInvoiceId === inv.encrypted_id"
-                    title="Cariye İşle"
-                    aria-label="Cariye İşle"
+                    :disabled="syncingInvoiceId === inv.encrypted_id || isCariyeIslePasif(inv)"
+                    :title="cariyeIsleBaslik(inv)"
+                    :aria-label="cariyeIsleBaslik(inv)"
                     @click="openSyncToCariModal(inv)"
                   >
                     <ArrowLeftRight v-if="syncingInvoiceId !== inv.encrypted_id" :size="15" />
@@ -2237,22 +2222,13 @@ onBeforeUnmount(() => {
             <div class="fatura-preview-header__actions">
               <!-- Cariye İşle Butonu / Rozeti (Önizleme Başlığı) -->
               <template v-if="previewInvoice && previewInvoice.entegrator_durum_kodu !== 'TASLAK' && previewInvoice.entegrator_durum_kodu !== 'IPTAL'">
-                <span
-                  v-if="previewInvoice.cariye_islendi == 1"
-                  class="fatura-preview-synced-badge"
-                  title="Cari hareketlerine işlendi"
-                >
-                  <CheckCheck :size="14" />
-                  <span class="synced-text">Cariye İşlendi</span>
-                </span>
                 <button
-                  v-else
                   type="button"
                   class="fatura-icon-btn fatura-icon-btn--sync"
                   :class="{ 'is-loading': syncingInvoiceId === previewInvoice.encrypted_id }"
-                  :disabled="syncingInvoiceId === previewInvoice.encrypted_id"
-                  title="Cariye İşle"
-                  aria-label="Cariye İşle"
+                  :disabled="syncingInvoiceId === previewInvoice.encrypted_id || isCariyeIslePasif(previewInvoice)"
+                  :title="cariyeIsleBaslik(previewInvoice)"
+                  :aria-label="cariyeIsleBaslik(previewInvoice)"
                   @click="openSyncToCariModal(previewInvoice)"
                 >
                   <ArrowLeftRight v-if="syncingInvoiceId !== previewInvoice.encrypted_id" :size="17" />
@@ -4728,6 +4704,12 @@ onBeforeUnmount(() => {
   color: var(--dsx-fg-0284c7);
   background: rgba(14, 165, 233, 0.1);
   border-color: rgba(14, 165, 233, 0.3);
+}
+.fatura-icon-action-btn--sync:disabled,
+.fatura-icon-btn--sync:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 .fatura-icon-action-btn--sync:active {
   background: rgba(14, 165, 233, 0.2);

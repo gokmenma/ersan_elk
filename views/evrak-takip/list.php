@@ -615,6 +615,25 @@ html:not([data-theme-preset="macos-dark"]):not([data-bs-theme="dark"]) body:not(
     vertical-align: middle !important;
 }
 
+/* İşlemler sütunu yatay kaydırmada da her zaman görünür */
+#evrakTable thead th:last-child,
+#evrakTable tbody td:last-child {
+    position: sticky;
+    right: 0;
+    z-index: 3;
+    min-width: 130px;
+    box-shadow: -6px 0 8px -6px rgba(15, 23, 42, 0.18);
+}
+#evrakTable thead th:last-child {
+    background-color: #f8fafc;
+}
+#evrakTable tbody td:last-child {
+    background-color: var(--bs-card-bg, #fff);
+}
+#evrakTable tbody tr:hover td:last-child {
+    background-color: #f1f5f9;
+}
+
 /* Tablo Butonları Standartları */
 .table-action-btn {
     width: 27px;
@@ -1025,5 +1044,6 @@ body[data-layout-mode="dark"] #evrakImzaOnayAction {
 <?php if ($canSendKep) include_once "modal/kep-send-modal.php"; ?>
 <?php include_once "modal/kep-preview-modal.php"; ?>
 
+<script>window.evrakMobilImzaAktif = <?= \App\Service\MobilImzaPadesService::isEnabled((int) ($_SESSION['firma_id'] ?? 0)) ? 'true' : 'false'; ?>;</script>
 <script src="<?= Helper::assetVersion('views/evrak-takip/js/mobil-imza.js'); ?>"></script>
 <script src="<?= Helper::assetVersion('views/evrak-takip/js/evrak-takip.js'); ?>"></script>

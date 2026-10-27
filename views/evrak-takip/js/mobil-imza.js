@@ -51,7 +51,7 @@
 
     const poll = () => {
       if (finished) return;
-      post(apiUrl, { action: "evrak-mobil-imza-durum", token: token })
+      post(apiUrl, { action: options.statusAction || "evrak-mobil-imza-durum", token: token })
         .then(response => {
           if (finished) return;
           networkErrors = 0;
@@ -65,6 +65,10 @@
           }
           if (data.state === "imzalandi") {
             stop();
+            if (options.skipSuccessDialog) {
+              if (typeof options.onSuccess === "function") options.onSuccess(response);
+              return;
+            }
             let message = escapeHtml(response.message);
             if (data.completed && data.auto_kep) {
               message += "<br><br><b>KEP gönderimi:</b> Mobil imza ile otomatik KEP paketi imzalanamaz. KEP gönderimini evrak listesinden başlatınız.";
@@ -84,7 +88,7 @@
         });
     };
 
-    post(apiUrl, { action: "evrak-mobil-imza-baslat", id: options.id })
+    post(apiUrl, Object.assign({ action: options.startAction || "evrak-mobil-imza-baslat" }, options.startData || { id: options.id }))
       .then(response => {
         if (finished) {
           if (response.status === "success" && response.data && response.data.token) {

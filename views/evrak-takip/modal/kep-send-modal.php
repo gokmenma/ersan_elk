@@ -10,6 +10,7 @@
 #modalKepGonderisi .kep-header-account strong{font-size:12px}#modalKepGonderisi .kep-header-account .badge{font-size:10px}
 #modalKepGonderisi .kep-compose-card{padding:1rem 1.1rem;margin-bottom:1rem;border:1px solid #e5eaf1;border-radius:16px;background:#fff;box-shadow:0 5px 18px rgba(31,41,55,.035)}
 #modalKepGonderisi .kep-compose-card:last-of-type{margin-bottom:0}
+#modalKepGonderisi .form-floating:has(:required)>label::after{content:" *";color:#f1416c;font-weight:700}
 #modalKepGonderisi .kep-section-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:.8rem}
 #modalKepGonderisi .kep-section-heading{display:flex;align-items:center;gap:10px}
 #modalKepGonderisi .kep-section-index{display:grid;place-items:center;width:28px;height:28px;flex:0 0 28px;border-radius:9px;background:#eef6ff;color:#2484d8;font-size:12px;font-weight:800}
@@ -25,7 +26,7 @@
 #modalKepGonderisi .note-editable{min-height:135px!important;max-height:185px;overflow-y:auto;background:#fff}
 #modalKepGonderisi #modalKepDogrulamaSonuc:empty{display:none}
 #modalKepGonderisi #modalKepDogrulamaSonuc{padding:.55rem .7rem;margin:.65rem 0 0!important;background:#f8fafc;border-radius:8px}
-#modalKepGonderisi #btnModalKepGonder{min-width:170px;border-radius:9px;box-shadow:0 6px 14px rgba(52,195,143,.2)}
+#modalKepGonderisi #btnModalKepGonder::after{display:none}#modalKepGonderisi #btnModalKepGonder{min-width:170px;border-radius:9px;box-shadow:0 6px 14px rgba(52,195,143,.2)}
 #modalKepGonderisi .kep-sign-status{display:flex;align-items:center;gap:10px;min-width:0;padding:.45rem .65rem;border:1px solid #e5eaf1;border-radius:12px;background:#f8fafc}
 #modalKepGonderisi .kep-sign-status-icon{display:grid;place-items:center;width:32px;height:32px;flex:0 0 32px;border-radius:10px;background:#e8f8f1;color:#1aa374;font-size:18px}
 #modalKepGonderisi .kep-sign-status-copy{min-width:0;line-height:1.25}
@@ -62,7 +63,7 @@
                     <?php endif; ?>
 
                     <section class="kep-compose-card">
-                    <div class="kep-section-title"><div class="kep-section-heading"><span class="kep-section-index">1</span><div><strong>Alıcı Bilgileri</strong><small class="d-block mt-1">KEP adresini yazın veya adres defterinden seçin</small></div></div></div>
+                    <div class="kep-section-title"><div class="kep-section-heading"><span class="kep-section-index">1</span><div><strong>Alıcı Bilgileri <span class="text-danger" title="Zorunlu">*</span></strong><small class="d-block mt-1">KEP adresini yazın veya adres defterinden seçin</small></div></div></div>
                     <div class="row kep-recipient-grid align-items-stretch">
                     <div class="col-md-8 position-relative">
                         <?php echo \App\Helper\Form::FormFloatTextarea('modal_kep_alicilar', '', 'kurum@hs01.kep.tr; ikinci@hs01.kep.tr', 'Alıcılar', 'users', 'form-control font-monospace pe-5', true, '72px', 2, 'data-form-name="kep_alicilar"'); ?>
@@ -84,7 +85,7 @@
                     </section>
 
                     <section class="kep-compose-card">
-                    <div class="kep-section-title"><div class="kep-section-heading"><span class="kep-section-index">2</span><div><strong>İleti Bilgileri</strong><small class="d-block mt-1">Konu ve kısa referans bilgisini girin</small></div></div></div>
+                    <div class="kep-section-title"><div class="kep-section-heading"><span class="kep-section-index">2</span><div><strong>İleti Bilgileri <span class="text-danger" title="Zorunlu">*</span></strong><small class="d-block mt-1">Konu ve kısa referans bilgisini girin</small></div></div></div>
                     <div class="row g-3">
                         <div class="col-md-8"><?php echo \App\Helper\Form::FormFloatInput('text', 'modal_kep_konu', '', 'İleti konusu', 'Konu', 'type', 'form-control', true, 255, 'off', false, 'data-form-name="kep_konu"'); ?></div>
                         <div class="col-md-4">
@@ -101,7 +102,7 @@
                     <section class="kep-compose-card">
                     <div class="row g-3">
                         <div class="col-12">
-                            <div class="kep-section-title"><div class="kep-section-heading"><span class="kep-section-index">3</span><div><strong>İleti Metni</strong><small class="d-block mt-1">Alıcıya iletilecek açıklamayı yazın</small></div></div></div>
+                            <div class="kep-section-title"><div class="kep-section-heading"><span class="kep-section-index">3</span><div><strong>İleti Metni <span class="text-danger" title="Zorunlu">*</span></strong><small class="d-block mt-1">Alıcıya iletilecek açıklamayı yazın</small></div></div></div>
                             <textarea id="modal_kep_icerik" class="form-control" rows="8" data-form-name="kep_icerik" required></textarea>
                         </div>
                         <div class="col-12">
@@ -126,7 +127,15 @@
                     </div>
                     <div class="kep-footer-actions d-flex align-items-center gap-2 ms-auto">
                         <button type="button" class="btn btn-outline-secondary px-3" data-bs-dismiss="modal">Vazgeç</button>
-                        <button type="submit" class="btn btn-success px-4" id="btnModalKepGonder" data-settings-ready="<?php echo ($kepSettings && !empty($kepSettings['kep_adresi']) && !empty($kepSettings['has_user_credentials'])) ? '1' : '0'; ?>" disabled><i class="bx bx-paper-plane me-1"></i> İmzala ve Gönder</button>
+                        <div class="dropup">
+                            <button type="button" class="btn btn-success px-4 dropdown-toggle" id="btnModalKepGonder" data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false" data-settings-ready="<?php echo ($kepSettings && !empty($kepSettings['kep_adresi']) && !empty($kepSettings['has_user_credentials'])) ? '1' : '0'; ?>" disabled><i class="bx bx-paper-plane me-1"></i> İmzala ve Gönder <i class="bx bx-chevron-up ms-1"></i></button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-2">
+                                <li><button type="button" class="dropdown-item d-flex align-items-center gap-2 py-2" id="btnModalKepEimzaGonder"><i class="bx bx-shield-quarter text-success font-size-18"></i> E-İmza İle Onayla</button></li>
+                                <?php if (\App\Service\MobilImzaPadesService::isEnabled((int) ($_SESSION['firma_id'] ?? 0))): ?>
+                                <li><button type="button" class="dropdown-item d-flex align-items-center gap-2 py-2" id="btnModalKepMobilGonder"><i class="bx bx-mobile-alt text-info font-size-18"></i> Mobil İmza İle Onayla</button></li>
+                                <?php endif; ?>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </form>

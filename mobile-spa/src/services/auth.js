@@ -38,6 +38,9 @@ const state = reactive({
   menuOrder: loadCachedMenuOrder(),
 })
 
+const VERIFY_TTL = 45000
+let verifiedAt = 0
+
 function applySession(payload) {
   state.authenticated = Boolean(payload.authenticated)
   state.csrfToken = payload.csrf_token || ''
@@ -73,10 +76,26 @@ export const auth = {
     if (state.ready && !force) return state
     try {
       applySession(await request())
+      verifiedAt = Date.now()
     } finally {
       state.ready = true
     }
     return state
+  },
+  isFresh() {
+    return state.ready && state.authenticated && Date.now() - verifiedAt < VERIFY_TTL
+  },
+  invalidate() {
+    verifiedAt = 0
+  },
+  expire() {
+    verifiedAt = 0
+    state.authenticated = false
+    state.user = null
+    state.company = null
+    state.companies = []
+    state.permissions = {}
+    clearDashboardCache()
   },
   async login(credentials) {
     const payload = await request('login', {

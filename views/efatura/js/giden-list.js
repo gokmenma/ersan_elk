@@ -454,9 +454,12 @@ $(document).ready(function() {
                     btns += `<button type="button" class="btn btn-subtle-info table-action-btn efatura-history" data-id="${row.encrypted_id}" title="İşlem Geçmişi"><i class="bx bx-history font-size-15"></i></button>`;
 
                     // 6. Cariye İşle (Cariye işlenmemiş faturalar için, taslak/iptal hariç)
-                    if (row.cariye_islendi == 0 && row.entegrator_durum_kodu !== 'TASLAK' && row.entegrator_durum_kodu !== 'IPTAL') {
+                    if (row.entegrator_durum_kodu !== 'TASLAK' && row.entegrator_durum_kodu !== 'IPTAL') {
                         const fNo = (!row.fatura_no || row.fatura_no === 'Taslak') ? '' : row.fatura_no;
-                        btns += `<button type="button" class="btn btn-subtle-success table-action-btn btn-cariye-isle" data-id="${row.encrypted_id}" data-fatura-no="${fNo}" title="Cariye İşle"><i class="bx bx-transfer-alt font-size-15"></i></button>`;
+                        const reddedildi = /^RED/.test(String(row.entegrator_durum_kodu || '').toUpperCase()) || row.ticari_yanit === 'RED';
+                        const cariyePasif = row.cariye_islendi == 1 || reddedildi;
+                        const cariyeBaslik = row.cariye_islendi == 1 ? 'Cariye işlendi' : (reddedildi ? 'Reddedilen fatura cariye işlenemez' : 'Cariye İşle');
+                        btns += `<button type="button" class="btn btn-subtle-success table-action-btn btn-cariye-isle" data-id="${row.encrypted_id}" data-fatura-no="${fNo}" title="${cariyeBaslik}" ${cariyePasif ? 'disabled' : ''}><i class="bx bx-transfer-alt font-size-15"></i></button>`;
                     }
 
                     // 7. Diğer İşlemler Açılır Menü Butonu (3 Nokta - Slate Soft)
@@ -931,8 +934,9 @@ $(document).ready(function() {
         }
 
         // Cariye İşle: Cariye işlenmemiş faturalar için (taslak/iptal hariç)
-        if (data.cariye_islendi == 0 && status !== 'TASLAK' && status !== 'IPTAL') {
-            $('.cm-cariye-isle-action').show();
+        if (status !== 'TASLAK' && status !== 'IPTAL') {
+            const cmReddedildi = /^RED/.test(String(status || '').toUpperCase()) || data.ticari_yanit === 'RED';
+            $('.cm-cariye-isle-action').show().toggleClass('disabled', data.cariye_islendi == 1 || cmReddedildi);
         } else {
             $('.cm-cariye-isle-action').hide();
         }
@@ -1247,6 +1251,7 @@ $(document).ready(function() {
         } else if (action === 'cancel') {
             cancelInvoice(id);
         } else if (action === 'cariye-isle') {
+            if ($(this).hasClass('disabled')) return;
             const no = selectedRowData.fatura_no || '';
             syncFaturaToCari(id, no);
         }

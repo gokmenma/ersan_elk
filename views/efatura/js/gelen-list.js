@@ -402,9 +402,11 @@ $(document).ready(function() {
                     btns += `<button type="button" class="btn btn-sm btn-subtle-info table-action-btn btn-history efatura-history" data-id="${row.encrypted_id}" title="Geçmiş / Loglar"><i class="bx bx-history font-size-15"></i></button>`;
 
                     // 6. Cariye İşle (Cariye işlenmemiş gelen faturalar için)
-                    if (row.cariye_islendi == 0) {
+                    {
                         const fNo = (!row.fatura_no || row.fatura_no === 'Taslak') ? '' : row.fatura_no;
-                        btns += `<button type="button" class="btn btn-sm btn-subtle-success table-action-btn btn-cariye-isle" data-id="${row.encrypted_id}" data-fatura-no="${fNo}" title="Cariye İşle"><i class="bx bx-transfer-alt font-size-15"></i></button>`;
+                        const cariyePasif = row.cariye_islendi == 1 || row.ticari_yanit === 'RED';
+                        const cariyeBaslik = row.cariye_islendi == 1 ? 'Cariye işlendi' : (row.ticari_yanit === 'RED' ? 'Reddedilen fatura cariye işlenemez' : 'Cariye İşle');
+                        btns += `<button type="button" class="btn btn-sm btn-subtle-success table-action-btn btn-cariye-isle" data-id="${row.encrypted_id}" data-fatura-no="${fNo}" title="${cariyeBaslik}" ${cariyePasif ? 'disabled' : ''}><i class="bx bx-transfer-alt font-size-15"></i></button>`;
                     }
 
                     btns += `</div>`;

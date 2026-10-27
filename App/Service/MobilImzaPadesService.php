@@ -35,10 +35,7 @@ final class MobilImzaPadesService
         if (!self::isEnabled($firmaId)) {
             throw new \RuntimeException('Mobil imza hizmeti etkin değil. Ayarlar > Mobil İmza sekmesinden etkinleştiriniz.');
         }
-        $msisdn = $this->model->getUserMsisdn($userId, (int) ($_SESSION['owner_id'] ?? 0));
-        if ($msisdn === '') {
-            throw new \RuntimeException('Mobil imza hattınız tanımlı değil. Ayarlar > Mobil İmza sekmesinden hattınızı tanımlatınız.');
-        }
+        $msisdn = $this->userMsisdn($userId);
         $this->purgeExpiredFiles();
 
         $pades = new PadesEImzaService();
@@ -96,6 +93,46 @@ final class MobilImzaPadesService
         ];
     }
 
+    public function startKep(string $tempId, int $userId): array
+    {
+        $firmaId = (int) $_SESSION['firma_id'];
+        if (!self::isEnabled($firmaId)) {
+            throw new \RuntimeException('Mobil imza hizmeti etkin değil. Ayarlar > Mobil İmza sekmesinden etkinleştiriniz.');
+        }
+        $draft = $this->kepDraft($tempId, $firmaId, $userId);
+        $digest = $this->kepDigest((string) ($draft['eHash'] ?? ''));
+        $msisdn = $this->userMsisdn($userId);
+        $this->purgeExpiredFiles();
+
+        $profile = $this->client->profileQuery($msisdn);
+        $signedAttributes = CmsSignedDataBuilder::signedAttributes($digest, $profile['cert_hash'], time());
+        $token = bin2hex(random_bytes(24));
+        $subject = trim(preg_replace('/\s+/u', ' ', (string) ($draft['subject'] ?? '')));
+        $displayText = mb_substr('KEP iletisini imzalıyorsunuz' . ($subject !== '' ? ': ' . $subject : ''), 0, self::DISPLAY_MAX_LENGTH);
+
+        $request = $this->client->signHash($msisdn, hash('sha256', $signedAttributes, true), $displayText, $profile['profile'], self::SIGN_TIMEOUT);
+        $this->model->createTransaction([
+            'firma_id' => $firmaId,
+            'evrak_id' => (int) ($draft['evrak_id'] ?? 0),
+            'kullanici_id' => $userId,
+            'token' => $token,
+            'msisdn_maskeli' => TurkcellMobilImzaClient::maskMsisdn($msisdn),
+            'mssp_trans_id' => $request['transaction_id'],
+            'kaynak_pdf_sha256' => hash('sha256', $digest),
+            'hazir_pdf_yolu' => '',
+            'byte_range' => json_encode(['kep' => $tempId]),
+            'imzali_oznitelikler' => base64_encode($signedAttributes),
+            'sertifika_ozeti' => bin2hex($profile['cert_hash']),
+            'son_gecerlilik' => date('Y-m-d H:i:s', time() + self::SIGN_TIMEOUT + 60),
+        ]);
+
+        return [
+            'token' => $token,
+            'msisdn' => TurkcellMobilImzaClient::maskMsisdn($msisdn),
+            'timeout' => self::SIGN_TIMEOUT,
+        ];
+    }
+
     public function poll(string $token, int $userId, string $ipAddress): array
     {
         $transaction = $this->transaction($token, $userId);
@@ -135,6 +172,10 @@ final class MobilImzaPadesService
         }
         $this->removeFile((string) $transaction->hazir_pdf_yolu);
         $this->model->clearFile((int) $transaction->id);
+
+        if (isset($approval['kep_signature'])) {
+            return ['state' => 'imzalandi', 'message' => '', 'kep_signature' => $approval['kep_signature'], 'kep_temp_id' => $approval['kep_temp_id']];
+        }
 
         return ['state' => 'imzalandi', 'message' => '', 'approval' => $approval, 'evrak_id' => (int) $transaction->evrak_id];
     }
@@ -178,6 +219,12 @@ final class MobilImzaPadesService
         $this->validateCertificate($certificate, $response['certificates'], $userId);
 
         $layout = json_decode((string) $transaction->byte_range, true);
+        if (is_array($layout) && !empty($layout['kep'])) {
+            return [
+                'kep_temp_id' => (string) $layout['kep'],
+                'kep_signature' => base64_encode(CmsSignedDataBuilder::signedData($signedAttributes, $response['signature'], $certificate, $response['certificates'])),
+            ];
+        }
         $path = dirname(__DIR__, 2) . '/' . (string) $transaction->hazir_pdf_yolu;
         if (!is_array($layout) || !is_file($path)) {
             throw new \RuntimeException('Mobil imza işlemine ait PDF bulunamadı. Lütfen yeniden imzalayınız.');
@@ -192,6 +239,52 @@ final class MobilImzaPadesService
         $signedPdf = (new PdfIncrementalSigner())->embed($preparedPdf, (array) ($layout['range'] ?? []), $cms);
 
         return (new PadesEImzaService())->finalize((int) $transaction->evrak_id, $userId, $sourcePdf, $signedPdf, $ipAddress, 'mobil_imza');
+    }
+
+    private function userMsisdn(int $userId): string
+    {
+        $msisdn = $this->model->getUserMsisdn($userId, (int) ($_SESSION['owner_id'] ?? 0));
+        if ($msisdn === '') {
+            throw new \RuntimeException('Mobil imza hattınız tanımlı değil. Ayarlar > Mobil İmza sekmesinden hattınızı tanımlatınız.');
+        }
+        return $msisdn;
+    }
+
+    private function kepDraft(string $tempId, int $firmaId, int $userId): array
+    {
+        if (!preg_match('/^[a-f0-9]{32}$/', $tempId)) {
+            throw new \RuntimeException('KEP taslağı geçersiz.');
+        }
+        $draft = $_SESSION['kep_draft_' . $tempId] ?? null;
+        if (!is_array($draft)) {
+            $directory = dirname(__DIR__, 2) . '/uploads/evrak-takip/tmp/';
+            foreach (['draft_', 'draft_evrak_'] as $prefix) {
+                if (is_file($directory . $prefix . $tempId . '.json')) {
+                    $draft = json_decode((string) file_get_contents($directory . $prefix . $tempId . '.json'), true);
+                    break;
+                }
+            }
+        }
+        if (!is_array($draft) || (int) ($draft['firm_id'] ?? 0) !== $firmaId
+            || (int) ($draft['user_id'] ?? 0) !== $userId || (int) ($draft['created_at'] ?? 0) < time() - 1800) {
+            throw new \RuntimeException('KEP taslağı bulunamadı veya süresi doldu. Lütfen yeniden deneyiniz.');
+        }
+        return $draft;
+    }
+
+    private function kepDigest(string $eHash): string
+    {
+        $raw = base64_decode($eHash, true);
+        if ($raw !== false && strlen($raw) === 32) {
+            return $raw;
+        }
+        if (preg_match('/^[a-fA-F0-9]{64}$/', $eHash)) {
+            return (string) hex2bin($eHash);
+        }
+        if ($eHash === '') {
+            throw new \RuntimeException('KEP paketinin özet değeri alınamadı.');
+        }
+        return hash('sha256', $eHash, true);
     }
 
     private function parseSignatureResponse(string $raw): array

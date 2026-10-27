@@ -1038,6 +1038,39 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 ], JSON_UNESCAPED_UNICODE);
                 break;
 
+            case 'kep-mobil-imza-baslat':
+                try {
+                    $started = (new MobilImzaPadesService())->startKep((string) ($_POST['temp_id'] ?? ''), $currentUserId);
+                } catch (\RuntimeException $e) {
+                    (new SystemLogModel())->logAction($currentUserId, 'KEP Mobil İmza Hatası', 'KEP mobil imza isteği başlatılamadı: ' . $e->getMessage(), SystemLogModel::LEVEL_IMPORTANT);
+                    throw $e;
+                } catch (\Throwable $e) {
+                    error_log('kep-mobil-imza-baslat: ' . $e->getMessage());
+                    throw new Exception('Mobil imza isteği başlatılamadı.');
+                }
+                (new SystemLogModel())->logAction($currentUserId, 'KEP Mobil İmza İsteği', "KEP iletisi için {$started['msisdn']} hattına mobil imza isteği gönderildi.", SystemLogModel::LEVEL_IMPORTANT);
+                echo json_encode(['status' => 'success', 'message' => 'İmza isteği telefonunuza gönderildi.', 'data' => $started], JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'kep-mobil-imza-durum':
+                try {
+                    $result = (new MobilImzaPadesService())->poll((string) ($_POST['token'] ?? ''), $currentUserId, (string) ($_SERVER['REMOTE_ADDR'] ?? ''));
+                } catch (\RuntimeException $e) {
+                    (new SystemLogModel())->logAction($currentUserId, 'KEP Mobil İmza Hatası', 'KEP mobil imzası tamamlanamadı: ' . $e->getMessage(), SystemLogModel::LEVEL_IMPORTANT);
+                    throw $e;
+                } catch (\Throwable $e) {
+                    error_log('kep-mobil-imza-durum: ' . $e->getMessage());
+                    throw new Exception('Mobil imza durumu sorgulanamadı.');
+                }
+                if ($result['state'] === 'imzalandi') {
+                    if (empty($result['kep_signature'])) {
+                        throw new Exception('Bu mobil imza işlemi KEP iletisine ait değil.');
+                    }
+                    (new SystemLogModel())->logAction($currentUserId, 'KEP Mobil İmza Onayı', 'KEP iletisi Turkcell mobil imza ile imzalandı; PTT KEP sevki bekleniyor.', SystemLogModel::LEVEL_IMPORTANT);
+                }
+                echo json_encode(['status' => 'success', 'data' => $result], JSON_UNESCAPED_UNICODE);
+                break;
+
             case 'evrak-mobil-imza-iptal':
                 (new MobilImzaPadesService())->cancel((string) ($_POST['token'] ?? ''), $currentUserId);
                 (new SystemLogModel())->logAction($currentUserId, 'Evrak Mobil İmza İptali', 'Bekleyen mobil imza isteği ekrandan iptal edildi.', SystemLogModel::LEVEL_INFO);

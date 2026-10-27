@@ -591,6 +591,11 @@ try {
 
         $cariHareketModel = new \App\Model\CariHareketleriModel();
 
+        $engel = $cariHareketModel->cariyeIslemeEngeli($invoiceId);
+        if ($engel !== null) {
+            faturaApiResponse(['success' => false, 'status' => 'error', 'message' => $engel], 422);
+        }
+
         // Eğer zorlama (force) onayı gelmediyse aynı tarihte aynı tutarda mevcut hareket var mı kontrol et
         if (!$force) {
             $duplicateCheck = $cariHareketModel->checkSameDateAmount($invoiceId);

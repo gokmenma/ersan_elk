@@ -192,6 +192,28 @@ class CariHareketleriModel extends Model
      * @param int|null $userId
      * @return int|null Eklenen/güncellenen cari hareket ID'si
      */
+    public function cariyeIslemeEngeli(int $faturaId): ?string
+    {
+        $stmt = $this->db->prepare("SELECT f.fatura_no, f.ticari_yanit, f.entegrator_durum_kodu FROM faturalar f WHERE f.id = :id LIMIT 1");
+        $stmt->execute(['id' => $faturaId]);
+        $fatura = $stmt->fetch(PDO::FETCH_OBJ);
+        if (!$fatura) {
+            return 'Fatura bulunamadı.';
+        }
+
+        if (($fatura->ticari_yanit ?? '') === 'RED' || strncmp(strtoupper((string)($fatura->entegrator_durum_kodu ?? '')), 'RED', 3) === 0) {
+            return 'Reddedilen fatura cariye işlenemez.';
+        }
+
+        $chk = $this->db->prepare("SELECT COUNT(*) FROM $this->table ch WHERE (ch.fatura_id = :fid OR (ch.belge_no = :bno AND ch.belge_no IS NOT NULL AND ch.belge_no != '')) AND ch.silinme_tarihi IS NULL");
+        $chk->execute(['fid' => $faturaId, 'bno' => (string)($fatura->fatura_no ?? '')]);
+        if ((int)$chk->fetchColumn() > 0) {
+            return 'Bu fatura zaten cariye işlenmiş.';
+        }
+
+        return null;
+    }
+
     public function syncFaturaHareketi(int $faturaId, ?int $userId = null, bool $autoCreateCari = false): ?int
     {
         try {

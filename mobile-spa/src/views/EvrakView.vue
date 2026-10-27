@@ -56,6 +56,12 @@ const stats = ref({
   cevap_bekleyen: 0,
   imzamda_bekleyen: 0,
 })
+const evrakRatio = computed(() => {
+  const total = Number(stats.value.toplam_evrak) || 0
+  if (!total) return { gelen: 0, giden: 0 }
+  const gelen = Math.round((Number(stats.value.gelen_evrak) / total) * 100)
+  return { gelen, giden: Math.max(0, 100 - gelen) }
+})
 const pagination = ref({ page: 1, limit: 30, total: 0, has_more: false })
 const loading = ref(true)
 const loadingMore = ref(false)
@@ -762,72 +768,72 @@ onMounted(() => {
       <span class="evrak-urgent-alert__badge">İncele</span>
     </div>
 
-    <!-- 4 Minimal Bento KPI Kartları -->
-    <div class="bento-metrics-grid evrak-metrics-grid">
-      <!-- Toplam Evrak -->
-      <button
-        type="button"
-        class="bento-metric-card"
-        :class="{ 'is-selected': activeFilter === 'all' }"
-        @click="setFilter('all')"
-      >
-        <div class="bento-metric-icon bg-primary-soft text-primary">
-          <FileText :size="20" />
+    <!-- Özet Kartı (Araç Takip standardı): metrik hücreleri aynı zamanda filtre -->
+    <section class="bento-card bento-card--dark bento-card--summary" aria-label="Evrak özeti">
+      <div class="bento-head">
+        <div class="bento-head-title">
+          <span class="dark-pill-tag">EVRAK DURUMU</span>
+          <h3>Evrak Genel Özeti</h3>
         </div>
-        <div class="bento-metric-data">
-          <span class="bento-metric-val">{{ stats.toplam_evrak }}</span>
-          <span class="bento-metric-label">Toplam Evrak</span>
+        <div class="bento-head-icons">
+          <span class="bento-mini-btn bento-mini-btn--dark" title="Evrak Özeti">
+            <FileText :size="16" />
+          </span>
         </div>
-      </button>
+      </div>
 
-      <!-- Gelen Evrak -->
-      <button
-        type="button"
-        class="bento-metric-card"
-        :class="{ 'is-selected': activeFilter === 'gelen' }"
-        @click="setFilter('gelen')"
-      >
-        <div class="bento-metric-icon bg-emerald-soft text-emerald">
-          <ArrowDownLeft :size="20" />
-        </div>
-        <div class="bento-metric-data">
-          <span class="bento-metric-val text-emerald">{{ stats.gelen_evrak }}</span>
-          <span class="bento-metric-label">Gelen Evrak</span>
-        </div>
-      </button>
+      <div class="segmented-track segmented-track--dark" title="Gelen / Giden Dağılımı">
+        <div
+          class="seg-pill seg-pill--emerald"
+          :style="{ width: `${evrakRatio.gelen}%` }"
+          :title="`Gelen: %${evrakRatio.gelen}`"
+        ></div>
+        <div
+          class="seg-pill seg-pill--blue"
+          :style="{ width: `${evrakRatio.giden}%` }"
+          :title="`Giden: %${evrakRatio.giden}`"
+        ></div>
+      </div>
 
-      <!-- Giden Evrak -->
-      <button
-        type="button"
-        class="bento-metric-card"
-        :class="{ 'is-selected': activeFilter === 'giden' }"
-        @click="setFilter('giden')"
-      >
-        <div class="bento-metric-icon bg-blue-soft text-blue">
-          <ArrowUpRight :size="20" />
-        </div>
-        <div class="bento-metric-data">
-          <span class="bento-metric-val text-blue">{{ stats.giden_evrak }}</span>
-          <span class="bento-metric-label">Giden Evrak</span>
-        </div>
-      </button>
-
-      <!-- Cevap Bekleyen -->
-      <button
-        type="button"
-        class="bento-metric-card"
-        :class="{ 'is-selected': activeFilter === 'bekleyen' }"
-        @click="setFilter('bekleyen')"
-      >
-        <div class="bento-metric-icon bg-amber-soft text-amber">
-          <Clock :size="20" />
-        </div>
-        <div class="bento-metric-data">
-          <span class="bento-metric-val text-amber">{{ stats.cevap_bekleyen }}</span>
-          <span class="bento-metric-label">Cevap Bekleyen</span>
-        </div>
-      </button>
-    </div>
+      <div class="bento-metrics-grid bento-metrics-grid--dark">
+        <button
+          type="button"
+          class="metric-cell metric-cell--filter"
+          :class="{ 'is-active': activeFilter === 'all' }"
+          @click="setFilter('all')"
+        >
+          <strong>{{ stats.toplam_evrak }} <small>Adet</small></strong>
+          <span>Toplam Evrak</span>
+        </button>
+        <button
+          type="button"
+          class="metric-cell metric-cell--filter"
+          :class="{ 'is-active': activeFilter === 'gelen' }"
+          @click="setFilter('gelen')"
+        >
+          <strong class="text-emerald">{{ stats.gelen_evrak }} <small>Adet</small></strong>
+          <span>Gelen Evrak</span>
+        </button>
+        <button
+          type="button"
+          class="metric-cell metric-cell--filter"
+          :class="{ 'is-active': activeFilter === 'giden' }"
+          @click="setFilter('giden')"
+        >
+          <strong class="text-blue">{{ stats.giden_evrak }} <small>Adet</small></strong>
+          <span>Giden Evrak</span>
+        </button>
+        <button
+          type="button"
+          class="metric-cell metric-cell--filter"
+          :class="{ 'is-active': activeFilter === 'bekleyen' }"
+          @click="setFilter('bekleyen')"
+        >
+          <strong class="text-amber">{{ stats.cevap_bekleyen }} <small>Adet</small></strong>
+          <span>Cevap Bekleyen</span>
+        </button>
+      </div>
+    </section>
 
     <!-- Hızlı Arama & Filtre Hapları -->
     <div class="evrak-filter-section">
@@ -848,51 +854,6 @@ onMounted(() => {
           @click="handleSearch('')"
         >
           <X :size="16" />
-        </button>
-      </div>
-
-      <!-- Kategori Hapları -->
-      <div class="clay-tabs-wrap evrak-tabs">
-        <button
-          type="button"
-          class="clay-filter-pill"
-          :class="{ 'is-active': activeFilter === 'all' }"
-          @click="setFilter('all')"
-        >
-          Tümü ({{ stats.toplam_evrak }})
-        </button>
-        <button
-          type="button"
-          class="clay-filter-pill"
-          :class="{ 'is-active': activeFilter === 'gelen' }"
-          @click="setFilter('gelen')"
-        >
-          Gelen ({{ stats.gelen_evrak }})
-        </button>
-        <button
-          type="button"
-          class="clay-filter-pill"
-          :class="{ 'is-active': activeFilter === 'giden' }"
-          @click="setFilter('giden')"
-        >
-          Giden ({{ stats.giden_evrak }})
-        </button>
-        <button
-          type="button"
-          class="clay-filter-pill"
-          :class="{ 'is-active': activeFilter === 'bekleyen' }"
-          @click="setFilter('bekleyen')"
-        >
-          Cevap Bekleyen
-        </button>
-        <button
-          v-if="stats.imzamda_bekleyen > 0"
-          type="button"
-          class="clay-filter-pill clay-filter-pill--urgent"
-          :class="{ 'is-active': activeFilter === 'imzam' }"
-          @click="setFilter('imzam')"
-        >
-          İmzamda ({{ stats.imzamda_bekleyen }})
         </button>
       </div>
     </div>
@@ -2316,57 +2277,6 @@ onMounted(() => {
   border-radius: var(--ds-radius-pill);
 }
 
-/* 4 Bento Metrik Izgarası */
-.evrak-metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  margin-bottom: 18px;
-}
-.bento-metric-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px;
-  background: var(--ds-surface);
-  border: 1px solid var(--ds-border-subtle);
-  border-radius: var(--ds-radius-tile);
-  box-shadow: var(--ds-shadow-tile);
-  cursor: pointer;
-  text-align: left;
-  transition: all 0.2s ease;
-}
-.bento-metric-card.is-selected {
-  border-color: var(--ds-primary-ink);
-  box-shadow: 0 0 0 2px var(--ds-primary);
-}
-.bento-metric-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.bento-metric-data {
-  min-width: 0;
-}
-.bento-metric-val {
-  display: block;
-  font-size: 20px;
-  font-weight: 800;
-  line-height: 1.1;
-  color: var(--ds-ink);
-}
-.bento-metric-label {
-  display: block;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--ds-muted);
-  margin-top: 3px;
-}
-
 /* Renk Kutuları */
 .bg-primary-soft { background: var(--dsx-bg-f1f5f9); }
 .bg-emerald-soft { background: var(--dsx-bg-ecfdf5); }
@@ -2420,13 +2330,6 @@ onMounted(() => {
   color: var(--ds-muted);
   cursor: pointer;
 }
-.evrak-tabs {
-  overflow-x: auto;
-  white-space: nowrap;
-  gap: 8px;
-  padding-bottom: 2px;
-  -webkit-overflow-scrolling: touch;
-}
 .clay-filter-pill--urgent {
   background: #f59e0b !important;
   color: #fff !important;
@@ -2437,7 +2340,10 @@ onMounted(() => {
 .evrak-cards-list {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 8px;
+}
+.evrak-cards-list > .evrak-card {
+  margin-bottom: 0;
 }
 .evrak-card {
   padding: 16px;

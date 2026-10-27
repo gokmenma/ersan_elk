@@ -1,16 +1,17 @@
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ArrowRight, Eye, EyeOff, LockKeyhole, ShieldCheck, UserRound } from '@lucide/vue'
 import { auth } from '../services/auth.js'
 
 const router = useRouter()
+const route = useRoute()
 const username = ref('')
 const password = ref('')
 const remember = ref(true)
 const showPassword = ref(false)
 const busy = ref(false)
-const error = ref('')
+const error = ref(route.query.expired ? 'Oturumunuz sona erdi, lütfen tekrar giriş yapın.' : '')
 const logoSpinning = ref(false)
 
 function triggerLogoSpin() {

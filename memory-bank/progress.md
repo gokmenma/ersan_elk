@@ -1971,3 +1971,5 @@
 - 2026-10-26: KEP ayarlarına "otomatik aktarım hesabı" göstergesi ve "Hesabı ben olarak ayarla" eklendi; cron hata verince firma KEP yetkililerine bildirim (6 saatte bir). BildirimModel::sendToFirmAdmins yok, broadcastByPermissionForFirm kullanıldı.
 
 - [x] Gelir-Gider: EFT ücreti + BSMV tek kayıt gösterimi (masaüstü + mobil SPA)
+
+- [x] 2026-10-27 Evrak Takip: işlemler sütunu sticky, KEP iletisi için mobil imza seçeneği (SQL policy scripti çalıştırılmalı, gerçek cihazla test bekliyor).

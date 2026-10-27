@@ -5545,3 +5545,42 @@ body.is-card-dragging {
   --dsx-fg-ea580c: #df7e4b;
   --dsx-sh-ffffff-a095: rgba(255, 255, 255, 0.03);
 }
+
+.nav-progress { position: fixed; z-index: 100000; top: 0; left: 0; right: 0; height: 3px; overflow: hidden; pointer-events: none; opacity: 0; transition: opacity .15s ease; }
+.nav-progress.is-active { opacity: 1; }
+.nav-progress__bar { position: absolute; top: 0; bottom: 0; left: 0; width: 40%; border-radius: 999px; background: var(--ds-primary-ink); animation: nav-progress-slide 1.1s cubic-bezier(.4,0,.2,1) infinite; }
+@keyframes nav-progress-slide { 0% { left: -40%; } 100% { left: 100%; } }
+.nav-slow-hint { position: fixed; z-index: 100000; top: calc(var(--ds-safe-top, 0px) + 12px); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; max-width: calc(100% - 32px); padding: 10px 16px; border-radius: 999px; background: #191d24; color: #f8fafc; font-size: 13px; font-weight: 600; box-shadow: var(--ds-shadow-bento-dark, 0 10px 24px rgba(15,23,42,.3)); pointer-events: none; }
+.nav-slow-hint__spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(248,250,252,.3); border-top-color: #f8fafc; animation: nav-spin .8s linear infinite; }
+@keyframes nav-spin { to { transform: rotate(360deg); } }
+.bottom-nav .nav-link:active, .bottom-nav button.nav-link:active { transform: scale(.92); opacity: .8; }
+
+
+/* Özet Kartı (Araç Takip standardı): kompakt koyu bento + filtre olarak çalışan metrik hücreleri */
+.bento-card--summary {
+  padding: 13px 15px 14px;
+  border-radius: 20px;
+}
+.bento-card--summary .bento-head { margin-bottom: 8px; }
+.bento-card--summary .bento-head-title h3 { font-size: 15px; font-weight: 700; line-height: 1.2; }
+.bento-card--summary .dark-pill-tag { font-size: 8px; padding: 2px 6px; margin-bottom: 2px; }
+.bento-card--summary .bento-mini-btn { width: 28px; height: 28px; }
+.bento-card--summary .segmented-track { height: 5px; margin-bottom: 9px; gap: 2.5px; }
+.bento-card--summary .bento-metrics-grid { gap: 7px; }
+.bento-card--summary .metric-cell { padding: 7px 10px; border-radius: 10px; background: rgba(255, 255, 255, 0.04); }
+.bento-card--summary .metric-cell strong { font-size: 14.5px; font-weight: 800; line-height: 1.2; }
+.bento-card--summary .metric-cell strong small { font-size: 9.5px; font-weight: 500; }
+.bento-card--summary .metric-cell span { font-size: 9.5px; margin-top: 1px; line-height: 1.2; opacity: 0.85; }
+.metric-cell--filter {
+  align-items: flex-start;
+  min-height: 44px;
+  border: 1px solid transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+.bento-metrics-grid--dark .metric-cell--filter.is-active {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.55);
+}
