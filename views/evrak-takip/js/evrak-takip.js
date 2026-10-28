@@ -899,6 +899,7 @@ $(document).ready(function () {
 
   // DataTables Özel Filtreleri
   let imzaFiltresiAktif = false;
+  let activeApprovalFilter = "";
   let activeQuickFilter = "all";
 
   $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
@@ -941,7 +942,7 @@ $(document).ready(function () {
         data: function (data) {
           data.action = "evrak-listesi";
           data.quick_filter = activeQuickFilter;
-          data.signature_only = imzaFiltresiAktif ? 1 : 0;
+          data.signature_only = imzaFiltresiAktif ? 1 : 0; data.approval_filter = activeApprovalFilter;
         }
       },
       order: [[3, "desc"]],
@@ -957,7 +958,7 @@ $(document).ready(function () {
     }) : {
       processing: true,
       serverSide: true,
-      ajax: { url: api_url, type: "POST", data: function (data) { data.action = "evrak-listesi"; data.quick_filter = activeQuickFilter; data.signature_only = imzaFiltresiAktif ? 1 : 0; } },
+      ajax: { url: api_url, type: "POST", data: function (data) { data.action = "evrak-listesi"; data.quick_filter = activeQuickFilter; data.signature_only = imzaFiltresiAktif ? 1 : 0; data.approval_filter = activeApprovalFilter; } },
       order: [[3, "desc"]],
       columnDefs: [
         { targets: 3, type: "date" },
@@ -974,6 +975,18 @@ $(document).ready(function () {
     $(".status-quick-filter").removeClass("active");
     $(this).addClass("active");
     activeQuickFilter = $(this).data("filter-tip") || "all";
+    if (evrakDataTable) {
+      evrakDataTable.draw();
+    }
+  });
+
+  $(".approval-quick-filter").on("click", function () {
+    const selected = String($(this).data("approval"));
+    activeApprovalFilter = activeApprovalFilter === selected ? "" : selected;
+    $(".approval-quick-filter").each(function () {
+      const active = String($(this).data("approval")) === activeApprovalFilter;
+      $(this).toggleClass("active btn-secondary text-white", active).toggleClass("btn-outline-secondary bg-white", !active).attr("aria-pressed", active ? "true" : "false");
+    });
     if (evrakDataTable) {
       evrakDataTable.draw();
     }

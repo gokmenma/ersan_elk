@@ -285,6 +285,17 @@ $title = "Evrak Listesi";
 
             <!-- Sağ Araç Çubuğu -->
             <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+                <div class="d-flex align-items-center gap-1 flex-wrap" id="approvalFilterGroup" role="group" aria-label="Onay durumu filtresi">
+                    <button type="button" class="btn btn-sm btn-outline-secondary bg-white px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold approval-quick-filter" data-approval="bekleyen" aria-pressed="false">
+                        <i class="bx bx-time-five text-warning font-size-15"></i> <span class="font-size-12">Onay Bekleyenler</span>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary bg-white px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold approval-quick-filter" data-approval="onayli" aria-pressed="false">
+                        <i class="bx bx-check-double text-success font-size-15"></i> <span class="font-size-12">Onaylı</span>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary bg-white px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold approval-quick-filter" data-approval="taslak" aria-pressed="false">
+                        <i class="bx bx-edit-alt text-secondary font-size-15"></i> <span class="font-size-12">Taslak</span>
+                    </button>
+                </div>
                 <button type="button" class="btn btn-sm btn-subtle-success px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderExportExcel" title="Excel'e Aktar">
                     <i class="bx bx-file font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Excel</span>
                 </button>

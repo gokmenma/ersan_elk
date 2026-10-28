@@ -68,6 +68,15 @@ class EvrakTakipModel extends Model
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
+    private static function approvalStatusFromLabel(string $label): string
+    {
+        $label = mb_strtoupper(trim($label), 'UTF-8');
+        if (str_contains($label, 'ONAYLI')) return 'onaylandi';
+        if (str_contains($label, 'ONAYDA') || str_contains($label, 'İMZANIZDA')) return 'onay_bekliyor';
+        if (str_contains($label, 'TASLAK')) return 'taslak';
+        return $label;
+    }
+
     /**
      * DataTables sunucu taraflı evrak listesi.
      * Arama, kolon filtreleri, sıralama ve sayfalama veritabanında uygulanır.
@@ -111,8 +120,7 @@ class EvrakTakipModel extends Model
                     if (in_array('BEKLEMEDE', $values, true)) $replyClauses[] = '(et.cevap_verildi_mi = 0 OR et.cevap_verildi_mi IS NULL)';
                     if ($replyClauses) $where[] = '(' . implode(' OR ', $replyClauses) . ')';
                 } else {
-                    $statusMap = ['ONAYLI' => 'onaylandi', 'ONAYDA' => 'onay_bekliyor', 'İMZANIZDA' => 'onay_bekliyor', 'TASLAK' => 'taslak'];
-                    if ((int) $index === 10) $values = array_values(array_unique(array_map(static fn(string $item): string => $statusMap[mb_strtoupper($item, 'UTF-8')] ?? $item, $values)));
+                    if ((int) $index === 10) $values = array_values(array_unique(array_map(static fn(string $item): string => self::approvalStatusFromLabel($item), $values)));
                     $placeholders = [];
                     foreach ($values as $valueIndex => $selectedValue) {
                         $bindingKey = $key . '_' . $valueIndex;
@@ -143,9 +151,8 @@ class EvrakTakipModel extends Model
             } elseif ((int) $index === 9) {
                 $where[] = $value === 'EVET' ? 'et.cevap_verildi_mi = 1' : '(et.cevap_verildi_mi = 0 OR et.cevap_verildi_mi IS NULL)';
             } elseif ((int) $index === 10) {
-                $statusMap = ['ONAYLI' => 'onaylandi', 'ONAYDA' => 'onay_bekliyor', 'İMZANIZDA' => 'onay_bekliyor', 'TASLAK' => 'taslak'];
                 $where[] = 'et.onay_durumu = :' . $key;
-                $bindings[$key] = $statusMap[mb_strtoupper($value, 'UTF-8')] ?? $value;
+                $bindings[$key] = self::approvalStatusFromLabel($value);
             } else {
                 if ($mode === 'null' || $mode === 'not_null') {
                     $where[] = $mode === 'null'
@@ -170,6 +177,11 @@ class EvrakTakipModel extends Model
             $bindings['quick_type'] = $quickFilter;
         } elseif ($quickFilter === 'cevap_bekleyen') {
             $where[] = "et.evrak_tipi = 'gelen' AND (et.cevap_verildi_mi = 0 OR et.cevap_verildi_mi IS NULL)";
+        }
+        $approvalFilter = ['bekleyen' => 'onay_bekliyor', 'onayli' => 'onaylandi', 'taslak' => 'taslak'][(string) ($params['approval_filter'] ?? '')] ?? null;
+        if ($approvalFilter !== null) {
+            $where[] = "et.evrak_tipi = 'giden' AND et.onay_durumu = :approval_filter";
+            $bindings['approval_filter'] = $approvalFilter;
         }
         if (!empty($params['signature_only'])) {
             $where[] = "EXISTS (SELECT 1 FROM evrak_takip_onaylari mine WHERE mine.evrak_id = et.id AND mine.firma_id = et.firma_id AND mine.kullanici_id = :current_user AND mine.durum = 'bekliyor' AND mine.sira = (SELECT MIN(next_o.sira) FROM evrak_takip_onaylari next_o WHERE next_o.evrak_id = et.id AND next_o.firma_id = et.firma_id AND next_o.durum = 'bekliyor'))";
@@ -803,7 +815,7 @@ class EvrakTakipModel extends Model
              LEFT JOIN users u ON u.id = h.user_id
              LEFT JOIN users t ON t.id = h.hedef_user_id
              WHERE h.firma_id = ? AND h.evrak_id = ? AND h.islem IN ({$in})
-             ORDER BY h.created_at ASC, h.id ASC
+             ORDER BY h.created_at DESC, h.id DESC
              LIMIT " . max(1, min(1000, $limit))
         );
         $stmt->execute(array_merge([(int) $_SESSION['firma_id'], $evrakId], self::ONAY_ISLEMLERI));
