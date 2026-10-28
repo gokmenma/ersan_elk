@@ -1020,6 +1020,7 @@ function toggleSigner(userId) {
 
 onMounted(() => {
   searchQuery.value = String(route.query.search || '').trim()
+  if (route.query.filtre === 'imzam') activeFilter.value = 'imzam'
   loadList(true)
   loadMeta()
   if (route.query.open) openDetail({ id: String(route.query.open) })

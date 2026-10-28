@@ -77,6 +77,19 @@ try {
     ];
 
     if (dashboardCan(['evrak-takip/list'])) {
+        $evrakModel = new \App\Model\EvrakTakipModel();
+        $signatureCount = $evrakModel->countPendingSignatureForUser($userId);
+        if ($signatureCount > 0) {
+            $data['evrak_signature'] = [
+                'count' => $signatureCount,
+                'items' => array_map(static fn(object $row): array => [
+                    'id' => \App\Helper\Security::encrypt((int) $row->id),
+                    'konu' => (string) ($row->konu ?: 'Belirtilmedi'),
+                    'kurum_adi' => (string) ($row->kurum_adi ?: '-'),
+                    'tarih' => !empty($row->tarih) ? date('d.m.Y', strtotime((string) $row->tarih)) : '',
+                ], $evrakModel->pendingSignatureItemsForUser($userId, 5)),
+            ];
+        }
         $uetsUnread = (new \App\Model\EvrakSevkModel())->unreadUets($firmaId, $userId, 5);
         if ($uetsUnread['count'] > 0) {
             $data['uets_unread'] = [

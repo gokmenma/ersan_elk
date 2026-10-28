@@ -849,6 +849,16 @@ try {
             }
         }
 
+        if ($evrak && ($evrak->evrak_tipi ?? '') === 'giden' && empty($evrak->ust_yazi_gerekli_degil)) {
+            array_unshift($ekListesi, [
+                'id' => '',
+                'name' => 'Üst Yazı.pdf',
+                'path' => '',
+                'size' => 0,
+                'url' => '/api/evrak.php?action=pdf&id=' . urlencode(Security::encrypt((int) $evrak->id)),
+            ]);
+        }
+
         $icerik = '';
         if ($mesaj && !empty($mesaj['icerik'])) {
             $icerik = (string) $mesaj['icerik'];
@@ -862,7 +872,7 @@ try {
         $aliciListesi = array_values(array_filter(array_map('trim', preg_split('/[;,\n\r]+/', (string) $rawAlicilar))));
 
         $durum = (string) ($mesaj['durum'] ?? $evrak->islem_durumu ?? 'gonderildi');
-        $durumMetni = 'KEP İletisi Sevk Edildi';
+        $durumMetni = ($mesaj || !empty($evrak->kep_mesaj_id)) ? 'KEP İletisi Sevk Edildi' : 'Henüz KEP ile Gönderilmedi';
         $durumTheme = 'primary';
         if (!empty($formatliDeliller)) {
             $sonDelil = end($formatliDeliller);

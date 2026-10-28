@@ -98,6 +98,7 @@ const initials = computed(() => auth.state.user?.initials || username.value.slic
 
 // Kart Tanımları ve Varsayılan Sıralama
 const DEFAULT_CARD_ORDER = [
+  'evrak_signature',
   'uets_unread',
   'personnel',
   'birthdays',
@@ -111,6 +112,12 @@ const DEFAULT_CARD_ORDER = [
 ]
 
 const CARD_DEFINITIONS = {
+  evrak_signature: {
+    id: 'evrak_signature',
+    title: 'İmzanızı Bekleyen Evrak',
+    icon: Clock,
+    description: 'Onay sırası sizde olan giden resmî yazılar',
+  },
   uets_unread: {
     id: 'uets_unread',
     title: 'Okunmamış UETS Tebligatları',
@@ -431,6 +438,7 @@ function submitCustomAction() {
 }
 
 // Reaktif Veri Modelleri
+const evrakSignature = computed(() => (auth.state.permissions.documents ? dashboard.value.evrak_signature || null : null))
 const uetsUnread = computed(() => (auth.state.permissions.documents ? dashboard.value.uets_unread || null : null))
 const personnel = computed(() => (auth.state.permissions.personnel ? dashboard.value.personnel : null))
 const vehicles = computed(() => (auth.state.permissions.vehicles ? dashboard.value.vehicles : null))
@@ -559,6 +567,7 @@ function isCardVisible(cardId) {
   if (cardSettings.value[cardId]?.hidden) return false
 
   if (cardId === 'announcements') return announcements.value.length > 0
+  if (cardId === 'evrak_signature') return Boolean(evrakSignature.value && evrakSignature.value.count > 0)
   if (cardId === 'uets_unread') return Boolean(uetsUnread.value && uetsUnread.value.count > 0)
   if (cardId === 'pending_approvals') return Boolean(pendingApprovals.value)
   if (cardId === 'shifts') return Boolean(auth.state.permissions.shift_schedule)
@@ -1033,8 +1042,9 @@ function applyDashboard(data) {
       const known = new Set(DEFAULT_CARD_ORDER)
       const saved = data.card_preferences.order.filter((id) => known.has(id))
       const missing = DEFAULT_CARD_ORDER.filter((id) => !saved.includes(id))
-      const urgent = missing.filter((id) => id === 'uets_unread')
-      cardOrder.value = [...urgent, ...saved, ...missing.filter((id) => id !== 'uets_unread')]
+      const isUrgent = (id) => id === 'uets_unread' || id === 'evrak_signature'
+      const urgent = missing.filter(isUrgent)
+      cardOrder.value = [...urgent, ...saved, ...missing.filter((id) => !isUrgent(id))]
     }
     if (data.card_preferences.settings && typeof data.card_preferences.settings === 'object') {
       cardSettings.value = data.card_preferences.settings
@@ -1226,6 +1236,55 @@ onMounted(() => {
                 <RouterLink :to="{ path: '/personel', query: { durum: 'late' } }" class="personnel-stat-col">
                   <span><i class="ds-dot ds-dot--coral"></i>Geç Kalan</span>
                   <strong>{{ personnel.late || 0 }}</strong>
+                </RouterLink>
+              </div>
+            </section>
+
+            <!-- 1.4 İMZANIZI BEKLEYEN EVRAK -->
+            <section
+              v-else-if="cardId === 'evrak_signature' && evrakSignature"
+              class="bento-card bento-card--white approvals-bento"
+            >
+              <div class="card-inner-head">
+                <div class="card-inner-title">
+                  <Clock :size="16" class="text-amber" />
+                  <span>İmzanızı Bekleyen Evrak</span>
+                  <span class="clay-pill-tag ms-1">{{ evrakSignature.count }}</span>
+                </div>
+                <div class="card-inner-controls">
+                  <span
+                    class="card-inner-handle"
+                    role="button"
+                    tabindex="0"
+                    title="Sürükle ve taşı"
+                    aria-label="Sürükle ve taşı"
+                    @pointerdown.stop="startHandleDrag(cardId, $event)"
+                    @touchstart.stop="startHandleDrag(cardId, $event)"
+                  >
+                    <GripVertical :size="14" />
+                  </span>
+                </div>
+              </div>
+
+              <div class="approvals-content" style="flex-direction: column; align-items: stretch; gap: 8px">
+                <RouterLink
+                  v-for="item in evrakSignature.items"
+                  :key="item.id"
+                  :to="{ path: '/evrak-takip', query: { open: item.id } }"
+                  class="approvals-info-block"
+                  style="text-decoration: none"
+                >
+                  <div class="approvals-icon-bubble">
+                    <Clock :size="18" />
+                  </div>
+                  <div class="approvals-text">
+                    <strong>{{ item.konu }}</strong>
+                    <p>{{ item.kurum_adi }}<span v-if="item.tarih"> · {{ item.tarih }}</span></p>
+                  </div>
+                </RouterLink>
+                <RouterLink :to="{ path: '/evrak-takip', query: { filtre: 'imzam' } }" class="clay-pill-btn" aria-label="İmza bekleyen evraklara git">
+                  <span>Tümünü Gör</span>
+                  <ChevronRight :size="13" />
                 </RouterLink>
               </div>
             </section>

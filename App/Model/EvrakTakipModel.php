@@ -227,6 +227,23 @@ class EvrakTakipModel extends Model
         return (int) $sql->fetchColumn();
     }
 
+    public function pendingSignatureItemsForUser(int $userId, int $limit = 5): array
+    {
+        $sql = $this->db->prepare("SELECT et.id, et.konu, et.kurum_adi, et.tarih FROM {$this->table} et
+            WHERE et.firma_id = :firma_id AND et.silinme_tarihi IS NULL AND et.onay_durumu = 'onay_bekliyor'
+              AND EXISTS (SELECT 1 FROM evrak_takip_onaylari mine
+                WHERE mine.evrak_id = et.id AND mine.firma_id = et.firma_id AND mine.kullanici_id = :user_id
+                  AND mine.durum = 'bekliyor' AND mine.sira = (SELECT MIN(next_o.sira) FROM evrak_takip_onaylari next_o
+                    WHERE next_o.evrak_id = et.id AND next_o.firma_id = et.firma_id AND next_o.durum = 'bekliyor'))
+            ORDER BY et.tarih DESC, et.id DESC
+            LIMIT :lim");
+        $sql->bindValue(':firma_id', (int) $_SESSION['firma_id'], PDO::PARAM_INT);
+        $sql->bindValue(':user_id', $userId, PDO::PARAM_INT);
+        $sql->bindValue(':lim', max(1, min(20, $limit)), PDO::PARAM_INT);
+        $sql->execute();
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
     /**
      * Tek evrak detayı
      */
