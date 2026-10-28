@@ -1981,6 +1981,94 @@ $(document).ready(function () {
 
   let approvedKepEvrakId = "";
 
+  let kepOnayliBlobUrl = null;
+  function kepOnayliOnizlemeKapat() {
+    if (kepOnayliBlobUrl) URL.revokeObjectURL(kepOnayliBlobUrl);
+    kepOnayliBlobUrl = null;
+    $("#kepOnayliOnizlemeFrame").attr("src", "about:blank");
+    $("#kepOnayliOnizleme").addClass("d-none");
+  }
+
+  function renderKepOnayliDosyalar(raw) {
+    kepOnayliOnizlemeKapat();
+    let files = [];
+    try { files = JSON.parse(raw || "[]") || []; } catch (e) { files = []; }
+    const list = $("#kepOnayliDosyaListe").empty();
+    $("#kepOnayliDosyaBlok").toggleClass("d-none", !approvedKepEvrakId);
+    if (!approvedKepEvrakId) return;
+    $("#kepOnayliDosyaSayisi").text(files.length + " dosya");
+    if (!files.length) {
+      list.append('<div class="small text-muted py-1">Gönderilecek dosya bulunamadı.</div>');
+      return;
+    }
+    files.forEach(function (file) {
+      const row = $('<div class="list-group-item bg-transparent px-0 py-2 d-flex align-items-center justify-content-between gap-2"></div>');
+      row.append($('<span class="d-flex align-items-center gap-2 text-truncate"><i class="bx bx-file text-danger"></i></span>').append($("<span class='text-truncate'></span>").text(file.ad)));
+      row.append($('<button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 kep-onayli-onizle"><i class="bx bx-show me-1"></i>Önizle</button>').data("file", file));
+      list.append(row);
+    });
+  }
+
+  $(document).on("click", ".kep-onayli-onizle", function () {
+    const file = $(this).data("file");
+    const button = $(this).prop("disabled", true);
+    $.ajax({ type: "GET", url: file.url, xhrFields: { responseType: "blob" } })
+      .done(function (blob) {
+        if (!/^(application\/pdf|image\/)/.test(blob.type || "")) {
+          window.open(file.url, "_blank");
+          return;
+        }
+        kepOnayliOnizlemeKapat();
+        kepOnayliBlobUrl = URL.createObjectURL(blob);
+        $("#kepOnayliOnizlemeAd").text(file.ad);
+        $("#kepOnayliOnizlemeFrame").attr("src", kepOnayliBlobUrl);
+        $("#kepOnayliOnizleme").removeClass("d-none");
+        $("#kepOnayliOnizleme")[0].scrollIntoView({ behavior: "smooth", block: "nearest" });
+      })
+      .fail(function () { Swal.fire("Hata", "Dosya önizlenemedi.", "error"); })
+      .always(function () { button.prop("disabled", false); });
+  });
+
+  $(document).on("click", "#btnKepOnayliOnizlemeKapat", kepOnayliOnizlemeKapat);
+
+  $("#btnKepIletiOnizle").on("click", function () {
+    const recipients = parseModalKepRecipients();
+    const subject = String($("#modal_kep_konu").val() || "").trim();
+    const detail = String($("#modal_kep_ileti_detayi").val() || "").trim();
+    const typeLabel = ($("#modal_kep_ileti_tipi").val() || "standart") === "resmi" ? "Resmî" : "Standart";
+    const bodyHtml = $.fn.summernote && $("#modal_kep_icerik").next(".note-editor").length ? $("#modal_kep_icerik").summernote("code") : $("#modal_kep_icerik").val();
+    let attachments = [];
+    if (approvedKepEvrakId) {
+      attachments = $(".kep-onayli-onizle").map(function () { return $(this).data("file").ad; }).get();
+    } else {
+      attachments = Array.from($("#modal_kep_ekler")[0].files || []).map(file => file.name);
+    }
+    const row = (label, value) => '<tr><td class="text-muted pe-3 text-nowrap align-top">' + label + '</td><td class="fw-semibold">' + value + "</td></tr>";
+    const attachHtml = attachments.length
+      ? attachments.map(name => '<span class="badge bg-light text-dark border me-1 mb-1"><i class="bx bx-paperclip"></i> ' + escapeEvrakHtml(name) + "</span>").join("")
+      : '<span class="text-muted">Ek yok</span>';
+    const html = '<div class="text-start font-size-13">' +
+      '<table class="table table-sm table-borderless mb-2"><tbody>' +
+      row("Gönderen", escapeEvrakHtml($(this).data("gonderen") || "-")) +
+      row("Alıcı", recipients.length ? recipients.map(escapeEvrakHtml).join("<br>") : '<span class="text-danger">Alıcı girilmedi</span>') +
+      row("Konu", escapeEvrakHtml(subject || "-")) +
+      row("İleti Tipi", escapeEvrakHtml(typeLabel)) +
+      (detail ? row("Detay", escapeEvrakHtml(detail)) : "") +
+      row("Ekler", attachHtml) +
+      '</tbody></table><div class="border rounded-3 p-0 overflow-hidden"><iframe id="kepIletiOnizlemeFrame" sandbox="" class="w-100 border-0 bg-white" style="height:260px"></iframe></div></div>';
+    Swal.fire({
+      target: document.getElementById("modalKepGonderisi"),
+      title: "KEP İletisi Önizleme",
+      html: html,
+      width: 760,
+      showConfirmButton: false,
+      showCloseButton: true,
+      didOpen: function () {
+        document.getElementById("kepIletiOnizlemeFrame").srcdoc = '<div style="font-family:Arial,sans-serif;font-size:14px;padding:12px">' + (bodyHtml || '<em style="color:#888">İleti metni boş</em>') + "</div>";
+      }
+    });
+  });
+
   $(document).on("click", ".btn-approved-kep-send", function (event) {
     event.preventDefault();
     event.stopPropagation();
@@ -2000,6 +2088,9 @@ $(document).ready(function () {
     }
     $("#modal_kep_ekler").closest(".border").addClass("d-none");
     $("#modalKepEkOzeti").text("Onaylı evrak dosyaları");
+    const kayitliAlici = String($(this).data("alici") || "").trim();
+    if (kayitliAlici && !$("#modal_kep_alicilar").val()) $("#modal_kep_alicilar").val(kayitliAlici).trigger("input");
+    renderKepOnayliDosyalar($(this).attr("data-dosyalar"));
     refreshKepSendButton();
   });
 
@@ -2009,6 +2100,7 @@ $(document).ready(function () {
     form.reset();
     $("#modal_kep_adres_defterine_kaydet").trigger("change");
     if (!approvedKepEvrakId) {
+      renderKepOnayliDosyalar("[]");
       $("#modalKepGonderisiLabel").text("KEP İletisi Oluştur");
       $("#modalKepGonderisiLabel").next("div").text("PTT KEP üzerinden doğrudan güvenli ileti gönderin");
       $("#modal_kep_konu, #modal_kep_ileti_detayi, #modal_kep_icerik").prop("readonly", false);
@@ -2469,6 +2561,7 @@ $(document).ready(function () {
 
   kepModal.on("hidden.bs.modal", function () {
     approvedKepEvrakId = "";
+    renderKepOnayliDosyalar("[]");
     $("#modal_kep_konu, #modal_kep_ileti_detayi, #modal_kep_icerik").prop("readonly", false);
     if ($.fn.summernote && $("#modal_kep_icerik").next(".note-editor").length) $("#modal_kep_icerik").summernote("enable");
     $("#modal_kep_ekler").closest(".border").removeClass("d-none");

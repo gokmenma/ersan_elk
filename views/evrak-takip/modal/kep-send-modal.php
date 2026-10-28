@@ -111,6 +111,16 @@
                                 <input type="file" class="form-control" id="modal_kep_ekler" name="kep_ekler[]" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.odt,.ods,.zip,.eyp">
                             </div>
                         </div>
+                        <div class="col-12 d-none" id="kepOnayliDosyaBlok">
+                            <div class="border rounded-3 p-3 bg-light-subtle mt-1">
+                                <div class="d-flex align-items-center justify-content-between mb-2"><div><strong><i class="bx bx-paperclip me-1"></i>Gönderilecek Dosyalar</strong><div class="small text-muted">Onaylı evrakın üst yazısı ve kayıtlı ekleri değişmeden gönderilir.</div></div><span id="kepOnayliDosyaSayisi" class="badge bg-white text-muted border"></span></div>
+                                <div id="kepOnayliDosyaListe" class="list-group list-group-flush"></div>
+                                <div id="kepOnayliOnizleme" class="d-none mt-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-1"><span class="small fw-semibold text-truncate" id="kepOnayliOnizlemeAd"></span><button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" id="btnKepOnayliOnizlemeKapat">Kapat</button></div>
+                                    <iframe id="kepOnayliOnizlemeFrame" title="Gönderilecek dosya önizleme" class="w-100 border rounded-3 bg-white" style="height:55vh"></iframe>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     </section>
                     <input type="hidden" data-form-name="kep_paket_turu" value="Standart">
@@ -127,6 +137,7 @@
                     </div>
                     <div class="kep-footer-actions d-flex align-items-center gap-2 ms-auto">
                         <button type="button" class="btn btn-outline-secondary px-3" data-bs-dismiss="modal">Vazgeç</button>
+                        <button type="button" class="btn btn-outline-primary px-3" id="btnKepIletiOnizle" data-gonderen="<?php echo htmlspecialchars((string) ($kepSettings['kep_adresi'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"><i class="bx bx-show me-1"></i>İletiyi Önizle</button>
                         <div class="dropup">
                             <button type="button" class="btn btn-success px-4 dropdown-toggle" id="btnModalKepGonder" data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false" data-settings-ready="<?php echo ($kepSettings && !empty($kepSettings['kep_adresi']) && !empty($kepSettings['has_user_credentials'])) ? '1' : '0'; ?>" disabled><i class="bx bx-paper-plane me-1"></i> İmzala ve Gönder <i class="bx bx-chevron-up ms-1"></i></button>
                             <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-2">
