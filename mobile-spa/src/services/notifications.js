@@ -1,5 +1,6 @@
 import { reactive } from 'vue'
 import { fetchBadges } from './badges.js'
+import { auth } from './auth.js'
 
 export const notificationsState = reactive({
   unreadCount: 0,
@@ -99,6 +100,34 @@ export async function markAllAsRead() {
   } catch (e) {
     console.error('Tümünü okundu işaretleme hatası:', e)
   }
+}
+
+export async function fetchPreferences() {
+  const res = await fetch('/api/notifications.php?action=preferences', {
+    credentials: 'same-origin',
+    headers: { Accept: 'application/json' },
+  })
+  const data = await res.json()
+  if (!res.ok || !data.success) throw new Error(data.message || 'Bildirim tercihleri alınamadı.')
+  return data.preferences
+}
+
+export async function setPreference(type, enabled) {
+  const res = await fetch('/api/notifications.php?action=set-preference', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'X-CSRF-Token': auth.state.csrfToken,
+    },
+    body: JSON.stringify({ type, enabled }),
+  })
+  const data = await res.json()
+  if (!res.ok || !data.success) throw new Error(data.message || 'Tercih kaydedilemedi.')
+  if (typeof data.unread_count === 'number') notificationsState.unreadCount = data.unread_count
+  fetchBadges()
+  return true
 }
 
 export function openNotificationsDrawer() {

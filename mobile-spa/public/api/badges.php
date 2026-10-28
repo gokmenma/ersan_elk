@@ -7,6 +7,7 @@ use App\Model\DestekModel;
 use App\Model\MobilRozetModel;
 use App\Model\PersonelIzinleriModel;
 use App\Model\TalepModel;
+use App\Model\UserNotificationPreferenceModel;
 use App\Service\Gate;
 
 header('Content-Type: application/json; charset=utf-8');
@@ -38,14 +39,18 @@ if (!$canAvans && !$canIzin && !$canAriza && Gate::allows('talepler')) {
     $canAvans = $canIzin = $canAriza = true;
 }
 
+$notifPrefs = (new UserNotificationPreferenceModel())->getPreferences($userId);
+$canAvans = $canAvans && $notifPrefs[UserNotificationPreferenceModel::TYPE_ADVANCE_REQUEST];
+$canIzin = $canIzin && $notifPrefs[UserNotificationPreferenceModel::TYPE_LEAVE_REQUEST];
+$canAriza = $canAriza && ($notifPrefs[UserNotificationPreferenceModel::TYPE_GENERAL_REQUEST] || $notifPrefs[UserNotificationPreferenceModel::TYPE_FAULT_REQUEST]);
 $permissions = [
-    'live_support' => Gate::isSuperAdmin() || Gate::allows('canli_sohbet_ayarlari_sekmesi'),
-    'efatura_gelen' => Gate::isSuperAdmin() || Gate::allows('efatura/gelen-list'),
-    'efatura_giden' => Gate::isSuperAdmin() || Gate::allows('efatura/giden-list'),
-    'km_approvals' => Gate::isSuperAdmin() || Gate::allows('arac_km_onaylari'),
-    'kacak' => Gate::isSuperAdmin() || Gate::allows('kacak_onay'),
-    'ihbar' => Gate::isSuperAdmin() || Gate::allows('ihbar/list'),
-    'evrak' => Gate::allowsAny(['evrak-takip/list', 'evrak-takip/gelen-evrak', 'evrak-takip/giden-evrak']),
+    'live_support' => $notifPrefs[UserNotificationPreferenceModel::TYPE_SUPPORT] && (Gate::isSuperAdmin() || Gate::allows('canli_sohbet_ayarlari_sekmesi')),
+    'efatura_gelen' => $notifPrefs[UserNotificationPreferenceModel::TYPE_EINVOICE] && (Gate::isSuperAdmin() || Gate::allows('efatura/gelen-list')),
+    'efatura_giden' => $notifPrefs[UserNotificationPreferenceModel::TYPE_EINVOICE] && (Gate::isSuperAdmin() || Gate::allows('efatura/giden-list')),
+    'km_approvals' => $notifPrefs[UserNotificationPreferenceModel::TYPE_KM] && (Gate::isSuperAdmin() || Gate::allows('arac_km_onaylari')),
+    'kacak' => $notifPrefs[UserNotificationPreferenceModel::TYPE_KACAK_CREATED] && (Gate::isSuperAdmin() || Gate::allows('kacak_onay')),
+    'ihbar' => $notifPrefs[UserNotificationPreferenceModel::TYPE_IHBAR_CREATED] && (Gate::isSuperAdmin() || Gate::allows('ihbar/list')),
+    'evrak' => $notifPrefs[UserNotificationPreferenceModel::TYPE_DOCUMENT] && Gate::allowsAny(['evrak-takip/list', 'evrak-takip/gelen-evrak', 'evrak-takip/giden-evrak']),
     'requests' => $canAvans || $canIzin || $canAriza,
 ];
 
@@ -122,7 +127,7 @@ try {
         }
         $badges[$key] = $total;
     }
-    if (Gate::allows('evrak-takip/list')) {
+    if ($notifPrefs[UserNotificationPreferenceModel::TYPE_DOCUMENT] && Gate::allows('evrak-takip/list')) {
         $badges['uets_unread'] = (int) (new \App\Model\EvrakSevkModel())->unreadUets($firmaId, $userId, 0)['count'];
     }
     badgesResponse(['success' => true, 'badges' => $badges]);

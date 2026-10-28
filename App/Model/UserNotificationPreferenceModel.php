@@ -40,6 +40,24 @@ class UserNotificationPreferenceModel extends Model
         self::TYPE_KESME_ACMA,
     ];
 
+    public const LABELS = [
+        self::TYPE_KACAK_CREATED => ['Kaçak İşlemleri', 'Yeni kaçak tutanağı bildirildiğinde haber alın.'],
+        self::TYPE_IHBAR_CREATED => ['İhbarlar', 'Yeni bir kaçak su ihbarı oluşturulduğunda haber alın.'],
+        self::TYPE_ADVANCE_REQUEST => ['Avans Talepleri', 'Yeni avans taleplerinden haberdar olun.'],
+        self::TYPE_LEAVE_REQUEST => ['İzin Talepleri', 'Yeni izin taleplerinden haberdar olun.'],
+        self::TYPE_GENERAL_REQUEST => ['Genel Talepler', 'Öneri, şikâyet, istek ve diğer talepler için bildirim alın.'],
+        self::TYPE_FAULT_REQUEST => ['Arıza Talepleri', 'Yeni arıza taleplerinden haberdar olun.'],
+        self::TYPE_SUPPORT => ['Destek Talepleri', 'Destek talepleri, yanıtları ve durum değişiklikleri için bildirim alın.'],
+        self::TYPE_KM => ['KM Bildirimleri', 'KM hatırlatmaları ve manuel onay bildirimlerini alın.'],
+        self::TYPE_TASK => ['Görev Bildirimleri', 'Görev zamanı ve görev süreçleri için bildirim alın.'],
+        self::TYPE_DOCUMENT => ['Evrak Bildirimleri', 'Tarafınıza evrak zimmetlendiğinde bildirim alın.'],
+        self::TYPE_SHIFT => ['Nöbet Bildirimleri', 'Nöbet talebi, değişim ve mazeret bildirimlerini alın.'],
+        self::TYPE_EINVOICE => ['E-Fatura Bildirimleri', 'Yeni gelen fatura alındığında bildirim alın.'],
+        self::TYPE_KEP => ['KEP Bildirimleri', 'Yeni gelen KEP ve otomatik KEP alım hataları için bildirim alın.'],
+        self::TYPE_PAYROLL => ['Bordro Bildirimleri', 'Ücret pusulası itirazı gibi bordro bildirimlerini alın.'],
+        self::TYPE_KESME_ACMA => ['Kesme/Açma Uyarıları', 'Yönetim eşiğini aşan kesme/açma uyarıları için bildirim alın.'],
+    ];
+
     protected $table = 'user_notification_preferences';
     protected $primaryKey = 'id';
 

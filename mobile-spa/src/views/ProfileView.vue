@@ -41,10 +41,14 @@ import {
   subscribePush,
   unsubscribePush,
   openNotificationsDrawer,
+  fetchPreferences,
+  setPreference,
 } from '../services/notifications.js'
 
 const router = useRouter()
 const activeSheet = ref(null)
+const notifPreferences = ref([])
+const savingPreferenceType = ref('')
 const processingPush = ref(false)
 const pushFeedback = ref({ type: '', text: '' })
 
@@ -177,6 +181,29 @@ function openSheet(id) {
   devicesFeedback.value = { type: '', text: '' }
   appearanceFeedback.value = { type: '', text: '' }
   if (id === 'devices') loadDevices()
+  if (id === 'notifications') loadPreferences()
+}
+
+async function loadPreferences() {
+  try {
+    notifPreferences.value = await fetchPreferences()
+  } catch (err) {
+    pushFeedback.value = { type: 'error', text: err.message || 'Bildirim tercihleri alınamadı.' }
+  }
+}
+
+async function togglePreference(item) {
+  if (savingPreferenceType.value) return
+  const next = !item.enabled
+  savingPreferenceType.value = item.type
+  try {
+    await setPreference(item.type, next)
+    item.enabled = next
+  } catch (err) {
+    pushFeedback.value = { type: 'error', text: err.message || 'Tercih kaydedilemedi.' }
+  } finally {
+    savingPreferenceType.value = ''
+  }
 }
 
 function closeSheet() {
@@ -461,6 +488,27 @@ function goLiveSupport() {
                   <span v-if="processingPush">İşleniyor…</span>
                   <span v-else-if="notificationsState.pushSubscribed">Bildirimleri Kapat</span>
                   <span v-else>Bildirimleri Aç</span>
+                </button>
+              </div>
+            </div>
+
+            <div v-if="notifPreferences.length" class="bento-card bento-card--white setting-card">
+              <div v-for="item in notifPreferences" :key="item.type" class="setting-card__inline">
+                <div class="setting-card__body">
+                  <strong>{{ item.label }}</strong>
+                  <p>{{ item.description }}</p>
+                </div>
+                <button
+                  type="button"
+                  class="ds-switch"
+                  role="switch"
+                  :aria-checked="item.enabled"
+                  :aria-label="item.label"
+                  :class="{ 'is-on': item.enabled }"
+                  :disabled="savingPreferenceType === item.type"
+                  @click="togglePreference(item)"
+                >
+                  <span />
                 </button>
               </div>
             </div>

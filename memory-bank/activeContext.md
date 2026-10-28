@@ -3333,3 +3333,4 @@
 - Araç düzenle modalı "Evraklar & Notlar" sekmesine poliçe yönetimi eklendi (AracPoliceModel, arac-police-* API aksiyonları, police-goruntule.php, şifreli dosya: files/arac_police/).
 - Poliçe eklenince/silinince aracın sigorta/kasko bitiş tarihi en geç bitişe göre güncellenir.
 - Bekleyen: sql/2026_10_28_arac_police_dosyalari.sql henüz çalıştırılmadı.
+- Mobil SPA: Profil > Bildirim tercihleri sheet'ine tür bazlı anahtarlar eklendi (`notifications.php` `preferences`/`set-preference`); menü rozetleri (`badges.php`) kapalı türlerde gizlenir. Yeni türler: kep, payroll, kesme_acma.

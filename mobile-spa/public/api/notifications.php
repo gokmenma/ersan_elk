@@ -6,6 +6,7 @@ use App\Helper\Security;
 use App\Model\BildirimModel;
 use App\Model\PushSubscriptionModel;
 use App\Model\SystemLogModel;
+use App\Model\UserNotificationPreferenceModel;
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -54,6 +55,15 @@ try {
                     $publicKey = (string) ($_ENV['VAPID_PUBLIC_KEY'] ?? '');
                 }
                 notifResponse(['success' => true, 'publicKey' => $publicKey]);
+                break;
+
+            case 'preferences':
+                $saved = (new UserNotificationPreferenceModel())->getPreferences($currentUserId);
+                $items = [];
+                foreach (UserNotificationPreferenceModel::LABELS as $type => [$label, $description]) {
+                    $items[] = ['type' => $type, 'label' => $label, 'description' => $description, 'enabled' => (bool) ($saved[$type] ?? true)];
+                }
+                notifResponse(['success' => true, 'preferences' => $items]);
                 break;
 
             case 'push-status':
@@ -125,6 +135,22 @@ try {
                 }
                 $systemLog->logAction($currentUserId, 'Push Bildirim', 'Mobil SPA push bildirimi aboneliği iptal edildi.');
                 notifResponse(['success' => true, 'message' => 'Abonelik iptal edildi.']);
+                break;
+
+            case 'set-preference':
+                $sent = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+                $known = (string) ($_SESSION['csrf_token'] ?? '');
+                if ($sent === '' || $known === '' || !hash_equals($known, $sent)) {
+                    notifResponse(['success' => false, 'message' => 'Güvenlik doğrulamasının süresi doldu. Lütfen sayfayı yenileyin.'], 419);
+                }
+                $type = (string) ($data['type'] ?? '');
+                if (!in_array($type, UserNotificationPreferenceModel::TYPES, true)) {
+                    notifResponse(['success' => false, 'message' => 'Geçersiz bildirim türü.'], 422);
+                }
+                $enabled = filter_var($data['enabled'] ?? false, FILTER_VALIDATE_BOOLEAN);
+                (new UserNotificationPreferenceModel())->setPreference($currentUserId, $type, $enabled);
+                $systemLog->logAction($currentUserId, 'Bildirim Tercihi', 'Mobil SPA bildirim tercihi güncellendi: ' . $type . ' = ' . ($enabled ? 'açık' : 'kapalı'));
+                notifResponse(['success' => true, 'unread_count' => (int) $bildirimModel->getUnreadCount($currentUserId)]);
                 break;
 
             case 'mark-read':
