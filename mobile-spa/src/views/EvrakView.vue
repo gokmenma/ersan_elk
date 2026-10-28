@@ -763,8 +763,11 @@ async function closeMobileSign() {
   mobileSign.value = { ...current, open: false, phase: 'idle' }
 }
 
+let signedDocSnapshot = null
+
 async function confirmImzala() {
   const docId = activeDocId.value
+  signedDocSnapshot = items.value.find((item) => item.id === docId) || null
   isSignConfirmOpen.value = false
   if (isDetailOpen.value) isDetailOpen.value = false
   await startMobileSign(
@@ -876,7 +879,7 @@ async function submitKepForm() {
 }
 
 function sendKepForApproved() {
-  const doc = items.value.find((item) => item.id === mobileSign.value.docId)
+  const doc = items.value.find((item) => item.id === mobileSign.value.docId) || signedDocSnapshot
   mobileSign.value = { ...mobileSign.value, open: false, phase: 'idle' }
   if (doc) openKepForm(doc)
 }
