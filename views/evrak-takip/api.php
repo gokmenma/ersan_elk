@@ -1326,6 +1326,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 btn-uets-tarihce" data-id="' . $esc($encryptedId) . '" data-subject="' . $esc($evrak->konu) . '" data-full="' . ($uetsFullAccess ? '1' : '0') . '" title="Sevk ve Erişim Tarihçesi"><i class="bx bx-history text-secondary"></i><span>Sevk ve Erişim Tarihçesi</span></button>';
                     }
                     if (!empty($evrak->uets_mesaj_id)) $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 btn-uets-deliller" data-uets-id="' . $esc($evrak->uets_mesaj_id) . '" title="UETS Delillerini Görüntüle"><i class="bx bx-shield-quarter text-info"></i><span>UETS Delillerini Görüntüle</span></button>';
+                    $hasSigners = !in_array(trim((string) ($evrak->imza_kullanici_ids ?? '')), ['', '[]', 'null'], true);
+                    if ($type === 'giden' && !$isKep && !$locked && $hasSigners) {
+                        $actionItems .= '<div class="dropdown-divider"></div><button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-onaya-sun" data-action="evrak-e-imza-onaya-sun" data-tur="E-İmza" data-id="' . $esc($encryptedId) . '" title="E-İmza ile Onaya Sun"><i class="bx bx-send text-primary"></i><span>E-İmza ile Onaya Sun</span></button>';
+                        $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-onaya-sun" data-action="evrak-mobil-imza-onaya-sun" data-tur="Mobil İmza" data-id="' . $esc($encryptedId) . '" title="Mobil İmza ile Onaya Sun"><i class="bx bx-mobile-alt text-info"></i><span>Mobil İmza ile Onaya Sun</span></button>';
+                        if (($evrak->gonderim_kanali ?? 'normal') === 'normal') {
+                            $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-onaya-sun" data-action="evrak-islak-imza-onaya-sun" data-tur="Islak İmza" data-id="' . $esc($encryptedId) . '" title="Islak İmza ile Onaya Sun"><i class="bx bx-pen text-warning"></i><span>Islak İmza ile Onaya Sun</span></button>';
+                        }
+                        $actionItems .= '<div class="dropdown-divider"></div>';
+                    }
                     if ($myTurn) {
                         $signActionLabel = match ($approvalType) {
                             'islak_imza' => 'Islak İmza ile Onayla',

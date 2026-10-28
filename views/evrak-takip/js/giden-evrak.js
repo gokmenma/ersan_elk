@@ -737,7 +737,6 @@ $(document).ready(function () {
     $(".gonderim-channel-card").removeClass("active").filter(`[data-channel="${channel}"]`).addClass("active");
     $("#kepComposerPanel").toggleClass("d-none", channel !== "kep");
     $("#islakImzaOnayaSunItem").toggleClass("d-none", channel !== "normal");
-    $("#mobilImzaOnayaSunItem").toggleClass("d-none", channel !== "normal");
     $("#btnGidenKepHizliGonder").toggleClass("d-none", channel !== "kep" && !window.gidenKepCanSendApproved);
     updateKepPackageSummary();
     adjustGidenEvrakLayout();
@@ -1383,7 +1382,6 @@ $(document).ready(function () {
   $("#btnMobilImzaOnayaSun").on("click", function () {
     syncContent();
     if (!validateForm()) return;
-    if ($("#gonderim_kanali").val() !== "normal") return Swal.fire("Uygun Değil", "Mobil imza akışı yalnız Normal Gönderim türünde kullanılabilir.", "warning");
     if (!$("#imza_kullanici_ids").val()?.length) {
       $("#collapseImzaYetkilileri").collapse("show");
       return Swal.fire("Eksik Bilgi", "Mobil imza onayı için en az bir imza yetkilisi seçmelisiniz.", "warning");

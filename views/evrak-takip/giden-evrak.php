@@ -512,7 +512,7 @@ if ($canSendKep || $gonderimKanali === 'kep') {
                                         </span>
                                     </button>
                                 </li>
-                                <li id="mobilImzaOnayaSunItem" class="<?php echo $gonderimKanali === 'normal' ? '' : 'd-none'; ?>">
+                                <li id="mobilImzaOnayaSunItem">
                                     <button type="button" class="dropdown-item d-flex align-items-start gap-2 py-2" id="btnMobilImzaOnayaSun">
                                         <i class="bx bx-mobile-alt icon-xs text-info mt-1"></i>
                                         <span>

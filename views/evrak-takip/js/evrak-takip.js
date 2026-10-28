@@ -806,6 +806,30 @@ $(document).ready(function () {
     startModalPadesSignature($(this).data("id"), $(this));
   });
 
+  $(document).on("click", ".evrak-onaya-sun", function () {
+    const button = $(this);
+    const tur = button.data("tur");
+    Swal.fire({
+      title: tur + " ile Onaya Sun",
+      html: "Evrak imzacıların onayına sunulacak ve süreç tamamlanana kadar içeriği değiştirilemeyecek.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#556ee6",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Onaya Sun",
+      cancelButtonText: "Vazgeç"
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      $.post(api_url, { action: button.data("action"), id: button.data("id") }, function (response) {
+        if (response.status === "success") {
+          Swal.fire("Onaya Sunuldu", response.message, "success").then(() => location.reload());
+        } else {
+          Swal.fire("Hata", response.message || "Onaya sunulamadı.", "error");
+        }
+      }, "json").fail((xhr) => Swal.fire("Hata", (xhr.responseJSON && xhr.responseJSON.message) || "Sunucu ile iletişim kurulamadı.", "error"));
+    });
+  });
+
   // E-İmza Geri Al
   $(document).on("click", ".evrak-e-imza-geri-al", function () {
     const id = $(this).data("id");

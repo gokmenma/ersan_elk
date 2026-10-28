@@ -576,8 +576,8 @@ class EvrakTakipModel extends Model
             if (($evrak->onay_durumu ?? 'taslak') !== 'taslak') {
                 throw new \RuntimeException('Bu evrak zaten onaya sunulmuş.');
             }
-            if (in_array($approvalType, ['islak_imza', 'mobil_imza'], true) && ($evrak->gonderim_kanali ?? 'normal') !== 'normal') {
-                throw new \RuntimeException(($approvalType === 'mobil_imza' ? 'Mobil imza' : 'Islak imza') . ' onayı yalnızca Normal Gönderim türünde kullanılabilir.');
+            if ($approvalType === 'islak_imza' && ($evrak->gonderim_kanali ?? 'normal') !== 'normal') {
+                throw new \RuntimeException('Islak imza onayı yalnızca Normal Gönderim türünde kullanılabilir.');
             }
             $signers = $this->getSigningUsersByIds(json_decode((string) ($evrak->imza_kullanici_ids ?? '[]'), true) ?: []);
             if ($signers === []) {
