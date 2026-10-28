@@ -1997,3 +1997,5 @@
 - [x] 2026-10-28 UETS gelen tebligat çekme sorgu hakkına (2 saatte 1) uyarlandı: tek liste sorgusu + DB önbelleği + 429 engeli, HTTP hata ayrıştırma (UetsApiException), cron yalnız delivered/readtimeout; `sql/2026_10_28_uets_liste_onbellek.sql` çalıştırılmayı ve sunucuda (IP 104.247.167.2) denenmeyi bekliyor
 - [x] 2026-10-28 UETS gelen evrak görüntüleme yetkisi (`evrak-takip/uets-goruntule`) + personele sevk zinciri + sevk/erişim tarihçesi (`evrak_sevk`, `evrak_tarihce`); `sql/2026_10_28_uets_evrak_sevk_tarihce.sql` çalıştırılmayı, rollere yetki atanmasını ve tarayıcıda test edilmeyi bekliyor; mobil SPA'da sevk arayüzü henüz yok (sunucu tarafı filtre var)
 - [x] 2026-10-28 Okunmamış UETS tebligatları: masaüstü ana sayfa uyarısı, Evrak Takip başlık rozeti + satır "OKUNMAMIŞ" rozeti, mobil SPA ana sayfa kartı (`uets_unread`), mobil alt menü Evrak rozeti, mobil Evrak sevk/tarihçe arayüzü; dist derlendi, tarayıcıda/cihazda test bekliyor
+
+- [x] Araç poliçe (sigorta/kasko) ekleme alanı — kod tamam, SQL uygulanacak, tarayıcı testi bekliyor.

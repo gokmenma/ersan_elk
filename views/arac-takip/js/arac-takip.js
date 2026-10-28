@@ -498,6 +498,7 @@ const AracTakip = {
         });
 
         AracTakip.ruhsatAlaniniGuncelle(data);
+        AracTakip.policeAlaniniGuncelle(data.id);
 
         $("#aracModal").modal("show");
       } else {
@@ -513,7 +514,7 @@ const AracTakip = {
     const aracId = data.id || "";
     $("#aracForm input[name='id']").val(aracId);
 
-    $("#ruhsatYeniAracUyari, #ruhsatMevcutAlani, #ruhsatYuklemeAlani").addClass("d-none");
+    $("#ruhsatYeniAracUyari, #ruhsatMevcutAlani, #ruhsatYuklemeAlani, #btnRuhsatEkle").addClass("d-none");
 
     if (!aracId) {
       $("#ruhsatYeniAracUyari").removeClass("d-none");
@@ -523,13 +524,17 @@ const AracTakip = {
     if (data.ruhsat_var) {
       const boyutKb = data.ruhsat_boyutu ? Math.round(data.ruhsat_boyutu / 1024) : 0;
       const icon = data.ruhsat_mime_tipi === "application/pdf" ? "bx-file-blank" : "bx-image";
-      $("#ruhsatDosyaIkon").attr("class", "bx " + icon + " fs-3 text-primary");
+      const tarih = data.ruhsat_yukleme_tarihi
+        ? new Date(String(data.ruhsat_yukleme_tarihi).replace(" ", "T")).toLocaleDateString("tr-TR")
+        : new Date().toLocaleDateString("tr-TR");
+      $("#ruhsatDosyaIkon").attr("class", "bx " + icon + " fs-5 text-primary me-1 align-middle");
       $("#ruhsatDosyaAdi").text(data.ruhsat_orijinal_ad || "Ruhsat Görseli");
       $("#ruhsatDosyaMeta").text(boyutKb + " KB");
+      $("#ruhsatDosyaTarih").text(tarih);
       $("#btnRuhsatGoruntule").data("id", data.ruhsat_gorsel_id);
       $("#ruhsatMevcutAlani").removeClass("d-none");
     } else {
-      $("#ruhsatYuklemeAlani").removeClass("d-none");
+      $("#btnRuhsatEkle").removeClass("d-none");
     }
   },
 
@@ -2451,6 +2456,167 @@ const AracTakip = {
   },
 
   // =============================================
+  // SİGORTA & KASKO POLİÇELERİ (Şifreli Saklama)
+  // =============================================
+  policeAlaniniGuncelle: function (aracId) {
+    $("#pol_baslangic_tarihi, #pol_bitis_tarihi").each(function () {
+      if (!this._flatpickr && typeof flatpickr === "function") {
+        flatpickr(this, { dateFormat: "d.m.Y", locale: "tr", allowInput: true });
+      }
+    });
+    $("#policeForm").addClass("d-none");
+    if (!aracId) {
+      $("#policeYeniAracUyari").removeClass("d-none");
+      $("#btnPoliceFormAc").addClass("d-none");
+      $("#policeListe").addClass("d-none").empty();
+      return;
+    }
+    $("#policeYeniAracUyari").addClass("d-none");
+    $("#btnPoliceFormAc").removeClass("d-none");
+    AracTakip.policeListele(aracId);
+  },
+
+  policeListele: function (aracId) {
+    $.post(this.apiUrl, { action: "arac-police-listele", arac_id: aracId }, function (response) {
+      const liste = $("#policeListe").empty();
+      if (response.status !== "success" || !response.data.length) {
+        liste.addClass("d-none");
+        return;
+      }
+      const turAdi = { sigorta: "Trafik Sigortası", kasko: "Kasko" };
+      const tablo = $('<table class="table table-sm table-bordered align-middle mb-0 font-size-12"></table>');
+      tablo.append(
+        "<thead><tr><th>Tür</th><th>Şirket / Poliçe No</th><th>Dönem</th><th class=\"text-end\">Prim</th><th class=\"text-center\" style=\"width:100px\">İşlem</th></tr></thead>"
+      );
+      const tbody = $("<tbody></tbody>");
+      response.data.forEach(function (p) {
+        const durum = p.gecerli === null ? "" : p.gecerli
+          ? ' <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill">Geçerli</span>'
+          : ' <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill">Bitti</span>';
+        const tr = $("<tr></tr>");
+        tr.append($("<td></td>").text(turAdi[p.police_turu] || p.police_turu));
+        tr.append(
+          $("<td></td>")
+            .text((p.sirket_adi || "-") + " / " + (p.police_no || "-"))
+        );
+        tr.append(
+          $("<td></td>")
+            .text((p.baslangic_tarihi || "?") + " - " + (p.bitis_tarihi || "?"))
+            .append(durum)
+        );
+        tr.append(
+          $('<td class="text-end"></td>').text(
+            p.prim_tutari !== null
+              ? Number(p.prim_tutari).toLocaleString("tr-TR", { minimumFractionDigits: 2 }) + " ₺"
+              : "-"
+          )
+        );
+        const islem = $('<td class="text-center"></td>');
+        if (p.dosya_var) {
+          islem.append(
+            $('<button type="button" class="btn btn-sm btn-outline-primary me-1 btn-police-goruntule" title="Görüntüle"><i class="bx bx-show"></i></button>').attr("data-id", p.id)
+          );
+        }
+        islem.append(
+          $('<button type="button" class="btn btn-sm btn-outline-danger btn-police-sil" title="Sil"><i class="bx bx-trash"></i></button>').attr("data-id", p.id)
+        );
+        tr.append(islem);
+        tbody.append(tr);
+      });
+      tablo.append(tbody);
+      liste.append($('<div class="table-responsive"></div>').append(tablo)).removeClass("d-none");
+    });
+  },
+
+  policeEvrakTarihiniYansit: function (tur, tarih) {
+    if (!tarih) return;
+    const input = $(tur === "kasko" ? "#kasko_bitis_tarihi" : "#sigorta_bitis_tarihi");
+    input.val(tarih);
+    if (input[0] && input[0]._flatpickr) {
+      input[0]._flatpickr.setDate(tarih, false);
+    }
+  },
+
+  policeKaydet: function () {
+    const aracId = $("#aracForm input[name='id']").val();
+    if (!aracId) return;
+    if (!$("#pol_bitis_tarihi").val()) {
+      Swal.fire("Uyarı", "Poliçe bitiş tarihi zorunludur.", "warning");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("action", "arac-police-kaydet");
+    formData.append("arac_id", aracId);
+    formData.append("police_turu", $("#pol_turu").val());
+    formData.append("sirket_adi", $("#pol_sirket_adi").val());
+    formData.append("police_no", $("#pol_police_no").val());
+    formData.append("baslangic_tarihi", $("#pol_baslangic_tarihi").val());
+    formData.append("bitis_tarihi", $("#pol_bitis_tarihi").val());
+    formData.append("prim_tutari", $("#pol_prim_tutari").val());
+    const dosya = $("#polDosyaInput")[0].files[0];
+    if (dosya) formData.append("police_dosyasi", dosya);
+
+    const btn = $("#btnPoliceKaydet");
+    btn.prop("disabled", true);
+    $.ajax({
+      url: this.apiUrl,
+      type: "POST",
+      data: formData,
+      processData: false,
+      contentType: false,
+      dataType: "json",
+      success: function (response) {
+        if (response.status === "success") {
+          AracTakip.policeEvrakTarihiniYansit(response.data.police_turu, response.data.bitis_tarihi);
+          AracTakip.policeFormuTemizle();
+          AracTakip.policeListele(aracId);
+          Swal.fire({ icon: "success", title: "Başarılı", text: response.message, timer: 1500, showConfirmButton: false });
+        } else {
+          Swal.fire("Hata", response.message, "error");
+        }
+      },
+      error: function () {
+        Swal.fire("Hata", "Poliçe kaydedilirken bir hata oluştu.", "error");
+      },
+      complete: function () {
+        btn.prop("disabled", false);
+      },
+    });
+  },
+
+  policeFormuTemizle: function () {
+    $("#policeForm").addClass("d-none");
+    $("#pol_sirket_adi, #pol_police_no, #pol_baslangic_tarihi, #pol_bitis_tarihi, #pol_prim_tutari, #polDosyaInput").val("");
+    $("#pol_baslangic_tarihi, #pol_bitis_tarihi").each(function () {
+      if (this._flatpickr) this._flatpickr.clear();
+    });
+    $("#pol_turu").val("sigorta").trigger("change");
+  },
+
+  policeSil: function (encId) {
+    const aracId = $("#aracForm input[name='id']").val();
+    Swal.fire({
+      title: "Emin misiniz?",
+      text: "Poliçe kaydı silinecek.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Evet, sil",
+      cancelButtonText: "Vazgeç",
+    }).then(function (result) {
+      if (!result.isConfirmed) return;
+      $.post(AracTakip.apiUrl, { action: "arac-police-sil", id: encId }, function (response) {
+        if (response.status === "success") {
+          AracTakip.policeEvrakTarihiniYansit(response.data.police_turu, response.data.bitis_tarihi);
+          AracTakip.policeListele(aracId);
+        } else {
+          Swal.fire("Hata", response.message, "error");
+        }
+      }, "json");
+    });
+  },
+
+  // =============================================
   // MODAL RESETLEME
   // =============================================
   resetAracModal: function () {
@@ -2459,10 +2625,12 @@ const AracTakip = {
     $("#aracModal")
       .find(".modal-title")
       .html('<i class="bx bx-car me-2"></i>Yeni Araç Ekle');
-    $("#ruhsatMevcutAlani, #ruhsatYuklemeAlani").addClass("d-none");
+    $("#ruhsatMevcutAlani, #ruhsatYuklemeAlani, #btnRuhsatEkle").addClass("d-none");
     $("#ruhsatYeniAracUyari").removeClass("d-none");
     $("#ruhsatDosyaInput").val("");
     $("#btnRuhsatGoruntule").removeData("id");
+    AracTakip.policeAlaniniGuncelle(null);
+    AracTakip.policeFormuTemizle();
   },
 
   resetZimmetModal: function () {
@@ -3327,6 +3495,17 @@ $(document).ready(function () {
       AracTakip.ruhsatYukle(aracId, file);
     }
   });
+  $(document).on("click", "#btnRuhsatEkle", function () {
+    $("#ruhsatYuklemeAlani").removeClass("d-none");
+    $(this).addClass("d-none");
+  });
+  $(document).on("click", "#btnRuhsatVazgec", function () {
+    $("#ruhsatDosyaInput").val("");
+    $("#ruhsatYuklemeAlani").addClass("d-none");
+    if ($("#ruhsatMevcutAlani").hasClass("d-none")) {
+      $("#btnRuhsatEkle").removeClass("d-none");
+    }
+  });
   $(document).on("click", "#btnRuhsatDegistir", function () {
     $("#ruhsatYuklemeAlani").removeClass("d-none");
   });
@@ -3335,6 +3514,25 @@ $(document).ready(function () {
     if (encId) {
       window.open("views/arac-takip/ruhsat-goruntule.php?id=" + encodeURIComponent(encId), "_blank");
     }
+  });
+  $(document).on("click", "#btnPoliceFormAc", function () {
+    $("#policeForm").toggleClass("d-none");
+  });
+  $(document).on("click", "#btnPoliceVazgec", function () {
+    AracTakip.policeFormuTemizle();
+  });
+  $(document).on("click", "#btnPoliceKaydet", function () {
+    AracTakip.policeKaydet();
+  });
+  $(document).on("click", ".btn-police-goruntule", function () {
+    const encId = $(this).data("id");
+    if (encId) {
+      window.open("views/arac-takip/police-goruntule.php?id=" + encodeURIComponent(encId), "_blank");
+    }
+  });
+  $(document).on("click", ".btn-police-sil", function () {
+    const encId = $(this).data("id");
+    if (encId) AracTakip.policeSil(encId);
   });
   $(document).on("click", "#btnRuhsatSil", function () {
     const aracId = $("#aracForm input[name='id']").val();
@@ -3805,7 +4003,10 @@ $(document).ready(function () {
       $(this)
         .find(".select2")
         .each(function () {
-          $(this).select2({ dropdownParent: $(this).closest(".modal") });
+          const modal = $(this).closest(".modal");
+          $(this).select2({
+            dropdownParent: modal.is("#aracModal") ? modal.find(".modal-dialog") : modal,
+          });
         });
       if (typeof feather !== "undefined") feather.replace();
     });

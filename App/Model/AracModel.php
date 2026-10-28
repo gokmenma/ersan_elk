@@ -501,6 +501,24 @@ class AracModel extends Model
         ]);
     }
 
+    public function updateEvrakBitis($aracId, string $tur, string $tarih)
+    {
+        $kolonlar = ['sigorta' => 'sigorta_bitis_tarihi', 'kasko' => 'kasko_bitis_tarihi'];
+        if (!isset($kolonlar[$tur])) {
+            return false;
+        }
+        $sql = $this->db->prepare("
+            UPDATE {$this->table}
+            SET {$kolonlar[$tur]} = :tarih
+            WHERE id = :id AND firma_id = :firma_id
+        ");
+        return $sql->execute([
+            'tarih' => $tarih,
+            'id' => $aracId,
+            'firma_id' => $_SESSION['firma_id']
+        ]);
+    }
+
     /**
      * Ruhsat dosyası meta bilgilerini temizler (dosyanın kendisi çağıran tarafından silinir)
      */

@@ -3328,3 +3328,8 @@
 - Tarihçe `evrak_tarihce` (sevk, sevk görüldü, görüntüleme, EYP indirme, UETS'ten alındı; IP/UA ile) + `SystemLogModel` (`UETS_SEVK`). Tam tarihçeyi yalnız `evrak-takip/uets-goruntule` yetkisi olanlar görür.
 - `SystemLogModel::log()` metodu yoktu; UETS servisindeki loglar sessizce düşüyordu, `logActionForFirm()` ile düzeltildi.
 - Okunmamış UETS = kullanıcının görebildiği gelen UETS evrağı + `evrak_tarihce`'de o kullanıcıya ait `goruntuleme` kaydı yok + son 30 gün (`EvrakSevkModel::unreadUets()`). Evrak detayı (masaüstü `evrak-detay`, mobil `detail`) açılınca `goruntuleme` yazılır ve rozet düşer. Mobil: `dashboard.php` → `uets_unread`, `badges.php` → `uets_unread` (documents modülü), `evrak.php` → `uets-sevk-personel`/`uets-sevk-et`, liste `uets_okunmamis`.
+
+## 2026-10-28 — Araç sigorta/kasko poliçe alanı
+- Araç düzenle modalı "Evraklar & Notlar" sekmesine poliçe yönetimi eklendi (AracPoliceModel, arac-police-* API aksiyonları, police-goruntule.php, şifreli dosya: files/arac_police/).
+- Poliçe eklenince/silinince aracın sigorta/kasko bitiş tarihi en geç bitişe göre güncellenir.
+- Bekleyen: sql/2026_10_28_arac_police_dosyalari.sql henüz çalıştırılmadı.

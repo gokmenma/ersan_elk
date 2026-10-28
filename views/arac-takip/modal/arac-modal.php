@@ -176,38 +176,107 @@
                                                             <i class="bx bx-lock-alt"></i> Şifreli Saklanır
                                                         </span>
                                                     </div>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary d-none" id="btnRuhsatEkle">
+                                                        <i class="bx bx-plus me-1"></i>Ruhsat Ekle
+                                                    </button>
                                                 </div>
 
                                                 <div id="ruhsatYeniAracUyari" class="text-muted small d-none">
                                                     <i class="bx bx-info-circle me-1"></i>Ruhsat görseli yükleyebilmek için önce aracı kaydedin.
                                                 </div>
 
-                                                <div id="ruhsatMevcutAlani" class="d-none">
-                                                    <div class="d-flex align-items-center gap-2 mb-2">
-                                                        <i class="bx bx-file-blank fs-3 text-primary" id="ruhsatDosyaIkon"></i>
-                                                        <div class="flex-grow-1">
-                                                            <div class="fw-medium text-truncate" id="ruhsatDosyaAdi">-</div>
-                                                            <div class="text-muted small" id="ruhsatDosyaMeta">-</div>
-                                                        </div>
-                                                    </div>
-                                                    <button type="button" class="btn btn-sm btn-outline-primary" id="btnRuhsatGoruntule">
-                                                        <i class="bx bx-show me-1"></i>Görüntüle
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btnRuhsatDegistir">
-                                                        <i class="bx bx-refresh me-1"></i>Değiştir
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-outline-danger" id="btnRuhsatSil">
-                                                        <i class="bx bx-trash me-1"></i>Kaldır
-                                                    </button>
-                                                </div>
-
-                                                <div id="ruhsatYuklemeAlani" class="d-none">
+                                                <div id="ruhsatYuklemeAlani" class="d-none border rounded bg-white p-3 mb-3">
                                                     <input type="file" class="form-control form-control-sm" id="ruhsatDosyaInput" accept="image/jpeg,image/png,image/webp,application/pdf">
-                                                    <small class="text-muted d-block mt-1">JPG, PNG, WEBP veya PDF - Maks. 8MB.</small>
+                                                    <small class="text-muted d-block mt-1">JPG, PNG, WEBP veya PDF - Maks. 8MB. Dosya seçildiğinde otomatik kaydedilir.</small>
                                                     <div class="progress d-none mt-2" id="ruhsatUploadProgress" style="height: 6px;">
                                                         <div class="progress-bar" role="progressbar" style="width: 0%"></div>
                                                     </div>
+                                                    <div class="text-end mt-2">
+                                                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnRuhsatVazgec">Vazgeç</button>
+                                                    </div>
                                                 </div>
+
+                                                <div id="ruhsatMevcutAlani" class="d-none">
+                                                    <div class="table-responsive">
+                                                        <table class="table table-sm table-bordered align-middle mb-0 font-size-12">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>Dosya</th>
+                                                                    <th style="width:80px" class="text-end">Boyut</th>
+                                                                    <th style="width:130px">Yüklenme</th>
+                                                                    <th class="text-center" style="width:130px">İşlem</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                <tr>
+                                                                    <td><i class="bx bx-file-blank fs-5 text-primary me-1 align-middle" id="ruhsatDosyaIkon"></i><span id="ruhsatDosyaAdi">-</span></td>
+                                                                    <td class="text-end" id="ruhsatDosyaMeta">-</td>
+                                                                    <td id="ruhsatDosyaTarih">-</td>
+                                                                    <td class="text-center">
+                                                                        <button type="button" class="btn btn-sm btn-outline-primary me-1" id="btnRuhsatGoruntule" title="Görüntüle"><i class="bx bx-show"></i></button>
+                                                                        <button type="button" class="btn btn-sm btn-outline-secondary me-1" id="btnRuhsatDegistir" title="Değiştir"><i class="bx bx-refresh"></i></button>
+                                                                        <button type="button" class="btn btn-sm btn-outline-danger" id="btnRuhsatSil" title="Kaldır"><i class="bx bx-trash"></i></button>
+                                                                    </td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-12 mt-3">
+                                            <div class="p-3 border rounded bg-light bg-opacity-50" id="policeAlani">
+                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                    <div class="text-muted small fw-semibold">
+                                                        <i class="bx bx-shield-alt-2 me-1"></i>Sigorta &amp; Kasko Poliçeleri
+                                                        <span class="badge bg-success bg-opacity-10 text-success border border-success ms-1">
+                                                            <i class="bx bx-lock-alt"></i> Şifreli Saklanır
+                                                        </span>
+                                                    </div>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary d-none" id="btnPoliceFormAc">
+                                                        <i class="bx bx-plus me-1"></i>Poliçe Ekle
+                                                    </button>
+                                                </div>
+
+                                                <div id="policeYeniAracUyari" class="text-muted small">
+                                                    <i class="bx bx-info-circle me-1"></i>Poliçe ekleyebilmek için önce aracı kaydedin.
+                                                </div>
+
+                                                <div id="policeForm" class="d-none border rounded bg-white p-3 mb-3">
+                                                    <div class="row g-2">
+                                                        <div class="col-md-4">
+                                                            <?php echo Form::FormSelect2('pol_turu', ['sigorta' => 'Trafik Sigortası', 'kasko' => 'Kasko'], 'sigorta', 'Poliçe Türü', 'shield'); ?>
+                                                        </div>
+                                                        <div class="col-md-4">
+                                                            <?php echo Form::FormFloatInput('text', 'pol_sirket_adi', null, 'Sigorta Şirketi', 'Sigorta Şirketi', 'briefcase', 'form-control', false, 150); ?>
+                                                        </div>
+                                                        <div class="col-md-4">
+                                                            <?php echo Form::FormFloatInput('text', 'pol_police_no', null, 'Poliçe No', 'Poliçe No', 'hash', 'form-control', false, 100); ?>
+                                                        </div>
+                                                        <div class="col-md-4">
+                                                            <?php echo Form::FormFloatInput('text', 'pol_baslangic_tarihi', null, '', 'Başlangıç Tarihi', 'calendar', 'form-control flatpickr', false, null, 'off'); ?>
+                                                        </div>
+                                                        <div class="col-md-4">
+                                                            <?php echo Form::FormFloatInput('text', 'pol_bitis_tarihi', null, '', 'Bitiş Tarihi', 'calendar', 'form-control flatpickr', true, null, 'off'); ?>
+                                                        </div>
+                                                        <div class="col-md-4">
+                                                            <?php echo Form::FormFloatInput('text', 'pol_prim_tutari', null, '0,00', 'Prim Tutarı (₺)', 'dollar-sign', 'form-control', false, null, 'off', false, 'inputmode="decimal"'); ?>
+                                                        </div>
+                                                        <div class="col-12">
+                                                            <input type="file" class="form-control form-control-sm" id="polDosyaInput" accept="image/jpeg,image/png,image/webp,application/pdf">
+                                                            <small class="text-muted d-block mt-1">Poliçe dosyası (isteğe bağlı): JPG, PNG, WEBP veya PDF - Maks. 8MB.</small>
+                                                        </div>
+                                                        <div class="col-12 text-end">
+                                                            <button type="button" class="btn btn-sm btn-outline-secondary me-1" id="btnPoliceVazgec">Vazgeç</button>
+                                                            <button type="button" class="btn btn-sm btn-primary" id="btnPoliceKaydet">
+                                                                <i class="bx bx-save me-1"></i>Poliçeyi Kaydet
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div id="policeListe" class="d-none"></div>
                                             </div>
                                         </div>
                                     </div>

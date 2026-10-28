@@ -20,6 +20,7 @@ $gelen_evraklar = $Evrak->getGelenEvraklar();
 $currentUserId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
 $uetsOkunmamisSayisi = (int) (new \App\Model\EvrakSevkModel())->unreadUets((int) ($_SESSION['firma_id'] ?? 0), $currentUserId, 0)['count'];
 $canSendKep = Gate::allows('evrak-takip/kep');
+$canUetsYonet = Gate::allows('evrak-takip/uets');
 $canMobilImzaAyar = Gate::allows('mobil_imza_ayarlari_sekmesi');
 $onayMap = [];
 $imzamiBekleyenSayisi = $Evrak->countPendingSignatureForUser($currentUserId);
@@ -131,15 +132,19 @@ $title = "Evrak Listesi";
                         <i class="bx bx-file me-2 font-size-16 text-success"></i> Excel'e Aktar
                     </button>
                     <div class="dropdown-divider"></div>
+                    <?php if ($canUetsYonet): ?>
                     <button type="button" class="dropdown-item d-flex align-items-center" id="btnUetsSync">
                         <i class="bx bx-sync me-2 text-primary font-size-16"></i> UETS Senkronize Et
                     </button>
+                    <?php endif; ?>
                     <button type="button" class="dropdown-item d-flex align-items-center" id="btnKepGelenSync">
                         <i class="bx bx-mail-send me-2 text-primary font-size-16"></i> KEP Gelen Kutusunu Al
                     </button>
+                    <?php if ($canUetsYonet || $canSendKep): ?>
                     <button type="button" class="dropdown-item d-flex align-items-center" id="btnUetsSettings">
                         <i class="bx bx-slider me-2 text-secondary font-size-16"></i> UETS / KEP Ayarları
                     </button>
+                    <?php endif; ?>
                     <?php if ($canMobilImzaAyar): ?>
                     <button type="button" class="dropdown-item d-flex align-items-center" id="btnMobilImzaAyarlari" data-bs-toggle="modal" data-bs-target="#modalMobilImzaAyarlari">
                         <i class="bx bx-mobile-alt me-2 text-info font-size-16"></i> Mobil İmza Ayarları

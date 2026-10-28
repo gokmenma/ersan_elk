@@ -108,7 +108,16 @@ class UetsSyncService
             $selectedLookup = array_fill_keys(array_values(array_unique($selectedMessageIds)), true);
             $allIncoming = array_values(array_filter($allIncoming, static fn(array $msg): bool => isset($selectedLookup[(string) ($msg['id'] ?? '')])));
         } else {
-            $allIncoming = array_values(array_filter($allIncoming, static fn(array $msg): bool => in_array((string) ($msg['status'] ?? ''), ['delivered', 'readtimeout'], true)));
+            $startDate = trim((string) ($settings['otomatik_aktarim_baslangic'] ?? ''));
+            $startTs = $startDate !== '' ? strtotime($startDate . ' 00:00:00') : false;
+            if ($startTs === false) {
+                return [
+                    'status' => 'error',
+                    'message' => 'UETS otomatik aktarım başlangıç tarihi tanımlı değil. Önce sql/2026_10_28_uets_otomatik_aktarim_baslangic.sql çalıştırılmalıdır.',
+                ];
+            }
+            $allIncoming = array_values(array_filter($allIncoming, static fn(array $msg): bool => in_array((string) ($msg['status'] ?? ''), ['delivered', 'readtimeout'], true)
+                && (int) ($msg['inserttime'] ?? 0) >= $startTs));
         }
 
         if (!$incomingResult['cached'] && $incomingResult['errors'] === []) {

@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 use App\Model\AracModel;
+use App\Model\AracPoliceModel;
 use App\Model\AracZimmetModel;
 use App\Model\AracZimmetFotoModel;
 use App\Model\AracYakitModel;
@@ -45,6 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
     }
 
     $Arac = new AracModel();
+    $Police = new AracPoliceModel();
     $Zimmet = new AracZimmetModel();
     $ZimmetFoto = new AracZimmetFotoModel();
     $Yakit = new AracYakitModel();
@@ -181,7 +183,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     throw new Exception("Plaka zorunludur.");
                 }
 
-                $mevcutArac = $Arac->plakaKontrol($plaka, $arac_id, true);
+                $plakaDegisti = true;
+                if ($arac_id > 0) {
+                    $kayitliArac = $Arac->getById($arac_id);
+                    if ($kayitliArac) {
+                        $plakaNormalize = fn($p) => preg_replace('/[^A-Z0-9]/', '', mb_strtoupper((string) $p, 'UTF-8'));
+                        $plakaDegisti = $plakaNormalize($kayitliArac->plaka) !== $plakaNormalize($plaka);
+                    }
+                }
+
+                $mevcutArac = $plakaDegisti ? $Arac->plakaKontrol($plaka, $arac_id, true) : false;
                 $mevcutPasifAracGuncelleniyor = false;
                 if ($mevcutArac) {
                     if (
@@ -533,6 +544,179 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 $AracLog->ekle($aracId, 'Ruhsat Silme', 'Ruhsat görseli silindi.');
 
                 echo json_encode(['status' => 'success', 'message' => 'Ruhsat görseli silindi.']);
+                break;
+
+            case 'arac-police-listele':
+                $aracId = intval($_POST['arac_id'] ?? 0);
+                if ($aracId <= 0 || !$Arac->getRuhsatSahibiArac($aracId)) {
+                    throw new Exception("Araç bulunamadı veya bu işlem için yetkiniz yok.");
+                }
+
+                $data = array_map(function ($p) {
+                    return [
+                        'id' => Security::encrypt($p->id),
+                        'police_turu' => $p->police_turu,
+                        'sirket_adi' => $p->sirket_adi,
+                        'police_no' => $p->police_no,
+                        'baslangic_tarihi' => $p->baslangic_tarihi ? Date::dmY($p->baslangic_tarihi) : null,
+                        'bitis_tarihi' => $p->bitis_tarihi ? Date::dmY($p->bitis_tarihi) : null,
+                        'gecerli' => $p->bitis_tarihi ? $p->bitis_tarihi >= date('Y-m-d') : null,
+                        'prim_tutari' => $p->prim_tutari,
+                        'dosya_var' => !empty($p->dosya_adi),
+                        'orijinal_ad' => $p->orijinal_ad,
+                        'is_pdf' => $p->mime_tipi === 'application/pdf',
+                        'boyutu' => $p->boyutu,
+                    ];
+                }, $Police->getByArac($aracId));
+
+                echo json_encode(['status' => 'success', 'data' => $data], JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'arac-police-kaydet':
+                $aracId = intval($_POST['arac_id'] ?? 0);
+                $mevcutArac = $aracId > 0 ? $Arac->getRuhsatSahibiArac($aracId) : null;
+                if (!$mevcutArac) {
+                    throw new Exception("Araç bulunamadı. Poliçe eklemek için önce aracı kaydedin.");
+                }
+
+                $tur = $_POST['police_turu'] ?? '';
+                if (!in_array($tur, AracPoliceModel::TURLER, true)) {
+                    throw new Exception("Geçersiz poliçe türü.");
+                }
+
+                $tarihCoz = function ($deger) {
+                    $deger = trim((string) $deger);
+                    if ($deger === '') {
+                        return null;
+                    }
+                    $dt = \DateTime::createFromFormat('d.m.Y', $deger);
+                    if (!$dt || $dt->format('d.m.Y') !== $deger) {
+                        throw new Exception("Tarih formatı geçersiz: $deger");
+                    }
+                    return $dt->format('Y-m-d');
+                };
+
+                $baslangic = $tarihCoz($_POST['baslangic_tarihi'] ?? '');
+                $bitis = $tarihCoz($_POST['bitis_tarihi'] ?? '');
+                if (!$bitis) {
+                    throw new Exception("Poliçe bitiş tarihi zorunludur.");
+                }
+                if ($baslangic && $baslangic > $bitis) {
+                    throw new Exception("Başlangıç tarihi bitiş tarihinden sonra olamaz.");
+                }
+
+                $prim = trim((string) ($_POST['prim_tutari'] ?? ''));
+                if ($prim !== '') {
+                    $prim = str_replace(['.', ','], ['', '.'], $prim);
+                    if (!is_numeric($prim) || $prim < 0) {
+                        throw new Exception("Prim tutarı geçersiz.");
+                    }
+                    $prim = round((float) $prim, 2);
+                } else {
+                    $prim = null;
+                }
+
+                $dosyaAdi = $orijinalAd = $mimeType = $boyut = null;
+                $dosyaYolu = null;
+                if (isset($_FILES['police_dosyasi']) && $_FILES['police_dosyasi']['error'] !== UPLOAD_ERR_NO_FILE) {
+                    $file = $_FILES['police_dosyasi'];
+                    if ($file['error'] !== UPLOAD_ERR_OK) {
+                        throw new Exception('Dosya yüklenemedi. Dosya boyutunu kontrol edin.');
+                    }
+
+                    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                    $mimeType = finfo_file($finfo, $file['tmp_name']);
+                    finfo_close($finfo);
+                    if (!in_array($mimeType, ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'], true)) {
+                        throw new Exception('Bu dosya türü desteklenmiyor. Desteklenen türler: JPG, PNG, WEBP, PDF.');
+                    }
+                    if ($file['size'] > 8 * 1024 * 1024) {
+                        throw new Exception('Dosya boyutu 8MB\'ı geçemez.');
+                    }
+
+                    $binaryData = file_get_contents($file['tmp_name']);
+                    if ($binaryData === false) {
+                        throw new Exception('Dosya okunamadı.');
+                    }
+
+                    $policeDir = dirname(__DIR__, 2) . '/files/arac_police/' . $aracId . '/';
+                    if (!is_dir($policeDir)) {
+                        mkdir($policeDir, 0755, true);
+                    }
+                    $dosyaAdi = bin2hex(random_bytes(16)) . '.enc';
+                    $dosyaYolu = $policeDir . $dosyaAdi;
+                    if (file_put_contents($dosyaYolu, Security::encryptFile($binaryData)) === false) {
+                        throw new Exception('Şifreli dosya kaydedilemedi.');
+                    }
+                    $orijinalAd = mb_substr($file['name'], 0, 255);
+                    $boyut = $file['size'];
+                }
+
+                $yukleyenId = $_SESSION['user_id'] ?? null;
+                try {
+                    $policeId = $Police->addPolice($aracId, [
+                        'police_turu' => $tur,
+                        'sirket_adi' => trim($_POST['sirket_adi'] ?? '') ?: null,
+                        'police_no' => trim($_POST['police_no'] ?? '') ?: null,
+                        'baslangic_tarihi' => $baslangic,
+                        'bitis_tarihi' => $bitis,
+                        'prim_tutari' => $prim,
+                        'dosya_adi' => $dosyaAdi,
+                        'orijinal_ad' => $orijinalAd,
+                        'mime_tipi' => $mimeType,
+                        'boyutu' => $boyut,
+                        'yukleyen_id' => $yukleyenId,
+                    ]);
+                } catch (\Throwable $e) {
+                    if ($dosyaYolu && is_file($dosyaYolu)) {
+                        unlink($dosyaYolu);
+                    }
+                    throw $e;
+                }
+
+                $enGec = $Police->enGecBitis($aracId, $tur);
+                $guncelTarih = null;
+                if ($enGec) {
+                    $Arac->updateEvrakBitis($aracId, $tur, $enGec);
+                    $guncelTarih = Date::dmY($enGec);
+                }
+
+                $turAdi = $tur === 'kasko' ? 'Kasko' : 'Sigorta';
+                $SystemLog = new SystemLogModel();
+                $SystemLog->logAction($yukleyenId ?? 0, "Araç $turAdi Poliçesi Ekleme", "{$mevcutArac->plaka} plakalı araca $turAdi poliçesi eklendi (Bitiş: " . Date::dmY($bitis) . ").", SystemLogModel::LEVEL_IMPORTANT);
+                $AracLog->ekle($aracId, "$turAdi Poliçesi Ekleme", "$turAdi poliçesi eklendi. Bitiş: " . Date::dmY($bitis));
+
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => "$turAdi poliçesi kaydedildi.",
+                    'data' => ['police_turu' => $tur, 'bitis_tarihi' => $guncelTarih]
+                ]);
+                break;
+
+            case 'arac-police-sil':
+                $policeId = $_POST['id'] ?? '';
+                if (!is_numeric($policeId)) {
+                    $policeId = Security::decrypt($policeId);
+                }
+                $police = is_numeric($policeId) ? $Police->getById((int) $policeId) : null;
+                if (!$police) {
+                    throw new Exception("Poliçe bulunamadı.");
+                }
+
+                $Police->policeSil((int) $police->id);
+
+                $yeniBitis = $Police->enGecBitis((int) $police->arac_id, $police->police_turu);
+                if ($yeniBitis) {
+                    $Arac->updateEvrakBitis((int) $police->arac_id, $police->police_turu, $yeniBitis);
+                }
+
+                $turAdi = $police->police_turu === 'kasko' ? 'Kasko' : 'Sigorta';
+                $kullaniciId = $_SESSION['user_id'] ?? 0;
+                $SystemLog = new SystemLogModel();
+                $SystemLog->logAction($kullaniciId, "Araç $turAdi Poliçesi Silme", "Araç (#{$police->arac_id}) $turAdi poliçesi silindi.", SystemLogModel::LEVEL_IMPORTANT);
+                $AracLog->ekle((int) $police->arac_id, "$turAdi Poliçesi Silme", "$turAdi poliçesi silindi. Poliçe no: " . ($police->police_no ?: '-'));
+
+                echo json_encode(['status' => 'success', 'message' => 'Poliçe silindi.', 'data' => ['bitis_tarihi' => $yeniBitis ? Date::dmY($yeniBitis) : null, 'police_turu' => $police->police_turu]]);
                 break;
 
             case 'arac-listesi':
