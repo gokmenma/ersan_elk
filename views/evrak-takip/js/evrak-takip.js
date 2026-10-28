@@ -2755,6 +2755,44 @@ $(function () {
       });
   });
 
+  const onayIslem = {
+    onay_sunuldu: ["Onaya sunuldu", "primary", "bx-send"],
+    onay_imzalandi: ["İmzalandı", "success", "bx-pen"],
+    onay_tamamlandi: ["Onaylandı", "success", "bx-check-double"],
+    onay_iade: ["İmzacı iade etti", "danger", "bx-undo"],
+    onay_geri_alindi: ["Geri alındı", "warning", "bx-revision"],
+  };
+
+  $(document).on("click", ".btn-onay-tarihce", function () {
+    $("#onayTarihceKonu").text($(this).data("subject") || "-");
+    $("#onayTarihceListe").html('<div class="text-muted py-2"><i class="bx bx-loader-alt bx-spin"></i> Yükleniyor...</div>');
+    $("#modalOnayTarihce").modal("show");
+    $.post(sevkApi, { action: "evrak-onay-tarihcesi", id: $(this).data("id") }, null, "json")
+      .done(function (res) {
+        if (res.status !== "success") {
+          $("#onayTarihceListe").html('<div class="alert alert-danger mb-0">' + escapeHtml(res.message || "Tarihçe alınamadı.") + "</div>");
+          return;
+        }
+        if (!(res.data || []).length) {
+          $("#onayTarihceListe").html('<div class="alert alert-light border text-center text-muted mb-0">Bu evrak için henüz onay hareketi bulunmuyor.</div>');
+          return;
+        }
+        let html = '<ul class="list-group list-group-flush border rounded-3">';
+        res.data.forEach(function (r) {
+          const d = onayIslem[r.islem] || [r.islem, "secondary", "bx-info-circle"];
+          html += '<li class="list-group-item py-2"><div class="d-flex justify-content-between align-items-center gap-2">' +
+            '<div><span class="badge bg-' + d[1] + "-subtle text-" + d[1] + " border border-" + d[1] + '-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold"><i class="bx ' + d[2] + '"></i> ' + escapeHtml(d[0]) + "</span> " +
+            '<strong class="font-size-12">' + escapeHtml(r.islem_yapan) + "</strong></div>" +
+            '<span class="font-size-12 text-muted text-nowrap">' + escapeHtml(r.tarih) + "</span></div>" +
+            (r.aciklama ? '<div class="font-size-12 text-muted mt-1">' + escapeHtml(r.aciklama) + "</div>" : "") + "</li>";
+        });
+        $("#onayTarihceListe").html(html + "</ul>");
+      })
+      .fail(function () {
+        $("#onayTarihceListe").html('<div class="alert alert-danger mb-0">Tarihçe alınamadı.</div>');
+      });
+  });
+
   $(document).on("click", ".btn-uets-tarihce", function () {
     const id = $(this).data("id");
     const full = String($(this).data("full")) === "1";

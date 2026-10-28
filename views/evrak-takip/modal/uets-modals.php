@@ -415,3 +415,22 @@ $canManagePttKep = !empty($canSendKep);
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="modalOnayTarihce" tabindex="-1" aria-labelledby="modalOnayTarihceTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content shadow-lg border-0">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title font-size-15 fw-bold d-flex align-items-center" id="modalOnayTarihceTitle">
+                    <i class="bx bx-history me-2 fs-5 text-warning"></i> Onay Tarihçesi
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="bg-light p-3 rounded-3 mb-3 border font-size-13">
+                    <strong>Evrak:</strong> <span id="onayTarihceKonu" class="text-primary fw-semibold"></span>
+                </div>
+                <div id="onayTarihceListe"></div>
+            </div>
+        </div>
+    </div>
+</div>

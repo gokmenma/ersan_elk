@@ -3334,3 +3334,6 @@
 - Poliçe eklenince/silinince aracın sigorta/kasko bitiş tarihi en geç bitişe göre güncellenir.
 - Bekleyen: sql/2026_10_28_arac_police_dosyalari.sql henüz çalıştırılmadı.
 - Mobil SPA: Profil > Bildirim tercihleri sheet'ine tür bazlı anahtarlar eklendi (`notifications.php` `preferences`/`set-preference`); menü rozetleri (`badges.php`) kapalı türlerde gizlenir. Yeni türler: kep, payroll, kesme_acma.
+
+## 2026-10-28 — Evrak onay tarihçesi
+- Giden evrakta onay süreci olayları mevcut `evrak_tarihce` tablosunu kullanır (islem: onay_sunuldu, onay_imzalandi, onay_tamamlandi, onay_iade, onay_geri_alindi). Eski kayıtlar için geriye dönük tarihçe yoktur.

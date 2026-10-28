@@ -478,6 +478,10 @@ class EvrakTakipModel extends Model
                 'id' => $evrakId,
                 'firma_id' => $_SESSION['firma_id'],
             ]);
+            $this->recordApprovalHistory($evrakId, 'onay_imzalandi', $userId, null, ($signatureMethod === 'mobil_imza' ? 'Mobil imza' : 'Akıllı kart') . ' ile imzalandı (' . (int) $state['onaylanan'] . '/' . (int) $state['toplam'] . ')', $ipAddress);
+            if ($completed) {
+                $this->recordApprovalHistory($evrakId, 'onay_tamamlandi', $userId, null, 'Tüm imzalar tamamlandı, evrak onaylandı', $ipAddress);
+            }
             $this->db->commit();
             return ['completed' => $completed, 'approved' => (int) $state['onaylanan'], 'total' => (int) $state['toplam']];
         } catch (\Throwable $e) {
@@ -588,6 +592,8 @@ class EvrakTakipModel extends Model
             }
             $update = $this->db->prepare("UPDATE {$this->table} SET onay_durumu = 'onay_bekliyor', onay_turu = :onay_turu, e_imza_onay_tarihi = NULL, e_imza_belge_ozeti = NULL, e_imza_iade_gerekcesi = NULL, e_imza_iade_kullanici_id = NULL, e_imza_iade_tarihi = NULL WHERE id = :id AND firma_id = :firma_id");
             $update->execute(['onay_turu' => $approvalType, 'id' => $evrakId, 'firma_id' => $_SESSION['firma_id']]);
+            $turEtiket = ['eimza' => 'E-imza', 'islak_imza' => 'Islak imza', 'mobil_imza' => 'Mobil imza'][$approvalType];
+            $this->recordApprovalHistory($evrakId, 'onay_sunuldu', $userId, (int) $signers[0]->id, $turEtiket . ' onayına sunuldu. İmza sırası: ' . implode(' → ', array_map(fn($signer) => (string) $signer->adi_soyadi, $signers)), $ipAddress);
 
             $this->db->commit();
             return [
@@ -626,6 +632,10 @@ class EvrakTakipModel extends Model
             $completed = (int) $state['toplam'] > 0 && (int) $state['toplam'] === (int) $state['onaylanan'];
             $update = $this->db->prepare("UPDATE {$this->table} SET onay_durumu = :durum, e_imza_onay_tarihi = IF(:tamamlandi, NOW(), NULL), e_imza_belge_ozeti = :ozet WHERE id = :id AND firma_id = :firma_id");
             $update->execute(['durum' => $completed ? 'onaylandi' : 'onay_bekliyor', 'tamamlandi' => $completed ? 1 : 0, 'ozet' => self::belgeOzeti($evrak), 'id' => $evrakId, 'firma_id' => $_SESSION['firma_id']]);
+            $this->recordApprovalHistory($evrakId, 'onay_imzalandi', $userId, null, 'Islak imza teyit edildi (' . (int) $state['onaylanan'] . '/' . (int) $state['toplam'] . ')', $ipAddress);
+            if ($completed) {
+                $this->recordApprovalHistory($evrakId, 'onay_tamamlandi', $userId, null, 'Tüm imzalar tamamlandı, evrak onaylandı', $ipAddress);
+            }
             $this->db->commit();
             return ['completed' => $completed, 'approved' => (int) $state['onaylanan'], 'total' => (int) $state['toplam']];
         } catch (\Throwable $e) {
@@ -672,6 +682,7 @@ class EvrakTakipModel extends Model
                 'id' => $evrakId,
                 'firma_id' => $_SESSION['firma_id'],
             ]);
+            $this->recordApprovalHistory($evrakId, 'onay_iade', $userId, !empty($evrak->olusturan_kullanici_id) ? (int) $evrak->olusturan_kullanici_id : null, 'Düzeltilmek üzere iade edildi. Gerekçe: ' . $gerekce, (string) ($_SERVER['REMOTE_ADDR'] ?? ''));
             $this->db->commit();
             return ['gerekce' => mb_substr($gerekce, 0, 2000, 'UTF-8')];
         } catch (\Throwable $e) {
@@ -749,11 +760,54 @@ class EvrakTakipModel extends Model
                 e_imza_belge_ozeti = NULL, pades_pdf_yolu = NULL, pades_pdf_sha256 = NULL
                 WHERE id = :id AND firma_id = :firma_id");
             $update->execute(['id' => $evrakId, 'firma_id' => $_SESSION['firma_id']]);
+            $this->recordApprovalHistory($evrakId, 'onay_geri_alindi', $userId, null, 'İmza süreci geri alındı, evrak taslağa döndürüldü', (string) ($_SERVER['REMOTE_ADDR'] ?? ''));
             $this->db->commit();
         } catch (\Throwable $e) {
             $this->db->rollBack();
             throw $e;
         }
+    }
+
+    public const ONAY_ISLEMLERI = ['onay_sunuldu', 'onay_imzalandi', 'onay_tamamlandi', 'onay_iade', 'onay_geri_alindi'];
+
+    private function recordApprovalHistory(int $evrakId, string $islem, int $userId, ?int $targetUserId, ?string $description, string $ipAddress = ''): void
+    {
+        try {
+            $stmt = $this->db->prepare(
+                "INSERT INTO evrak_tarihce (firma_id, evrak_id, islem, user_id, hedef_user_id, aciklama, ip_adresi, user_agent, created_at)
+                 VALUES (:firma_id, :evrak_id, :islem, :user_id, :hedef, :aciklama, :ip, :ua, NOW())"
+            );
+            $stmt->execute([
+                'firma_id' => (int) $_SESSION['firma_id'],
+                'evrak_id' => $evrakId,
+                'islem' => $islem,
+                'user_id' => max(0, $userId),
+                'hedef' => $targetUserId,
+                'aciklama' => $description !== null && $description !== '' ? mb_substr($description, 0, 500, 'UTF-8') : null,
+                'ip' => mb_substr($ipAddress, 0, 45) ?: null,
+                'ua' => mb_substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255) ?: null,
+            ]);
+        } catch (\PDOException $e) {
+            error_log('EvrakTakipModel::recordApprovalHistory Error: ' . $e->getMessage());
+        }
+    }
+
+    public function getApprovalHistory(int $evrakId, int $limit = 500): array
+    {
+        $in = implode(',', array_fill(0, count(self::ONAY_ISLEMLERI), '?'));
+        $stmt = $this->db->prepare(
+            "SELECT h.id, h.islem, h.aciklama, h.ip_adresi, h.created_at,
+                    COALESCE(NULLIF(u.adi_soyadi, ''), u.user_name) AS islem_yapan,
+                    COALESCE(NULLIF(t.adi_soyadi, ''), t.user_name) AS hedef
+             FROM evrak_tarihce h
+             LEFT JOIN users u ON u.id = h.user_id
+             LEFT JOIN users t ON t.id = h.hedef_user_id
+             WHERE h.firma_id = ? AND h.evrak_id = ? AND h.islem IN ({$in})
+             ORDER BY h.created_at ASC, h.id ASC
+             LIMIT " . max(1, min(1000, $limit))
+        );
+        $stmt->execute(array_merge([(int) $_SESSION['firma_id'], $evrakId], self::ONAY_ISLEMLERI));
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
     public function getAttachments(int $evrakId): array

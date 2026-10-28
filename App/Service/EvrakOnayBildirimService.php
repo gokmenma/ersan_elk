@@ -110,7 +110,7 @@ final class EvrakOnayBildirimService
             . '</table></div>';
 
         $host = (string) ($_SERVER['HTTP_HOST'] ?? '');
-        $butonUrl = $host !== '' ? 'https://' . $host . '/' . $link : null;
+        $butonUrl = $host !== '' ? 'https://' . $host . '/mobile-spa/#/giden-evrak?id=' . rawurlencode(Security::encrypt((int) $evrak->id)) : null;
 
         try {
             $html = EmailTemplateHelper::getTemplate($baslik, $icerik, $butonUrl ? $butonMetni : null, $butonUrl);

@@ -1329,6 +1329,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         };
                         $actionItems .= '<a href="index?p=evrak-takip/giden-evrak&amp;id=' . $esc($encryptedId) . '&amp;islem=imzala" class="dropdown-item d-flex align-items-center gap-2" title="' . $signActionLabel . '"><i class="bx bx-check text-success"></i><span>' . $signActionLabel . '</span></a><button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-e-imza-iade" data-id="' . $esc($encryptedId) . '" title="Düzeltilmek Üzere İade Et"><i class="bx bx-undo text-warning"></i><span>Düzeltilmek Üzere İade Et</span></button>';
                     }
+                    if ($type === 'giden') $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 btn-onay-tarihce" data-id="' . $esc($encryptedId) . '" data-subject="' . $esc($evrak->konu ?: 'Resmî Yazı') . '" title="Onay Tarihçesi"><i class="bx bx-history text-secondary"></i><span>Onay Tarihçesi</span></button>';
                     if ($locked && $approvalStatus === 'onay_bekliyor' && (int) ($evrak->olusturan_kullanici_id ?? 0) === $currentUserId) $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-e-imza-geri-al" data-id="' . $esc($encryptedId) . '" title="Evrakı Üzerime Geri Al"><i class="bx bx-revision text-info"></i><span>Evrakı Üzerime Geri Al</span></button>';
                     if (!$locked && !\App\Model\EvrakSevkModel::isRestricted($evrak) && (!$isKep || ($type === 'giden' && empty($evrak->kep_mesaj_id)))) $actionItems .= '<div class="dropdown-divider"></div><button type="button" class="dropdown-item d-flex align-items-center gap-2 text-danger evrak-sil cm-danger" data-id="' . $esc($encryptedId) . '" title="Sil"><i class="bx bx-trash"></i><span>Sil</span></button>';
                     $actions = '<div class="action-btn-group d-flex align-items-center justify-content-center"><div class="dropdown"><button type="button" class="btn btn-sm btn-outline-secondary bg-white dropdown-toggle" data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false" title="İşlemler"><i class="bx bx-cog me-1"></i> İşlemler</button><div class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-1">' . $actionItems . '</div></div></div>';
@@ -1746,6 +1747,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'ip' => (string) ($r->ip_adresi ?? ''),
                     'tarih' => $r->created_at ? date('d.m.Y H:i:s', strtotime($r->created_at)) : '',
                 ], $trail)], JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'evrak-onay-tarihcesi':
+                $evrakId = $decryptId((string) ($_POST['id'] ?? ''));
+                $evrak = $evrakId > 0 ? $Model->getById($evrakId) : null;
+                if (!$evrak || !(new \App\Model\EvrakSevkModel())->canView($evrak)) {
+                    throw new Exception('Evrak bulunamadı.');
+                }
+                echo json_encode(['status' => 'success', 'data' => array_map(static fn(object $r): array => [
+                    'islem' => (string) $r->islem,
+                    'islem_yapan' => (string) ($r->islem_yapan ?? 'Sistem'),
+                    'hedef' => (string) ($r->hedef ?? ''),
+                    'aciklama' => (string) ($r->aciklama ?? ''),
+                    'tarih' => $r->created_at ? date('d.m.Y H:i:s', strtotime($r->created_at)) : '',
+                ], $Model->getApprovalHistory($evrakId))], JSON_UNESCAPED_UNICODE);
                 break;
 
             case 'uets-delil-listesi':

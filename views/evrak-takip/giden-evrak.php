@@ -337,6 +337,10 @@ if ($canSendKep || $gonderimKanali === 'kep') {
                                             <div id="gidenKepDogrulamaSonuc" class="small text-muted">KEP seçildiğinde alıcı adresi zorunludur.</div>
                                             <button type="button" id="btnGidenKepDogrula" class="btn btn-sm btn-outline-info flex-shrink-0" <?php echo $kilitli ? 'disabled' : ''; ?>><i class="bx bx-search"></i> Doğrula</button>
                                         </div>
+                                        <div class="mt-2">
+                                            <?php echo Form::FormFloatInput('text', 'kep_ileti_detayi', $value('kep_ileti_detayi'), 'Detsis No', 'İleti Detayı (Detsis No)', 'info', 'form-control', false, 500, 'off'); ?>
+                                            <div class="small text-muted mt-1">Tebligatta istenen Detsis numarasını giriniz (örn. 36888054).</div>
+                                        </div>
                                     </div>
                                     <?php echo Form::FormFloatInput('text', 'muhatap_alt_birim', $value('muhatap_alt_birim'), 'Muhatap Alt Birimi', 'Alt Birim / Bölüm', 'layers'); ?>
                                     <?php echo Form::FormFloatTextarea('muhatap_adres', $value('muhatap_adres'), 'Muhatap Adresi', 'Muhatap Adresi', 'map-pin', 'form-control', false, '90px'); ?>
