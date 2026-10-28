@@ -5858,3 +5858,15 @@ button.endeks-row-head { cursor: pointer; }
   color: var(--ds-muted);
   cursor: pointer;
 }
+
+.endeks-total {
+  background: var(--ds-surface-dark);
+  border-left-color: var(--ds-indigo);
+}
+
+.endeks-total .endeks-name strong,
+.endeks-total .endeks-period strong { color: var(--ds-ink-light); }
+.endeks-total .endeks-name small,
+.endeks-total .endeks-period span { color: var(--ds-muted-light); }
+.endeks-total .endeks-period.is-current strong { color: var(--ds-blue); }
+.endeks-total .endeks-badge { background: var(--ds-on-dark-surface); }

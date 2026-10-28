@@ -756,6 +756,34 @@ class EndeksOkumaModel extends Model
         return $result;
     }
 
+    public function getDistinctTableValues($column, $startDate = '', $endDate = '')
+    {
+        $map = [
+            'ekip_no' => ['def.tur_adi', 'LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id'],
+            'personel_adi' => ['p.adi_soyadi', 'LEFT JOIN personel p ON t.personel_id = p.id'],
+            'abone_no' => ['t.abone_no', ''],
+            'is_emri_no' => ['t.is_emri_no', ''],
+        ];
+        if (!isset($map[$column])) {
+            return [];
+        }
+        [$field, $join] = $map[$column];
+        $params = [$_SESSION['firma_id'] ?? 0];
+        $where = "t.firma_id = ? AND t.silinme_tarihi IS NULL AND $field IS NOT NULL AND TRIM($field) != ''";
+        if ($startDate) {
+            $where .= " AND t.tarih >= ?";
+            $params[] = \App\Helper\Date::convertExcelDate($startDate, 'Y-m-d') ?: $startDate;
+        }
+        if ($endDate) {
+            $where .= " AND t.tarih <= ?";
+            $params[] = \App\Helper\Date::convertExcelDate($endDate, 'Y-m-d') ?: $endDate;
+        }
+        $sql = "SELECT DISTINCT TRIM($field) AS val FROM $this->table t $join WHERE $where ORDER BY val ASC LIMIT 5000";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
     public function getDistinctDefters()
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;

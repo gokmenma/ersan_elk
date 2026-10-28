@@ -587,6 +587,7 @@
             const d = {};
             settings.ajax.data(d);
             Object.assign(filterData, d);
+            filterData.source_action = d.action;
             filterData.action = "get-unique-values";
             filterData.action_type = "get-unique-values";
           } else if (settings.ajax && typeof settings.ajax.data === "object") {

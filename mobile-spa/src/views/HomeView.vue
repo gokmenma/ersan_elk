@@ -644,6 +644,14 @@ const endeksOverview = computed(() => {
   return { total, diff: total - previous, trend: endeksTrend(total, previous), average: Math.round(total / day), day }
 })
 
+const endeksTotals = computed(() => {
+  const count = endeksPeriods.value.length
+  const values = Array.from({ length: count }, (_, index) => endeksRows.value.reduce((sum, row) => sum + (row.values[index] || 0), 0))
+  const last = values[count - 1] || 0
+  const prev = count > 1 ? values[count - 2] : 0
+  return { values, diff: last - prev, trend: endeksTrend(last, prev) }
+})
+
 const endeksWorst = computed(() => endeksRows.value.filter((row) => row.trend.pct < 0).slice(0, 3))
 const endeksBest = computed(() => endeksRows.value.filter((row) => row.trend.pct > 0).slice(-3).reverse())
 
@@ -1704,6 +1712,24 @@ onMounted(() => {
                         </span>
                         <span class="endeks-person-values">{{ person.values.map(endeksFmt).join(' · ') }}</span>
                         <span class="endeks-badge">{{ person.trend.text }}</span>
+                      </div>
+                    </div>
+                  </article>
+                  <article class="endeks-row endeks-total" :class="`endeks-tone--${endeksTotals.trend.tone}`">
+                    <div class="endeks-row-head">
+                      <span class="endeks-name">
+                        <strong>Genel Toplam</strong>
+                        <small>{{ endeksRows.length }} {{ endeksView === 'bolge' ? 'bölge' : 'personel' }}</small>
+                      </span>
+                      <span class="endeks-badge">
+                        {{ endeksTotals.trend.text }}
+                        <small>{{ endeksTotals.diff > 0 ? '+' : '' }}{{ endeksFmt(endeksTotals.diff) }}</small>
+                      </span>
+                    </div>
+                    <div class="endeks-periods">
+                      <div v-for="(period, index) in endeksPeriods" :key="period.label" class="endeks-period" :class="{ 'is-current': period.is_current }">
+                        <span>{{ period.short_label }}</span>
+                        <strong>{{ endeksFmt(endeksTotals.values[index]) }}</strong>
                       </div>
                     </div>
                   </article>

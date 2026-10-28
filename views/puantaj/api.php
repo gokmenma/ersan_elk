@@ -1564,26 +1564,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 }
 
 // Global unique value fetch for DataTable column filters
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'get-unique-values') {
+if (in_array($_SERVER['REQUEST_METHOD'], ['GET', 'POST'], true) && isset($_REQUEST['action']) && $_REQUEST['action'] === 'get-unique-values') {
     header('Content-Type: application/json');
-    $column = $_POST['column'] ?? '';
+    $column = $_REQUEST['column'] ?? '';
     
     $Puantaj = new PuantajModel();
     $EndeksOkuma = new \App\Model\EndeksOkumaModel();
     $data = [];
     
     if ($column === 'is_emri_tipi' || $column === 'is_emri_sonucu') {
-        $reportType = $_POST['sorgu_turu'] ?? '';
+        $reportType = $_REQUEST['sorgu_turu'] ?? '';
         if ($reportType !== '') {
             // Filtre seçenekleri tabloyla aynı merkezi rapor-sekmesi kuralından gelir.
             // Böylece Sayaç/Mühürleme türleri Kesme/Açma filtresine karışmaz.
             $data = $Puantaj->getReportFilterValues(
                 $column,
                 $reportType,
-                $_POST['start_date'] ?? null,
-                $_POST['end_date'] ?? null,
-                $_POST['ekip_kodu'] ?? null,
-                $_POST['region'] ?? ''
+                $_REQUEST['start_date'] ?? null,
+                $_REQUEST['end_date'] ?? null,
+                $_REQUEST['ekip_kodu'] ?? null,
+                $_REQUEST['region'] ?? ''
             );
         } elseif ($column === 'is_emri_tipi') {
             $data = $Puantaj->getWorkTypes();
@@ -1600,6 +1600,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         } else {
             $data = $EndeksOkuma->getDistinctSayacDurums();
         }
+    } elseif (($_REQUEST['source_action'] ?? '') === 'endeks-datatable' && in_array($column, ['ekip_no', 'personel_adi', 'abone_no', 'is_emri_no'], true)) {
+        $data = $EndeksOkuma->getDistinctTableValues($column, $_REQUEST['start_date'] ?? '', $_REQUEST['end_date'] ?? '');
     } else {
         // Generic fallback for other columns if needed
     }
