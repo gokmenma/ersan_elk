@@ -2607,7 +2607,7 @@ $(document).ready(function () {
   }
 
   // KEP Önizleme Butonu Tıklaması
-  $(document).on("click", ".btn-kep-onizle", function (e) {
+  $(document).on("click", ".btn-kep-onizle, .btn-kep-onizle-menu", function (e) {
     e.preventDefault();
     e.stopPropagation();
     const id = $(this).data("id");

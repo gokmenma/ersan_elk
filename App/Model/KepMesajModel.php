@@ -68,6 +68,18 @@ class KepMesajModel extends Model
     /**
      * Evrak ID üzerinden giden KEP kaydını getirir
      */
+    public function getSentEvrakIdMap(int $firmId, array $evrakIds): array
+    {
+        $evrakIds = array_values(array_unique(array_filter(array_map('intval', $evrakIds))));
+        if ($evrakIds === []) {
+            return [];
+        }
+        $in = implode(',', array_fill(0, count($evrakIds), '?'));
+        $stmt = $this->db->prepare("SELECT DISTINCT evrak_id FROM {$this->table} WHERE firm_id = ? AND yon = 'giden' AND deleted_at IS NULL AND evrak_id IN ({$in})");
+        $stmt->execute(array_merge([$firmId], $evrakIds));
+        return array_fill_keys(array_map('intval', $stmt->fetchAll(\PDO::FETCH_COLUMN)), true);
+    }
+
     public function getByEvrakId(int $firmId, int $evrakId): ?array
     {
         $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE firm_id = :firm_id AND evrak_id = :evrak_id AND deleted_at IS NULL ORDER BY id DESC LIMIT 1");

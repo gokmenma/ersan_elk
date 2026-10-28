@@ -1227,6 +1227,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $approvalMap = $Model->getApprovalSummaryMap($currentUserId, $ids);
                 $approvalDetailMap = $Model->getApprovalDetailMap($ids);
                 $latestKepEvidenceMap = (new KepDelilModel())->getLatestByEvrakIds($ids, (int) $_SESSION['firma_id']);
+                $kepSentMap = (new KepMesajModel())->getSentEvrakIdMap((int) $_SESSION['firma_id'], $ids);
                 $canSendKep = Gate::allows('evrak-takip/kep');
                 $uetsFullAccess = (new \App\Model\EvrakSevkModel())->hasFullAccess();
                 $uetsReadIds = array_flip((new \App\Model\EvrakSevkModel())->readEvrakIds((int) $_SESSION['firma_id'], $currentUserId, $ids));
@@ -1246,17 +1247,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $myTurn = $approvalStatus === 'onay_bekliyor' && !empty($approval['sira_bende']);
                     $locked = $approvalStatus !== 'taslak';
                     $reply = $type === 'gelen' ? (!empty($evrak->cevap_verildi_mi) ? 'EVET' : 'BEKLEMEDE') : '-';
-                    $isKep = ($evrak->kaynak_tipi ?? '') === 'kep' || !empty($evrak->kep_mesaj_id) || ($evrak->gonderim_kanali ?? '') === 'kep';
+                    $isKep = ($evrak->kaynak_tipi ?? '') === 'kep' || !empty($evrak->kep_mesaj_id);
+                    $kepSent = $type === 'giden' && !$isKep && (isset($kepSentMap[(int) $evrak->id]) || isset($latestKepEvidenceMap[(int) $evrak->id]));
+                    $kepChannel = $type === 'giden' && !$isKep && ($evrak->gonderim_kanali ?? '') === 'kep';
                     $typeHtml = $type === 'gelen'
                         ? '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold"><i class="bx bx-down-arrow-alt"></i> GELEN</span>'
                         : ($isKep
-                            ? '<span class="badge bg-purple-subtle text-purple border border-purple-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold" title="KEP ile gönderilen evrak"><i class="bx bx-mail-send"></i> GİDEN / KEP</span>'
+                            ? '<span class="badge bg-purple-subtle text-purple border border-purple-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold" title="Doğrudan KEP iletisi olarak gönderilen kayıt"><i class="bx bx-mail-send"></i> KEP İLETİSİ</span>'
                             : '<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold"><i class="bx bx-up-arrow-alt"></i> GİDEN</span>');
+                    if ($kepChannel) $typeHtml .= '<div class="mt-1"><span class="badge bg-purple-subtle text-purple border border-purple-subtle rounded-pill px-2 font-size-10" title="Onay sürecinden sonra KEP ile gönderilecek giden evrak"><i class="bx bx-mail-send"></i> ' . ($kepSent ? 'KEP GÖNDERİLDİ' : 'KEP İLE GÖNDERİM') . '</span></div>';
                     if (($evrak->kaynak_tipi ?? '') === 'uets' || !empty($evrak->uets_mesaj_id)) $typeHtml .= '<div class="mt-1"><span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 font-size-10"><i class="bx bx-envelope"></i> UETS</span></div>';
                     if (\App\Model\EvrakSevkModel::isRestricted($evrak) && !isset($uetsReadIds[(int) $evrak->id])) $typeHtml .= '<div class="mt-1"><span class="badge bg-danger text-white rounded-pill px-2 font-size-10"><i class="bx bx-envelope"></i> OKUNMAMIŞ</span></div>';
                     if ($type === 'gelen' && $isKep) $typeHtml .= '<div class="mt-1"><span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 font-size-10"><i class="bx bx-mail-send"></i> KEP</span></div>';
                     $kepStatusHtml = '<span class="text-muted small">-</span>';
-                    if ($type === 'giden' && $isKep && isset($latestKepEvidenceMap[(int) $evrak->id])) {
+                    if ($type === 'giden' && ($isKep || $kepSent) && isset($latestKepEvidenceMap[(int) $evrak->id])) {
                         $latestEvidence = $latestKepEvidenceMap[(int) $evrak->id];
                         $evidenceStatus = match ((int) $latestEvidence['delil_tur_id']) {
                             10 => ['label' => 'KABUL EDİLDİ', 'class' => 'bg-success-subtle text-success border-success-subtle', 'icon' => 'bx-check-circle'],
@@ -1316,6 +1320,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     } else {
                         $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-duzenle" data-id="' . $esc($encryptedId) . '" title="Düzenle"><i class="bx bx-edit-alt text-primary"></i><span>Düzenle</span></button>';
                     }
+                    if ($kepSent) $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 btn-kep-onizle-menu" data-id="' . $esc($encryptedId) . '" title="KEP İletisi ve Delil Önizleme"><i class="bx bx-mail-send text-primary"></i><span>KEP İletisi ve Delil Önizleme</span></button>';
                     if (\App\Model\EvrakSevkModel::isRestricted($evrak)) {
                         $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 btn-uets-sevk" data-id="' . $esc($encryptedId) . '" data-subject="' . $esc($evrak->konu) . '" title="Personele Sevk Et"><i class="bx bx-share text-warning"></i><span>Personele Sevk Et</span></button>';
                         $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 btn-uets-tarihce" data-id="' . $esc($encryptedId) . '" data-subject="' . $esc($evrak->konu) . '" data-full="' . ($uetsFullAccess ? '1' : '0') . '" title="Sevk ve Erişim Tarihçesi"><i class="bx bx-history text-secondary"></i><span>Sevk ve Erişim Tarihçesi</span></button>';
@@ -1329,7 +1334,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         };
                         $actionItems .= '<a href="index?p=evrak-takip/giden-evrak&amp;id=' . $esc($encryptedId) . '&amp;islem=imzala" class="dropdown-item d-flex align-items-center gap-2" title="' . $signActionLabel . '"><i class="bx bx-check text-success"></i><span>' . $signActionLabel . '</span></a><button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-e-imza-iade" data-id="' . $esc($encryptedId) . '" title="Düzeltilmek Üzere İade Et"><i class="bx bx-undo text-warning"></i><span>Düzeltilmek Üzere İade Et</span></button>';
                     }
-                    if ($type === 'giden') $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 btn-onay-tarihce" data-id="' . $esc($encryptedId) . '" data-subject="' . $esc($evrak->konu ?: 'Resmî Yazı') . '" title="Onay Tarihçesi"><i class="bx bx-history text-secondary"></i><span>Onay Tarihçesi</span></button>';
+                    if ($type === 'giden' && !$isKep) $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 btn-onay-tarihce" data-id="' . $esc($encryptedId) . '" data-subject="' . $esc($evrak->konu ?: 'Resmî Yazı') . '" title="Onay Tarihçesi"><i class="bx bx-history text-secondary"></i><span>Onay Tarihçesi</span></button>';
                     if ($locked && $approvalStatus === 'onay_bekliyor' && (int) ($evrak->olusturan_kullanici_id ?? 0) === $currentUserId) $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-e-imza-geri-al" data-id="' . $esc($encryptedId) . '" title="Evrakı Üzerime Geri Al"><i class="bx bx-revision text-info"></i><span>Evrakı Üzerime Geri Al</span></button>';
                     if (!$locked && !\App\Model\EvrakSevkModel::isRestricted($evrak) && (!$isKep || ($type === 'giden' && empty($evrak->kep_mesaj_id)))) $actionItems .= '<div class="dropdown-divider"></div><button type="button" class="dropdown-item d-flex align-items-center gap-2 text-danger evrak-sil cm-danger" data-id="' . $esc($encryptedId) . '" title="Sil"><i class="bx bx-trash"></i><span>Sil</span></button>';
                     $actions = '<div class="action-btn-group d-flex align-items-center justify-content-center"><div class="dropdown"><button type="button" class="btn btn-sm btn-outline-secondary bg-white dropdown-toggle" data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false" title="İşlemler"><i class="bx bx-cog me-1"></i> İşlemler</button><div class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-1">' . $actionItems . '</div></div></div>';
