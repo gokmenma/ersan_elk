@@ -18,13 +18,13 @@ export function getCurrentMonthRange() {
   }
 }
 
-const initialMonthRange = getCurrentMonthRange()
+const initialToday = formatLocalYmd(new Date())
 
 export const reportsState = reactive({
   activeTab: 'okuma', // 'okuma' | 'kesme' | 'sokme_takma' | 'muhurleme' | 'kacakkontrol'
-  datePreset: 'buay', // 'bugun' | 'dun' | 'hafta' | 'buay' | 'gecenay' | 'custom'
-  startDate: initialMonthRange.start,
-  endDate: initialMonthRange.end,
+  datePreset: 'bugun', // 'bugun' | 'dun' | 'hafta' | 'buay' | 'gecenay' | 'custom'
+  startDate: initialToday,
+  endDate: initialToday,
   dateRangeLabel: '',
   searchQuery: '',
   selectedRegion: '', // '' (tümü) | 'Onikişubat' | vb.

@@ -374,15 +374,15 @@ class SystemLogModel extends Model
         $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
 
         $summarySql = "SELECT
-                COUNT(*) AS total,
                 SUM(CASE WHEN DATE(created_at) = CURDATE() AND COALESCE(level, 0) <> :page_level_1 THEN 1 ELSE 0 END) AS today_operations,
                 SUM(CASE WHEN DATE(created_at) = CURDATE() AND action_type = 'Başarılı Giriş' THEN 1 ELSE 0 END) AS today_logins,
                 SUM(CASE WHEN DATE(created_at) = CURDATE() AND COALESCE(level, 0) = :critical_level THEN 1 ELSE 0 END) AS today_critical,
                 SUM(CASE WHEN DATE(created_at) = CURDATE() AND COALESCE(level, 0) = :page_level_2 THEN 1 ELSE 0 END) AS today_views,
-                SUM(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) AND COALESCE(level, 0) = :page_level_3 THEN 1 ELSE 0 END) AS month_views,
-                SUM(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) AND COALESCE(level, 0) = :page_level_4 AND description LIKE '[Personel PWA]%' THEN 1 ELSE 0 END) AS month_pwa_views
+                SUM(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND COALESCE(level, 0) = :page_level_3 THEN 1 ELSE 0 END) AS month_views,
+                SUM(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND COALESCE(level, 0) = :page_level_4 AND description LIKE '[Personel PWA]%' THEN 1 ELSE 0 END) AS month_pwa_views
             FROM {$this->table}
-            WHERE firma_id = :firma_id";
+            WHERE firma_id = :firma_id
+              AND created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
         $summaryStmt = $this->db->prepare($summarySql);
         $summaryStmt->execute([
             ':page_level_1' => self::LEVEL_PAGE_VIEW,
@@ -393,6 +393,10 @@ class SystemLogModel extends Model
             ':firma_id' => $firmaId,
         ]);
         $summary = $summaryStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        $totalStmt = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} WHERE firma_id = :firma_id");
+        $totalStmt->execute([':firma_id' => $firmaId]);
+        $summary['total'] = (int) $totalStmt->fetchColumn();
 
         $trendSql = "SELECT DATE(created_at) AS log_date,
                 SUM(CASE WHEN COALESCE(level, 0) <> :page_level_1 THEN 1 ELSE 0 END) AS operation_count,
@@ -436,7 +440,7 @@ class SystemLogModel extends Model
             LEFT JOIN users u ON u.id = l.user_id
             WHERE l.firma_id = :firma_id
               AND l.level = :page_level
-              AND l.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
+              AND l.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
 
         $topVisitorsStmt = $this->db->prepare("SELECT actor_name, COUNT(*) AS visit_count,
                 COUNT(DISTINCT page_name) AS page_count, MAX(created_at) AS last_visit
@@ -580,7 +584,7 @@ class SystemLogModel extends Model
     /** Arşiv ve zaman kapsamı tüm kaynaklarda sayım/liste için aynıdır. */
     private function activityScope(array $filters, string $alias, string $dateColumn, string $key, array &$params): string
     {
-        $scope = $filters['scope'] ?? '30';
+        $scope = $filters['scope'] ?? '7';
         $prefix = $alias === '' ? '' : $alias . '.';
         if ($scope === 'archive') {
             return " AND {$prefix}archived_at IS NOT NULL";
@@ -588,7 +592,7 @@ class SystemLogModel extends Model
         if ($scope === 'all') {
             return '';
         }
-        $days = $scope === '90' ? 90 : 30;
+        $days = $scope === '90' ? 90 : ($scope === '30' ? 30 : 7);
         $params[':since_' . $key] = date('Y-m-d H:i:s', strtotime('-' . $days . ' days'));
         return " AND {$prefix}archived_at IS NULL AND {$prefix}{$dateColumn} >= :since_{$key}";
     }

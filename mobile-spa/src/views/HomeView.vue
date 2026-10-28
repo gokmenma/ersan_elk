@@ -568,6 +568,7 @@ const endeksLoading = ref(false)
 const endeksError = ref('')
 const endeksView = ref('bolge') // 'bolge' | 'personel'
 const endeksExpanded = ref({})
+const endeksDetailOpen = ref(false)
 const endeksFormatter = new Intl.NumberFormat('tr-TR')
 
 function endeksFmt(value) {
@@ -1167,24 +1168,6 @@ onMounted(() => {
                   >
                     <GripVertical :size="14" />
                   </span>
-                  <button
-                    type="button"
-                    class="card-inner-btn"
-                    title="Yukarı taşı"
-                    aria-label="Yukarı taşı"
-                    @click.stop="moveCard(cardId, 'up')"
-                  >
-                    <ChevronUp :size="14" />
-                  </button>
-                  <button
-                    type="button"
-                    class="card-inner-btn"
-                    title="Aşağı taşı"
-                    aria-label="Aşağı taşı"
-                    @click.stop="moveCard(cardId, 'down')"
-                  >
-                    <ChevronDown :size="14" />
-                  </button>
                 </div>
               </div>
 
@@ -1252,8 +1235,6 @@ onMounted(() => {
                   >
                     <GripVertical :size="14" />
                   </span>
-                  <button type="button" class="card-inner-btn" title="Yukarı taşı" @click.stop="moveCard(cardId, 'up')"><ChevronUp :size="14" /></button>
-                  <button type="button" class="card-inner-btn" title="Aşağı taşı" @click.stop="moveCard(cardId, 'down')"><ChevronDown :size="14" /></button>
                 </div>
               </div>
 
@@ -1304,8 +1285,6 @@ onMounted(() => {
                   >
                     <GripVertical :size="14" />
                   </span>
-                  <button type="button" class="card-inner-btn" title="Yukarı taşı" @click.stop="moveCard(cardId, 'up')"><ChevronUp :size="14" /></button>
-                  <button type="button" class="card-inner-btn" title="Aşağı taşı" @click.stop="moveCard(cardId, 'down')"><ChevronDown :size="14" /></button>
                 </div>
               </div>
 
@@ -1369,8 +1348,6 @@ onMounted(() => {
                   >
                     <GripVertical :size="14" />
                   </span>
-                  <button type="button" class="card-inner-btn" title="Yukarı taşı" @click.stop="moveCard(cardId, 'up')"><ChevronUp :size="14" /></button>
-                  <button type="button" class="card-inner-btn" title="Aşağı taşı" @click.stop="moveCard(cardId, 'down')"><ChevronDown :size="14" /></button>
                 </div>
               </div>
 
@@ -1438,8 +1415,6 @@ onMounted(() => {
                   >
                     <GripVertical :size="14" />
                   </span>
-                  <button type="button" class="card-inner-btn" title="Yukarı taşı" @click.stop="moveCard(cardId, 'up')"><ChevronUp :size="14" /></button>
-                  <button type="button" class="card-inner-btn" title="Aşağı taşı" @click.stop="moveCard(cardId, 'down')"><ChevronDown :size="14" /></button>
                 </div>
               </div>
 
@@ -1512,8 +1487,6 @@ onMounted(() => {
                   >
                     <GripVertical :size="14" />
                   </span>
-                  <button type="button" class="card-inner-btn" title="Yukarı taşı" @click.stop="moveCard(cardId, 'up')"><ChevronUp :size="14" /></button>
-                  <button type="button" class="card-inner-btn" title="Aşağı taşı" @click.stop="moveCard(cardId, 'down')"><ChevronDown :size="14" /></button>
                 </div>
               </div>
 
@@ -1580,8 +1553,6 @@ onMounted(() => {
                   >
                     <GripVertical :size="14" />
                   </span>
-                  <button type="button" class="card-inner-btn" title="Yukarı taşı" @click.stop="moveCard(cardId, 'up')"><ChevronUp :size="14" /></button>
-                  <button type="button" class="card-inner-btn" title="Aşağı taşı" @click.stop="moveCard(cardId, 'down')"><ChevronDown :size="14" /></button>
                 </div>
               </div>
 
@@ -1611,6 +1582,17 @@ onMounted(() => {
                   </div>
                 </div>
 
+                <button
+                  type="button"
+                  class="endeks-detail-toggle"
+                  :aria-expanded="endeksDetailOpen"
+                  @click="endeksDetailOpen = !endeksDetailOpen"
+                >
+                  <ChevronDown :size="14" class="endeks-chevron" :class="{ 'is-open': endeksDetailOpen }" />
+                  <span>{{ endeksView === 'bolge' ? 'Bölge' : 'Personel' }} detaylarını {{ endeksDetailOpen ? 'gizle' : 'göster' }}</span>
+                </button>
+
+                <div v-show="endeksDetailOpen" class="endeks-detail">
                 <div v-if="endeksWorst.length" class="endeks-chips endeks-chips--down">
                   <span class="endeks-chips-label"><TrendingDown :size="13" /> Düşük</span>
                   <span v-for="row in endeksWorst" :key="`w-${row.name}-${row.sub}`" class="endeks-chip">
@@ -1668,6 +1650,7 @@ onMounted(() => {
                 </div>
 
                 <p class="endeks-foot">Her ayın 1'i ile {{ endeksOverview.day }}'i arası abone okuma sayıları karşılaştırılmaktadır.</p>
+                </div>
               </template>
             </section>
 
@@ -1705,8 +1688,6 @@ onMounted(() => {
                   >
                     <GripVertical :size="14" />
                   </span>
-                  <button type="button" class="card-inner-btn" title="Yukarı taşı" @click.stop="moveCard(cardId, 'up')"><ChevronUp :size="14" /></button>
-                  <button type="button" class="card-inner-btn" title="Aşağı taşı" @click.stop="moveCard(cardId, 'down')"><ChevronDown :size="14" /></button>
                 </div>
               </div>
 
@@ -1756,8 +1737,6 @@ onMounted(() => {
                   >
                     <GripVertical :size="14" />
                   </span>
-                  <button type="button" class="card-inner-btn" title="Yukarı taşı" @click.stop="moveCard(cardId, 'up')"><ChevronUp :size="14" /></button>
-                  <button type="button" class="card-inner-btn" title="Aşağı taşı" @click.stop="moveCard(cardId, 'down')"><ChevronDown :size="14" /></button>
                 </div>
               </div>
 

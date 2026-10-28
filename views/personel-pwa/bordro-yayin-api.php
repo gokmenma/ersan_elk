@@ -48,7 +48,8 @@ try {
             (new \App\Model\BildirimModel())->broadcastByPermissionForFirm(
                 $firma, 'bordro/list', 'Yeni ücret pusulası itirazı',
                 (string) $personel->adi_soyadi . ' ücret pusulası için itiraz bildirdi.',
-                'index.php?p=bordro/list', 'message-square-error', 'danger'
+                'index.php?p=bordro/list', 'message-square-error', 'danger',
+                \App\Model\UserNotificationPreferenceModel::TYPE_PAYROLL
             );
         } catch (\Throwable $bildirimHatasi) {
             error_log('Bordro itiraz yönetici bildirimi: ' . $bildirimHatasi->getMessage());

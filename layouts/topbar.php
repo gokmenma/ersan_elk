@@ -9,6 +9,22 @@ $currentUserId = (int) ($_SESSION['user_id'] ?? ($_SESSION['user']->id ?? 0));
 $cacheTtl = 300;
 $firma_option = [];
 
+$initialNotificationCount = 0;
+$initialSupportCount = 0;
+if ($currentUserId > 0) {
+    try {
+        foreach ((new \App\Model\BildirimModel())->getUnreadNotifications($currentUserId) as $initialNotification) {
+            if (stripos((string) ($initialNotification->link ?? ''), 'p=yardim') !== false) {
+                $initialSupportCount++;
+            } else {
+                $initialNotificationCount++;
+            }
+        }
+    } catch (\Throwable $e) {
+        error_log('Topbar bildirim sayısı alınamadı: ' . $e->getMessage());
+    }
+}
+
 if ($currentUserId > 0) {
     $sessionCache = $_SESSION['topbar_firma_option_cache'][$currentUserId] ?? null;
     $hasValidSessionCache = is_array($sessionCache)
@@ -384,7 +400,7 @@ if (!is_array($firma_option)) {
                     id="page-header-support-dropdown" data-bs-toggle="dropdown" aria-haspopup="true"
                     aria-expanded="false" title="Destek Talepleri">
                     <i data-feather="help-circle" class="icon-lg"></i>
-                    <span class="badge bg-danger rounded-pill" id="support-notification-badge" style="display: none;">0</span>
+                    <span class="badge bg-danger rounded-pill" id="support-notification-badge" style="<?= $initialSupportCount > 0 ? '' : 'display: none;' ?>"><?= (int) $initialSupportCount ?></span>
                 </button>
                 <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-0"
                     aria-labelledby="page-header-support-dropdown" style="max-height: 500px; overflow: hidden;">
@@ -466,7 +482,7 @@ if (!is_array($firma_option)) {
                     id="page-header-notifications-dropdown" data-bs-toggle="dropdown" aria-haspopup="true"
                     aria-expanded="false">
                     <i data-feather="bell" class="icon-lg"></i>
-                    <span class="badge bg-danger rounded-pill" id="notification-badge" style="display: none;">0</span>
+                    <span class="badge bg-danger rounded-pill" id="notification-badge" style="<?= $initialNotificationCount > 0 ? '' : 'display: none;' ?>"><?= (int) $initialNotificationCount ?></span>
                 </button>
                 <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-0"
                     aria-labelledby="page-header-notifications-dropdown" style="max-height: 500px; overflow: hidden;">
@@ -725,10 +741,15 @@ if (!is_array($firma_option)) {
         }
 
         // İlk tablo ve sayfa çizimini arka plan bildirim isteğiyle yarıştırma.
-        if (document.readyState === 'complete') {
+        function startNotifications() {
+            fetchNotifications();
             startPolling();
+        }
+
+        if (document.readyState === 'complete') {
+            startNotifications();
         } else {
-            window.addEventListener('load', startPolling, { once: true });
+            window.addEventListener('load', startNotifications, { once: true });
         }
 
         // Visibility API

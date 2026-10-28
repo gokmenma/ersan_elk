@@ -416,6 +416,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $where = ['user_id = :user_id'];
                 $params = [':user_id' => $userId];
 
+                [$visSql, $visParams] = $BildirimModel->visibleFilter($userId);
+                if ($visSql !== '') {
+                    $where[] = substr($visSql, 5);
+                    $params += $visParams;
+                }
+
                 if ($filter === 'unread') {
                     $where[] = 'is_read = 0';
                 }
@@ -451,8 +457,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $countStmt->execute($params);
                 $filteredCount = (int) $countStmt->fetchColumn();
 
-                $totalStmt = $db->prepare('SELECT COUNT(*) FROM bildirimler WHERE user_id = :user_id');
-                $totalStmt->execute([':user_id' => $userId]);
+                $totalStmt = $db->prepare('SELECT COUNT(*) FROM bildirimler WHERE user_id = :user_id' . $visSql);
+                $totalStmt->execute([':user_id' => $userId] + $visParams);
                 $totalCount = (int) $totalStmt->fetchColumn();
 
                 $listSql = 'SELECT id, title, message, link, is_read, created_at

@@ -10,9 +10,91 @@ class BildirimModel extends Model
     protected $table = 'bildirimler';
     protected $primaryKey = 'id';
 
+    private static ?bool $typeColumnExists = null;
+
     public function __construct()
     {
         parent::__construct($this->table);
+    }
+
+    private function hasTypeColumn(): bool
+    {
+        if (self::$typeColumnExists === null) {
+            $stmt = $this->db->query("SHOW COLUMNS FROM {$this->table} LIKE 'notification_type'");
+            self::$typeColumnExists = $stmt && $stmt->fetch() !== false;
+        }
+
+        return self::$typeColumnExists;
+    }
+
+    public static function inferType(?string $link, ?string $title = null): ?string
+    {
+        $link = strtolower(str_replace('&amp;', '&', (string) $link));
+        $title = mb_strtolower((string) $title, 'UTF-8');
+
+        if (str_contains($title, 'kep')) {
+            return UserNotificationPreferenceModel::TYPE_KEP;
+        }
+        if (str_contains($title, 'ücret pusulası') || str_contains($link, 'bordro/')) {
+            return UserNotificationPreferenceModel::TYPE_PAYROLL;
+        }
+        if (str_contains($link, 'kesme-acma')) {
+            return UserNotificationPreferenceModel::TYPE_KESME_ACMA;
+        }
+
+        $linkMap = [
+            'km-onaylari' => UserNotificationPreferenceModel::TYPE_KM,
+            'km-bildirim' => UserNotificationPreferenceModel::TYPE_KM,
+            'p=yardim' => UserNotificationPreferenceModel::TYPE_SUPPORT,
+            'tab=avans' => UserNotificationPreferenceModel::TYPE_ADVANCE_REQUEST,
+            'tab=izin' => UserNotificationPreferenceModel::TYPE_LEAVE_REQUEST,
+            'p=kacak/' => UserNotificationPreferenceModel::TYPE_KACAK_CREATED,
+            'p=ihbar/' => UserNotificationPreferenceModel::TYPE_IHBAR_CREATED,
+            'p=nobet' => UserNotificationPreferenceModel::TYPE_SHIFT,
+            'evrak-takip' => UserNotificationPreferenceModel::TYPE_DOCUMENT,
+            'gorev' => UserNotificationPreferenceModel::TYPE_TASK,
+            'e-fatura' => UserNotificationPreferenceModel::TYPE_EINVOICE,
+            'einvoice' => UserNotificationPreferenceModel::TYPE_EINVOICE,
+        ];
+        foreach ($linkMap as $needle => $type) {
+            if (str_contains($link, $needle)) {
+                return $type;
+            }
+        }
+
+        if (str_contains($link, 'tab=talep')) {
+            return str_contains($title, 'arıza')
+                ? UserNotificationPreferenceModel::TYPE_FAULT_REQUEST
+                : UserNotificationPreferenceModel::TYPE_GENERAL_REQUEST;
+        }
+
+        return null;
+    }
+
+    public function visibleFilter(int $userId, string $alias = ''): array
+    {
+        if (!$this->hasTypeColumn()) {
+            return ['', []];
+        }
+
+        $disabled = (new UserNotificationPreferenceModel())->getDisabledTypes($userId);
+        if (!$disabled) {
+            return ['', []];
+        }
+
+        $prefix = $alias !== '' ? $alias . '.' : '';
+        $params = [];
+        $placeholders = [];
+        foreach ($disabled as $i => $type) {
+            $key = ':bv_type_' . $i;
+            $placeholders[] = $key;
+            $params[$key] = $type;
+        }
+
+        return [
+            ' AND (' . $prefix . 'notification_type IS NULL OR ' . $prefix . 'notification_type NOT IN (' . implode(',', $placeholders) . '))',
+            $params,
+        ];
     }
 
     /**
@@ -20,6 +102,8 @@ class BildirimModel extends Model
      */
     public function createNotification($userId, $title, $message, $link = null, $icon = 'bell', $color = 'primary', ?string $notificationType = null)
     {
+        $notificationType ??= self::inferType($link !== null ? (string) $link : null, (string) $title);
+
         if ($notificationType !== null) {
             $preferences = new UserNotificationPreferenceModel();
             if (!$preferences->isEnabled((int) $userId, $notificationType)) {
@@ -34,7 +118,7 @@ class BildirimModel extends Model
             return false;
         }
 
-        return $this->saveWithAttr([
+        $data = [
             'user_id' => $userId,
             'title' => $title,
             'message' => $message,
@@ -42,7 +126,12 @@ class BildirimModel extends Model
             'icon' => $icon,
             'color' => $color,
             'is_read' => 0
-        ]);
+        ];
+        if ($this->hasTypeColumn()) {
+            $data['notification_type'] = $notificationType;
+        }
+
+        return $this->saveWithAttr($data);
     }
 
     public function createNotificationWithPush($userId, $title, $message, $link = null, $icon = 'bell', $color = 'primary', ?string $notificationType = null, ?string $pushTitle = null): bool
@@ -69,9 +158,10 @@ class BildirimModel extends Model
      */
     public function getUnreadNotifications($userId)
     {
-        $sql = "SELECT * FROM {$this->table} WHERE user_id = ? AND is_read = 0 ORDER BY created_at DESC";
+        [$visSql, $visParams] = $this->visibleFilter((int) $userId);
+        $sql = "SELECT * FROM {$this->table} WHERE user_id = :user_id AND is_read = 0{$visSql} ORDER BY created_at DESC";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$userId]);
+        $stmt->execute([':user_id' => $userId] + $visParams);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
@@ -80,10 +170,14 @@ class BildirimModel extends Model
      */
     public function getRecentNotifications($userId, $limit = 5)
     {
-        $sql = "SELECT * FROM {$this->table} WHERE user_id = ? ORDER BY created_at DESC LIMIT ?";
+        [$visSql, $visParams] = $this->visibleFilter((int) $userId);
+        $sql = "SELECT * FROM {$this->table} WHERE user_id = :user_id{$visSql} ORDER BY created_at DESC LIMIT :limit";
         $stmt = $this->db->prepare($sql);
-        $stmt->bindValue(1, $userId, PDO::PARAM_INT);
-        $stmt->bindValue(2, $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+        foreach ($visParams as $k => $v) {
+            $stmt->bindValue($k, $v);
+        }
+        $stmt->bindValue(':limit', (int) $limit, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
@@ -144,9 +238,10 @@ class BildirimModel extends Model
      */
     public function getUnreadCount($userId)
     {
-        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE user_id = ? AND is_read = 0";
+        [$visSql, $visParams] = $this->visibleFilter((int) $userId);
+        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE user_id = :user_id AND is_read = 0{$visSql}";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$userId]);
+        $stmt->execute([':user_id' => $userId] + $visParams);
         $result = $stmt->fetch(PDO::FETCH_OBJ);
         return $result ? $result->count : 0;
     }

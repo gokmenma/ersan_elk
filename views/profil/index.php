@@ -35,6 +35,9 @@ $notificationOptions = [
     UserNotificationPreferenceModel::TYPE_DOCUMENT => ['Evrak Bildirimleri', 'Tarafınıza evrak zimmetlendiğinde bildirim alın.', 'file-text', 'text-secondary'],
     UserNotificationPreferenceModel::TYPE_SHIFT => ['Nöbet Bildirimleri', 'Nöbet talebi, değişim ve mazeret bildirimlerini alın.', 'clock', 'text-primary'],
     UserNotificationPreferenceModel::TYPE_EINVOICE => ['E-Fatura Bildirimleri', 'EDM üzerinden yeni bir gelen fatura alındığında bildirim alın.', 'file-plus', 'text-success'],
+    UserNotificationPreferenceModel::TYPE_KEP => ['KEP Bildirimleri', 'Yeni gelen KEP ve otomatik KEP alım hataları için bildirim alın.', 'mail', 'text-info'],
+    UserNotificationPreferenceModel::TYPE_PAYROLL => ['Bordro Bildirimleri', 'Ücret pusulası itirazı gibi bordro bildirimlerini alın.', 'credit-card', 'text-success'],
+    UserNotificationPreferenceModel::TYPE_KESME_ACMA => ['Kesme/Açma Uyarıları', 'Yönetim eşiğini aşan kesme/açma uyarıları için bildirim alın.', 'scissors', 'text-danger'],
 ];
 ?>
 

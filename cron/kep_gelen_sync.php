@@ -79,7 +79,8 @@ $notifyFailure = static function (int $firmId) use ($failStampPath): void {
             'Gelen KEP iletileri ardışık ' . $count . ' denemede otomatik alınamadı. KEP ayarlarını ve otomatik aktarım hesabını kontrol edin.',
             'evrak-takip/list',
             'error',
-            'danger'
+            'danger',
+            \App\Model\UserNotificationPreferenceModel::TYPE_KEP
         );
     } catch (\Throwable $e) {
         error_log('cron/kep_gelen_sync.php bildirim: ' . $e->getMessage());

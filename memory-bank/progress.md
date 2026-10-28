@@ -1993,3 +1993,4 @@
 - [x] 2026-10-27 Mail & SMS gönderim geçmişi sayfası server-side DataTables + yeni sayfa standardına çevrildi (api/log.php, MesajLogModel::ajaxList/summary/getDetail, policy SQL); tarayıcıda test bekliyor
 - [x] 2026-10-27 Mobil SPA Genel Arama (search.php + MobileGlobalSearchModel + MobileSearchAccess + GlobalSearchSheet); sunucu tarafı yetki doğrulandı, dist derlendi; cihazda test ve Pest/Playwright testi bekliyor
 - [x] 2026-10-28 Mobil SPA ana sayfa Endeks Karşılaştırma kartı (lazy API, reports yetkisi); dist derlendi, cihazda test bekliyor
+- [x] Bildirim tercihleri masaüstü + mobil SPA'da ortak uygulanıyor; rozet ilk yükleme düzeltildi (migration çalıştırılmayı bekliyor).

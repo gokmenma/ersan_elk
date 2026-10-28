@@ -36,10 +36,22 @@ try {
         $res = $MesajLog->ajaxList($_POST, $firmaId);
         $summary = $MesajLog->summary($firmaId, $_POST);
 
+        $decoded = [];
+        $tokens = [];
+        foreach ($res['data'] as $row) {
+            $list = json_decode($row->recipients ?? '', true);
+            $decoded[$row->id] = $list;
+            if (is_array($list)) {
+                $tokens = array_merge($tokens, array_slice($list, 0, 3));
+            }
+        }
+        $names = $MesajLog->resolveRecipientNames($tokens);
+
         $rows = [];
         foreach ($res['data'] as $row) {
-            $recipients = json_decode($row->recipients ?? '', true);
+            $recipients = $decoded[$row->id];
             if (is_array($recipients)) {
+                $recipients = array_map(fn($r) => $names[$r] ?? $r, $recipients);
                 $count = count($recipients);
                 $recipientText = implode(', ', array_slice($recipients, 0, 3)) . ($count > 3 ? ' (+' . ($count - 3) . ')' : '');
             } else {
@@ -106,6 +118,8 @@ try {
     if (!is_array($recipients)) {
         $recipients = [(string) $log->recipients];
     }
+    $names = $MesajLog->resolveRecipientNames($recipients);
+    $recipients = array_map(fn($r) => $names[$r] ?? $r, $recipients);
     $attachments = json_decode($log->attachments ?? '', true);
     $attachmentNames = [];
     if ($log->type === 'email' && is_array($attachments)) {

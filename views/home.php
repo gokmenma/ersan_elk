@@ -3185,6 +3185,10 @@ if (Gate::allows("ana_sayfa")) {
                 display: none !important;
             }
 
+            #dashboard-widgets .widget-item.widget-hidden {
+                display: none !important;
+            }
+
             .dashboard-page-skeleton {
                 padding: 0.5rem 0 1rem;
             }
@@ -5372,7 +5376,7 @@ if (Gate::allows("ana_sayfa")) {
 
                     // 1. Client-Side Cache (Instant Feel)
                     const isFreeLayout = $('#switch-free-layout').is(':checked');
-                    const cacheKey = 'dashboard_cache_v10_<?php echo $_SESSION['user_id']; ?>' + (isFreeLayout ? '_free' : '_grid');
+                    const cacheKey = 'dashboard_cache_v11_<?php echo $_SESSION['user_id']; ?>' + (isFreeLayout ? '_free' : '_grid');
                     const cachedData = localStorage.getItem(cacheKey);
                     
                     if (cachedData && !force) {
@@ -5413,7 +5417,10 @@ if (Gate::allows("ana_sayfa")) {
 
                     lazyWidgets.forEach(widget => {
                         const isVisible = widgetVisibility[widget.id] !== false;
-                        if (!isVisible) return; // Kapalı olan kartların verilerini getirmesin
+                        if (!isVisible) {
+                            setWidgetVisibility(widget.id, false, { syncCheckbox: true });
+                            return;
+                        }
 
                         const widthStr = $(widget).attr('class') || '';
                         const width = widthStr.split(' ').filter(c => /^col(-[a-z]+)?-\d+$/.test(c)).join(' ') || 'col-md-6';
@@ -5452,6 +5459,10 @@ if (Gate::allows("ana_sayfa")) {
                                         if ($el.length) $el.replaceWith(res.results[widgetId]);
                                     });
                                 }
+                                widgetIds.forEach(widgetId => {
+                                    const $pending = $('#' + widgetId + '.lazy-widget');
+                                    if ($pending.length) $pending.remove();
+                                });
 
                                 setTimeout(() => {
                                     window.dispatchEvent(new Event('resize'));

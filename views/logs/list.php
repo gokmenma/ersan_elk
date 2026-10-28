@@ -117,12 +117,13 @@ if (Gate::allows("log_kayitlari")) {
             </section>
 
             <div class="d-flex gap-2 flex-wrap mb-3" role="group" aria-label="Log kayıt kapsamı">
-                <button type="button" class="btn btn-primary log-scope" data-scope="30" aria-pressed="true">Son 30 gün</button>
+                <button type="button" class="btn btn-primary log-scope" data-scope="7" aria-pressed="true">Son 7 gün</button>
+                <button type="button" class="btn btn-outline-secondary log-scope" data-scope="30" aria-pressed="false">Son 30 gün</button>
                 <button type="button" class="btn btn-outline-secondary log-scope" data-scope="90" aria-pressed="false">Son 90 gün</button>
                 <button type="button" class="btn btn-outline-secondary log-scope" data-scope="all" aria-pressed="false">Tüm kayıtlar</button>
                 <button type="button" class="btn btn-outline-secondary log-scope" data-scope="archive" aria-pressed="false"><i class="bx bx-archive me-1"></i>Arşiv</button>
             </div>
-            <p class="text-muted font-size-12" id="logScopeDescription">Arşivlenmemiş son 30 günlük kayıtlar gösterilir.</p>
+            <p class="text-muted font-size-12" id="logScopeDescription">Arşivlenmemiş son 7 günlük kayıtlar gösterilir.</p>
             <div class="audit-kpi-grid">
                 <div class="audit-kpi"><div class="audit-kpi-top"><div><div class="audit-kpi-label">Toplam Sistem Logu</div><div class="audit-kpi-value orange"><?= number_format($dashboardData['total'], 0, ',', '.') ?></div></div><span class="audit-kpi-icon orange"><i class="bx bx-data"></i></span></div><div class="audit-kpi-foot"><i class="bx bx-server me-1"></i> Tüm zamanlar</div></div>
                 <div class="audit-kpi"><div class="audit-kpi-top"><div><div class="audit-kpi-label">Bugünkü İşlemler</div><div class="audit-kpi-value"><?= number_format($dashboardData['today_operations'], 0, ',', '.') ?></div></div><span class="audit-kpi-icon green"><i class="bx bx-bolt-circle"></i></span></div><div class="audit-kpi-foot"><i class="bx bx-time-five me-1"></i> İşlem ve aksiyonlar</div></div>
@@ -133,14 +134,14 @@ if (Gate::allows("log_kayitlari")) {
             <div class="audit-dashboard-area active">
                 <div class="audit-insight-grid">
                     <div class="audit-insight-card"><span class="audit-insight-icon"><i class="bx bx-show"></i></span><div><small>Bugünkü Sayfa Ziyareti</small><strong><?= number_format($dashboardData['today_views'], 0, ',', '.') ?></strong><span>Bugün oluşan görüntülemeler</span></div></div>
-                    <div class="audit-insight-card"><span class="audit-insight-icon purple"><i class="bx bx-user-check"></i></span><div><small>Aktif Ziyaretçi</small><strong><?= number_format($dashboardData['active_visitors'], 0, ',', '.') ?></strong><span>Son 30 günde benzersiz kullanıcı</span></div></div>
-                    <div class="audit-insight-card"><span class="audit-insight-icon orange"><i class="bx bx-window-open"></i></span><div><small>Ziyaret Edilen Sayfa</small><strong><?= number_format($dashboardData['unique_pages'], 0, ',', '.') ?></strong><span>Son 30 günde benzersiz rota</span></div></div>
-                    <div class="audit-insight-card"><span class="audit-insight-icon green"><i class="bx bx-mobile-alt"></i></span><div><small>Personel PWA Trafiği</small><strong><?= number_format($dashboardData['month_pwa_views'], 0, ',', '.') ?></strong><span>Son 30 gün / <?= number_format($dashboardData['month_views'], 0, ',', '.') ?> toplam ziyaret</span></div></div>
+                    <div class="audit-insight-card"><span class="audit-insight-icon purple"><i class="bx bx-user-check"></i></span><div><small>Aktif Ziyaretçi</small><strong><?= number_format($dashboardData['active_visitors'], 0, ',', '.') ?></strong><span>Son 7 günde benzersiz kullanıcı</span></div></div>
+                    <div class="audit-insight-card"><span class="audit-insight-icon orange"><i class="bx bx-window-open"></i></span><div><small>Ziyaret Edilen Sayfa</small><strong><?= number_format($dashboardData['unique_pages'], 0, ',', '.') ?></strong><span>Son 7 günde benzersiz rota</span></div></div>
+                    <div class="audit-insight-card"><span class="audit-insight-icon green"><i class="bx bx-mobile-alt"></i></span><div><small>Personel PWA Trafiği</small><strong><?= number_format($dashboardData['month_pwa_views'], 0, ',', '.') ?></strong><span>Son 7 gün / <?= number_format($dashboardData['month_views'], 0, ',', '.') ?> toplam ziyaret</span></div></div>
                 </div>
 
                 <div class="audit-detail-grid">
                     <section class="audit-panel mb-0">
-                        <div class="d-flex justify-content-between align-items-start"><div><div class="audit-panel-title"><i class="bx bx-user-voice me-1"></i> Personel &amp; Kullanıcı Sayfa Hareketleri</div><small class="text-muted">Son 30 günde kim, hangi sayfaları ne kadar ziyaret etti?</small></div><span class="badge bg-soft-primary text-primary">En Aktif 8</span></div>
+                        <div class="d-flex justify-content-between align-items-start"><div><div class="audit-panel-title"><i class="bx bx-user-voice me-1"></i> Personel &amp; Kullanıcı Sayfa Hareketleri</div><small class="text-muted">Son 7 günde kim, hangi sayfaları ne kadar ziyaret etti?</small></div><span class="badge bg-soft-primary text-primary">En Aktif 8</span></div>
                         <div class="audit-ranking-list">
                             <?php foreach ($dashboardData['top_visitors'] as $index => $visitor):
                                 $visitorName = (string) $visitor['actor_name']; ?>
@@ -158,14 +159,14 @@ if (Gate::allows("log_kayitlari")) {
                                     <div class="audit-rank-value"><strong><?= number_format((int) $visitor['visit_count'], 0, ',', '.') ?></strong><small>ziyaret</small></div>
                                 </div>
                             <?php endforeach; ?>
-                            <?php if (!$dashboardData['top_visitors']): ?><div class="audit-empty"><i class="bx bx-info-circle me-1"></i>Son 30 günde sayfa ziyareti bulunamadı.</div><?php endif; ?>
+                            <?php if (!$dashboardData['top_visitors']): ?><div class="audit-empty"><i class="bx bx-info-circle me-1"></i>Son 7 günde sayfa ziyareti bulunamadı.</div><?php endif; ?>
                         </div>
                     </section>
 
                     <div class="audit-stack">
                         <section class="audit-panel mb-0">
                             <div class="audit-panel-title"><i class="bx bx-bar-chart-square me-1"></i> En Çok Ziyaret Edilen Sayfalar</div>
-                            <small class="text-muted">Son 30 günlük yoğunluk</small>
+                            <small class="text-muted">Son 7 günlük yoğunluk</small>
                             <div class="mt-2">
                                 <?php foreach ($dashboardData['top_pages'] as $page): ?>
                                     <div class="audit-popular-row"><div><div class="audit-popular-name" title="<?= htmlspecialchars((string) $page['page_name'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars((string) $page['page_name'], ENT_QUOTES, 'UTF-8') ?></div><div class="audit-popular-meta"><?= number_format((int) $page['visitor_count'], 0, ',', '.') ?> benzersiz ziyaretçi</div></div><span class="audit-popular-count"><?= number_format((int) $page['visit_count'], 0, ',', '.') ?></span></div>
@@ -522,7 +523,7 @@ if (Gate::allows("log_kayitlari")) {
                         type: 'POST',
                         data: function (request) {
                             request.action = 'get-unified-logs';
-                            request.scope = document.querySelector('.log-scope[aria-pressed="true"]')?.dataset.scope || '30';
+                            request.scope = document.querySelector('.log-scope[aria-pressed="true"]')?.dataset.scope || '7';
                             request.category = document.querySelector('.audit-filter.active')?.dataset.category || '';
                         }
                     },
@@ -540,7 +541,7 @@ if (Gate::allows("log_kayitlari")) {
                 $('.log-scope').on('click', function () {
                     $('.log-scope').removeClass('btn-primary').addClass('btn-outline-secondary').attr('aria-pressed', 'false');
                     $(this).removeClass('btn-outline-secondary').addClass('btn-primary').attr('aria-pressed', 'true');
-                    const descriptions = { '30': 'Arşivlenmemiş son 30 günlük kayıtlar gösterilir.', '90': 'Arşivlenmemiş son 90 günlük kayıtlar gösterilir.', all: 'Aktif ve arşivlenmiş tüm kayıtlar gösterilir.', archive: 'Yalnızca arşivlenmiş kayıtlar gösterilir.' };
+                    const descriptions = { '7': 'Arşivlenmemiş son 7 günlük kayıtlar gösterilir.', '30': 'Arşivlenmemiş son 30 günlük kayıtlar gösterilir.', '90': 'Arşivlenmemiş son 90 günlük kayıtlar gösterilir.', all: 'Aktif ve arşivlenmiş tüm kayıtlar gösterilir.', archive: 'Yalnızca arşivlenmiş kayıtlar gösterilir.' };
                     $('#logScopeDescription').text(descriptions[this.dataset.scope]);
                     setAuditView('logs');
                     unifiedTable.ajax.reload();

@@ -3309,3 +3309,9 @@
 - Masaüstü ana sayfadaki "Endeks Okuma Karşılaştırması" mobile-spa ana sayfasına `endeks_comparison` kartı olarak eklendi (Bölge/Personel geçişi, KPI'lar, düşük/yüksek performans çipleri, bölge satırı açılınca personel kırılımı).
 - Veri: `mobile-spa/public/api/dashboard.php?section=endeks_comparison` (lazy, `puantaj/raporlar` Gate'i, yetkisizse 403) → `MobileDashboardModel::endeksComparison()` → `EndeksOkumaModel::getMonthlyComparisonByDay()`. Frontend: `services/dashboard.js::getEndeksComparison`, `HomeView.vue`, stiller `design-system.css` sonunda (`.endeks-*`).
 - Kayıtlı kart sırasına yeni kart id'si `applyDashboard` içinde otomatik eklenir. dist derlendi; cihazda test bekliyor.
+- Endeks karşılaştırma kartı: detay (çipler+liste) varsayılan kapalı, 'detaylarını göster' ile açılır (masaüstü gibi).
+
+## 2026-10-28 — Bildirim tercihleri ve rozet
+- `bildirimler.notification_type` kolonu eklendi (`database/migrations/2026_10_28_bildirimler_notification_type.sql`, geriye dönük doldurma dahil). Model kolon yoksa eski davranışa düşer.
+- `BildirimModel`: tür verilmezse link/başlıktan `inferType()` ile çıkarılır; kapalı türler oluşturmada engellenir, okumada (liste, okunmamış, sayaç, DataTable) `visibleFilter()` ile gizlenir. Masaüstü ve mobil SPA aynı modeli kullanır.
+- `layouts/topbar.php`: rozet sunucuda gerçek sayıyla çizilir, ilk yüklemede anında sorgu yapılır (önceden 15 sn gecikme vardı).

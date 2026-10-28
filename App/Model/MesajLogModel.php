@@ -284,4 +284,32 @@ class MesajLogModel extends Model
         $stmt->execute([':id' => $id, ':firma_id' => $firma_id]);
         return $stmt->fetch(\PDO::FETCH_OBJ) ?: null;
     }
+
+    public function resolveRecipientNames(array $tokens): array
+    {
+        $ids = ['user' => [], 'personel' => []];
+        foreach ($tokens as $token) {
+            if (preg_match('/^(user|personel):(\d+)$/', (string) $token, $m)) {
+                $ids[$m[1]][(int) $m[2]] = true;
+            }
+        }
+
+        $tables = ['user' => 'users', 'personel' => 'personel'];
+        $map = [];
+        foreach ($ids as $prefix => $set) {
+            if (!$set) {
+                continue;
+            }
+            $keys = array_keys($set);
+            $in = implode(',', array_fill(0, count($keys), '?'));
+            $stmt = $this->db->prepare("SELECT id, adi_soyadi FROM {$tables[$prefix]} WHERE id IN ($in)");
+            $stmt->execute($keys);
+            foreach ($stmt->fetchAll(\PDO::FETCH_OBJ) as $row) {
+                if (trim((string) $row->adi_soyadi) !== '') {
+                    $map["$prefix:{$row->id}"] = $row->adi_soyadi;
+                }
+            }
+        }
+        return $map;
+    }
 }

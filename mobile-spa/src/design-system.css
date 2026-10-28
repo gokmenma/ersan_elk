@@ -5840,3 +5840,21 @@ button.endeks-row-head { cursor: pointer; }
 .endeks-person { display: flex; align-items: center; gap: 8px; min-height: 44px; }
 .endeks-person-values { flex: none; font-size: 11px; font-weight: 600; color: var(--ds-muted); }
 .endeks-person .endeks-badge { padding: 2px 7px; font-size: 11px; }
+
+.endeks-detail-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 8px;
+  border: 0;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-subtle);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ds-muted);
+  cursor: pointer;
+}

@@ -18,6 +18,9 @@ class UserNotificationPreferenceModel extends Model
     public const TYPE_DOCUMENT = 'document';
     public const TYPE_SHIFT = 'shift';
     public const TYPE_EINVOICE = 'einvoice';
+    public const TYPE_KEP = 'kep';
+    public const TYPE_PAYROLL = 'payroll';
+    public const TYPE_KESME_ACMA = 'kesme_acma';
 
     public const TYPES = [
         self::TYPE_KACAK_CREATED,
@@ -32,6 +35,9 @@ class UserNotificationPreferenceModel extends Model
         self::TYPE_DOCUMENT,
         self::TYPE_SHIFT,
         self::TYPE_EINVOICE,
+        self::TYPE_KEP,
+        self::TYPE_PAYROLL,
+        self::TYPE_KESME_ACMA,
     ];
 
     protected $table = 'user_notification_preferences';
@@ -76,6 +82,16 @@ class UserNotificationPreferenceModel extends Model
         $stmt->bindValue(':notification_type', $notificationType, PDO::PARAM_STR);
         $stmt->bindValue(':is_enabled', $isEnabled ? 1 : 0, PDO::PARAM_INT);
         $stmt->execute();
+    }
+
+    public function getDisabledTypes(int $userId): array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT notification_type FROM {$this->table} WHERE user_id = :user_id AND is_enabled = 0"
+        );
+        $stmt->execute(['user_id' => $userId]);
+
+        return array_values(array_intersect(self::TYPES, $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []));
     }
 
     public function getPreferences(int $userId): array

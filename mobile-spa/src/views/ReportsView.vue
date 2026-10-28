@@ -306,7 +306,7 @@ watch(
 onMounted(() => {
   window.addEventListener('keydown', handleDrawerKeydown)
   applyTabFromRoute()
-  loadReports()
+  loadReports(reportsState.datePreset !== 'custom' ? reportsState.datePreset : null)
 })
 </script>
 

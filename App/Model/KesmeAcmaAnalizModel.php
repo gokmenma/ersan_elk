@@ -292,7 +292,7 @@ class KesmeAcmaAnalizModel extends Model
                 AND yukseltildi_ts IS NULL AND DATEDIFF(NOW(),dogum_ts)>? AND is_active=1 AND deleted_at IS NULL");
             $stmt->execute([$this->firmaId(),$ay,(int)$kurallar['uyari_gun']]);
             (new BildirimModel())->broadcastByPermission('kesme_analiz_yonetim','Kesme/Açma açık uyarıları',
-                "$ay döneminde $yeniYukselen uyarı yönetim eşiğini aştı.",'index.php?p=kesme-acma/list','error','danger');
+                "$ay döneminde $yeniYukselen uyarı yönetim eşiğini aştı.",'index.php?p=kesme-acma/list','error','danger',\App\Model\UserNotificationPreferenceModel::TYPE_KESME_ACMA);
         }
         $stmt=$this->db->prepare("SELECT u.*,p.adi_soyadi,DATEDIFF(NOW(),u.dogum_ts) acik_gun
             FROM kesme_acma_uyari u LEFT JOIN personel p ON p.id=u.personel_id

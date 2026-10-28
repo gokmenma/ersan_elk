@@ -1230,7 +1230,10 @@ class KepService
                     'evrak-takip/kep',
                     'Yeni Gelen KEP',
                     $result['aktarilan'] . ' yeni KEP iletisi Gelen Evrak olarak kaydedildi.',
-                    'evrak-takip/list'
+                    'evrak-takip/list',
+                    'bell',
+                    'primary',
+                    \App\Model\UserNotificationPreferenceModel::TYPE_KEP
                 );
             } catch (Throwable $e) {
                 error_log('KepService::autoSyncIncoming bildirim: ' . $e->getMessage());

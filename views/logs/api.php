@@ -61,7 +61,7 @@ try {
                 'offset' => (int) ($_POST['start'] ?? 0),
                 'search' => trim((string) ($_POST['search']['value'] ?? '')),
                 'category' => trim((string) ($_POST['category'] ?? '')),
-                'scope' => in_array($_POST['scope'] ?? '30', ['30', '90', 'all', 'archive'], true) ? ($_POST['scope'] ?? '30') : '30',
+                'scope' => in_array($_POST['scope'] ?? '7', ['7', '30', '90', 'all', 'archive'], true) ? ($_POST['scope'] ?? '7') : '7',
                 'date' => $normalizeFilterDate($getColumnFilter(0)),
                 'user' => $getColumnFilter(1),
                 'type' => $getColumnFilter(2),
