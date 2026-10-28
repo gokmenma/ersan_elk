@@ -42,6 +42,7 @@ class UetsSyncService
     public function previewIncoming(int $firmId): array
     {
         $messages = $this->fetchIncomingMessages($firmId);
+        usort($messages['messages'], static fn(array $a, array $b): int => (int) ($b['inserttime'] ?? 0) <=> (int) ($a['inserttime'] ?? 0));
         $rows = [];
 
         foreach ($messages['messages'] as $msg) {
@@ -57,7 +58,7 @@ class UetsSyncService
 
             $rows[] = [
                 'selection_id' => Security::encrypt($uetsMsgId),
-                'tarih' => date('d.m.Y', strtotime($tarih)),
+                'tarih' => !empty($msg['inserttime']) ? date('d.m.Y H:i', (int) $msg['inserttime']) : date('d.m.Y', strtotime($tarih)),
                 'konu' => $konu,
                 'gonderen' => $kurumAdi,
                 'gonderen_uets' => (string) ($msg['sender'] ?? ''),

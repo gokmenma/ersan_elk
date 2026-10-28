@@ -294,7 +294,7 @@ try {
             LEFT JOIN personel p2 ON et.ilgili_personel_id = p2.id
             LEFT JOIN users u ON et.olusturan_kullanici_id = u.id
             WHERE {$where}
-            ORDER BY et.tarih DESC, et.id DESC
+            ORDER BY et.tarih DESC, et.olusturma_tarihi DESC, et.id DESC
             LIMIT :offset, :limit
         ";
         $stmt = $db->prepare($dataSql);

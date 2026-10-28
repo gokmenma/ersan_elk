@@ -194,7 +194,7 @@ class EvrakTakipModel extends Model
         $orderBy = $orderMap[$orderColumn] ?? 'et.tarih';
         $sql = "SELECT et.*, p1.adi_soyadi AS personel_adi, p2.adi_soyadi AS ilgili_personel_adi,
                     COALESCE(NULLIF(u.adi_soyadi, ''), NULLIF(u.user_name, '')) AS islem_yapan_adi" . $from . $whereSql
-            . " ORDER BY {$orderBy} {$orderDirection}, et.id DESC LIMIT :start, :length";
+            . " ORDER BY {$orderBy} {$orderDirection}, et.olusturma_tarihi {$orderDirection}, et.id {$orderDirection} LIMIT :start, :length";
         $stmt = $this->db->prepare($sql);
         foreach ($bindings as $key => $value) $stmt->bindValue(':' . $key, $value);
         $stmt->bindValue(':start', $start, PDO::PARAM_INT);
