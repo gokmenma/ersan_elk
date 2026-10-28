@@ -591,6 +591,26 @@ class EvrakTakipModel extends Model
         return $map;
     }
 
+    public function getApprovalStepsMap(array $evrakIds): array
+    {
+        $evrakIds = array_values(array_unique(array_filter(array_map('intval', $evrakIds))));
+        if ($evrakIds === []) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($evrakIds), '?'));
+        $sql = $this->db->prepare("SELECT o.evrak_id, o.kullanici_id, o.sira, o.durum, o.onay_tarihi, u.adi_soyadi
+            FROM evrak_takip_onaylari o
+            INNER JOIN users u ON u.id = o.kullanici_id
+            WHERE o.firma_id = ? AND o.evrak_id IN ({$placeholders})
+            ORDER BY o.evrak_id ASC, o.sira ASC, o.id ASC");
+        $sql->execute(array_merge([(int) $_SESSION['firma_id']], $evrakIds));
+        $map = [];
+        foreach ($sql->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $map[(int) $row['evrak_id']][] = $row;
+        }
+        return $map;
+    }
+
     public function submitForApproval(int $evrakId, int $userId = 0, string $ipAddress = '', string $approvalType = 'eimza'): array
     {
         $approvalType = in_array($approvalType, ['eimza', 'islak_imza', 'mobil_imza'], true) ? $approvalType : 'eimza';

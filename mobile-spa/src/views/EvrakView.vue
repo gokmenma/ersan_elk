@@ -1285,6 +1285,28 @@ onBeforeUnmount(stopMobileSignTimer)
             </div>
           </div>
 
+          <!-- İmza Süreci -->
+          <div
+            v-if="item.evrak_tipi === 'giden' && ['onay_bekliyor', 'onaylandi'].includes(item.onay_durumu) && item.approval_steps?.length"
+            class="evrak-sign-steps"
+          >
+            <span
+              v-for="step in item.approval_steps"
+              :key="step.sira + step.name"
+              class="evrak-sign-chip"
+              :class="{
+                'is-approved': step.durum === 'onaylandi',
+                'is-current': step.is_current,
+              }"
+              :title="step.onay_tarihi ? `${step.name} · ${step.onay_tarihi}` : step.name"
+            >
+              <Check v-if="step.durum === 'onaylandi'" :size="11" />
+              <Clock v-else-if="step.is_current" :size="11" />
+              <span v-else class="evrak-sign-chip__num">{{ step.sira }}</span>
+              {{ step.name }}
+            </span>
+          </div>
+
           <!-- Konu Başlığı -->
           <h3 class="evrak-card-subject">
             {{ item.konu }}
@@ -3119,6 +3141,36 @@ onBeforeUnmount(stopMobileSignTimer)
 .evrak-status-badge--draft {
   background: var(--dsx-bg-f1f5f9);
   color: var(--dsx-fg-64748b);
+}
+
+.evrak-sign-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.evrak-sign-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: var(--ds-radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--dsx-bg-f1f5f9);
+  color: var(--dsx-fg-64748b);
+}
+.evrak-sign-chip.is-approved {
+  background: var(--dsx-bg-d1fae5);
+  color: var(--dsx-fg-065f46);
+}
+.evrak-sign-chip.is-current {
+  background: var(--dsx-bg-fef3c7);
+  color: var(--dsx-fg-92400e);
+}
+.evrak-sign-chip__num {
+  font-size: 10px;
+  font-weight: 700;
 }
 
 .evrak-card-subject {

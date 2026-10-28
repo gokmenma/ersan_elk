@@ -313,6 +313,8 @@ try {
         $sevkModel = new \App\Model\EvrakSevkModel();
         $uetsReadIds = array_flip($sevkModel->readEvrakIds($firmaId, $currentUserId, array_map(static fn(object $r): int => (int) $r->id, $rows)));
 
+        $stepsMap = $EvrakModel->getApprovalStepsMap(array_map(static fn(object $r): int => (int) $r->id, $rows));
+
         $items = [];
         foreach ($rows as $row) {
             $id = (int) $row->id;
@@ -327,6 +329,20 @@ try {
                 'bekleyen_imzam' => false,
                 'siradaki_kisi' => '',
             ];
+
+            $listSteps = [];
+            $currentFound = false;
+            foreach ($stepsMap[$id] ?? [] as $rec) {
+                $isCurrent = !$currentFound && $rec['durum'] === 'bekliyor' && $onayDurumu === 'onay_bekliyor';
+                $currentFound = $currentFound || $isCurrent;
+                $listSteps[] = [
+                    'name' => (string) $rec['adi_soyadi'],
+                    'sira' => (int) $rec['sira'],
+                    'durum' => (string) $rec['durum'],
+                    'onay_tarihi' => !empty($rec['onay_tarihi']) ? date('d.m.Y H:i', strtotime((string) $rec['onay_tarihi'])) : null,
+                    'is_current' => $isCurrent,
+                ];
+            }
 
             $siraBende = ($onayDurumu === 'onay_bekliyor' && !empty($onayInfo['sira_bende']));
             $kilitli = (!$isGelen && $onayDurumu !== 'taslak');
@@ -398,6 +414,7 @@ try {
                 'onay_toplam' => (int) ($onayInfo['toplam'] ?? 0),
                 'onaylanan' => (int) ($onayInfo['onaylanan'] ?? 0),
                 'siradaki_kisi' => (string) ($onayInfo['siradaki_kisi'] ?? ''),
+                'approval_steps' => $listSteps,
                 'kilitli' => $kilitli,
                 'onaya_sunulabilir' => $onayaSunulabilir,
                 'geri_alinabilir' => $geriAlinabilir,
