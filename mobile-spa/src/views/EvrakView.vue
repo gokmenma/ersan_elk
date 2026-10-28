@@ -138,6 +138,11 @@ const previewFile = ref({
 // E-İmza & İşlem Onay Modalları
 const isSignConfirmOpen = ref(false)
 const isReturnConfirmOpen = ref(false)
+const isSevkOpen = ref(false)
+const sevkUsers = ref([])
+const sevkAlan = ref('')
+const sevkNotu = ref('')
+const sevkLoading = ref(false)
 const isDeleteConfirmOpen = ref(false)
 const returnGerekce = ref('')
 const activeDocId = ref('')
@@ -393,6 +398,8 @@ async function openDetail(doc) {
     const res = await evrakApi.detail(doc.id)
     if (res.data) {
       selectedDetail.value = res.data
+      const listed = items.value.find((entry) => entry.id === doc.id)
+      if (listed) listed.uets_okunmamis = false
     }
   } catch (err) {
     showToast(err.message || 'Detaylar alınamadı.', 'error')
@@ -874,6 +881,54 @@ function sendKepForApproved() {
   if (doc) openKepForm(doc)
 }
 
+const SEVK_DURUM = { bekliyor: 'Bekliyor', goruldu: 'Görüldü', iletildi: 'İletildi' }
+const TARIHCE_ISLEM = {
+  sevk: 'Sevk edildi',
+  sevk_goruldu: 'Sevk görüldü',
+  goruntuleme: 'Evrak görüntülendi',
+  eyp_indirme: 'EYP paketi indirildi',
+  uets_alindi: "UETS'ten alındı",
+}
+
+async function openSevk(doc) {
+  sevkAlan.value = ''
+  sevkNotu.value = ''
+  sevkUsers.value = []
+  isSevkOpen.value = true
+  sevkLoading.value = true
+  try {
+    const res = await evrakApi.uetsSevkPersonel(doc.id)
+    sevkUsers.value = res.data || []
+  } catch (err) {
+    showToast(err.message || 'Personel listesi alınamadı.', 'error')
+    isSevkOpen.value = false
+  } finally {
+    sevkLoading.value = false
+  }
+}
+
+async function confirmSevk() {
+  if (!sevkAlan.value) {
+    showToast('Lütfen sevk edilecek personeli seçiniz.', 'error')
+    return
+  }
+  sevkLoading.value = true
+  try {
+    const res = await evrakApi.uetsSevkEt(
+      { id: selectedDetail.value.id, alan_user_id: sevkAlan.value, sevk_notu: sevkNotu.value.trim() },
+      auth.state.csrfToken
+    )
+    showToast(res.message || 'Evrak sevk edildi.')
+    isSevkOpen.value = false
+    const detail = await evrakApi.detail(selectedDetail.value.id)
+    if (detail.data) selectedDetail.value = detail.data
+  } catch (err) {
+    showToast(err.message || 'Sevk işlemi yapılamadı.', 'error')
+  } finally {
+    sevkLoading.value = false
+  }
+}
+
 // E-İmza İade Et
 function promptIade(doc) {
   activeDocId.value = doc.id
@@ -963,6 +1018,7 @@ onMounted(() => {
   searchQuery.value = String(route.query.search || '').trim()
   loadList(true)
   loadMeta()
+  if (route.query.open) openDetail({ id: String(route.query.open) })
 })
 
 onBeforeUnmount(stopMobileSignTimer)
@@ -1184,6 +1240,9 @@ onBeforeUnmount(stopMobileSignTimer)
               </span>
               <span v-else-if="item.is_uets" class="evrak-type-badge evrak-type-badge--uets">
                 <Mail :size="11" /> UETS
+              </span>
+              <span v-if="item.uets_okunmamis" class="evrak-type-badge evrak-type-badge--unread">
+                <MailOpen :size="11" /> OKUNMAMIŞ
               </span>
 
               <!-- Evrak No -->
@@ -1651,6 +1710,32 @@ onBeforeUnmount(stopMobileSignTimer)
               </div>
 
               <!-- Ek Dosyalar Listesi -->
+              <div v-if="selectedDetail.uets_kisitli" class="evrak-detail-section">
+                <span class="evrak-section-label">SEVK GEÇMİŞİ</span>
+                <div v-if="!selectedDetail.sevk_gecmisi?.length" class="evrak-no-files">
+                  Bu evrak henüz sevk edilmemiş.
+                </div>
+                <div v-else class="evrak-detail-card">
+                  <div v-for="(s, i) in selectedDetail.sevk_gecmisi" :key="i" class="evrak-sevk-row">
+                    <strong>{{ s.sevk_eden }} → {{ s.alan }}</strong>
+                    <span class="evrak-sevk-state">{{ SEVK_DURUM[s.durum] || s.durum }}</span>
+                    <small>Sevk: {{ s.tarih }}<template v-if="s.goruldu"> · Görüldü: {{ s.goruldu }}</template></small>
+                    <small v-if="s.not">Not: {{ s.not }}</small>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="selectedDetail.uets_kisitli && selectedDetail.tarihce?.length" class="evrak-detail-section">
+                <span class="evrak-section-label">ERİŞİM VE İŞLEM KAYITLARI</span>
+                <div class="evrak-detail-card">
+                  <div v-for="(t, i) in selectedDetail.tarihce" :key="i" class="evrak-sevk-row">
+                    <strong>{{ TARIHCE_ISLEM[t.islem] || t.islem }}</strong>
+                    <small>{{ t.tarih }} · {{ t.islem_yapan }}<template v-if="t.hedef"> → {{ t.hedef }}</template></small>
+                    <small v-if="t.aciklama">{{ t.aciklama }}</small>
+                  </div>
+                </div>
+              </div>
+
               <div class="evrak-detail-section">
                 <span class="evrak-section-label">
                   EKLER ({{ selectedDetail.attachments?.length || 0 }})
@@ -1734,6 +1819,17 @@ onBeforeUnmount(stopMobileSignTimer)
                 <span>Taslağa Geri Al</span>
               </button>
             </template>
+
+            <button
+              v-if="selectedDetail.uets_kisitli"
+              type="button"
+              class="evrak-btn evrak-btn--amber"
+              :disabled="actionLoading"
+              @click="openSevk(selectedDetail)"
+            >
+              <Send :size="16" />
+              <span>Personele Sevk Et</span>
+            </button>
 
             <button
               v-if="selectedDetail.kep_gonderime_hazir"
@@ -2597,6 +2693,35 @@ onBeforeUnmount(stopMobileSignTimer)
 
     <!-- ======================================================== -->
     <!-- E-İMZA İADE ET MODALI                                    -->
+    <Transition name="fade">
+      <div v-if="isSevkOpen" class="evrak-dialog-layer">
+        <div class="evrak-dialog-card">
+          <div class="evrak-dialog-icon bg-amber-soft text-amber">
+            <Send :size="28" />
+          </div>
+          <h3>UETS Evrakını Sevk Et</h3>
+          <p>Seçilen personel evrakı görüntüleyebilir ve başka bir personele iletebilir. İşlem tarihçeye kaydedilir.</p>
+
+          <div class="w-100 text-left my-3">
+            <label class="evrak-form-label">PERSONEL *</label>
+            <select v-model="sevkAlan" class="evrak-textarea" :disabled="sevkLoading">
+              <option value="">{{ sevkLoading ? 'Yükleniyor...' : 'Personel seçiniz' }}</option>
+              <option v-for="u in sevkUsers" :key="u.id" :value="u.id">{{ u.adi }}<template v-if="u.unvan"> - {{ u.unvan }}</template></option>
+            </select>
+            <label class="evrak-form-label mt-3">SEVK NOTU</label>
+            <textarea v-model="sevkNotu" rows="3" maxlength="500" class="evrak-textarea" placeholder="İsteğe bağlı not"></textarea>
+          </div>
+
+          <div class="evrak-dialog-actions">
+            <button type="button" class="evrak-btn evrak-btn--amber" :disabled="sevkLoading || !sevkAlan" @click="confirmSevk">
+              {{ sevkLoading ? 'İşleniyor...' : 'Sevk Et' }}
+            </button>
+            <button type="button" class="evrak-btn evrak-btn--outline" @click="isSevkOpen = false">Vazgeç</button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
     <!-- ======================================================== -->
     <Transition name="fade">
       <div v-if="isReturnConfirmOpen" class="evrak-dialog-layer">
@@ -3883,6 +4008,31 @@ onBeforeUnmount(stopMobileSignTimer)
   border: 1px solid rgba(2, 132, 199, 0.3) !important;
   font-weight: 800;
   letter-spacing: 0.04em;
+}
+
+.evrak-type-badge--unread {
+  background: #ef4444 !important;
+  color: #fff !important;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.evrak-sevk-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.evrak-sevk-row:last-child {
+  border-bottom: 0;
+}
+
+.evrak-sevk-state {
+  font-size: 11px;
+  font-weight: 700;
+  color: #b45309;
 }
 
 .evrak-type-badge--uets {

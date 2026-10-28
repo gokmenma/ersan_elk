@@ -323,6 +323,7 @@ class MobileDashboardModel
         $settingsRaw = $settingsModel->getSettingByUser('mobile_dashboard_settings', $userId, $firmaId);
 
         $defaultOrder = [
+            'uets_unread',
             'announcements',
             'pending_approvals',
             'shifts',

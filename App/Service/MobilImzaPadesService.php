@@ -90,6 +90,7 @@ final class MobilImzaPadesService
             'token' => $token,
             'msisdn' => TurkcellMobilImzaClient::maskMsisdn($msisdn),
             'timeout' => self::SIGN_TIMEOUT,
+            'parmak_izi' => self::fingerprint($signedAttributes),
         ];
     }
 
@@ -131,6 +132,7 @@ final class MobilImzaPadesService
             'token' => $token,
             'msisdn' => TurkcellMobilImzaClient::maskMsisdn($msisdn),
             'timeout' => self::SIGN_TIMEOUT,
+            'parmak_izi' => self::fingerprint($signedAttributes),
         ];
     }
 
@@ -245,6 +247,11 @@ final class MobilImzaPadesService
         $signedPdf = (new PdfIncrementalSigner())->embed($preparedPdf, (array) ($layout['range'] ?? []), $cms);
 
         return (new PadesEImzaService())->finalize((int) $transaction->evrak_id, $userId, $sourcePdf, $signedPdf, $ipAddress, 'mobil_imza');
+    }
+
+    private static function fingerprint(string $signedAttributes): string
+    {
+        return trim(chunk_split(strtoupper(hash('sha256', $signedAttributes)), 4, ' '));
     }
 
     private static function certificateSettingName(string $certHash): string

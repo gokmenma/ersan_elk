@@ -242,12 +242,19 @@ class MobileGlobalSearchModel extends Model
             $params[':tip' . $i] = $type;
         }
 
-        $sql = "SELECT id, evrak_no, evrak_tipi, konu, kurum_adi, tarih, onay_durumu
-                FROM evrak_takip
-                WHERE firma_id = :firma_id AND silinme_tarihi IS NULL
-                  AND evrak_tipi IN (" . implode(',', $typeParams) . ")
-                  AND (evrak_no LIKE :term OR konu LIKE :term OR kurum_adi LIKE :term OR aciklama LIKE :term)
-                ORDER BY CASE WHEN evrak_no LIKE :term_exact THEN 1 WHEN evrak_no LIKE :term_starts THEN 2 ELSE 3 END, id DESC
+        $visibilityBindings = [];
+        $visibilitySql = (new \App\Model\EvrakSevkModel())->visibilitySql('et', $visibilityBindings);
+        foreach ($visibilityBindings as $name => $value) {
+            $params[':' . $name] = $value;
+        }
+
+        $sql = "SELECT et.id, et.evrak_no, et.evrak_tipi, et.konu, et.kurum_adi, et.tarih, et.onay_durumu
+                FROM evrak_takip et
+                WHERE et.firma_id = :firma_id AND et.silinme_tarihi IS NULL
+                  AND et.evrak_tipi IN (" . implode(',', $typeParams) . ")
+                  AND (et.evrak_no LIKE :term OR et.konu LIKE :term OR et.kurum_adi LIKE :term OR et.aciklama LIKE :term)
+                  AND {$visibilitySql}
+                ORDER BY CASE WHEN et.evrak_no LIKE :term_exact THEN 1 WHEN et.evrak_no LIKE :term_starts THEN 2 ELSE 3 END, et.id DESC
                 LIMIT " . (int) $limit;
 
         $items = [];

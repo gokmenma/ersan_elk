@@ -551,18 +551,21 @@ class GlobalSearchModel extends Model
             return [];
         }
 
+        $visibilityBindings = [];
+        $visibilitySql = (new EvrakSevkModel())->visibilitySql('et', $visibilityBindings);
         $sql = "SELECT 
-                    id, evrak_no, evrak_tipi, konu, kurum_adi, tarih, onay_durumu, aciklama
-                FROM evrak_takip
-                WHERE firma_id = :firma_id 
-                  AND silinme_tarihi IS NULL
+                    et.id, et.evrak_no, et.evrak_tipi, et.konu, et.kurum_adi, et.tarih, et.onay_durumu, et.aciklama
+                FROM evrak_takip et
+                WHERE et.firma_id = :firma_id 
+                  AND et.silinme_tarihi IS NULL
                   AND (
-                      evrak_no LIKE :term 
-                      OR konu LIKE :term 
-                      OR kurum_adi LIKE :term 
-                      OR aciklama LIKE :term
+                      et.evrak_no LIKE :term 
+                      OR et.konu LIKE :term 
+                      OR et.kurum_adi LIKE :term 
+                      OR et.aciklama LIKE :term
                   )
-                ORDER BY id DESC
+                  AND {$visibilitySql}
+                ORDER BY et.id DESC
                 LIMIT " . (int)$limit;
 
         try {
@@ -570,7 +573,7 @@ class GlobalSearchModel extends Model
             $stmt->execute([
                 ':firma_id' => $firmaId,
                 ':term' => '%' . $term . '%'
-            ]);
+            ] + array_combine(array_map(static fn(string $k): string => ':' . $k, array_keys($visibilityBindings)), $visibilityBindings));
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             $results = [];

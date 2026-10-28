@@ -1050,6 +1050,26 @@ if (Gate::allows("ana_sayfa")) {
 
         <div class="container-fluid">
 
+            <?php
+            if (Gate::allows('evrak-takip/list')) {
+                $uetsOkunmamis = (new \App\Model\EvrakSevkModel())->unreadUets((int) $firmaId, (int) $userId, 5);
+                if ($uetsOkunmamis['count'] > 0): ?>
+                    <div class="alert alert-danger border-danger shadow-sm d-flex flex-wrap align-items-start gap-3 mb-3" role="alert" id="uetsOkunmamisUyari">
+                        <div class="flex-shrink-0 rounded-3 bg-danger text-white d-flex align-items-center justify-content-center" style="width:44px;height:44px;"><i class="bx bx-envelope fs-4"></i></div>
+                        <div class="flex-grow-1">
+                            <h6 class="fw-bold mb-1">Okunmamış UETS Tebligatı: <?= (int) $uetsOkunmamis['count']; ?></h6>
+                            <ul class="mb-2 ps-3 font-size-13">
+                                <?php foreach ($uetsOkunmamis['items'] as $uetsItem): ?>
+                                    <li><strong><?= htmlspecialchars((string) $uetsItem->kurum_adi, ENT_QUOTES, 'UTF-8'); ?></strong> — <?= htmlspecialchars(mb_substr((string) $uetsItem->konu, 0, 90), ENT_QUOTES, 'UTF-8'); ?> <span class="text-muted">(<?= htmlspecialchars(date('d.m.Y', strtotime((string) $uetsItem->tarih)), ENT_QUOTES, 'UTF-8'); ?>)</span></li>
+                                <?php endforeach; ?>
+                            </ul>
+                            <a href="index?p=evrak-takip/list" class="btn btn-sm btn-danger">Evrak Takip'e Git</a>
+                        </div>
+                    </div>
+                <?php endif;
+            }
+            ?>
+
             <style id="dashboard-skeleton-critical">
                 /* Widget visibility */
                 .widget-hidden {

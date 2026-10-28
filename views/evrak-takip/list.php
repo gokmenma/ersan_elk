@@ -18,6 +18,7 @@ $stats = $Evrak->getStats();
 $gelen_evraklar = $Evrak->getGelenEvraklar();
 
 $currentUserId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
+$uetsOkunmamisSayisi = (int) (new \App\Model\EvrakSevkModel())->unreadUets((int) ($_SESSION['firma_id'] ?? 0), $currentUserId, 0)['count'];
 $canSendKep = Gate::allows('evrak-takip/kep');
 $canMobilImzaAyar = Gate::allows('mobil_imza_ayarlari_sekmesi');
 $onayMap = [];
@@ -93,7 +94,7 @@ $title = "Evrak Listesi";
                 <i class="bx bx-file fs-4 text-primary"></i>
             </div>
             <div>
-                <h4 class="mb-0 fw-bold text-dark font-size-16">Evrak Takip</h4>
+                <h4 class="mb-0 fw-bold text-dark font-size-16">Evrak Takip<?php if ($uetsOkunmamisSayisi > 0): ?> <span class="badge bg-danger rounded-pill ms-1 font-size-11" id="uetsOkunmamisRozet" title="Okunmamış UETS tebligatı"><i class="bx bx-envelope"></i> <?= (int) $uetsOkunmamisSayisi; ?> okunmamış UETS</span><?php endif; ?></h4>
                 <p class="text-muted mb-0 font-size-12">Gelen ve giden tüm resmi evrakların kaydı, e-imza onay akışı ve takibi</p>
             </div>
         </div>

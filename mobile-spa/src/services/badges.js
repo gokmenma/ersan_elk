@@ -11,7 +11,7 @@ export const BADGE_MODULES = {
   km_approvals: ['km_approvals'],
   illegal: ['kacak'],
   notices: ['ihbar'],
-  documents: ['evrak'],
+  documents: ['evrak', 'uets_unread'],
   requests: ['requests'],
 }
 

@@ -48,10 +48,7 @@ class UetsClientService
         $endpoint = '/messages' . ($queryParams ? '?' . $queryParams : '');
         $response = $this->request('GET', $endpoint);
 
-        if ($response['status_code'] < 200 || $response['status_code'] >= 300) {
-            $error = json_decode($response['body'], true);
-            throw new Exception($error['message'] ?? ('UETS mesaj listesi alınamadı (HTTP ' . $response['status_code'] . ').'));
-        }
+        $this->assertSuccess($response, 'UETS mesaj listesi alınamadı');
 
         $messages = json_decode($response['body'], true);
         if (!is_array($messages)) {
@@ -71,6 +68,7 @@ class UetsClientService
     public function getMessage(string $messageId): array
     {
         $response = $this->request('GET', '/messages/' . rawurlencode($messageId));
+        $this->assertSuccess($response, 'UETS mesaj detayı alınamadı');
         return json_decode($response['body'], true) ?: [];
     }
 
@@ -81,6 +79,7 @@ class UetsClientService
     public function downloadMessage(string $messageId): array
     {
         $response = $this->request('GET', '/messages/' . rawurlencode($messageId) . '/_download', [], null, true);
+        $this->assertSuccess($response, 'UETS tebligat paketi indirilemedi');
         return [
             'content' => $response['body'],
             'etag' => trim((string) ($response['headers']['etag'] ?? ''), '"'),
@@ -184,6 +183,29 @@ class UetsClientService
         $payload = ['folders_id' => $folderId];
         $response = $this->request('PUT', '/messages/' . rawurlencode($messageId), $headers, json_encode($payload));
         return $response['status_code'] >= 200 && $response['status_code'] < 300;
+    }
+
+    private function assertSuccess(array $response, string $fallback): void
+    {
+        $status = (int) $response['status_code'];
+        if ($status >= 200 && $status < 300) {
+            return;
+        }
+
+        $decoded = json_decode((string) $response['body'], true);
+        $apiMessage = is_array($decoded) ? trim((string) ($decoded['message'] ?? '')) : '';
+        $retryAfter = (int) ($response['headers']['retry-after'] ?? 0);
+
+        $message = match (true) {
+            $status === 429 => 'UETS sorgu hakkı doldu (HTTP 429). Liste sorgusu 2 saatte bir yapılabilir.',
+            $status === 401 => 'UETS API anahtarı reddedildi (HTTP 401)' . ($apiMessage !== '' ? ': ' . $apiMessage : '')
+                . '. Anahtarın ortamını (Canlı/Test) ve sunucunun dış IP adresinin UETS panelindeki IP ile aynı olduğunu kontrol edin.',
+            $status === 403 => 'UETS bu işlem için yetki vermedi (HTTP 403)' . ($apiMessage !== '' ? ': ' . $apiMessage : '') . '.',
+            default => $fallback . ' (HTTP ' . $status . ')' . ($apiMessage !== '' ? ': ' . $apiMessage : '') . '.',
+        };
+
+        error_log('UetsClientService HTTP ' . $status . ' ' . $fallback . ' | code=' . (is_array($decoded) ? ($decoded['code'] ?? '') : '') . ' | ' . $apiMessage);
+        throw new UetsApiException($message, $status, $retryAfter);
     }
 
     /**

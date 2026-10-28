@@ -122,6 +122,9 @@ try {
         }
         $badges[$key] = $total;
     }
+    if (Gate::allows('evrak-takip/list')) {
+        $badges['uets_unread'] = (int) (new \App\Model\EvrakSevkModel())->unreadUets($firmaId, $userId, 0)['count'];
+    }
     badgesResponse(['success' => true, 'badges' => $badges]);
 } catch (Throwable $e) {
     error_log('badges.php: ' . $e->getMessage());

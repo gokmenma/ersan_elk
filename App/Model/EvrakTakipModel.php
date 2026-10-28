@@ -79,6 +79,11 @@ class EvrakTakipModel extends Model
         $length = min(100, max(10, (int) ($params['length'] ?? 10)));
         $bindings = ['firma_id' => $firmaId];
         $where = ['et.firma_id = :firma_id', 'et.silinme_tarihi IS NULL'];
+        $sevk = new EvrakSevkModel();
+        $visibilityBindings = [];
+        $visibilitySql = $sevk->visibilitySql('et', $visibilityBindings);
+        $where[] = $visibilitySql;
+        $bindings += $visibilityBindings;
 
         $globalSearch = trim((string) ($params['search']['value'] ?? ''));
         if ($globalSearch !== '') {
@@ -176,8 +181,8 @@ class EvrakTakipModel extends Model
             LEFT JOIN personel p2 ON p2.id = et.ilgili_personel_id AND p2.firma_id = et.firma_id
             LEFT JOIN users u ON u.id = et.olusturan_kullanici_id AND u.silinme_tarihi IS NULL";
         $whereSql = ' WHERE ' . implode(' AND ', $where);
-        $totalStmt = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} WHERE firma_id = :firma_id AND silinme_tarihi IS NULL");
-        $totalStmt->execute(['firma_id' => $firmaId]);
+        $totalStmt = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} et WHERE et.firma_id = :firma_id AND et.silinme_tarihi IS NULL AND " . $visibilitySql);
+        $totalStmt->execute(['firma_id' => $firmaId] + $visibilityBindings);
         $total = (int) $totalStmt->fetchColumn();
         $filteredStmt = $this->db->prepare('SELECT COUNT(*)' . $from . $whereSql);
         $filteredStmt->execute($bindings);
@@ -230,7 +235,11 @@ class EvrakTakipModel extends Model
             'id' => $id,
             'firma_id' => $_SESSION['firma_id']
         ]);
-        return $sql->fetch(PDO::FETCH_OBJ);
+        $evrak = $sql->fetch(PDO::FETCH_OBJ);
+        if ($evrak && !(new EvrakSevkModel())->canView($evrak)) {
+            return false;
+        }
+        return $evrak;
     }
 
     public function getPersonelName(int $personelId): string
@@ -772,7 +781,11 @@ class EvrakTakipModel extends Model
             WHERE ee.id = :id AND ee.firma_id = :firma_id AND ee.silinme_tarihi IS NULL
               AND et.silinme_tarihi IS NULL LIMIT 1");
         $sql->execute(['id' => $attachmentId, 'firma_id' => (int) ($_SESSION['firma_id'] ?? 0)]);
-        return $sql->fetch(PDO::FETCH_OBJ);
+        $attachment = $sql->fetch(PDO::FETCH_OBJ);
+        if ($attachment && !(new EvrakSevkModel())->canViewFilePath((string) $attachment->dosya_yolu, (int) ($_SESSION['firma_id'] ?? 0))) {
+            return false;
+        }
+        return $attachment;
     }
 
     /**
@@ -783,7 +796,13 @@ class EvrakTakipModel extends Model
     public function getAttachmentMap(array $evrakIds = []): array
     {
         $evrakIds = array_values(array_unique(array_filter(array_map('intval', $evrakIds))));
-        $idFilter = $evrakIds ? ' AND ee.evrak_id IN (' . implode(',', array_fill(0, count($evrakIds), '?')) . ')' : '';
+        $idPlaceholders = [];
+        foreach ($evrakIds as $position => $evrakId) {
+            $idPlaceholders[] = ':evrak_id_' . $position;
+        }
+        $idFilter = $idPlaceholders ? ' AND ee.evrak_id IN (' . implode(',', $idPlaceholders) . ')' : '';
+        $visibilityBindings = [];
+        $visibilitySql = (new EvrakSevkModel())->visibilitySql('et', $visibilityBindings);
         $sql = $this->db->prepare("
             SELECT ee.evrak_id, ee.id, ee.dosya_adi, ee.dosya_yolu,
                    ee.mime_tipi, ee.dosya_boyutu, ee.sira
@@ -792,12 +811,20 @@ class EvrakTakipModel extends Model
                     ON et.id = ee.evrak_id
                    AND et.firma_id = ee.firma_id
                    AND et.silinme_tarihi IS NULL
-            WHERE ee.firma_id = ?
+            WHERE ee.firma_id = :firma_id
               AND ee.silinme_tarihi IS NULL
               {$idFilter}
+              AND {$visibilitySql}
             ORDER BY ee.evrak_id ASC, ee.sira ASC, ee.id ASC
         ");
-        $sql->execute(array_merge([(int) $_SESSION['firma_id']], $evrakIds));
+        $sql->bindValue(':firma_id', (int) $_SESSION['firma_id'], PDO::PARAM_INT);
+        foreach ($evrakIds as $position => $evrakId) {
+            $sql->bindValue(':evrak_id_' . $position, $evrakId, PDO::PARAM_INT);
+        }
+        foreach ($visibilityBindings as $name => $value) {
+            $sql->bindValue(':' . $name, $value);
+        }
+        $sql->execute();
 
         $attachmentMap = [];
         foreach ($sql->fetchAll(PDO::FETCH_OBJ) as $attachment) {
@@ -974,17 +1001,20 @@ class EvrakTakipModel extends Model
      */
     public function getStats()
     {
+        $visibilityBindings = [];
+        $visibilitySql = (new EvrakSevkModel())->visibilitySql('et', $visibilityBindings);
         $sql = $this->db->prepare("
             SELECT 
                 COUNT(*) as toplam_evrak,
                 SUM(CASE WHEN evrak_tipi = 'gelen' THEN 1 ELSE 0 END) as gelen_evrak,
                 SUM(CASE WHEN evrak_tipi = 'giden' THEN 1 ELSE 0 END) as giden_evrak,
                 SUM(CASE WHEN evrak_tipi = 'gelen' AND (cevap_verildi_mi = 0 OR cevap_verildi_mi IS NULL) THEN 1 ELSE 0 END) as cevap_bekleyen
-            FROM {$this->table}
-            WHERE firma_id = :firma_id
-            AND silinme_tarihi IS NULL
+            FROM {$this->table} et
+            WHERE et.firma_id = :firma_id
+            AND et.silinme_tarihi IS NULL
+            AND {$visibilitySql}
         ");
-        $sql->execute(['firma_id' => $_SESSION['firma_id']]);
+        $sql->execute(['firma_id' => $_SESSION['firma_id']] + $visibilityBindings);
         return $sql->fetch(PDO::FETCH_OBJ);
     }
 
@@ -1036,15 +1066,18 @@ class EvrakTakipModel extends Model
      */
     public function getGelenEvraklar()
     {
+        $visibilityBindings = [];
+        $visibilitySql = (new EvrakSevkModel())->visibilitySql('et', $visibilityBindings);
         $sql = $this->db->prepare("
-            SELECT id, evrak_no, konu, kurum_adi, tarih 
-            FROM {$this->table} 
-            WHERE firma_id = :firma_id 
-            AND evrak_tipi = 'gelen'
-            AND silinme_tarihi IS NULL
-            ORDER BY tarih DESC
+            SELECT et.id, et.evrak_no, et.konu, et.kurum_adi, et.tarih 
+            FROM {$this->table} et
+            WHERE et.firma_id = :firma_id 
+            AND et.evrak_tipi = 'gelen'
+            AND et.silinme_tarihi IS NULL
+            AND {$visibilitySql}
+            ORDER BY et.tarih DESC
         ");
-        $sql->execute(['firma_id' => $_SESSION['firma_id']]);
+        $sql->execute(['firma_id' => $_SESSION['firma_id']] + $visibilityBindings);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
@@ -1072,6 +1105,8 @@ class EvrakTakipModel extends Model
      */
     public function getTakvimEvraklar(int $firmaId, ?string $baslangic = null, ?string $bitis = null): array
     {
+        $visibilityBindings = [];
+        $visibilitySql = (new EvrakSevkModel())->visibilitySql('et', $visibilityBindings);
         $sql = "SELECT et.id, et.evrak_no, et.konu, et.kurum_adi, et.tarih, et.son_tarih, et.cevap_verildi_mi,
                        p.adi_soyadi as personel_adi
                 FROM {$this->table} et
@@ -1079,9 +1114,13 @@ class EvrakTakipModel extends Model
                 WHERE et.firma_id = :firma_id 
                   AND et.silinme_tarihi IS NULL 
                   AND et.evrak_tipi = 'gelen'
-                  AND et.son_tarih IS NOT NULL";
+                  AND et.son_tarih IS NOT NULL
+                  AND {$visibilitySql}";
         
         $params = [':firma_id' => $firmaId];
+        foreach ($visibilityBindings as $name => $value) {
+            $params[':' . $name] = $value;
+        }
         
         if ($baslangic && $bitis) {
             $sql .= " AND et.son_tarih BETWEEN :baslangic AND :bitis";

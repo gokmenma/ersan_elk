@@ -15,6 +15,10 @@ use Exception;
 
 class UetsSyncService
 {
+    private const LIST_INTERVAL = 7200;
+    private const PAGE_SIZE = 250;
+    private const MAX_PAGES = 2;
+
     private UetsSettingsModel $settingsModel;
     private UetsMesajModel $mesajModel;
     private UetsEvidenceModel $evidenceModel;
@@ -73,7 +77,11 @@ class UetsSyncService
             'status' => 'success',
             'data' => $rows,
             'hatalar' => $messages['errors'],
-            'message' => count($rows) . ' UETS evrakı kontrol edildi.',
+            'onbellek' => $messages['cached'],
+            'sorgu_zamani' => $messages['sorgu_zamani'],
+            'sonraki_sorgu' => $messages['sonraki_sorgu'],
+            'message' => count($rows) . ' UETS evrakı kontrol edildi.'
+                . ($messages['cached'] && $messages['sorgu_zamani'] ? ' Son UETS sorgusu: ' . $messages['sorgu_zamani'] . ' (sorgu hakkı gereği ' . $messages['sonraki_sorgu'] . ' tarihine kadar kayıtlı liste gösteriliyor).' : ''),
         ];
     }
 
@@ -89,18 +97,6 @@ class UetsSyncService
 
         $client = new UetsClientService($settings['api_key_decrypted'], $settings['api_environment'] ?? 'test');
 
-        // Bakiye güncelleme
-        try {
-            if (!empty($settings['uets_adresi'])) {
-                $balanceData = $client->getBalance($settings['uets_adresi']);
-                if (isset($balanceData['balance'])) {
-                    $this->settingsModel->updateBalance($firmId, (float) $balanceData['balance']);
-                }
-            }
-        } catch (\Throwable $e) {
-            error_log("UetsSyncService Balance Update Error: " . $e->getMessage());
-        }
-
         $yeniGelenSayisi = 0;
         $guncellenenSayisi = 0;
         $hataListesi = [];
@@ -111,6 +107,21 @@ class UetsSyncService
         if ($selectedMessageIds !== null) {
             $selectedLookup = array_fill_keys(array_values(array_unique($selectedMessageIds)), true);
             $allIncoming = array_values(array_filter($allIncoming, static fn(array $msg): bool => isset($selectedLookup[(string) ($msg['id'] ?? '')])));
+        } else {
+            $allIncoming = array_values(array_filter($allIncoming, static fn(array $msg): bool => in_array((string) ($msg['status'] ?? ''), ['delivered', 'readtimeout'], true)));
+        }
+
+        if (!$incomingResult['cached'] && $incomingResult['errors'] === []) {
+            try {
+                if (!empty($settings['uets_adresi'])) {
+                    $balanceData = $client->getBalance($settings['uets_adresi']);
+                    if (isset($balanceData['balance'])) {
+                        $this->settingsModel->updateBalance($firmId, (float) $balanceData['balance']);
+                    }
+                }
+            } catch (\Throwable $e) {
+                error_log("UetsSyncService Balance Update Error: " . $e->getMessage());
+            }
         }
 
         $uploadBaseDir = dirname(__DIR__, 2) . '/uploads/evrak-takip';
@@ -193,6 +204,15 @@ class UetsSyncService
                         // uets_mesajlar ile evrak_takip'i birbirine bağla
                         $this->mesajModel->linkToEvrak($localMesajId, $newEvrakId);
 
+                        (new \App\Model\EvrakSevkModel())->recordHistory(
+                            $firmId,
+                            $newEvrakId,
+                            'uets_alindi',
+                            (int) ($_SESSION['user_id'] ?? 0),
+                            null,
+                            "UETS tebligat No: {$uetsMsgId} sisteme aktarıldı."
+                        );
+
                         // Ekleri evrak_takip_ekleri tablosuna ekle
                         if (!empty($extracted['ekler'])) {
                             foreach ($extracted['ekler'] as $ekIdx => $ek) {
@@ -224,18 +244,19 @@ class UetsSyncService
                     $guncellenenSayisi++;
                 }
 
-                // 4. Tebligat Delillerini çek ve kaydet
-                try {
-                    $evidenceList = $client->getEvidenceList($uetsMsgId);
-                    if (is_array($evidenceList)) {
-                        foreach ($evidenceList as $evid) {
-                            if (!empty($evid['id'])) {
-                                $this->evidenceModel->upsertEvidence($localMesajId, $evid);
+                if ($isNew) {
+                    try {
+                        $evidenceList = $client->getEvidenceList($uetsMsgId);
+                        if (is_array($evidenceList)) {
+                            foreach ($evidenceList as $evid) {
+                                if (is_array($evid) && !empty($evid['id'])) {
+                                    $this->evidenceModel->upsertEvidence($localMesajId, $evid);
+                                }
                             }
                         }
+                    } catch (\Throwable $e) {
+                        error_log("UETS Delil Çekme Hatası [{$uetsMsgId}]: " . $e->getMessage());
                     }
-                } catch (\Throwable $e) {
-                    error_log("UETS Delil Çekme Hatası [{$uetsMsgId}]: " . $e->getMessage());
                 }
 
                 // 5. Yasal Süre Aşımı Bildirimi (readtimeout durumu)
@@ -252,6 +273,12 @@ class UetsSyncService
                     }
                 }
 
+            } catch (UetsApiException $e) {
+                error_log("UetsSyncService Mesaj İşleme Hatası [{$uetsMsgId}]: " . $e->getMessage());
+                $hataListesi[] = "Mesaj {$uetsMsgId}: " . $e->getMessage();
+                if ($e->isRateLimited()) {
+                    break;
+                }
             } catch (\Throwable $e) {
                 error_log("UetsSyncService Mesaj İşleme Hatası [{$uetsMsgId}]: " . $e->getMessage());
                 $hataListesi[] = "Mesaj {$uetsMsgId}: " . $e->getMessage();
@@ -263,11 +290,10 @@ class UetsSyncService
 
         // Sistem logu oluştur
         try {
-            (new SystemLogModel())->log(
+            (new SystemLogModel())->logActionForFirm(
                 $firmId,
-                $_SESSION['user_id'] ?? 0,
-                'UETS',
-                'SENKRONIZASYON',
+                (int) ($_SESSION['user_id'] ?? 0),
+                'UETS_SENKRONIZASYON',
                 "UETS Senkronizasyon tamamlandı. Yeni: {$yeniGelenSayisi}, Güncellenen: {$guncellenenSayisi}."
             );
         } catch (\Throwable $e) {
@@ -293,33 +319,94 @@ class UetsSyncService
             $client = new UetsClientService($settings['api_key_decrypted'], $settings['api_environment'] ?? 'test');
         }
 
-        $messagesById = [];
-        $errors = [];
-        // İndirilmiş tebligatlar UETS tarafından "read" durumuna geçirilir. Manuel
-        // kaydedilmiş eski evrakların da karşılaştırılabilmesi için üç gelen durumunu da getir.
-        foreach (['delivered', 'read', 'readtimeout'] as $status) {
-            try {
-                $start = 0;
-                $pageSize = 250;
-                do {
-                    $response = $client->getMessages([
-                        'type' => 'incoming', 'status' => $status, 'start' => $start, 'count' => $pageSize, 'sort' => '-inserttime',
-                    ]);
-                    $pageMessages = $response['messages'] ?? [];
-                    foreach ($pageMessages as $message) {
-                        if (is_array($message) && !empty($message['id'])) {
-                            $messagesById[(string) $message['id']] = $message;
-                        }
-                    }
-                    $start += count($pageMessages);
-                    $totalCount = (int) ($response['total_count'] ?? $start);
-                } while ($pageMessages !== [] && $start < $totalCount);
-            } catch (\Throwable $e) {
-                $errors[] = ucfirst($status) . ' tebligatlar alınamadı: ' . $e->getMessage();
-            }
+        $cache = $this->settingsModel->getListCache($firmId);
+        $now = time();
+        $cacheTime = $cache['zaman'] ? (int) strtotime($cache['zaman']) : 0;
+
+        if ($cache['messages'] !== null && $cacheTime > 0 && ($now - $cacheTime) < self::LIST_INTERVAL) {
+            return $this->listResult($cache['messages'], [], true, $cacheTime);
         }
 
-        return ['messages' => array_values($messagesById), 'errors' => $errors];
+        $blockedUntil = $cache['engel_bitis'] ? (int) strtotime($cache['engel_bitis']) : 0;
+        if ($blockedUntil > $now) {
+            return $this->listResult(
+                $cache['messages'] ?? [],
+                ['UETS sorgu hakkı dolu. Yeni sorgu en erken ' . date('d.m.Y H:i', $blockedUntil) . ' tarihinde yapılabilir.'],
+                true,
+                $cacheTime
+            );
+        }
+
+        $messagesById = [];
+        $errors = [];
+        $completed = false;
+        try {
+            $start = 0;
+            for ($page = 0; $page < self::MAX_PAGES; $page++) {
+                $response = $client->getMessages([
+                    'type' => 'incoming', 'start' => $start, 'count' => self::PAGE_SIZE, 'sort' => '-inserttime',
+                ]);
+                $pageMessages = $response['messages'] ?? [];
+                foreach ($pageMessages as $message) {
+                    if (is_array($message) && !empty($message['id'])) {
+                        $messagesById[(string) $message['id']] = $message;
+                    }
+                }
+                $start += count($pageMessages);
+                if ($pageMessages === [] || $start >= (int) ($response['total_count'] ?? $start)) {
+                    $completed = true;
+                    break;
+                }
+            }
+            $completed = $completed || $page >= self::MAX_PAGES;
+        } catch (UetsApiException $e) {
+            $errors[] = $e->getMessage();
+            if ($e->isRateLimited()) {
+                $wait = max($e->getRetryAfter(), self::LIST_INTERVAL);
+                $this->settingsModel->setListBlockedUntil($firmId, date('Y-m-d H:i:s', $now + $wait));
+            }
+        } catch (\Throwable $e) {
+            error_log('UetsSyncService Liste Hatası: ' . $e->getMessage());
+            $errors[] = 'UETS tebligat listesi alınamadı: ' . $e->getMessage();
+        }
+
+        $messages = array_values($messagesById);
+        if ($completed && $errors === []) {
+            $this->settingsModel->saveListCache($firmId, $messages);
+            $this->logListQuery($firmId, count($messages));
+            return $this->listResult($messages, [], false, $now);
+        }
+
+        if ($messages === [] && $cache['messages'] !== null) {
+            return $this->listResult($cache['messages'], $errors, true, $cacheTime);
+        }
+
+        return $this->listResult($messages, $errors, false, $now);
+    }
+
+    private function listResult(array $messages, array $errors, bool $cached, int $queryTime): array
+    {
+        return [
+            'messages' => array_values($messages),
+            'errors' => $errors,
+            'cached' => $cached,
+            'sorgu_zamani' => $queryTime > 0 ? date('d.m.Y H:i', $queryTime) : null,
+            'sonraki_sorgu' => $queryTime > 0 ? date('d.m.Y H:i', $queryTime + self::LIST_INTERVAL) : null,
+        ];
+    }
+
+    private function logListQuery(int $firmId, int $count): void
+    {
+        try {
+            (new SystemLogModel())->logActionForFirm(
+                $firmId,
+                (int) ($_SESSION['user_id'] ?? 0),
+                'UETS_LISTE_SORGUSU',
+                "UETS gelen tebligat listesi sorgulandı. Kayıt sayısı: {$count}."
+            );
+        } catch (\Throwable $e) {
+            error_log('UetsSyncService log hatası: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -479,11 +566,10 @@ class UetsSyncService
 
         // Log kaydı
         try {
-            (new SystemLogModel())->log(
+            (new SystemLogModel())->logActionForFirm(
                 $firmId,
-                $_SESSION['user_id'] ?? 0,
-                'UETS',
-                'TEBLIGAT_GONDERIM',
+                (int) ($_SESSION['user_id'] ?? 0),
+                'UETS_TEBLIGAT_GONDERIM',
                 "Evrak ID: {$evrakId}, UETS Tebligat No: {$uetsMessageId} başarıyla gönderildi."
             );
         } catch (\Throwable $e) {

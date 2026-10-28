@@ -42,6 +42,10 @@ try {
         if (!$delil) {
             throw new RuntimeException('Delil kaydı bulunamadı.');
         }
+        $delilMesaj = (new \App\Model\UetsMesajModel())->getById((int) ($delil['uets_mesaj_id'] ?? 0), $firmaId);
+        if (!(new \App\Model\EvrakSevkModel())->canViewMesaj($delilMesaj)) {
+            throw new RuntimeException('Bu UETS delilini görüntüleme yetkiniz yok.');
+        }
 
         $pdfBytes = '';
         if (!empty($delil['delil_pdf_yolu'])) {
@@ -98,6 +102,13 @@ try {
 
         if (!$mesaj || empty($mesaj['ham_eyp_yolu'])) {
             throw new RuntimeException('UETS EYP paketi bulunamadı.');
+        }
+        $eypSevk = new \App\Model\EvrakSevkModel();
+        if (!$eypSevk->canViewMesaj($mesaj)) {
+            throw new RuntimeException('Bu UETS paketini indirme yetkiniz yok.');
+        }
+        if (!empty($mesaj['evrak_id'])) {
+            $eypSevk->recordHistory($firmaId, (int) $mesaj['evrak_id'], 'eyp_indirme', \App\Model\EvrakSevkModel::currentUserId(), null, null);
         }
 
         $eypFullPath = dirname(__DIR__, 2) . '/' . ltrim((string) $mesaj['ham_eyp_yolu'], '/');

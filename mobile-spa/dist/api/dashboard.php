@@ -76,6 +76,21 @@ try {
         'card_preferences' => $model->getCardSettings($userId, $firmaId),
     ];
 
+    if (dashboardCan(['evrak-takip/list'])) {
+        $uetsUnread = (new \App\Model\EvrakSevkModel())->unreadUets($firmaId, $userId, 5);
+        if ($uetsUnread['count'] > 0) {
+            $data['uets_unread'] = [
+                'count' => $uetsUnread['count'],
+                'items' => array_map(static fn(object $row): array => [
+                    'id' => \App\Helper\Security::encrypt((int) $row->id),
+                    'konu' => (string) ($row->konu ?: 'Belirtilmedi'),
+                    'kurum_adi' => (string) ($row->kurum_adi ?: '-'),
+                    'tarih' => !empty($row->tarih) ? date('d.m.Y', strtotime((string) $row->tarih)) : '',
+                ], $uetsUnread['items']),
+            ];
+        }
+    }
+
     if ($permissions['personnel']) {
         $data['personnel'] = $model->personnel();
         $data['birthdays'] = $model->birthdays();

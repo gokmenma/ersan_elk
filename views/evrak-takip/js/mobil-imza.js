@@ -102,18 +102,27 @@
         token = response.data.token;
         let remaining = parseInt(response.data.timeout, 10) || 120;
         const container = swal.getHtmlContainer();
+        const formatRemaining = seconds => String(Math.floor(seconds / 60)).padStart(2, "0") + ":" + String(seconds % 60).padStart(2, "0");
+        const fingerprint = String(response.data.parmak_izi || "");
         if (container) {
           container.innerHTML =
             '<div class="text-center">' +
             '<div class="mb-2"><b>' + escapeHtml(response.data.msisdn) + '</b> numaralı hattınıza imza isteği gönderildi.</div>' +
             '<div class="mb-2">Telefonunuzdaki mesajı kontrol edip <b>mobil imza PIN</b> kodunuzu giriniz.</div>' +
-            '<div class="small opacity-75">Kalan süre: <span data-mobil-imza-sure>' + remaining + '</span> sn</div>' +
+            (fingerprint
+              ? '<div class="border rounded-3 text-start p-3 mb-2" style="font-size:14px;line-height:1.5">' +
+                '<div class="fw-bold">Parmak İzi:</div>' +
+                '<div class="font-monospace" style="word-spacing:2px">' + escapeHtml(fingerprint) + '</div>' +
+                '<div data-mobil-imza-sure>' + formatRemaining(remaining) + '</div>' +
+                '</div>' +
+                '<div class="small opacity-75">Telefonunuzda görünen parmak izi ile aynı olduğunu kontrol ediniz.</div>'
+              : '<div class="small opacity-75">Kalan süre: <span data-mobil-imza-sure>' + formatRemaining(remaining) + '</span></div>') +
             '</div>';
         }
         countdownTimer = setInterval(() => {
           remaining = Math.max(0, remaining - 1);
           const counter = container && container.querySelector("[data-mobil-imza-sure]");
-          if (counter) counter.textContent = remaining;
+          if (counter) counter.textContent = formatRemaining(remaining);
         }, 1000);
         pollTimer = setTimeout(poll, FIRST_POLL_DELAY);
       })

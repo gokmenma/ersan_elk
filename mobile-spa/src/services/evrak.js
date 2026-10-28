@@ -67,6 +67,12 @@ export const evrakApi = {
   detail(id) {
     return request('detail', { params: { id } })
   },
+  uetsSevkPersonel(id) {
+    return request('uets-sevk-personel', { params: { id } })
+  },
+  uetsSevkEt(body, csrfToken) {
+    return request('uets-sevk-et', { method: 'POST', body, csrfToken })
+  },
   aracZimmet(plaka, tarih) {
     return request('arac-zimmet', { params: { plaka, tarih } })
   },

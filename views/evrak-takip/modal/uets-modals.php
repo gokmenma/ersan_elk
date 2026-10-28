@@ -361,3 +361,57 @@ $canManagePttKep = !empty($canSendKep);
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="modalUetsSevk" tabindex="-1" aria-labelledby="modalUetsSevkTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title font-size-15 fw-bold d-flex align-items-center" id="modalUetsSevkTitle">
+                    <i class="bx bx-share me-2 fs-5 text-warning"></i> UETS Evrakını Sevk Et
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body p-4">
+                <input type="hidden" id="uetsSevkEvrakId" value="">
+                <div class="bg-light p-3 rounded-3 mb-3 border font-size-13">
+                    <strong>Evrak:</strong> <span id="uetsSevkKonu" class="text-primary fw-semibold"></span>
+                </div>
+                <div class="mb-3">
+                    <?php echo Form::FormSelect2(name: 'uets_sevk_alan', options: [], selectedValue: '', label: 'Sevk Edilecek Personel', icon: 'bx bx-user', valueField: 'key', textField: '', class: 'form-select select2', required: true, style: 'width:100%', attributes: '', id: 'uets_sevk_alan'); ?>
+                </div>
+                <div class="mb-1">
+                    <?php echo Form::FormFloatTextarea('uets_sevk_notu', '', 'Sevk notu', 'Sevk Notu (isteğe bağlı)', 'bx bx-comment-detail', 'form-control', false, '90px', 3, 'maxlength="500"'); ?>
+                </div>
+                <div class="font-size-12 text-muted mt-2">Sevk edilen personel evrakı görüntüleyebilir ve başka bir personele iletebilir. Tüm işlemler tarihçeye kaydedilir.</div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="button" class="btn btn-warning text-white" id="btnUetsSevkKaydet"><i class="bx bx-share me-1"></i> Sevk Et</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalUetsTarihce" tabindex="-1" aria-labelledby="modalUetsTarihceTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content shadow-lg border-0">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title font-size-15 fw-bold d-flex align-items-center" id="modalUetsTarihceTitle">
+                    <i class="bx bx-history me-2 fs-5 text-warning"></i> Sevk ve Erişim Tarihçesi
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="bg-light p-3 rounded-3 mb-3 border font-size-13">
+                    <strong>Evrak:</strong> <span id="uetsTarihceKonu" class="text-primary fw-semibold"></span>
+                </div>
+                <h6 class="font-size-13 fw-bold mb-2">Sevk Zinciri</h6>
+                <div id="uetsSevkZinciri" class="mb-4"></div>
+                <div id="uetsDenetimBlok">
+                    <h6 class="font-size-13 fw-bold mb-2">Erişim ve İşlem Kayıtları</h6>
+                    <div id="uetsDenetimIzi"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -25,6 +25,9 @@ $endDate = $_GET['end_date'] ?? '';
 $ekipKodu = $_GET['ekip_kodu'] ?? '';
 $workType = $_GET['work_type'] ?? '';
 $workResult = $_GET['work_result'] ?? '';
+$region = $_GET['region'] ?? '';
+$defter = $_GET['defter'] ?? '';
+$mahalle = $_GET['mahalle'] ?? '';
 
 // Build request array for Model's getDataTable (simulating DataTables request)
 $request = $_GET;
@@ -37,11 +40,11 @@ $title = "";
 
 if ($tab === 'okuma') {
     $Model = new EndeksOkumaModel();
-    $result = $Model->getDataTable($request, $startDate, $endDate, $ekipKodu);
+    $result = $Model->getDataTable($request, $startDate, $endDate, $ekipKodu, $region, $defter, $mahalle);
     $data = $result['data'];
     $title = "Endeks Okuma Listesi";
-    $headers = ['TARİH', 'DEFTER', 'BÖLGE', 'EKİP NO', 'İSİM SOYİSİM', 'OKUNAN ABONE', 'SAYAÇ DURUM'];
-    $colFields = ['tarih', 'defter', 'bolge', 'ekip_kodu_adi', 'personel_adi', 'okunan_abone_sayisi', 'sayac_durum'];
+    $headers = ['TARİH', 'DEFTER', 'MAHALLE', 'BÖLGE', 'EKİP NO', 'İSİM SOYİSİM', 'OKUNAN ABONE', 'SAYAÇ DURUM'];
+    $colFields = ['tarih', 'defter', 'defter_mahalle', 'bolge', 'ekip_kodu_adi', 'personel_adi', 'okunan_abone_sayisi', 'sayac_durum'];
 } elseif ($tab === 'yapilan_isler' || $tab === 'muhurleme') {
     $Model = new PuantajModel();
     if ($tab === 'muhurleme') {

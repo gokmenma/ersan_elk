@@ -67,6 +67,15 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $currentUserId = (int) ($_SESSION['id'] ?? $_SESSION['user_id'] ?? ($_SESSION['user']->id ?? 0));
 $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
 
+$evrakSevkChainPayload = static fn(array $chain): array => array_map(static fn(object $r): array => [
+    'sevk_eden' => (string) $r->sevk_eden,
+    'alan' => (string) $r->alan,
+    'not' => (string) ($r->sevk_notu ?? ''),
+    'durum' => (string) $r->durum,
+    'tarih' => $r->created_at ? date('d.m.Y H:i', strtotime((string) $r->created_at)) : '',
+    'goruldu' => $r->goruldu_at ? date('d.m.Y H:i', strtotime((string) $r->goruldu_at)) : '',
+], $chain);
+
 $decryptId = static function ($value): int {
     if (empty($value)) return 0;
     if (is_numeric($value)) return (int) $value;
@@ -105,7 +114,7 @@ try {
             // Direct path requested (e.g. legacy dosya_yolu from evrak_takip)
             $cleanPath = ltrim(str_replace('\\', '/', $filePathRaw), '/');
             // Security check: must start with uploads/evrak-takip/
-            if (str_starts_with($cleanPath, 'uploads/evrak-takip/')) {
+            if (str_starts_with($cleanPath, 'uploads/evrak-takip/') && (new \App\Model\EvrakSevkModel())->canViewFilePath($cleanPath, $firmaId)) {
                 $targetFile = $cleanPath;
                 $originalFileName = basename($cleanPath);
             }
@@ -204,9 +213,10 @@ try {
         $cevapBekleyen = (int) ($statsRaw->cevap_bekleyen ?? 0);
 
         // Fetch all active IDs to count 'imzam'
-        $allSql = "SELECT et.id, et.onay_durumu FROM evrak_takip et WHERE et.firma_id = :firma_id AND et.silinme_tarihi IS NULL";
+        $allBind = [];
+        $allSql = "SELECT et.id, et.onay_durumu FROM evrak_takip et WHERE et.firma_id = :firma_id AND et.silinme_tarihi IS NULL AND " . (new \App\Model\EvrakSevkModel())->visibilitySql('et', $allBind);
         $allStmt = $db->prepare($allSql);
-        $allStmt->execute(['firma_id' => $firmaId]);
+        $allStmt->execute(['firma_id' => $firmaId] + $allBind);
         $imzamdaBekleyen = 0;
         foreach ($allStmt->fetchAll(PDO::FETCH_OBJ) as $row) {
             $eid = (int) $row->id;
@@ -219,6 +229,9 @@ try {
         // Base where
         $where = "et.firma_id = :firma_id AND et.silinme_tarihi IS NULL";
         $bind = ['firma_id' => $firmaId];
+        $visibilityBindings = [];
+        $where .= ' AND ' . (new \App\Model\EvrakSevkModel())->visibilitySql('et', $visibilityBindings);
+        $bind += $visibilityBindings;
 
         if ($filter === 'gelen') {
             $where .= " AND et.evrak_tipi = 'gelen'";
@@ -293,6 +306,9 @@ try {
         $stmt->execute();
         $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
 
+        $sevkModel = new \App\Model\EvrakSevkModel();
+        $uetsReadIds = array_flip($sevkModel->readEvrakIds($firmaId, $currentUserId, array_map(static fn(object $r): int => (int) $r->id, $rows)));
+
         $items = [];
         foreach ($rows as $row) {
             $id = (int) $row->id;
@@ -355,6 +371,7 @@ try {
                 'kep_mesaj_id' => (string) ($row->kep_mesaj_id ?? ''),
                 'alici_kep' => (string) ($row->alici_kep ?? ''),
                 'uets_mesaj_id' => (string) ($row->uets_mesaj_id ?? ''),
+                'uets_okunmamis' => \App\Model\EvrakSevkModel::isRestricted($row) && !isset($uetsReadIds[$id]),
                 'evrak_tipi' => (string) $row->evrak_tipi,
                 'evrak_no' => (string) ($row->evrak_no ?: '-'),
                 'tarih' => (string) $row->tarih,
@@ -622,7 +639,58 @@ try {
             'pdf_url' => ($evrak->evrak_tipi === 'giden') ? '/api/evrak.php?action=pdf&id=' . urlencode($encId) : null,
         ];
 
+        $sevkModel = new \App\Model\EvrakSevkModel();
+        if (\App\Model\EvrakSevkModel::isRestricted($evrak)) {
+            $sevkModel->recordHistory($firmaId, $id, 'goruntuleme', $currentUserId, null, null);
+            $sevkModel->markSeen($firmaId, $id, $currentUserId);
+            $data['uets_kisitli'] = true;
+            $data['uets_okunmamis'] = false;
+            $data['sevk_gecmisi'] = $evrakSevkChainPayload($sevkModel->sevkChain($firmaId, $id));
+            $data['tarihce'] = $sevkModel->hasFullAccess()
+                ? array_map(static fn(object $r): array => [
+                    'islem' => (string) $r->islem,
+                    'islem_yapan' => (string) ($r->islem_yapan ?? 'Sistem'),
+                    'hedef' => (string) ($r->hedef ?? ''),
+                    'aciklama' => (string) ($r->aciklama ?? ''),
+                    'tarih' => $r->created_at ? date('d.m.Y H:i', strtotime((string) $r->created_at)) : '',
+                ], $sevkModel->auditTrail($firmaId, $id, 100))
+                : null;
+        }
+
         evrakApiResponse(['success' => true, 'data' => $data]);
+    }
+
+    if ($method === 'GET' && $action === 'uets-sevk-personel') {
+        $evrak = $EvrakModel->getById($decryptId($_GET['id'] ?? ''));
+        if (!$evrak || !\App\Model\EvrakSevkModel::isRestricted($evrak)) {
+            evrakApiResponse(['success' => false, 'message' => 'Evrak bulunamadı.'], 404);
+        }
+        $users = (new \App\Model\EvrakSevkModel())->recipients($firmaId, (int) ($_SESSION['owner_id'] ?? 0), $currentUserId);
+        evrakApiResponse(['success' => true, 'data' => array_map(static fn(object $u): array => [
+            'id' => Security::encrypt((int) $u->id),
+            'adi' => (string) $u->adi,
+            'unvan' => (string) $u->unvan,
+        ], $users)]);
+    }
+
+    if ($method === 'POST' && $action === 'uets-sevk-et') {
+        verifyCsrfToken();
+        $evrak = $EvrakModel->getById($decryptId($_POST['id'] ?? ''));
+        if (!$evrak) {
+            evrakApiResponse(['success' => false, 'message' => 'Evrak bulunamadı.'], 404);
+        }
+        try {
+            (new \App\Model\EvrakSevkModel())->sevkEt(
+                $evrak,
+                $currentUserId,
+                $decryptId($_POST['alan_user_id'] ?? ''),
+                (string) ($_POST['sevk_notu'] ?? ''),
+                (int) ($_SESSION['owner_id'] ?? 0)
+            );
+        } catch (\Throwable $e) {
+            evrakApiResponse(['success' => false, 'message' => $e->getMessage()], 400);
+        }
+        evrakApiResponse(['success' => true, 'message' => 'Evrak seçilen personele sevk edildi.']);
     }
 
     // -------------------------------------------------------------

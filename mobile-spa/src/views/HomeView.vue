@@ -31,6 +31,7 @@ import {
   Info,
   Layers,
   Link2,
+  Mail,
   Megaphone,
   Pencil,
   Phone,
@@ -97,6 +98,7 @@ const initials = computed(() => auth.state.user?.initials || username.value.slic
 
 // Kart Tanımları ve Varsayılan Sıralama
 const DEFAULT_CARD_ORDER = [
+  'uets_unread',
   'personnel',
   'birthdays',
   'pending_approvals',
@@ -109,6 +111,12 @@ const DEFAULT_CARD_ORDER = [
 ]
 
 const CARD_DEFINITIONS = {
+  uets_unread: {
+    id: 'uets_unread',
+    title: 'Okunmamış UETS Tebligatları',
+    icon: Mail,
+    description: 'Henüz açılmamış önemli UETS tebligatları',
+  },
   personnel: {
     id: 'personnel',
     title: 'Personel Durumu',
@@ -423,6 +431,7 @@ function submitCustomAction() {
 }
 
 // Reaktif Veri Modelleri
+const uetsUnread = computed(() => (auth.state.permissions.documents ? dashboard.value.uets_unread || null : null))
 const personnel = computed(() => (auth.state.permissions.personnel ? dashboard.value.personnel : null))
 const vehicles = computed(() => (auth.state.permissions.vehicles ? dashboard.value.vehicles : null))
 const shifts = computed(() => (auth.state.permissions.shift_schedule ? (dashboard.value.shifts || []) : []))
@@ -550,6 +559,7 @@ function isCardVisible(cardId) {
   if (cardSettings.value[cardId]?.hidden) return false
 
   if (cardId === 'announcements') return announcements.value.length > 0
+  if (cardId === 'uets_unread') return Boolean(uetsUnread.value && uetsUnread.value.count > 0)
   if (cardId === 'pending_approvals') return Boolean(pendingApprovals.value)
   if (cardId === 'shifts') return Boolean(auth.state.permissions.shift_schedule)
   if (cardId === 'personnel') return Boolean(personnel.value)
@@ -1015,7 +1025,8 @@ function applyDashboard(data) {
       const known = new Set(DEFAULT_CARD_ORDER)
       const saved = data.card_preferences.order.filter((id) => known.has(id))
       const missing = DEFAULT_CARD_ORDER.filter((id) => !saved.includes(id))
-      cardOrder.value = [...saved, ...missing]
+      const urgent = missing.filter((id) => id === 'uets_unread')
+      cardOrder.value = [...urgent, ...saved, ...missing.filter((id) => id !== 'uets_unread')]
     }
     if (data.card_preferences.settings && typeof data.card_preferences.settings === 'object') {
       cardSettings.value = data.card_preferences.settings
@@ -1207,6 +1218,55 @@ onMounted(() => {
                 <RouterLink :to="{ path: '/personel', query: { durum: 'late' } }" class="personnel-stat-col">
                   <span><i class="ds-dot ds-dot--coral"></i>Geç Kalan</span>
                   <strong>{{ personnel.late || 0 }}</strong>
+                </RouterLink>
+              </div>
+            </section>
+
+            <!-- 1.5 OKUNMAMIŞ UETS TEBLİGATLARI -->
+            <section
+              v-else-if="cardId === 'uets_unread' && uetsUnread"
+              class="bento-card bento-card--white approvals-bento"
+            >
+              <div class="card-inner-head">
+                <div class="card-inner-title">
+                  <Mail :size="16" class="text-amber" />
+                  <span>Okunmamış UETS Tebligatları</span>
+                  <span class="clay-pill-tag ms-1">{{ uetsUnread.count }}</span>
+                </div>
+                <div class="card-inner-controls">
+                  <span
+                    class="card-inner-handle"
+                    role="button"
+                    tabindex="0"
+                    title="Sürükle ve taşı"
+                    aria-label="Sürükle ve taşı"
+                    @pointerdown.stop="startHandleDrag(cardId, $event)"
+                    @touchstart.stop="startHandleDrag(cardId, $event)"
+                  >
+                    <GripVertical :size="14" />
+                  </span>
+                </div>
+              </div>
+
+              <div class="approvals-content" style="flex-direction: column; align-items: stretch; gap: 8px">
+                <RouterLink
+                  v-for="item in uetsUnread.items"
+                  :key="item.id"
+                  :to="{ path: '/evrak-takip', query: { open: item.id } }"
+                  class="approvals-info-block"
+                  style="text-decoration: none"
+                >
+                  <div class="approvals-icon-bubble">
+                    <Mail :size="18" />
+                  </div>
+                  <div class="approvals-text">
+                    <strong>{{ item.kurum_adi }}</strong>
+                    <p>{{ item.konu }}<span v-if="item.tarih"> · {{ item.tarih }}</span></p>
+                  </div>
+                </RouterLink>
+                <RouterLink to="/evrak-takip" class="clay-pill-btn" aria-label="Evrak takibe git">
+                  <span>Tümünü Gör</span>
+                  <ChevronRight :size="13" />
                 </RouterLink>
               </div>
             </section>

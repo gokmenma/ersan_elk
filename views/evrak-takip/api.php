@@ -1137,6 +1137,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     throw new Exception("Evrak bulunamadı.");
                 }
 
+                $sevkModel = new \App\Model\EvrakSevkModel();
+                if (\App\Model\EvrakSevkModel::isRestricted($evrak)) {
+                    $sevkModel->recordHistory((int) $_SESSION['firma_id'], $id, 'goruntuleme', $currentUserId, null, null);
+                    $sevkModel->markSeen((int) $_SESSION['firma_id'], $id, $currentUserId);
+                    $evrak->uets_kisitli = true;
+                    $evrak->tarihce_gorebilir = $sevkModel->hasFullAccess();
+                }
+
                 $imzaAkisi = $Model->getApprovalDetailMap([$id])[$id] ?? [];
                 $imzaOzeti = $Model->getApprovalSummaryMap($currentUserId, [$id])[$id] ?? [];
                 $evrak->imza_sirasi_bende = ($evrak->onay_durumu ?? '') === 'onay_bekliyor'
@@ -1204,6 +1212,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $approvalDetailMap = $Model->getApprovalDetailMap($ids);
                 $latestKepEvidenceMap = (new KepDelilModel())->getLatestByEvrakIds($ids, (int) $_SESSION['firma_id']);
                 $canSendKep = Gate::allows('evrak-takip/kep');
+                $uetsFullAccess = (new \App\Model\EvrakSevkModel())->hasFullAccess();
+                $uetsReadIds = array_flip((new \App\Model\EvrakSevkModel())->readEvrakIds((int) $_SESSION['firma_id'], $currentUserId, $ids));
                 $esc = static fn($value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
                 $dataRows = [];
                 foreach ($result['rows'] as $offset => $evrak) {
@@ -1227,6 +1237,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             ? '<span class="badge bg-purple-subtle text-purple border border-purple-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold" title="KEP ile gönderilen evrak"><i class="bx bx-mail-send"></i> GİDEN / KEP</span>'
                             : '<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold"><i class="bx bx-up-arrow-alt"></i> GİDEN</span>');
                     if (($evrak->kaynak_tipi ?? '') === 'uets' || !empty($evrak->uets_mesaj_id)) $typeHtml .= '<div class="mt-1"><span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 font-size-10"><i class="bx bx-envelope"></i> UETS</span></div>';
+                    if (\App\Model\EvrakSevkModel::isRestricted($evrak) && !isset($uetsReadIds[(int) $evrak->id])) $typeHtml .= '<div class="mt-1"><span class="badge bg-danger text-white rounded-pill px-2 font-size-10"><i class="bx bx-envelope"></i> OKUNMAMIŞ</span></div>';
                     if ($type === 'gelen' && $isKep) $typeHtml .= '<div class="mt-1"><span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 font-size-10"><i class="bx bx-mail-send"></i> KEP</span></div>';
                     $kepStatusHtml = '<span class="text-muted small">-</span>';
                     if ($type === 'giden' && $isKep && isset($latestKepEvidenceMap[(int) $evrak->id])) {
@@ -1288,6 +1299,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         }
                     } else {
                         $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-duzenle" data-id="' . $esc($encryptedId) . '" title="Düzenle"><i class="bx bx-edit-alt text-primary"></i><span>Düzenle</span></button>';
+                    }
+                    if (\App\Model\EvrakSevkModel::isRestricted($evrak)) {
+                        $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 btn-uets-sevk" data-id="' . $esc($encryptedId) . '" data-subject="' . $esc($evrak->konu) . '" title="Personele Sevk Et"><i class="bx bx-share text-warning"></i><span>Personele Sevk Et</span></button>';
+                        $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 btn-uets-tarihce" data-id="' . $esc($encryptedId) . '" data-subject="' . $esc($evrak->konu) . '" data-full="' . ($uetsFullAccess ? '1' : '0') . '" title="Sevk ve Erişim Tarihçesi"><i class="bx bx-history text-secondary"></i><span>Sevk ve Erişim Tarihçesi</span></button>';
                     }
                     if (!empty($evrak->uets_mesaj_id)) $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 btn-uets-deliller" data-uets-id="' . $esc($evrak->uets_mesaj_id) . '" title="UETS Delillerini Görüntüle"><i class="bx bx-shield-quarter text-info"></i><span>UETS Delillerini Görüntüle</span></button>';
                     if ($myTurn) {
@@ -1659,6 +1674,64 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 echo json_encode($syncRes, JSON_UNESCAPED_UNICODE);
                 break;
 
+            case 'uets-sevk-personel-listesi':
+                $evrak = $Model->getById($decryptId((string) ($_POST['id'] ?? '')));
+                if (!$evrak || !\App\Model\EvrakSevkModel::isRestricted($evrak)) {
+                    throw new Exception('Evrak bulunamadı.');
+                }
+                $users = (new \App\Model\EvrakSevkModel())->recipients((int) $_SESSION['firma_id'], (int) ($_SESSION['owner_id'] ?? 0), $currentUserId);
+                echo json_encode(['status' => 'success', 'data' => array_map(static fn(object $u): array => [
+                    'id' => Security::encrypt((int) $u->id),
+                    'adi' => (string) $u->adi,
+                    'unvan' => (string) $u->unvan,
+                ], $users)], JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'uets-sevk-et':
+                $evrak = $Model->getById($decryptId((string) ($_POST['id'] ?? '')));
+                if (!$evrak) {
+                    throw new Exception('Evrak bulunamadı.');
+                }
+                $toUserId = $decryptId((string) ($_POST['alan_user_id'] ?? ''));
+                (new \App\Model\EvrakSevkModel())->sevkEt($evrak, $currentUserId, $toUserId, (string) ($_POST['sevk_notu'] ?? ''), (int) ($_SESSION['owner_id'] ?? 0));
+                echo json_encode(['status' => 'success', 'message' => 'Evrak seçilen personele sevk edildi.'], JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'uets-sevk-gecmisi':
+                $evrakId = $decryptId((string) ($_POST['id'] ?? ''));
+                $evrak = $Model->getById($evrakId);
+                if (!$evrak || !\App\Model\EvrakSevkModel::isRestricted($evrak)) {
+                    throw new Exception('Evrak bulunamadı.');
+                }
+                $chain = (new \App\Model\EvrakSevkModel())->sevkChain((int) $_SESSION['firma_id'], $evrakId);
+                echo json_encode(['status' => 'success', 'data' => array_map(static fn(object $r): array => [
+                    'sevk_eden' => (string) $r->sevk_eden,
+                    'alan' => (string) $r->alan,
+                    'not' => (string) ($r->sevk_notu ?? ''),
+                    'durum' => (string) $r->durum,
+                    'tarih' => $r->created_at ? date('d.m.Y H:i:s', strtotime($r->created_at)) : '',
+                    'goruldu' => $r->goruldu_at ? date('d.m.Y H:i:s', strtotime($r->goruldu_at)) : '',
+                    'iletildi' => $r->iletildi_at ? date('d.m.Y H:i:s', strtotime($r->iletildi_at)) : '',
+                ], $chain)], JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'evrak-tarihce':
+                $evrakId = $decryptId((string) ($_POST['id'] ?? ''));
+                $evrak = $Model->getById($evrakId);
+                if (!$evrak || !\App\Model\EvrakSevkModel::isRestricted($evrak)) {
+                    throw new Exception('Evrak bulunamadı.');
+                }
+                $trail = (new \App\Model\EvrakSevkModel())->auditTrail((int) $_SESSION['firma_id'], $evrakId);
+                echo json_encode(['status' => 'success', 'data' => array_map(static fn(object $r): array => [
+                    'islem' => (string) $r->islem,
+                    'islem_yapan' => (string) ($r->islem_yapan ?? 'Sistem'),
+                    'hedef' => (string) ($r->hedef ?? ''),
+                    'aciklama' => (string) ($r->aciklama ?? ''),
+                    'ip' => (string) ($r->ip_adresi ?? ''),
+                    'tarih' => $r->created_at ? date('d.m.Y H:i:s', strtotime($r->created_at)) : '',
+                ], $trail)], JSON_UNESCAPED_UNICODE);
+                break;
+
             case 'uets-delil-listesi':
                 $firmaId = (int) $_SESSION['firma_id'];
                 $uetsMsgId = trim((string) ($_POST['uets_message_id'] ?? ''));
@@ -1671,7 +1744,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $localId = $decryptId($mesajIdRaw);
                     $mesaj = $mesajModel->getById($localId, $firmaId);
                 }
-                if (!$mesaj) {
+                if (!$mesaj || !(new \App\Model\EvrakSevkModel())->canViewMesaj($mesaj)) {
                     throw new Exception('Tebligat kaydı bulunamadı.');
                 }
                 $evidenceModel = new UetsEvidenceModel();

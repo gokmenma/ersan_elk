@@ -3315,3 +3315,16 @@
 - `bildirimler.notification_type` kolonu eklendi (`database/migrations/2026_10_28_bildirimler_notification_type.sql`, geriye dönük doldurma dahil). Model kolon yoksa eski davranışa düşer.
 - `BildirimModel`: tür verilmezse link/başlıktan `inferType()` ile çıkarılır; kapalı türler oluşturmada engellenir, okumada (liste, okunmamış, sayaç, DataTable) `visibleFilter()` ile gizlenir. Masaüstü ve mobil SPA aynı modeli kullanır.
 - `layouts/topbar.php`: rozet sunucuda gerçek sayıyla çizilir, ilk yüklemede anında sorgu yapılır (önceden 15 sn gecikme vardı).
+
+# 2026-10-28 — UETS tebligat çekme sorgu limiti
+- UETS liste sorgusu 2 saatte bir yapılabildiği için `UetsSyncService::fetchIncomingMessages()` artık durum filtresiz tek `type=incoming` sorgusu (en fazla 2 sayfa × 250) yapıyor; yanıt `uets_ayarlar.liste_onbellek` içinde 2 saat önbelleğe alınıyor. Önizleme ve seçilenleri aktarma aynı önbelleği kullanıyor, böylece ikinci sorgu atılmıyor.
+- 429 alınırsa `liste_engel_bitis` ile en az 2 saat yeni sorgu atılmıyor. 401/403/429 mesajları `UetsClientService::assertSuccess()` ile ayrıştırılıp `UetsApiException` olarak fırlatılıyor; `downloadMessage` artık HTTP durumunu kontrol ediyor.
+- Cron (seçimsiz) yalnızca `delivered` ve `readtimeout` tebligatları işliyor; delil sorgusu sadece yeni aktarılan mesaj için yapılıyor; bakiye sadece canlı liste sorgusundan sonra çekiliyor.
+- Yerelden UETS'e sorgu atılmadı (IP yetkisi sunucuda); doğrulama sunucuda yapılacak.
+
+# 2026-10-28 — UETS evrak sevk ve tarihçe
+- `EvrakSevkModel` merkezi: `isRestricted()` (gelen + UETS), `canView()`, `visibilitySql()`, `sevkEt()`, `markSeen()`, `recordHistory()`, `sevkChain()`, `auditTrail()`. Görünürlük `EvrakTakipModel::getById/ajaxList/getStats/getGelenEvraklar/getTakvimEvraklar/getAttachmentById/getAttachmentMap`, global ve mobil arama, mobil liste/stream-file, pdf.php delil/EYP ve `uets-delil-listesi` üzerinde uygulanıyor.
+- Yetkisiz kullanıcı yalnızca kendisine sevk edilmiş UETS evrağını görür; alan kişi başka personele iletebilir (zincir `evrak_sevk`). Sevk edilebilecek personel: aktif, aynı firma, `evrak-takip/list` yetkisi olan kullanıcılar.
+- Tarihçe `evrak_tarihce` (sevk, sevk görüldü, görüntüleme, EYP indirme, UETS'ten alındı; IP/UA ile) + `SystemLogModel` (`UETS_SEVK`). Tam tarihçeyi yalnız `evrak-takip/uets-goruntule` yetkisi olanlar görür.
+- `SystemLogModel::log()` metodu yoktu; UETS servisindeki loglar sessizce düşüyordu, `logActionForFirm()` ile düzeltildi.
+- Okunmamış UETS = kullanıcının görebildiği gelen UETS evrağı + `evrak_tarihce`'de o kullanıcıya ait `goruntuleme` kaydı yok + son 30 gün (`EvrakSevkModel::unreadUets()`). Evrak detayı (masaüstü `evrak-detay`, mobil `detail`) açılınca `goruntuleme` yazılır ve rozet düşer. Mobil: `dashboard.php` → `uets_unread`, `badges.php` → `uets_unread` (documents modülü), `evrak.php` → `uets-sevk-personel`/`uets-sevk-et`, liste `uets_okunmamis`.

@@ -2671,3 +2671,122 @@ $(document).ready(function () {
     }
   });
 });
+
+$(function () {
+  const sevkApi = "views/evrak-takip/api.php";
+  const escapeHtml = function (value) {
+    return $("<div>").text(value == null ? "" : String(value)).html();
+  };
+  const sevkDurum = { bekliyor: ["Bekliyor", "warning"], goruldu: ["Görüldü", "success"], iletildi: ["İletildi", "secondary"] };
+  const islemEtiket = {
+    sevk: "Sevk edildi",
+    sevk_goruldu: "Sevk görüldü",
+    goruntuleme: "Evrak görüntülendi",
+    eyp_indirme: "EYP paketi indirildi",
+    uets_alindi: "UETS'ten alındı",
+  };
+
+  $("#uets_sevk_alan").select2({ dropdownParent: $("#modalUetsSevk"), width: "100%", placeholder: "Personel seçiniz" });
+
+  $(document).on("click", ".btn-uets-sevk", function () {
+    const id = $(this).data("id");
+    $("#uetsSevkEvrakId").val(id);
+    $("#uetsSevkKonu").text($(this).data("subject") || "-");
+    $("#uets_sevk_notu").val("");
+    $("#uets_sevk_alan").empty().append(new Option("Yükleniyor...", "", false, false)).trigger("change");
+    $("#modalUetsSevk").modal("show");
+    $.post(sevkApi, { action: "uets-sevk-personel-listesi", id: id }, null, "json")
+      .done(function (res) {
+        const select = $("#uets_sevk_alan").empty().append(new Option("", "", false, false));
+        if (res.status !== "success") {
+          Swal.fire("Hata", res.message || "Personel listesi alınamadı.", "error");
+          return;
+        }
+        (res.data || []).forEach(function (u) {
+          select.append(new Option(u.adi + (u.unvan ? " - " + u.unvan : ""), u.id, false, false));
+        });
+        select.trigger("change");
+      })
+      .fail(function () {
+        Swal.fire("Hata", "Personel listesi alınamadı.", "error");
+      });
+  });
+
+  $("#btnUetsSevkKaydet").on("click", function () {
+    const alan = $("#uets_sevk_alan").val();
+    if (!alan) {
+      Swal.fire("Uyarı", "Lütfen sevk edilecek personeli seçiniz.", "warning");
+      return;
+    }
+    const btn = $(this).prop("disabled", true);
+    $.post(sevkApi, {
+      action: "uets-sevk-et",
+      id: $("#uetsSevkEvrakId").val(),
+      alan_user_id: alan,
+      sevk_notu: $("#uets_sevk_notu").val(),
+    }, null, "json")
+      .done(function (res) {
+        if (res.status === "success") {
+          $("#modalUetsSevk").modal("hide");
+          Swal.fire({ icon: "success", title: "Sevk edildi", text: res.message, timer: 1800, showConfirmButton: false });
+        } else {
+          Swal.fire("Hata", res.message || "Sevk işlemi yapılamadı.", "error");
+        }
+      })
+      .fail(function () {
+        Swal.fire("Hata", "Sevk işlemi yapılamadı.", "error");
+      })
+      .always(function () {
+        btn.prop("disabled", false);
+      });
+  });
+
+  $(document).on("click", ".btn-uets-tarihce", function () {
+    const id = $(this).data("id");
+    const full = String($(this).data("full")) === "1";
+    $("#uetsTarihceKonu").text($(this).data("subject") || "-");
+    $("#uetsSevkZinciri").html('<div class="text-muted py-2"><i class="bx bx-loader-alt bx-spin"></i> Yükleniyor...</div>');
+    $("#uetsDenetimIzi").html("");
+    $("#uetsDenetimBlok").toggle(full);
+    $("#modalUetsTarihce").modal("show");
+
+    $.post(sevkApi, { action: "uets-sevk-gecmisi", id: id }, null, "json").done(function (res) {
+      if (res.status !== "success") {
+        $("#uetsSevkZinciri").html('<div class="alert alert-danger mb-0">' + escapeHtml(res.message || "Sevk geçmişi alınamadı.") + "</div>");
+        return;
+      }
+      if (!(res.data || []).length) {
+        $("#uetsSevkZinciri").html('<div class="alert alert-light border text-center text-muted mb-0">Bu evrak henüz sevk edilmemiş.</div>');
+        return;
+      }
+      let html = '<ul class="list-group list-group-flush border rounded-3">';
+      res.data.forEach(function (r) {
+        const d = sevkDurum[r.durum] || [r.durum, "secondary"];
+        html += '<li class="list-group-item py-2"><div class="d-flex justify-content-between align-items-center">' +
+          "<div><strong>" + escapeHtml(r.sevk_eden) + '</strong> <i class="bx bx-right-arrow-alt"></i> <strong>' + escapeHtml(r.alan) + "</strong></div>" +
+          '<span class="badge bg-' + d[1] + "-subtle text-" + d[1] + ' border border-' + d[1] + '-subtle rounded-pill px-2 font-size-11">' + escapeHtml(d[0]) + "</span></div>" +
+          '<div class="font-size-12 text-muted">Sevk: ' + escapeHtml(r.tarih) +
+          (r.goruldu ? " · Görüldü: " + escapeHtml(r.goruldu) : "") +
+          (r.iletildi ? " · İletildi: " + escapeHtml(r.iletildi) : "") + "</div>" +
+          (r.not ? '<div class="font-size-12 mt-1">Not: ' + escapeHtml(r.not) + "</div>" : "") + "</li>";
+      });
+      $("#uetsSevkZinciri").html(html + "</ul>");
+    });
+
+    if (!full) return;
+    $("#uetsDenetimIzi").html('<div class="text-muted py-2"><i class="bx bx-loader-alt bx-spin"></i> Yükleniyor...</div>');
+    $.post(sevkApi, { action: "evrak-tarihce", id: id }, null, "json").done(function (res) {
+      if (res.status !== "success" || !(res.data || []).length) {
+        $("#uetsDenetimIzi").html('<div class="alert alert-light border text-center text-muted mb-0">Kayıt bulunamadı.</div>');
+        return;
+      }
+      let html = '<div class="table-responsive"><table class="table table-sm table-bordered align-middle mb-0 font-size-12"><thead class="table-light"><tr><th>Tarih</th><th>İşlem</th><th>Yapan</th><th>Hedef</th><th>IP</th></tr></thead><tbody>';
+      res.data.forEach(function (r) {
+        html += "<tr><td class=\"text-nowrap\">" + escapeHtml(r.tarih) + "</td><td>" + escapeHtml(islemEtiket[r.islem] || r.islem) +
+          (r.aciklama ? '<div class="text-muted">' + escapeHtml(r.aciklama) + "</div>" : "") + "</td><td>" + escapeHtml(r.islem_yapan) +
+          "</td><td>" + escapeHtml(r.hedef) + "</td><td>" + escapeHtml(r.ip) + "</td></tr>";
+      });
+      $("#uetsDenetimIzi").html(html + "</tbody></table></div>");
+    });
+  });
+});

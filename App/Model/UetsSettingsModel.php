@@ -139,6 +139,62 @@ class UetsSettingsModel extends Model
         }
     }
 
+    public function getListCache(int $firmId): array
+    {
+        $empty = ['messages' => null, 'zaman' => null, 'engel_bitis' => null];
+        try {
+            $stmt = $this->db->prepare(
+                "SELECT liste_onbellek, liste_onbellek_zamani, liste_engel_bitis
+                 FROM uets_ayarlar WHERE firm_id = :firm_id AND is_active = 1 LIMIT 1"
+            );
+            $stmt->execute(['firm_id' => $firmId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$row) {
+                return $empty;
+            }
+            $messages = !empty($row['liste_onbellek']) ? json_decode($row['liste_onbellek'], true) : null;
+            return [
+                'messages' => is_array($messages) ? $messages : null,
+                'zaman' => $row['liste_onbellek_zamani'] ?: null,
+                'engel_bitis' => $row['liste_engel_bitis'] ?: null,
+            ];
+        } catch (\PDOException $e) {
+            error_log("UetsSettingsModel::getListCache Error: " . $e->getMessage());
+            return $empty;
+        }
+    }
+
+    public function saveListCache(int $firmId, array $messages): bool
+    {
+        try {
+            $stmt = $this->db->prepare(
+                "UPDATE uets_ayarlar
+                 SET liste_onbellek = :liste, liste_onbellek_zamani = NOW(), liste_engel_bitis = NULL, updated_at = NOW()
+                 WHERE firm_id = :firm_id"
+            );
+            return $stmt->execute([
+                'liste' => json_encode($messages, JSON_UNESCAPED_UNICODE),
+                'firm_id' => $firmId,
+            ]);
+        } catch (\PDOException $e) {
+            error_log("UetsSettingsModel::saveListCache Error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function setListBlockedUntil(int $firmId, string $until): bool
+    {
+        try {
+            $stmt = $this->db->prepare(
+                "UPDATE uets_ayarlar SET liste_engel_bitis = :until, updated_at = NOW() WHERE firm_id = :firm_id"
+            );
+            return $stmt->execute(['until' => $until, 'firm_id' => $firmId]);
+        } catch (\PDOException $e) {
+            error_log("UetsSettingsModel::setListBlockedUntil Error: " . $e->getMessage());
+            return false;
+        }
+    }
+
     /**
      * Otomatik senkronizasyonu aktif olan firmaları döner
      * @return int[]
