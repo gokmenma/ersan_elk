@@ -111,6 +111,9 @@ class EypPackageService
             } elseif (stripos($filename, 'Imzalar') !== false) {
                 copy("zip://" . $eypFilePath . "#" . $filename, $extractedPath);
                 $result['imzalar'][] = $extractedPath;
+            } elseif (preg_match('/(^|\/)(\.rels|\[Content_Types\]\.xml|BelgeHedef\.xml|core\.xml|dosyaBilgileri[^\/]*\.xml)$|\.imz$|Muhur/i', $filename)) {
+                copy("zip://" . $eypFilePath . "#" . $filename, $extractedPath);
+                $result['imzalar'][] = $extractedPath;
             } else {
                 copy("zip://" . $eypFilePath . "#" . $filename, $extractedPath);
                 $result['ekler'][] = [

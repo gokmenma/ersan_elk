@@ -1166,6 +1166,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     ];
                 }, $imzaAkisi);
                 $evrak->id = $encryptedId;
+                $evrak->dosya_url = !empty($evrak->dosya_yolu) ? EvrakTakipModel::fileUrl((string) $evrak->dosya_yolu) : '';
                 if (!empty($evrak->ilgili_evrak_id)) {
                     $evrak->ilgili_evrak_id = Security::encrypt($evrak->ilgili_evrak_id);
                 }
@@ -1177,6 +1178,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         'type' => 'existing',
                         'name' => $attachment->dosya_adi,
                         'path' => $attachment->dosya_yolu,
+                        'url' => EvrakTakipModel::fileUrl((string) $attachment->dosya_yolu, (string) $attachment->dosya_adi),
                         'size' => (int) $attachment->dosya_boyutu,
                         'date' => $attachment->olusturma_tarihi,
                         'user' => $attachment->yukleyen_kullanici,
@@ -1195,6 +1197,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             'type' => 'primary',
                             'name' => basename($primaryPath),
                             'path' => (string) $evrak->dosya_yolu,
+                            'url' => EvrakTakipModel::fileUrl((string) $evrak->dosya_yolu),
                             'size' => is_file($primaryFullPath) ? (int) filesize($primaryFullPath) : 0,
                             'date' => $evrak->olusturma_tarihi ?? null,
                             'user' => 'Ana evrak dosyası',
@@ -1282,7 +1285,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if ($files || $hasUpperDocument) {
                         $items = '';
                         if ($hasUpperDocument) $items .= '<li><button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-pdf-goruntule" data-id="' . $esc($encryptedId) . '"><i class="bx bx-file-blank text-danger"></i><span class="text-truncate">Üst Yazı.pdf</span></button></li>';
-                        foreach ($files as $index => $file) $items .= '<li><a class="dropdown-item d-flex align-items-center gap-2" href="' . $esc($file->dosya_yolu) . '" target="_blank"><i class="bx bx-file"></i><span class="text-truncate">' . ($index + 1) . '. ' . $esc($file->dosya_adi) . '</span></a></li>';
+                        foreach ($files as $index => $file) $items .= '<li><a class="dropdown-item d-flex align-items-center gap-2" href="' . $esc(EvrakTakipModel::fileUrl((string) $file->dosya_yolu, (string) $file->dosya_adi)) . '" target="_blank"><i class="bx bx-file"></i><span class="text-truncate">' . ($index + 1) . '. ' . $esc($file->dosya_adi) . '</span></a></li>';
                         $fileHtml = '<div class="dropdown d-inline-block"><button type="button" class="btn btn-sm btn-subtle-info rounded-pill px-2 py-1 font-size-11 fw-semibold dropdown-toggle" data-bs-toggle="dropdown"><i class="bx bx-paperclip"></i> ' . (count($files) + ($hasUpperDocument ? 1 : 0)) . ' DOSYA</button><ul class="dropdown-menu dropdown-menu-end evrak-dosya-menu shadow-lg border-0">' . $items . '</ul></div>';
                     }
                     $actionItems = '';

@@ -31,6 +31,38 @@ try {
     $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
     $model = new EvrakTakipModel();
 
+    if ($downloadType === 'dosya') {
+        $relPath = ltrim(str_replace('\\', '/', (string) Security::decrypt((string) ($_GET['f'] ?? ''))), '/');
+        $uploadsRoot = realpath(dirname(__DIR__, 2) . '/uploads');
+        $realFile = $relPath !== '' && str_starts_with($relPath, 'uploads/') ? realpath(dirname(__DIR__, 2) . '/' . $relPath) : false;
+        if (!$realFile || !$uploadsRoot || !str_starts_with($realFile, $uploadsRoot . DIRECTORY_SEPARATOR) || !is_file($realFile)
+            || !$model->fileBelongsToFirm($relPath, $firmaId)) {
+            http_response_code(404);
+            exit('Dosya bulunamadı.');
+        }
+        $sevkModel = new \App\Model\EvrakSevkModel();
+        if (!$sevkModel->canViewFilePath($relPath, $firmaId)) {
+            http_response_code(403);
+            exit('Bu dosyayı görüntüleme yetkiniz yok.');
+        }
+        $rawFile = (string) file_get_contents($realFile);
+        try {
+            $fileBytes = Security::decryptFile($rawFile);
+        } catch (\Throwable $e) {
+            $fileBytes = $rawFile;
+        }
+        $fileName = preg_replace('/[\r\n"]/', '', basename((string) ($_GET['n'] ?? basename($relPath))));
+        $mime = (new finfo(FILEINFO_MIME_TYPE))->buffer($fileBytes) ?: 'application/octet-stream';
+        $inline = in_array($mime, ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'text/plain'], true);
+        header('Content-Type: ' . $mime);
+        header('Content-Length: ' . strlen($fileBytes));
+        header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . '; filename="' . rawurlencode($fileName) . '"');
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: private, no-store');
+        echo $fileBytes;
+        exit;
+    }
+
     // UETS Delil PDF İndirme / Görüntüleme
     if ($downloadType === 'uets_delil') {
         $evidenceId = trim((string) ($_GET['evidence_id'] ?? ''));

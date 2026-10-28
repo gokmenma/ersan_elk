@@ -773,6 +773,24 @@ class EvrakTakipModel extends Model
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
+    public static function fileUrl(string $path, string $name = ''): string
+    {
+        return 'views/evrak-takip/pdf.php?type=dosya&f=' . rawurlencode(\App\Helper\Security::encrypt(ltrim($path, '/')))
+            . '&n=' . rawurlencode($name !== '' ? $name : basename($path));
+    }
+
+    public function fileBelongsToFirm(string $path, int $firmaId): bool
+    {
+        $stmt = $this->db->prepare(
+            "SELECT 1 FROM evrak_takip et
+             LEFT JOIN evrak_takip_ekleri ee ON ee.evrak_id = et.id AND ee.firma_id = et.firma_id AND ee.silinme_tarihi IS NULL
+             WHERE et.firma_id = :firma_id AND et.silinme_tarihi IS NULL
+               AND (et.dosya_yolu = :p1 OR ee.dosya_yolu = :p2) LIMIT 1"
+        );
+        $stmt->execute(['firma_id' => $firmaId, 'p1' => $path, 'p2' => $path]);
+        return (bool) $stmt->fetchColumn();
+    }
+
     public function getAttachmentById(int $attachmentId): object|false
     {
         $sql = $this->db->prepare("SELECT ee.id, ee.dosya_adi, ee.dosya_yolu, ee.mime_tipi, ee.dosya_boyutu

@@ -50,7 +50,7 @@ $(document).ready(function () {
         .text(detail.filter(Boolean).join(" • ") + " • " + formatGelenDosyaBoyutu(item.size)).appendTo(info);
       const actions = $("<div>").addClass("d-flex gap-1 flex-shrink-0");
       if ((item.type === "existing" || item.type === "primary") && item.path) {
-        $("<a>").addClass("btn btn-sm btn-subtle-info").attr({href: item.path, target: "_blank", title: "Görüntüle"})
+        $("<a>").addClass("btn btn-sm btn-subtle-info").attr({href: item.url || item.path, target: "_blank", title: "Görüntüle"})
           .append($("<i>").addClass("bx bx-show font-size-14")).appendTo(actions);
       }
       const removeButton = $("<button type='button'>").addClass("btn btn-sm btn-subtle-danger").attr("title", "Listeden kaldır")
@@ -592,7 +592,7 @@ $(document).ready(function () {
         gelenDosyalar = (data.dosyalar || []).map(item => ({...item, type: item.type || "existing"}));
         silinenGelenDosyaIds = [];
         gelenDosyalariGoster();
-        if (data.dosya_yolu && gelenDosyalar.length === 0) $("#mevcutDosya").show().find("a").attr("href", data.dosya_yolu);
+        if (data.dosya_yolu && gelenDosyalar.length === 0) $("#mevcutDosya").show().find("a").attr("href", data.dosya_url || data.dosya_yolu);
         else $("#mevcutDosya").hide();
 
         ensureModalInBody();

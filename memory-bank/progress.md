@@ -1999,3 +1999,4 @@
 - [x] 2026-10-28 Okunmamış UETS tebligatları: masaüstü ana sayfa uyarısı, Evrak Takip başlık rozeti + satır "OKUNMAMIŞ" rozeti, mobil SPA ana sayfa kartı (`uets_unread`), mobil alt menü Evrak rozeti, mobil Evrak sevk/tarihçe arayüzü; dist derlendi, tarayıcıda/cihazda test bekliyor
 
 - [x] Araç poliçe (sigorta/kasko) ekleme alanı — kod tamam, SQL uygulanacak, tarayıcı testi bekliyor.
+- [x] 2026-10-28 Masaüstü Evrak Takip dosya bağlantıları şifreli UETS/KEP dosyalarını açamıyordu: `pdf.php?type=dosya` (deşifre + firma/yetki kontrollü) eklendi, liste/detay bağlantıları `EvrakTakipModel::fileUrl()` kullanıyor; EYP paket meta dosyaları (.rels, core.xml, .imz vb.) artık ek olarak kaydedilmiyor; tarayıcıda test bekliyor
