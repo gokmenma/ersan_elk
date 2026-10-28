@@ -1396,7 +1396,12 @@ $(document).ready(function () {
       $("#ptt_yetkili_tcno, #ptt_parola, #ptt_sifre").val("");
       $("#ptt_wsdl_url").val(d.wsdl_url || "https://eyazisma.hs01.kep.tr/KepEYazismaV1.1/KepEYazismaCOREWSDL.php?wsdl");
       $("#ptt_ortam").val(d.ortam || "prod").trigger("change");
-      $("#ptt_varsayilan_hesap").val(d.varsayilan_hesap || "").trigger("change");
+      const $varsayilanHesap = $("#ptt_varsayilan_hesap");
+      if ($varsayilanHesap.length) {
+        $varsayilanHesap.empty().append(new Option("Seçilmedi", "", false, false));
+        (d.hesap_secenekleri || []).forEach(function (h) { $varsayilanHesap.append(new Option(h.ad, h.id, false, Boolean(h.secili))); });
+        $varsayilanHesap.trigger("change");
+      }
       $("#ptt_gelen_otomatik_aktar").prop("checked", Boolean(d.gelen_otomatik_aktar));
       $("#ptt_gelen_okundu_otomatik").prop("checked", Boolean(d.gelen_okundu_otomatik));
       pttKepGelenHesapBana = 0;

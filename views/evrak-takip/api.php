@@ -1852,7 +1852,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         'yetkili_tcno' => $maskedTc,
                         'has_secrets' => $hasSecrets,
                         'credentials_owner' => 'current_user',
-                        'varsayilan_hesap' => ($dv = $kepSettingsModel->getDefaultAccountUserId($firmaId)) > 0 ? Security::encrypt($dv) : '',
+                        'hesap_secenekleri' => array_map(static fn($u): array => ['id' => Security::encrypt((int) $u->id), 'ad' => (string) $u->adi_soyadi, 'secili' => (int) $u->id === $kepSettingsModel->getDefaultAccountUserId($firmaId)], $kepSettingsModel->getAccountUsers($firmaId)),
                         'wsdl_url' => $kepSettings['wsdl_url'] ?? KepClientService::DEFAULT_WSDL,
                         'ortam' => $kepSettings['ortam'] ?? 'prod',
                         'gelen_otomatik_aktar' => $gelenOtomasyon['otomatik_aktar'],
