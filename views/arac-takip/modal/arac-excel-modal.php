@@ -27,6 +27,7 @@
                                 <li>Muayene Bitiş Tarihi</li>
                                 <li>Sigorta Bitiş Tarihi</li>
                                 <li>Kasko Bitiş Tarihi</li>
+                                <li>Sigorta / Kasko Şirketi, Poliçe No, Başlangıç, Prim <span class="text-muted">(isteğe bağlı; Bitiş tarihiyle birlikte poliçe kaydı açar)</span></li>
                             </ul>
                         </div>
                     </div>

@@ -2466,6 +2466,9 @@ const AracTakip = {
     });
     $("#policeForm").addClass("d-none");
     if (!aracId) {
+      $("#sigorta_bitis_tarihi, #kasko_bitis_tarihi").prop("readonly", false).attr("title", "").each(function () {
+        if (this._flatpickr) this._flatpickr.set("clickOpens", true);
+      });
       $("#policeYeniAracUyari").removeClass("d-none");
       $("#btnPoliceFormAc").addClass("d-none");
       $("#policeListe").addClass("d-none").empty();
@@ -2479,6 +2482,15 @@ const AracTakip = {
   policeListele: function (aracId) {
     $.post(this.apiUrl, { action: "arac-police-listele", arac_id: aracId }, function (response) {
       const liste = $("#policeListe").empty();
+      const policeVarMi = response.status === "success" ? response.data : [];
+      ["sigorta", "kasko"].forEach(function (tur) {
+        const varMi = policeVarMi.some(function (p) { return p.police_turu === tur; });
+        const input = $(tur === "kasko" ? "#kasko_bitis_tarihi" : "#sigorta_bitis_tarihi");
+        input.prop("readonly", varMi).attr("title", varMi ? "Bu tarih poliçe kayıtlarından otomatik güncellenir." : "");
+        if (input[0] && input[0]._flatpickr) {
+          input[0]._flatpickr.set("clickOpens", !varMi);
+        }
+      });
       if (response.status !== "success" || !response.data.length) {
         liste.addClass("d-none");
         return;

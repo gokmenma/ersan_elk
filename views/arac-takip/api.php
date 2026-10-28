@@ -2596,6 +2596,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 }
 
                 $responseMessage = "İşlem tamamlandı. Eklenen: $addedCount, Güncellenen: $updatedCount";
+                if ($policeCount > 0) {
+                    $responseMessage .= ", Poliçe: $policeCount";
+                }
                 if ($otomatikEklenenAraclar) {
                     $responseMessage .= ", Yeni araç: " . count($otomatikEklenenAraclar) . " (" . implode(', ', array_keys($otomatikEklenenAraclar)) . ")";
                 }
@@ -2676,8 +2679,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     throw new Exception("'Plaka' sütunu bulunamadı.");
                 }
 
+                $policeMap = [];
+                foreach (['sigorta', 'kasko'] as $policeTuru) {
+                    $policeMap[$policeTuru] = [
+                        'sirket_adi' => [$policeTuru . ' şirketi', $policeTuru . ' sirketi', $policeTuru . ' şirket', $policeTuru . ' sirket'],
+                        'police_no' => [$policeTuru . ' poliçe no', $policeTuru . ' police no', $policeTuru . ' poliçe numarası', $policeTuru . ' police numarasi'],
+                        'baslangic_tarihi' => [$policeTuru . ' başlangıç', $policeTuru . ' baslangic', $policeTuru . ' başlangıç tarihi', $policeTuru . ' baslangic tarihi'],
+                        'prim_tutari' => [$policeTuru . ' prim', $policeTuru . ' prim tutarı', $policeTuru . ' prim tutari'],
+                    ];
+                }
+                $policeIndices = [];
+                foreach ($policeMap as $policeTuru => $alanlar) {
+                    foreach ($alanlar as $alan => $adlar) {
+                        foreach ($adlar as $ad) {
+                            $index = array_search($ad, $headers);
+                            if ($index !== false) {
+                                $policeIndices[$policeTuru][$alan] = $index;
+                                break;
+                            }
+                        }
+                    }
+                }
+
                 $addedCount = 0;
                 $updatedCount = 0;
+                $policeCount = 0;
                 $errorDetails = [];
 
                 for ($i = 1; $i < count($rows); $i++) {
@@ -2770,6 +2796,61 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                         }
                         $excelAracId = (int) Security::decrypt($Arac->saveWithAttr($newData));
 
+                        foreach ($policeIndices as $policeTuru => $alanIndisleri) {
+                            $bitisKolonu = $policeTuru . '_bitis_tarihi';
+                            $policeBitis = $newData[$bitisKolonu] ?? null;
+                            if (!$policeBitis) {
+                                continue;
+                            }
+
+                            $policeAlanlari = [];
+                            foreach ($alanIndisleri as $alan => $index) {
+                                $deger = trim((string) ($row[$index] ?? ''));
+                                if ($deger === '') {
+                                    $policeAlanlari[$alan] = null;
+                                    continue;
+                                }
+                                if ($alan === 'baslangic_tarihi') {
+                                    $deger = Date::convertExcelDate($deger) ?: null;
+                                } elseif ($alan === 'prim_tutari') {
+                                    if (!is_numeric($deger)) {
+                                        $deger = str_replace(['.', ','], ['', '.'], preg_replace('/[^0-9.,]/', '', $deger));
+                                    }
+                                    $deger = is_numeric($deger) ? round((float) $deger, 2) : null;
+                                } else {
+                                    $deger = mb_substr($deger, 0, $alan === 'police_no' ? 100 : 150);
+                                }
+                                $policeAlanlari[$alan] = $deger;
+                            }
+
+                            if (!array_filter($policeAlanlari, fn($v) => $v !== null)) {
+                                continue;
+                            }
+                            if ($Police->eslesenVarMi($excelAracId, $policeTuru, $policeBitis, $policeAlanlari['police_no'] ?? null)) {
+                                continue;
+                            }
+
+                            $Police->addPolice($excelAracId, [
+                                'police_turu' => $policeTuru,
+                                'sirket_adi' => $policeAlanlari['sirket_adi'] ?? null,
+                                'police_no' => $policeAlanlari['police_no'] ?? null,
+                                'baslangic_tarihi' => $policeAlanlari['baslangic_tarihi'] ?? null,
+                                'bitis_tarihi' => $policeBitis,
+                                'prim_tutari' => $policeAlanlari['prim_tutari'] ?? null,
+                                'dosya_adi' => null,
+                                'orijinal_ad' => null,
+                                'mime_tipi' => null,
+                                'boyutu' => null,
+                                'yukleyen_id' => $_SESSION['user_id'] ?? null,
+                            ]);
+                            $enGecBitis = $Police->enGecBitis($excelAracId, $policeTuru);
+                            if ($enGecBitis) {
+                                $Arac->updateEvrakBitis($excelAracId, $policeTuru, $enGecBitis);
+                            }
+                            $AracLog->ekle($excelAracId, ($policeTuru === 'kasko' ? 'Kasko' : 'Sigorta') . ' Poliçesi Ekleme', 'Excel ile poliçe eklendi. Bitiş: ' . Date::dmY($policeBitis));
+                            $policeCount++;
+                        }
+
                         if ($mevcutArac) {
                             $excelFarklar = $AracLog->farklariBul($excelEskiArac ?: $mevcutArac, $newData);
                             $AracLog->ekle($excelAracId, 'Excel Güncelleme', $excelFarklar
@@ -2794,7 +2875,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 // Araç Excel yükleme logla
                 $SystemLog = new SystemLogModel();
                 $userId = $_SESSION['user_id'] ?? 0;
-                $SystemLog->logAction($userId, 'Araç Excel Yükleme', "Excel'den {$addedCount} adet araç eklendi, {$updatedCount} adet güncellendi.", SystemLogModel::LEVEL_IMPORTANT);
+                $SystemLog->logAction($userId, 'Araç Excel Yükleme', "Excel'den {$addedCount} adet araç eklendi, {$updatedCount} adet güncellendi, {$policeCount} adet poliçe eklendi.", SystemLogModel::LEVEL_IMPORTANT);
 
                 echo json_encode([
                     'status' => 'success',

@@ -101,4 +101,23 @@ class AracPoliceModel extends Model
         ]);
         return $sql->fetchColumn() ?: null;
     }
+
+    public function eslesenVarMi(int $aracId, string $tur, ?string $bitis, ?string $policeNo): bool
+    {
+        $sql = $this->db->prepare("
+            SELECT COUNT(*) FROM {$this->table}
+            WHERE arac_id = :arac_id AND firma_id = :firma_id AND police_turu = :tur
+              AND silinme_tarihi IS NULL
+              AND bitis_tarihi <=> :bitis
+              AND police_no <=> :police_no
+        ");
+        $sql->execute([
+            'arac_id' => $aracId,
+            'firma_id' => $_SESSION['firma_id'],
+            'tur' => $tur,
+            'bitis' => $bitis,
+            'police_no' => $policeNo
+        ]);
+        return (int) $sql->fetchColumn() > 0;
+    }
 }

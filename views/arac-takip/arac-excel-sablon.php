@@ -26,10 +26,18 @@ $headers = [
     'G1' => 'Yakıt Tipi',
     'H1' => 'Güncel KM',
     'I1' => 'Muayene Bitiş',
-    'J1' => 'Sigorta Bitiş',
-    'K1' => 'Kasko Bitiş',
-    'L1' => 'Mülkiyet',
-    'M1' => 'Notlar'
+    'J1' => 'Mülkiyet',
+    'K1' => 'Notlar',
+    'L1' => 'Sigorta Şirketi',
+    'M1' => 'Sigorta Poliçe No',
+    'N1' => 'Sigorta Başlangıç',
+    'O1' => 'Sigorta Bitiş',
+    'P1' => 'Sigorta Prim',
+    'Q1' => 'Kasko Şirketi',
+    'R1' => 'Kasko Poliçe No',
+    'S1' => 'Kasko Başlangıç',
+    'T1' => 'Kasko Bitiş',
+    'U1' => 'Kasko Prim'
 ];
 
 foreach ($headers as $cell => $value) {
@@ -58,30 +66,20 @@ $headerStyle = [
     ]
 ];
 
-$sheet->getStyle('A1:M1')->applyFromArray($headerStyle);
+$sheet->getStyle('A1:U1')->applyFromArray($headerStyle);
 
 // Örnek veriler
 $sampleData = [
-    ['34 ABC 123', 'Ford', 'Focus', '2022', 'Beyaz', 'Binek', 'Dizel', '45000', '25.05.2026', '10.03.2026', '10.03.2026', 'Şirket Aracı', 'Genel hizmet aracı'],
-    ['34 XYZ 789', 'Renault', 'Clio', '2023', 'Siyah', 'Binek', 'Benzin', '15200', '15.08.2026', '01.06.2026', '01.06.2026', 'Kiralama', ''],
-    ['34 DEF 456', 'Iveco', 'Daily', '2021', 'Beyaz', 'Kamyonet', 'Dizel', '125000', '20.02.2026', '15.01.2026', '15.01.2026', 'Kiralık Araç', 'Nakliye ekibi']
+    ['34 ABC 123', 'Ford', 'Focus', '2022', 'Beyaz', 'Binek', 'Dizel', '45000', '25.05.2026', 'Şirket Aracı', 'Genel hizmet aracı', 'Anadolu Sigorta', 'TS-1234567', '10.03.2025', '10.03.2026', '8500', 'Allianz', 'KSK-7654321', '10.03.2025', '10.03.2026', '21000'],
+    ['34 XYZ 789', 'Renault', 'Clio', '2023', 'Siyah', 'Binek', 'Benzin', '15200', '15.08.2026', 'Kiralama', '', '', '', '', '', '', '', '', '', '', ''],
+    ['34 DEF 456', 'Iveco', 'Daily', '2021', 'Beyaz', 'Kamyonet', 'Dizel', '125000', '20.02.2026', 'Kiralık Araç', 'Nakliye ekibi', '', '', '', '', '', '', '', '', '', '']
 ];
 
 $row = 2;
 foreach ($sampleData as $data) {
-    $sheet->setCellValue('A' . $row, $data[0]);
-    $sheet->setCellValue('B' . $row, $data[1]);
-    $sheet->setCellValue('C' . $row, $data[2]);
-    $sheet->setCellValue('D' . $row, $data[3]);
-    $sheet->setCellValue('E' . $row, $data[4]);
-    $sheet->setCellValue('F' . $row, $data[5]);
-    $sheet->setCellValue('G' . $row, $data[6]);
-    $sheet->setCellValue('H' . $row, $data[7]);
-    $sheet->setCellValue('I' . $row, $data[8]);
-    $sheet->setCellValue('J' . $row, $data[9]);
-    $sheet->setCellValue('K' . $row, $data[10]);
-    $sheet->setCellValue('L' . $row, $data[11]);
-    $sheet->setCellValue('M' . $row, $data[12]);
+    foreach ($data as $i => $value) {
+        $sheet->setCellValue(chr(65 + $i) . $row, $value);
+    }
     $row++;
 }
 
@@ -99,23 +97,31 @@ $sampleStyle = [
     ]
 ];
 
-$sheet->getStyle('A2:M4')->applyFromArray($sampleStyle);
+$sheet->getStyle('A2:U4')->applyFromArray($sampleStyle);
 
 // Sütun genişlikleri
 $columnWidths = [
-    'A' => 15, // Plaka
-    'B' => 15, // Marka
-    'C' => 15, // Model
-    'D' => 12, // Model Yılı
-    'E' => 12, // Renk
-    'F' => 15, // Araç Tipi
-    'G' => 12, // Yakıt Tipi
-    'H' => 12, // Güncel KM
-    'I' => 15, // Muayene Tarihi
-    'J' => 15, // Sigorta Bitiş
-    'K' => 15, // Kasko Bitiş
-    'L' => 15, // Mülkiyet
-    'M' => 25  // Notlar
+    'A' => 15, // Plaka,
+    'B' => 15, // Marka,
+    'C' => 15, // Model,
+    'D' => 12, // Model Yılı,
+    'E' => 12, // Renk,
+    'F' => 15, // Araç Tipi,
+    'G' => 12, // Yakıt Tipi,
+    'H' => 12, // Güncel KM,
+    'I' => 15, // Muayene Bitiş,
+    'J' => 15, // Mülkiyet,
+    'K' => 25, // Notlar,
+    'L' => 20, // Sigorta Şirketi,
+    'M' => 18, // Sigorta Poliçe No,
+    'N' => 16, // Sigorta Başlangıç,
+    'O' => 15, // Sigorta Bitiş,
+    'P' => 14, // Sigorta Prim,
+    'Q' => 20, // Kasko Şirketi,
+    'R' => 18, // Kasko Poliçe No,
+    'S' => 16, // Kasko Başlangıç,
+    'T' => 15, // Kasko Bitiş,
+    'U' => 14 // Kasko Prim
 ];
 
 foreach ($columnWidths as $col => $width) {
@@ -139,10 +145,13 @@ $info = [
     ['Yakıt Tipi', 'Dizel, Benzin, LPG, Elektrik, Hibrit'],
     ['Güncel KM', 'Aracın şu anki kilometresi'],
     ['Muayene Bitiş', 'Sonraki muayene tarihi. Format: GG.AA.YYYY'],
-    ['Sigorta Bitiş', 'Trafik sigortası bitiş tarihi. Format: GG.AA.YYYY'],
-    ['Kasko Bitiş', 'Kasko poliçesi bitiş tarihi. Format: GG.AA.YYYY'],
     ['Mülkiyet', 'Şirket Aracı, Kiralama, Kiralık Araç'],
     ['Notlar', 'Ek notlar'],
+    ['Sigorta Şirketi / Poliçe No / Başlangıç / Prim', 'İsteğe bağlı. Sigorta Bitiş ile birlikte doldurulursa araca poliçe kaydı olarak eklenir (dosya sonradan yüklenir).'],
+    ['Sigorta Bitiş', 'Trafik sigortası bitiş tarihi. Format: GG.AA.YYYY'],
+    ['Kasko Şirketi / Poliçe No / Başlangıç / Prim', 'İsteğe bağlı. Kasko Bitiş ile birlikte doldurulursa araca poliçe kaydı olarak eklenir (dosya sonradan yüklenir).'],
+    ['Kasko Bitiş', 'Kasko poliçesi bitiş tarihi. Format: GG.AA.YYYY'],
+    ['Poliçe Kaydı', 'Bitiş tarihi dolu ve ilgili türün diğer sütunlarından en az biri dolu ise poliçe kaydı açılır. Aynı poliçe no ve bitişle tekrar yüklemede çift kayıt oluşmaz.'],
     [''],
     ['Önemli Notlar:'],
     ['- Mavi renkli örnek satırları silip kendi verilerinizi girin.'],
@@ -171,7 +180,7 @@ $infoSheet->getStyle('A3')->applyFromArray([
     'font' => ['bold' => true, 'size' => 12]
 ]);
 
-$infoSheet->getStyle('A17')->applyFromArray([
+$infoSheet->getStyle('A21')->applyFromArray([
     'font' => ['bold' => true, 'size' => 12]
 ]);
 
