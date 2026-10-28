@@ -3304,3 +3304,8 @@
 - Yeni `mobile-spa/public/api/search.php` (GET, oturum+firma zorunlu) → `App/Service/MobileSearchAccess::modules()` (mobil Gate anahtarlarıyla modül/alt-tip izni) → `App/Model/MobileGlobalSearchModel::search()` (yalnız yetkili modül sorgulanır; masaüstü `GlobalSearchModel` değişmedi). Kategoriler: personnel, invoices (taslak/gelen/giden alt yetkisi), vehicles, current_accounts, documents (gelen/giden alt yetkisi), illegal. Demirbaş/Aparat/Görevler kapsam dışı (mobilde sayfa yok / Görevler ekranı statik taslak).
 - Frontend: `services/search.js`, `components/GlobalSearchSheet.vue` (App.vue'de), TopBar + HomeView arama butonu; Fatura/Evrak/Araç/Kaçak ekranları `?search=` okur. `cari` tablosunda firma_id yok (ortak tablo, mobil Cari ekranıyla aynı kapsam).
 - Yerelde kullanıcı 1 ve 63 ile doğrulandı: 63 numaralı kullanıcıda fatura/cari kategorisi hiç dönmüyor. dist derlendi; telefonda test bekliyor.
+
+## 2026-10-28 Mobil SPA Endeks Karşılaştırma Kartı
+- Masaüstü ana sayfadaki "Endeks Okuma Karşılaştırması" mobile-spa ana sayfasına `endeks_comparison` kartı olarak eklendi (Bölge/Personel geçişi, KPI'lar, düşük/yüksek performans çipleri, bölge satırı açılınca personel kırılımı).
+- Veri: `mobile-spa/public/api/dashboard.php?section=endeks_comparison` (lazy, `puantaj/raporlar` Gate'i, yetkisizse 403) → `MobileDashboardModel::endeksComparison()` → `EndeksOkumaModel::getMonthlyComparisonByDay()`. Frontend: `services/dashboard.js::getEndeksComparison`, `HomeView.vue`, stiller `design-system.css` sonunda (`.endeks-*`).
+- Kayıtlı kart sırasına yeni kart id'si `applyDashboard` içinde otomatik eklenir. dist derlendi; cihazda test bekliyor.

@@ -26,6 +26,7 @@ import {
   FileText,
   FolderOpen,
   Gauge,
+  GitCompare,
   GripVertical,
   Info,
   Layers,
@@ -43,6 +44,8 @@ import {
   Sparkles,
   Star,
   Trash2,
+  TrendingDown,
+  TrendingUp,
   UsersRound,
   Wrench,
   X,
@@ -50,7 +53,7 @@ import {
 } from '@lucide/vue'
 import TopBar from '../components/TopBar.vue'
 import { auth } from '../services/auth.js'
-import { getDashboard, readDashboardCache, saveDashboardSettings, syncDailyOperations, writeDashboardCache } from '../services/dashboard.js'
+import { getDashboard, getEndeksComparison, readDashboardCache, saveDashboardSettings, syncDailyOperations, writeDashboardCache } from '../services/dashboard.js'
 import { notificationsState, toggleNotificationsDrawer } from '../services/notifications.js'
 import { canGlobalSearch, openSearchSheet } from '../services/search.js'
 
@@ -100,6 +103,7 @@ const DEFAULT_CARD_ORDER = [
   'shifts',
   'vehicles',
   'operations',
+  'endeks_comparison',
   'quick_actions',
   'announcements',
 ]
@@ -140,6 +144,12 @@ const CARD_DEFINITIONS = {
     title: 'Günün Operasyonları',
     icon: Gauge,
     description: 'Mühürleme, kesme, endeks ve sayaç sayaçları',
+  },
+  endeks_comparison: {
+    id: 'endeks_comparison',
+    title: 'Endeks Karşılaştırması',
+    icon: GitCompare,
+    description: 'Bölge ve personel bazlı aylık okuma karşılaştırması',
   },
   quick_actions: {
     id: 'quick_actions',
@@ -546,9 +556,110 @@ function isCardVisible(cardId) {
   if (cardId === 'birthdays') return Boolean(birthdays.value)
   if (cardId === 'vehicles') return Boolean(vehicles.value)
   if (cardId === 'operations') return operations.value.length > 0
+  if (cardId === 'endeks_comparison') return endeksCanView.value
   if (cardId === 'quick_actions') return actions.value.length > 0
   return true
 }
+
+// Endeks Okuma Karşılaştırması (yetki sunucuda doğrulanır; yetkisizse veri hiç gelmez)
+const endeksCanView = computed(() => (dashboard.value.operations || []).some((item) => item.key === 'reading'))
+const endeksData = ref(null)
+const endeksLoading = ref(false)
+const endeksError = ref('')
+const endeksView = ref('bolge') // 'bolge' | 'personel'
+const endeksExpanded = ref({})
+const endeksFormatter = new Intl.NumberFormat('tr-TR')
+
+function endeksFmt(value) {
+  return endeksFormatter.format(Number(value) || 0)
+}
+
+function endeksTrend(current, previous) {
+  if (!previous) {
+    return current > 0 ? { pct: 100, text: 'Yeni', tone: 'new' } : { pct: 0, text: '-', tone: 'flat' }
+  }
+  const pct = ((current - previous) / previous) * 100
+  const rounded = Math.round(pct * 10) / 10
+  const tone = rounded <= -20 ? 'crit' : rounded <= -10 ? 'warn' : rounded < 0 ? 'soft' : rounded > 0 ? 'up' : 'flat'
+  return { pct: rounded, text: `${rounded > 0 ? '+' : ''}${rounded.toFixed(1)}%`, tone }
+}
+
+function endeksRow(name, sub, periodMap, periods) {
+  const values = periods.map((period) => Number(periodMap?.[period.label]?.toplam) || 0)
+  const last = values[values.length - 1] || 0
+  const prev = values.length > 1 ? values[values.length - 2] : 0
+  return { name, sub, values, last, diff: last - prev, trend: endeksTrend(last, prev) }
+}
+
+const endeksPeriods = computed(() => endeksData.value?.periods || [])
+
+const endeksRegions = computed(() => {
+  const periods = endeksPeriods.value
+  const bolge = endeksData.value?.bolge || {}
+  const lastLabel = periods[periods.length - 1]?.label
+  return Object.keys(bolge)
+    .map((name) => {
+      const entry = bolge[name]
+      const personCount = Number(entry.periods?.[lastLabel]?.personel_sayisi) || 0
+      const row = endeksRow(name, personCount ? `${personCount} personel` : '', entry.periods, periods)
+      row.people = Object.values(entry.personeller || {})
+        .map((p) => endeksRow(p.personel_adi, p.ekip_adi, p.periods, periods))
+        .sort((a, b) => a.trend.pct - b.trend.pct)
+      return row
+    })
+    .sort((a, b) => a.trend.pct - b.trend.pct)
+})
+
+const endeksPeople = computed(() => {
+  const periods = endeksPeriods.value
+  const bolge = endeksData.value?.bolge || {}
+  const list = []
+  Object.keys(bolge).forEach((region) => {
+    Object.values(bolge[region].personeller || {}).forEach((p) => {
+      list.push(endeksRow(p.personel_adi, `${region} · ${p.ekip_adi}`, p.periods, periods))
+    })
+  })
+  return list.sort((a, b) => a.trend.pct - b.trend.pct)
+})
+
+const endeksRows = computed(() => (endeksView.value === 'bolge' ? endeksRegions.value : endeksPeople.value))
+const endeksMax = computed(() => Math.max(1, ...endeksRows.value.flatMap((row) => row.values)))
+
+const endeksOverview = computed(() => {
+  const rows = endeksRegions.value
+  const total = rows.reduce((sum, row) => sum + row.last, 0)
+  const previous = rows.reduce((sum, row) => sum + (row.values[row.values.length - 2] || 0), 0)
+  const day = Math.max(1, Number(endeksData.value?.gun) || 1)
+  return { total, diff: total - previous, trend: endeksTrend(total, previous), average: Math.round(total / day), day }
+})
+
+const endeksWorst = computed(() => endeksRows.value.filter((row) => row.trend.pct < 0).slice(0, 3))
+const endeksBest = computed(() => endeksRows.value.filter((row) => row.trend.pct > 0).slice(-3).reverse())
+
+function endeksToggle(name) {
+  endeksExpanded.value = { ...endeksExpanded.value, [name]: !endeksExpanded.value[name] }
+}
+
+async function loadEndeksComparison() {
+  if (endeksLoading.value || !endeksCanView.value) return
+  endeksLoading.value = true
+  endeksError.value = ''
+  try {
+    endeksData.value = await getEndeksComparison()
+  } catch (reason) {
+    endeksError.value = reason.message
+  } finally {
+    endeksLoading.value = false
+  }
+}
+
+watch(
+  () => [endeksCanView.value, cardSettings.value.endeks_comparison?.hidden],
+  ([canView, hidden]) => {
+    if (canView && !hidden && !endeksData.value) loadEndeksComparison()
+  },
+  { immediate: true },
+)
 
 // Sıralı ve Görünür Kart Listesi
 const visibleCardList = computed(() => {
@@ -900,7 +1011,10 @@ function applyDashboard(data) {
 
   if (data.card_preferences) {
     if (Array.isArray(data.card_preferences.order) && data.card_preferences.order.length) {
-      cardOrder.value = data.card_preferences.order
+      const known = new Set(DEFAULT_CARD_ORDER)
+      const saved = data.card_preferences.order.filter((id) => known.has(id))
+      const missing = DEFAULT_CARD_ORDER.filter((id) => !saved.includes(id))
+      cardOrder.value = [...saved, ...missing]
     }
     if (data.card_preferences.settings && typeof data.card_preferences.settings === 'object') {
       cardSettings.value = data.card_preferences.settings
@@ -952,13 +1066,12 @@ onMounted(() => {
       <template #actions>
         <button
           type="button"
-          class="clay-topbar-edit-btn"
+          class="clay-circle-btn"
           aria-label="Ana sayfayı özelleştir"
-          title="Ana Sayfayı Düzenle"
+          title="Kartları Düzenle"
           @click="showCustomizeModal = true"
         >
-          <span class="edit-icon-wrap"><SlidersHorizontal :size="13" /></span>
-          <span>Kartları Düzenle</span>
+          <SlidersHorizontal :size="19" />
         </button>
         <button
           v-if="canGlobalSearch"
@@ -1439,6 +1552,123 @@ onMounted(() => {
                   </footer>
                 </article>
               </div>
+            </section>
+
+            <!-- 5b. ENDEKS KARŞILAŞTIRMASI -->
+            <section
+              v-else-if="cardId === 'endeks_comparison' && endeksCanView"
+              class="bento-card bento-card--white endeks-card"
+            >
+              <div class="card-inner-head">
+                <div class="card-inner-title">
+                  <GitCompare :size="16" class="text-primary" />
+                  <span>Endeks Karşılaştırması</span>
+                  <div class="op-mode-toggle ms-1">
+                    <button type="button" class="op-mode-btn" :class="{ 'is-active': endeksView === 'bolge' }" @click="endeksView = 'bolge'">Bölge</button>
+                    <button type="button" class="op-mode-btn" :class="{ 'is-active': endeksView === 'personel' }" @click="endeksView = 'personel'">Personel</button>
+                  </div>
+                </div>
+                <div class="card-inner-controls">
+                  <span
+                    class="card-inner-handle"
+                    role="button"
+                    tabindex="0"
+                    title="Sürükle ve taşı"
+                    aria-label="Sürükle ve taşı"
+                    @pointerdown.stop="startHandleDrag(cardId, $event)"
+                    @touchstart.stop="startHandleDrag(cardId, $event)"
+                  >
+                    <GripVertical :size="14" />
+                  </span>
+                  <button type="button" class="card-inner-btn" title="Yukarı taşı" @click.stop="moveCard(cardId, 'up')"><ChevronUp :size="14" /></button>
+                  <button type="button" class="card-inner-btn" title="Aşağı taşı" @click.stop="moveCard(cardId, 'down')"><ChevronDown :size="14" /></button>
+                </div>
+              </div>
+
+              <p v-if="endeksLoading && !endeksData" class="endeks-note">Yükleniyor…</p>
+              <p v-else-if="endeksError && !endeksData" class="endeks-note">
+                {{ endeksError }}
+                <button type="button" class="endeks-retry" @click="loadEndeksComparison">Tekrar dene</button>
+              </p>
+              <p v-else-if="!endeksRows.length" class="endeks-note">Karşılaştırılacak okuma verisi bulunamadı.</p>
+
+              <template v-else>
+                <div class="endeks-kpis">
+                  <div class="endeks-kpi">
+                    <span>Bu dönem</span>
+                    <strong>{{ endeksFmt(endeksOverview.total) }}</strong>
+                    <small>İlk {{ endeksOverview.day }} gün</small>
+                  </div>
+                  <div class="endeks-kpi" :class="`endeks-tone--${endeksOverview.trend.tone}`">
+                    <span>Önceki aya göre</span>
+                    <strong>{{ endeksOverview.trend.text }}</strong>
+                    <small>{{ endeksOverview.diff > 0 ? '+' : '' }}{{ endeksFmt(endeksOverview.diff) }} okuma</small>
+                  </div>
+                  <div class="endeks-kpi">
+                    <span>Günlük ort.</span>
+                    <strong>{{ endeksFmt(endeksOverview.average) }}</strong>
+                    <small>Takvim günü başına</small>
+                  </div>
+                </div>
+
+                <div v-if="endeksWorst.length" class="endeks-chips endeks-chips--down">
+                  <span class="endeks-chips-label"><TrendingDown :size="13" /> Düşük</span>
+                  <span v-for="row in endeksWorst" :key="`w-${row.name}-${row.sub}`" class="endeks-chip">
+                    {{ row.name }} <b>{{ row.trend.text }}</b>
+                  </span>
+                </div>
+                <div v-if="endeksBest.length" class="endeks-chips endeks-chips--up">
+                  <span class="endeks-chips-label"><TrendingUp :size="13" /> Yüksek</span>
+                  <span v-for="row in endeksBest" :key="`b-${row.name}-${row.sub}`" class="endeks-chip">
+                    {{ row.name }} <b>{{ row.trend.text }}</b>
+                  </span>
+                </div>
+
+                <div class="endeks-list">
+                  <article v-for="row in endeksRows" :key="`${endeksView}-${row.name}-${row.sub}`" class="endeks-row" :class="`endeks-tone--${row.trend.tone}`">
+                    <component
+                      :is="endeksView === 'bolge' && row.people?.length ? 'button' : 'div'"
+                      class="endeks-row-head"
+                      :type="endeksView === 'bolge' && row.people?.length ? 'button' : undefined"
+                      :aria-expanded="endeksView === 'bolge' && row.people?.length ? Boolean(endeksExpanded[row.name]) : undefined"
+                      @click="endeksView === 'bolge' && row.people?.length && endeksToggle(row.name)"
+                    >
+                      <span class="endeks-dot"></span>
+                      <span class="endeks-name">
+                        <strong>{{ row.name }}</strong>
+                        <small v-if="row.sub">{{ row.sub }}</small>
+                      </span>
+                      <span class="endeks-badge">
+                        {{ row.trend.text }}
+                        <small>{{ row.diff > 0 ? '+' : '' }}{{ endeksFmt(row.diff) }}</small>
+                      </span>
+                      <ChevronDown v-if="endeksView === 'bolge' && row.people?.length" :size="14" class="endeks-chevron" :class="{ 'is-open': endeksExpanded[row.name] }" />
+                    </component>
+
+                    <div class="endeks-periods">
+                      <div v-for="(period, index) in endeksPeriods" :key="period.label" class="endeks-period" :class="{ 'is-current': period.is_current }">
+                        <span>{{ period.short_label }}</span>
+                        <strong>{{ endeksFmt(row.values[index]) }}</strong>
+                        <i class="endeks-bar"><b :style="{ width: `${Math.max(row.values[index] ? 4 : 0, (row.values[index] / endeksMax) * 100)}%` }"></b></i>
+                      </div>
+                    </div>
+
+                    <div v-if="endeksView === 'bolge' && endeksExpanded[row.name]" class="endeks-people">
+                      <div v-for="person in row.people" :key="`${person.name}-${person.sub}`" class="endeks-person" :class="`endeks-tone--${person.trend.tone}`">
+                        <span class="endeks-dot"></span>
+                        <span class="endeks-name">
+                          <strong>{{ person.name }}</strong>
+                          <small>{{ person.sub }}</small>
+                        </span>
+                        <span class="endeks-person-values">{{ person.values.map(endeksFmt).join(' · ') }}</span>
+                        <span class="endeks-badge">{{ person.trend.text }}</span>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+
+                <p class="endeks-foot">Her ayın 1'i ile {{ endeksOverview.day }}'i arası abone okuma sayıları karşılaştırılmaktadır.</p>
+              </template>
             </section>
 
             <!-- 6. HIZLI ERİŞİM -->

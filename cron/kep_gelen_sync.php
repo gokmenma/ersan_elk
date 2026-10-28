@@ -49,7 +49,23 @@ $writeAudit = static function (int $firmId, int $userId, string $message, int $l
     }
 };
 
-$notifyFailure = static function (int $firmId): void {
+$failStampPath = static fn (int $firmId): string => sys_get_temp_dir() . '/ersan_kep_gelen_ardisik_' . md5(dirname(__DIR__)) . '_' . $firmId;
+
+$clearFailure = static function (int $firmId) use ($failStampPath): void {
+    $path = $failStampPath($firmId);
+    if (is_file($path)) {
+        @unlink($path);
+    }
+};
+
+$notifyFailure = static function (int $firmId) use ($failStampPath): void {
+    $path = $failStampPath($firmId);
+    $count = is_file($path) ? ((int) @file_get_contents($path)) + 1 : 1;
+    @file_put_contents($path, (string) $count, LOCK_EX);
+    if ($count < 2) {
+        return;
+    }
+
     $stampPath = sys_get_temp_dir() . '/ersan_kep_gelen_hata_' . md5(dirname(__DIR__)) . '_' . $firmId;
     if (is_file($stampPath) && (time() - (int) filemtime($stampPath)) < 21600) {
         return;
@@ -60,7 +76,7 @@ $notifyFailure = static function (int $firmId): void {
             $firmId,
             'evrak-takip/kep',
             'Otomatik KEP Alımı Başarısız',
-            'Gelen KEP iletileri otomatik alınamadı. KEP ayarlarını ve otomatik aktarım hesabını kontrol edin.',
+            'Gelen KEP iletileri ardışık ' . $count . ' denemede otomatik alınamadı. KEP ayarlarını ve otomatik aktarım hesabını kontrol edin.',
             'evrak-takip/list',
             'error',
             'danger'
@@ -70,35 +86,49 @@ $notifyFailure = static function (int $firmId): void {
     }
 };
 
+$syncWithRetry = static function (int $firmId, int $userId): array {
+    $maxAttempts = 3;
+    $result = ['status' => 'error', 'message' => 'Bilinmeyen hata'];
+    for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+        try {
+            $_SESSION = ['firma_id' => $firmId, 'firm_id' => $firmId, 'user_id' => $userId, 'id' => $userId];
+            $result = (new KepService())->autoSyncIncoming($firmId, $userId);
+            if (($result['status'] ?? '') === 'success') {
+                return $result;
+            }
+        } catch (\Throwable $e) {
+            error_log("cron/kep_gelen_sync.php [Firma {$firmId}] deneme {$attempt}: " . $e->getMessage());
+            $result = ['status' => 'error', 'message' => $e->getMessage()];
+        }
+        if ($attempt < $maxAttempts) {
+            sleep(30 * $attempt);
+        }
+    }
+    $result['message'] = ($result['message'] ?? 'Bilinmeyen hata') . ' (' . $maxAttempts . ' deneme yapıldı)';
+    return $result;
+};
+
 foreach ($targets as $target) {
     $firmId = (int) $target['firm_id'];
     $userId = (int) $target['user_id'];
-    try {
-        $_SESSION = ['firma_id' => $firmId, 'firm_id' => $firmId, 'user_id' => $userId, 'id' => $userId];
-        $result = (new KepService())->autoSyncIncoming($firmId, $userId);
-        if (($result['status'] ?? '') === 'success') {
-            fwrite(STDOUT, sprintf("Firma %d: %s\n", $firmId, $result['message'] ?? ''));
-            $uyarilar = $result['hatalar'] ?? [];
-            $writeAudit(
-                $firmId,
-                $userId,
-                'Firma ' . $firmId . ': ' . ($result['message'] ?? 'Tamamlandı') . ($uyarilar ? ' Uyarılar: ' . implode(' | ', array_map('strval', $uyarilar)) : ''),
-                $uyarilar ? SystemLogModel::LEVEL_IMPORTANT : SystemLogModel::LEVEL_INFO
-            );
-            foreach ($result['hatalar'] ?? [] as $hata) {
-                fwrite(STDERR, sprintf("Firma %d uyarı: %s\n", $firmId, $hata));
-            }
-        } else {
-            $failed++;
-            fwrite(STDERR, sprintf("Firma %d hata: %s\n", $firmId, $result['message'] ?? 'Bilinmeyen hata'));
-            $writeAudit($firmId, $userId, 'Başarısız: ' . ($result['message'] ?? 'Bilinmeyen hata'), SystemLogModel::LEVEL_CRITICAL);
-            $notifyFailure($firmId);
+    $result = $syncWithRetry($firmId, $userId);
+    if (($result['status'] ?? '') === 'success') {
+        $clearFailure($firmId);
+        fwrite(STDOUT, sprintf("Firma %d: %s\n", $firmId, $result['message'] ?? ''));
+        $uyarilar = $result['hatalar'] ?? [];
+        $writeAudit(
+            $firmId,
+            $userId,
+            'Firma ' . $firmId . ': ' . ($result['message'] ?? 'Tamamlandı') . ($uyarilar ? ' Uyarılar: ' . implode(' | ', array_map('strval', $uyarilar)) : ''),
+            $uyarilar ? SystemLogModel::LEVEL_IMPORTANT : SystemLogModel::LEVEL_INFO
+        );
+        foreach ($uyarilar as $hata) {
+            fwrite(STDERR, sprintf("Firma %d uyarı: %s\n", $firmId, $hata));
         }
-    } catch (\Throwable $e) {
+    } else {
         $failed++;
-        error_log("cron/kep_gelen_sync.php [Firma {$firmId}]: " . $e->getMessage());
-        fwrite(STDERR, sprintf("Firma %d hata oluştu.\n", $firmId));
-        $writeAudit($firmId, $userId, 'Başarısız: ' . $e->getMessage(), SystemLogModel::LEVEL_CRITICAL);
+        fwrite(STDERR, sprintf("Firma %d hata: %s\n", $firmId, $result['message'] ?? 'Bilinmeyen hata'));
+        $writeAudit($firmId, $userId, 'Başarısız: ' . ($result['message'] ?? 'Bilinmeyen hata'), SystemLogModel::LEVEL_CRITICAL);
         $notifyFailure($firmId);
     }
 }

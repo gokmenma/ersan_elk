@@ -58,6 +58,18 @@ $permissions = [
     'requests' => dashboardCan(['talepler', 'avans_talepleri', 'izin_talepleri', 'ariza_talepleri']),
 ];
 
+if (($_GET['section'] ?? '') === 'endeks_comparison') {
+    if (!$permissions['reports']) {
+        dashboardResponse(['success' => false, 'message' => 'Bu verilere erişim yetkiniz yok.'], 403);
+    }
+    try {
+        dashboardResponse(['success' => true, 'data' => $model->endeksComparison()]);
+    } catch (Throwable $error) {
+        error_log('Mobile endeks comparison API: ' . $error->getMessage());
+        dashboardResponse(['success' => false, 'message' => 'Endeks karşılaştırması alınamadı.'], 500);
+    }
+}
+
 try {
     $data = [
         'announcements' => $model->announcements(),

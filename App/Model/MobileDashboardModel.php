@@ -272,6 +272,16 @@ class MobileDashboardModel
         ];
     }
 
+    public function endeksComparison(): array
+    {
+        $data = (new EndeksOkumaModel())->getMonthlyComparisonByDay();
+        return [
+            'gun' => (int) ($data['gun'] ?? 0),
+            'periods' => $data['periods'] ?? [],
+            'bolge' => $data['bolge'] ?? [],
+        ];
+    }
+
     public function illegalUse(): array
     {
         $model = new PuantajModel();

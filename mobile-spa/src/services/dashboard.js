@@ -35,6 +35,13 @@ export async function getDashboard() {
   return payload.data || {}
 }
 
+export async function getEndeksComparison() {
+  const response = await fetch('/api/dashboard.php?section=endeks_comparison', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+  const payload = await response.json().catch(() => ({ success: false, message: 'Sunucudan geçersiz yanıt alındı.' }))
+  if (!response.ok || !payload.success) throw new Error(payload.message || 'Endeks karşılaştırması alınamadı.')
+  return payload.data || {}
+}
+
 export async function saveDashboardSettings(order, settings = {}) {
   const response = await fetch('/api/dashboard.php', {
     method: 'POST',
