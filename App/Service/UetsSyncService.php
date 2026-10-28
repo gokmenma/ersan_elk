@@ -116,8 +116,7 @@ class UetsSyncService
                     'message' => 'UETS otomatik aktarım başlangıç tarihi tanımlı değil. Önce sql/2026_10_28_uets_otomatik_aktarim_baslangic.sql çalıştırılmalıdır.',
                 ];
             }
-            $allIncoming = array_values(array_filter($allIncoming, static fn(array $msg): bool => in_array((string) ($msg['status'] ?? ''), ['delivered', 'readtimeout'], true)
-                && (int) ($msg['inserttime'] ?? 0) >= $startTs));
+            $allIncoming = array_values(array_filter($allIncoming, static fn(array $msg): bool => (int) ($msg['inserttime'] ?? 0) >= $startTs));
         }
 
         if (!$incomingResult['cached'] && $incomingResult['errors'] === []) {
