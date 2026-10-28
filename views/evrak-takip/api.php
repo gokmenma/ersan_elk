@@ -195,6 +195,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if (($existingDocument->onay_durumu ?? 'taslak') !== 'taslak') {
                         throw new Exception('Elektronik imza onay süreci başlamış evrak değiştirilemez.');
                     }
+                    if (\App\Model\EvrakSevkModel::isRestricted($existingDocument)) {
+                        foreach (['evrak_tipi', 'evrak_no', 'konu', 'kurum_adi', 'muhatap_alt_birim', 'muhatap_adres', 'aciklama', 'ilgiler', 'ekler'] as $lockedField) {
+                            $data[$lockedField] = $existingDocument->$lockedField ?? null;
+                        }
+                        $data['tarih'] = !empty($existingDocument->tarih) ? date('d.m.Y', strtotime((string) $existingDocument->tarih)) : null;
+                        unset($data['dosya_yolu'], $_FILES['dosya'], $_FILES['ek_dosyalari']);
+                        $attachmentOrder = [];
+                        $removedAttachmentIdsEncrypted = [];
+                        (new \App\Model\EvrakSevkModel())->recordHistory((int) $_SESSION['firma_id'], $id, 'duzenleme', $currentUserId, null, 'Yalnızca ilgili personel/cevap/termin alanları güncellendi; tebligat içeriği korundu.');
+                    }
                 }
                 unset(
                     $data['action'], 
@@ -925,6 +935,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if (($deleteDocument->onay_durumu ?? 'taslak') !== 'taslak') {
                     throw new Exception('Elektronik imza onay süreci başlamış evrak silinemez.');
                 }
+                if (\App\Model\EvrakSevkModel::isRestricted($deleteDocument)) {
+                    throw new Exception('UETS ile gelen tebligat evrakı silinemez.');
+                }
                 if (!empty($deleteDocument->kep_mesaj_id) || (($deleteDocument->evrak_tipi ?? '') === 'gelen' && ($deleteDocument->kaynak_tipi ?? '') === 'kep')) {
                     throw new Exception('KEP ile gönderilmiş veya KEP\'ten alınmış evrak silinemez.');
                 }
@@ -1317,7 +1330,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $actionItems .= '<a href="index?p=evrak-takip/giden-evrak&amp;id=' . $esc($encryptedId) . '&amp;islem=imzala" class="dropdown-item d-flex align-items-center gap-2" title="' . $signActionLabel . '"><i class="bx bx-check text-success"></i><span>' . $signActionLabel . '</span></a><button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-e-imza-iade" data-id="' . $esc($encryptedId) . '" title="Düzeltilmek Üzere İade Et"><i class="bx bx-undo text-warning"></i><span>Düzeltilmek Üzere İade Et</span></button>';
                     }
                     if ($locked && $approvalStatus === 'onay_bekliyor' && (int) ($evrak->olusturan_kullanici_id ?? 0) === $currentUserId) $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-e-imza-geri-al" data-id="' . $esc($encryptedId) . '" title="Evrakı Üzerime Geri Al"><i class="bx bx-revision text-info"></i><span>Evrakı Üzerime Geri Al</span></button>';
-                    if (!$locked && (!$isKep || ($type === 'giden' && empty($evrak->kep_mesaj_id)))) $actionItems .= '<div class="dropdown-divider"></div><button type="button" class="dropdown-item d-flex align-items-center gap-2 text-danger evrak-sil cm-danger" data-id="' . $esc($encryptedId) . '" title="Sil"><i class="bx bx-trash"></i><span>Sil</span></button>';
+                    if (!$locked && !\App\Model\EvrakSevkModel::isRestricted($evrak) && (!$isKep || ($type === 'giden' && empty($evrak->kep_mesaj_id)))) $actionItems .= '<div class="dropdown-divider"></div><button type="button" class="dropdown-item d-flex align-items-center gap-2 text-danger evrak-sil cm-danger" data-id="' . $esc($encryptedId) . '" title="Sil"><i class="bx bx-trash"></i><span>Sil</span></button>';
                     $actions = '<div class="action-btn-group d-flex align-items-center justify-content-center"><div class="dropdown"><button type="button" class="btn btn-sm btn-outline-secondary bg-white dropdown-toggle" data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false" title="İşlemler"><i class="bx bx-cog me-1"></i> İşlemler</button><div class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-1">' . $actionItems . '</div></div></div>';
                     $createdTime = !empty($evrak->olusturma_tarihi) ? date('H:i', strtotime((string) $evrak->olusturma_tarihi)) : '-';
                     $operatorName = trim((string) ($evrak->islem_yapan_adi ?? ''));

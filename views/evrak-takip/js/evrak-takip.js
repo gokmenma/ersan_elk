@@ -595,6 +595,7 @@ $(document).ready(function () {
         if (data.dosya_yolu && gelenDosyalar.length === 0) $("#mevcutDosya").show().find("a").attr("href", data.dosya_url || data.dosya_yolu);
         else $("#mevcutDosya").hide();
 
+        applyUetsLock(Boolean(data.uets_kisitli));
         ensureModalInBody();
         $("#evrakModal").modal("show");
       }
@@ -2672,7 +2673,19 @@ $(document).ready(function () {
   });
 });
 
+function applyUetsLock(locked) {
+  const textFields = ['input[name="tarih"]', 'input[name="evrak_no"]', 'input[name="kurum_adi"]', "#muhatap_alt_birim", "#muhatap_adres", "#ilgiler", "#ekler"];
+  textFields.forEach(function (selector) { $(selector).prop("readonly", locked); });
+  $("#konu").prop("disabled", locked);
+  $("#gelenEkDosyalari").prop("disabled", locked).closest(".mb-3").find(".btn-subtle-danger").toggle(!locked);
+  $("#uetsKilitUyari").remove();
+  if (locked) {
+    $("#evrakModal .modal-body").first().prepend('<div id="uetsKilitUyari" class="alert alert-warning font-size-12 mb-3"><i class="bx bx-lock-alt me-1"></i> Bu evrak UETS ile gelen bir tebligattır. İçeriği, dosyaları ve tarihi değiştirilemez; yalnızca ilgili personel, cevap ve termin bilgileri güncellenebilir.</div>');
+  }
+}
+
 $(function () {
+  $("#evrakModal").on("hidden.bs.modal", function () { applyUetsLock(false); });
   const sevkApi = "views/evrak-takip/api.php";
   const escapeHtml = function (value) {
     return $("<div>").text(value == null ? "" : String(value)).html();
@@ -2684,6 +2697,7 @@ $(function () {
     goruntuleme: "Evrak görüntülendi",
     eyp_indirme: "EYP paketi indirildi",
     uets_alindi: "UETS'ten alındı",
+    dosya_acildi: "Dosya açıldı",
   };
 
   $("#uets_sevk_alan").select2({ dropdownParent: $("#modalUetsSevk"), width: "100%", placeholder: "Personel seçiniz" });

@@ -119,3 +119,5 @@ Log dosyaları `cron/logs/` klasöründe aylık olarak tutulur:
 `*/15 * * * * /opt/lampp/bin/php /opt/lampp/htdocs/ersan_elk/cron/kep_gelen_sync.php`
 
 Evrak Takip > İşlemler > UETS / KEP Ayarları > KEP sekmesindeki "Gelen KEP Otomasyonu" anahtarları: otomatik aktarım açıldığında, ayarı açan kullanıcının KEP bilgileriyle son 7 günün yeni iletileri Gelen Evrak olarak aktarılır. Önce sql/2026_10_26_kep_gelen_kutusu.sql çalıştırılmalıdır.
+
+UETS: `cron/uets_sync.php` (2 saatte bir önerilir: `0 */2 * * *`) gelen tebligatları aktarır ve ardından, hiçbir personele sevk edilmemiş UETS evraklarını (aktarım başlangıç tarihinden sonra, en az 2 saatlik, cevaplanmamış) `evrak-takip/uets-goruntule` yetkisi olan kullanıcılara ve süper adminlere bildirim olarak hatırlatır. Aynı kullanıcıya hatırlatma 6 saatte bir gönderilir. Önce sql/2026_10_13_uets_selected_import_policy.sql, sql/2026_10_28_uets_liste_onbellek.sql, sql/2026_10_28_uets_otomatik_aktarim_baslangic.sql ve sql/2026_10_28_uets_evrak_sevk_tarihce.sql çalıştırılmalıdır.

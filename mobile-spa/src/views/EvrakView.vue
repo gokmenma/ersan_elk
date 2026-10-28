@@ -888,6 +888,7 @@ const TARIHCE_ISLEM = {
   goruntuleme: 'Evrak görüntülendi',
   eyp_indirme: 'EYP paketi indirildi',
   uets_alindi: "UETS'ten alındı",
+  dosya_acildi: 'Dosya açıldı',
 }
 
 async function openSevk(doc) {
@@ -1411,7 +1412,7 @@ onBeforeUnmount(stopMobileSignTimer)
 
               <!-- Düzenle (Kilitli Değilse) -->
               <button
-                v-if="!item.kilitli"
+                v-if="!item.kilitli && !item.uets_kisitli"
                 type="button"
                 class="evrak-action-btn evrak-action-btn--edit"
                 title="Düzenle"
@@ -1422,7 +1423,7 @@ onBeforeUnmount(stopMobileSignTimer)
 
               <!-- Sil (Taslaksa) -->
               <button
-                v-if="!item.kilitli"
+                v-if="!item.kilitli && !item.uets_kisitli"
                 type="button"
                 class="evrak-action-btn evrak-action-btn--delete"
                 title="Sil"
@@ -1867,7 +1868,7 @@ onBeforeUnmount(stopMobileSignTimer)
 
             <!-- Gelen Evrak İse Modalda Düzenle -->
             <button
-              v-else-if="!selectedDetail.kilitli && auth.state.permissions.incoming_documents"
+              v-else-if="!selectedDetail.kilitli && !selectedDetail.uets_kisitli && auth.state.permissions.incoming_documents"
               type="button"
               class="evrak-btn evrak-btn--subtle"
               @click="openEditForm(selectedDetail); isDetailOpen = false"

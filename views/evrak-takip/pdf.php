@@ -45,6 +45,7 @@ try {
             http_response_code(403);
             exit('Bu dosyayı görüntüleme yetkiniz yok.');
         }
+        $sevkModel->recordFileOpen($relPath, $firmaId, $currentUserId, basename((string) ($_GET['n'] ?? basename($relPath))));
         $rawFile = (string) file_get_contents($realFile);
         try {
             $fileBytes = Security::decryptFile($rawFile);

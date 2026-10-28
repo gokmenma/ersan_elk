@@ -64,6 +64,17 @@ foreach ($activeFirmIds as $firmId) {
         fwrite(STDERR, sprintf("Firma %d Exception: %s\n", $firmId, $e->getMessage()));
         error_log("cron/uets_sync.php Error [Firm {$firmId}]: " . $e->getMessage());
     }
+
+    try {
+        $firmSettings = $settingsModel->getSettings($firmId);
+        $sinceDate = trim((string) ($firmSettings['otomatik_aktarim_baslangic'] ?? ''));
+        if ($sinceDate !== '') {
+            $reminded = (new \App\Model\EvrakSevkModel())->remindUnforwarded($firmId, $sinceDate);
+            fwrite(STDOUT, sprintf("Firma %d: Sevk bekleyen UETS evrakı hatırlatması %d kullanıcıya gönderildi.\n", $firmId, $reminded));
+        }
+    } catch (\Throwable $e) {
+        error_log("cron/uets_sync.php Hatırlatma Hatası [Firm {$firmId}]: " . $e->getMessage());
+    }
 }
 
 fwrite(STDOUT, sprintf("[%s] UETS Senkronizasyonu tamamlandı. Hata sayısı: %d\n", date('Y-m-d H:i:s'), $failed));

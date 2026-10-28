@@ -2000,3 +2000,5 @@
 
 - [x] Araç poliçe (sigorta/kasko) ekleme alanı — kod tamam, SQL uygulanacak, tarayıcı testi bekliyor.
 - [x] 2026-10-28 Masaüstü Evrak Takip dosya bağlantıları şifreli UETS/KEP dosyalarını açamıyordu: `pdf.php?type=dosya` (deşifre + firma/yetki kontrollü) eklendi, liste/detay bağlantıları `EvrakTakipModel::fileUrl()` kullanıyor; EYP paket meta dosyaları (.rels, core.xml, .imz vb.) artık ek olarak kaydedilmiyor; tarayıcıda test bekliyor
+- [x] 2026-10-28 UETS ile gelen evrak koruması: içerik/dosya/tarih/evrak no değiştirilemez, silinemez (masaüstü `evrak-kaydet` sunucu tarafı alan kilidi + `evrak-sil` engeli, mobil save/delete engeli, arayüzde kilit uyarısı); yalnızca ilgili personel, cevap, termin güncellenebilir ve tarihçeye `duzenleme` yazılır; tarayıcıda test bekliyor
+- [x] 2026-10-28 Sevk edilmemiş UETS evrakı hatırlatması: `EvrakSevkModel::remindUnforwarded()` cron/uets_sync.php sonunda çalışır (min 2 saat yaşlı, cevapsız, aktarım başlangıcından sonra; kullanıcı başına 6 saatte bir bildirim + push); sunucuda cron ile test bekliyor

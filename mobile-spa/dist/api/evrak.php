@@ -159,6 +159,10 @@ try {
             }
         }
 
+        if (empty($_SERVER['HTTP_RANGE'])) {
+            (new \App\Model\EvrakSevkModel())->recordFileOpen(ltrim(str_replace('\\', '/', (string) $targetFile), '/'), $firmaId, $currentUserId, $originalFileName);
+        }
+
         $isDownload = !empty($_GET['download']);
         $disposition = $isDownload ? 'attachment' : 'inline';
 
@@ -371,6 +375,7 @@ try {
                 'kep_mesaj_id' => (string) ($row->kep_mesaj_id ?? ''),
                 'alici_kep' => (string) ($row->alici_kep ?? ''),
                 'uets_mesaj_id' => (string) ($row->uets_mesaj_id ?? ''),
+                'uets_kisitli' => \App\Model\EvrakSevkModel::isRestricted($row),
                 'uets_okunmamis' => \App\Model\EvrakSevkModel::isRestricted($row) && !isset($uetsReadIds[$id]),
                 'evrak_tipi' => (string) $row->evrak_tipi,
                 'evrak_no' => (string) ($row->evrak_no ?: '-'),
@@ -993,6 +998,9 @@ try {
             if (!$existing) {
                 evrakApiResponse(['success' => false, 'message' => 'Güncellenecek evrak bulunamadı.'], 404);
             }
+            if (\App\Model\EvrakSevkModel::isRestricted($existing)) {
+                evrakApiResponse(['success' => false, 'message' => 'UETS ile gelen tebligat evrakı mobilde değiştirilemez.'], 403);
+            }
             if (($existing->onay_durumu ?? 'taslak') !== 'taslak') {
                 evrakApiResponse(['success' => false, 'message' => 'Elektronik imza onay süreci başlamış evrak değiştirilemez.'], 400);
             }
@@ -1212,6 +1220,9 @@ try {
         $document = $EvrakModel->getById($id);
         if (!$document) {
             evrakApiResponse(['success' => false, 'message' => 'Evrak bulunamadı.'], 404);
+        }
+        if (\App\Model\EvrakSevkModel::isRestricted($document)) {
+            evrakApiResponse(['success' => false, 'message' => 'UETS ile gelen tebligat evrakı silinemez.'], 403);
         }
         if (($document->onay_durumu ?? 'taslak') !== 'taslak') {
             evrakApiResponse(['success' => false, 'message' => 'Elektronik imza onay süreci başlamış veya tamamlanmış evrak silinemez.'], 400);

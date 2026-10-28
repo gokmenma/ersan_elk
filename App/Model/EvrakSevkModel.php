@@ -75,16 +75,7 @@ class EvrakSevkModel extends Model
             return true;
         }
         try {
-            $stmt = $this->db->prepare(
-                "SELECT et.id, et.evrak_tipi, et.kaynak_tipi, et.uets_mesaj_id
-                 FROM evrak_takip et
-                 LEFT JOIN evrak_takip_ekleri ee ON ee.evrak_id = et.id AND ee.firma_id = et.firma_id AND ee.silinme_tarihi IS NULL
-                 LEFT JOIN uets_mesajlar um ON um.evrak_id = et.id AND um.firm_id = et.firma_id
-                 WHERE et.firma_id = :firma_id AND et.silinme_tarihi IS NULL
-                   AND (et.dosya_yolu = :p1 OR ee.dosya_yolu = :p2 OR um.yerel_dosya_yolu = :p3 OR um.ham_eyp_yolu = :p4)"
-            );
-            $stmt->execute(['firma_id' => $firmaId, 'p1' => $path, 'p2' => $path, 'p3' => $path, 'p4' => $path]);
-            foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $evrak) {
+            foreach ($this->evraklarByFile($path, $firmaId) as $evrak) {
                 if (!$this->canView($evrak)) {
                     return false;
                 }
@@ -96,7 +87,119 @@ class EvrakSevkModel extends Model
         }
     }
 
+    public function recordFileOpen(string $relativePath, int $firmaId, int $userId, string $fileName): void
+    {
+        $path = ltrim(str_replace('\\', '/', $relativePath), '/');
+        try {
+            foreach ($this->evraklarByFile($path, $firmaId) as $evrak) {
+                if (!self::isRestricted($evrak)) {
+                    continue;
+                }
+                $this->recordHistory($firmaId, (int) $evrak->id, 'dosya_acildi', $userId, null, mb_substr($fileName, 0, 200));
+                $this->markSeen($firmaId, (int) $evrak->id, $userId);
+            }
+        } catch (\PDOException $e) {
+            error_log('EvrakSevkModel::recordFileOpen Error: ' . $e->getMessage());
+        }
+    }
+
+    private function evraklarByFile(string $path, int $firmaId): array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT DISTINCT et.id, et.evrak_tipi, et.kaynak_tipi, et.uets_mesaj_id
+             FROM evrak_takip et
+             LEFT JOIN evrak_takip_ekleri ee ON ee.evrak_id = et.id AND ee.firma_id = et.firma_id AND ee.silinme_tarihi IS NULL
+             LEFT JOIN uets_mesajlar um ON um.evrak_id = et.id AND um.firm_id = et.firma_id
+             WHERE et.firma_id = :firma_id AND et.silinme_tarihi IS NULL
+               AND (et.dosya_yolu = :p1 OR ee.dosya_yolu = :p2 OR um.yerel_dosya_yolu = :p3 OR um.ham_eyp_yolu = :p4)"
+        );
+        $stmt->execute(['firma_id' => $firmaId, 'p1' => $path, 'p2' => $path, 'p3' => $path, 'p4' => $path]);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
     public const UNREAD_WINDOW_DAYS = 30;
+    public const REMINDER_MIN_AGE_HOURS = 2;
+    public const REMINDER_INTERVAL_HOURS = 6;
+    private const REMINDER_TITLE = 'UETS Evrakı Sevk Bekliyor';
+
+    public function unforwardedUets(int $firmaId, string $sinceDate, int $limit = 3): array
+    {
+        $empty = ['count' => 0, 'items' => []];
+        if ($firmaId <= 0 || strtotime($sinceDate) === false) {
+            return $empty;
+        }
+        $from = "FROM evrak_takip et
+                 WHERE et.firma_id = :firma_id AND et.silinme_tarihi IS NULL
+                   AND et.evrak_tipi = 'gelen'
+                   AND (COALESCE(et.kaynak_tipi, '') = 'uets' OR COALESCE(et.uets_mesaj_id, '') <> '')
+                   AND COALESCE(et.cevap_verildi_mi, 0) = 0
+                   AND et.olusturma_tarihi >= :since
+                   AND et.olusturma_tarihi <= DATE_SUB(NOW(), INTERVAL " . self::REMINDER_MIN_AGE_HOURS . " HOUR)
+                   AND NOT EXISTS (SELECT 1 FROM evrak_sevk sv
+                                   WHERE sv.evrak_id = et.id AND sv.firma_id = et.firma_id AND sv.is_active = 1 AND sv.deleted_at IS NULL)";
+        $params = ['firma_id' => $firmaId, 'since' => date('Y-m-d 00:00:00', strtotime($sinceDate))];
+        try {
+            $count = $this->db->prepare("SELECT COUNT(*) " . $from);
+            $count->execute($params);
+            $total = (int) $count->fetchColumn();
+            if ($total === 0 || $limit <= 0) {
+                return ['count' => $total, 'items' => []];
+            }
+            $list = $this->db->prepare(
+                "SELECT et.id, et.konu, et.kurum_adi " . $from . " ORDER BY et.olusturma_tarihi DESC, et.id DESC LIMIT " . max(1, min(20, $limit))
+            );
+            $list->execute($params);
+            return ['count' => $total, 'items' => $list->fetchAll(PDO::FETCH_OBJ)];
+        } catch (\PDOException $e) {
+            error_log('EvrakSevkModel::unforwardedUets Error: ' . $e->getMessage());
+            return $empty;
+        }
+    }
+
+    public function remindUnforwarded(int $firmaId, string $sinceDate): int
+    {
+        $pending = $this->unforwardedUets($firmaId, $sinceDate, 3);
+        if ($pending['count'] === 0) {
+            return 0;
+        }
+
+        $subjects = array_map(
+            static fn(object $row): string => trim((string) ($row->kurum_adi ?: '-')) . ' - ' . mb_substr((string) ($row->konu ?: 'Belirtilmedi'), 0, 60),
+            $pending['items']
+        );
+        $message = $pending['count'] . ' adet UETS tebligat evrakı henüz hiçbir personele sevk edilmedi: ' . implode('; ', $subjects)
+            . ($pending['count'] > count($subjects) ? ' ve diğerleri' : '') . '.';
+
+        $notifier = new BildirimModel();
+        $recent = $this->db->prepare(
+            "SELECT 1 FROM bildirimler WHERE user_id = :user_id AND title = :title
+               AND created_at >= DATE_SUB(NOW(), INTERVAL " . self::REMINDER_INTERVAL_HOURS . " HOUR) LIMIT 1"
+        );
+        $sent = 0;
+        foreach ($notifier->userIdsByPermissionForFirm($firmaId, self::PERMISSION) as $userId) {
+            $recent->execute(['user_id' => $userId, 'title' => self::REMINDER_TITLE]);
+            if ($recent->fetchColumn()) {
+                continue;
+            }
+            if ($notifier->createNotificationWithPush($userId, self::REMINDER_TITLE, $message, 'evrak-takip/list', 'envelope', 'danger')) {
+                $sent++;
+            }
+        }
+
+        if ($sent > 0) {
+            try {
+                (new SystemLogModel())->logActionForFirm(
+                    $firmaId,
+                    0,
+                    'UETS_SEVK_HATIRLATMA',
+                    "Sevk edilmemiş {$pending['count']} UETS evrakı için {$sent} kullanıcıya hatırlatma bildirimi gönderildi."
+                );
+            } catch (\Throwable $e) {
+                error_log('EvrakSevkModel hatırlatma log hatası: ' . $e->getMessage());
+            }
+        }
+        return $sent;
+    }
 
     public function unreadUets(int $firmaId, int $userId, int $limit = 5): array
     {
@@ -114,7 +217,7 @@ class EvrakSevkModel extends Model
                    AND {$visibility}
                    AND NOT EXISTS (SELECT 1 FROM evrak_tarihce h
                                    WHERE h.evrak_id = et.id AND h.firma_id = et.firma_id
-                                     AND h.user_id = :okuyan_user AND h.islem = 'goruntuleme')";
+                                     AND h.user_id = :okuyan_user AND h.islem IN ('goruntuleme', 'dosya_acildi'))";
         $params = ['firma_id' => $firmaId, 'okuyan_user' => $userId] + $bindings;
         try {
             $count = $this->db->prepare("SELECT COUNT(*) " . $from);
@@ -150,7 +253,7 @@ class EvrakSevkModel extends Model
         try {
             $stmt = $this->db->prepare(
                 "SELECT DISTINCT evrak_id FROM evrak_tarihce
-                 WHERE firma_id = :firma_id AND user_id = :user_id AND islem = 'goruntuleme'
+                 WHERE firma_id = :firma_id AND user_id = :user_id AND islem IN ('goruntuleme', 'dosya_acildi')
                    AND evrak_id IN (" . implode(',', $placeholders) . ")"
             );
             $stmt->execute($params);
