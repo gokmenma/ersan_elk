@@ -1247,8 +1247,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $myTurn = $approvalStatus === 'onay_bekliyor' && !empty($approval['sira_bende']);
                     $locked = $approvalStatus !== 'taslak';
                     $reply = $type === 'gelen' ? (!empty($evrak->cevap_verildi_mi) ? 'EVET' : 'BEKLEMEDE') : '-';
-                    $isKep = ($evrak->kaynak_tipi ?? '') === 'kep' || !empty($evrak->kep_mesaj_id);
-                    $kepSent = $type === 'giden' && !$isKep && (isset($kepSentMap[(int) $evrak->id]) || isset($latestKepEvidenceMap[(int) $evrak->id]));
+                    $kepLinked = ($evrak->kaynak_tipi ?? '') === 'kep' || !empty($evrak->kep_mesaj_id);
+                    $hasApprovalFlow = $type === 'giden' && (empty($evrak->ust_yazi_gerekli_degil) || (int) ($approval['toplam'] ?? 0) > 0);
+                    $isKep = $kepLinked && !$hasApprovalFlow;
+                    $kepSent = $type === 'giden' && !$isKep && ($kepLinked || isset($kepSentMap[(int) $evrak->id]) || isset($latestKepEvidenceMap[(int) $evrak->id]));
                     $kepChannel = $type === 'giden' && !$isKep && ($evrak->gonderim_kanali ?? '') === 'kep';
                     $typeHtml = $type === 'gelen'
                         ? '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold"><i class="bx bx-down-arrow-alt"></i> GELEN</span>'
