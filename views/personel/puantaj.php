@@ -1458,6 +1458,96 @@ use App\Service\Gate;
             border-color: rgba(151, 148, 190, .2) !important;
         }
 
+        .table-puantaj thead th.is-holiday:not(.sticky-col) {
+            background: #d1fae5 !important;
+            border-bottom: 2px solid #10b981 !important;
+            border-right: 1px solid #a7f3d0 !important;
+        }
+        .table-puantaj thead th.is-holiday .day-name,
+        .table-puantaj thead th.is-holiday .day-number,
+        .table-puantaj tfoot td.is-holiday {
+            color: #047857 !important;
+        }
+        .table-puantaj .day-cell.is-holiday {
+            background-color: #ecfdf5 !important;
+            border-right: 1px solid #a7f3d0 !important;
+        }
+        .table-puantaj tfoot td.is-holiday {
+            background: #d1fae5 !important;
+        }
+
+        .table-puantaj thead th.is-half-holiday:not(.sticky-col) {
+            background: linear-gradient(90deg, #ffffff 0 50%, #fde68a 50% 100%) !important;
+            border-bottom: 2px solid #f59e0b !important;
+            border-right: 1px solid #fde68a !important;
+        }
+        .table-puantaj thead th.is-half-holiday .day-name,
+        .table-puantaj thead th.is-half-holiday .day-number,
+        .table-puantaj tfoot td.is-half-holiday {
+            color: #b45309 !important;
+        }
+        .table-puantaj .day-cell.is-half-holiday {
+            background: linear-gradient(90deg, #ffffff 0 50%, #fef3c7 50% 100%) !important;
+            border-right: 1px solid #fde68a !important;
+        }
+        .table-puantaj tfoot td.is-half-holiday {
+            background: linear-gradient(90deg, #f8fafc 0 50%, #fde68a 50% 100%) !important;
+        }
+
+        [data-bs-theme="dark"] .table-puantaj thead th.is-holiday:not(.sticky-col),
+        [data-layout-mode="dark"] .table-puantaj thead th.is-holiday:not(.sticky-col),
+        [data-bs-theme="dark"] .table-puantaj tfoot td.is-holiday,
+        [data-layout-mode="dark"] .table-puantaj tfoot td.is-holiday,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj thead th.is-holiday,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj tfoot td.is-holiday {
+            background: rgba(16, 185, 129, .24) !important;
+            border-color: rgba(52, 211, 153, .3) !important;
+        }
+        [data-bs-theme="dark"] .table-puantaj .day-cell.is-holiday,
+        [data-layout-mode="dark"] .table-puantaj .day-cell.is-holiday,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj .day-cell.is-holiday {
+            background: rgba(16, 185, 129, .12) !important;
+            border-color: rgba(52, 211, 153, .22) !important;
+        }
+        [data-bs-theme="dark"] .table-puantaj thead th.is-holiday .day-name,
+        [data-bs-theme="dark"] .table-puantaj thead th.is-holiday .day-number,
+        [data-layout-mode="dark"] .table-puantaj thead th.is-holiday .day-name,
+        [data-layout-mode="dark"] .table-puantaj thead th.is-holiday .day-number,
+        [data-bs-theme="dark"] .table-puantaj tfoot td.is-holiday,
+        [data-layout-mode="dark"] .table-puantaj tfoot td.is-holiday,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj thead th.is-holiday .day-name,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj thead th.is-holiday .day-number,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj tfoot td.is-holiday {
+            color: #6ee7b7 !important;
+        }
+
+        [data-bs-theme="dark"] .table-puantaj thead th.is-half-holiday:not(.sticky-col),
+        [data-layout-mode="dark"] .table-puantaj thead th.is-half-holiday:not(.sticky-col),
+        [data-bs-theme="dark"] .table-puantaj tfoot td.is-half-holiday,
+        [data-layout-mode="dark"] .table-puantaj tfoot td.is-half-holiday,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj thead th.is-half-holiday,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj tfoot td.is-half-holiday {
+            background: linear-gradient(90deg, transparent 0 50%, rgba(245, 158, 11, .26) 50% 100%) !important;
+            border-color: rgba(251, 191, 36, .3) !important;
+        }
+        [data-bs-theme="dark"] .table-puantaj .day-cell.is-half-holiday,
+        [data-layout-mode="dark"] .table-puantaj .day-cell.is-half-holiday,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj .day-cell.is-half-holiday {
+            background: linear-gradient(90deg, transparent 0 50%, rgba(245, 158, 11, .13) 50% 100%) !important;
+            border-color: rgba(251, 191, 36, .22) !important;
+        }
+        [data-bs-theme="dark"] .table-puantaj thead th.is-half-holiday .day-name,
+        [data-bs-theme="dark"] .table-puantaj thead th.is-half-holiday .day-number,
+        [data-layout-mode="dark"] .table-puantaj thead th.is-half-holiday .day-name,
+        [data-layout-mode="dark"] .table-puantaj thead th.is-half-holiday .day-number,
+        [data-bs-theme="dark"] .table-puantaj tfoot td.is-half-holiday,
+        [data-layout-mode="dark"] .table-puantaj tfoot td.is-half-holiday,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj thead th.is-half-holiday .day-name,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj thead th.is-half-holiday .day-number,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj tfoot td.is-half-holiday {
+            color: #fcd34d !important;
+        }
+
         html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj tfoot,
         html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj tfoot tr,
         html[data-theme-preset="macos-dark"] #puantaj-full-container .table-puantaj tfoot td {
@@ -2050,11 +2140,12 @@ use App\Service\Gate;
                         <thead class="table-light"><tr>
                             <th class="text-center" style="width:56px"><input type="checkbox" class="htc-check" id="sunday-htc-select-all" aria-label="Tüm uygun personelleri seç"></th>
                             <th>Personel</th><th>Departman / Bölge</th>
+                            <th class="text-center">Görev</th>
                             <th class="text-center">Endeks</th><th class="text-center">Kaçak</th>
                             <th class="text-center">Sökme-Takma</th><th class="text-center">Mühürleme</th>
                             <th class="text-center">Puantaj</th><th>Durum</th>
                         </tr></thead>
-                        <tbody><tr><td colspan="9" class="text-center text-muted py-5">Pazar günü seçiniz.</td></tr></tbody>
+                        <tbody><tr><td colspan="10" class="text-center text-muted py-5">Pazar günü seçiniz.</td></tr></tbody>
                     </table>
                 </div>
             </div>

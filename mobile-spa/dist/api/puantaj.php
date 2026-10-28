@@ -12,6 +12,7 @@ use App\Model\SettingsModel;
 use App\Model\TanimlamalarModel;
 use App\Service\Gate;
 use App\Service\OkumaHtcAutomationService;
+use App\Service\PuantajOzelGunOtomasyonService;
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -599,6 +600,7 @@ try {
                         } else {
                             $FazlaMesai->deleteMesai($otPersonelId, $otTarih, $userId);
                         }
+                        PuantajOzelGunOtomasyonService::lockOvertimeOverride($firmaId, $otPersonelId, $otTarih, (int) $userId, $otSaat);
                         $savedCount++;
                     }
                 }

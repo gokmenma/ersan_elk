@@ -12,6 +12,8 @@ use App\Helper\Security;
 use App\Helper\Date;
 use App\Helper\Helper;
 use App\Service\OkumaHtcAutomationService;
+use App\Service\PuantajOzelGunOtomasyonService;
+use App\Model\ResmiTatilModel;
 use App\Model\SettingsModel;
 use App\Model\SystemLogModel;
 use App\Service\Gate;
@@ -374,7 +376,7 @@ try {
                             'color' => $izin->renk ?: '#34c38f',
                             'source' => $izin->kaynak ?? null,
                             'locked' => ($izin->kaynak ?? '') === 'otomatik'
-                                && ($izin->otomatik_kural ?? '') === OkumaHtcAutomationService::RULE
+                                && in_array($izin->otomatik_kural ?? '', OkumaHtcAutomationService::DAY_RULES, true)
                         ];
                         $mevcut_gunler[$date_str] = true;
                     }
@@ -438,7 +440,12 @@ try {
 
         echo json_encode([
             'status' => 'success',
-            'data' => $data
+            'data' => $data,
+            'holidays' => array_values(array_map(static fn($h) => [
+                'date' => $h['tatil_tarihi'],
+                'name' => $h['aciklama'],
+                'type' => $h['tur'],
+            ], (new ResmiTatilModel())->holidaysBetween((int) $firma_id, $startDate, $endDate))),
         ]);
     } elseif ($action === 'get-personel-month-data') {
         $personel_id = $_POST['personel_id'] ?? 0;
@@ -755,6 +762,7 @@ try {
                     $otSaat = (float) ($ot['saat'] ?? 0);
                     if ($otPid > 0 && !empty($otTarih)) {
                         $FazlaMesai->saveMesai($otPid, $otTarih, $otSaat, $firma_id, $user_id);
+                        PuantajOzelGunOtomasyonService::lockOvertimeOverride((int) $firma_id, $otPid, $otTarih, (int) $user_id, $otSaat);
                         $kayit_sayisi++;
                     }
                 }

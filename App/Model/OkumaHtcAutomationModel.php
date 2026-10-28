@@ -64,7 +64,7 @@ class OkumaHtcAutomationModel extends Model
     public function definitionIds(int $firmaId): array
     {
         $stmt = $this->db->prepare("SELECT id, UPPER(TRIM(kisa_kod)) AS code, firma_id FROM tanimlamalar
-            WHERE grup = 'izin_turu' AND UPPER(TRIM(kisa_kod)) IN ('HT', 'HTÇ')
+            WHERE grup = 'izin_turu' AND UPPER(TRIM(kisa_kod)) IN ('HT', 'HTÇ', 'RTÇ')
               AND (firma_id = ? OR firma_id = 0) AND silinme_tarihi IS NULL
             ORDER BY (firma_id = ?) DESC, id DESC");
         $stmt->execute([$firmaId, $firmaId]);
@@ -210,6 +210,107 @@ class OkumaHtcAutomationModel extends Model
              otomatik_kural, otomatik_okuma_sayisi)
             VALUES (?, ?, ?, ?, 1, 0, ?, 'Onaylandı', NOW(), 'otomatik', 0, ?, ?)");
         $stmt->execute([$personelId, $htcId, $date, $date, $description, $rule, $readingCount]);
+    }
+
+    public function taskSummaries(int $firmaId, string $date): array
+    {
+        $stmt = $this->db->prepare("SELECT ph.personel_id,
+                MIN(CASE WHEN ph.islem_tipi = 'BASLA' THEN ph.zaman END) AS ilk_basla,
+                MAX(CASE WHEN ph.islem_tipi = 'BASLA' THEN ph.zaman END) AS son_basla,
+                MAX(CASE WHEN ph.islem_tipi = 'BITIR' THEN ph.zaman END) AS son_bitis,
+                MAX(CASE WHEN ph.islem_tipi = 'BITIR'
+                    AND NOT (COALESCE(ph.aciklama, '') LIKE 'Otomatik sonlandır%'
+                        OR (ph.aciklama IS NULL AND TIME(ph.zaman) = '23:50:00'))
+                    THEN ph.zaman END) AS son_manuel_bitis,
+                SUM(ph.islem_tipi = 'BITIR' AND (COALESCE(ph.aciklama, '') LIKE 'Otomatik sonlandır%'
+                    OR (ph.aciklama IS NULL AND TIME(ph.zaman) = '23:50:00'))) AS otomatik_bitis
+            FROM personel_hareketleri ph
+            INNER JOIN personel p ON p.id = ph.personel_id
+            WHERE p.firma_id = ? AND p.silinme_tarihi IS NULL AND ph.silinme_tarihi IS NULL
+              AND ph.zaman >= ? AND ph.zaman < DATE_ADD(?, INTERVAL 1 DAY)
+              AND ph.islem_tipi IN ('BASLA', 'BITIR')
+            GROUP BY ph.personel_id
+            HAVING ilk_basla IS NOT NULL");
+        $stmt->execute([$firmaId, $date, $date]);
+        $rows = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $rows[(int) $row['personel_id']] = [
+                'ilk_basla' => $row['ilk_basla'],
+                'son_basla' => $row['son_basla'],
+                'son_bitis' => $row['son_bitis'],
+                'son_manuel_bitis' => $row['son_manuel_bitis'],
+                'otomatik_bitis' => (int) $row['otomatik_bitis'] > 0,
+                'acik' => $row['son_bitis'] === null || $row['son_basla'] > $row['son_bitis'],
+            ];
+        }
+        return $rows;
+    }
+
+    public function personnelDepartments(int $firmaId, string $date, array $personelIds): array
+    {
+        $personelIds = array_values(array_unique(array_filter(array_map('intval', $personelIds))));
+        if (!$personelIds) return [];
+        $placeholders = implode(',', array_fill(0, count($personelIds), '?'));
+        $stmt = $this->db->prepare("SELECT p.id, COALESCE((SELECT pgg.departman FROM personel_gorev_gecmisi pgg
+                WHERE pgg.personel_id = p.id AND pgg.baslangic_tarihi <= ?
+                  AND (pgg.bitis_tarihi IS NULL OR pgg.bitis_tarihi >= ?)
+                ORDER BY pgg.baslangic_tarihi DESC, pgg.id DESC LIMIT 1), p.departman, '') AS departman
+            FROM personel p WHERE p.firma_id = ? AND p.id IN ($placeholders)");
+        $stmt->execute(array_merge([$date, $date, $firmaId], $personelIds));
+        $rows = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $rows[(int) $row['id']] = (string) $row['departman'];
+        }
+        return $rows;
+    }
+
+    public function softDeleteAutomaticForDate(int $firmaId, string $date, string $rule, string $reason): int
+    {
+        $stmt = $this->db->prepare("UPDATE personel_izinleri pi INNER JOIN personel p ON p.id = pi.personel_id
+            SET pi.silinme_tarihi = NOW(), pi.silinme_aciklama = ?, pi.silen_kullanici = 0
+            WHERE p.firma_id = ? AND pi.baslangic_tarihi = ? AND pi.bitis_tarihi = ?
+              AND pi.kaynak = 'otomatik' AND pi.otomatik_kural = ? AND pi.silinme_tarihi IS NULL");
+        $stmt->execute([$reason, $firmaId, $date, $date, $rule]);
+        return $stmt->rowCount();
+    }
+
+    public function activeOvertime(int $personelId, string $date): ?array
+    {
+        $stmt = $this->db->prepare("SELECT id, saat, kaynak, otomatik_kural FROM personel_fazla_mesaileri
+            WHERE personel_id = ? AND tarih = ? AND silinme_tarihi IS NULL ORDER BY id DESC LIMIT 1 FOR UPDATE");
+        $stmt->execute([$personelId, $date]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
+    }
+
+    public function automaticOvertimePersonnelIds(int $firmaId, string $date, string $rule): array
+    {
+        $stmt = $this->db->prepare("SELECT DISTINCT personel_id FROM personel_fazla_mesaileri
+            WHERE firma_id = ? AND tarih = ? AND kaynak = 'otomatik' AND otomatik_kural = ? AND silinme_tarihi IS NULL");
+        $stmt->execute([$firmaId, $date, $rule]);
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    }
+
+    public function insertAutomaticOvertime(int $firmaId, int $personelId, string $date, float $hours, string $rule, string $description): void
+    {
+        $stmt = $this->db->prepare("INSERT INTO personel_fazla_mesaileri
+            (firma_id, personel_id, tarih, saat, aciklama, kaynak, otomatik_kural, onay_durumu, kayit_yapan, created_at)
+            VALUES (?, ?, ?, ?, ?, 'otomatik', ?, 'Onaylandı', 0, NOW())");
+        $stmt->execute([$firmaId, $personelId, $date, $hours, mb_substr($description, 0, 255), $rule]);
+    }
+
+    public function updateAutomaticOvertime(int $id, float $hours, string $rule, string $description): void
+    {
+        $stmt = $this->db->prepare("UPDATE personel_fazla_mesaileri SET saat = ?, aciklama = ?
+            WHERE id = ? AND kaynak = 'otomatik' AND otomatik_kural = ? AND silinme_tarihi IS NULL");
+        $stmt->execute([$hours, mb_substr($description, 0, 255), $id, $rule]);
+    }
+
+    public function softDeleteAutomaticOvertime(int $id, string $rule): void
+    {
+        $stmt = $this->db->prepare("UPDATE personel_fazla_mesaileri SET silinme_tarihi = NOW()
+            WHERE id = ? AND kaynak = 'otomatik' AND otomatik_kural = ? AND silinme_tarihi IS NULL");
+        $stmt->execute([$id, $rule]);
     }
 
     public function hasManualLock(int $firmaId, int $personelId, string $date, string $rule): bool

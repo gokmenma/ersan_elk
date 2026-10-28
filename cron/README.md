@@ -121,3 +121,19 @@ Log dosyaları `cron/logs/` klasöründe aylık olarak tutulur:
 Evrak Takip > İşlemler > UETS / KEP Ayarları > KEP sekmesindeki "Gelen KEP Otomasyonu" anahtarları: otomatik aktarım açıldığında, ayarı açan kullanıcının KEP bilgileriyle son 7 günün yeni iletileri Gelen Evrak olarak aktarılır. Önce sql/2026_10_26_kep_gelen_kutusu.sql çalıştırılmalıdır.
 
 UETS: `cron/uets_sync.php` (2 saatte bir önerilir: `0 */2 * * *`) gelen tebligatları aktarır ve ardından, hiçbir personele sevk edilmemiş UETS evraklarını (aktarım başlangıç tarihinden sonra, en az 2 saatlik, cevaplanmamış) `evrak-takip/uets-goruntule` yetkisi olan kullanıcılara ve süper adminlere bildirim olarak hatırlatır. Aynı kullanıcıya hatırlatma 6 saatte bir gönderilir. Önce sql/2026_10_13_uets_selected_import_policy.sql, sql/2026_10_28_uets_liste_onbellek.sql, sql/2026_10_28_uets_otomatik_aktarim_baslangic.sql ve sql/2026_10_28_uets_evrak_sevk_tarihce.sql çalıştırılmalıdır.
+
+
+## Puantaj Özel Gün Otomasyonu (Pazar HTÇ, Resmi Tatil RTÇ, Arife FM)
+
+```
+0 23 * * * /opt/lampp/bin/php /opt/lampp/htdocs/ersan_elk/cron/puantaj_ozel_gun_otomasyon.php --run=aksam
+0 8  * * * /opt/lampp/bin/php /opt/lampp/htdocs/ersan_elk/cron/puantaj_ozel_gun_otomasyon.php --run=sabah
+```
+
+- `aksam` bugünü, `sabah` dünü işler. Gün Pazar, resmi tatil veya arife değilse işlem yapılmaz.
+- Pazar: iş sayısı aranan departmanlarda (okuma, kaçak, sökme, mühür) göreve başlama kaydı ve iş eşiği, diğer departmanlarda yalnız göreve başlama kaydı varsa HTÇ.
+- Tam gün resmi tatil (Pazar'a denk gelse de öncelikli): aynı kuralla RTÇ.
+- Arife (yarım gün): görev kesim saatinden (varsayılan 13:00) sonra elle bitirildiyse veya başlatıldıysa tanımdaki saat kadar (varsayılan 4) fazla mesai. 23:50 kuralıyla otomatik kapanan görev sayılmaz.
+- Manuel kayıt ve kilitlere dokunmaz; kriter ortadan kalkarsa yalnız kendi otomatik kaydını kaldırır. Tekrar çalıştırılabilir.
+- Deneme: `--date=YYYY-MM-DD --firma-id=1 --dry-run`. Ayarlar > Online Sorgulama ekranından açılıp kapatılır; tatil takvimi Tanımlamalar > Resmi Tatil Tanımları'ndadır.
+- Önce `sql/2026_10_28_puantaj_ozel_gun_otomasyonu.sql` çalıştırılmalıdır.

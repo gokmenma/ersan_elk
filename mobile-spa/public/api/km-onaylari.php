@@ -174,6 +174,18 @@ try {
             $params['tur'] = $turFilter;
         }
 
+        $dateFrom = (string) ($_GET['date_from'] ?? '');
+        $dateTo = (string) ($_GET['date_to'] ?? '');
+        $isValidDate = static fn(string $d): bool => (bool) preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) && checkdate((int) substr($d, 5, 2), (int) substr($d, 8, 2), (int) substr($d, 0, 4));
+        if ($isValidDate($dateFrom)) {
+            $whereSql .= " AND akb.tarih >= :date_from";
+            $params['date_from'] = $dateFrom;
+        }
+        if ($isValidDate($dateTo)) {
+            $whereSql .= " AND akb.tarih <= :date_to";
+            $params['date_to'] = $dateTo;
+        }
+
         // Toplam kayıt sayısı
         $countSql = "
             SELECT COUNT(*) 

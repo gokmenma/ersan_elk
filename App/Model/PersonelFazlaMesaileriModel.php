@@ -115,11 +115,12 @@ class PersonelFazlaMesaileriModel extends Model
         $checkStmt->execute([$personelId, $tarih]);
         $existingId = $checkStmt->fetchColumn();
 
+        $sourceReset = $this->hasSourceColumns() ? ", kaynak = 'manuel', otomatik_kural = NULL" : '';
         if ($existingId) {
             $stmt = $this->db->prepare("
                 UPDATE {$this->table}
-                SET saat = ?, aciklama = ?, onay_durumu = 'Onaylandı', 
-                    silinme_tarihi = NULL, updated_at = NOW()
+                SET saat = ?, aciklama = ?, onay_durumu = 'Onaylandı',
+                    silinme_tarihi = NULL, updated_at = NOW(){$sourceReset}
                 WHERE id = ?
             ");
             return $stmt->execute([$saat, $aciklama, $existingId]);
@@ -131,6 +132,18 @@ class PersonelFazlaMesaileriModel extends Model
             VALUES (?, ?, ?, ?, ?, 'Onaylandı', ?, NOW())
         ");
         return $stmt->execute([$firmaId, $personelId, $tarih, $saat, $aciklama, $userId]);
+    }
+
+    private function hasSourceColumns(): bool
+    {
+        static $ready = null;
+        if ($ready === null) {
+            $stmt = $this->db->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME IN ('kaynak', 'otomatik_kural')");
+            $stmt->execute([$this->table]);
+            $ready = (int) $stmt->fetchColumn() === 2;
+        }
+        return $ready;
     }
 
     /**

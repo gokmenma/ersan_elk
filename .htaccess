@@ -9,6 +9,9 @@ RewriteRule ^storage/mobil-imza/ - [F,L]
 # Arşiv dosyalarına web üzerinden doğrudan erişimi engelle; yalnızca yetkili indirme endpointi kullanılır.
 RewriteRule ^uploads/personel_evraklar/ - [F,L]
 
+# Şifreli imzalı evrak PDF'leri yalnız belge-dogrula ve yetkili endpointler üzerinden sunulur.
+RewriteRule ^uploads/evrak-pades/ - [F,L]
+
 # Graphify çıktı dizinine web erişimini engelle
 RewriteRule ^graphify-out/ - [F,L]
 

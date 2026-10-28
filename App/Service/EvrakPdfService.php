@@ -164,24 +164,27 @@ final class EvrakPdfService
             && (!empty($data['pades_pdf_sha256']) || $isPadesSigningCopy)
             && $showEimzaInfo;
         $eImzaNotu = 'Bu belge, güvenli elektronik imza ile imzalanmıştır.';
-        $verificationSeed = implode('|', [
-            (string) ($data['firma_id'] ?? ''),
-            (string) ($data['id'] ?? ''),
-            (string) ($data['evrak_no'] ?? ''),
-            (string) ($data['tarih'] ?? ''),
-        ]);
-        $verificationCode = 'EVR-' . strtoupper(substr(hash('sha256', $verificationSeed), 0, 16));
-        $verificationPin = str_pad((string) (hexdec(substr(hash('sha256', $verificationSeed . '|pin'), 0, 8)) % 100000), 5, '0', STR_PAD_LEFT);
         $trackingHost = trim((string) ($_ENV['APP_BASE'] ?? $_SERVER['HTTP_HOST'] ?? 'app.ersantr.com'), " \t\n\r\0\x0B\"'");
         $trackingHost = preg_replace('#^https?://#i', '', $trackingHost);
-        $trackingAddress = 'https://' . rtrim((string) $trackingHost, '/');
+        $verificationCode = '';
+        $verificationPin = '';
+        $trackingAddress = 'https://' . rtrim((string) $trackingHost, '/') . '/belge-dogrula';
+        $verificationQr = '';
+        if ($eImzaOnayli) {
+            $verification = (new \App\Model\EvrakDogrulamaModel())->ensureForEvrak((int) ($data['firma_id'] ?? 0), (int) ($data['id'] ?? 0));
+            $verificationCode = $verification['kod'];
+            $verificationPin = $verification['pin'];
+            $trackingAddress .= '?kod=' . rawurlencode($verificationCode);
+            $verificationQr = \App\Helper\Helper::generateQrCode($trackingAddress, 3);
+        }
         $visibleSignatureInfo = $eImzaOnayli
             ? '<div class="footer-eimza-panel">'
                 . '<div class="footer-eimza-title">' . $escape($eImzaNotu) . '</div>'
                 . '<table class="footer-eimza-meta"><tr>'
                 . '<td><strong>Belge Doğrulama Kodu:</strong> ' . $escape($verificationCode)
-                . ' <strong>PIN Kodu:</strong> ' . $escape($verificationPin) . '</td>'
-                . '<td class="footer-eimza-tracking"><strong>Belge Takip Adresi:</strong> ' . $escape($trackingAddress) . '</td>'
+                . ' <strong>PIN Kodu:</strong> ' . $escape($verificationPin)
+                . '<br><strong>Belge Takip Adresi:</strong> ' . $escape($trackingAddress) . '</td>'
+                . ($verificationQr !== '' ? '<td class="footer-eimza-qr"><img src="' . $escape($verificationQr) . '" width="46" height="46"></td>' : '')
                 . '</tr></table>'
                 . '</div>'
             : '';
@@ -212,7 +215,7 @@ final class EvrakPdfService
             .record-info{font-size:10pt;line-height:1.2;margin-bottom:4mm}.footer,.footer td,.footer div,.footer span{font-size:8px!important;line-height:1.25}.footer{border-top:0.6mm solid #e53935;padding-top:1.5mm}
             .footer-eimza-panel{border:0;padding:0 0 1.1mm;margin:0;color:#111;background:#fff}
             .footer-eimza-title{font-size:8px!important;color:#e53935;text-align:center;font-weight:bold;line-height:1.2;padding:0 0 1.2mm}
-            .footer-eimza-meta{width:100%;border-collapse:collapse;table-layout:fixed}.footer-eimza-meta td{border:0;font-size:8px!important;line-height:1.2;padding:0;vertical-align:bottom}.footer-eimza-tracking{text-align:right}
+            .footer-eimza-meta{width:100%;border-collapse:collapse;table-layout:fixed}.footer-eimza-meta td{border:0;font-size:8px!important;line-height:1.2;padding:0;vertical-align:bottom}.footer-eimza-qr{width:14mm;text-align:right}
             .footer-eimza-alt{font-size:10px;color:#a0a0a0;text-align:left;line-height:1.2;padding-top:2mm}.footer-table{width:100%;table-layout:fixed;border-collapse:collapse}.footer-table td{width:50%;border:0;vertical-align:top;overflow-wrap:break-word}.footer-left{text-align:left;padding-right:4mm}.footer-right{text-align:right;padding-left:4mm}
         </style></head><body>
         ' . $recordInfoHtml . '

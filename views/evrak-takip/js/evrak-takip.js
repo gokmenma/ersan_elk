@@ -1814,12 +1814,15 @@ $(document).ready(function () {
   function syncAgentFooter(status, text, detailsHtml, isConnected) {
     const $badge = $("#modalKepAgentBadge");
     const $details = $("#modalKepAgentDetails");
+    const $pulse = $("#kepSignPulseDot");
 
     $badge.removeClass("bg-success-subtle text-success bg-warning-subtle text-warning bg-secondary-subtle text-secondary border-success-subtle border-warning-subtle");
     if (isConnected) {
       $badge.addClass("bg-success-subtle text-success border-success-subtle").html('<i class="bx bx-check-circle me-1"></i> ' + escapeEvrakHtml(status));
+      $pulse.addClass("ready");
     } else {
       $badge.addClass("bg-secondary-subtle text-secondary border").html('<i class="bx bx-unlink me-1"></i> ' + escapeEvrakHtml(status));
+      $pulse.removeClass("ready");
     }
     if (detailsHtml) $details.html(detailsHtml);
   }
@@ -1827,6 +1830,7 @@ $(document).ready(function () {
   function updateKepAgentUI() {
     const $badge = $("#modalKepAgentBadge");
     const $details = $("#modalKepAgentDetails");
+    $("#kepSignPulseDot").removeClass("ready");
 
     $badge.removeClass("bg-success-subtle text-success bg-warning-subtle text-warning bg-secondary-subtle text-secondary border-success-subtle border-warning-subtle")
       .addClass("bg-secondary-subtle text-secondary border")
@@ -1874,7 +1878,7 @@ $(document).ready(function () {
     });
   }
 
-  $("#btnAgentHelpModal, #btnCheckAgentAgain").on("click", function (e) {
+  $("#btnAgentHelpModal, #btnCheckAgentAgain, #btnAgentHelpModalIcon, #modalKepAgentStatusWrapper").on("click", function (e) {
     e.preventDefault();
     if ($(this).attr("id") === "btnCheckAgentAgain") {
       updateKepAgentUI();
@@ -2108,6 +2112,8 @@ $(document).ready(function () {
     }
     $("#modalKepDogrulamaSonuc").empty();
     $("#modalKepEkOzeti").text("0 dosya · 0 KB");
+    $("#kepAliciAdet").text("0");
+    renderKepSelectedFiles();
     $("#modal_kep_ileti_tipi").val("standart");
     $("#kepTipStandart").prop("checked", true);
     loadKepAddressBook();
@@ -2168,10 +2174,113 @@ $(document).ready(function () {
       .html('<i class="bx ' + (save ? "bx-user-plus" : "bx-search") + '"></i> ' + (save ? "Doğrula ve Kaydet" : "Doğrula"));
   });
 
-  $("#modal_kep_ekler").on("change", function () {
-    const files = Array.from(this.files || []);
+  function renderKepSelectedFiles() {
+    const container = $("#kepSelectedFilesContainer");
+    if (!container.length) return;
+    container.empty();
+    const input = $("#modal_kep_ekler")[0];
+    const files = Array.from(input?.files || []);
     const total = files.reduce((sum, file) => sum + file.size, 0);
     $("#modalKepEkOzeti").text(files.length + " dosya · " + formatKepBytes(total));
+
+    files.forEach((file, index) => {
+      let icon = "bx-file text-secondary";
+      const ext = file.name.split(".").pop().toLowerCase();
+      if (ext === "pdf") icon = "bxs-file-pdf text-danger";
+      else if (["jpg", "jpeg", "png", "webp"].includes(ext)) icon = "bxs-file-image text-primary";
+      else if (["doc", "docx"].includes(ext)) icon = "bxs-file-doc text-info";
+      else if (["xls", "xlsx"].includes(ext)) icon = "bxs-spreadsheet text-success";
+      else if (["zip", "eyp"].includes(ext)) icon = "bxs-file-archive text-warning";
+
+      const pill = $(
+        '<div class="kep-file-pill-item">' +
+          '<i class="bx ' + icon + ' font-size-16"></i>' +
+          '<span class="fw-semibold text-truncate" style="max-width: 200px;" title="' + escapeEvrakHtml(file.name) + '">' + escapeEvrakHtml(file.name) + '</span>' +
+          '<span class="file-size">(' + formatKepBytes(file.size) + ')</span>' +
+          '<i class="bx bx-x text-muted font-size-15 btn-remove-kep-file" data-index="' + index + '" title="Dosyayı Çıkar" style="cursor:pointer"></i>' +
+        '</div>'
+      );
+      container.append(pill);
+    });
+  }
+
+  $("#modal_kep_ekler").on("change", function () {
+    renderKepSelectedFiles();
+  });
+
+  $(document).on("click", ".btn-remove-kep-file", function (e) {
+    e.stopPropagation();
+    const removeIdx = parseInt($(this).data("index"), 10);
+    const input = $("#modal_kep_ekler")[0];
+    if (!input || !input.files) return;
+    try {
+      const dt = new DataTransfer();
+      Array.from(input.files).forEach((file, idx) => {
+        if (idx !== removeIdx) dt.items.add(file);
+      });
+      input.files = dt.files;
+    } catch (err) {}
+    renderKepSelectedFiles();
+  });
+
+  // Dropzone drag-drop
+  const kepDropzone = $("#kepDropzoneBox");
+  kepDropzone.on("dragover dragenter", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    $(this).addClass("dragover");
+  });
+  kepDropzone.on("dragleave dragend drop", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    $(this).removeClass("dragover");
+  });
+  kepDropzone.on("drop", function (e) {
+    const dt = e.originalEvent.dataTransfer;
+    if (dt && dt.files && dt.files.length) {
+      const input = $("#modal_kep_ekler")[0];
+      try {
+        const currentDt = new DataTransfer();
+        Array.from(input.files || []).forEach(f => currentDt.items.add(f));
+        Array.from(dt.files).forEach(f => currentDt.items.add(f));
+        input.files = currentDt.files;
+      } catch (err) {}
+      renderKepSelectedFiles();
+    }
+  });
+
+  // Hızlı şablon butonları
+  $(document).on("click", ".kep-template-btn", function () {
+    const tmpl = $(this).data("template");
+    let htmlContent = "";
+    if (tmpl === "ustyazi") {
+      htmlContent = "<p>Sayın İlgili,</p><p>İlgi konulu resmî yazımız ve ekleri ilişikte bilgilerinize sunulmuştur. Gereğini arz/rica ederiz.</p><p>Saygılarımızla,</p>";
+    } else if (tmpl === "bilgiedinme") {
+      htmlContent = "<p>Sayın İlgili,</p><p>Konu hakkında talep edilen bilgi ve belgeler incelenmiş olup, detaylı açıklamalarımız ekteki evrakta bilgilerinize sunulmuştur.</p><p>Saygılarımızla,</p>";
+    } else if (tmpl === "tebligat") {
+      htmlContent = "<p>Sayın İlgili,</p><p>Tarafımıza tebliğ edilen evraka istinaden yasal süresi içerisinde cevabımız ve beyanlarımız ekte sunulmuştur.</p><p>Saygılarımızla,</p>";
+    }
+    if (htmlContent) {
+      if ($.fn.summernote && $("#modal_kep_icerik").next(".note-editor").length) {
+        $("#modal_kep_icerik").summernote("code", htmlContent);
+      } else {
+        $("#modal_kep_icerik").val($("<div>").html(htmlContent).text());
+      }
+      $("#modal_kep_icerik").trigger("change");
+      refreshKepSendButton();
+    }
+  });
+
+  // Alıcıları temizle butonu ve sayacı
+  $("#btnModalKepAliciTemizle").on("click", function () {
+    $("#modal_kep_alicilar").val("").trigger("input");
+    $("#modalKepDogrulamaSonuc").empty();
+    $("#kepAliciAdet").text("0");
+  });
+
+  $("#modal_kep_alicilar").on("input keyup paste change", function () {
+    const count = parseModalKepRecipients().length;
+    $("#kepAliciAdet").text(count);
   });
 
   $("#btnModalKepAliciDogrula").on("click", function () {

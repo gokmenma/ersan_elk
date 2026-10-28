@@ -512,6 +512,11 @@ class EvrakTakipModel extends Model
                 $this->recordApprovalHistory($evrakId, 'onay_tamamlandi', $userId, null, 'Tüm imzalar tamamlandı, evrak onaylandı', $ipAddress);
             }
             $this->db->commit();
+            try {
+                (new EvrakDogrulamaModel())->setPdfSha256((int) $_SESSION['firma_id'], $evrakId, $pdfSha256);
+            } catch (\Throwable $e) {
+                error_log('Evrak doğrulama hash güncellenemedi: ' . $e->getMessage());
+            }
             return ['completed' => $completed, 'approved' => (int) $state['onaylanan'], 'total' => (int) $state['toplam']];
         } catch (\Throwable $e) {
             $this->db->rollBack();

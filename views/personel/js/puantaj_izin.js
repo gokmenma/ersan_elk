@@ -2,6 +2,7 @@ $(document).ready(function () {
   const API_URL = "views/personel/api/puantaj_izin.php";
   let tableRows = []; // Row cache for performance
   let selectedType = null;
+  let holidayDays = {};
   let unsavedChanges = {}; // { 'personelId-date': { typeId, name, color, shortCode } }
   let unsavedOvertimes = {}; // { 'personelId-date': { personel_id, date, saat } }
   let isFmModeActive = false;
@@ -456,7 +457,7 @@ $(document).ready(function () {
       const sundayClass = isSunday ? "is-sunday" : "";
       const todayClass = isToday ? "is-today" : "";
 
-      headerHtml += `<th class="${sundayClass} ${todayClass}">
+      headerHtml += `<th class="${sundayClass} ${todayClass}" data-day="${d}">
          <div class="day-header-pill">
              <div class="day-name">${dayName}</div>
              <div class="day-number">${d}</div>
@@ -473,6 +474,7 @@ $(document).ready(function () {
       { action: "get-calendar-data", ay, yil, departman, bolge, iskur_dahil },
       function (res) {
         if (res.status === "success") {
+          markHolidayHeaders(res.holidays || []);
           try {
             let bodyHtml = "";
             personnelMap = {}; // Clear previous personnel map
@@ -508,6 +510,7 @@ $(document).ready(function () {
                     const dateObj = new Date(yil, ay - 1, d);
                     const isSunday = dateObj.getDay() === 0;
                     const sundayClass = isSunday ? "is-sunday" : "";
+                    const holidayClass = holidayClassFor(d);
                     const now = new Date();
                     const todayClass = dateObj.getFullYear() === now.getFullYear() && dateObj.getMonth() === now.getMonth() && d === now.getDate() ? "is-today" : "";
 
@@ -610,7 +613,7 @@ $(document).ready(function () {
                                 </div>`;
                     }
 
-                    bodyHtml += `<td class="day-cell ${hasEntryClass} ${sundayClass} ${todayClass} ${disabledClass}"
+                    bodyHtml += `<td class="day-cell ${hasEntryClass} ${sundayClass} ${todayClass} ${holidayClass} ${disabledClass}"
                                          data-personel-id="${p.id}" 
                                          data-date="${dateStr}">
                                         ${cellContent}
@@ -728,7 +731,7 @@ $(document).ready(function () {
 
       const dateObj = new Date(yil, ay - 1, d);
       const isSunday = dateObj.getDay() === 0;
-      const sundayClass = isSunday ? "is-sunday" : "";
+      const sundayClass = `${isSunday ? "is-sunday" : ""} ${holidayClassFor(d)}`;
 
       if (stats.totalEntries > 0) {
         footerHtml += `<td class="text-center ${sundayClass} position-relative">
@@ -1085,7 +1088,7 @@ $(document).ready(function () {
     // Update UI instantly using Vanilla JS (Much faster than jQuery)
     const styleObj = getStyleFromTailwind(type.color, type.shortCode);
     cell.style.cssText = "";
-    cell.className = `day-cell has-entry unsaved ${cell.classList.contains("is-sunday") ? "is-sunday" : ""} ${cell.classList.contains("is-today") ? "is-today" : ""}`;
+    cell.className = `day-cell has-entry unsaved ${["is-sunday", "is-today", "is-holiday", "is-half-holiday"].filter((c) => cell.classList.contains(c)).join(" ")}`;
     cell.innerHTML = `
       <div class="cell-content draggable-izin" draggable="true"
            title="${type.name}" 
@@ -2298,16 +2301,40 @@ $(document).ready(function () {
     return $("<div>").text(value == null ? "" : String(value)).html();
   }
 
+  function holidayClassFor(day) {
+    const type = holidayDays[day];
+    return type === "yarim" ? "is-half-holiday" : type ? "is-holiday" : "";
+  }
+
+  function markHolidayHeaders(holidays) {
+    holidayDays = {};
+    holidays.forEach((h) => {
+      const day = parseInt(String(h.date).slice(8, 10), 10);
+      holidayDays[day] = h.type;
+      const $th = $(`#table-header th[data-day="${day}"]`);
+      if (!$th.length) return;
+      const label = h.type === "yarim" ? `${h.name} (yarım gün)` : h.name;
+      $th.addClass(h.type === "yarim" ? "is-half-holiday" : "is-holiday").attr("title", label);
+    });
+  }
+
+  function sundayTaskCell(gorev) {
+    if (!gorev) return '<span class="badge bg-light text-muted border">Yok</span>';
+    const end = gorev.acik ? "açık" : escapeHtcHtml(gorev.bitis || "-");
+    const auto = gorev.otomatik_bitis ? ' <span class="badge bg-warning-subtle text-warning" title="23:50 kuralı ile otomatik sonlandırıldı">oto</span>' : "";
+    return `<span class="badge bg-success-subtle text-success">${escapeHtcHtml(gorev.basla)} – ${end}</span>${auto}`;
+  }
+
   function loadSundayHtcPreview() {
     const date = $("#sunday-htc-date").val();
     if (!date) return;
-    const $body = $("#sunday-htc-table tbody").html('<tr><td colspan="9" class="text-center py-5"><span class="spinner-border spinner-border-sm me-2"></span>Çalışmalar kontrol ediliyor...</td></tr>');
+    const $body = $("#sunday-htc-table tbody").html('<tr><td colspan="10" class="text-center py-5"><span class="spinner-border spinner-border-sm me-2"></span>Çalışmalar kontrol ediliyor...</td></tr>');
     $("#btn-assign-sunday-htc").prop("disabled", true);
     $.post(API_URL, { action: "get-sunday-work-preview", date }, function (res) {
       if (res.status !== "success") throw new Error(res.message || "Veriler alınamadı.");
       const rows = res.data.rows || [];
       if (!rows.length) {
-        $body.html('<tr><td colspan="9" class="text-center text-muted py-5">Bu Pazar için operasyon kaydı bulunamadı.</td></tr>');
+        $body.html('<tr><td colspan="10" class="text-center text-muted py-5">Bu Pazar için operasyon veya görev kaydı bulunamadı.</td></tr>');
         $("#sunday-htc-summary").text("0 personel"); return;
       }
       $body.html(rows.map((row) => {
@@ -2316,11 +2343,13 @@ $(document).ready(function () {
         const status = row.already_htc
           ? '<span class="badge bg-success-subtle text-success">HTÇ mevcut</span>'
           : row.blocked ? `<span class="badge bg-warning-subtle text-warning">${escapeHtcHtml(row.block_reason)}</span>`
-          : row.qualified ? '<span class="badge bg-info-subtle text-info">Eşiği geçti</span>' : '<span class="badge bg-secondary-subtle text-secondary">Manuel seçim</span>';
+          : row.qualified ? (row.basis === "gorev" ? '<span class="badge bg-info-subtle text-info">Görev kaydı</span>' : '<span class="badge bg-info-subtle text-info">Eşiği geçti</span>')
+          : '<span class="badge bg-secondary-subtle text-secondary">Manuel seçim</span>';
         return `<tr>
           <td class="text-center"><input type="checkbox" class="htc-check sunday-htc-person" aria-label="${escapeHtcHtml(row.adi_soyadi)} için HTÇ seç" value="${row.id}" ${selectable && row.qualified ? "checked" : ""} ${selectable ? "" : "disabled"}></td>
           <td><div class="fw-semibold">${escapeHtcHtml(row.adi_soyadi)}</div><small class="text-muted">Ekip ${escapeHtcHtml(row.ekip_no || "-")}</small></td>
           <td>${escapeHtcHtml(row.departman || "-")}<br><small class="text-muted">${escapeHtcHtml(row.ekip_bolge || "-")}</small></td>
+          <td class="text-center">${sundayTaskCell(row.gorev)}</td>
           <td class="text-center fw-semibold">${Number(t.okuma || 0).toLocaleString("tr-TR")}</td>
           <td class="text-center">${Number(t.kacak || 0).toLocaleString("tr-TR")}</td>
           <td class="text-center">${Number(t.sokme_takma || 0).toLocaleString("tr-TR")}</td>
@@ -2333,7 +2362,7 @@ $(document).ready(function () {
       $("#sunday-htc-select-all").prop("checked", selectableCount > 0 && checkedCount === selectableCount).prop("indeterminate", checkedCount > 0 && checkedCount < selectableCount);
       $("#btn-assign-sunday-htc").prop("disabled", !$(".sunday-htc-person:checked").length);
     }, "json").fail((xhr) => {
-      $body.html(`<tr><td colspan="9" class="text-center text-danger py-5">${escapeHtcHtml(xhr.responseJSON?.message || "Kontrol sırasında hata oluştu.")}</td></tr>`);
+      $body.html(`<tr><td colspan="10" class="text-center text-danger py-5">${escapeHtcHtml(xhr.responseJSON?.message || "Kontrol sırasında hata oluştu.")}</td></tr>`);
     });
   }
 

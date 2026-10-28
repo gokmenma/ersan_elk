@@ -655,3 +655,10 @@ edilen kısımdır. `elden_tutardan` kesintisi ana kesinti kartından gizlenemez
 - Resmî alacak tarafında hafta içi nöbetin kanuni fazla mesai karşılığı ile puantaj fazla mesaisi tek `Fazla Mesai Ücreti (Net)` satırında birleştirilir; saat detayı iki kaynağın toplamını gösterir.
 - Bu sunum ayrımı kayıtlı snapshot tutarlarını veya ödeme kanallarını değiştirmez.
 
+
+# Otomatik RTÇ ve arife fazla mesaisi kaynağı (2026-10-28)
+
+- `cron/puantaj_ozel_gun_otomasyon.php` tam gün resmi tatilde (`resmi_tatiller.tur = 'tam'`) çalışan personele `personel_izinleri` üzerinden RTÇ (`otomatik_kural = 'resmi_tatil_rtc_v1'`) yazar. Bordro bu kaydı mevcut `resmi_tatil_calismasi = 1` bayrağıyla, manuel RTÇ ile aynı yoldan sayar; hesaplama formülü değişmez.
+- Arife (`tur = 'yarim'`) günlerinde kesim saatinden sonra çalışan personele `personel_fazla_mesaileri` üzerinden fazla mesai (`kaynak = 'otomatik'`, `otomatik_kural = 'arife_fm_v1'`, varsayılan 4 saat) yazar. Bordro bunu puantaj fazla mesaisiyle aynı yoldan alır.
+- Resmi tatil Pazar'a denk gelirse otomatik HTÇ kaldırılır ve RTÇ uygulanır. Manuel girilmiş kodlar ve fazla mesailer değiştirilmez.
+- Otomasyon yalnız açık dönemin puantaj kaynağını üretir. Hesaplanmış veya kapanmış bordro snapshot'ları (Bölüm 5.1) bu kayıtlardan etkilenmez; değişikliğin yansıması için yetkili yeniden hesaplama gerekir.

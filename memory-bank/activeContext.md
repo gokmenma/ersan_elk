@@ -1,5 +1,39 @@
 # Active Context
 
+## Puantaj Özel Gün Otomasyonu — Pazar HTÇ, Resmi Tatil RTÇ, Arife FM (2026-10-28)
+- **Cron**: `cron/puantaj_ozel_gun_otomasyon.php --run=aksam` (23:00, bugün) ve `--run=sabah` (08:00, dün kesinleştirme); `--date`, `--firma-id`, `--dry-run` destekler. Crontab satırları `cron/README.md` içinde.
+- **Kurallar**: İş sayısı aranan departmanlar (ayar `ozel_gun_sayili_departmanlar`, varsayılan `okuma,kaçak,sökme,mühür`) için göreve başlama kaydı + iş eşiği; diğer departmanlar için yalnız göreve başlama kaydı (`personel_hareketleri` BASLA). Pazar → HTÇ, tam gün resmi tatil → RTÇ (Pazar'a denk gelse de öncelikli), arife → kesim saatinden sonra elle bitirilen/başlatılan görevde +4 saat FM (23:50 otomatik kapanış sayılmaz; akşam açık görev için karar sabaha bırakılır).
+- **Kod**: `OkumaHtcAutomationService` genelleştirildi (`reconcileHoliday`, `decide`, `isCountedDepartment`, `optionsFromSettings`, `DAY_RULES`); mevcut cron çağrıları görev kaydı kuralını `htc_gorev_kaydi_zorunlu` ayarıyla otomatik uygular. Yeni `PuantajOzelGunOtomasyonService`, `ResmiTatilModel`; `OkumaHtcAutomationModel`'e görev/departman/FM sorguları eklendi.
+- **Manuel koruma**: Hücre düzenlemesi tüm gün kurallarını, FM düzenlemesi arife günü `arife_fm_v1` kuralını `puantaj_otomasyon_kilitleri` ile kilitler; elle kaydedilen FM `kaynak='manuel'` olur.
+- **Arayüz**: Tanımlamalar > Resmi Tatil Tanımları (`tanimlamalar/resmi-tatiller/list`, yetki `resmi_tatil_tanimlari`; genel tanımları yalnız Süper Admin değiştirir). Puantaj başlığında tatil/arife işaretleri, Pazar HTÇ modalında Görev sütunu. Ayarlar > Online Sorgulama'da üç yeni ayar.
+- **SQL**: `sql/2026_10_28_puantaj_ozel_gun_otomasyonu.sql` (yerelde iki kez uygulandı; 2026–2027 tatilleri dahil).
+
+## Evrak Takip — KEP Gönderisi ve UETS / PTT KEP Ayarları Modalları UI/UX Pro Max Yenilemesi (2026-10-28)
+- **Kapsam**: `views/evrak-takip/modal/kep-send-modal.php`, `views/evrak-takip/modal/uets-modals.php` ve `views/evrak-takip/js/evrak-takip.js`
+- **Geliştirmeler**:
+  - **UETS ve PTT KEP Ayarları Modalı**:
+    - Beyaz üstüne beyaz kalarak okunmayan Bootstrap `.nav-pills` sekme sorunu giderildi; bağımsız ve yüksek kontrastlı **Bento Kart Sekmeleri** (`.uets-tabs-container`, `.uets-tab-btn`) oluşturuldu.
+    - Aktif sekme: Derin deniz mavisi gradyan zemin (`linear-gradient(135deg, #0284c7 0%, #0369a1 100%)`), net beyaz başlık, açıklama ve rozet ile maksimum okunurluk sağlandı.
+    - Pasif sekme: Saf beyaz zemin, zarif arduvaz tipografi ve hover mikro etkileşimleri.
+    - Modal içeriği karmaşık ve dağınık yapıdan kurtarılarak mantıksal **Bento Kartları** (`.uets-bento-card`) içine gruplandı:
+      - API & Hesap Parametreleri Kartı (Kompakt ISO 27001 güvenlik bildirimi)
+      - Otomasyon & Servis Test Merkezi (Cron switch + Bağlantı Testi + Bakiye Sorgulama)
+      - PTT KEP Giriş & Web Servis ve Gelen KEP Otomasyon Kartları
+      - Modal footer alanı (`.modal-footer`) kaydırmadan bağımsız olarak altta **her zaman sabit (sticky)** hale getirildi; form kaydırılsa dahi Bakiye, Son Senkronizasyon, Vazgeç ve Ayarları Kaydet butonları sürekli görünür kılındı. Aktif sekmeye göre ilgili butonlar otomatik senkronize edildi.
+  - **Header**: Sol tarafta degradeli ikon kutusu ve modern kapatma butonu eklendi.
+  - **KEP İletisi Modalı**:
+    - Bento kartları, canlı e-imza pulsing durum ışığı (`#kepSignPulseDot`), hızlı resmi taslak şablonları, sürükle-bırak dropzone ek kutusu ve etiket çipleri ile baştan sona modernize edildi.
+  - Modal mimarisi `/ui-ux-pro-max` tasarım standartlarına göre modern Enterprise SaaS / Bento UI formuna kavuşturuldu (`border-radius: 24px`, glassmorphism header & footer, kart derinlik gölgeleri).
+  - **Header**: Gönderen KEP hesabı ve canlı bakiye bilgisi modern kapsül (pill) çipi olarak yeniden tasarlandı; gradientli PTT KEP marka ikonu ve açıklayıcı rozet eklendi.
+  - **1. Adım (Alıcılar)**: Textarea üzerine taşan buton kaldırıldı; temiz bir alıcı kontrol barı, anlık alıcı sayacı (`#kepAliciAdet`) ve tek tıkla "Temizle" aksiyonu eklendi. Adres defteri seçimi akıcı hale getirildi.
+  - **2. Adım (İleti Bilgileri)**: Standart / Resmî (e-Yazışma EYP) seçimi iOS/macOS tipi akıcı segmented switch olarak modernize edildi; konu ve referans inputlarına estetik floating düzen verildi.
+  - **3. Adım (İleti Metni & Ekler)**:
+    - Summernote editörün toolbarı ve odaklanma halleri çağdaş hatlara getirildi.
+    - Hızlı şablon butonları ("Üst Yazı Ektedir", "Bilgi Edinme", "Tebligat Cevabı") eklenerek tek tıkla resmi taslak doldurma yeteneği kazandırıldı.
+    - Ekler alanı modern bir Drag & Drop (sürükle-bırak) dropzone kutusu haline getirildi. Seçilen dosyalar türe özgü renkli ikonlar (PDF, Görsel, DOC, XLS, ZIP vb.), dosya boyutu ve anlık çıkarma çarpısı bulunan şık rozetler (`.kep-file-pill-item`) ile listelendi.
+  - **Footer & E-İmza**: Sol kısımdaki e-imza durum çubuğu interaktif hale getirildi; bağlı/bekliyor durumları için canlı yanıp sönen pulsing animasyonlu ışık (`#kepSignPulseDot`), doğrudan yardım/ajan açma yeteneği ve "İmzala ve Gönder" için modern yeşil degrade buton yapıldı.
+  - **Koyu Tema (Dark Mode)**: `html[data-theme-preset="macos-dark"]`, `[data-bs-theme="dark"]` ve `body[data-layout-mode="dark"]` için tam renk uyumu sağlandı.
+
 ## Yönetici Mobil — Ana Sayfa Kartlarının Sürükle-Bırak (Drag & Drop) Düzeltmesi (2026-10-25)
 - **Sorun**: Yönetici mobil ana sayfasındaki kartların başlıklarında yer alan sürükleme tutamaçları (`.card-inner-handle`) yalnızca biçimsel bir `<span>` olarak kalmıştı; HTML5 `draggable="true"` olayları mobil dokunmatik ekranlarda tetiklenmediği ve tutamaca pointer/touch olay dinleyicisi bağlanmadığı için kartlar mobilde sürüklenemiyordu. Ayrıca HTML5 drop hesaplamasında aşağı yönde taşımada eleman indeks kayması nedeniyle sıralamanın değişmemesine yol açan bir mantık hatası mevcuttu.
 - **Çözüm**:
@@ -3340,3 +3374,13 @@
 
 ## 2026-10-28 — KEP gönderiminde firma varsayılan hesabına düşme
 - `KepSettingsModel::getSettings($firmId, $userId, $fallback)`: kullanıcının kendi PTT KEP kimliği yoksa ayarlardaki seçili varsayılan hesaba (settings anahtarı `kep_varsayilan_hesap_kullanici`, UETS/KEP Ayarları modalında `ptt_varsayilan_hesap` select2) düşer; otomatik seçim yok, seçilmediyse eski uyarı çıkar. Seçenekler yalnız eksiksiz KEP bilgisi kayıtlı kullanıcılardır (`getAccountUsers`). `kep-ayarlari-kaydet` `kep_varsayilan_hesap` alanını doğrular ve kaydeder. `KepService::getClient`, giden-evrak.php ve kep-send-modal.php fallback ile çağırır.
+
+## 2026-10-28 — Mobil SPA KM Onayları tarih filtresi
+- `mobile-spa/public/api/km-onaylari.php` `list` aksiyonu `date_from`/`date_to` (Y-m-d, `akb.tarih`) parametrelerini parametrik bağlamayla destekler; "Bildirim Yapmayanlar" sekmesinde uygulanmaz. `KmOnaylariView.vue` varsayılan olarak Bugün gelir; Bugün / Son 7 Gün / Son 1 Ay / Tümü hapları ve özel tarih aralığı vardır. Özet sayaç, "Tümü" dışında filtrelenmiş toplamı gösterir; sekme rozet sayıları genel kalır. Bekleyen kartlarındaki AI butonu analiz sırasında dönen ikon ve "Analiz…" yazısı gösterir.
+
+## 2026-10-28 — Evrak belge doğrulama sayfası
+- Belge alt bilgisindeki kod/PIN artık `evrak_dogrulama` tablosunda kalıcı (`EvrakDogrulamaModel::ensureForEvrak`): yeni kodlar `random_bytes` ile, 6 haneli PIN; PIN `pin_hash` (bcrypt) + `pin_sifreli` (Security::encrypt, PDF yeniden çizilirken aynı PIN basılsın diye). Eski deterministik kodlar (sha256 formülü, 5 haneli PIN) aynen kayda alındı; basılı eski PDF'ler doğrulanır.
+- Alt bilgi: `https://{APP_BASE}/belge-dogrula?kod=EVR-...` + QR (`Helper::generateQrCode`). PIN linke/QR'a konmaz.
+- Herkese açık `belge-dogrula.php` (oturum/yetki yok, bilinçli): kod+PIN → özet, imzalayanlar, SHA-256, imzalı PDF indirme (`?indir=1`, oturumda 10 dk geçerli doğrulama + SHA-256 kontrolü). IP başına 15 dk'da 10 başarısız denemede 429 (`evrak_dogrulama_deneme`). `approveWithPades` imzalı PDF hash'ini `evrak_dogrulama.pades_pdf_sha256` alanına yazar.
+- `.htaccess`: `uploads/evrak-pades/` doğrudan erişime kapatıldı.
+- Bekleyen: sql/2026_10_28_evrak_belge_dogrulama.sql canlıda çalıştırılmalı; sonra eski imzalı evraklar için tek seferlik kayıt doldurma (yerelde yapıldı, betik silindi) gerekir.

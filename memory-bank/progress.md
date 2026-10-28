@@ -1,5 +1,14 @@
 # Progress
 
+## 2026-10-28 — Puantaj Özel Gün Otomasyonu (HTÇ / RTÇ / Arife FM)
+- [x] `resmi_tatiller` firma/tür/yarım gün alanları, 2026–2027 tatil takvimi, `personel_fazla_mesaileri.kaynak/otomatik_kural`, `resmi_tatil_tanimlari` yetkisi (SQL, tekrar çalıştırılabilir).
+- [x] HTÇ'de göreve başlama kaydı şartı; iş departmanında görev + eşik, diğerlerinde yalnız görev kaydı.
+- [x] Resmi tatilde otomatik RTÇ (Pazar'a denk gelirse HTÇ yerine), arifede 13:00 sonrası +4 saat FM.
+- [x] 23:00 / 08:00 cron'u, dry-run, firma bazlı sistem logu.
+- [x] Resmi Tatil Tanımları sayfası, puantaj başlık işaretleri, Pazar modalında Görev sütunu, ayarlar.
+- [x] Pest: 13 test geçti; transaction içinde gerçek yazma ve ikinci çalıştırmada değişmeme doğrulandı; sayfa/modal Chrome ile kontrol edildi.
+- [ ] Sunucuda SQL'in çalıştırılması ve crontab satırlarının eklenmesi.
+
 ## 2026-10-25 — Mobil SPA Ana Sayfa Kartları Sürükle-Bırak (Drag & Drop) Düzeltmesi
 - [x] Tutamaç Dokunmatik & Pointer Desteği: 7 ana sayfa kartının tutamaçlarına (`.card-inner-handle`) `@pointerdown.stop` ve `@touchstart.stop` eklenerek `startHandleDrag()` fonksiyonu ile mobil dokunmatik ekranlar için sürükle-bırak desteği sağlandı.
 - [x] Akıllı Hedef Belirleme & Auto-scroll: Kartların dikey sınır koordinatları (`findCardUnderPoint`) anlık hesaplanarak parmak altındaki kart ve konum (`top`/`bottom`) tespit edildi; ekran kenarlarında otomatik sayfa kaydırma eklendi.
@@ -2004,3 +2013,5 @@
 - [x] 2026-10-28 Sevk edilmemiş UETS evrakı hatırlatması: `EvrakSevkModel::remindUnforwarded()` cron/uets_sync.php sonunda çalışır (min 2 saat yaşlı, cevapsız, aktarım başlangıcından sonra; kullanıcı başına 6 saatte bir bildirim + push); sunucuda cron ile test bekliyor
 - [x] 2026-10-28 Giden evrak onay tarihçesi: onaya sunma, imza, tamamlanma, imzacı iadesi ve geri alma `evrak_tarihce` tablosuna yazılır (`EvrakTakipModel::recordApprovalHistory`); listede giden evrak İşlemler menüsünde "Onay Tarihçesi" modalı (`evrak-onay-tarihcesi` aksiyonu); `sql/2026_10_28_evrak_onay_tarihcesi.sql` (policy) ve `sql/2026_10_28_uets_evrak_sevk_tarihce.sql` (tablo) çalıştırılmalı; tarayıcıda test bekliyor
 - [x] 2026-10-28 KEP gönderimi: kullanıcının kendi KEP kimliği yoksa firma varsayılan hesabıyla gönderim (model fallback parametresi).
+- [x] 2026-10-28 Mobil SPA KM Onayları: tarih filtresi (Bugün varsayılan, 7 gün, 1 ay, Tümü, özel aralık) ve AI butonu analiz göstergesi; build alındı, cihazda test bekliyor
+- [x] 2026-10-28 Evrak belge doğrulama: kalıcı kod/PIN tablosu, alt bilgide link + QR, herkese açık `belge-dogrula` sayfası (özet + imzalı PDF indirme, rate limit); yerelde curl ile doğrulama/yanlış PIN/429/oturumsuz indirme testleri geçti, canlıda SQL + eski kayıt doldurma bekliyor.

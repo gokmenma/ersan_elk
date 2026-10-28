@@ -74,11 +74,23 @@ switch ($action) {
             if (!isset($settingsToUpdate['okuma_htc_otomatik_aktif'])) {
                 $settingsToUpdate['okuma_htc_otomatik_aktif'] = '0';
             }
+            foreach (['puantaj_ozel_gun_otomatik_aktif', 'htc_gorev_kaydi_zorunlu'] as $toggleKey) {
+                if (!isset($settingsToUpdate[$toggleKey])) {
+                    $settingsToUpdate[$toggleKey] = '0';
+                }
+            }
         }
         foreach (['kacak_htc_minimum_is', 'sokme_takma_htc_minimum_is', 'muhurleme_htc_minimum_is'] as $minimumKey) {
             if (isset($settingsToUpdate[$minimumKey])) {
                 $settingsToUpdate[$minimumKey] = (string) max(1, (int) $settingsToUpdate[$minimumKey]);
             }
+        }
+        if (isset($settingsToUpdate['ozel_gun_sayili_departmanlar'])) {
+            $departmanAnahtarlari = array_filter(array_map(
+                fn($k) => mb_substr(trim(strip_tags((string) $k)), 0, 40),
+                explode(',', (string) $settingsToUpdate['ozel_gun_sayili_departmanlar'])
+            ), fn($k) => $k !== '');
+            $settingsToUpdate['ozel_gun_sayili_departmanlar'] = implode(',', array_slice($departmanAnahtarlari, 0, 20));
         }
         if (array_key_exists('puantaj_mutabakat_eposta', $settingsToUpdate) && !isset($settingsToUpdate['puantaj_mutabakat_aktif'])) {
             $settingsToUpdate['puantaj_mutabakat_aktif'] = '0';

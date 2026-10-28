@@ -41,6 +41,7 @@ const router = useRouter()
 // UI Durumları
 const loading = ref(false)
 const actionLoading = ref(false)
+const aiLoadingIds = ref(new Set())
 const errorMessage = ref('')
 const toastMessage = ref('')
 let toastTimer = null
@@ -59,6 +60,72 @@ const canEdit = ref(false)
 const searchInput = ref('')
 let searchDebounceTimer = null
 const currentTurFilter = ref('') // '' | 'sabah' | 'aksam'
+
+const datePresets = [
+  { key: 'today', label: 'Bugün' },
+  { key: '7d', label: 'Son 7 Gün' },
+  { key: '30d', label: 'Son 1 Ay' },
+  { key: 'all', label: 'Tümü' },
+]
+const datePreset = ref('today') // 'today' | '7d' | '30d' | 'all' | 'custom'
+const customDateFrom = ref('')
+const customDateTo = ref('')
+
+function toIsoDate(d) {
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${m}-${day}`
+}
+
+function resolveDateRange() {
+  const today = new Date()
+  switch (datePreset.value) {
+    case 'today':
+      return { date_from: toIsoDate(today), date_to: toIsoDate(today) }
+    case '7d': {
+      const from = new Date(today)
+      from.setDate(from.getDate() - 6)
+      return { date_from: toIsoDate(from), date_to: toIsoDate(today) }
+    }
+    case '30d': {
+      const from = new Date(today)
+      from.setDate(from.getDate() - 29)
+      return { date_from: toIsoDate(from), date_to: toIsoDate(today) }
+    }
+    case 'custom':
+      return {
+        ...(customDateFrom.value ? { date_from: customDateFrom.value } : {}),
+        ...(customDateTo.value ? { date_to: customDateTo.value } : {}),
+      }
+    default:
+      return {}
+  }
+}
+
+function setDatePreset(key) {
+  datePreset.value = key
+  if (key !== 'custom') {
+    customDateFrom.value = ''
+    customDateTo.value = ''
+  }
+  pagination.value.page = 1
+  loadReports(1)
+}
+
+function handleCustomDateChange() {
+  if (!customDateFrom.value && !customDateTo.value) {
+    setDatePreset('today')
+    return
+  }
+  if (customDateFrom.value && customDateTo.value && customDateFrom.value > customDateTo.value) {
+    const tmp = customDateFrom.value
+    customDateFrom.value = customDateTo.value
+    customDateTo.value = tmp
+  }
+  datePreset.value = 'custom'
+  pagination.value.page = 1
+  loadReports(1)
+}
 
 // Çoklu Seçim Modu
 const selectionMode = ref(false)
@@ -215,6 +282,9 @@ const activeTabTitle = computed(() => {
 })
 
 const currentTabCount = computed(() => {
+  if (kmState.activeTab !== 'unreported' && datePreset.value !== 'all') {
+    return pagination.value.total || 0
+  }
   switch (kmState.activeTab) {
     case 'pending': return kmState.counts.pending || 0
     case 'unreported': return kmState.counts.unreported || 0
@@ -270,6 +340,7 @@ async function loadReports(page = 1) {
       perPage: pagination.value.perPage,
       search: searchInput.value.trim(),
       tur: currentTurFilter.value,
+      ...(kmState.activeTab === 'unreported' ? {} : resolveDateRange()),
     })
 
     if (res.success) {
@@ -501,6 +572,7 @@ async function handleAiCheck(targetIds = null) {
   }
 
   actionLoading.value = true
+  aiLoadingIds.value = new Set(ids)
   try {
     const res = await kmApi.aiCheck(ids, auth.state.csrfToken || auth.state.csrf_token)
     aiResultData.value = res.data || null
@@ -512,6 +584,7 @@ async function handleAiCheck(targetIds = null) {
   } catch (err) {
     alert(err.message || 'Yapay zekâ kontrolü sırasında hata oluştu.')
   } finally {
+    aiLoadingIds.value = new Set()
     actionLoading.value = false
   }
 }
@@ -742,6 +815,27 @@ onBeforeUnmount(() => {
 
     <!-- 3. ARAMA VE FİLTRELEME BARI -->
     <div class="km-filter-bar">
+      <div v-if="kmState.activeTab !== 'unreported'" class="km-date-filter">
+        <div class="km-date-chips" role="group" aria-label="Tarih filtresi">
+          <button
+            v-for="p in datePresets"
+            :key="p.key"
+            type="button"
+            class="clay-filter-pill"
+            :class="{ 'is-active': datePreset === p.key }"
+            @click="setDatePreset(p.key)"
+          >
+            {{ p.label }}
+          </button>
+        </div>
+        <div class="km-date-range" :class="{ 'is-active': datePreset === 'custom' }">
+          <Calendar :size="15" />
+          <input v-model="customDateFrom" type="date" aria-label="Başlangıç tarihi" @change="handleCustomDateChange" />
+          <span>–</span>
+          <input v-model="customDateTo" type="date" aria-label="Bitiş tarihi" @change="handleCustomDateChange" />
+        </div>
+      </div>
+
       <div class="clay-search-box">
         <Search :size="18" class="clay-search-icon" />
         <input
@@ -1070,8 +1164,9 @@ onBeforeUnmount(() => {
                   title="Yapay zeka ile doğrula"
                   @click.stop="handleAiCheck([r.id])"
                 >
-                  <Sparkles :size="13" />
-                  <span>AI</span>
+                  <RefreshCw v-if="aiLoadingIds.has(r.id)" :size="13" class="spin-anim" />
+                  <Sparkles v-else :size="13" />
+                  <span>{{ aiLoadingIds.has(r.id) ? 'Analiz…' : 'AI' }}</span>
                 </button>
               </div>
             </template>
@@ -1430,7 +1525,7 @@ onBeforeUnmount(() => {
                 >
                   <div class="result-head">
                     <span class="result-status-badge">
-                      {{ item.durum === 'onaylandi' ? 'ONAYLANDI' : 'MANUEL' }}
+                      {{ item.durum === 'onaylandi' ? 'ONAYLANDI' : item.durum === 'hata' ? 'HATA' : item.durum === 'atlandi' ? 'ATLANDI' : 'MANUEL' }}
                     </span>
                     <strong v-if="item.plaka">{{ item.plaka }}</strong>
                     <span v-if="item.okunan_km" class="odometer-reading">
@@ -1711,6 +1806,55 @@ onBeforeUnmount(() => {
 /* ======================================================== */
 /* 3. ARAMA VE FİLTRELEME BARI */
 /* ======================================================== */
+.km-date-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.km-date-chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.km-date-chips .clay-filter-pill {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 0 14px;
+  white-space: nowrap;
+}
+
+.km-date-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  color: #64748b;
+}
+
+.km-date-range.is-active {
+  border-color: #3b82f6;
+  color: #1d4ed8;
+}
+
+.km-date-range input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  outline: none;
+}
+
 .km-filter-bar {
   display: flex;
   flex-direction: column;

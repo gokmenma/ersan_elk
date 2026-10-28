@@ -19,6 +19,9 @@ $okuma_htc_minimum_okuma = max(1, (int) ($allSettings['okuma_htc_minimum_okuma']
 $kacak_htc_minimum_is = max(1, (int) ($allSettings['kacak_htc_minimum_is'] ?? 2));
 $sokme_takma_htc_minimum_is = max(1, (int) ($allSettings['sokme_takma_htc_minimum_is'] ?? 10));
 $muhurleme_htc_minimum_is = max(1, (int) ($allSettings['muhurleme_htc_minimum_is'] ?? 10));
+$puantaj_ozel_gun_otomatik_aktif = ($allSettings['puantaj_ozel_gun_otomatik_aktif'] ?? '1') === '1';
+$htc_gorev_kaydi_zorunlu = ($allSettings['htc_gorev_kaydi_zorunlu'] ?? '1') === '1';
+$ozel_gun_sayili_departmanlar = (string) ($allSettings['ozel_gun_sayili_departmanlar'] ?? \App\Service\OkumaHtcAutomationService::DEFAULT_COUNTED_DEPARTMENTS);
 $puantaj_mutabakat_aktif = ($allSettings['puantaj_mutabakat_aktif'] ?? '1') === '1';
 $puantaj_mutabakat_eposta = $allSettings['puantaj_mutabakat_eposta'] ?? '';
 
@@ -209,6 +212,32 @@ for ($saat = 0; $saat < 24; $saat++) {
                         "form-control"
                     ); ?>
                     <div class="form-text">Varsayılan alt limit 10 okumadır; en az 1 olabilir.</div>
+                </div>
+            </div>
+            <div class="row align-items-center">
+                <div class="col-md-6 mb-3">
+                    <div class="form-check form-switch form-switch-lg">
+                        <input class="form-check-input" type="checkbox" id="puantaj_ozel_gun_otomatik_aktif"
+                            name="puantaj_ozel_gun_otomatik_aktif" value="1" <?php echo $puantaj_ozel_gun_otomatik_aktif ? 'checked' : ''; ?>>
+                        <label class="form-check-label" for="puantaj_ozel_gun_otomatik_aktif">
+                            Resmi Tatil RTÇ ve Arife Fazla Mesaisi Otomasyonu
+                        </label>
+                    </div>
+                    <div class="form-text">23:00 ve 08:00 cron'u resmi tatilde RTÇ, arifede 13:00 sonrası çalışana fazla mesai yazar.</div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="form-check form-switch form-switch-lg">
+                        <input class="form-check-input" type="checkbox" id="htc_gorev_kaydi_zorunlu"
+                            name="htc_gorev_kaydi_zorunlu" value="1" <?php echo $htc_gorev_kaydi_zorunlu ? 'checked' : ''; ?>>
+                        <label class="form-check-label" for="htc_gorev_kaydi_zorunlu">
+                            HTÇ / RTÇ İçin Göreve Başlama Kaydı Zorunlu
+                        </label>
+                    </div>
+                    <div class="form-text">Açıkken iş sayılan departmanlarda görev kaydı ve iş eşiği, diğer departmanlarda yalnız görev kaydı aranır.</div>
+                </div>
+                <div class="col-12 mb-3">
+                    <?php echo Form::FormFloatInput("text", "ozel_gun_sayili_departmanlar", $ozel_gun_sayili_departmanlar, "okuma,kaçak,sökme,mühür", "İş Sayısı Aranan Departmanlar (virgülle anahtar kelime)", "briefcase", "form-control"); ?>
+                    <div class="form-text">Departman adında bu kelimelerden biri geçen personel için iş sayısı eşiği de aranır.</div>
                 </div>
             </div>
         </div>
