@@ -33,7 +33,7 @@ if ($encryptedId !== '') {
 }
 
 $kepSettingsModel = new \App\Model\KepSettingsModel();
-$kepSettings = $kepSettingsModel->getSettings($firmaId);
+$kepSettings = $kepSettingsModel->getSettings($firmaId, null, true);
 $kepMesajModel = new \App\Model\KepMesajModel();
 $kepMesaj = $record ? $kepMesajModel->getByEvrakId($firmaId, (int) $record->id) : null;
 $kepDelilModel = new \App\Model\KepDelilModel();

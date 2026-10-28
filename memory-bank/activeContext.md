@@ -3337,3 +3337,6 @@
 
 ## 2026-10-28 — Evrak onay tarihçesi
 - Giden evrakta onay süreci olayları mevcut `evrak_tarihce` tablosunu kullanır (islem: onay_sunuldu, onay_imzalandi, onay_tamamlandi, onay_iade, onay_geri_alindi). Eski kayıtlar için geriye dönük tarihçe yoktur.
+
+## 2026-10-28 — KEP gönderiminde firma varsayılan hesabına düşme
+- `KepSettingsModel::getSettings($firmId, $userId, $fallback)`: kullanıcının kendi PTT KEP kimliği yoksa ayarlardaki seçili varsayılan hesaba (settings anahtarı `kep_varsayilan_hesap_kullanici`, UETS/KEP Ayarları modalında `ptt_varsayilan_hesap` select2) düşer; otomatik seçim yok, seçilmediyse eski uyarı çıkar. Seçenekler yalnız eksiksiz KEP bilgisi kayıtlı kullanıcılardır (`getAccountUsers`). `kep-ayarlari-kaydet` `kep_varsayilan_hesap` alanını doğrular ve kaydeder. `KepService::getClient`, giden-evrak.php ve kep-send-modal.php fallback ile çağırır.

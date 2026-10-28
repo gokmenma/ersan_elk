@@ -10,6 +10,7 @@ class KepSettingsModel extends Model
 {
     protected $table = 'kep_ayarlar';
     private const USER_TABLE = 'kep_kullanici_hesaplari';
+    private const DEFAULT_ACCOUNT_KEY = 'kep_varsayilan_hesap_kullanici';
 
     public function __construct()
     {
@@ -19,7 +20,7 @@ class KepSettingsModel extends Model
     /**
      * Firma KEP ayarlarını getirir (şifreli alanları deşifre eder)
      */
-    public function getSettings(int $firmId, ?int $userId = null): ?array
+    public function getSettings(int $firmId, ?int $userId = null, bool $fallback = false): ?array
     {
         try {
             $userId = $this->resolveUserId($userId);
@@ -41,11 +42,16 @@ class KepSettingsModel extends Model
             $stmt->execute(['firm_id' => $firmId, 'user_id' => $userId]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
+            if ($row && $fallback && empty($row['kullanici_hesap_id'])) {
+                $row = $this->applyFallbackCredentials($row);
+            }
+
             if ($row) {
                 $row['yetkili_tcno_decrypted'] = !empty($row['kullanici_yetkili_tcno']) ? Security::decrypt($row['kullanici_yetkili_tcno']) : '';
                 $row['parola_decrypted'] = !empty($row['kullanici_parola']) ? Security::decrypt($row['kullanici_parola']) : '';
                 $row['sifre_decrypted'] = !empty($row['kullanici_sifre']) ? Security::decrypt($row['kullanici_sifre']) : '';
                 $row['has_user_credentials'] = !empty($row['kullanici_hesap_id']);
+                $row['credentials_fallback'] = !empty($row['credentials_fallback']);
                 return $row;
             }
 
@@ -130,6 +136,58 @@ class KepSettingsModel extends Model
     private function resolveUserId(?int $userId): int
     {
         return $userId ?? (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
+    }
+
+    private function applyFallbackCredentials(array $row): array
+    {
+        $defaultUserId = $this->getDefaultAccountUserId((int) $row['firm_id']);
+        if ($defaultUserId <= 0) {
+            return $row;
+        }
+        $stmt = $this->db->prepare("SELECT id, yetkili_tcno, parola, sifre FROM " . self::USER_TABLE . "
+            WHERE kep_ayar_id = :kep_ayar_id AND user_id = :user_id AND is_active = 1 AND deleted_at IS NULL
+                AND yetkili_tcno <> '' AND parola <> '' AND sifre <> ''
+            LIMIT 1");
+        $stmt->execute(['kep_ayar_id' => (int) $row['id'], 'user_id' => $defaultUserId]);
+        $account = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$account) {
+            return $row;
+        }
+        $row['kullanici_hesap_id'] = $account['id'];
+        $row['kullanici_yetkili_tcno'] = $account['yetkili_tcno'];
+        $row['kullanici_parola'] = $account['parola'];
+        $row['kullanici_sifre'] = $account['sifre'];
+        $row['credentials_fallback'] = true;
+        return $row;
+    }
+
+    public function getDefaultAccountUserId(int $firmId): int
+    {
+        return (int) ((new SettingsModel())->getSettings(self::DEFAULT_ACCOUNT_KEY, $firmId) ?? 0);
+    }
+
+    public function getAccountUsers(int $firmId): array
+    {
+        $stmt = $this->db->prepare("SELECT u.id, u.adi_soyadi
+            FROM " . self::USER_TABLE . " kh
+            INNER JOIN {$this->table} ka ON ka.id = kh.kep_ayar_id AND ka.is_active = 1
+            INNER JOIN users u ON u.id = kh.user_id AND u.silinme_tarihi IS NULL AND u.durum = 'Aktif'
+            WHERE ka.firm_id = :firm_id AND kh.is_active = 1 AND kh.deleted_at IS NULL
+                AND kh.yetkili_tcno <> '' AND kh.parola <> '' AND kh.sifre <> ''
+            ORDER BY u.adi_soyadi ASC");
+        $stmt->execute(['firm_id' => $firmId]);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    public function saveDefaultAccountUserId(int $firmId, int $userId): bool
+    {
+        if ($userId > 0) {
+            $valid = array_map(static fn($u): int => (int) $u->id, $this->getAccountUsers($firmId));
+            if (!in_array($userId, $valid, true)) {
+                return false;
+            }
+        }
+        return (new SettingsModel())->upsertMultipleSettings([self::DEFAULT_ACCOUNT_KEY => $userId > 0 ? (string) $userId : ''], $firmId, null);
     }
 
     private function getUserCredentialRow(int $settingsId, int $userId): ?array

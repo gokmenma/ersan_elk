@@ -1374,6 +1374,7 @@ $(document).ready(function () {
       sifre: $("#ptt_sifre").val() || "",
       wsdl_url: $("#ptt_wsdl_url").val() || "",
       ortam: $("#ptt_ortam").val() || "prod",
+      kep_varsayilan_hesap: $("#ptt_varsayilan_hesap").length ? $("#ptt_varsayilan_hesap").val() || "" : undefined,
       gelen_otomatik_aktar: $("#ptt_gelen_otomatik_aktar").is(":checked") ? 1 : 0,
       gelen_okundu_otomatik: $("#ptt_gelen_okundu_otomatik").is(":checked") ? 1 : 0,
     };
@@ -1395,6 +1396,7 @@ $(document).ready(function () {
       $("#ptt_yetkili_tcno, #ptt_parola, #ptt_sifre").val("");
       $("#ptt_wsdl_url").val(d.wsdl_url || "https://eyazisma.hs01.kep.tr/KepEYazismaV1.1/KepEYazismaCOREWSDL.php?wsdl");
       $("#ptt_ortam").val(d.ortam || "prod").trigger("change");
+      $("#ptt_varsayilan_hesap").val(d.varsayilan_hesap || "").trigger("change");
       $("#ptt_gelen_otomatik_aktar").prop("checked", Boolean(d.gelen_otomatik_aktar));
       $("#ptt_gelen_okundu_otomatik").prop("checked", Boolean(d.gelen_okundu_otomatik));
       pttKepGelenHesapBana = 0;
@@ -1451,6 +1453,7 @@ $(document).ready(function () {
     }
     if ($("#ptt_ortam").length && !$("#ptt_ortam").hasClass("select2-hidden-accessible")) {
       $("#ptt_ortam").select2({ dropdownParent: $("#modalUetsAyarlar"), width: "100%", minimumResultsForSearch: -1 });
+      $("#ptt_varsayilan_hesap").select2({ dropdownParent: $("#modalUetsAyarlar"), width: "100%" });
     }
   });
 

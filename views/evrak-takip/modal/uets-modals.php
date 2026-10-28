@@ -1,6 +1,12 @@
 <?php
 use App\Helper\Form;
 $canManagePttKep = !empty($canSendKep);
+$pttKepHesapSecenekler = ['' => 'Seçilmedi'];
+if ($canManagePttKep) {
+    foreach ((new \App\Model\KepSettingsModel())->getAccountUsers((int) ($_SESSION['firma_id'] ?? 0)) as $hesapKullanici) {
+        $pttKepHesapSecenekler[\App\Helper\Security::encrypt((int) $hesapKullanici->id)] = (string) $hesapKullanici->adi_soyadi;
+    }
+}
 ?>
 <style>
 #modalUetsAyarlar .password-field-wrapper {
@@ -191,6 +197,10 @@ $canManagePttKep = !empty($canSendKep);
                             </div>
                             <div class="col-md-4">
                                 <?php echo Form::FormSelect2(name: 'ptt_ortam', options: ['prod' => 'Canlı Ortam', 'test' => 'Test Ortamı'], selectedValue: 'prod', label: 'Servis Ortamı', icon: 'bx bx-globe', valueField: 'key', textField: '', class: 'form-select select2', required: true, style: 'width:100%', attributes: '', id: 'ptt_ortam'); ?>
+                            </div>
+                            <div class="col-12">
+                                <?php echo Form::FormSelect2(name: 'ptt_varsayilan_hesap', options: $pttKepHesapSecenekler, selectedValue: '', label: 'Varsayılan KEP gönderim hesabı', icon: 'bx bx-user', valueField: 'key', textField: '', class: 'form-select select2', required: false, style: 'width:100%', attributes: '', id: 'ptt_varsayilan_hesap'); ?>
+                                <small class="text-muted font-size-11 mt-1 d-block">Kendi KEP bilgisi tanımlı olmayan kullanıcıların KEP evrakları bu kullanıcının PTT KEP hesabıyla gönderilir. Listede yalnız KEP bilgileri eksiksiz kayıtlı kullanıcılar görünür.</small>
                             </div>
                             <div class="col-12">
                                 <div class="border rounded-3 p-3">

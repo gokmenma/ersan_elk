@@ -40,7 +40,7 @@ class KepService
      */
     public function getClient(int $firmId, ?array $overrideSettings = null, ?int $userId = null): KepClientService
     {
-        $settings = $overrideSettings ?: $this->settingsModel->getSettings($firmId, $userId);
+        $settings = $overrideSettings ?: $this->settingsModel->getSettings($firmId, $userId, true);
         if (!$settings || empty($settings['kep_adresi'])) {
             throw new Exception('Firma için PTT KEP ayarları yapılandırılmamış.');
         }

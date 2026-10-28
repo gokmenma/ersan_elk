@@ -1852,6 +1852,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         'yetkili_tcno' => $maskedTc,
                         'has_secrets' => $hasSecrets,
                         'credentials_owner' => 'current_user',
+                        'varsayilan_hesap' => ($dv = $kepSettingsModel->getDefaultAccountUserId($firmaId)) > 0 ? Security::encrypt($dv) : '',
                         'wsdl_url' => $kepSettings['wsdl_url'] ?? KepClientService::DEFAULT_WSDL,
                         'ortam' => $kepSettings['ortam'] ?? 'prod',
                         'gelen_otomatik_aktar' => $gelenOtomasyon['otomatik_aktar'],
@@ -1908,6 +1909,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $gelenOkundu = filter_var($_POST['gelen_okundu_otomatik'] ?? false, FILTER_VALIDATE_BOOLEAN);
                 $gelenHesapBana = filter_var($_POST['gelen_hesap_bana'] ?? false, FILTER_VALIDATE_BOOLEAN);
                 $kepSettingsModel->saveGelenOtomasyon($firmaId, $gelenAktar, $gelenOkundu, $currentUserId, $gelenHesapBana);
+
+                if (isset($_POST['kep_varsayilan_hesap'])) {
+                    $varsayilanId = (int) Security::decrypt((string) $_POST['kep_varsayilan_hesap']);
+                    if (!$kepSettingsModel->saveDefaultAccountUserId($firmaId, $varsayilanId)) {
+                        throw new Exception('Seçilen varsayılan KEP hesabı geçersiz.');
+                    }
+                }
 
                 echo json_encode(['status' => 'success', 'message' => 'KEP entegrasyon ayarları başarıyla kaydedildi.']);
                 break;

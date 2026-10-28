@@ -1,4 +1,4 @@
-<?php $kepSettings = (new \App\Model\KepSettingsModel())->getSettings((int) ($_SESSION['firma_id'] ?? 0)); ?>
+<?php $kepSettings = (new \App\Model\KepSettingsModel())->getSettings((int) ($_SESSION['firma_id'] ?? 0), null, true); ?>
 <style>
 #modalKepGonderisi .modal-dialog{height:calc(100vh - 1rem);max-height:calc(100vh - 1rem);margin:.5rem auto}
 #modalKepGonderisi .modal-content{height:100%;max-height:100%;overflow:hidden;border:1px solid rgba(148,163,184,.22);border-radius:22px;background:#f7f9fc}

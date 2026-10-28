@@ -1601,7 +1601,7 @@ $(document).ready(function () {
     const evrakIdEnc = $('input[name="id"]').val() || "";
 
     if (!window.gidenKepSettings || !window.gidenKepSettings.has_settings) {
-      Swal.fire("KEP Kullanıcı Bilgileri Eksik", "KEP gönderimi için Evrak Takip → İşlemler → UETS / KEP Ayarları bölümünden kendi TCKN, parola ve web servis şifrenizi kaydediniz.", "warning");
+      Swal.fire("KEP Kullanıcı Bilgileri Eksik", "KEP gönderimi için Evrak Takip → İşlemler → UETS / KEP Ayarları bölümünden kendi TCKN, parola ve web servis şifrenizi kaydediniz veya varsayılan KEP gönderim hesabı seçiniz.", "warning");
       return;
     }
 
