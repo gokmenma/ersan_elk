@@ -2029,3 +2029,10 @@
 ## 2026-10-29 — Mobil SPA ana sayfa izinli personel bottom sheet
 - Personel Durumu kartında İzinli kutusu artık bottom sheet açar (ad, departman, izin tipi, başlangıç–bitiş).
 - MobileDashboardModel::onLeaveList() (departman kısıtı ve personel yetkisi dashboard.php ile aynı), HomeView.vue sheet, design-system.css .leave-sheet-*.
+
+## 2026-10-29 — Mobil SPA bordro: maaş hesaplama preloader ve seçmeli hesaplama
+- PayrollView.vue: "Maaşları Hesapla" artık tam ekran preloader (spinner, kayan ilerleme çubuğu, adım listesi) gösterir; işlem bitene kadar tekrar tetiklenemez.
+- Hesaplama kapsamı: Tümü (üst bar), Personel Seç modu ile çoklu seçim ("Seçilenleri Hesapla" dock'u, Görünenleri Seç) ve kart üzerindeki tek personel hesapla butonu. Sunucu (mobile-spa/public/api/bordro.php maas-hesapla) zaten personel_tokens destekliyordu; backend değişmedi.
+
+## 2026-10-29 — Mobil SPA bordro: kart tıklama, İşlemler menüsü, puantaj sheet
+- PayrollView.vue, services/bordro.js, public/api/bordro.php güncellendi (kart→detay, Hesapla/İşlemler, puantaj bottom sheet, permissions haritası).

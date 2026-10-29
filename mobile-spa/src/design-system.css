@@ -300,6 +300,19 @@
   transition: transform 0.15s ease, background 0.15s ease;
 }
 
+.clay-circle-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+  box-shadow: none;
+  pointer-events: none;
+}
+
+.clay-circle-btn--active {
+  background: #2563eb;
+  color: #ffffff;
+}
+
 .clay-circle-btn:active {
   transform: scale(0.95);
 }

@@ -13,6 +13,7 @@ import {
   Calculator,
   Check,
   CheckCircle2,
+  CheckSquare,
   ChevronDown,
   ChevronRight,
   CircleDollarSign,
@@ -22,6 +23,7 @@ import {
   FileText,
   Info,
   Landmark,
+  Trash2,
   Lock,
   LockOpen,
   MinusCircle,
@@ -33,6 +35,7 @@ import {
   Scale,
   Search,
   SlidersHorizontal,
+  Square,
   TrendingDown,
   TrendingUp,
   User,
@@ -110,6 +113,10 @@ const adjustmentForm = ref({
 })
 
 const isMoreActionsOpen = ref(false)
+const permissions = ref({ puantaj: false, calculate: false, distribute: false, add_income: false, add_deduction: false, remove: false })
+
+const personActionTarget = ref(null)
+const puantajSheet = ref({ open: false, loading: false, error: '', data: null, person: null })
 
 // Özel SPA Onay Modalı
 const confirmModal = ref({
@@ -201,6 +208,7 @@ async function loadBordro(donemToken = null, showLoader = true) {
       hesaplanmayan: 0,
     }
     items.value = res.items || []
+    permissions.value = { ...permissions.value, ...(res.permissions || {}) }
   } catch (err) {
     error.value = err.message || 'Bordro verileri yüklenirken bir hata oluştu.'
     showToast(error.value, 'error')
@@ -221,6 +229,7 @@ function selectPeriodFromSheet(newDonemId) {
   isPeriodSheetOpen.value = false
   if (selectedDonemId.value !== newDonemId) {
     selectedDonemId.value = newDonemId
+    selectedTokens.value = []
     loadBordro(newDonemId)
   }
 }
@@ -228,6 +237,7 @@ function selectPeriodFromSheet(newDonemId) {
 function handlePeriodChange(event) {
   const newDonemId = event.target.value
   selectedDonemId.value = newDonemId
+  selectedTokens.value = []
   loadBordro(newDonemId)
 }
 
@@ -252,7 +262,86 @@ async function handleConfirmSubmit() {
   }
 }
 
-// Maaşları Hesapla
+// Seçim Modu
+const selectionMode = ref(false)
+const selectedTokens = ref([])
+
+const selectedCount = computed(() => selectedTokens.value.length)
+const allVisibleSelected = computed(
+  () => filteredItems.value.length > 0 && filteredItems.value.every((p) => selectedTokens.value.includes(p.token)),
+)
+
+function toggleSelectionMode() {
+  selectionMode.value = !selectionMode.value
+  selectedTokens.value = []
+}
+
+watch(isClosed, (closed) => {
+  if (closed) {
+    selectionMode.value = false
+    selectedTokens.value = []
+  }
+})
+
+function isSelected(token) {
+  return selectedTokens.value.includes(token)
+}
+
+function togglePersonSelection(token) {
+  selectedTokens.value = isSelected(token)
+    ? selectedTokens.value.filter((t) => t !== token)
+    : [...selectedTokens.value, token]
+}
+
+function toggleSelectAllVisible() {
+  const visible = filteredItems.value.map((p) => p.token)
+  if (allVisibleSelected.value) {
+    selectedTokens.value = selectedTokens.value.filter((t) => !visible.includes(t))
+  } else {
+    selectedTokens.value = [...new Set([...selectedTokens.value, ...visible])]
+  }
+}
+
+// Maaş Hesaplama Preloader Durumu
+const calcOverlay = ref({ open: false, total: 0, label: '', step: 0 })
+const calcSteps = [
+  'Personel kayıtları hazırlanıyor',
+  'Puantaj ve izinler okunuyor',
+  'Hakediş ve kesintiler hesaplanıyor',
+  'Ödeme dağılımı oluşturuluyor',
+]
+let calcStepTimer = null
+
+function startCalcOverlay(total, label) {
+  calcOverlay.value = { open: true, total, label, step: 0 }
+  calcStepTimer = setInterval(() => {
+    if (calcOverlay.value.step < calcSteps.length - 1) calcOverlay.value.step += 1
+  }, 1800)
+}
+
+function stopCalcOverlay() {
+  if (calcStepTimer) clearInterval(calcStepTimer)
+  calcStepTimer = null
+  calcOverlay.value.open = false
+}
+
+async function runCalculation(tokens, label) {
+  if (!tokens.length || calcOverlay.value.open) return
+  startCalcOverlay(tokens.length, label)
+  try {
+    const res = await bordroApi.calculate(selectedDonemId.value, tokens, auth.state.csrfToken)
+    await loadBordro(selectedDonemId.value, false)
+    showToast(res.message || 'Maaş hesaplaması başarıyla tamamlandı.')
+    selectionMode.value = false
+    selectedTokens.value = []
+  } catch (err) {
+    showToast(err.message || 'Maaş hesaplama hatası oluştu.', 'error')
+  } finally {
+    stopCalcOverlay()
+  }
+}
+
+// Maaşları Hesapla (Tümü)
 function handleCalculatePayroll() {
   if (isClosed.value) {
     showToast('Kapalı dönemde maaş hesaplaması yapılamaz.', 'error')
@@ -264,18 +353,183 @@ function handleCalculatePayroll() {
     message: `${selectedDonem.value?.name || 'Seçili'} dönemindeki tüm personellerin maaş ve hakediş hesaplamaları güncellenecektir.`,
     confirmText: 'Maaşları Hesapla',
     danger: false,
+    onConfirm: () => runCalculation(items.value.map((i) => i.token), 'Tüm personel'),
+  })
+}
+
+// Seçili Personelleri Hesapla
+function handleCalculateSelected() {
+  if (isClosed.value) {
+    showToast('Kapalı dönemde maaş hesaplaması yapılamaz.', 'error')
+    return
+  }
+  if (!selectedTokens.value.length) {
+    showToast('Lütfen hesaplanacak personelleri seçin.', 'error')
+    return
+  }
+
+  const tokens = [...selectedTokens.value]
+  triggerConfirm({
+    title: 'Seçili Maaşlar Hesaplansın mı?',
+    message: `${selectedDonem.value?.name || 'Seçili'} döneminde yalnızca seçtiğiniz ${tokens.length} personelin maaş ve hakediş hesaplaması güncellenecektir.`,
+    confirmText: `${tokens.length} Kişiyi Hesapla`,
+    danger: false,
+    onConfirm: () => runCalculation(tokens, `${tokens.length} personel`),
+  })
+}
+
+// Tek Personel Hesapla
+function handleCalculateSingle(person) {
+  if (isClosed.value) {
+    showToast('Kapalı dönemde maaş hesaplaması yapılamaz.', 'error')
+    return
+  }
+
+  triggerConfirm({
+    title: 'Personel Maaşı Hesaplansın mı?',
+    message: `${person.name} için ${selectedDonem.value?.name || 'seçili'} dönemi maaş ve hakediş hesaplaması güncellenecektir.`,
+    confirmText: 'Hesapla',
+    danger: false,
+    onConfirm: () => runCalculation([person.token], person.name),
+  })
+}
+
+// Kart Aksiyonları
+function handleCardClick(person) {
+  if (selectionMode.value) {
+    togglePersonSelection(person.token)
+    return
+  }
+  if (!person.is_calculated) {
+    showToast('Bu personelin bordrosu henüz hesaplanmadı.', 'error')
+    return
+  }
+  openDetail(person)
+}
+
+function openPersonActions(person) {
+  personActionTarget.value = person
+}
+
+function closePersonActions() {
+  personActionTarget.value = null
+}
+
+function runPersonAction(kind) {
+  const person = personActionTarget.value
+  closePersonActions()
+  if (!person) return
+  if (kind === 'payment') openPaymentModal(person)
+  else if (kind === 'detail') openDetail(person)
+  else if (kind === 'income') openAdjustmentModal(person, 'gelir')
+  else if (kind === 'deduction') openAdjustmentModal(person, 'kesinti')
+  else if (kind === 'remove') handleRemovePerson(person)
+}
+
+function handleRemovePerson(person) {
+  if (isClosed.value) return
+  triggerConfirm({
+    title: 'Personel Dönemden Çıkarılsın mı?',
+    message: `${person.name} ${selectedDonem.value?.name || 'seçili'} dönemi bordrosundan çıkarılacaktır.`,
+    confirmText: 'Dönemden Çıkar',
+    danger: true,
     onConfirm: async () => {
       try {
-        const tokens = items.value.map((i) => i.token)
-        const res = await bordroApi.calculate(selectedDonemId.value, tokens, auth.state.csrfToken)
-        showToast(res.message || 'Maaş hesaplaması başarıyla tamamlandı.')
+        const res = await bordroApi.removePerson(person.token, auth.state.csrfToken)
+        showToast(res.message || 'Personel dönemden çıkarıldı.')
+        selectedTokens.value = selectedTokens.value.filter((t) => t !== person.token)
         await loadBordro(selectedDonemId.value, false)
       } catch (err) {
-        showToast(err.message || 'Maaş hesaplama hatası oluştu.', 'error')
+        showToast(err.message || 'Personel dönemden çıkarılamadı.', 'error')
       }
     },
   })
 }
+
+async function openPuantajSheet(person) {
+  puantajSheet.value = { open: true, loading: true, error: '', data: null, person }
+  try {
+    const res = await bordroApi.getPuantajDetail(person.token)
+    puantajSheet.value.data = res
+  } catch (err) {
+    puantajSheet.value.error = err.message || 'Puantaj detayı yüklenemedi.'
+  } finally {
+    puantajSheet.value.loading = false
+  }
+}
+
+const weekdayLabels = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz']
+const monthNamesTR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
+
+const dsc = (role, hex) => `var(--dsx-${role}-${hex.slice(1)}, ${hex})`
+const calendarThemes = {
+  X: ['#eff6ff', '#bfdbfe', '#1d4ed8', '#2563eb'],
+  HT: ['#fff7ed', '#fed7aa', '#c2410c', '#ea580c'],
+  'Yİ': ['#f0fdf4', '#bbf7d0', '#15803d', '#16a34a'],
+  'Bİ': ['#fdf2f8', '#fbcfe8', '#be185d', '#db2777'],
+  'Eİ': ['#eef2ff', '#c7d2fe', '#4338ca', '#4f46e5'],
+  'Üİ': ['#ecfdf5', '#a7f3d0', '#047857', '#059669'],
+  'RTÇ': ['#f0fdfa', '#99f6e4', '#0f766e', '#0d9488'],
+  'HTÇ': ['#faf5ff', '#e9d5ff', '#7e22ce', '#9333ea'],
+  SGK: ['#fef2f2', '#fecaca', '#b91c1c', '#dc2626'],
+  RP: ['#fef2f2', '#fecaca', '#b91c1c', '#dc2626'],
+  'Mİ': ['#f0f9ff', '#bae6fd', '#0369a1', '#0284c7'],
+  D: ['#fef2f2', '#fecaca', '#991b1b', '#b91c1c'],
+  UZ: ['#f8fafc', '#cbd5e1', '#475569', '#64748b'],
+  'ÜZ': ['#fff1f2', '#fecdd3', '#be123c', '#e11d48'],
+}
+
+function calendarTheme(code) {
+  const t = calendarThemes[String(code || '').toLocaleUpperCase('tr-TR')] || ['#f8fafc', '#e2e8f0', '#1e293b', '#2563eb']
+  return { bg: dsc('bg', t[0]), border: dsc('bd', t[1]), text: dsc('fg', t[2]), badgeBg: t[3], badgeText: '#ffffff' }
+}
+
+const puantajCalendar = computed(() => {
+  const data = puantajSheet.value.data
+  if (!data?.start_date) return null
+
+  const [year, month] = data.start_date.split('-').map(Number)
+  const totalDays = new Date(year, month, 0).getDate()
+  const firstWeekday = (new Date(year, month - 1, 1).getDay() + 6) % 7
+  const days = data.days || {}
+
+  const cells = Array.from({ length: firstWeekday }, (_, i) => ({ key: `e${i}`, empty: true }))
+  const counts = {}
+  let paid = 0
+  let unpaid = 0
+
+  for (let d = 1; d <= totalDays; d++) {
+    const key = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    const entry = key >= data.start_date && key <= data.end_date ? days[key] || null : null
+    cells.push({
+      key,
+      empty: false,
+      day: d,
+      isSunday: (firstWeekday + d - 1) % 7 === 6,
+      code: entry ? entry.kisa_kod : '',
+      title: entry ? `${entry.kisa_kod} : ${entry.name}` : '',
+      theme: entry ? calendarTheme(entry.kisa_kod) : { bg: dsc('bg', '#f8fafc'), border: dsc('bd', '#e2e8f0'), text: dsc('fg', '#94a3b8'), badgeBg: 'transparent', badgeText: 'transparent' },
+    })
+    if (entry) {
+      const bucket = entry.paid ? 'paid' : 'unpaid'
+      const ck = `${bucket}-${entry.kisa_kod}`
+      counts[ck] = counts[ck] || { bucket, code: entry.kisa_kod, name: entry.name, theme: calendarTheme(entry.kisa_kod), count: 0 }
+      counts[ck].count += 1
+      if (entry.paid) paid += 1
+      else unpaid += 1
+    }
+  }
+
+  const list = Object.values(counts)
+  return {
+    cells,
+    monthLabel: `${monthNamesTR[month - 1]} ${year}`,
+    total: paid + unpaid,
+    paid,
+    unpaid,
+    legend: list.sort((a, b) => b.count - a.count),
+  }
+})
 
 // Dönemi Kapat / Aç
 function handleTogglePeriod(forceClose = false) {
@@ -594,12 +848,15 @@ onMounted(() => {
         <button
           type="button"
           class="clay-circle-btn"
-          title="Yenile"
-          aria-label="Listeyi Yenile"
-          :disabled="refreshing || loading"
-          @click="loadBordro(selectedDonemId, false)"
+          :class="{ 'clay-circle-btn--active': selectionMode }"
+          :title="selectionMode ? 'Seçimi Kapat' : 'Personel Seç'"
+          :aria-label="selectionMode ? 'Personel Seçimini Kapat' : 'Personel Seç'"
+          :aria-pressed="selectionMode"
+          :disabled="isClosed || loading || !items.length"
+          v-if="permissions.calculate"
+          @click="toggleSelectionMode"
         >
-          <RefreshCw :size="18" :class="{ 'animate-spin': refreshing }" />
+          <component :is="selectionMode ? X : CheckSquare" :size="18" />
         </button>
 
         <button
@@ -618,6 +875,7 @@ onMounted(() => {
           title="Maaşları Hesapla"
           aria-label="Tüm Maaşları Hesapla"
           :disabled="isClosed || loading || !items.length"
+          v-if="permissions.calculate"
           @click="handleCalculatePayroll"
         >
           <Calculator :size="18" />
@@ -800,6 +1058,14 @@ onMounted(() => {
         </div>
       </section>
 
+      <!-- 4.1 Seçim Araç Çubuğu -->
+      <section v-if="selectionMode && !isClosed" class="payroll-select-bar">
+        <button type="button" class="payroll-select-toggle" @click="toggleSelectAllVisible">
+          <component :is="allVisibleSelected ? CheckSquare : Square" :size="15" />
+          <span>{{ allVisibleSelected ? 'Seçimi Kaldır' : 'Görünenleri Seç' }}</span>
+        </button>
+      </section>
+
       <!-- 5. Personel Bordro Kartları Listesi -->
       <section class="payroll-cards-stack">
         <div v-if="!filteredItems.length" class="clay-state-card">
@@ -813,9 +1079,25 @@ onMounted(() => {
           v-for="person in filteredItems"
           :key="person.token"
           class="bento-card bento-card--white payroll-person-card"
+          :class="{ 'payroll-person-card--selected': selectionMode && isSelected(person.token) }"
+          role="button"
+          tabindex="0"
+          @click="handleCardClick(person)"
+          @keydown.enter.self="handleCardClick(person)"
         >
           <!-- Üst Bilgi Satırı -->
           <div class="payroll-card-header">
+            <button
+              v-if="selectionMode"
+              type="button"
+              class="payroll-select-check"
+              :class="{ 'payroll-select-check--on': isSelected(person.token) }"
+              :aria-pressed="isSelected(person.token)"
+              :aria-label="`${person.name} seç`"
+              @click.stop="togglePersonSelection(person.token)"
+            >
+              <Check v-if="isSelected(person.token)" :size="16" />
+            </button>
             <div class="payroll-avatar-box">
               <img
                 v-if="person.avatar"
@@ -857,10 +1139,17 @@ onMounted(() => {
 
           <!-- Metrik Izgarası (2x3) -->
           <div class="payroll-breakdown-grid">
-            <div class="breakdown-item">
+            <component
+              :is="permissions.puantaj ? 'button' : 'div'"
+              :type="permissions.puantaj ? 'button' : undefined"
+              class="breakdown-item"
+              :class="{ 'breakdown-item--button': permissions.puantaj }"
+              :aria-label="permissions.puantaj ? 'Puantaj detayını aç' : undefined"
+              @click.stop="permissions.puantaj && openPuantajSheet(person)"
+            >
               <span class="breakdown-label"><CalendarDays :size="12" /> Gün</span>
               <strong class="breakdown-value">{{ person.work_days }} gün</strong>
-            </div>
+            </component>
 
             <div class="breakdown-item">
               <span class="breakdown-label"><TrendingUp :size="12" /> Alacak</span>
@@ -889,49 +1178,28 @@ onMounted(() => {
           </div>
 
           <!-- Aksiyon Butonları -->
-          <footer class="payroll-card-actions">
+          <footer v-if="!selectionMode" class="payroll-card-actions">
             <button
+              v-if="permissions.calculate"
               type="button"
               class="payroll-action-btn payroll-action-btn--primary"
-              aria-label="Bordro Detayını Görüntüle"
-              @click="openDetail(person)"
+              :disabled="isClosed || calcOverlay.open"
+              aria-label="Bu Personelin Maaşını Hesapla"
+              @click.stop="handleCalculateSingle(person)"
             >
-              <FileText :size="16" />
-              <span>Bordro Detayı</span>
+              <Calculator :size="16" />
+              <span>Hesapla</span>
             </button>
 
             <button
               type="button"
               class="payroll-action-btn"
-              :disabled="isClosed"
-              title="Ödeme Dağılımını Düzenle"
-              aria-label="Ödeme Dağılımını Düzenle"
-              @click="openPaymentModal(person)"
+              aria-label="Personel İşlemleri"
+              @click.stop="openPersonActions(person)"
             >
-              <Wallet :size="16" />
-              <span>Ödeme Dağıt</span>
+              <MoreHorizontal :size="16" />
+              <span>İşlemler</span>
             </button>
-
-            <div v-if="!isClosed" class="payroll-quick-adj-group">
-              <button
-                type="button"
-                class="payroll-icon-action payroll-icon-action--income"
-                title="Gelir Ekle (Prim, Mesai)"
-                aria-label="Gelir Ekle"
-                @click="openAdjustmentModal(person, 'gelir')"
-              >
-                <PlusCircle :size="16" />
-              </button>
-              <button
-                type="button"
-                class="payroll-icon-action payroll-icon-action--deduct"
-                title="Kesinti Ekle (Avans, İcra)"
-                aria-label="Kesinti Ekle"
-                @click="openAdjustmentModal(person, 'kesinti')"
-              >
-                <MinusCircle :size="16" />
-              </button>
-            </div>
           </footer>
         </article>
       </section>
@@ -1299,6 +1567,201 @@ onMounted(() => {
       </div>
     </Transition>
 
+    <!-- PERSONEL İŞLEMLERİ BOTTOM SHEET -->
+    <Transition name="fade">
+      <div
+        v-if="personActionTarget"
+        class="payroll-modal-backdrop"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Personel İşlemleri"
+        @click.self="closePersonActions"
+      >
+        <div class="payroll-modal-sheet payroll-modal-sheet--actions">
+          <div class="sheet-drag-handle"></div>
+
+          <header class="payroll-sheet-header">
+            <div>
+              <span class="clay-page-eyebrow">PERSONEL İŞLEMLERİ</span>
+              <h2 class="payroll-sheet-title">{{ personActionTarget.name }}</h2>
+            </div>
+            <button type="button" class="clay-circle-btn" aria-label="Kapat" @click="closePersonActions">
+              <X :size="18" />
+            </button>
+          </header>
+
+          <div class="payroll-action-list">
+            <button
+              v-if="permissions.distribute"
+              type="button"
+              class="payroll-action-row"
+              :disabled="isClosed || !personActionTarget.is_calculated"
+              @click="runPersonAction('payment')"
+            >
+              <span class="action-row-icon action-row-icon--blue"><Wallet :size="20" /></span>
+              <div class="action-row-meta">
+                <strong>Ödeme Dağıt</strong>
+                <span>Banka, Sodexo ve elden dağılımını düzenler</span>
+              </div>
+              <ChevronRight :size="18" class="action-row-chevron" />
+            </button>
+
+            <button
+              type="button"
+              class="payroll-action-row"
+              :disabled="!personActionTarget.is_calculated"
+              @click="runPersonAction('detail')"
+            >
+              <span class="action-row-icon action-row-icon--cyan"><Info :size="20" /></span>
+              <div class="action-row-meta">
+                <strong>Detay</strong>
+                <span>Bordro hesap detayını görüntüler</span>
+              </div>
+              <ChevronRight :size="18" class="action-row-chevron" />
+            </button>
+
+            <button
+              v-if="permissions.add_income"
+              type="button"
+              class="payroll-action-row"
+              :disabled="isClosed"
+              @click="runPersonAction('income')"
+            >
+              <span class="action-row-icon action-row-icon--green"><PlusCircle :size="20" /></span>
+              <div class="action-row-meta">
+                <strong>Gelir Ekle</strong>
+                <span>Prim, mesai gibi ek ödeme tanımlar</span>
+              </div>
+              <ChevronRight :size="18" class="action-row-chevron" />
+            </button>
+
+            <button
+              v-if="permissions.add_deduction"
+              type="button"
+              class="payroll-action-row"
+              :disabled="isClosed"
+              @click="runPersonAction('deduction')"
+            >
+              <span class="action-row-icon action-row-icon--rose"><MinusCircle :size="20" /></span>
+              <div class="action-row-meta">
+                <strong>Kesinti Ekle</strong>
+                <span>Avans, icra gibi kesinti tanımlar</span>
+              </div>
+              <ChevronRight :size="18" class="action-row-chevron" />
+            </button>
+
+            <button
+              v-if="permissions.remove"
+              type="button"
+              class="payroll-action-row payroll-action-row--close"
+              :disabled="isClosed"
+              @click="runPersonAction('remove')"
+            >
+              <span class="action-row-icon action-row-icon--rose"><Trash2 :size="20" /></span>
+              <div class="action-row-meta">
+                <strong>Dönemden Çıkar</strong>
+                <span>Personeli bu dönem bordrosundan çıkarır</span>
+              </div>
+              <ChevronRight :size="18" class="action-row-chevron" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- PUANTAJ DETAY MODALI -->
+    <Transition name="fade">
+      <div
+        v-if="puantajSheet.open"
+        class="payroll-modal-backdrop payroll-calc-backdrop"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Puantaj Detayı"
+        @click.self="puantajSheet.open = false"
+      >
+        <div class="payroll-puantaj-dialog">
+
+          <header class="payroll-sheet-header">
+            <div>
+              <span class="clay-page-eyebrow">PUANTAJ DETAYI</span>
+              <h2 class="payroll-sheet-title">{{ puantajSheet.person?.name }}</h2>
+              <p v-if="puantajSheet.data" class="puantaj-sheet-sub">
+                {{ puantajSheet.data.period }} · {{ puantajSheet.data.start_date }} — {{ puantajSheet.data.end_date }}
+              </p>
+            </div>
+            <button type="button" class="clay-circle-btn" aria-label="Kapat" @click="puantajSheet.open = false">
+              <X :size="18" />
+            </button>
+          </header>
+
+          <div v-if="puantajSheet.loading" class="puantaj-sheet-state">
+            <RefreshCw :size="18" class="animate-spin" />
+            <span>Puantaj bilgileri yükleniyor…</span>
+          </div>
+          <div v-else-if="puantajSheet.error" class="puantaj-sheet-state puantaj-sheet-state--error">
+            <AlertCircle :size="18" />
+            <span>{{ puantajSheet.error }}</span>
+          </div>
+          <template v-else-if="puantajCalendar">
+            <div class="puantaj-summary">
+              <div class="puantaj-summary-card">
+                <span class="puantaj-summary-label">Toplam</span>
+                <strong>{{ puantajCalendar.total }} <small>gün</small></strong>
+              </div>
+              <div class="puantaj-summary-card puantaj-summary-card--paid">
+                <span class="puantaj-summary-label">Ücretli</span>
+                <strong>{{ puantajCalendar.paid }} <small>gün</small></strong>
+              </div>
+              <div class="puantaj-summary-card puantaj-summary-card--unpaid">
+                <span class="puantaj-summary-label">Ücretsiz</span>
+                <strong>{{ puantajCalendar.unpaid }} <small>gün</small></strong>
+              </div>
+            </div>
+
+            <section class="bento-card bento-card--white clean-calendar-box">
+              <div class="clean-calendar-head">
+                <div>
+                  <h4 class="calendar-section-title">Ay İçi Günlük Takvim</h4>
+                  <small class="calendar-section-hint">Personelin dönem içi puantaj durumu</small>
+                </div>
+                <div class="calendar-month-indicator">
+                  <Calendar :size="12" />
+                  <span>{{ puantajCalendar.monthLabel }}</span>
+                </div>
+              </div>
+
+              <div class="clean-days-header">
+                <span v-for="(dayName, dIdx) in weekdayLabels" :key="dayName" :class="{ 'is-sun': dIdx === 6 }">{{ dayName }}</span>
+              </div>
+
+              <div class="calendar-tiles-grid">
+                <template v-for="cell in puantajCalendar.cells" :key="cell.key">
+                  <div v-if="cell.empty" class="calendar-tile calendar-tile--empty"></div>
+                  <div
+                    v-else
+                    class="calendar-tile"
+                    :style="{ backgroundColor: cell.theme.bg, borderColor: cell.theme.border }"
+                    :title="cell.title"
+                  >
+                    <span class="calendar-tile-day" :style="{ color: cell.isSunday && cell.code ? dsc('fg', '#dc2626') : cell.theme.text }">{{ cell.day }}</span>
+                    <span v-if="cell.code" class="calendar-tile-badge" :style="{ backgroundColor: cell.theme.badgeBg, color: cell.theme.badgeText }">{{ cell.code }}</span>
+                  </div>
+                </template>
+              </div>
+
+              <ul class="calendar-legend">
+                <li v-for="item in puantajCalendar.legend" :key="item.code" class="calendar-legend-item">
+                  <span class="calendar-legend-badge" :style="{ backgroundColor: item.theme.badgeBg }">{{ item.code }}</span>
+                  <span class="calendar-legend-name">{{ item.name }}</span>
+                  <strong class="calendar-legend-count">{{ item.count }} gün</strong>
+                </li>
+              </ul>
+            </section>
+          </template>
+        </div>
+      </div>
+    </Transition>
+
     <!-- 4. DİĞER İŞLEMLER BOTTOM SHEET -->
     <Transition name="fade">
       <div
@@ -1375,6 +1838,46 @@ onMounted(() => {
               <ChevronRight :size="18" class="action-row-chevron" />
             </button>
           </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- SEÇİLİ PERSONELLERİ HESAPLA ÇUBUĞU -->
+    <Transition name="fade">
+      <div v-if="selectionMode && selectedCount > 0 && !calcOverlay.open" class="payroll-selection-dock" role="region" aria-label="Seçili personel işlemleri">
+        <span class="selection-dock-count"><strong>{{ selectedCount }}</strong> personel seçili</span>
+        <button type="button" class="clay-btn clay-btn--primary selection-dock-btn" @click="handleCalculateSelected">
+          <Calculator :size="16" />
+          <span>Seçilenleri Hesapla</span>
+        </button>
+      </div>
+    </Transition>
+
+    <!-- MAAŞ HESAPLAMA PRELOADER -->
+    <Transition name="fade">
+      <div v-if="calcOverlay.open" class="payroll-modal-backdrop payroll-calc-backdrop" role="alertdialog" aria-modal="true" aria-live="polite" aria-label="Maaşlar hesaplanıyor">
+        <div class="payroll-calc-dialog">
+          <div class="calc-loader" aria-hidden="true">
+            <span class="calc-loader-ring"></span>
+            <Calculator :size="26" class="calc-loader-icon" />
+          </div>
+          <h3 class="confirm-dialog-title">Maaşlar Hesaplanıyor</h3>
+          <p class="confirm-dialog-message">
+            {{ calcOverlay.label }} için {{ selectedDonem?.name || 'seçili' }} dönemi hesaplanıyor. Lütfen sayfayı kapatmayın.
+          </p>
+          <div class="calc-progress-track" aria-hidden="true"><span class="calc-progress-bar"></span></div>
+          <ul class="calc-steps">
+            <li
+              v-for="(label, idx) in calcSteps"
+              :key="label"
+              :class="{ 'calc-step--done': idx < calcOverlay.step, 'calc-step--active': idx === calcOverlay.step }"
+            >
+              <CheckCircle2 v-if="idx < calcOverlay.step" :size="14" />
+              <RefreshCw v-else-if="idx === calcOverlay.step" :size="14" class="animate-spin" />
+              <Clock v-else :size="14" />
+              <span>{{ label }}</span>
+            </li>
+          </ul>
         </div>
       </div>
     </Transition>
@@ -3376,6 +3879,512 @@ onMounted(() => {
   gap: 10px;
   width: 100%;
   margin-top: 8px;
+}
+
+.payroll-card-actions .payroll-action-btn {
+  flex: 1;
+}
+
+.payroll-person-card {
+  cursor: pointer;
+}
+
+.breakdown-item--button {
+  border: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  position: relative;
+}
+
+.breakdown-item--button::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #2563eb;
+  opacity: 0.55;
+}
+
+.payroll-action-row:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.action-row-icon--cyan {
+  color: #0891b2;
+}
+
+.action-row-icon--green {
+  color: #059669;
+}
+
+.action-row-icon--rose {
+  color: #e11d48;
+}
+
+.puantaj-sheet-sub {
+  margin: 2px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--dsx-fg-64748b);
+}
+
+.puantaj-sheet-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--dsx-fg-64748b);
+}
+
+.puantaj-sheet-state--error {
+  color: #dc2626;
+}
+
+.payroll-puantaj-dialog {
+  width: calc(100% - 32px);
+  max-width: 400px;
+  max-height: calc(100% - 48px);
+  margin: auto;
+  overflow-y: auto;
+  background: var(--dsx-bg-ffffff);
+  border-radius: 24px;
+  padding: 18px 16px 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+  animation: popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.payroll-puantaj-dialog .payroll-sheet-header {
+  padding: 0 0 12px;
+}
+
+.payroll-puantaj-dialog .calendar-tiles-grid {
+  gap: 5px;
+}
+
+.payroll-puantaj-dialog .calendar-tile {
+  aspect-ratio: 1 / 1.12;
+  border-radius: 12px;
+  border-width: 1.5px;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 1px;
+}
+
+.payroll-puantaj-dialog .calendar-tile-day {
+  font-size: 13px;
+}
+
+.payroll-puantaj-dialog .calendar-tile-badge {
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: 0.2px;
+  min-width: 70%;
+  padding: 2px 3px;
+  border-radius: 6px;
+}
+
+.payroll-puantaj-dialog .clean-days-header {
+  gap: 5px;
+}
+
+.calendar-legend {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 10px 0 0;
+  border-top: 1px solid var(--dsx-bd-f1f5f9);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.calendar-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.calendar-legend-badge {
+  min-width: 34px;
+  text-align: center;
+  font-size: 10.5px;
+  font-weight: 900;
+  color: #ffffff;
+  padding: 3px 6px;
+  border-radius: 7px;
+}
+
+.calendar-legend-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  color: var(--dsx-fg-334155);
+}
+
+.calendar-legend-count {
+  font-weight: 800;
+  color: var(--dsx-fg-0f172a);
+}
+
+.puantaj-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.puantaj-summary-card {
+  background: var(--dsx-bg-f1f5f9);
+  border-radius: 14px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.puantaj-summary-card strong {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--dsx-fg-0f172a);
+}
+
+.puantaj-summary-card small {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--dsx-fg-64748b);
+}
+
+.puantaj-summary-card--paid strong { color: #059669; }
+.puantaj-summary-card--unpaid strong { color: #e11d48; }
+
+.puantaj-summary-label {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dsx-fg-64748b);
+}
+
+.puantaj-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.puantaj-chips span {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: var(--dsx-bg-ffffff);
+  color: var(--dsx-fg-334155);
+}
+
+.clean-calendar-box {
+  padding: 10px 8px 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.clean-calendar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  gap: 8px;
+}
+
+.calendar-section-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--dsx-fg-1e293b);
+  margin: 0;
+}
+
+.calendar-section-hint {
+  font-size: 10px;
+  color: var(--dsx-fg-94a3b8);
+  font-weight: 600;
+  display: block;
+  margin-top: 2px;
+}
+
+.calendar-month-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--dsx-bg-f8fafc);
+  border: 1px solid var(--dsx-bd-e2e8f0);
+  padding: 3px 8px;
+  border-radius: var(--ds-radius-pill);
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--dsx-fg-64748b);
+  white-space: nowrap;
+}
+
+.clean-days-header {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 3px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--dsx-fg-94a3b8);
+  padding: 2px 0 4px;
+  border-bottom: 1px solid var(--dsx-bd-f1f5f9);
+  margin-bottom: 4px;
+}
+
+.clean-days-header .is-sun {
+  color: #ef4444;
+}
+
+.calendar-tiles-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.calendar-tile {
+  min-width: 0;
+  box-sizing: border-box;
+  aspect-ratio: 1 / 0.95;
+  border-radius: 9px;
+  border: 1px solid var(--dsx-bd-e2e8f0);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2.5px 1px 2px;
+}
+
+.calendar-tile--empty {
+  background: transparent !important;
+  border: 1px dashed rgba(203, 213, 225, 0.35) !important;
+}
+
+.calendar-tile-day {
+  font-size: 10.5px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.calendar-tile-badge {
+  font-size: 8px;
+  font-weight: 900;
+  padding: 1px 2.5px;
+  border-radius: 4px;
+  line-height: 1.1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  max-width: 92%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ==================== SEÇİM & HESAPLAMA PRELOADER ==================== */
+.payroll-select-bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.payroll-select-toggle {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--dsx-bd-f1f5f9);
+  background: var(--dsx-bg-ffffff);
+  color: var(--dsx-fg-64748b);
+  font-size: 12px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.payroll-select-toggle--active {
+  background: var(--dsx-bg-eff6ff);
+  color: #2563eb;
+  border-color: #bfdbfe;
+}
+
+.payroll-select-check {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 2px solid #cbd5e1;
+  background: var(--dsx-bg-ffffff);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  padding: 0;
+  cursor: pointer;
+}
+
+.payroll-select-check--on {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.payroll-person-card--selected {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+
+.payroll-icon-action--calc {
+  color: #2563eb;
+}
+
+.payroll-selection-dock {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(var(--ds-safe-bottom, 0px) + 96px);
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px 10px 18px;
+  border-radius: 999px;
+  background: #191d24;
+  color: #ffffff;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+.selection-dock-count {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.selection-dock-btn {
+  width: auto;
+  min-height: 44px;
+  padding: 0 16px;
+  gap: 6px;
+}
+
+.payroll-calc-backdrop {
+  z-index: 400;
+  align-items: center;
+}
+
+.payroll-calc-dialog {
+  width: 90%;
+  max-width: 340px;
+  margin: auto;
+  background: var(--dsx-bg-ffffff);
+  border-radius: 24px;
+  padding: 28px 20px 22px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  animation: popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.calc-loader {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2563eb;
+  margin-bottom: 4px;
+}
+
+.calc-loader-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 4px solid var(--dsx-bg-eff6ff);
+  border-top-color: #2563eb;
+  animation: spin 0.9s linear infinite;
+}
+
+.calc-loader-icon {
+  animation: calcPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes calcPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.85); opacity: 0.7; }
+}
+
+.calc-progress-track {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--dsx-bg-eff6ff);
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+.calc-progress-bar {
+  display: block;
+  width: 40%;
+  height: 100%;
+  border-radius: 999px;
+  background: #2563eb;
+  animation: calcSlide 1.3s ease-in-out infinite;
+}
+
+@keyframes calcSlide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+
+.calc-steps {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.calc-steps li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--dsx-fg-94a3b8);
+}
+
+.calc-steps li.calc-step--active {
+  color: #2563eb;
+}
+
+.calc-steps li.calc-step--done {
+  color: #059669;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .calc-loader-ring,
+  .calc-loader-icon,
+  .calc-progress-bar {
+    animation-duration: 3s;
+  }
 }
 
 /* ==================== TOAST BİLDİRİMİ ==================== */

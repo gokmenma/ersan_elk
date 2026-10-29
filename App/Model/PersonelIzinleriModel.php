@@ -613,4 +613,94 @@ class PersonelIzinleriModel extends Model
             return null;
         }
     }
+
+    public function getAyTakvimi(int $firmaId, int $personelId, string $baslangic, string $bitis): array
+    {
+        $personelStmt = $this->db->prepare('SELECT id, ise_giris_tarihi, isten_cikis_tarihi FROM personel WHERE id = ? AND firma_id = ? AND silinme_tarihi IS NULL');
+        $personelStmt->execute([$personelId, $firmaId]);
+        $personel = $personelStmt->fetch(PDO::FETCH_OBJ);
+        if (!$personel) {
+            return [];
+        }
+
+        $calismaStmt = $this->db->prepare("SELECT ise_giris_tarihi, isten_cikis_tarihi
+            FROM personel_calisma_gecmisi
+            WHERE personel_id = ? AND ise_giris_tarihi <= ?
+              AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '0000-00-00' OR isten_cikis_tarihi >= ?)
+            ORDER BY ise_giris_tarihi ASC, id ASC");
+        $calismaStmt->execute([$personelId, $bitis, $baslangic]);
+        $calismaDonemleri = array_map(static fn($donem) => [
+            'baslangic' => $donem['ise_giris_tarihi'],
+            'bitis' => (!empty($donem['isten_cikis_tarihi']) && $donem['isten_cikis_tarihi'] !== '0000-00-00')
+                ? $donem['isten_cikis_tarihi']
+                : null,
+        ], $calismaStmt->fetchAll(PDO::FETCH_ASSOC));
+
+        $varsayilan = function (string $kod, string $ad) use ($firmaId) {
+            $stmt = $this->db->prepare("SELECT id, tur_adi, kisa_kod, renk, ucretli_mi FROM tanimlamalar WHERE grup = 'izin_turu' AND (kisa_kod = ? OR kisa_kod = ? OR tur_adi LIKE ?) AND (firma_id = ? OR firma_id = 0) AND silinme_tarihi IS NULL LIMIT 1");
+            $stmt->execute([$kod, strtolower($kod), '%' . $ad . '%', $firmaId]);
+            return $stmt->fetch(PDO::FETCH_OBJ);
+        };
+        $xTanim = $varsayilan('X', 'Çalışılan Gün');
+        $htTanim = $varsayilan('HT', 'Hafta Tatili');
+
+        $izinStmt = $this->db->prepare("SELECT pi.baslangic_tarihi, pi.bitis_tarihi, t.tur_adi, t.kisa_kod, t.renk, t.ucretli_mi
+            FROM personel_izinleri pi
+            JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
+            WHERE pi.personel_id = ? AND pi.silinme_tarihi IS NULL AND pi.onay_durumu = 'Onaylandı'
+              AND pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ?");
+        $izinStmt->execute([$personelId, $bitis, $baslangic]);
+
+        $gunler = [];
+        foreach ($izinStmt->fetchAll(PDO::FETCH_OBJ) as $izin) {
+            $cur = strtotime($izin->baslangic_tarihi);
+            $end = strtotime($izin->bitis_tarihi);
+            while ($cur <= $end) {
+                $tarih = date('Y-m-d', $cur);
+                if ($tarih >= $baslangic && $tarih <= $bitis) {
+                    $gunler[$tarih] ??= [
+                        'name' => $izin->tur_adi,
+                        'kisa_kod' => $izin->kisa_kod,
+                        'color' => $izin->renk ?: '#34c38f',
+                        'paid' => (int) $izin->ucretli_mi === 1,
+                    ];
+                }
+                $cur = strtotime('+1 day', $cur);
+            }
+        }
+
+        $giris = !empty($personel->ise_giris_tarihi) && $personel->ise_giris_tarihi !== '0000-00-00' ? $personel->ise_giris_tarihi : null;
+        $cikis = !empty($personel->isten_cikis_tarihi) && $personel->isten_cikis_tarihi !== '0000-00-00' ? $personel->isten_cikis_tarihi : null;
+
+        $sonuc = [];
+        $cur = strtotime($baslangic);
+        $end = strtotime($bitis);
+        while ($cur <= $end) {
+            $tarih = date('Y-m-d', $cur);
+            $aktif = empty($calismaDonemleri)
+                ? (($giris === null || $tarih >= $giris) && ($cikis === null || $tarih <= $cikis))
+                : (bool) array_filter($calismaDonemleri, static fn($d) => $tarih >= $d['baslangic'] && ($d['bitis'] === null || $tarih <= $d['bitis']));
+
+            if ($aktif) {
+                $entry = $gunler[$tarih] ?? null;
+                if ($entry === null) {
+                    $tanim = date('w', $cur) == 0 ? $htTanim : $xTanim;
+                    if ($tanim) {
+                        $entry = [
+                            'name' => $tanim->tur_adi,
+                            'kisa_kod' => $tanim->kisa_kod,
+                            'color' => $tanim->renk ?: (date('w', $cur) == 0 ? '#f46a6a' : '#556ee6'),
+                            'paid' => true,
+                        ];
+                    }
+                }
+                if ($entry !== null) {
+                    $sonuc[$tarih] = $entry;
+                }
+            }
+            $cur = strtotime('+1 day', $cur);
+        }
+
+        return $sonuc;
+    }
 }

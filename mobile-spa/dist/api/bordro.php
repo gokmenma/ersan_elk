@@ -124,6 +124,16 @@ if ($method === 'GET') {
                 }
             }
 
+            $policyAllows = static fn(string $apiAction): bool => Gate::allowsPolicy('api', 'bordro/api', $apiAction, 'POST');
+            $permissions = [
+                'calculate' => $policyAllows('maas-hesapla'),
+                'distribute' => $policyAllows('odeme-dagit'),
+                'add_income' => $policyAllows('personel-gelir-ekle'),
+                'add_deduction' => $policyAllows('personel-kesinti-ekle'),
+                'remove' => $policyAllows('personel-cikar'),
+                'puantaj' => Gate::allows('personel/puantaj'),
+            ];
+
             $items = [];
             $summary = [
                 'personel' => 0,
@@ -215,10 +225,48 @@ if ($method === 'GET') {
                 'is_closed' => $closed,
                 'summary' => $summary,
                 'items' => $items,
+                'permissions' => $permissions,
             ]);
         } catch (\Throwable $e) {
             error_log('Bordro Init Hatası: ' . $e->getMessage());
             bordroApiResponse(['success' => false, 'message' => 'Bordro verileri yüklenirken bir hata oluştu.'], 500);
+        }
+    }
+
+    if ($action === 'puantaj-detay') {
+        try {
+            if (!Gate::allows('personel/puantaj')) {
+                bordroApiResponse(['success' => false, 'message' => 'Puantaj detayını görüntüleme yetkiniz bulunmuyor.'], 403);
+            }
+
+            $bordroId = $decryptId((string) ($_GET['bordro_token'] ?? ''));
+            if ($bordroId <= 0) {
+                bordroApiResponse(['success' => false, 'message' => 'Geçersiz bordro kaydı.'], 400);
+            }
+
+            $db = (new \App\Core\Db())->getConnection();
+            $stmt = $db->prepare('SELECT bp.personel_id, p.adi_soyadi, bd.donem_adi, bd.baslangic_tarihi, bd.bitis_tarihi FROM bordro_personel bp INNER JOIN bordro_donemi bd ON bd.id = bp.donem_id INNER JOIN personel p ON p.id = bp.personel_id WHERE bp.id = ? AND bd.firma_id = ? AND bp.silinme_tarihi IS NULL AND bd.silinme_tarihi IS NULL');
+            $stmt->execute([$bordroId, $firmaId]);
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+            if (!$row) {
+                bordroApiResponse(['success' => false, 'message' => 'Bu bordro kaydına erişiminiz bulunmuyor.'], 403);
+            }
+
+            $baslangic = (string) $row['baslangic_tarihi'];
+            $bitis = (string) $row['bitis_tarihi'];
+            $days = (new \App\Model\PersonelIzinleriModel())->getAyTakvimi($firmaId, (int) $row['personel_id'], $baslangic, $bitis);
+
+            bordroApiResponse([
+                'success' => true,
+                'name' => (string) $row['adi_soyadi'],
+                'period' => (string) $row['donem_adi'],
+                'start_date' => $baslangic,
+                'end_date' => $bitis,
+                'days' => $days === [] ? new \stdClass() : $days,
+            ]);
+        } catch (\Throwable $e) {
+            error_log('Bordro Puantaj Detay Hatası: ' . $e->getMessage());
+            bordroApiResponse(['success' => false, 'message' => 'Puantaj detayı yüklenirken bir hata oluştu.'], 500);
         }
     }
 
@@ -249,6 +297,7 @@ $allowedActions = [
     'odeme-reset-all',
     'personel-gelir-ekle',
     'personel-kesinti-ekle',
+    'personel-cikar',
 ];
 
 if (!in_array($action, $allowedActions, true)) {

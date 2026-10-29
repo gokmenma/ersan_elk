@@ -47,6 +47,16 @@ export const bordroApi = {
   init(params = {}) {
     return request('init', { params })
   },
+  getPuantajDetail(token) {
+    return request('puantaj-detay', { params: { bordro_token: token } })
+  },
+  removePerson(bordroToken, csrfToken) {
+    return request('personel-cikar', {
+      method: 'POST',
+      body: { action: 'personel-cikar', bordro_token: bordroToken },
+      csrfToken,
+    })
+  },
   getDetail(token, action = 'get-detail-old') {
     return request(action, {
       method: 'POST',

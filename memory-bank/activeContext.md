@@ -3397,3 +3397,15 @@
 ## 2026-10-29 — Mobil SPA ana sayfa izinli personel bottom sheet
 - Personel Durumu kartında İzinli kutusu artık bottom sheet açar (ad, departman, izin tipi, başlangıç–bitiş).
 - MobileDashboardModel::onLeaveList() (departman kısıtı ve personel yetkisi dashboard.php ile aynı), HomeView.vue sheet, design-system.css .leave-sheet-*.
+
+## 2026-10-29 — Mobil SPA bordro: maaş hesaplama preloader ve seçmeli hesaplama
+- PayrollView.vue: "Maaşları Hesapla" artık tam ekran preloader (spinner, kayan ilerleme çubuğu, adım listesi) gösterir; işlem bitene kadar tekrar tetiklenemez.
+- Hesaplama kapsamı: Tümü (üst bar), Personel Seç modu ile çoklu seçim ("Seçilenleri Hesapla" dock'u, Görünenleri Seç) ve kart üzerindeki tek personel hesapla butonu. Sunucu (mobile-spa/public/api/bordro.php maas-hesapla) zaten personel_tokens destekliyordu; backend değişmedi.
+
+## 2026-10-29 — Mobil SPA bordro: kart etkileşimi, İşlemler menüsü, puantaj sheet
+- Kart tıklanınca bordro detayı açılır (hesaplanmamışsa uyarı); seçim modunda tıklama seçimi değiştirir.
+- Alt butonlar yalnızca Hesapla ve İşlemler; İşlemler bottom sheet'i masaüstü menüsüyle aynı: Ödeme Dağıt, Detay, Gelir Ekle, Kesinti Ekle, Dönemden Çıkar (personel-cikar, mobile-spa/public/api/bordro.php allowedActions'a eklendi).
+- init yanıtı `permissions` haritası döner (Gate::allowsPolicy bordro/api); yetkisiz aksiyon düğmeleri çizilmez, sunucu zaten politika ile doğrular.
+- Gün kutusu puantaj-detay (GET) aksiyonunu açar; kırılım hesaplama snapshot'ındaki matrahlar alanından okunur (yeniden hesaplanmaz).
+- Puantaj bottom sheet masaüstü takvimine çevrildi: aylık takvim (X/HT/izin kodları, renkli hücreler) + Toplam/Ücretli/Ücretsiz özet kartları. Veri: PersonelIzinleriModel::getAyTakvimi (yeni, masaüstü puantaj_izin.php mantığıyla aynı), endpoint puantaj-detay; yetki `personel/puantaj` (permissions.puantaj).
+- Puantaj sheet takvimi PuantajView'daki "Ay İçi Günlük Takvim" görünümüne (clean-calendar-box, calendar-tile, kod renk haritası) uyarlandı; salt okunur.
