@@ -48,7 +48,87 @@ class MobileDashboardModel
             'working' => max(0, $active - $onLeave),
             'on_leave' => $onLeave,
             'late' => $lateCount,
+            'on_leave_list' => $this->onLeaveList(),
         ];
+    }
+
+    public function onLeaveList(): array
+    {
+        $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
+        if ($firmaId <= 0) {
+            return [];
+        }
+
+        return $this->safely(function () use ($firmaId): array {
+            $model = new PersonelModel();
+            $depts = $model->getRestrictedDeptArray();
+            $params = [':bugun' => date('Y-m-d'), ':firma_id' => $firmaId];
+            $deptSql = '';
+            if ($depts !== null && count($depts) > 0) {
+                $placeholders = [];
+                foreach (array_values($depts) as $idx => $dept) {
+                    $key = ':dept_' . $idx;
+                    $placeholders[] = $key;
+                    $params[$key] = $dept;
+                }
+                $deptSql = ' AND (TRIM(p.departman) IN (' . implode(',', $placeholders) . ") OR TRIM(p.departman) = '' OR p.departman IS NULL)";
+            }
+
+            $stmt = $model->getDb()->prepare("SELECT pi.id, pi.personel_id, pi.baslangic_tarihi, pi.bitis_tarihi, pi.toplam_gun,
+                       p.adi_soyadi, p.resim_yolu, p.personel_resim_yolu, p.departman, t.tur_adi AS izin_tipi_adi, t.renk AS izin_tipi_renk
+                FROM personel_izinleri pi
+                JOIN personel p ON pi.personel_id = p.id
+                LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
+                WHERE pi.baslangic_tarihi <= :bugun AND pi.bitis_tarihi >= :bugun
+                  AND pi.onay_durumu = 'Onaylandı' AND p.firma_id = :firma_id
+                  AND pi.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL
+                  AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
+                  $deptSql
+                ORDER BY pi.bitis_tarihi ASC, p.adi_soyadi ASC");
+            $stmt->execute($params);
+
+            return array_map(static function (array $row): array {
+                $name = trim((string) ($row['adi_soyadi'] ?? ''));
+                $words = preg_split('/\s+/u', $name, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+                $initials = count($words) >= 2
+                    ? mb_strtoupper(mb_substr($words[0], 0, 1, 'UTF-8') . mb_substr(end($words), 0, 1, 'UTF-8'), 'UTF-8')
+                    : mb_strtoupper(mb_substr($name, 0, 2, 'UTF-8'), 'UTF-8');
+                $hasPhoto = !empty($row['resim_yolu']) || !empty($row['personel_resim_yolu']);
+                $encryptedId = Security::encrypt((string) (int) $row['personel_id']);
+                $renk = (string) ($row['izin_tipi_renk'] ?? '');
+                $palette = [
+                    'blue' => ['#dbeafe', '#2563eb'],
+                    'amber' => ['#fef3c7', '#d97706'],
+                    'red' => ['#fee2e2', '#dc2626'],
+                    'pink' => ['#fce7f3', '#db2777'],
+                    'gray' => ['#f3f4f6', '#4b5563'],
+                    'green' => ['#dcfce7', '#16a34a'],
+                    'purple' => ['#f3e8ff', '#9333ea'],
+                ];
+                $colors = ['#e0e7ff', '#4f46e5'];
+                foreach ($palette as $name => $pair) {
+                    if (str_contains($renk, $name)) {
+                        $colors = $pair;
+                        break;
+                    }
+                }
+
+                return [
+                    'id' => (int) $row['id'],
+                    'encrypted_id' => $encryptedId,
+                    'name' => $name,
+                    'initials' => $initials ?: 'PR',
+                    'department' => trim((string) ($row['departman'] ?? '')),
+                    'leave_type' => trim((string) ($row['izin_tipi_adi'] ?? '')) ?: 'İzin',
+                    'start_date' => (string) $row['baslangic_tarihi'],
+                    'end_date' => (string) $row['bitis_tarihi'],
+                    'total_days' => (float) ($row['toplam_gun'] ?? 0),
+                    'leave_bg' => $colors[0],
+                    'leave_color' => $colors[1],
+                    'photo' => $hasPhoto ? '/api/personnel-photo.php?id=' . rawurlencode($encryptedId) : null,
+                ];
+            }, $stmt->fetchAll(PDO::FETCH_ASSOC) ?: []);
+        }, []);
     }
 
     public function birthdays(): array

@@ -72,6 +72,7 @@ watch(quickActionsModalTab, async () => {
   if (el) el.scrollTop = 0
 })
 const selectedAnnouncement = ref(null)
+const leaveSheetOpen = ref(false)
 const operationsMode = ref('daily') // 'daily' | 'monthly'
 const isSavingSettings = ref(false)
 const isSyncingOperations = ref(false)
@@ -209,6 +210,7 @@ const iconComponentsMap = {
 const ALL_SYSTEM_ACTIONS = [
   // Standart Ana Modüller
   { id: 'act_personnel', permission: 'personnel', label: 'Personel', iconName: 'UsersRound', to: '/personel', theme: 'blue' },
+  { id: 'act_tracking', permission: 'personnel_tracking', label: 'Personel Takip', iconName: 'Clock', to: '/personel-takip', theme: 'emerald' },
   { id: 'act_vehicles', permission: 'vehicles', label: 'Araçlar', iconName: 'CarFront', to: '/arac-takip', theme: 'emerald' },
   { id: 'act_shifts', permission: 'shifts', label: 'Nöbetler', iconName: 'CalendarCheck', to: '/nobet-onay', theme: 'indigo' },
   { id: 'act_notices', permission: 'notices', label: 'İhbarlar', iconName: 'Megaphone', to: '/ihbar', theme: 'amber' },
@@ -1020,6 +1022,25 @@ function formatDate(value) {
     : ''
 }
 
+const onLeaveList = computed(() => (Array.isArray(personnel.value?.on_leave_list) ? personnel.value.on_leave_list : []))
+
+function formatLeaveDate(value) {
+  if (!value) return ''
+  const date = new Date(`${String(value).slice(0, 10)}T00:00:00`)
+  return !Number.isNaN(date.getTime())
+    ? new Intl.DateTimeFormat('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' }).format(date)
+    : ''
+}
+
+function formatLeaveDays(value) {
+  const n = Number(value) || 0
+  return Number.isInteger(n) ? String(n) : n.toLocaleString('tr-TR', { maximumFractionDigits: 2 })
+}
+
+function openLeaveSheet() {
+  if (Number(personnel.value?.on_leave || 0) > 0) leaveSheetOpen.value = true
+}
+
 function openAnnouncementDetail(announcement) {
   selectedAnnouncement.value = announcement
 }
@@ -1242,10 +1263,10 @@ onMounted(() => {
                   <span><i class="ds-dot ds-dot--blue"></i>Sahada</span>
                   <strong>{{ personnel.working }}</strong>
                 </RouterLink>
-                <RouterLink :to="{ path: '/personel', query: { durum: 'on_leave' } }" class="personnel-stat-col">
+                <button type="button" class="personnel-stat-col personnel-stat-btn" aria-haspopup="dialog" @click="openLeaveSheet">
                   <span><i class="ds-dot ds-dot--yellow"></i>İzinli</span>
                   <strong>{{ personnel.on_leave }}</strong>
-                </RouterLink>
+                </button>
                 <RouterLink :to="{ path: '/personel', query: { durum: 'late' } }" class="personnel-stat-col">
                   <span><i class="ds-dot ds-dot--coral"></i>Geç Kalan</span>
                   <strong>{{ personnel.late || 0 }}</strong>
@@ -1970,6 +1991,45 @@ onMounted(() => {
             <span>Tamamla</span>
           </button>
         </footer>
+      </div>
+    </div>
+
+    <div v-if="leaveSheetOpen" class="home-sheet-backdrop" @click.self="leaveSheetOpen = false">
+      <div class="home-sheet-modal" role="dialog" aria-modal="true" aria-label="İzinli personeller">
+        <div class="home-sheet-handle"></div>
+        <header class="home-sheet-head">
+          <div class="flex items-center gap-2">
+            <span class="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+              <CalendarDays :size="17" />
+            </span>
+            <div>
+              <span class="text-[10px] font-bold uppercase tracking-wider text-primary">İZİNLİ PERSONELLER</span>
+              <p class="text-xs text-muted">Bugün izinli {{ onLeaveList.length }} personel</p>
+            </div>
+          </div>
+          <button type="button" class="clay-circle-btn" aria-label="Kapat" @click="leaveSheetOpen = false">
+            <X :size="18" />
+          </button>
+        </header>
+
+        <div class="home-sheet-body">
+          <p v-if="!onLeaveList.length" class="text-sm text-muted">Bugün izinli personel bulunmuyor.</p>
+          <div v-for="item in onLeaveList" :key="item.id" class="leave-sheet-item">
+            <span class="leave-sheet-avatar">
+              <img v-if="item.photo" :src="item.photo" alt="" @error="item.photo = null" />
+              <template v-else>{{ item.initials }}</template>
+            </span>
+            <div class="leave-sheet-info">
+              <strong>{{ item.name }}</strong>
+              <small v-if="item.department">{{ item.department }}</small>
+              <span class="leave-sheet-dates">{{ formatLeaveDate(item.start_date) }} – {{ formatLeaveDate(item.end_date) }}</span>
+            </div>
+            <div class="leave-sheet-side">
+              <span class="leave-sheet-days">{{ formatLeaveDays(item.total_days) }} gün</span>
+              <span class="leave-sheet-type" :style="{ background: item.leave_bg, color: item.leave_color }">{{ item.leave_type }}</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 

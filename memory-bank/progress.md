@@ -1,5 +1,12 @@
 # Progress
 
+## 2026-10-28 — Mobil SPA Personel Takip Modülü
+- [x] `PersonelTakipModel` + `api/personel-takip.php` (gün durumu, personel detayı, analiz, mesai ayarı, konum isteği, gecikme açıklaması).
+- [x] Yetki: `personnel_tracking` (`personel-takip/list`); sunucu tarafı 403 ve CSRF 419 doğrulandı, yetkisiz kullanıcıda menü/rota gizli.
+- [x] Canlı Durum, Harita (Leaflet), Analiz sekmeleri ve personel detay çekmecesi; açık/koyu tema 390px Chrome ekran görüntüleriyle kontrol edildi.
+- [x] Açıklama kaydı ve konum isteği uçtan uca test edildi, test kayıtları silindi; `npm run build` alındı.
+- [ ] Sunucuya deploy (`git pull` + `mobile-spa/bin/deploy-production.sh`).
+
 ## 2026-10-28 — Puantaj Özel Gün Otomasyonu (HTÇ / RTÇ / Arife FM)
 - [x] `resmi_tatiller` firma/tür/yarım gün alanları, 2026–2027 tatil takvimi, `personel_fazla_mesaileri.kaynak/otomatik_kural`, `resmi_tatil_tanimlari` yetkisi (SQL, tekrar çalıştırılabilir).
 - [x] HTÇ'de göreve başlama kaydı şartı; iş departmanında görev + eşik, diğerlerinde yalnız görev kaydı.
@@ -2015,3 +2022,10 @@
 - [x] 2026-10-28 KEP gönderimi: kullanıcının kendi KEP kimliği yoksa firma varsayılan hesabıyla gönderim (model fallback parametresi).
 - [x] 2026-10-28 Mobil SPA KM Onayları: tarih filtresi (Bugün varsayılan, 7 gün, 1 ay, Tümü, özel aralık) ve AI butonu analiz göstergesi; build alındı, cihazda test bekliyor
 - [x] 2026-10-28 Evrak belge doğrulama: kalıcı kod/PIN tablosu, alt bilgide link + QR, herkese açık `belge-dogrula` sayfası (özet + imzalı PDF indirme, rate limit); yerelde curl ile doğrulama/yanlış PIN/429/oturumsuz indirme testleri geçti, canlıda SQL + eski kayıt doldurma bekliyor.
+
+## Mobil Hakediş KPI: Tamamlanan kartı
+- Tamamlanan Hakediş kartında Hakediş toplamı, Fiyat farkı toplamı ve Toplam gerçekleşen ayrı gösterilir (sozlesme-hakedis.php summary.tamamlanan_gerceklesen_formatted, SozlesmeHakedisView.vue).
+
+## 2026-10-29 — Mobil SPA ana sayfa izinli personel bottom sheet
+- Personel Durumu kartında İzinli kutusu artık bottom sheet açar (ad, departman, izin tipi, başlangıç–bitiş).
+- MobileDashboardModel::onLeaveList() (departman kısıtı ve personel yetkisi dashboard.php ile aynı), HomeView.vue sheet, design-system.css .leave-sheet-*.

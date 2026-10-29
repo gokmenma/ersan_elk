@@ -11,6 +11,7 @@ const PersonnelView = () => import('./views/PersonnelView.vue')
 const PersonnelFormView = () => import('./views/PersonnelFormView.vue')
 const PersonnelDetailView = () => import('./views/PersonnelDetailView.vue')
 const PersonnelSectionView = () => import('./views/PersonnelSectionView.vue')
+const PersonelTakipView = () => import('./views/PersonelTakipView.vue')
 const CariView = () => import('./views/CariView.vue')
 const CariDetailView = () => import('./views/CariDetailView.vue')
 const FaturaView = () => import('./views/FaturaView.vue')
@@ -56,6 +57,8 @@ const router = createRouter({
     { path: '/personel/:id/bolum/:section', name: 'personnel-section', component: PersonnelSectionView, meta: { requiresAuth: true, requiresCompany: true, permission: 'personnel' } },
     { path: '/personel/yeni', name: 'personnel-create', component: PersonnelFormView, meta: { requiresAuth: true, requiresCompany: true, permission: 'personnel_edit', chrome: false } },
     { path: '/personel/:id/duzenle', name: 'personnel-edit', component: PersonnelFormView, meta: { requiresAuth: true, requiresCompany: true, permission: 'personnel_edit', chrome: false } },
+    { path: '/personel-takip', name: 'personel-takip', component: PersonelTakipView, meta: { requiresAuth: true, requiresCompany: true, permission: 'personnel_tracking' } },
+    { path: '/saha-takip', redirect: '/personel-takip' },
     { path: '/cari-takip', name: 'cari-list', component: CariView, meta: { requiresAuth: true, requiresCompany: true, permission: 'current_accounts' } },
     { path: '/cari-takip/:id', name: 'cari-detail', component: CariDetailView, meta: { requiresAuth: true, requiresCompany: true, permission: 'current_accounts' } },
     { path: '/fatura', name: 'fatura', component: FaturaView, meta: { requiresAuth: true, requiresCompany: true, permission: 'invoices' } },

@@ -31,6 +31,7 @@ import {
   LayoutGrid,
   LogOut,
   Megaphone,
+  MapPin,
   MessageCircle,
   Pin,
   ReceiptText,
@@ -398,6 +399,18 @@ const MODULE_CATALOG = {
     theme: 'blue',
     to: '/personel',
   },
+  personnel_tracking: {
+    key: 'personnel_tracking',
+    group: 'planlama',
+    permission: 'personnel_tracking',
+    label: 'Personel Takip',
+    navLabel: 'Takip',
+    eyebrow: 'SAHA & MESAİ',
+    subtitle: 'Görev başlama/bitiş, gecikme ve konum takibi',
+    icon: MapPin,
+    theme: 'emerald',
+    to: '/personel-takip',
+  },
   requests: {
     key: 'requests',
     group: 'planlama',
@@ -490,7 +503,7 @@ const DEFAULT_GROUP_KEYS = ['finans', 'operasyon', 'planlama', 'sistem']
 const DEFAULT_GROUP_ITEMS = {
   finans: ['invoices', 'cash', 'current_accounts', 'payroll', 'contracts'],
   operasyon: ['vehicles', 'km_approvals', 'documents', 'notices', 'illegal', 'reports'],
-  planlama: ['personnel', 'requests', 'tasks', 'shifts', 'puantaj'],
+  planlama: ['personnel', 'personnel_tracking', 'requests', 'tasks', 'shifts', 'puantaj'],
   sistem: ['logs', 'live_support', 'support'],
 }
 
@@ -670,7 +683,7 @@ function isItemActive(item) {
   if (menuOpen.value) return false
   if (!item.to) return false
   if (item.to === '/') return route.path === '/'
-  return route.path.startsWith(item.to)
+  return route.path === item.to || route.path.startsWith(`${item.to}/`)
 }
 
 const visibleOperationGroups = computed(() => {

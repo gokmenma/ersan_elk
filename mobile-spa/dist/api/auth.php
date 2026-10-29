@@ -255,6 +255,7 @@ function sessionPayload(): array
         'personnel' => mobileCan(['personel_listesi']),
         'personnel_edit' => Gate::allows('personel_listesi') && Gate::allows('personel_duzenle'),
         'personnel_documents' => Gate::allows('personel_duzenle') && Gate::allows('evrak_bilgileri_sekmesi'),
+        'personnel_tracking' => mobileCan(['personel-takip/list']) || Gate::isSuperAdmin(),
         'tasks' => mobileCan(['gorevler']),
         'reports' => mobileCan(['puantaj/raporlar']),
         'puantaj' => mobileCan(['personel/puantaj']),
@@ -430,6 +431,7 @@ try {
             'requests' => 'talepler',
             'profile' => 'profil',
             'personnel' => 'personel/list',
+            'personel-takip' => 'personel-takip/list',
             'personnel-detail' => 'personel/detay',
             'personnel-section' => 'personel/bolum',
             'personnel-create' => 'personel/yeni',
@@ -465,6 +467,7 @@ try {
 
         $allowedModuleKeys = [
             'personnel',
+            'personnel_tracking',
             'reports',
             'requests',
             'invoices',

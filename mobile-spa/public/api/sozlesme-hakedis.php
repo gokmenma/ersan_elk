@@ -223,6 +223,7 @@ try {
                 'guncel_hacim_formatted' => number_format($guncelHacim, 2, ',', '.') . ' ₺',
                 'tamamlanan_imalat_formatted' => number_format($tamamToplam, 2, ',', '.') . ' ₺',
                 'tamamlanan_ff_formatted' => number_format((float) ($summary->tamamlanan_ff ?? 0), 2, ',', '.') . ' ₺',
+                'tamamlanan_gerceklesen_formatted' => number_format($tamamToplam + (float) ($summary->tamamlanan_ff ?? 0), 2, ',', '.') . ' ₺',
                 'tamamlanan_adet' => (int) ($summary->tamamlanan_adet ?? 0),
                 'taslak_imalat_formatted' => number_format($taslakToplam, 2, ',', '.') . ' ₺',
                 'taslak_ff_formatted' => number_format((float) ($summary->taslak_ff ?? 0), 2, ',', '.') . ' ₺',

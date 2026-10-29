@@ -55,6 +55,7 @@ const summary = ref({
   guncel_hacim_formatted: '0,00 ₺',
   tamamlanan_imalat_formatted: '0,00 ₺',
   tamamlanan_ff_formatted: '0,00 ₺',
+  tamamlanan_gerceklesen_formatted: '0,00 ₺',
   tamamlanan_adet: 0,
   taslak_imalat_formatted: '0,00 ₺',
   taslak_ff_formatted: '0,00 ₺',
@@ -386,12 +387,16 @@ function getStatusLabel(durum) {
             <CheckCircle2 :size="16" class="text-emerald" />
           </div>
         </div>
-        <div class="kpi-value text-emerald">{{ summary.tamamlanan_imalat_formatted }}</div>
+        <div class="kpi-breakdown">
+          <div class="kpi-breakdown-row"><span>Hakediş toplamı</span><strong>{{ summary.tamamlanan_imalat_formatted }}</strong></div>
+          <div class="kpi-breakdown-row"><span>Fiyat farkı toplamı</span><strong>{{ summary.tamamlanan_ff_formatted }}</strong></div>
+          <div class="kpi-breakdown-row kpi-breakdown-total"><span>Toplam gerçekleşen</span><strong class="text-emerald">{{ summary.tamamlanan_gerceklesen_formatted }}</strong></div>
+        </div>
         <div class="segmented-track kpi-progress">
           <span v-if="summary.tamamlanan_yuzde > 0" class="seg-pill seg-pill--emerald" :style="{ width: summary.tamamlanan_yuzde + '%' }"></span>
           <span v-if="summary.taslak_yuzde > 0" class="seg-pill seg-pill--amber" :style="{ width: summary.taslak_yuzde + '%' }"></span>
         </div>
-        <div class="kpi-subtext">{{ summary.tamamlanan_adet }} hakediş | FF: {{ summary.tamamlanan_ff_formatted }}</div>
+        <div class="kpi-subtext">{{ summary.tamamlanan_adet }} hakediş</div>
       </div>
 
       <!-- 4. Taslak Hakediş -->
@@ -812,6 +817,12 @@ function getStatusLabel(durum) {
   color: var(--ds-ink);
   line-height: 1.2;
 }
+
+.kpi-breakdown { display: flex; flex-direction: column; gap: 2px; }
+.kpi-breakdown-row { display: flex; flex-direction: column; font-size: 10px; color: var(--ds-muted); line-height: 1.25; }
+.kpi-breakdown-row strong { font-size: 13px; font-weight: 700; color: var(--ds-ink); }
+.kpi-breakdown-total { margin-top: 2px; padding-top: 3px; border-top: 1px dashed var(--ds-border); }
+.kpi-breakdown-total strong { font-size: 16px; }
 
 .kpi-subtext {
   font-size: 11px;

@@ -232,8 +232,13 @@ try {
                         <!-- PERSONEL LİSTESİ TAB -->
                         <div class="tab-pane fade show active" id="tabListe" role="tabpanel">
                             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 mt-3">
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
                                 <div style="min-width: 250px;">
                                     <?= Form::FormSelect2("mainDepartmanFilter", $departmanOptions, "", "Departman", "bx bx-buildings", "key", "", "form-select select2 form-select-sm", false, "width:100%", 'onchange="yenile()"') ?>
+                                </div>
+                                <div style="min-width: 180px;">
+                                    <?= Form::FormFloatInput("text", "listeTarih", Date::today(), "", "Tarih", "calendar", 'form-control flatpickr') ?>
+                                </div>
                                 </div>
                                 <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1" style="height: 56px;">
                                     <button type="button"
@@ -1117,6 +1122,7 @@ try {
         document.getElementById('raporBaslangic').value = formatDate(weekAgo);
         document.getElementById('raporBitis').value = formatDate(today);
         document.getElementById('gecKalmaTarih').value = formatDate(today);
+        $('#listeTarih').on('change', function () { yenile(); });
 
         // Her 60 saniyede otomatik yenile
         setInterval(function () {
@@ -1218,7 +1224,7 @@ try {
             const response = await fetch('views/personel-takip/api.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'action=getPersonelDurumlari&departman=' + encodeURIComponent(departman)
+                body: 'action=getPersonelDurumlari&departman=' + encodeURIComponent(departman) + '&tarih=' + encodeURIComponent(document.getElementById('listeTarih')?.value || '')
             });
             const result = await response.json();
 

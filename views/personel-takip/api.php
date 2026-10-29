@@ -141,7 +141,13 @@ try {
                 $departman = $restricted_dept;
             }
             
-            $personeller = $HareketModel->getTumPersonelDurumu($firma_id, null, $departman);
+            $tarih_sorgu = date('Y-m-d');
+            $tarih_post = DateTime::createFromFormat('d.m.Y', trim($_POST['tarih'] ?? ''));
+            if ($tarih_post && $tarih_post->format('Y-m-d') <= date('Y-m-d')) {
+                $tarih_sorgu = $tarih_post->format('Y-m-d');
+            }
+
+            $personeller = $HareketModel->getTumPersonelDurumu($firma_id, $tarih_sorgu, $departman);
 
             $data = [];
             foreach ($personeller as $p) {

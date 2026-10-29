@@ -1,5 +1,11 @@
 # Active Context
 
+## Mobil SPA — Personel Takip Modülü (2026-10-28)
+- **Rota/Yetki**: `/personel-takip` (`/saha-takip` yönlendirmesi), mobil yetki anahtarı `personnel_tracking` → masaüstündeki mevcut `personel-takip/list` yetkisi (yeni permission kaydı açılmadı). Departman mesai ayarı `personel_takip_deparmana_gore_ise_baslama_belirleme` ile korunur. Menü: "Diğer" > Planlama & İK, ana sayfa hızlı erişim kataloğu, `save-menu-order` beyaz listesi, sayfa görüntüleme log haritası.
+- **Backend**: `App/Model/PersonelTakipModel.php` (tüm SQL burada; firma kapsamlı; günlük özet BASLA–BITIR çiftlerinden, bugünkü açık görev 14 saate kadar sayılır). Endpoint `mobile-spa/public/api/personel-takip.php`: GET `gun`, `personel`, `analiz`, `mesai`; POST (CSRF) `konum_iste`, `konum_iste_toplu` (yalnız görevdekiler), `aciklama_kaydet`, `mesai_kaydet`. ID'ler `Security::encrypt`; yazma işlemleri SystemLog'a yazılır. `personnel-photo.php` yetki listesine `personel-takip/list` eklendi.
+- **Arayüz**: `PersonelTakipView.vue` — Canlı Durum (gün seçici, segmentli durum kartı, Görevde/Tamamladı/Bitiş yok/Geç/Başlamadı/İzinli filtreleri, arama, departman, sıralama, 60 sn otomatik yenileme, ara/konum iste/açıklama kısayolları), Harita (Leaflet; görev konumu / canlı konum, durum renkli baş harf işaretçileri), Analiz (KPI, günlük saat grafiği, başlama saati dağılımı, departman dakikliği, en çok gecikenler, personel performansı). Personel detay çekmecesi: dönem özeti, günler (açıklama ekle/düzenle), hareket zaman çizelgesi, açıklama geçmişi. `leaflet@1.9.4` eklendi, yalnız Harita sekmesinde yüklenir.
+- **Masaüstünden farklar**: Geçmiş günde bitirilmemiş görev "Bitiş yok" olarak ayrılır; onaylı izin "İzinli" durumu gerçekten hesaplanır; konum isteği şifreli ID + firma kontrolüyle yapılır.
+
 ## Puantaj Özel Gün Otomasyonu — Pazar HTÇ, Resmi Tatil RTÇ, Arife FM (2026-10-28)
 - **Cron**: `cron/puantaj_ozel_gun_otomasyon.php --run=aksam` (23:00, bugün) ve `--run=sabah` (08:00, dün kesinleştirme); `--date`, `--firma-id`, `--dry-run` destekler. Crontab satırları `cron/README.md` içinde.
 - **Kurallar**: İş sayısı aranan departmanlar (ayar `ozel_gun_sayili_departmanlar`, varsayılan `okuma,kaçak,sökme,mühür`) için göreve başlama kaydı + iş eşiği; diğer departmanlar için yalnız göreve başlama kaydı (`personel_hareketleri` BASLA). Pazar → HTÇ, tam gün resmi tatil → RTÇ (Pazar'a denk gelse de öncelikli), arife → kesim saatinden sonra elle bitirilen/başlatılan görevde +4 saat FM (23:50 otomatik kapanış sayılmaz; akşam açık görev için karar sabaha bırakılır).
@@ -3384,3 +3390,10 @@
 - Herkese açık `belge-dogrula.php` (oturum/yetki yok, bilinçli): kod+PIN → özet, imzalayanlar, SHA-256, imzalı PDF indirme (`?indir=1`, oturumda 10 dk geçerli doğrulama + SHA-256 kontrolü). IP başına 15 dk'da 10 başarısız denemede 429 (`evrak_dogrulama_deneme`). `approveWithPades` imzalı PDF hash'ini `evrak_dogrulama.pades_pdf_sha256` alanına yazar.
 - `.htaccess`: `uploads/evrak-pades/` doğrudan erişime kapatıldı.
 - Bekleyen: sql/2026_10_28_evrak_belge_dogrulama.sql canlıda çalıştırılmalı; sonra eski imzalı evraklar için tek seferlik kayıt doldurma (yerelde yapıldı, betik silindi) gerekir.
+
+## Mobil Hakediş KPI: Tamamlanan kartı
+- Tamamlanan Hakediş kartında Hakediş toplamı, Fiyat farkı toplamı ve Toplam gerçekleşen ayrı gösterilir (sozlesme-hakedis.php summary.tamamlanan_gerceklesen_formatted, SozlesmeHakedisView.vue).
+
+## 2026-10-29 — Mobil SPA ana sayfa izinli personel bottom sheet
+- Personel Durumu kartında İzinli kutusu artık bottom sheet açar (ad, departman, izin tipi, başlangıç–bitiş).
+- MobileDashboardModel::onLeaveList() (departman kısıtı ve personel yetkisi dashboard.php ile aynı), HomeView.vue sheet, design-system.css .leave-sheet-*.
