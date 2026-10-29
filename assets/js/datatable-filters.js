@@ -168,7 +168,10 @@
     const mode = cell.mode;
     const val = cell.value;
 
-    const cellText = extractTextWithSpaces(cellValueRaw);
+    let cellText = extractTextWithSpaces(cellValueRaw);
+    if (["null", "not_null"].includes(mode) && /^[-–—]+$/.test((cellText || "").trim())) {
+      cellText = "";
+    }
     const isSelect = cell.type === "select";
 
     // Determine if applied
@@ -275,6 +278,8 @@
 
       const numCell = parseNumTR(cellText);
       const numFilter = parseNumTR(val);
+      if (mode === "null") return isNaN(numCell);
+      if (mode === "not_null") return !isNaN(numCell);
       if (isNaN(numFilter)) return true;
       if (isNaN(numCell)) return false;
       switch (mode) {
@@ -943,6 +948,7 @@
     function updateFilterBar() {
       const active = filterCells.filter((c) => {
         const val = c.value;
+        if (["null", "not_null"].includes(c.mode)) return true;
         return (
           val &&
           (Array.isArray(val) ? val.length > 0 : val.toString().trim() !== "")
@@ -978,6 +984,7 @@
             : cell.value.join(", ")
           : cell.value;
         if (cell.value2) valDisplay += " - " + cell.value2;
+        if (["null", "not_null"].includes(cell.mode)) valDisplay = mLabel;
         html += `<span class="badge">${cell.title}${mLabel && cell.type !== "select" ? " (" + mLabel + ")" : ""}: ${valDisplay}<i class="bx bx-x remove" data-col="${cell.colIdx}"></i></span>`;
       });
       html +=

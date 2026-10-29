@@ -158,7 +158,7 @@ try {
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
                     <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">BUGÜN İZİNLİ</span>
+                        <span class="summary-kpi-label" id="lblIzinli">BUGÜN İZİNLİ</span>
                         <div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
                             <i class="bx bx-calendar-minus"></i>
                         </div>
@@ -1202,7 +1202,7 @@ try {
             const response = await fetch('views/personel-takip/api.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'action=getOzet&departman=' + encodeURIComponent(departman)
+                body: 'action=getOzet&departman=' + encodeURIComponent(departman) + '&tarih=' + encodeURIComponent(document.getElementById('listeTarih')?.value || '')
             });
             const result = await response.json();
 
@@ -1211,6 +1211,9 @@ try {
                 document.getElementById('stat-tamamladi').textContent = result.data.tamamladi;
                 document.getElementById('stat-baslamadi').textContent = result.data.baslamadi;
                 document.getElementById('stat-izinli').textContent = result.data.izinli || 0;
+                const secilenTarih = document.getElementById('listeTarih')?.value || '';
+                const bugunStr = new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                document.getElementById('lblIzinli').textContent = (!secilenTarih || secilenTarih === bugunStr) ? 'BUGÜN İZİNLİ' : 'İZİNLİ';
                 document.getElementById('stat-gec-kalan').textContent = result.data.gec_kalan || 0;
             }
         } catch (error) {

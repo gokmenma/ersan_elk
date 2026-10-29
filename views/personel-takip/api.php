@@ -69,7 +69,14 @@ try {
                 $departman = $restricted_dept;
             }
             
-            $personeller = $HareketModel->getTumPersonelDurumu($firma_id, null, $departman);
+            $gun = date('Y-m-d');
+            $tarih_post = DateTime::createFromFormat('d.m.Y', trim($_POST['tarih'] ?? ''));
+            if ($tarih_post && $tarih_post->format('Y-m-d') <= $gun) {
+                $gun = $tarih_post->format('Y-m-d');
+            }
+            $bugun_mu = $gun === date('Y-m-d');
+
+            $personeller = $HareketModel->getTumPersonelDurumu($firma_id, $gun, $departman);
 
             $gorevde = 0;
             $tamamladi = 0;
@@ -77,7 +84,6 @@ try {
             $izinli_count = 0;
             $gec_kalan = 0;
 
-            $gun = date('Y-m-d');
             $now = new DateTime();
 
             $izinliler = [];
@@ -116,7 +122,7 @@ try {
                 } else {
                     $baslamadi++;
                     // Başlamamış ve saat geçmiş (bugün için)
-                    if (!$is_izinli && $now > $limit_time) {
+                    if ($bugun_mu && !$is_izinli && $now > $limit_time) {
                         $gec_kalan++;
                     }
                 }
