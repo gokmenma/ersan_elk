@@ -106,8 +106,8 @@ class MobileDashboardModel
                     'purple' => ['#f3e8ff', '#9333ea'],
                 ];
                 $colors = ['#e0e7ff', '#4f46e5'];
-                foreach ($palette as $name => $pair) {
-                    if (str_contains($renk, $name)) {
+                foreach ($palette as $colorKey => $pair) {
+                    if (str_contains($renk, $colorKey)) {
                         $colors = $pair;
                         break;
                     }
