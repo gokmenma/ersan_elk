@@ -291,18 +291,251 @@
         right: 0 !important;
         bottom: 0 !important;
         width: min(100%, 480px);
-        height: 90vh;
-        height: min(90dvh, 760px);
+        height: min(92dvh, 780px);
         margin: 0 auto;
-        border-radius: 24px 24px 0 0;
+        border-radius: 28px 28px 0 0;
         overflow: hidden;
+        background: #e6eaef;
         box-shadow:
-            0 -100vh 0 100vh rgba(15, 23, 42, .42),
-            0 -14px 40px rgba(15, 23, 42, .22);
+            0 -100vh 0 100vh rgba(22, 25, 32, .48),
+            0 -18px 44px rgba(22, 25, 32, .24);
+    }
+
+    .dark #pwa-full-modal.ihbar-form-modal {
+        background: #14171c;
     }
 
     #pwa-full-modal.ihbar-form-modal #pwa-full-modal-content {
-        padding-bottom: 7rem !important;
+        padding-bottom: 0 !important;
+        scroll-padding-bottom: 7rem;
+    }
+
+    .ihbar-sheet-handle {
+        width: 40px;
+        height: 5px;
+        margin: 10px auto 0;
+        border-radius: 999px;
+        background: rgba(22, 25, 32, .18);
+    }
+
+    .dark .ihbar-sheet-handle {
+        background: rgba(255, 255, 255, .22);
+    }
+
+    .ihbar-sheet-head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 20px 14px;
+    }
+
+    .ihbar-sheet-head__icon {
+        flex: none;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--primary);
+        color: #fff;
+        box-shadow: 0 10px 18px -8px rgba(var(--primary-rgb, 19, 91, 236), .6);
+    }
+
+    .ihbar-sheet-head h1 {
+        margin: 0;
+        font-size: 20px;
+        line-height: 1.15;
+        font-weight: 800;
+        color: #161920;
+    }
+
+    .ihbar-sheet-head p {
+        margin: 2px 0 0;
+        font-size: 12px;
+        font-weight: 600;
+        color: #64748b;
+    }
+
+    .dark .ihbar-sheet-head h1 { color: #e8ecf2; }
+    .dark .ihbar-sheet-head p { color: #94a3b8; }
+
+    .ihbar-sheet-body {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 0 16px 20px;
+    }
+
+    .ihbar-card {
+        padding: 18px 16px;
+        border-radius: 28px;
+        background: #fff;
+        border: 1px solid rgba(255, 255, 255, .9);
+        box-shadow: 0 18px 36px -24px rgba(22, 25, 32, .3);
+    }
+
+    .dark .ihbar-card {
+        background: #1d222a;
+        border-color: rgba(255, 255, 255, .07);
+    }
+
+    .ihbar-card + .ihbar-card { margin-top: 0; }
+
+    .ihbar-card__title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 14px;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        color: #64748b;
+    }
+
+    .ihbar-card__title .material-symbols-outlined { font-size: 18px; color: var(--primary); }
+    .dark .ihbar-card__title { color: #94a3b8; }
+
+    .ihbar-fields { display: flex; flex-direction: column; gap: 14px; }
+
+    .ihbar-field label {
+        display: block;
+        margin: 0 0 6px 2px;
+        font-size: 12px;
+        font-weight: 700;
+        color: #475569;
+    }
+
+    .ihbar-field label small {
+        font-size: 11px;
+        font-weight: 600;
+        color: #94a3b8;
+    }
+
+    .dark .ihbar-field label { color: #cbd5e1; }
+
+    .ihbar-field .req { color: #e11d48; }
+
+    .ihbar-input {
+        display: block;
+        width: 100%;
+        min-height: 52px;
+        padding: 13px 16px;
+        border-radius: 18px;
+        border: 2px solid transparent;
+        background: #f1f4f8;
+        color: #161920;
+        font-size: 15px;
+        font-weight: 700;
+        outline: none;
+        transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+    }
+
+    .ihbar-input::placeholder { font-weight: 600; color: #94a3b8; }
+
+    .ihbar-input:focus {
+        background: #fff;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 5px rgba(var(--primary-rgb, 19, 91, 236), .14);
+    }
+
+    select.ihbar-input {
+        appearance: none;
+        -webkit-appearance: none;
+        padding-right: 44px;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.8' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 14px center;
+        background-size: 20px;
+    }
+
+    textarea.ihbar-input {
+        min-height: 104px;
+        resize: none;
+        line-height: 1.45;
+    }
+
+    .dark .ihbar-input {
+        background: rgba(255, 255, 255, .06);
+        color: #f1f5f9;
+    }
+
+    .dark .ihbar-input:focus {
+        background: rgba(var(--primary-rgb, 19, 91, 236), .12);
+    }
+
+    .ihbar-konum-btn {
+        width: 100%;
+        min-height: 52px;
+        padding: 0 16px;
+        border: 0;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font-size: 14px;
+        font-weight: 800;
+        color: var(--primary);
+        background: rgba(var(--primary-rgb, 19, 91, 236), .1);
+        transition: transform .15s ease, background .2s ease;
+    }
+
+    .ihbar-konum-btn:active { transform: scale(.98); }
+    .ihbar-konum-btn:disabled { opacity: .6; }
+
+    .ihbar-konum-note {
+        margin: 8px 4px 0;
+        font-size: 11px;
+        font-weight: 600;
+        color: #64748b;
+    }
+
+    .dark .ihbar-konum-note { color: #94a3b8; }
+
+    .ihbar-upload-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+
+    .ihbar-upload-tile {
+        min-height: 88px;
+        padding: 12px 8px;
+        border-radius: 22px;
+        border: 2px dashed rgba(100, 116, 139, .35);
+        background: #f6f8fb;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 800;
+        color: #475569;
+        cursor: pointer;
+        transition: transform .15s ease, border-color .2s ease, background .2s ease;
+    }
+
+    .ihbar-upload-tile:active { transform: scale(.97); }
+    .ihbar-upload-tile:hover { border-color: var(--primary); }
+
+    .ihbar-upload-tile .material-symbols-outlined { font-size: 26px; color: var(--primary); }
+    .ihbar-upload-tile--muted .material-symbols-outlined { color: #94a3b8; }
+
+    .dark .ihbar-upload-tile {
+        background: rgba(255, 255, 255, .04);
+        border-color: rgba(255, 255, 255, .16);
+        color: #cbd5e1;
+    }
+
+    .ihbar-progress {
+        margin-top: 12px;
+        padding: 12px 14px;
+        border-radius: 20px;
+        background: rgba(var(--primary-rgb, 19, 91, 236), .08);
+        border: 1px solid rgba(var(--primary-rgb, 19, 91, 236), .18);
     }
 
     .ihbar-form-footer {
@@ -311,17 +544,51 @@
         right: 0;
         bottom: 0;
         z-index: 135;
+        display: grid;
+        grid-template-columns: 1fr 1.5fr;
+        gap: 10px;
         margin: 0;
-        padding: 1rem 1.25rem calc(1rem + env(safe-area-inset-bottom));
-        background: rgba(248, 250, 252, .96);
-        border-top: 1px solid #e2e8f0;
-        backdrop-filter: blur(12px);
-        box-shadow: 0 -8px 24px rgba(15, 23, 42, .06);
+        padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+        background: linear-gradient(to top, #e6eaef 62%, rgba(230, 234, 239, 0));
     }
 
     .dark .ihbar-form-footer {
-        background: rgba(15, 23, 42, .96);
-        border-top-color: #334155;
+        background: linear-gradient(to top, #14171c 62%, rgba(20, 23, 28, 0));
+    }
+
+    .ihbar-btn {
+        min-height: 52px;
+        border-radius: 999px;
+        border: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font-size: 14px;
+        font-weight: 800;
+        transition: transform .15s ease, opacity .2s ease;
+    }
+
+    .ihbar-btn:active { transform: scale(.97); }
+    .ihbar-btn:disabled { opacity: .6; }
+
+    .ihbar-btn--ghost {
+        background: #fff;
+        color: #161920;
+        border: 1px solid rgba(255, 255, 255, .9);
+        box-shadow: 0 8px 18px -10px rgba(22, 25, 32, .3);
+    }
+
+    .dark .ihbar-btn--ghost {
+        background: #262c36;
+        color: #e8ecf2;
+        border-color: rgba(255, 255, 255, .1);
+    }
+
+    .ihbar-btn--primary {
+        background: var(--primary);
+        color: #fff;
+        box-shadow: 0 14px 24px -12px rgba(var(--primary-rgb, 19, 91, 236), .7);
     }
 </style>
 
@@ -776,139 +1043,139 @@
 
         showPwaFullModal({
             html: `
-                <div class="px-5 pt-8 pb-8">
-                    <h1 class="text-xl font-black text-slate-900 dark:text-white">${editData ? 'İhbarı Güncelle' : 'İhbar Bildir'}</h1>
-                    <p class="text-sm text-slate-500 mt-1 mb-6">${editData ? 'İhbar sonuçlandırılmadan önce bilgileri düzenleyebilirsiniz.' : 'Kaçak Su kullanımı ihbarınızı bildirin.'}</p>
-
-                    <form id="ihbar-form" class="space-y-4">
-                        <div>
-                            <label class="form-label font-semibold text-slate-700 dark:text-slate-200">İhbar Türü <span class="text-rose-500">*</span></label>
-                            <select name="ihbar_turu" class="form-input" required>
-                                <option value="">Tür seçin...</option>
-                                ${['Abonesiz', 'Kaçak', 'Pasif', 'Usülsüz'].map(tur => `<option value="${tur}" ${editData?.ihbar_turu === tur ? 'selected' : ''}>${tur}</option>`).join('')}
-                            </select>
-                        </div>
-                        <div>
-                            <label class="form-label font-semibold text-slate-700 dark:text-slate-200">İlçe <span class="text-rose-500">*</span></label>
-                            <select name="ilce" class="form-input" required>
-                                <option value="">İlçe seçin...</option>
-                                ${['Afşin', 'Andırın', 'Çağlayancerit', 'Dulkadiroğlu', 'Ekinözü', 'Elbistan', 'Göksun', 'Nurhak', 'Onikişubat', 'Pazarcık', 'Türkoğlu']
-                                    .map(ilce => `<option value="${ilce}" ${editData?.ilce === ilce ? 'selected' : ''}>${ilce}</option>`).join('')}
-                            </select>
-                        </div>
-                        <div>
-                            <label class="form-label font-semibold text-slate-700 dark:text-slate-200">Mahalle <span class="text-rose-500">*</span></label>
-                            <input type="text" name="mahalle" class="form-input" placeholder="Mahalle" required value="${editData?.mahalle ?? ''}">
-                        </div>
-                        <div>
-                            <label class="form-label">Komşu / Abone Telefonu</label>
-                            <input type="tel" name="telefon" class="form-input" placeholder="05XX XXX XX XX" value="${editData?.telefon ?? ''}">
-                        </div>
-                        <div>
-                            <label class="form-label">Komşu Abone No</label>
-                            <input type="text" name="komsu_abone_no" class="form-input" placeholder="Abone numarasını yazın" value="${editData?.komsu_abone_no ?? ''}">
-                        </div>
-                        <div>
-                            <label class="form-label font-semibold text-slate-700 dark:text-slate-200">Konum Bilgisi <span class="text-rose-500">*</span></label>
-                            <input type="hidden" name="konum_lat" id="ihbar-konum-lat" value="${editData?.konum_lat ?? ''}">
-                            <input type="hidden" name="konum_lng" id="ihbar-konum-lng" value="${editData?.konum_lng ?? ''}">
-                            <input type="hidden" name="konum_dogruluk" id="ihbar-konum-dogruluk" value="${editData?.konum_dogruluk ?? ''}">
-                            <button type="button" id="ihbar-konum-btn" onclick="ihbarKonumAl()"
-                                class="w-full min-h-[52px] px-4 rounded-xl border border-primary/30 bg-primary/5 text-primary font-bold text-sm flex items-center justify-center gap-2 active:scale-[.98] transition-transform">
-                                <span class="material-symbols-outlined">my_location</span>
-                                <span id="ihbar-konum-text">${editData?.konum_lat && editData?.konum_lng ? 'Konum eklendi · Yenilemek için dokunun' : 'Mevcut Konumumu Ekle'}</span>
-                            </button>
-                            <p id="ihbar-konum-durum" class="text-xs text-slate-500 mt-2">
-                                ${editData?.konum_lat && editData?.konum_lng ? `${Number(editData.konum_lat).toFixed(6)}, ${Number(editData.konum_lng).toFixed(6)}` : 'Konum izni zorunludur ve bu ihbar için kullanılacaktır.'}
-                            </p>
-                        </div>
-                        <div>
-                            <label class="form-label font-semibold text-slate-700 dark:text-slate-200">Açıklama <span class="text-rose-500">*</span></label>
-                            <textarea name="aciklama" class="form-input min-h-[100px]"
-                                placeholder="İhbar detaylarını yazınız..." required>${editData?.aciklama ?? ''}</textarea>
-                        </div>
-                        <div>
-                            <label class="form-label font-semibold text-slate-700 dark:text-slate-200">Fotoğraf Ekle <span class="text-rose-500">*</span> <span class="text-xs font-normal text-slate-500">(en fazla ${IHBAR_MAX_FOTO} adet)</span></label>
-                            ${editData && ihbarMevcutFotograflar.length > 0 ? `
-                            <div class="mb-2">
-                                <p class="text-xs text-slate-500 mb-1">Yüklü dosyalar</p>
-                                <div class="flex flex-wrap gap-2">
-                                    ${ihbarMevcutFotograflar.map(f => f.medya_tipi === 'video'
-                                        ? `<div class="w-16 h-16 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center bg-slate-100"><span class="material-symbols-outlined text-slate-400">movie</span></div>`
-                                        : `<img src="${f.kucuk_url || f.url}" class="w-16 h-16 object-cover rounded-xl border border-slate-200 dark:border-slate-700">`).join('')}
-                                </div>
-                            </div>` : ''}
-                            <input type="file" id="ihbar-foto-input" accept="image/*" multiple class="hidden">
-                            <input type="file" id="ihbar-foto-camera-input" accept="image/*" capture="environment" class="hidden">
-
-                            <div class="grid grid-cols-2 gap-2">
-                                <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-4 flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-primary transition-colors active:scale-95"
-                                    onclick="document.getElementById('ihbar-foto-camera-input').click()">
-                                    <span class="material-symbols-outlined text-2xl text-primary">photo_camera</span>
-                                    <p class="text-xs font-bold text-slate-600 dark:text-slate-300 text-center">Kameradan Çek</p>
-                                </div>
-                                <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-4 flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-primary transition-colors active:scale-95"
-                                    onclick="document.getElementById('ihbar-foto-input').click()">
-                                    <span class="material-symbols-outlined text-2xl text-slate-400">photo_library</span>
-                                    <p class="text-xs font-bold text-slate-600 dark:text-slate-300 text-center">Galeriden Seç</p>
-                                </div>
-                            </div>
-                            <div id="ihbar-foto-preview" class="flex flex-wrap gap-2 mt-2"></div>
-                        </div>
-                        <div>
-                            <label class="form-label">Video Ekle (en fazla ${IHBAR_MAX_VIDEO} adet, ${IHBAR_VIDEO_MAX_SURE} sn)</label>
-                            <input type="file" id="ihbar-video-input" accept="video/*" class="hidden">
-                            <input type="file" id="ihbar-video-camera-input" accept="video/*" capture="environment" class="hidden">
-
-                            <div class="grid grid-cols-2 gap-2">
-                                <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-4 flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-primary transition-colors active:scale-95"
-                                    onclick="document.getElementById('ihbar-video-camera-input').click()">
-                                    <span class="material-symbols-outlined text-2xl text-primary">videocam</span>
-                                    <p class="text-xs font-bold text-slate-600 dark:text-slate-300 text-center">Kamera ile Çek</p>
-                                </div>
-                                <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-4 flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-primary transition-colors active:scale-95"
-                                    onclick="document.getElementById('ihbar-video-input').click()">
-                                    <span class="material-symbols-outlined text-2xl text-slate-400">video_library</span>
-                                    <p class="text-xs font-bold text-slate-600 dark:text-slate-300 text-center">Galeriden Seç</p>
-                                </div>
-                            </div>
-
-                            <!-- Canlı Video Yükleme İlerleme Çubuğu (İhbar Modalı İçi) -->
-                            <div id="ihbar-video-progress-container" class="mt-3 p-3.5 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl border border-indigo-200 dark:border-indigo-800 hidden">
-                                <div class="flex items-center justify-between text-xs font-bold text-indigo-900 dark:text-indigo-200 mb-1.5">
-                                    <span id="ihbar-video-progress-text" class="flex items-center gap-1.5 truncate">
-                                        <svg class="w-4 h-4 text-indigo-600 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24">
-                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        <span>Video Yükleniyor...</span>
-                                    </span>
-                                    <span id="ihbar-video-progress-percent" class="text-indigo-600 dark:text-indigo-400 font-extrabold text-xs ml-2">0%</span>
-                                </div>
-                                <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 overflow-hidden p-0.5 shadow-inner">
-                                    <div id="ihbar-video-progress-bar" class="bg-gradient-to-r from-indigo-500 to-indigo-600 h-2 rounded-full transition-all duration-150 w-0"></div>
-                                </div>
-                                <div class="flex justify-between items-center text-[11px] text-slate-500 dark:text-slate-400 mt-1.5 font-mono">
-                                    <span id="ihbar-video-progress-name" class="truncate max-w-[160px]">video.mp4</span>
-                                    <span id="ihbar-video-progress-detail">0.0 MB / 0.0 MB</span>
-                                </div>
-                            </div>
-
-                            <div id="ihbar-video-preview" class="flex flex-wrap gap-2 mt-2"></div>
-                        </div>
-                    </form>
-
-                    <div class="ihbar-form-footer grid grid-cols-2 gap-3">
-                        <button type="button" onclick="closePwaFullModal()"
-                            class="h-12 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-sm active:scale-95 transition-transform">
-                            Kapat
-                        </button>
-                        <button type="button" onclick="document.getElementById('ihbar-form').requestSubmit()" id="ihbar-submit-btn"
-                            class="h-12 rounded-xl bg-primary text-white font-bold text-sm flex items-center justify-center gap-1.5 active:scale-95 transition-transform shadow-lg">
-                            <span class="material-symbols-outlined text-[18px]">${editData ? 'save' : 'send'}</span>
-                            <span id="ihbar-submit-text">${editData ? 'Güncelle' : 'Kaydet'}</span>
-                        </button>
+                <div class="ihbar-sheet-handle"></div>
+                <div class="ihbar-sheet-head">
+                    <span class="ihbar-sheet-head__icon"><span class="material-symbols-outlined">${editData ? 'edit_note' : 'campaign'}</span></span>
+                    <div>
+                        <h1>${editData ? 'İhbarı Güncelle' : 'İhbar Bildir'}</h1>
+                        <p>${editData ? 'İhbar sonuçlandırılmadan önce bilgileri düzenleyebilirsiniz.' : 'Kaçak Su kullanımı ihbarınızı bildirin.'}</p>
                     </div>
+                </div>
+
+                <form id="ihbar-form" class="ihbar-sheet-body">
+                    <section class="ihbar-card">
+                        <h2 class="ihbar-card__title"><span class="material-symbols-outlined">assignment</span>İhbar Bilgileri</h2>
+                        <div class="ihbar-fields">
+                            <div class="ihbar-field">
+                                <label>İhbar Türü <span class="req">*</span></label>
+                                <select name="ihbar_turu" class="ihbar-input" required>
+                                    <option value="">Tür seçin...</option>
+                                    ${['Abonesiz', 'Kaçak', 'Pasif', 'Usülsüz'].map(tur => `<option value="${tur}" ${editData?.ihbar_turu === tur ? 'selected' : ''}>${tur}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="ihbar-field">
+                                <label>İlçe <span class="req">*</span></label>
+                                <select name="ilce" class="ihbar-input" required>
+                                    <option value="">İlçe seçin...</option>
+                                    ${['Afşin', 'Andırın', 'Çağlayancerit', 'Dulkadiroğlu', 'Ekinözü', 'Elbistan', 'Göksun', 'Nurhak', 'Onikişubat', 'Pazarcık', 'Türkoğlu']
+                                        .map(ilce => `<option value="${ilce}" ${editData?.ilce === ilce ? 'selected' : ''}>${ilce}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="ihbar-field">
+                                <label>Mahalle <span class="req">*</span></label>
+                                <input type="text" name="mahalle" class="ihbar-input" placeholder="Mahalle" required value="${editData?.mahalle ?? ''}">
+                            </div>
+                            <div class="ihbar-field">
+                                <label>Komşu / Abone Telefonu</label>
+                                <input type="tel" name="telefon" class="ihbar-input" placeholder="05XX XXX XX XX" value="${editData?.telefon ?? ''}">
+                            </div>
+                            <div class="ihbar-field">
+                                <label>Komşu Abone No</label>
+                                <input type="text" name="komsu_abone_no" class="ihbar-input" placeholder="Abone numarasını yazın" value="${editData?.komsu_abone_no ?? ''}">
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="ihbar-card">
+                        <h2 class="ihbar-card__title"><span class="material-symbols-outlined">location_on</span>Konum Bilgisi <span class="req" style="color:#e11d48">*</span></h2>
+                        <input type="hidden" name="konum_lat" id="ihbar-konum-lat" value="${editData?.konum_lat ?? ''}">
+                        <input type="hidden" name="konum_lng" id="ihbar-konum-lng" value="${editData?.konum_lng ?? ''}">
+                        <input type="hidden" name="konum_dogruluk" id="ihbar-konum-dogruluk" value="${editData?.konum_dogruluk ?? ''}">
+                        <button type="button" id="ihbar-konum-btn" onclick="ihbarKonumAl()" class="ihbar-konum-btn">
+                            <span class="material-symbols-outlined">my_location</span>
+                            <span id="ihbar-konum-text">${editData?.konum_lat && editData?.konum_lng ? 'Konum eklendi · Yenilemek için dokunun' : 'Mevcut Konumumu Ekle'}</span>
+                        </button>
+                        <p id="ihbar-konum-durum" class="ihbar-konum-note">
+                            ${editData?.konum_lat && editData?.konum_lng ? `${Number(editData.konum_lat).toFixed(6)}, ${Number(editData.konum_lng).toFixed(6)}` : 'Konum izni zorunludur ve bu ihbar için kullanılacaktır.'}
+                        </p>
+                    </section>
+
+                    <section class="ihbar-card">
+                        <h2 class="ihbar-card__title"><span class="material-symbols-outlined">notes</span>Açıklama <span style="color:#e11d48">*</span></h2>
+                        <textarea name="aciklama" class="ihbar-input" placeholder="İhbar detaylarını yazınız..." required>${editData?.aciklama ?? ''}</textarea>
+                    </section>
+
+                    <section class="ihbar-card">
+                        <h2 class="ihbar-card__title"><span class="material-symbols-outlined">photo_camera</span>Fotoğraf Ekle <span style="color:#e11d48">*</span> <small style="font-weight:600;text-transform:none;letter-spacing:0">(en fazla ${IHBAR_MAX_FOTO} adet)</small></h2>
+                        ${editData && ihbarMevcutFotograflar.length > 0 ? `
+                        <div class="mb-3">
+                            <p class="text-xs text-slate-500 mb-1">Yüklü dosyalar</p>
+                            <div class="flex flex-wrap gap-2">
+                                ${ihbarMevcutFotograflar.map(f => f.medya_tipi === 'video'
+                                    ? `<div class="w-16 h-16 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center justify-center bg-slate-100"><span class="material-symbols-outlined text-slate-400">movie</span></div>`
+                                    : `<img src="${f.kucuk_url || f.url}" class="w-16 h-16 object-cover rounded-2xl border border-slate-200 dark:border-slate-700">`).join('')}
+                            </div>
+                        </div>` : ''}
+                        <input type="file" id="ihbar-foto-input" accept="image/*" multiple class="hidden">
+                        <input type="file" id="ihbar-foto-camera-input" accept="image/*" capture="environment" class="hidden">
+                        <div class="ihbar-upload-grid">
+                            <div class="ihbar-upload-tile" onclick="document.getElementById('ihbar-foto-camera-input').click()">
+                                <span class="material-symbols-outlined">photo_camera</span>
+                                <span>Kameradan Çek</span>
+                            </div>
+                            <div class="ihbar-upload-tile ihbar-upload-tile--muted" onclick="document.getElementById('ihbar-foto-input').click()">
+                                <span class="material-symbols-outlined">photo_library</span>
+                                <span>Galeriden Seç</span>
+                            </div>
+                        </div>
+                        <div id="ihbar-foto-preview" class="flex flex-wrap gap-2 mt-3"></div>
+                    </section>
+
+                    <section class="ihbar-card" style="margin-bottom:5.5rem">
+                        <h2 class="ihbar-card__title"><span class="material-symbols-outlined">videocam</span>Video Ekle <small style="font-weight:600;text-transform:none;letter-spacing:0">(en fazla ${IHBAR_MAX_VIDEO} adet, ${IHBAR_VIDEO_MAX_SURE} sn)</small></h2>
+                        <input type="file" id="ihbar-video-input" accept="video/*" class="hidden">
+                        <input type="file" id="ihbar-video-camera-input" accept="video/*" capture="environment" class="hidden">
+                        <div class="ihbar-upload-grid">
+                            <div class="ihbar-upload-tile" onclick="document.getElementById('ihbar-video-camera-input').click()">
+                                <span class="material-symbols-outlined">videocam</span>
+                                <span>Kamera ile Çek</span>
+                            </div>
+                            <div class="ihbar-upload-tile ihbar-upload-tile--muted" onclick="document.getElementById('ihbar-video-input').click()">
+                                <span class="material-symbols-outlined">video_library</span>
+                                <span>Galeriden Seç</span>
+                            </div>
+                        </div>
+
+                        <div id="ihbar-video-progress-container" class="ihbar-progress hidden">
+                            <div class="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+                                <span id="ihbar-video-progress-text" class="flex items-center gap-1.5 truncate">
+                                    <svg class="w-4 h-4 text-primary animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span>Video Yükleniyor...</span>
+                                </span>
+                                <span id="ihbar-video-progress-percent" class="text-primary font-extrabold text-xs ml-2">0%</span>
+                            </div>
+                            <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 overflow-hidden p-0.5">
+                                <div id="ihbar-video-progress-bar" class="bg-primary h-2 rounded-full transition-all duration-150 w-0"></div>
+                            </div>
+                            <div class="flex justify-between items-center text-[11px] text-slate-500 dark:text-slate-400 mt-1.5 font-mono">
+                                <span id="ihbar-video-progress-name" class="truncate max-w-[160px]">video.mp4</span>
+                                <span id="ihbar-video-progress-detail">0.0 MB / 0.0 MB</span>
+                            </div>
+                        </div>
+
+                        <div id="ihbar-video-preview" class="flex flex-wrap gap-2 mt-3"></div>
+                    </section>
+                </form>
+
+                <div class="ihbar-form-footer">
+                    <button type="button" onclick="closePwaFullModal()" class="ihbar-btn ihbar-btn--ghost">Kapat</button>
+                    <button type="button" onclick="document.getElementById('ihbar-form').requestSubmit()" id="ihbar-submit-btn" class="ihbar-btn ihbar-btn--primary">
+                        <span class="material-symbols-outlined text-[18px]">${editData ? 'save' : 'send'}</span>
+                        <span id="ihbar-submit-text">${editData ? 'Güncelle' : 'Kaydet'}</span>
+                    </button>
                 </div>
             `,
             onOpen: () => {

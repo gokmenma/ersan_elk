@@ -127,7 +127,7 @@
     </div>
 
     <!-- Calendar View -->
-    <div id="calendar-view" class="px-4 pb-28" style="display: none;">
+    <div id="calendar-view" class="px-4 pb-28 swipe-ignore" style="display: none;">
     <div class="pwa-cal-card">
         <!-- Week Days Header -->
         <div class="grid grid-cols-7 gap-1 mb-2">
@@ -166,6 +166,17 @@
     </div>
     </div>
 
+    <div id="izn-range-bar" class="izn-range-bar" aria-live="polite">
+        <div class="izn-range-bar__text">
+            <b id="izn-range-title">-</b>
+            <span id="izn-range-sub">-</span>
+        </div>
+        <button type="button" onclick="clearIzinRange()" class="izn-range-bar__clear" aria-label="Seçimi temizle">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+        <button type="button" onclick="openIzinFromRange()" class="izn-range-bar__go">İzin Talep Et</button>
+    </div>
+
     <!-- İzin List View -->
     <div id="list-view" class="flex-1 px-4 pt-2 pb-28">
         <div class="izn-list" id="izin-list">
@@ -178,69 +189,64 @@
 
 <!-- Yeni İzin Talebi Modal -->
 <div id="izin-modal" class="modal-overlay" style="z-index: 200;">
-    <div class="modal-content p-6 pt-3 max-h-[92vh] h-[85vh] flex flex-col">
-        <div class="modal-handle flex-shrink-0"></div>
+    <div class="modal-content izn-sheet flex flex-col" style="max-height: min(92dvh, 720px);">
+        <div class="izn-sheet__handle"></div>
 
-        <div class="flex items-center justify-between mb-4 flex-shrink-0">
-            <div class="flex items-center gap-3">
-                <span class="material-symbols-outlined text-primary text-2xl">edit_calendar</span>
-                <h3 class="text-lg font-bold text-slate-900 dark:text-white">Yeni İzin Talebi</h3>
+        <div class="izn-sheet__head">
+            <span class="izn-sheet__icon"><span class="material-symbols-outlined">edit_calendar</span></span>
+            <div class="flex-1 min-w-0">
+                <h3>Yeni İzin Talebi</h3>
+                <p id="izin-modal-aralik">Tarih aralığını seçin</p>
             </div>
-            <button onclick="Modal.close('izin-modal')"
-                class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                <span class="material-symbols-outlined text-slate-600">close</span>
+            <button type="button" onclick="Modal.close('izin-modal')" class="izn-sheet__close" aria-label="Kapat">
+                <span class="material-symbols-outlined">close</span>
             </button>
         </div>
 
         <form id="izin-form" class="flex flex-col flex-1 min-h-0">
-            <div class="flex-1 overflow-y-auto space-y-4 pr-1">
-                <div>
-                    <label class="form-label">İzin Türü</label>
-                    <select name="izin_tipi" class="form-input form-select" required>
-                        <option value="">Yükleniyor...</option>
-                    </select>
-                </div>
+            <div class="flex-1 overflow-y-auto izn-sheet__body">
+                <section class="izn-card">
+                    <div class="izn-field">
+                        <label>İzin Türü</label>
+                        <select name="izin_tipi" class="izn-input" required>
+                            <option value="">Yükleniyor...</option>
+                        </select>
+                    </div>
 
-                <!-- Hastalık İzni Bilgilendirme / Uyarı Kutusu -->
-                <div id="hastalik-izni-uyari" class="bg-amber-500/10 border border-amber-500/30 rounded-2xl transition-all" style="display: none; padding: 18px 20px;">
-                    <div class="flex items-start gap-3.5">
-                        <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-2xl flex-shrink-0 mt-0.5">medical_services</span>
-                        <div class="flex-1">
-                            <p class="text-sm font-bold text-amber-800 dark:text-amber-300">Önemli Bilgilendirme (Sağlık Raporu)</p>
-                            <p class="text-xs text-amber-900/85 dark:text-amber-200/90 mt-1.5 leading-relaxed">
-                                Hastalık izni talebi oluşturabilmeniz için hekim veya sağlık kurulu tarafından verilmiş geçerli bir <strong>sağlık raporunuzun bulunması gerekmektedir</strong>. Raporunuz olmadan hastalık izni seçilmemelidir.
-                            </p>
+                    <div id="hastalik-izni-uyari" class="bg-amber-500/10 border border-amber-500/30 rounded-2xl transition-all" style="display: none; padding: 16px 18px;">
+                        <div class="flex items-start gap-3">
+                            <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-2xl flex-shrink-0 mt-0.5">medical_services</span>
+                            <div class="flex-1">
+                                <p class="text-sm font-bold text-amber-800 dark:text-amber-300">Önemli Bilgilendirme (Sağlık Raporu)</p>
+                                <p class="text-xs text-amber-900/85 dark:text-amber-200/90 mt-1.5 leading-relaxed">
+                                    Hastalık izni talebi oluşturabilmeniz için hekim veya sağlık kurulu tarafından verilmiş geçerli bir <strong>sağlık raporunuzun bulunması gerekmektedir</strong>. Raporunuz olmadan hastalık izni seçilmemelidir.
+                                </p>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="form-label">Başlangıç Tarihi</label>
-                        <input type="date" name="baslangic_tarihi" class="form-input" required>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="izn-field">
+                            <label>Başlangıç Tarihi</label>
+                            <input type="date" name="baslangic_tarihi" class="izn-input" required>
+                        </div>
+                        <div class="izn-field">
+                            <label>Bitiş Tarihi</label>
+                            <input type="date" name="bitis_tarihi" class="izn-input" required>
+                        </div>
                     </div>
-                    <div>
-                        <label class="form-label">Bitiş Tarihi</label>
-                        <input type="date" name="bitis_tarihi" class="form-input" required>
+
+                    <div class="izn-field">
+                        <label>Açıklama</label>
+                        <textarea name="aciklama" class="izn-input" placeholder="İzin talebiniz hakkında kısa bir açıklama..."></textarea>
                     </div>
-                </div>
-
-                <div>
-                    <label class="form-label">Açıklama</label>
-                    <textarea name="aciklama" class="form-input min-h-[80px]"
-                        placeholder="İzin talebiniz hakkında kısa bir açıklama..."></textarea>
-                </div>
-
+                </section>
             </div>
 
-            <!-- Sabit Alt Butonlar -->
-            <div class="flex gap-3 pt-3 mt-2 border-t border-slate-100 dark:border-slate-800 flex-shrink-0">
-                <button type="button" onclick="Modal.close('izin-modal')"
-                    class="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold rounded-xl">
-                    İptal
-                </button>
-                <button type="submit" class="flex-1 btn-primary py-3 font-semibold shadow-md shadow-primary/20">
-                    Talebi Gönder
+            <div class="izn-sheet__footer">
+                <button type="button" onclick="Modal.close('izin-modal')" class="izn-btn izn-btn--ghost">İptal</button>
+                <button type="submit" class="izn-btn izn-btn--primary">
+                    <span class="material-symbols-outlined" style="font-size:18px">send</span>Talebi Gönder
                 </button>
             </div>
         </form>
@@ -249,14 +255,14 @@
 
 <!-- İzin Detay Modal -->
 <div id="izin-detay-modal" class="modal-overlay">
-    <div class="modal-content p-6 pt-3">
-        <div class="modal-handle"></div>
+    <div class="modal-content izn-sheet p-6 pt-0">
+        <div class="izn-sheet__handle"></div>
 
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-bold text-slate-900 dark:text-white">İzin Detayı</h3>
-            <button onclick="Modal.close('izin-detay-modal')"
-                class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                <span class="material-symbols-outlined text-slate-600">close</span>
+        <div class="izn-sheet__head" style="padding-left:0;padding-right:0">
+            <span class="izn-sheet__icon"><span class="material-symbols-outlined">event_note</span></span>
+            <div class="flex-1 min-w-0"><h3>İzin Detayı</h3></div>
+            <button type="button" onclick="Modal.close('izin-detay-modal')" class="izn-sheet__close" aria-label="Kapat">
+                <span class="material-symbols-outlined">close</span>
             </button>
         </div>
 
@@ -272,14 +278,14 @@
 
 <!-- Hakediş Detay Bottom Sheet -->
 <div id="hakedis-detay-modal" class="modal-overlay">
-    <div class="modal-content p-6 pt-3 h-[60vh] flex flex-col">
-        <div class="modal-handle"></div>
+    <div class="modal-content izn-sheet p-6 pt-0 h-[60vh] flex flex-col">
+        <div class="izn-sheet__handle"></div>
 
-        <div class="flex items-center justify-between mb-4 flex-shrink-0">
-            <h3 class="text-lg font-bold text-slate-900 dark:text-white">İzin Hakediş Detayları</h3>
-            <button onclick="Modal.close('hakedis-detay-modal')"
-                class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                <span class="material-symbols-outlined text-slate-600">close</span>
+        <div class="izn-sheet__head flex-shrink-0" style="padding-left:0;padding-right:0">
+            <span class="izn-sheet__icon"><span class="material-symbols-outlined">event_available</span></span>
+            <div class="flex-1 min-w-0"><h3>İzin Hakediş Detayları</h3></div>
+            <button type="button" onclick="Modal.close('hakedis-detay-modal')" class="izn-sheet__close" aria-label="Kapat">
+                <span class="material-symbols-outlined">close</span>
             </button>
         </div>
 
@@ -329,6 +335,55 @@
     .dark .izn-card__foot { border-top-color: #334155; }
     .izn-card__foot span { display: inline-flex; align-items: center; gap: 4px; }
     .izn-card__foot .material-symbols-outlined { font-size: 14px; }
+
+    .izn-day--sel { background: var(--primary) !important; }
+    .izn-day--sel span { color: #fff !important; font-weight: 800; }
+    .izn-day--range { background: rgba(var(--primary-rgb, 19, 91, 236), .16) !important; border-radius: 0 !important; }
+    .izn-day--range span { color: var(--primary) !important; font-weight: 800; }
+    .izn-day--start { border-radius: 12px 0 0 12px !important; }
+    .izn-day--end { border-radius: 0 12px 12px 0 !important; }
+    .izn-day--start.izn-day--end { border-radius: 12px !important; }
+
+    .izn-range-bar { position: fixed; left: 50%; bottom: calc(92px + env(safe-area-inset-bottom)); z-index: 60; width: min(calc(100% - 24px), 456px); display: flex; align-items: center; gap: 8px; padding: 10px 10px 10px 18px; border-radius: 999px; background: #191d24; color: #fff; box-shadow: 0 18px 32px -14px rgba(22, 25, 32, .6); transform: translate(-50%, 140%); opacity: 0; pointer-events: none; transition: transform .28s ease, opacity .28s ease; }
+    .izn-range-bar.is-on { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
+    .izn-range-bar__text { flex: 1; min-width: 0; line-height: 1.2; }
+    .izn-range-bar__text b { display: block; font-size: 13px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .izn-range-bar__text span { display: block; font-size: 11px; font-weight: 600; color: rgba(255, 255, 255, .62); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .izn-range-bar__clear { flex: none; width: 36px; height: 36px; border: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, .12); color: #fff; }
+    .izn-range-bar__clear .material-symbols-outlined { font-size: 18px; }
+    .izn-range-bar__go { flex: none; height: 44px; padding: 0 18px; border: 0; border-radius: 999px; background: var(--primary); color: #fff; font-size: 13px; font-weight: 800; }
+
+    .izn-sheet { background: #e6eaef !important; border-radius: 28px 28px 0 0 !important; box-shadow: 0 -18px 44px rgba(22, 25, 32, .24); }
+    .dark .izn-sheet { background: #14171c !important; }
+    .izn-sheet__handle { width: 40px; height: 5px; margin: 10px auto 0; border-radius: 999px; background: rgba(22, 25, 32, .18); flex: none; }
+    .dark .izn-sheet__handle { background: rgba(255, 255, 255, .22); }
+    .izn-sheet__head { display: flex; align-items: center; gap: 12px; padding: 14px 18px 12px; flex: none; }
+    .izn-sheet__icon { flex: none; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--primary); color: #fff; box-shadow: 0 10px 18px -8px rgba(var(--primary-rgb, 19, 91, 236), .6); }
+    .izn-sheet__head h3 { margin: 0; font-size: 19px; font-weight: 800; line-height: 1.15; color: #161920; }
+    .izn-sheet__head p { margin: 2px 0 0; font-size: 12px; font-weight: 700; color: var(--primary); }
+    .dark .izn-sheet__head h3 { color: #e8ecf2; }
+    .izn-sheet__close { flex: none; width: 40px; height: 40px; border: 1px solid rgba(255, 255, 255, .9); border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; color: #161920; box-shadow: 0 6px 14px -8px rgba(22, 25, 32, .3); }
+    .dark .izn-sheet__close { background: #262c36; color: #e8ecf2; border-color: rgba(255, 255, 255, .1); }
+    .izn-sheet__body { padding: 0 14px 16px; }
+    .izn-sheet__footer { flex: none; display: grid; grid-template-columns: 1fr 1.5fr; gap: 10px; padding: 12px 16px calc(14px + env(safe-area-inset-bottom)); }
+
+    .izn-card { display: flex; flex-direction: column; gap: 14px; padding: 18px 16px; border-radius: 28px; background: #fff; border: 1px solid rgba(255, 255, 255, .9); box-shadow: 0 18px 36px -24px rgba(22, 25, 32, .3); }
+    .dark .izn-card { background: #1d222a; border-color: rgba(255, 255, 255, .07); }
+    .izn-field label { display: block; margin: 0 0 6px 2px; font-size: 12px; font-weight: 700; color: #475569; }
+    .dark .izn-field label { color: #cbd5e1; }
+    .izn-input { display: block; width: 100%; min-height: 52px; padding: 13px 16px; border-radius: 18px; border: 2px solid transparent; background: #f1f4f8; color: #161920; font-size: 15px; font-weight: 700; outline: none; transition: border-color .2s ease, box-shadow .2s ease, background .2s ease; }
+    .izn-input::placeholder { font-weight: 600; color: #94a3b8; }
+    .izn-input:focus { background: #fff; border-color: var(--primary); box-shadow: 0 0 0 5px rgba(var(--primary-rgb, 19, 91, 236), .14); }
+    select.izn-input { appearance: none; -webkit-appearance: none; padding-right: 44px; background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.8' d='M6 8l4 4 4-4'/%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 14px center; background-size: 20px; }
+    textarea.izn-input { min-height: 96px; resize: none; line-height: 1.45; }
+    input[type="date"].izn-input { padding-left: 12px; padding-right: 8px; font-size: 14px; }
+    .dark .izn-input { background: rgba(255, 255, 255, .06); color: #f1f5f9; }
+    .dark .izn-input:focus { background: rgba(var(--primary-rgb, 19, 91, 236), .12); }
+    .izn-btn { min-height: 52px; border: 0; border-radius: 999px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: 800; transition: transform .15s ease; }
+    .izn-btn:active { transform: scale(.97); }
+    .izn-btn--ghost { background: #fff; color: #161920; border: 1px solid rgba(255, 255, 255, .9); box-shadow: 0 8px 18px -10px rgba(22, 25, 32, .3); }
+    .dark .izn-btn--ghost { background: #262c36; color: #e8ecf2; border-color: rgba(255, 255, 255, .1); }
+    .izn-btn--primary { background: var(--primary); color: #fff; box-shadow: 0 14px 24px -12px rgba(var(--primary-rgb, 19, 91, 236), .7); }
 </style>
 
 <script>
@@ -425,10 +480,105 @@
         return new Date(str);
     }
 
-    function openNewIzinModal(dateStr = '') {
+    let izinRangeStart = null;
+    let izinRangeEnd = null;
+
+    function izinTarihEtiketi(str) {
+        const d = new Date(str + 'T00:00:00');
+        return `${d.getDate()} ${aylar[d.getMonth()]}`;
+    }
+
+    function izinGunSayisi(a, b) {
+        return Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000) + 1;
+    }
+
+    function izinGunDolu(dateStr) {
+        const t = new Date(dateStr + 'T00:00:00').getTime();
+        return izinlerData.some(izin => {
+            const bas = parseDateCustom(izin.baslangic);
+            const bit = parseDateCustom(izin.bitis);
+            if (!bas || !bit) return false;
+            bas.setHours(0, 0, 0, 0);
+            bit.setHours(0, 0, 0, 0);
+            return t >= bas.getTime() && t <= bit.getTime();
+        });
+    }
+
+    function izinAralikCakisiyor(a, b) {
+        const d = new Date(a + 'T00:00:00');
+        const end = new Date(b + 'T00:00:00');
+        while (d <= end) {
+            const str = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            if (izinGunDolu(str)) return true;
+            d.setDate(d.getDate() + 1);
+        }
+        return false;
+    }
+
+    function pickIzinDay(dateStr) {
+        if (izinRangeStart && !izinRangeEnd) {
+            if (dateStr < izinRangeStart) {
+                izinRangeStart = dateStr;
+            } else if (dateStr === izinRangeStart) {
+                izinRangeEnd = dateStr;
+            } else if (izinAralikCakisiyor(izinRangeStart, dateStr)) {
+                Toast.show('Seçtiğiniz aralıkta mevcut bir izin var', 'warning');
+                izinRangeStart = dateStr;
+            } else {
+                izinRangeEnd = dateStr;
+            }
+        } else {
+            izinRangeStart = dateStr;
+            izinRangeEnd = null;
+        }
+        renderCalendar();
+        updateIzinRangeBar();
+    }
+
+    function updateIzinRangeBar() {
+        const bar = document.getElementById('izn-range-bar');
+        if (!bar) return;
+        if (!izinRangeStart) {
+            bar.classList.remove('is-on');
+            return;
+        }
+        const title = document.getElementById('izn-range-title');
+        const sub = document.getElementById('izn-range-sub');
+        if (izinRangeEnd && izinRangeEnd !== izinRangeStart) {
+            title.textContent = `${izinTarihEtiketi(izinRangeStart)} – ${izinTarihEtiketi(izinRangeEnd)}`;
+            sub.textContent = `${izinGunSayisi(izinRangeStart, izinRangeEnd)} gün seçildi`;
+        } else if (izinRangeEnd) {
+            title.textContent = izinTarihEtiketi(izinRangeStart);
+            sub.textContent = '1 gün seçildi';
+        } else {
+            title.textContent = izinTarihEtiketi(izinRangeStart);
+            sub.textContent = 'Bitiş gününe dokunun; tek gün için buton';
+        }
+        bar.classList.add('is-on');
+    }
+
+    function clearIzinRange() {
+        izinRangeStart = null;
+        izinRangeEnd = null;
+        updateIzinRangeBar();
+        renderCalendar();
+    }
+
+    function openIzinFromRange() {
+        if (!izinRangeStart) return;
+        openNewIzinModal(izinRangeStart, izinRangeEnd || izinRangeStart);
+    }
+
+    function openNewIzinModal(dateStr = '', endStr = '') {
         if (dateStr) {
             document.querySelector('#izin-form input[name="baslangic_tarihi"]').value = dateStr;
-            document.querySelector('#izin-form input[name="bitis_tarihi"]').value = dateStr;
+            document.querySelector('#izin-form input[name="bitis_tarihi"]').value = endStr || dateStr;
+        }
+        const aralikEl = document.getElementById('izin-modal-aralik');
+        if (aralikEl) {
+            aralikEl.textContent = dateStr
+                ? `${izinTarihEtiketi(dateStr)}${endStr && endStr !== dateStr ? ' – ' + izinTarihEtiketi(endStr) + ' · ' + izinGunSayisi(dateStr, endStr) + ' gün' : ' · 1 gün'}`
+                : 'Tarih aralığını seçin';
         }
         const currentIzinTipi = document.querySelector('#izin-form select[name="izin_tipi"]')?.value || '';
         updateIzinTuruUyarilari(currentIzinTipi, false);
@@ -503,7 +653,16 @@
                 dayClass = baseClass;
                 onclickAction = `showIzinDetay(${mainIzin.id})`;
             } else if (!isPast) {
-                onclickAction = `openNewIzinModal('${dateStr}')`;
+                onclickAction = `pickIzinDay('${dateStr}')`;
+                const rEnd = izinRangeEnd || izinRangeStart;
+                if (izinRangeStart && dateStr >= izinRangeStart && dateStr <= rEnd) {
+                    const isStart = dateStr === izinRangeStart;
+                    const isEnd = dateStr === rEnd;
+                    dayClass = (isStart || isEnd) ? 'izn-day--sel' : 'izn-day--range';
+                    if (isStart) dayClass += ' izn-day--start';
+                    if (isEnd) dayClass += ' izn-day--end';
+                    textClass = '';
+                }
             }
 
             html += `
@@ -1176,6 +1335,7 @@
                 Toast.show('İzin talebiniz başarıyla gönderildi', 'success');
                 Modal.close('izin-modal');
                 form.reset();
+                clearIzinRange();
                 updateIzinTuruUyarilari('', false);
                 loadIzinler(false);
                 loadIzinStats(false);

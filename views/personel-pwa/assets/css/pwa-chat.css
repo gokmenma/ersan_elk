@@ -11,7 +11,7 @@
 /* --- Floating Action Button --- */
 .chat-fab {
   position: fixed;
-  bottom: 80px;
+  bottom: calc(112px + env(safe-area-inset-bottom));
   right: 16px;
   width: 56px;
   height: 56px;
