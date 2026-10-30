@@ -330,6 +330,20 @@ async function removeDevice(device) {
   }
 }
 
+const paletteOptions = [
+  { id: 'varsayilan', label: 'Varsayılan', base: '#181c24', accent: '#e6eaef' },
+  { id: 'ersan', label: 'Ersan Gold', base: '#1e293b', accent: '#e2bd61' },
+  { id: 'zumrut', label: 'Zümrüt', base: '#15241f', accent: '#10b981' },
+  { id: 'kraliyet', label: 'Kraliyet Moru', base: '#1e1b2e', accent: '#5156be' },
+  { id: 'rose', label: 'Rose', base: '#232125', accent: '#ec003f' },
+  { id: 'okyanus', label: 'Okyanus', base: '#0f172a', accent: '#0284c7' },
+  { id: 'kehribar', label: 'Kehribar', base: '#1c1917', accent: '#f59e0b' },
+  { id: 'siber', label: 'Siber Mor', base: '#180d38', accent: '#7c3aed' },
+  { id: 'iskandinav', label: 'İskandinav', base: '#1e293b', accent: '#64748b' },
+  { id: 'nane', label: 'Nane', base: '#132a26', accent: '#0d9488' },
+  { id: 'mocha', label: 'Kahve Bronz', base: '#271406', accent: '#d97706' },
+]
+
 const themeOptions = [
   { id: 'light', label: 'Açık', icon: Sun },
   { id: 'dark', label: 'Koyu', icon: Moon },
@@ -572,6 +586,35 @@ function goLiveSupport() {
                 >
                   <component :is="option.icon" :size="17" />
                   <span>{{ option.label }}</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="bento-card bento-card--white setting-card">
+              <div class="setting-card__inline">
+                <div class="setting-card__icon is-active">
+                  <Palette :size="20" />
+                </div>
+                <div class="setting-card__body">
+                  <strong>Renk paleti</strong>
+                  <p>Masaüstündeki hazır temaların mobil karşılığı; açık/koyu modla birlikte çalışır.</p>
+                </div>
+              </div>
+              <div class="palette-grid" role="radiogroup" aria-label="Renk paleti">
+                <button
+                  v-for="option in paletteOptions"
+                  :key="option.id"
+                  type="button"
+                  role="radio"
+                  class="palette-option"
+                  :class="{ 'is-active': preferences.state.palette === option.id }"
+                  :aria-checked="preferences.state.palette === option.id"
+                  @click="preferences.setPalette(option.id)"
+                >
+                  <span class="palette-swatch" :style="{ background: option.base }">
+                    <i :style="{ background: option.accent }"></i>
+                  </span>
+                  <span class="palette-label">{{ option.label }}</span>
                 </button>
               </div>
             </div>
@@ -1069,6 +1112,58 @@ function goLiveSupport() {
   background: var(--ds-surface);
   color: var(--ds-ink);
   box-shadow: var(--ds-shadow-btn);
+}
+
+.palette-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.palette-option {
+  display: flex;
+  min-height: 44px;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 4px;
+  border: 2px solid transparent;
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-subtle);
+  color: var(--ds-muted);
+  font: 700 11px var(--ds-font-main);
+  cursor: pointer;
+  transition: border-color 0.18s ease, color 0.18s ease;
+}
+
+.palette-option.is-active {
+  border-color: var(--ds-primary-ink);
+  color: var(--ds-ink);
+}
+
+.palette-swatch {
+  position: relative;
+  width: 100%;
+  height: 28px;
+  overflow: hidden;
+  border-radius: 9px;
+  box-shadow: inset 0 0 0 1px var(--ds-border-subtle);
+}
+
+.palette-swatch i {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+
+.palette-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ds-switch {

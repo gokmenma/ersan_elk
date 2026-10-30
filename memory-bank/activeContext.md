@@ -3429,3 +3429,8 @@
 - Merkezi sütun yöneticisi: başlığı tablo gövdesine sürükleyip bırakınca sütun gizlenir (kesikli bırakma alanı + toast). Evrak-takip: sayısal mData fonksiyon getter'a çevrilerek sürükle-sırala açıldı; CEVAP ve E-İMZA sıralanabilir.
 - Evrak listesi: KEP DURUMU sıralaması (EvrakTakipModel::ajaxList orderMap[2] = son kep_deliller.delil_tur_id alt sorgusu).
 - Evrak listesi: Sütunlar butonu kart başlığı araç çubuğuna taşındı (data-dt-colman-style=outline slotu); KEP DURUMU select filtresi eklendi (EvrakTakipModel columnMap[2] + multi etiket→delil_tur_id).
+
+- Mobil SPA: Profil > Görünüm ve Tema ekranına "Renk paleti" eklendi (11 palet; masaüstü hazır temalarının karşılığı). data-palette niteliği + --pal-h/--pal-ink/--pal-bright ile design-system.css token override; preferences.setPalette, anahtar ersan_mobile_palette_v1, index.html ilk boyama scripti.
+- Sütun yöneticisi: kayıtlı sıra/gizleme varsa tablo init tamamlanana kadar gizlenir (dt-colman-pending), sayfa yenilenirken gizli sütun titremesi yok.
+- Sütun yöneticisi: filtre satırı (thead 2. satır) hücreleri orijinal indekslerle etiketlenip sıra/gizleme ile eşitlenir (filtresiz sütunun boş hücresi artık kalmaz).
+- Titreme: layouts/head-style.php sonuna head içi erken betik eklendi; kayıtlı sütun durumu olan tablolar (table#id) JS hazır olana kadar (dt-colman-ready) CSS ile gizlenir, 4 sn güvenlik zamanlayıcısı.

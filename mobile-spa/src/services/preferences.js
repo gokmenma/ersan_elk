@@ -2,7 +2,9 @@ import { reactive, readonly } from 'vue'
 
 const REDUCE_MOTION_STORAGE_KEY = 'ersan_mobile_reduce_motion_v1'
 const THEME_STORAGE_KEY = 'ersan_mobile_theme_v1'
+const PALETTE_STORAGE_KEY = 'ersan_mobile_palette_v1'
 const THEMES = ['light', 'dark', 'system']
+const PALETTES = ['varsayilan', 'ersan', 'zumrut', 'kraliyet', 'rose', 'okyanus', 'kehribar', 'siber', 'iskandinav', 'nane', 'mocha']
 
 function loadReduceMotion() {
   try {
@@ -21,6 +23,15 @@ function loadTheme() {
   }
 }
 
+function loadPalette() {
+  try {
+    const stored = localStorage.getItem(PALETTE_STORAGE_KEY)
+    return PALETTES.includes(stored) ? stored : 'varsayilan'
+  } catch {
+    return 'varsayilan'
+  }
+}
+
 const systemDarkQuery = typeof window !== 'undefined' && window.matchMedia
   ? window.matchMedia('(prefers-color-scheme: dark)')
   : null
@@ -28,6 +39,7 @@ const systemDarkQuery = typeof window !== 'undefined' && window.matchMedia
 const state = reactive({
   reduceMotion: loadReduceMotion(),
   theme: loadTheme(),
+  palette: loadPalette(),
   resolvedTheme: 'light',
 })
 
@@ -40,10 +52,16 @@ function syncThemeColorMeta() {
   if (canvas) document.querySelector('meta[name="theme-color"]')?.setAttribute('content', canvas)
 }
 
+function applyPalette() {
+  if (state.palette === 'varsayilan') delete document.documentElement.dataset.palette
+  else document.documentElement.dataset.palette = state.palette
+}
+
 function applyTheme() {
   state.resolvedTheme = state.theme === 'system'
     ? (systemDarkQuery?.matches ? 'dark' : 'light')
     : state.theme
+  applyPalette()
   document.documentElement.dataset.theme = state.resolvedTheme
   syncThemeColorMeta()
 }
@@ -64,6 +82,16 @@ export const preferences = {
     state.theme = theme
     try {
       localStorage.setItem(THEME_STORAGE_KEY, theme)
+    } catch {
+      // ignore storage errors
+    }
+    applyTheme()
+  },
+  setPalette(palette) {
+    if (!PALETTES.includes(palette)) return
+    state.palette = palette
+    try {
+      localStorage.setItem(PALETTE_STORAGE_KEY, palette)
     } catch {
       // ignore storage errors
     }

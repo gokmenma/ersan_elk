@@ -8440,3 +8440,42 @@ html[data-bs-theme="dark"]:not([data-theme-preset="macos-dark"]) body:not(#_) :i
   background-color: var(--dark-ui-surface) !important;
   border-color: var(--dark-ui-border) !important;
 }
+
+@media (min-width: 992px) {
+  @view-transition {
+    navigation: auto;
+  }
+
+  #page-topbar {
+    view-transition-name: app-topbar;
+  }
+
+  .vertical-menu {
+    view-transition-name: app-sidebar;
+  }
+
+  .quick-favorites-bar {
+    view-transition-name: app-favorites;
+  }
+
+  ::view-transition-group(app-topbar),
+  ::view-transition-group(app-sidebar),
+  ::view-transition-group(app-favorites) {
+    animation-duration: 0s;
+  }
+
+  ::view-transition-old(app-topbar),
+  ::view-transition-old(app-sidebar),
+  ::view-transition-old(app-favorites),
+  ::view-transition-new(app-topbar),
+  ::view-transition-new(app-sidebar),
+  ::view-transition-new(app-favorites) {
+    animation: none;
+    mix-blend-mode: normal;
+  }
+
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 0.12s;
+  }
+}

@@ -140,3 +140,11 @@ table.dataTable.dt-colman-fixed td {
 .dt-colman-dropzone i {
   font-size: 28px;
 }
+
+table.dataTable.dt-colman-pending {
+  visibility: hidden;
+}
+
+.dt-colman-col-hidden {
+  display: none !important;
+}

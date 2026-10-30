@@ -366,6 +366,14 @@
 
     ensureScrollWrapper(settings);
     if (hasFixedLayout(ctx)) paintAllWidths(ctx);
+
+    const saved = ctx.saved;
+    if (saved && (Array.isArray(saved.order) || (saved.visible && Object.keys(saved.visible).length))) {
+      const $pending = $(settings.nTable).addClass("dt-colman-pending");
+      setTimeout(function () {
+        $pending.removeClass("dt-colman-pending");
+      }, 4000);
+    }
   });
 
   function startResize(ctx, th, ev) {
@@ -443,6 +451,30 @@
         ev.stopPropagation();
         resetColumnWidth(ctx, this.parentNode);
       });
+  }
+
+  function tagExtraRows(ctx) {
+    ctx.extra = [];
+    $(ctx.settings.nTable)
+      .find("> thead > tr")
+      .slice(1)
+      .each(function () {
+        const cells = $(this).children().toArray();
+        if (cells.length === ctx.settings.aoColumns.length) ctx.extra.push({ row: this, cells: cells });
+      });
+  }
+
+  function syncExtraRows(ctx) {
+    if (!ctx.extra || !ctx.extra.length) return;
+    const order = currentOrder(ctx);
+    ctx.extra.forEach(function (entry) {
+      order.forEach(function (orig, cur) {
+        const cell = entry.cells[orig];
+        if (!cell) return;
+        entry.row.appendChild(cell);
+        cell.classList.toggle("dt-colman-col-hidden", ctx.settings.aoColumns[cur].bVisible === false);
+      });
+    });
   }
 
   function ensureResizers(ctx) {
@@ -527,6 +559,7 @@
     ctx.api.columns.adjust();
     if (redraw) ctx.api.draw(false);
     ensureResizers(ctx);
+    syncExtraRows(ctx);
     if (hasFixedLayout(ctx)) paintAllWidths(ctx);
   }
 
@@ -740,7 +773,12 @@
       ctx.reorder = false;
     }
 
+    tagExtraRows(ctx);
     applySaved(ctx);
+    syncExtraRows(ctx);
+    window.requestAnimationFrame(function () {
+      $table.removeClass("dt-colman-pending").addClass("dt-colman-ready");
+    });
     applyMinWidths(ctx);
     ensureResizers(ctx);
     buildUi(ctx);
@@ -748,6 +786,7 @@
 
     $table.on("column-reorder.dt.dtcm", function (e, s) {
       if (s !== settings || ctx.silent) return;
+      syncExtraRows(ctx);
       setTimeout(function () {
         ctx.api.draw(false);
       }, 0);
@@ -765,12 +804,14 @@
       } else if (hasFixedLayout(ctx)) {
         syncTableWidth(ctx);
       }
+      syncExtraRows(ctx);
       ensureResizers(ctx);
       renderList(ctx);
       persist(ctx);
     });
 
     $table.on("draw.dt.dtcm column-sizing.dt.dtcm", function () {
+      syncExtraRows(ctx);
       ensureResizers(ctx);
       if (hasFixedLayout(ctx) && !$("body").hasClass("dt-colman-resizing")) paintAllWidths(ctx);
       else applyMinWidths(ctx);

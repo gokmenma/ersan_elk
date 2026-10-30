@@ -168,6 +168,40 @@
   --line: rgba(255, 255, 255, 0.08);
 }
 
+/* Renk paletleri: masaüstü hazır temalarının mobil karşılığı; açık/koyu modla birlikte çalışır. */
+:root[data-palette="ersan"] { --pal-h: 215; --pal-ink: #a16207; --pal-bright: #e2bd61; }
+:root[data-palette="zumrut"] { --pal-h: 160; --pal-ink: #047857; --pal-bright: #34d399; }
+:root[data-palette="kraliyet"] { --pal-h: 250; --pal-ink: #5156be; --pal-bright: #a5a8f0; }
+:root[data-palette="rose"] { --pal-h: 345; --pal-ink: #be123c; --pal-bright: #fb7185; }
+:root[data-palette="okyanus"] { --pal-h: 205; --pal-ink: #0369a1; --pal-bright: #38bdf8; }
+:root[data-palette="kehribar"] { --pal-h: 30; --pal-ink: #b45309; --pal-bright: #fbbf24; }
+:root[data-palette="siber"] { --pal-h: 265; --pal-ink: #6d28d9; --pal-bright: #a78bfa; }
+:root[data-palette="iskandinav"] { --pal-h: 215; --pal-ink: #475569; --pal-bright: #94a3b8; }
+:root[data-palette="nane"] { --pal-h: 175; --pal-ink: #0f766e; --pal-bright: #2dd4bf; }
+:root[data-palette="mocha"] { --pal-h: 25; --pal-ink: #92400e; --pal-bright: #e0953a; }
+
+:root[data-theme="light"][data-palette] {
+  --ds-canvas: hsl(var(--pal-h) 20% 91%);
+  --ds-surface-subtle: hsl(var(--pal-h) 25% 96%);
+  --ds-surface-dark: hsl(var(--pal-h) 30% 13%);
+  --ds-primary: hsl(var(--pal-h) 30% 13%);
+  --ds-ink-fill: hsl(var(--pal-h) 30% 11%);
+  --ds-primary-ink: var(--pal-ink);
+  --ds-focus: var(--pal-ink);
+}
+
+:root[data-theme="dark"][data-palette] {
+  --ds-canvas: hsl(var(--pal-h) 22% 7%);
+  --ds-surface: hsl(var(--pal-h) 18% 11%);
+  --ds-surface-subtle: hsl(var(--pal-h) 16% 15%);
+  --ds-surface-dark: hsl(var(--pal-h) 16% 17%);
+  --ds-surface-translucent: hsl(var(--pal-h) 18% 11% / 0.85);
+  --ds-primary: hsl(var(--pal-h) 28% 26%);
+  --ds-ink-fill: hsl(var(--pal-h) 22% 20%);
+  --ds-primary-ink: var(--pal-bright);
+  --ds-focus: var(--pal-bright);
+}
+
 /* ==========================================================================
    GENEL VE KABUK (SCAFFOLDING & LAYOUT)
    ========================================================================== */
@@ -2095,6 +2129,14 @@
 .nav-sheet-footer__btn--primary:active { background: var(--dsx-bg-0f172a); }
 .nav-sheet__header-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .nav-sheet__edit-btn.is-active { background: var(--ds-primary) !important; color: #ffffff !important; border-color: var(--ds-primary) !important; }
+.nav-sheet-search { position: sticky; bottom: 0; z-index: 5; display: flex; align-items: center; flex-shrink: 0; margin-top: 12px; padding: 8px 0; background: var(--ds-surface); }
+.nav-sheet-search__icon { position: absolute; left: 16px; z-index: 1; color: var(--ds-muted); pointer-events: none; }
+.nav-sheet-search__input { width: 100%; min-height: 46px; padding: 0 44px 0 42px; border: 1px solid var(--ds-border-subtle); border-radius: var(--ds-radius-pill); background: var(--ds-surface-subtle); color: var(--ds-ink); font: inherit; font-size: 14px; font-weight: 600; outline: none; appearance: none; -webkit-appearance: none; }
+.nav-sheet-search__input::placeholder { color: var(--ds-muted-light); font-weight: 500; }
+.nav-sheet-search__input:focus { background: var(--ds-surface); border-color: var(--ds-muted-light); box-shadow: var(--ds-shadow-pill); }
+.nav-sheet-search__clear { position: absolute; right: 7px; z-index: 1; width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--ds-border-subtle); color: var(--ds-muted); cursor: pointer; }
+.nav-sheet-search__clear:active { background: var(--ds-muted-light); color: #ffffff; }
+.nav-sheet-empty { padding: 22px 12px; text-align: center; color: var(--ds-muted); font-size: 13px; font-weight: 600; }
 .nav-order-feedback { padding: 10px 12px; border-radius: 14px; background: var(--ds-danger-soft, var(--dsx-bg-fee2e2)); color: var(--ds-danger-ink, #dc2626); font-size: 11.5px; font-weight: 700; }
 .nav-customizer-dock { padding: 12px; border-radius: 22px; background: var(--ds-surface-dark, var(--dsx-bg-191d24)); color: #ffffff; box-shadow: var(--ds-shadow-bento-dark); display: flex; flex-direction: column; gap: 10px; }
 .nav-customizer-dock__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

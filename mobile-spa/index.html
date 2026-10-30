@@ -182,6 +182,8 @@
       try {
         var theme = localStorage.getItem('ersan_mobile_theme_v1');
         if (theme === 'system') theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        var palette = localStorage.getItem('ersan_mobile_palette_v1');
+        if (palette && palette !== 'varsayilan' && /^[a-z]+$/.test(palette)) document.documentElement.dataset.palette = palette;
         document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : 'light';
         if (theme === 'dark') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0e1116');
       } catch (e) {}

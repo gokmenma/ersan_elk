@@ -2042,3 +2042,6 @@
 
 ## 2026-10-30 — Merkezi DataTables sütun yöneticisi
 - Tamamlandı: modül, CSS, personel geçişi. Chrome ile doğrulandı: personel (gizle, sürükle, genişlik, yenileme sonrası kalıcılık, sıfırlama), cari, kullanıcı, demirbaş, araç takip. gelir-gider/efatura/bordro kendi yapısıyla devam ediyor.
+
+## 2026-10-30 — Mobil SPA renk paletleri
+- Tamamlandı: palet tokenları, tercih servisi, profil seçici, build alındı. Cihaz/tarayıcıda görsel doğrulama bekliyor.

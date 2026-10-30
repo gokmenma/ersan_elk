@@ -34,6 +34,7 @@ import {
   MapPin,
   MessageCircle,
   Pin,
+  Search,
   ReceiptText,
   RotateCcw,
   Send,
@@ -85,10 +86,13 @@ import {
 const route = useRoute()
 const router = useRouter()
 const menuOpen = ref(false)
+const menuSearch = ref('')
+const menuSearchInput = ref(null)
 const sheet = ref(null)
 let previousOverflow = ''
 let returnFocus = null
 watch(menuOpen, async (open) => {
+  if (!open) menuSearch.value = ''
   if (open) {
     fetchBadges()
     returnFocus = document.activeElement
@@ -686,7 +690,17 @@ function isItemActive(item) {
   return route.path === item.to || route.path.startsWith(`${item.to}/`)
 }
 
+function normalizeSearch(text) {
+  return String(text || '').toLocaleLowerCase('tr-TR').trim()
+}
+
+function clearMenuSearch() {
+  menuSearch.value = ''
+  menuSearchInput.value?.focus()
+}
+
 const visibleOperationGroups = computed(() => {
+  const term = editMode.value ? '' : normalizeSearch(menuSearch.value)
   const order = effectiveOrder.value
   const activeNavKeys = new Set(order.navbar.filter(k => isModulePermitted(k)))
   const groupMetaMap = Object.fromEntries(DEFAULT_GROUPS.map(g => [g.id, g]))
@@ -702,6 +716,11 @@ const visibleOperationGroups = computed(() => {
           // Normal görünümde alt barda olan kısayollar listede tekrarlanmaz;
           // düzenleme modunda ise grup içinde sıralanabilmesi ve durumu görülebilmesi için gösterilir.
           if (!editMode.value && activeNavKeys.has(key)) return false
+          if (term) {
+            const mod = MODULE_CATALOG[key]
+            const haystack = normalizeSearch(`${mod?.label} ${mod?.eyebrow} ${mod?.subtitle} ${meta.category}`)
+            if (!haystack.includes(term)) return false
+          }
           return true
         })
         .map(key => ({
@@ -1120,6 +1139,10 @@ async function handleLogout() {
             </div>
           </div>
 
+          <div v-if="!editMode && menuSearch.trim() && !visibleOperationGroups.length" class="nav-sheet-empty">
+            "{{ menuSearch.trim() }}" için sonuç bulunamadı
+          </div>
+
           <!-- Yatay Sayfa Başlığı Standartında Modül Listesi -->
           <div class="nav-sheet-list">
             <section
@@ -1205,6 +1228,23 @@ async function handleLogout() {
                 </button>
               </div>
             </section>
+          </div>
+
+          <div v-if="!editMode" class="nav-sheet-search">
+            <Search :size="17" class="nav-sheet-search__icon" />
+            <input
+              ref="menuSearchInput"
+              v-model="menuSearch"
+              type="text"
+              class="nav-sheet-search__input"
+              placeholder="Menülerde ara…"
+              aria-label="Menülerde ara"
+              autocomplete="off"
+              enterkeyhint="search"
+            />
+            <button v-if="menuSearch" type="button" class="nav-sheet-search__clear" aria-label="Aramayı temizle" @click="clearMenuSearch">
+              <X :size="14" />
+            </button>
           </div>
 
           <!-- Alt Menü / Aksiyonlar -->

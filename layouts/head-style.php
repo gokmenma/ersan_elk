@@ -369,3 +369,29 @@ use App\Helper\Helper;
 <link rel="stylesheet" type="text/css" href="<?php echo Helper::base_url('assets/libs/toastify/toastify.min.css'); ?>">
 <!-- Feather Icons (Immediate load for early render) -->
 <script src="<?php echo Helper::base_url('assets/libs/feather-icons/feather.min.js'); ?>"></script>
+<script>
+(function () {
+    try {
+        var p = new URLSearchParams(window.location.search).get("p") || "";
+        var prefix = "dtcm:v1:" + window.location.pathname + "?" + p + "#";
+        var css = "";
+        for (var i = 0; i < localStorage.length; i++) {
+            var key = localStorage.key(i);
+            if (key.indexOf(prefix) !== 0) continue;
+            var id = key.slice(prefix.length);
+            var st = JSON.parse(localStorage.getItem(key) || "null");
+            if (!st || !/^[A-Za-z0-9_-]+$/.test(id)) continue;
+            if (Array.isArray(st.order) || (st.visible && Object.keys(st.visible).length)) {
+                css += "table#" + id + ":not(.dt-colman-ready){visibility:hidden}";
+            }
+        }
+        if (css) {
+            var el = document.createElement("style");
+            el.id = "dtcm-early";
+            el.textContent = css;
+            document.head.appendChild(el);
+            setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 4000);
+        }
+    } catch (e) {}
+})();
+</script>

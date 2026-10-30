@@ -176,6 +176,7 @@ try {
     <link href="assets/libs/admin-resources/jquery.vectormap/jquery-jvectormap-1.2.2.css" rel="stylesheet"
         type="text/css" />
     <?php include 'layouts/head-style.php'; ?>
+    <link rel="expect" href="#app-shell-ready" blocking="render">
 
 
 </head>
