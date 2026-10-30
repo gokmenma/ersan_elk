@@ -302,6 +302,7 @@ $title = "Evrak Listesi";
                 <button type="button" class="btn btn-sm btn-subtle-secondary px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderPrint" title="Tabloyu Yazdır">
                     <i class="bx bx-printer font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Yazdır</span>
                 </button>
+                <span class="d-inline-block" data-dt-colman-for="evrakTable" data-dt-colman-style="outline"></span>
             </div>
         </div>
 
@@ -312,7 +313,7 @@ $title = "Evrak Listesi";
                         <tr>
                             <th class="text-center" style="width: 45px;" data-filter="none">#</th>
                             <th class="text-center" style="width: 80px;" data-filter="select">TİP</th>
-                            <th class="text-center" style="width: 105px;" data-filter="none">KEP DURUMU</th>
+                            <th class="text-center" style="width: 105px;" data-filter="select" data-filter-options="KABUL EDİLDİ|KEPHS'E AKTARILDI|İLETİLDİ|TESLİM EDİLDİ|TESLİM EDİLEMEDİ|OKUNDU|İNDİRİLDİ|DELİL ALINDI">KEP DURUMU</th>
                             <th style="width: 100px;" data-filter="date">TARİH</th>
                             <th data-filter="string">KONU / EVRAK NO</th>
                             <th data-filter="string">GELEN/GİDEN KURUM</th>

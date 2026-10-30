@@ -333,6 +333,14 @@ $(document).ready(function () {
     const $activeTr = $('tr.context-menu-active');
     $activeTr.removeClass('context-menu-active');
     if ($activeTr.length) {
+      const $rowLink = $activeTr.find('td:not(:last-child) a[href]').filter(function() {
+        const h = $(this).attr('href');
+        return h && h !== '#' && h.indexOf('javascript:') !== 0;
+      }).first();
+      if ($rowLink.length) {
+        window.location.href = $rowLink.attr('href');
+        return;
+      }
       $activeTr.find('td:not(:last-child)').first().trigger('click');
     }
   });

@@ -100,7 +100,8 @@ class EvrakTakipModel extends Model
             $bindings['global_search'] = '%' . $globalSearch . '%';
         }
 
-        $columnMap = [1 => 'et.evrak_tipi', 3 => 'et.tarih', 4 => 'et.konu', 5 => 'et.kurum_adi', 6 => "COALESCE(NULLIF(u.adi_soyadi, ''), u.user_name)", 7 => 'p1.adi_soyadi', 8 => 'p2.adi_soyadi', 9 => 'et.cevap_verildi_mi', 10 => 'et.onay_durumu'];
+        $kepStatusOrder = "(SELECT kd.delil_tur_id FROM kep_mesajlar km INNER JOIN kep_deliller kd ON kd.kep_mesaj_id = km.id WHERE km.evrak_id = et.id AND km.firm_id = et.firma_id AND km.deleted_at IS NULL AND km.yon = 'giden' ORDER BY kd.olay_zamani DESC, kd.id DESC LIMIT 1)";
+        $columnMap = [1 => 'et.evrak_tipi', 2 => $kepStatusOrder, 3 => 'et.tarih', 4 => 'et.konu', 5 => 'et.kurum_adi', 6 => "COALESCE(NULLIF(u.adi_soyadi, ''), u.user_name)", 7 => 'p1.adi_soyadi', 8 => 'p2.adi_soyadi', 9 => 'et.cevap_verildi_mi', 10 => 'et.onay_durumu'];
         foreach ((array) ($params['columns'] ?? []) as $index => $column) {
             $rawValue = trim((string) ($column['search']['value'] ?? ''));
             if ($rawValue === '' || !isset($columnMap[$index])) continue;
@@ -111,10 +112,29 @@ class EvrakTakipModel extends Model
                 $value = trim($matches[2]);
             }
             $key = 'column_' . $index;
-            if ($mode === 'multi' && in_array((int) $index, [1, 9, 10], true)) {
+            if ($mode === 'multi' && in_array((int) $index, [1, 2, 9, 10], true)) {
                 $values = array_values(array_filter(explode('|', $value), static fn(string $item): bool => $item !== ''));
                 if ($values === []) continue;
-                if ((int) $index === 9) {
+                if ((int) $index === 2) {
+                    $kepCodes = ['KABUL EDİLDİ' => [10], "KEPHS'E AKTARILDI" => [20], 'İLETİLDİ' => [30], 'TESLİM EDİLDİ' => [40], 'TESLİM EDİLEMEDİ' => [41, 50], 'OKUNDU' => [60], 'İNDİRİLDİ' => [70]];
+                    $kepClauses = [];
+                    $kepIds = [];
+                    $kepIdKeys = [];
+                    foreach ($values as $label) {
+                        if (isset($kepCodes[$label])) {
+                            array_push($kepIds, ...$kepCodes[$label]);
+                        } elseif ($label === 'DELİL ALINDI') {
+                            $kepClauses[] = '(' . $kepStatusOrder . ' IS NOT NULL AND ' . $kepStatusOrder . ' NOT IN (10, 20, 30, 40, 41, 50, 60, 70))';
+                        }
+                    }
+                    foreach (array_values(array_unique($kepIds)) as $idIndex => $kepId) {
+                        $kepKey = $key . '_k' . $idIndex;
+                        $bindings[$kepKey] = $kepId;
+                        $kepIdKeys[] = ':' . $kepKey;
+                    }
+                    if (!empty($kepIdKeys)) $kepClauses[] = $kepStatusOrder . ' IN (' . implode(',', $kepIdKeys) . ')';
+                    $where[] = $kepClauses ? '(' . implode(' OR ', $kepClauses) . ')' : '1 = 0';
+                } elseif ((int) $index === 9) {
                     $replyClauses = [];
                     if (in_array('EVET', $values, true)) $replyClauses[] = 'et.cevap_verildi_mi = 1';
                     if (in_array('BEKLEMEDE', $values, true)) $replyClauses[] = '(et.cevap_verildi_mi = 0 OR et.cevap_verildi_mi IS NULL)';
@@ -202,7 +222,7 @@ class EvrakTakipModel extends Model
 
         $orderColumn = (int) ($params['order'][0]['column'] ?? 3);
         $orderDirection = strtolower((string) ($params['order'][0]['dir'] ?? 'desc')) === 'asc' ? 'ASC' : 'DESC';
-        $orderMap = [1 => 'et.evrak_tipi', 3 => 'et.tarih', 4 => 'et.konu', 5 => 'et.kurum_adi', 6 => "COALESCE(NULLIF(u.adi_soyadi, ''), u.user_name)", 7 => 'p1.adi_soyadi', 8 => 'p2.adi_soyadi', 9 => 'et.cevap_verildi_mi', 10 => 'et.onay_durumu'];
+        $orderMap = [1 => 'et.evrak_tipi', 2 => $kepStatusOrder, 3 => 'et.tarih', 4 => 'et.konu', 5 => 'et.kurum_adi', 6 => "COALESCE(NULLIF(u.adi_soyadi, ''), u.user_name)", 7 => 'p1.adi_soyadi', 8 => 'p2.adi_soyadi', 9 => 'et.cevap_verildi_mi', 10 => 'et.onay_durumu'];
         $orderBy = $orderMap[$orderColumn] ?? 'et.tarih';
         $sql = "SELECT et.*, p1.adi_soyadi AS personel_adi, p2.adi_soyadi AS ilgili_personel_adi,
                     COALESCE(NULLIF(u.adi_soyadi, ''), NULLIF(u.user_name, '')) AS islem_yapan_adi" . $from . $whereSql

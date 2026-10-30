@@ -57,7 +57,7 @@ $(document).ready(function () {
             <div class="personel-info-box">
                 <img src="${resim}" class="personel-img-thumb" data-hover-resim="${resim}">
                 <div class="personel-details">
-                    <a class="fw-bold" target="_blank" href="index?p=personel/manage&id=${row.id}">${data}</a>
+                    <a class="fw-bold" href="index?p=personel/manage&id=${encodeURIComponent(row.id)}">${data}</a>
                 </div>
             </div>`;
           },
@@ -270,7 +270,7 @@ $(document).ready(function () {
     var id = getSelectedId();
     console.log("ID: " + id);
     if (id) {
-      window.location.href = "index?p=personel/manage&id=" + id;
+      window.location.href = "index?p=personel/manage&id=" + encodeURIComponent(id);
     }
   });
 

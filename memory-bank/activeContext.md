@@ -3427,3 +3427,5 @@
 - Bordro listesi: ColReorder yerel kopyası (assets/libs/datatables.net-colreorder) views/bordro/list.php içinde core'dan sonra yüklenir; sütun yöneticisi bordroda çalışır. Sütun listesi menü açılırken yeniden çizilir (Sortable geç yüklenebilir).
 - Asgari sütun genişliği: en uzun kelime + sol/sağ dolgu (filtre butonu payı zaten sağ dolguda) + 4px; filtre butonu çift sayılmıyordu düzeltildi (TARİH 143→101px).
 - Merkezi sütun yöneticisi: başlığı tablo gövdesine sürükleyip bırakınca sütun gizlenir (kesikli bırakma alanı + toast). Evrak-takip: sayısal mData fonksiyon getter'a çevrilerek sürükle-sırala açıldı; CEVAP ve E-İMZA sıralanabilir.
+- Evrak listesi: KEP DURUMU sıralaması (EvrakTakipModel::ajaxList orderMap[2] = son kep_deliller.delil_tur_id alt sorgusu).
+- Evrak listesi: Sütunlar butonu kart başlığı araç çubuğuna taşındı (data-dt-colman-style=outline slotu); KEP DURUMU select filtresi eklendi (EvrakTakipModel columnMap[2] + multi etiket→delil_tur_id).

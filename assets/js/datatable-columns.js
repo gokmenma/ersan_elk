@@ -636,7 +636,9 @@
     const toolbarSlot = $('[data-dt-colman-for="' + ctx.tableId + '"]').first();
     const inToolbar = toolbarSlot.length > 0;
     const btnClass = inToolbar
-      ? "btn btn-link btn-sm text-secondary text-decoration-none px-2 d-flex align-items-center"
+      ? toolbarSlot.attr("data-dt-colman-style") === "outline"
+        ? "btn btn-sm btn-outline-secondary bg-white px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold"
+        : "btn btn-link btn-sm text-secondary text-decoration-none px-2 d-flex align-items-center"
       : "btn btn-sm btn-outline-secondary bg-white shadow-sm d-flex align-items-center";
 
     const $ui = $(
