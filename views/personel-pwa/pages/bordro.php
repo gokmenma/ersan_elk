@@ -79,65 +79,56 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') {
 
 <!-- Avans Talebi Modal -->
 <div id="avans-modal" class="modal-overlay">
-    <div class="modal-content p-6 pt-3">
-        <div class="modal-handle"></div>
+    <div class="modal-content pwa-sheet flex flex-col" style="max-height: min(92dvh, 720px);">
+        <div class="pwa-sheet__handle"></div>
 
-        <div class="flex items-center justify-between mb-6">
-            <div class="flex items-center gap-3">
-                <span class="material-symbols-outlined text-primary text-2xl">account_balance_wallet</span>
-                <h3 class="text-lg font-bold text-slate-900 dark:text-white">Avans Talebi</h3>
+        <div class="pwa-sheet__head">
+            <span class="pwa-sheet__icon"><span class="material-symbols-outlined">account_balance_wallet</span></span>
+            <div class="flex-1 min-w-0">
+                <h3>Avans Talebi</h3>
+                <p>Maksimum limit: <span id="max-limit">2.000,00 ₺</span></p>
             </div>
-            <button onclick="Modal.close('avans-modal')"
-                class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                <span class="material-symbols-outlined text-slate-600">close</span>
+            <button type="button" onclick="Modal.close('avans-modal')" class="pwa-sheet__close" aria-label="Kapat">
+                <span class="material-symbols-outlined">close</span>
             </button>
         </div>
 
-        <form id="avans-form" class="flex flex-col gap-4">
+        <form id="avans-form" class="flex flex-col flex-1 min-h-0">
             <input type="hidden" name="id" id="avans-id">
-            <div>
-                <label class="form-label">Talep Edilen Tutar</label>
-                <div class="relative">
-                    <span
-                        class="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-600 dark:text-slate-400">₺</span>
-                    <input type="number" name="tutar" id="avans-tutar" class="form-input pl-10" placeholder="0.00"
-                        required>
-                </div>
-                <p class="text-xs text-slate-500 mt-1">Maksimum limit: <span id="max-limit">2.000,00 ₺</span></p>
+            <div class="flex-1 overflow-y-auto pwa-sheet__body">
+                <section class="pwa-sheet-card">
+                    <div class="pwa-field">
+                        <label>Talep Edilen Tutar</label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 font-extrabold text-primary">₺</span>
+                            <input type="number" name="tutar" id="avans-tutar" class="pwa-input" style="padding-left:40px" placeholder="0.00" inputmode="decimal" required>
+                        </div>
+                    </div>
+
+                    <div class="pwa-field">
+                        <label>Geri Ödeme Seçeneği</label>
+                        <select name="odeme_sekli" class="pwa-input">
+                            <option value="tek">En Yakın Maaş (Tek Seferde)</option>
+                            <option value="2">2 Taksit</option>
+                            <option value="3">3 Taksit</option>
+                        </select>
+                    </div>
+
+                    <div class="pwa-field">
+                        <label>Talep Nedeni</label>
+                        <textarea name="aciklama" class="pwa-input" placeholder="Lütfen avans talebinizin nedenini açıklayın..."></textarea>
+                    </div>
+
+                    <label for="onay" class="pwa-check">
+                        <input type="checkbox" id="onay" name="onay" required>
+                        <span>Bu tutarın, seçilen geri ödeme seçeneğine göre gelecekteki bordrolarımdan otomatik olarak düşüleceğini anlıyorum.</span>
+                    </label>
+                </section>
             </div>
 
-            <div>
-                <label class="form-label">Geri Ödeme Seçeneği</label>
-                <select name="odeme_sekli" class="form-input form-select">
-                    <option value="tek">En Yakın Maaş (Tek Seferde)</option>
-                    <option value="2">2 Taksit</option>
-                    <option value="3">3 Taksit</option>
-                </select>
-            </div>
-
-            <div>
-                <label class="form-label">Talep Nedeni</label>
-                <textarea name="aciklama" class="form-input min-h-[100px]"
-                    placeholder="Lütfen avans talebinizin nedenini açıklayın..."></textarea>
-            </div>
-
-            <div class="flex items-start gap-3 bg-slate-50 dark:bg-slate-800 p-4 rounded-xl">
-                <input type="checkbox" id="onay" name="onay"
-                    class="mt-0.5 rounded border-slate-300 text-primary focus:ring-primary" required>
-                <label for="onay" class="text-xs text-slate-600 dark:text-slate-400">
-                    Bu tutarın, seçilen geri ödeme seçeneğine göre gelecekteki bordrolarımdan otomatik olarak
-                    düşüleceğini anlıyorum.
-                </label>
-            </div>
-
-            <div class="flex gap-3 mt-2">
-                <button type="button" onclick="Modal.close('avans-modal')"
-                    class="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold rounded-xl">
-                    İptal
-                </button>
-                <button type="submit" class="flex-1 btn-primary py-3" id="avans-submit-btn">
-                    Talebi Gönder
-                </button>
+            <div class="pwa-sheet__footer">
+                <button type="button" onclick="Modal.close('avans-modal')" class="pwa-btn pwa-btn--ghost">İptal</button>
+                <button type="submit" class="pwa-btn pwa-btn--primary" id="avans-submit-btn">Talebi Gönder</button>
             </div>
         </form>
     </div>
@@ -145,14 +136,14 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') {
 
 <!-- Avans Detay Modal -->
 <div id="avans-detay-modal" class="modal-overlay">
-    <div class="modal-content p-6 pt-3">
-        <div class="modal-handle"></div>
+    <div class="modal-content pwa-sheet p-6 pt-0">
+        <div class="pwa-sheet__handle"></div>
 
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-bold text-slate-900 dark:text-white">Avans Detayı</h3>
-            <button onclick="Modal.close('avans-detay-modal')"
-                class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                <span class="material-symbols-outlined text-slate-600">close</span>
+        <div class="pwa-sheet__head" style="padding-left:0;padding-right:0">
+            <span class="pwa-sheet__icon"><span class="material-symbols-outlined">receipt_long</span></span>
+            <div class="flex-1 min-w-0"><h3>Avans Detayı</h3></div>
+            <button type="button" onclick="Modal.close('avans-detay-modal')" class="pwa-sheet__close" aria-label="Kapat">
+                <span class="material-symbols-outlined">close</span>
             </button>
         </div>
 

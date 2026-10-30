@@ -197,6 +197,24 @@ use App\Helper\Date;
                 </label>
             </div>
 
+            <?php if (!empty($_pwaCanliDestekAktif)): ?>
+            <div class="flex items-center gap-4 p-4 border-b border-slate-100 dark:border-slate-800">
+                <div class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-slate-600 dark:text-slate-400">chat</span>
+                </div>
+                <div class="flex-1">
+                    <p class="text-sm font-semibold text-slate-900 dark:text-white">Canlı Destek Butonu</p>
+                    <p class="text-xs text-slate-500">Ekrandaki sohbet butonunu göster</p>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="chat-fab-toggle" class="sr-only peer" onchange="toggleChatFab(this.checked)">
+                    <div
+                        class="w-11 h-6 bg-slate-200 peer-focus:ring-2 peer-focus:ring-primary peer-focus:ring-offset-2 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary">
+                    </div>
+                </label>
+            </div>
+            <?php endif; ?>
+
             <div class="flex items-start gap-4 p-4 border-b border-slate-100 dark:border-slate-800"
                 id="theme-color-setting">
                 <div
@@ -391,6 +409,17 @@ use App\Helper\Date;
         }
     }
 
+    function toggleChatFab(show) {
+        document.documentElement.classList.toggle('chat-fab-hidden', !show);
+        try { localStorage.setItem('chatFabHidden', show ? 'false' : 'true'); } catch (e) {}
+        if (!show && window.LiveChat && typeof LiveChat.close === 'function') LiveChat.close();
+    }
+
+    (function () {
+        const cb = document.getElementById('chat-fab-toggle');
+        if (cb) cb.checked = !document.documentElement.classList.contains('chat-fab-hidden');
+    })();
+
     function toggleDarkMode() {
         App.toggleDarkMode();
         document.getElementById('dark-mode-toggle').checked = App.darkMode;
@@ -560,6 +589,7 @@ use App\Helper\Date;
             const darkMode = localStorage.getItem('darkMode');
             const themeColor = localStorage.getItem('themeColor');
             const pushSub = localStorage.getItem('push_subscribed');
+            const chatFabHidden = localStorage.getItem('chatFabHidden');
             
             localStorage.clear();
             sessionStorage.clear();
@@ -567,6 +597,7 @@ use App\Helper\Date;
             if (darkMode !== null) localStorage.setItem('darkMode', darkMode);
             if (themeColor !== null) localStorage.setItem('themeColor', themeColor);
             if (pushSub !== null) localStorage.setItem('push_subscribed', pushSub);
+            if (chatFabHidden !== null) localStorage.setItem('chatFabHidden', chatFabHidden);
 
             if (typeof Toast !== 'undefined') {
                 Toast.show('Tarama verileri temizlendi. Uygulama yenileniyor...', 'success');

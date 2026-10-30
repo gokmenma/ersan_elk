@@ -189,26 +189,26 @@
 
 <!-- Yeni İzin Talebi Modal -->
 <div id="izin-modal" class="modal-overlay" style="z-index: 200;">
-    <div class="modal-content izn-sheet flex flex-col" style="max-height: min(92dvh, 720px);">
-        <div class="izn-sheet__handle"></div>
+    <div class="modal-content pwa-sheet flex flex-col" style="max-height: min(92dvh, 720px);">
+        <div class="pwa-sheet__handle"></div>
 
-        <div class="izn-sheet__head">
-            <span class="izn-sheet__icon"><span class="material-symbols-outlined">edit_calendar</span></span>
+        <div class="pwa-sheet__head">
+            <span class="pwa-sheet__icon"><span class="material-symbols-outlined">edit_calendar</span></span>
             <div class="flex-1 min-w-0">
                 <h3>Yeni İzin Talebi</h3>
                 <p id="izin-modal-aralik">Tarih aralığını seçin</p>
             </div>
-            <button type="button" onclick="Modal.close('izin-modal')" class="izn-sheet__close" aria-label="Kapat">
+            <button type="button" onclick="Modal.close('izin-modal')" class="pwa-sheet__close" aria-label="Kapat">
                 <span class="material-symbols-outlined">close</span>
             </button>
         </div>
 
         <form id="izin-form" class="flex flex-col flex-1 min-h-0">
-            <div class="flex-1 overflow-y-auto izn-sheet__body">
-                <section class="izn-card">
-                    <div class="izn-field">
+            <div class="flex-1 overflow-y-auto pwa-sheet__body">
+                <section class="pwa-sheet-card">
+                    <div class="pwa-field">
                         <label>İzin Türü</label>
-                        <select name="izin_tipi" class="izn-input" required>
+                        <select name="izin_tipi" class="pwa-input" required>
                             <option value="">Yükleniyor...</option>
                         </select>
                     </div>
@@ -226,26 +226,26 @@
                     </div>
 
                     <div class="grid grid-cols-2 gap-3">
-                        <div class="izn-field">
+                        <div class="pwa-field">
                             <label>Başlangıç Tarihi</label>
-                            <input type="date" name="baslangic_tarihi" class="izn-input" required>
+                            <input type="date" name="baslangic_tarihi" class="pwa-input" required>
                         </div>
-                        <div class="izn-field">
+                        <div class="pwa-field">
                             <label>Bitiş Tarihi</label>
-                            <input type="date" name="bitis_tarihi" class="izn-input" required>
+                            <input type="date" name="bitis_tarihi" class="pwa-input" required>
                         </div>
                     </div>
 
-                    <div class="izn-field">
+                    <div class="pwa-field">
                         <label>Açıklama</label>
-                        <textarea name="aciklama" class="izn-input" placeholder="İzin talebiniz hakkında kısa bir açıklama..."></textarea>
+                        <textarea name="aciklama" class="pwa-input" placeholder="İzin talebiniz hakkında kısa bir açıklama..."></textarea>
                     </div>
                 </section>
             </div>
 
-            <div class="izn-sheet__footer">
-                <button type="button" onclick="Modal.close('izin-modal')" class="izn-btn izn-btn--ghost">İptal</button>
-                <button type="submit" class="izn-btn izn-btn--primary">
+            <div class="pwa-sheet__footer">
+                <button type="button" onclick="Modal.close('izin-modal')" class="pwa-btn pwa-btn--ghost">İptal</button>
+                <button type="submit" class="pwa-btn pwa-btn--primary">
                     <span class="material-symbols-outlined" style="font-size:18px">send</span>Talebi Gönder
                 </button>
             </div>
@@ -255,13 +255,13 @@
 
 <!-- İzin Detay Modal -->
 <div id="izin-detay-modal" class="modal-overlay">
-    <div class="modal-content izn-sheet p-6 pt-0">
-        <div class="izn-sheet__handle"></div>
+    <div class="modal-content pwa-sheet p-6 pt-0">
+        <div class="pwa-sheet__handle"></div>
 
-        <div class="izn-sheet__head" style="padding-left:0;padding-right:0">
-            <span class="izn-sheet__icon"><span class="material-symbols-outlined">event_note</span></span>
+        <div class="pwa-sheet__head" style="padding-left:0;padding-right:0">
+            <span class="pwa-sheet__icon"><span class="material-symbols-outlined">event_note</span></span>
             <div class="flex-1 min-w-0"><h3>İzin Detayı</h3></div>
-            <button type="button" onclick="Modal.close('izin-detay-modal')" class="izn-sheet__close" aria-label="Kapat">
+            <button type="button" onclick="Modal.close('izin-detay-modal')" class="pwa-sheet__close" aria-label="Kapat">
                 <span class="material-symbols-outlined">close</span>
             </button>
         </div>
@@ -278,13 +278,13 @@
 
 <!-- Hakediş Detay Bottom Sheet -->
 <div id="hakedis-detay-modal" class="modal-overlay">
-    <div class="modal-content izn-sheet p-6 pt-0 h-[60vh] flex flex-col">
-        <div class="izn-sheet__handle"></div>
+    <div class="modal-content pwa-sheet p-6 pt-0 h-[60vh] flex flex-col">
+        <div class="pwa-sheet__handle"></div>
 
-        <div class="izn-sheet__head flex-shrink-0" style="padding-left:0;padding-right:0">
-            <span class="izn-sheet__icon"><span class="material-symbols-outlined">event_available</span></span>
+        <div class="pwa-sheet__head flex-shrink-0" style="padding-left:0;padding-right:0">
+            <span class="pwa-sheet__icon"><span class="material-symbols-outlined">event_available</span></span>
             <div class="flex-1 min-w-0"><h3>İzin Hakediş Detayları</h3></div>
-            <button type="button" onclick="Modal.close('hakedis-detay-modal')" class="izn-sheet__close" aria-label="Kapat">
+            <button type="button" onclick="Modal.close('hakedis-detay-modal')" class="pwa-sheet__close" aria-label="Kapat">
                 <span class="material-symbols-outlined">close</span>
             </button>
         </div>
@@ -353,37 +353,6 @@
     .izn-range-bar__clear .material-symbols-outlined { font-size: 18px; }
     .izn-range-bar__go { flex: none; height: 44px; padding: 0 18px; border: 0; border-radius: 999px; background: var(--primary); color: #fff; font-size: 13px; font-weight: 800; }
 
-    .izn-sheet { background: #e6eaef !important; border-radius: 28px 28px 0 0 !important; box-shadow: 0 -18px 44px rgba(22, 25, 32, .24); }
-    .dark .izn-sheet { background: #14171c !important; }
-    .izn-sheet__handle { width: 40px; height: 5px; margin: 10px auto 0; border-radius: 999px; background: rgba(22, 25, 32, .18); flex: none; }
-    .dark .izn-sheet__handle { background: rgba(255, 255, 255, .22); }
-    .izn-sheet__head { display: flex; align-items: center; gap: 12px; padding: 14px 18px 12px; flex: none; }
-    .izn-sheet__icon { flex: none; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--primary); color: #fff; box-shadow: 0 10px 18px -8px rgba(var(--primary-rgb, 19, 91, 236), .6); }
-    .izn-sheet__head h3 { margin: 0; font-size: 19px; font-weight: 800; line-height: 1.15; color: #161920; }
-    .izn-sheet__head p { margin: 2px 0 0; font-size: 12px; font-weight: 700; color: var(--primary); }
-    .dark .izn-sheet__head h3 { color: #e8ecf2; }
-    .izn-sheet__close { flex: none; width: 40px; height: 40px; border: 1px solid rgba(255, 255, 255, .9); border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff; color: #161920; box-shadow: 0 6px 14px -8px rgba(22, 25, 32, .3); }
-    .dark .izn-sheet__close { background: #262c36; color: #e8ecf2; border-color: rgba(255, 255, 255, .1); }
-    .izn-sheet__body { padding: 0 14px 16px; }
-    .izn-sheet__footer { flex: none; display: grid; grid-template-columns: 1fr 1.5fr; gap: 10px; padding: 12px 16px calc(14px + env(safe-area-inset-bottom)); }
-
-    .izn-card { display: flex; flex-direction: column; gap: 14px; padding: 18px 16px; border-radius: 28px; background: #fff; border: 1px solid rgba(255, 255, 255, .9); box-shadow: 0 18px 36px -24px rgba(22, 25, 32, .3); }
-    .dark .izn-card { background: #1d222a; border-color: rgba(255, 255, 255, .07); }
-    .izn-field label { display: block; margin: 0 0 6px 2px; font-size: 12px; font-weight: 700; color: #475569; }
-    .dark .izn-field label { color: #cbd5e1; }
-    .izn-input { display: block; width: 100%; min-height: 52px; padding: 13px 16px; border-radius: 18px; border: 2px solid transparent; background: #f1f4f8; color: #161920; font-size: 15px; font-weight: 700; outline: none; transition: border-color .2s ease, box-shadow .2s ease, background .2s ease; }
-    .izn-input::placeholder { font-weight: 600; color: #94a3b8; }
-    .izn-input:focus { background: #fff; border-color: var(--primary); box-shadow: 0 0 0 5px rgba(var(--primary-rgb, 19, 91, 236), .14); }
-    select.izn-input { appearance: none; -webkit-appearance: none; padding-right: 44px; background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.8' d='M6 8l4 4 4-4'/%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 14px center; background-size: 20px; }
-    textarea.izn-input { min-height: 96px; resize: none; line-height: 1.45; }
-    input[type="date"].izn-input { padding-left: 12px; padding-right: 8px; font-size: 14px; }
-    .dark .izn-input { background: rgba(255, 255, 255, .06); color: #f1f5f9; }
-    .dark .izn-input:focus { background: rgba(var(--primary-rgb, 19, 91, 236), .12); }
-    .izn-btn { min-height: 52px; border: 0; border-radius: 999px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: 800; transition: transform .15s ease; }
-    .izn-btn:active { transform: scale(.97); }
-    .izn-btn--ghost { background: #fff; color: #161920; border: 1px solid rgba(255, 255, 255, .9); box-shadow: 0 8px 18px -10px rgba(22, 25, 32, .3); }
-    .dark .izn-btn--ghost { background: #262c36; color: #e8ecf2; border-color: rgba(255, 255, 255, .1); }
-    .izn-btn--primary { background: var(--primary); color: #fff; box-shadow: 0 14px 24px -12px rgba(var(--primary-rgb, 19, 91, 236), .7); }
 </style>
 
 <script>

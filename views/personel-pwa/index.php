@@ -367,6 +367,10 @@ $pageStatusDark = '#121212';
             if (localStorage.getItem('darkMode') === 'true') {
                 r.classList.add('dark');
             }
+
+            if (localStorage.getItem('chatFabHidden') === 'true') {
+                r.classList.add('chat-fab-hidden');
+            }
             window.syncPageStatusBar();
             new MutationObserver(window.syncPageStatusBar).observe(r, {
                 attributes: true,

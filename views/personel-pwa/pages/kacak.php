@@ -152,76 +152,74 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
 
 <!-- ============ BİLDİRİM MODALI ============ -->
 <div id="kacak-bildir-modal" class="modal-overlay" style="z-index: 200;">
-    <div class="modal-content"
-        style="display:flex !important; flex-direction:column !important; max-height:90vh !important; overflow:hidden !important; padding:0 !important;">
-
-        <div
-            class="px-6 pt-3 pb-2 bg-white dark:bg-card-dark z-10 border-b border-slate-200 dark:border-slate-800">
-            <div class="modal-handle mb-4"></div>
-            <div class="flex items-center justify-between">
-                <h3 id="kacak-form-title" class="text-lg font-bold text-slate-800 dark:text-white">Kaçak Tutanağı Bildir</h3>
-                <button onclick="Modal.close('kacak-bildir-modal')"
-                    class="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-slate-500">close</span>
-                </button>
-            </div>
+    <div class="modal-content pwa-sheet" style="display:flex !important; flex-direction:column !important; max-height:min(92dvh, 780px) !important; overflow:hidden !important; padding:0 !important;">
+        <div class="pwa-sheet__handle"></div>
+        <div class="pwa-sheet__head">
+            <span class="pwa-sheet__icon"><span class="material-symbols-outlined">gavel</span></span>
+            <div class="flex-1 min-w-0"><h3 id="kacak-form-title">Kaçak Tutanağı Bildir</h3></div>
+            <button type="button" onclick="Modal.close('kacak-bildir-modal')" class="pwa-sheet__close" aria-label="Kapat">
+                <span class="material-symbols-outlined">close</span>
+            </button>
         </div>
 
-        <form id="kacak-bildir-form" class="p-6 pt-4 overflow-y-auto flex-1 space-y-4"
-            style="overscroll-behavior-y: contain;">
+        <form id="kacak-bildir-form" class="flex flex-col flex-1 min-h-0">
+            <div class="flex-1 overflow-y-auto pwa-sheet__body" style="overscroll-behavior-y: contain;">
+
 
             <!-- Tutanak + AI -->
-            <div class="bg-slate-50 dark:bg-slate-800 rounded-xl p-4">
-                <div class="flex items-center justify-between gap-2 mb-2">
-                    <span class="text-xs font-bold text-slate-500 uppercase">Tutanak Fotoğrafı</span>
+            <section class="pwa-sheet-card">
+                <div class="flex items-center justify-between gap-2">
+                    <span class="pwa-card-label">Tutanak Fotoğrafı</span>
                     <span id="kacak-tutanak-required" class="text-xs text-red-500 font-bold">Zorunlu</span>
                 </div>
 
                 <input type="file" id="kacak-tutanak-input" accept="image/*,application/pdf" style="display:none">
                 <input type="file" id="kacak-tutanak-camera-input" accept="image/*" capture="environment" style="display:none">
 
-                <div class="grid grid-cols-2 gap-2 mb-2">
+                <div class="grid grid-cols-2 gap-2">
                     <button type="button" onclick="document.getElementById('kacak-tutanak-camera-input').click()"
-                        class="py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
+                        class="pwa-pill-btn">
                         <span class="material-symbols-outlined text-base">photo_camera</span>
                         Kameradan Çek
                     </button>
                     <button type="button" onclick="document.getElementById('kacak-tutanak-input').click()"
-                        class="py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
+                        class="pwa-pill-btn">
                         <span class="material-symbols-outlined text-base">photo_library</span>
                         Galeriden Seç
                     </button>
                 </div>
 
-                <div class="flex gap-2">
-                    <div class="flex-1 py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 text-slate-500 text-xs font-bold text-center truncate">
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="pwa-pill-btn pwa-pill-btn--static flex-1 truncate">
                         <span id="kacak-tutanak-label">Belge Seçilmedi</span>
                     </div>
                     <button type="button" id="kacak-analiz-btn" onclick="analizEtKacak()" disabled
-                        class="flex-1 py-2 rounded-xl bg-amber-500 text-white text-xs font-black">
+                        class="pwa-pill-btn pwa-pill-btn--dark flex-1">
                         Yapay Zeka ile Oku
                     </button>
                 </div>
 
-                <div id="kacak-tutanak-preview" class="mt-3" style="display:none">
-                    <img class="w-full rounded-xl border border-slate-200" style="max-height:12rem;object-fit:contain"
+                <div id="kacak-tutanak-preview" style="display:none">
+                    <img class="w-full rounded-2xl border border-slate-200" style="max-height:12rem;object-fit:contain"
                         alt="Tutanak">
                 </div>
                 <div id="mevcut-tutanak-container"></div>
-            </div>
+            </section>
 
-            <div>
-                <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Tarih</label>
+            <section class="pwa-sheet-card">
+                <h2 class="pwa-card-title"><span class="material-symbols-outlined">description</span>Tutanak Bilgileri</h2>
+            <div class="pwa-field">
+                <label>Tarih</label>
                 <input type="date" name="tarih" id="kacak-tarih-input" required value="<?= date('Y-m-d') ?>"
                     min="<?= date('Y-m-d', strtotime('-7 days')) ?>" max="<?= date('Y-m-d') ?>"
-                    class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-800 dark:text-white">
-                <p class="text-xs text-slate-400 mt-1">Geriye dönük en fazla 1 hafta (7 gün) önceki bir tarih seçilebilir.</p>
+                    class="pwa-input">
+                <p class="pwa-hint">Geriye dönük en fazla 1 hafta (7 gün) önceki bir tarih seçilebilir.</p>
             </div>
 
-            <div>
-                <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Ekip Arkadaşınız</label>
+            <div class="pwa-field">
+                <label>Ekip Arkadaşınız</label>
                 <select name="ekip_arkadasi_id" id="kacak-ekip-arkadasi" required
-                    class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-800 dark:text-white">
+                    class="pwa-input">
                     <option value="">Seçiniz...</option>
                     <?php foreach ($ekipAdaylari as $aday): ?>
                         <option value="<?= (int) $aday['id'] ?>">
@@ -229,14 +227,14 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                         </option>
                     <?php endforeach; ?>
                 </select>
-                <p class="text-xs text-slate-400 mt-1">Kaçak ekipleri 2 kişiden oluşur.</p>
+                <p class="pwa-hint">Kaçak ekipleri 2 kişiden oluşur.</p>
             </div>
 
             <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">İlçe</label>
+                <div class="pwa-field">
+                    <label>İlçe</label>
                     <select name="ilce" id="kacak-ilce" required
-                        class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-800 dark:text-white">
+                        class="pwa-input">
                         <option value="">Seçiniz...</option>
                         <?php foreach ($ilceler as $ilce): ?>
                             <option value="<?= htmlspecialchars($ilce, ENT_QUOTES, 'UTF-8') ?>">
@@ -245,10 +243,10 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Tür</label>
+                <div class="pwa-field">
+                    <label>Tür</label>
                     <select name="tur" id="kacak-tur" required
-                        class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-800 dark:text-white">
+                        class="pwa-input">
                         <?php foreach (KacakKontrolModel::TURLER as $tur): ?>
                             <option value="<?= htmlspecialchars($tur, ENT_QUOTES, 'UTF-8') ?>">
                                 <?= htmlspecialchars($tur, ENT_QUOTES, 'UTF-8') ?>
@@ -259,129 +257,133 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             </div>
 
             <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Tutanak No</label>
+                <div class="pwa-field">
+                    <label>Tutanak No</label>
                     <input type="text" name="tutanak_no" id="kacak-tutanak-no" inputmode="numeric"
-                        class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-800 dark:text-white">
+                        class="pwa-input">
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Sayaç No</label>
+                <div class="pwa-field">
+                    <label>Sayaç No</label>
                     <input type="text" name="sayac_no" id="kacak-sayac-no"
-                        class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-800 dark:text-white">
+                        class="pwa-input">
                 </div>
             </div>
 
             <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Sayaç Markası</label>
+                <div class="pwa-field">
+                    <label>Sayaç Markası</label>
                     <input type="text" name="sayac_markasi" id="kacak-sayac-markasi" placeholder="Opsiyonel"
-                        class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-800 dark:text-white">
+                        class="pwa-input">
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Adı Soyadı</label>
+                <div class="pwa-field">
+                    <label>Adı Soyadı</label>
                     <input type="text" name="abone_adi" id="kacak-abone-adi"
-                        class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-800 dark:text-white">
+                        class="pwa-input">
                 </div>
             </div>
 
-            <div>
-                <div class="flex items-center justify-between mb-2">
-                    <label class="block text-xs font-bold text-slate-500 uppercase">TC Kimlik veya Vergi No</label>
+            <div class="pwa-field">
+                <div class="flex items-center justify-between" style="margin-bottom:6px">
+                    <label>TC Kimlik veya Vergi No</label>
                     <span class="text-xs text-red-500 font-bold">Zorunlu</span>
                 </div>
                 <input type="text" name="abone_tc" id="kacak-abone-tc" inputmode="numeric" maxlength="11" required
                     placeholder="11 haneli TC veya 10 haneli Vergi No"
-                    class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-800 dark:text-white">
-                <p class="text-xs text-slate-400 mt-1">11 haneli TC Kimlik No veya 10 haneli Vergi Kimlik No giriniz.</p>
+                    class="pwa-input">
+                <p class="pwa-hint">11 haneli TC Kimlik No veya 10 haneli Vergi Kimlik No giriniz.</p>
             </div>
 
             <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <div class="flex items-center justify-between mb-2">
-                        <label class="block text-xs font-bold text-slate-500 uppercase">Doğum Tarihi</label>
+                <div class="pwa-field">
+                    <div class="flex items-center justify-between" style="margin-bottom:6px">
+                        <label>Doğum Tarihi</label>
                         <span id="kacak-dogum-zorunlu" class="text-xs text-slate-400 font-normal">(Opsiyonel)</span>
                     </div>
                     <input type="date" name="abone_dogum_tarihi" id="kacak-abone-dogum-tarihi"
-                        class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-800 dark:text-white">
+                        class="pwa-input">
                 </div>
-                <div>
-                    <div class="flex items-center justify-between mb-2">
-                        <label class="block text-xs font-bold text-slate-500 uppercase">Tel No</label>
+                <div class="pwa-field">
+                    <div class="flex items-center justify-between" style="margin-bottom:6px">
+                        <label>Tel No</label>
                         <span class="text-xs text-slate-400 font-normal">(Opsiyonel)</span>
                     </div>
                     <input type="tel" name="abone_tel" id="kacak-abone-tel" maxlength="20" placeholder="05XXXXXXXXX"
-                        class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-800 dark:text-white">
+                        class="pwa-input">
                 </div>
             </div>
 
             <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Endeks</label>
+                <div class="pwa-field">
+                    <label>Endeks</label>
                     <input type="text" name="endeks" id="kacak-endeks" inputmode="numeric"
-                        class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-800 dark:text-white">
+                        class="pwa-input">
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Sayı</label>
+                <div class="pwa-field">
+                    <label>Sayı</label>
                     <input type="number" name="sayi" id="kacak-sayi" min="1" value="1" required
-                        class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-800 dark:text-white">
+                        class="pwa-input">
                 </div>
             </div>
 
-            <div>
-                <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Saha Fotoğrafları (en fazla
+            </section>
+
+            <section class="pwa-sheet-card">
+                <h2 class="pwa-card-title"><span class="material-symbols-outlined">photo_camera</span>Fotoğraf ve Video</h2>
+            <div class="pwa-field">
+                <label>Saha Fotoğrafları (en fazla
                     <?= (int) $maxSahaFoto ?>)</label>
                 <input type="file" id="kacak-saha-input" accept="image/*" multiple style="display:none">
                 <input type="file" id="kacak-saha-camera-input" accept="image/*" capture="environment" style="display:none">
                 <div class="grid grid-cols-2 gap-2">
                     <button type="button" onclick="document.getElementById('kacak-saha-camera-input').click()"
-                        class="py-3 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
+                        class="pwa-pill-btn">
                         <span class="material-symbols-outlined text-base">photo_camera</span>
                         Kameradan Çek
                     </button>
                     <button type="button" onclick="document.getElementById('kacak-saha-input').click()"
-                        class="py-3 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
+                        class="pwa-pill-btn">
                         <span class="material-symbols-outlined text-base">photo_library</span>
                         Galeriden Seç
                     </button>
                 </div>
-                <div id="kacak-saha-preview" class="grid grid-cols-3 gap-2 mt-3"></div>
+                <div id="kacak-saha-preview" class="grid grid-cols-3 gap-2"></div>
                 <div id="mevcut-saha-container"></div>
             </div>
 
-            <div>
-                <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Video (en fazla
+            <div class="pwa-field">
+                <label>Video (en fazla
                     <?= (int) $maxVideo ?> adet, <?= (int) $videoMaxSure ?> sn)</label>
                 <input type="file" id="kacak-video-input" accept="video/*" style="display:none">
                 <input type="file" id="kacak-video-camera-input" accept="video/*" capture="environment" style="display:none">
                 <div class="grid grid-cols-2 gap-2">
                     <button type="button" onclick="document.getElementById('kacak-video-camera-input').click()"
-                        class="py-3 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
+                        class="pwa-pill-btn">
                         <span class="material-symbols-outlined text-base">videocam</span>
                         Kamera ile Çek
                     </button>
                     <button type="button" onclick="document.getElementById('kacak-video-input').click()"
-                        class="py-3 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
+                        class="pwa-pill-btn">
                         <span class="material-symbols-outlined text-base">video_library</span>
                         Galeriden Seç
                     </button>
                 </div>
-                <p class="text-xs text-slate-400 mt-1">En fazla <?= (int) $videoMaxSure ?> saniye ve
+                <p class="pwa-hint">En fazla <?= (int) $videoMaxSure ?> saniye ve
                     <?= (int) round(KacakKontrolModel::videoYuklemeSiniri() / 1048576) ?> MB. Videolar çevrimiçiyken gönderilir.</p>
 
                 <!-- Canlı Video Yükleme İlerleme Çubuğu (Modal İçi) -->
-                <div id="kacak-video-progress-container" class="mt-3 p-3.5 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl border border-indigo-200 dark:border-indigo-800 hidden">
-                    <div class="flex items-center justify-between text-xs font-bold text-indigo-900 dark:text-indigo-200 mb-1.5">
+                <div id="kacak-video-progress-container" class="pwa-progress hidden">
+                    <div class="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
                         <span id="kacak-video-progress-text" class="flex items-center gap-1.5 truncate">
-                            <svg class="w-4 h-4 text-indigo-600 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24">
+                            <svg class="w-4 h-4 text-primary animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
                             <span>Video Yükleniyor...</span>
                         </span>
-                        <span id="kacak-video-progress-percent" class="text-indigo-600 dark:text-indigo-400 font-extrabold text-xs ml-2">0%</span>
+                        <span id="kacak-video-progress-percent" class="text-primary font-extrabold text-xs ml-2">0%</span>
                     </div>
                     <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 overflow-hidden p-0.5 shadow-inner">
-                        <div id="kacak-video-progress-bar" class="bg-gradient-to-r from-indigo-500 to-indigo-600 h-2 rounded-full transition-all duration-150 w-0"></div>
+                        <div id="kacak-video-progress-bar" class="bg-primary h-2 rounded-full transition-all duration-150 w-0"></div>
                     </div>
                     <div class="flex justify-between items-center text-[11px] text-slate-500 dark:text-slate-400 mt-1.5 font-mono">
                         <span id="kacak-video-progress-name" class="truncate max-w-[160px]">video.mp4</span>
@@ -389,20 +391,30 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                     </div>
                 </div>
 
-                <div id="kacak-video-preview" class="grid grid-cols-3 gap-2 mt-3"></div>
+                <div id="kacak-video-preview" class="grid grid-cols-3 gap-2"></div>
                 <div id="mevcut-video-container"></div>
             </div>
 
-            <div>
-                <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Açıklama</label>
+            </section>
+
+            <section class="pwa-sheet-card">
+                <h2 class="pwa-card-title"><span class="material-symbols-outlined">notes</span>Açıklama</h2>
+            <div class="pwa-field">
+                <label>Açıklama</label>
                 <textarea name="aciklama" id="kacak-aciklama" rows="2"
-                    class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm text-slate-800 dark:text-white"></textarea>
+                    class="pwa-input"></textarea>
             </div>
 
-            <button type="submit" id="kacak-submit-btn"
-                class="w-full py-4 rounded-xl bg-primary text-white font-black text-sm">
-                <span id="kacak-submit-text">BİLDİRİMİ GÖNDER</span>
-            </button>
+            </section>
+
+            </div>
+
+            <div class="pwa-sheet__footer">
+                <button type="button" onclick="Modal.close('kacak-bildir-modal')" class="pwa-btn pwa-btn--ghost">Kapat</button>
+                <button type="submit" id="kacak-submit-btn" class="pwa-btn pwa-btn--primary">
+                    <span id="kacak-submit-text">BİLDİRİMİ GÖNDER</span>
+                </button>
+            </div>
         </form>
     </div>
 </div>

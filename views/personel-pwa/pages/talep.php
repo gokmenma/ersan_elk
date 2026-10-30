@@ -70,35 +70,26 @@
 
 <!-- Yeni Talep Bildirimi Modal -->
 <div id="talep-modal" class="modal-overlay" style="z-index: 200;">
-    <div class="modal-content"
-        style="display: flex !important; flex-direction: column !important; max-height: 85vh !important; overflow: hidden !important; padding: 0 !important;">
-        <!-- Fixed Header -->
-        <div class="px-6 pt-3 pb-2 flex-shrink-0 bg-white dark:bg-card-dark z-10 border-b border-transparent">
-            <div class="modal-handle mb-4"></div>
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <span class="material-symbols-outlined text-primary text-2xl">edit_note</span>
-                    <h3 class="text-lg font-bold text-slate-900 dark:text-white">Talep Bildirimi</h3>
-                </div>
-                <button onclick="closeTalepModal()"
-                    class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-slate-600">close</span>
-                </button>
-            </div>
+    <div class="modal-content pwa-sheet" style="display: flex !important; flex-direction: column !important; max-height: min(92dvh, 780px) !important; overflow: hidden !important; padding: 0 !important;">
+        <div class="pwa-sheet__handle"></div>
+        <div class="pwa-sheet__head">
+            <span class="pwa-sheet__icon"><span class="material-symbols-outlined">edit_note</span></span>
+            <div class="flex-1 min-w-0"><h3>Talep Bildirimi</h3></div>
+            <button type="button" onclick="closeTalepModal()" class="pwa-sheet__close" aria-label="Kapat">
+                <span class="material-symbols-outlined">close</span>
+            </button>
         </div>
 
-        <!-- Scrollable Content -->
-        <div class="p-6 pt-4 overflow-y-auto flex-1 pb-10" style="overscroll-behavior-y: contain;">
-            <form id="talep-form" class="flex flex-col gap-4">
-                <input type="hidden" name="action" value="createTalepBildirimi">
-                <div>
-                    <label class="form-label">Konum</label>
+        <form id="talep-form" class="flex flex-col flex-1 min-h-0">
+            <input type="hidden" name="action" value="createTalepBildirimi">
+            <div class="flex-1 overflow-y-auto pwa-sheet__body" style="overscroll-behavior-y: contain;">
+                <section class="pwa-sheet-card">
+                    <h2 class="pwa-card-title"><span class="material-symbols-outlined">location_on</span>Konum</h2>
                     <div class="flex flex-col gap-2">
                         <div class="flex gap-2">
-                            <input type="text" name="konum" id="konum-input" class="form-input flex-1"
+                            <input type="text" name="konum" id="konum-input" class="pwa-input flex-1"
                                 placeholder="Konum girin veya GPS kullanın" required>
-                            <button type="button" onclick="getLocation()" id="location-btn"
-                                class="flex items-center justify-center w-12 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-primary/10 hover:text-primary hover:border-primary transition-all">
+                            <button type="button" onclick="getLocation()" id="location-btn" class="pwa-round-btn" aria-label="GPS ile konum al">
                                 <span class="material-symbols-outlined">my_location</span>
                             </button>
                         </div>
@@ -106,120 +97,89 @@
                         <input type="hidden" name="latitude" id="lat-input">
                         <input type="hidden" name="longitude" id="lng-input">
                     </div>
-                </div>
+                </section>
 
-                <div>
-                    <label class="form-label">Talep Türü</label>
+                <section class="pwa-sheet-card">
+                    <h2 class="pwa-card-title"><span class="material-symbols-outlined">category</span>Talep Türü</h2>
                     <div class="flex flex-wrap gap-2" id="kategori-chips">
-                        <button type="button" onclick="selectKategori(this, 'ariza')"
-                            class="kategori-chip px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 transition-all">
-                            🔧 Arıza
-                        </button>
-                        <button type="button" onclick="selectKategori(this, 'oneri')"
-                            class="kategori-chip px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 transition-all">
-                            💡 Öneri
-                        </button>
-                        <button type="button" onclick="selectKategori(this, 'sikayet')"
-                            class="kategori-chip px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 transition-all">
-                            ⚠️ Şikayet
-                        </button>
-                        <button type="button" onclick="selectKategori(this, 'istek')"
-                            class="kategori-chip px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 transition-all">
-                            📦 İstek
-                        </button>
-                        <button type="button" onclick="selectKategori(this, 'diger')"
-                            class="kategori-chip px-4 py-2 rounded-full border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 transition-all">
-                            📝 Diğer
-                        </button>
+                        <button type="button" onclick="selectKategori(this, 'ariza')" class="kategori-chip">🔧 Arıza</button>
+                        <button type="button" onclick="selectKategori(this, 'oneri')" class="kategori-chip">💡 Öneri</button>
+                        <button type="button" onclick="selectKategori(this, 'sikayet')" class="kategori-chip">⚠️ Şikayet</button>
+                        <button type="button" onclick="selectKategori(this, 'istek')" class="kategori-chip">📦 İstek</button>
+                        <button type="button" onclick="selectKategori(this, 'diger')" class="kategori-chip">📝 Diğer</button>
                     </div>
                     <input type="hidden" name="kategori" id="kategori-input" required>
-                </div>
 
-                <div>
-                    <label class="form-label">Öncelik</label>
+                    <h2 class="pwa-card-title" style="margin-top:4px"><span class="material-symbols-outlined">priority_high</span>Öncelik</h2>
                     <div class="grid grid-cols-3 gap-2">
-                        <button type="button" onclick="selectOncelik(this, 'dusuk')"
-                            class="oncelik-btn py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 transition-all">
+                        <button type="button" onclick="selectOncelik(this, 'dusuk')" class="oncelik-btn">
                             <span class="text-green-500 text-lg">●</span>
                             <span class="block text-xs mt-1">Düşük</span>
                         </button>
-                        <button type="button" onclick="selectOncelik(this, 'orta')"
-                            class="oncelik-btn py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 transition-all">
+                        <button type="button" onclick="selectOncelik(this, 'orta')" class="oncelik-btn">
                             <span class="text-amber-500 text-lg">●</span>
                             <span class="block text-xs mt-1">Orta</span>
                         </button>
-                        <button type="button" onclick="selectOncelik(this, 'yuksek')"
-                            class="oncelik-btn py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 transition-all">
+                        <button type="button" onclick="selectOncelik(this, 'yuksek')" class="oncelik-btn">
                             <span class="text-red-500 text-lg">●</span>
                             <span class="block text-xs mt-1">Yüksek</span>
                         </button>
                     </div>
                     <input type="hidden" name="oncelik" id="oncelik-input" value="orta">
-                </div>
+                </section>
 
-                <div>
-                    <label class="form-label">Açıklama</label>
-                    <textarea name="aciklama" class="form-input min-h-[100px]"
-                        placeholder="Talebinizi detaylıca açıklayın..." required></textarea>
-                </div>
+                <section class="pwa-sheet-card">
+                    <h2 class="pwa-card-title"><span class="material-symbols-outlined">notes</span>Açıklama</h2>
+                    <textarea name="aciklama" class="pwa-input" placeholder="Talebinizi detaylıca açıklayın..." required></textarea>
+                </section>
 
-                <div>
-                    <label class="form-label">Fotoğraf Ekle (Opsiyonel)</label>
-                    <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary transition-colors"
-                        onclick="document.getElementById('foto-input').click()">
-                        <span class="material-symbols-outlined text-3xl text-slate-400">add_a_photo</span>
-                        <p class="text-xs text-slate-500 text-center">Yüklemek için tıklayın</p>
+                <section class="pwa-sheet-card">
+                    <h2 class="pwa-card-title"><span class="material-symbols-outlined">add_a_photo</span>Fotoğraf Ekle <small style="font-weight:600;text-transform:none;letter-spacing:0">(Opsiyonel)</small></h2>
+                    <div class="pwa-drop" onclick="document.getElementById('foto-input').click()">
+                        <span class="material-symbols-outlined">add_a_photo</span>
+                        <span>Yüklemek için dokunun</span>
                     </div>
-                    <input type="file" id="foto-input" name="foto" accept="image/*" class="hidden"
-                        onchange="previewFoto(this)">
-                    <div id="foto-preview" class="mt-2 hidden"></div>
-                </div>
+                    <input type="file" id="foto-input" name="foto" accept="image/*" class="hidden" onchange="previewFoto(this)">
+                    <div id="foto-preview" class="hidden"></div>
+                </section>
+            </div>
 
-                <div class="flex gap-3 mt-2">
-                    <button type="button" onclick="closeTalepModal()"
-                        class="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold rounded-xl">
-                        İptal
-                    </button>
-                    <button type="submit" class="flex-1 btn-primary py-3" id="talebiGonder">
-                        Talebi Gönder
-                    </button>
-                </div>
-            </form>
-        </div>
+            <div class="pwa-sheet__footer">
+                <button type="button" onclick="closeTalepModal()" class="pwa-btn pwa-btn--ghost">İptal</button>
+                <button type="submit" class="pwa-btn pwa-btn--primary" id="talebiGonder">Talebi Gönder</button>
+            </div>
+        </form>
     </div>
 </div>
 
 <!-- Talep Detay Modal -->
 <div id="talep-detay-modal" class="modal-overlay" style="z-index: 200;">
-    <div class="modal-content"
-        style="display: flex !important; flex-direction: column !important; max-height: 85vh !important; overflow: hidden !important; padding: 0 !important;">
-        <!-- Fixed Header -->
-        <div class="px-6 pt-3 pb-2 flex-shrink-0 bg-white dark:bg-card-dark z-10 border-b border-transparent">
-            <div class="modal-handle mb-4"></div>
-            <div class="flex items-center justify-between">
-                <h3 class="text-lg font-bold text-slate-900 dark:text-white" id="talep-modal-title">Talep Detayı</h3>
-                <button onclick="Modal.close('talep-detay-modal')"
-                    class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-slate-600">close</span>
-                </button>
+    <div class="modal-content pwa-sheet" style="display: flex !important; flex-direction: column !important; max-height: min(92dvh, 780px) !important; overflow: hidden !important; padding: 0 !important;">
+        <div class="pwa-sheet__handle"></div>
+        <div class="pwa-sheet__head">
+            <span class="pwa-sheet__icon"><span class="material-symbols-outlined">assignment</span></span>
+            <div class="flex-1 min-w-0"><h3 id="talep-modal-title">Talep Detayı</h3></div>
+            <button type="button" onclick="Modal.close('talep-detay-modal')" class="pwa-sheet__close" aria-label="Kapat">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+
+        <div class="flex-1 min-h-0 overflow-y-auto pwa-sheet__body" style="overscroll-behavior-y: contain;">
+            <div id="talep-detay-content">
             </div>
         </div>
 
-        <!-- Scrollable Content -->
-        <div class="p-6 pt-4 overflow-y-auto flex-1 pb-10" style="overscroll-behavior-y: contain;">
-            <div id="talep-detay-content">
-                <!-- Content will be loaded dynamically -->
-            </div>
-
-            <button onclick="Modal.close('talep-detay-modal')"
-                class="w-full mt-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold rounded-xl">
-                Kapat
-            </button>
+        <div class="pwa-sheet__footer" style="grid-template-columns: 1fr;">
+            <button type="button" onclick="Modal.close('talep-detay-modal')" class="pwa-btn pwa-btn--ghost">Kapat</button>
         </div>
     </div>
 </div>
 
 <style>
+    .kategori-chip { padding: 10px 16px; border-radius: 999px; border: 2px solid transparent; background: #f1f4f8; font-size: 13px; font-weight: 700; color: #475569; transition: all .2s ease; }
+    .oncelik-btn { padding: 12px 0; border-radius: 18px; border: 2px solid transparent; background: #f1f4f8; font-size: 13px; font-weight: 700; color: #475569; transition: all .2s ease; }
+    .dark .kategori-chip, .dark .oncelik-btn { background: rgba(255, 255, 255, .06); color: #cbd5e1; }
+
     .kategori-chip.active {
         background: rgba(var(--primary-rgb), 0.1);
         border-color: var(--primary);
@@ -230,6 +190,11 @@
         background: rgba(var(--primary-rgb), 0.1);
         border-color: var(--primary);
     }
+
+    .pwa-round-btn { flex: none; width: 52px; height: 52px; border: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(var(--primary-rgb), .1); color: var(--primary); }
+    .pwa-drop { min-height: 96px; border-radius: 22px; border: 2px dashed rgba(100, 116, 139, .35); background: #f6f8fb; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: 12px; font-weight: 800; color: #475569; cursor: pointer; }
+    .pwa-drop .material-symbols-outlined { font-size: 28px; color: var(--primary); }
+    .dark .pwa-drop { background: rgba(255, 255, 255, .04); border-color: rgba(255, 255, 255, .16); color: #cbd5e1; }
 </style>
 
 <script>

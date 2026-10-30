@@ -163,7 +163,7 @@ if (!empty($sonOkumaTarihi) && $sonOkumaTarihi < date('Y-m-01')) {
             <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider">Ekipler</h3>
             <span class="text-xs text-slate-400 font-medium" id="ekip-list-period-badge"></span>
         </div>
-        <div id="ekip-list" class="flex flex-col gap-3.5">
+        <div id="ekip-list" class="ekp-list">
             <!-- Skeleton -->
             <div class="card p-4 animate-pulse">
                 <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4 mb-2"></div>
@@ -591,11 +591,11 @@ if (!empty($sonOkumaTarihi) && $sonOkumaTarihi < date('Y-m-01')) {
             }
 
             return `
-            <div class="card card-premium p-4 hover:shadow-md transition-all active:scale-[0.99] cursor-pointer group relative overflow-hidden"
+            <div class="ekp-team group"
                  onclick="showEkipDetail('${ekip.ekip_kodu_id}')">
 
                 <!-- Rank badge -->
-                ${rankIcon ? `<div class="absolute top-2 right-3 text-xl">${rankIcon}</div>` : ''}
+                ${rankIcon ? `<div class="ekp-team__rank">${rankIcon}</div>` : ''}
 
                 <div class="relative z-10">
                     <div class="flex items-center gap-3 mb-3">

@@ -670,3 +670,8 @@
 .chat-read-icon.done-all {
   color: #3b82f6; /* Blue tick */
 }
+
+/* --- Kullanici tercihi: canli destek butonunu gizle --- */
+html.chat-fab-hidden .chat-fab {
+  display: none !important;
+}
