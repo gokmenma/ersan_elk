@@ -127,11 +127,11 @@ $kartSirasi = static fn(string $anahtar): int => (int) array_search($anahtar, $a
                                             <rect x="56" y="44" width="11" height="12" rx="5" fill="#e9ac80"/>
                                             <circle cx="62" cy="30" r="18" fill="#f7c9a4"/>
                                             <circle cx="50" cy="34" r="4" fill="#f2b88f"/>
-                                            <circle cx="80" cy="36" r="3.2" fill="#f2b88f"/>
+                                            <circle cx="79.6" cy="36" r="2" fill="#f2b88f"/>
                                             <g class="wk-blink"><ellipse cx="75" cy="31" rx="3" ry="4.2" fill="#fff"/><circle cx="76.2" cy="32" r="2.3" fill="#3b2418"/></g>
                                             <g class="wk-blink"><ellipse cx="67" cy="31" rx="4.2" ry="5" fill="#fff"/><circle cx="68.7" cy="32" r="3" fill="#3b2418"/><circle cx="69.7" cy="30.6" r="1" fill="#fff"/></g>
                                             <circle cx="66" cy="41" r="3.2" fill="#f9a8a0" opacity=".55"/>
-                                            <path d="M67 42q5.5 6.5 11-1z" fill="#fff" stroke="#9a3412" stroke-width="1.3" stroke-linejoin="round"/>
+                                            <path d="M68.2 42.4q3.6 4.2 7.2-.6z" fill="#fff" stroke="#9a3412" stroke-width="1.1" stroke-linejoin="round"/>
                                             <path d="M43 26c0-13 8-19 19-19s19 6 19 19z" fill="#fbbf24"/>
                                             <path d="M48 15c4-5 8-7 13-7v18H48z" fill="#fde68a" opacity=".55"/>
                                             <rect x="59" y="6" width="6" height="20" rx="3" fill="#f59e0b"/>
@@ -310,108 +310,22 @@ $kartSirasi = static fn(string $anahtar): int => (int) array_search($anahtar, $a
 
     <!-- Özet Bilgiler (Combined) -->
     <section class="px-4 relative z-20 mt-5" data-home-card="ozet" style="order: <?php echo $kartSirasi('ozet'); ?>;">
-        <div
-            class="card pwa-bento-dark overflow-hidden">
-            <div class="pwa-card-head"><div class="pwa-card-title"><span class="material-symbols-outlined">calendar_month</span><span>Genel Özet</span></div><span class="pwa-card-pill" id="combined-donem-label">Mart 2026</span></div>
+        <div class="card pwa-card-body">
+            <div class="pwa-card-head pwa-card-head--flush"><div class="pwa-card-title"><span class="material-symbols-outlined">calendar_month</span><span>Genel Özet</span><span class="pwa-card-pill" id="combined-donem-label">Mart 2026</span></div><a href="?page=izin" class="pwa-card-link">Detaylar <span class="material-symbols-outlined">chevron_right</span></a></div>
 
-            <?php if (false): ?>
-                <!-- Financial Header (Minimal) -->
-                <div class="p-5 relative border-b border-slate-50 dark:border-slate-800">
-                    <div class="relative z-10">
-                        <div class="flex justify-between items-start mb-4">
-                            <div class="flex flex-col">
-                                <div class="flex items-center gap-1.5 text-slate-400 dark:text-slate-500 mb-1">
-                                    <span class="material-symbols-outlined text-xs">savings</span>
-                                    <span class="text-[10px] font-bold uppercase tracking-[0.1em]">Kalan Bakiye</span>
-                                </div>
-                                <h3 class="text-2xl font-black tracking-tight text-slate-900 dark:text-white"
-                                    id="combined-remaining-balance">0,00 ₺</h3>
-                            </div>
-                            <div class="flex flex-col items-end">
-                                <span id="combined-hakedis-donem"
-                                    class="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2.5 py-1 rounded-full font-bold mb-2"></span>
-                                <div
-                                    class="badge badge-success bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-none text-[10px] font-bold">
-                                    +%5.2</div>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4 pt-4 mt-2 border-t border-slate-50 dark:border-slate-800/50">
-                            <div>
-                                <p class="text-[10px] text-slate-400 dark:text-slate-500 font-medium mb-0.5">Toplam Hakediş
-                                </p>
-                                <p class="text-sm font-bold text-slate-700 dark:text-slate-300" id="combined-total-earning">
-                                    0,00 ₺</p>
-                            </div>
-                            <div class="border-l border-slate-50 dark:border-slate-800 pl-4">
-                                <p class="text-[10px] text-slate-400 dark:text-slate-500 font-medium mb-0.5">Alınan Ödeme
-                                </p>
-                                <p class="text-sm font-bold text-slate-700 dark:text-slate-300"
-                                    id="combined-received-payment">0,00 ₺</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            <?php endif; ?>
-
-            <!-- Working Stats Grid with Neon Effects -->
-            <div class="p-4">
-                <div class="grid grid-cols-3 gap-3">
-                    <!-- Çalışılan -->
-                    <div
-                        class="flex flex-col items-center p-3 rounded-2xl bg-blue-50/30 dark:bg-blue-900/10 border border-blue-100/40 dark:border-blue-800/20 active:scale-95 transition-all shadow-[0_0_15px_-3px_rgba(59,130,246,0.15)]">
-                        <div
-                            class="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-2 shadow-sm">
-                            <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 text-lg">work</span>
-                        </div>
-                        <span id="combined-actual-worked"
-                            class="text-lg font-black text-slate-800 dark:text-white leading-none">0</span>
-                        <span
-                            class="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase mt-1.5 tracking-tighter">Çalışılan</span>
-                    </div>
-
-                    <!-- Ücretsiz İzin -->
-                    <div
-                        class="flex flex-col items-center p-3 rounded-2xl bg-amber-50/30 dark:bg-amber-900/10 border border-amber-100/40 dark:border-amber-800/20 active:scale-95 transition-all shadow-[0_0_15px_-3px_rgba(245,158,11,0.15)]">
-                        <div
-                            class="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-2 shadow-sm">
-                            <span
-                                class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-lg">money_off</span>
-                        </div>
-                        <span id="combined-unpaid-leave"
-                            class="text-lg font-black text-slate-800 dark:text-white leading-none">0</span>
-                        <span
-                            class="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase mt-1.5 tracking-tighter text-center">Ücretsiz</span>
-                    </div>
-
-                    <!-- Ücretli İzin -->
-                    <div
-                        class="flex flex-col items-center p-3 rounded-2xl bg-emerald-50/30 dark:bg-emerald-900/10 border border-emerald-100/40 dark:border-emerald-800/20 active:scale-95 transition-all shadow-[0_0_15px_-3px_rgba(16,185,129,0.15)]">
-                        <div
-                            class="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-2 shadow-sm">
-                            <span
-                                class="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-lg">beach_access</span>
-                        </div>
-                        <span id="combined-paid-leave"
-                            class="text-lg font-black text-slate-800 dark:text-white leading-none">0</span>
-                        <span
-                            class="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase mt-1.5 tracking-tighter text-center">Ücretli</span>
-                    </div>
-                </div>
-
-                <div
-                    class="mt-4 pt-3 border-t border-slate-50 dark:border-slate-800/50 flex items-center justify-between">
-                    <div class="flex items-center gap-1.5">
-                        <div class="w-1.5 h-1.5 rounded-full bg-primary/60 dark:bg-primary/40 animate-pulse"></div>
-                        <span class="text-[10px] text-slate-400 dark:text-slate-500 font-medium"
-                            id="combined-footer-label">Yükleniyor...</span>
-                    </div>
-                    <a href="?page=izin"
-                        class="text-[10px] font-bold text-primary flex items-center gap-0.5 active:opacity-60 transition-opacity">
-                        DETAYLAR <span class="material-symbols-outlined text-[14px]">chevron_right</span>
-                    </a>
-                </div>
+            <div class="pwa-seg-track" role="img" aria-label="Çalışılan, ücretsiz ve ücretli izin günleri">
+                <span class="pwa-seg-pill" id="combined-seg-worked" style="background:#3b82f6;width:100%"></span>
+                <span class="pwa-seg-pill" id="combined-seg-unpaid" style="background:#f59e0b;width:0"></span>
+                <span class="pwa-seg-pill" id="combined-seg-paid" style="background:#10b981;width:0"></span>
             </div>
+
+            <div class="pwa-metrics">
+                <div class="pwa-metric"><span><i style="background:#3b82f6"></i>Çalışılan</span><strong id="combined-actual-worked">0</strong></div>
+                <div class="pwa-metric"><span><i style="background:#f59e0b"></i>Ücretsiz</span><strong id="combined-unpaid-leave">0</strong></div>
+                <div class="pwa-metric"><span><i style="background:#10b981"></i>Ücretli</span><strong id="combined-paid-leave">0</strong></div>
+            </div>
+
+            <p class="pwa-card-foot" id="combined-footer-label">Yükleniyor...</p>
         </div>
     </section>
 
@@ -585,33 +499,35 @@ $kartSirasi = static fn(string $anahtar): int => (int) array_search($anahtar, $a
 
     <section class="px-4 mt-6 overflow-hidden" data-home-card="hizli" style="order: <?php echo $kartSirasi('hizli'); ?>;">
         <div class="card pwa-card-body overflow-hidden">
-        <div class="pwa-card-head pwa-card-head--flush"><div class="pwa-card-title"><span class="material-symbols-outlined">bolt</span><span>Hızlı İşlemler</span></div><button type="button" onclick="openHizliIslemlerModal()" class="pwa-card-pill pwa-card-pill--btn"><span class="material-symbols-outlined">tune</span><span>Düzenle</span></button></div>
-        <div class="flex overflow-x-auto hide-scrollbar gap-3 snap-x snap-mandatory">
-            <?php if (empty($activeQuickActions)): ?>
-                <div class="w-full p-4 text-center text-xs text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-2xl">
-                    Henüz eklenmiş bir hızlı işlem yok. "Düzenle" butonundan ekleyebilirsiniz.
-                </div>
-            <?php else: ?>
+        <div class="pwa-card-head pwa-card-head--flush"><div class="pwa-card-title"><span class="material-symbols-outlined">bolt</span><span>Hızlı İşlemler</span><?php if (!empty($activeQuickActions)): ?><span class="pwa-card-pill"><?php echo count($activeQuickActions); ?> Kısayol</span><?php endif; ?></div><button type="button" onclick="openHizliIslemlerModal()" class="pwa-card-pill pwa-card-pill--btn"><span class="material-symbols-outlined">tune</span><span>Düzenle</span></button></div>
+        <?php
+        $qaRenkler = [
+            'amber' => '217,119,6', 'blue' => '2,132,199', 'cyan' => '8,145,178', 'emerald' => '16,185,129',
+            'fuchsia' => '192,38,211', 'indigo' => '99,102,241', 'orange' => '249,115,22', 'purple' => '124,58,237',
+            'red' => '239,68,68', 'rose' => '225,29,72', 'teal' => '13,148,136', 'violet' => '139,92,246',
+        ];
+        ?>
+        <?php if (empty($activeQuickActions)): ?>
+            <div class="w-full p-4 text-center text-xs text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-2xl">
+                Henüz eklenmiş bir hızlı işlem yok. "Düzenle" butonundan ekleyebilirsiniz.
+            </div>
+        <?php else: ?>
+            <div class="pwa-qa-grid">
                 <?php foreach ($activeQuickActions as $action): ?>
+                    <?php
+                    preg_match('/from-([a-z]+)-/', (string) ($action['gradient'] ?? ''), $renkEsles);
+                    $qaRenk = $qaRenkler[$renkEsles[1] ?? ''] ?? '2,132,199';
+                    ?>
                     <a href="<?php echo htmlspecialchars($action['url'], ENT_QUOTES, 'UTF-8'); ?>"
-                        style="width: 105px !important; min-width: 105px !important; max-width: 105px !important; padding: 10px !important; border-radius: 1rem !important;"
-                        class="quick-action group border-2 <?php echo htmlspecialchars($action['neon'], ENT_QUOTES, 'UTF-8'); ?> bg-gradient-to-br <?php echo htmlspecialchars($action['gradient'], ENT_QUOTES, 'UTF-8'); ?> transition-all active:scale-95 flex-shrink-0 snap-start">
-                        <div
-                            class="w-7 h-7 rounded-lg bg-white/20 backdrop-blur-md flex items-center justify-center mb-1.5 shadow-inner">
-                            <span class="material-symbols-outlined text-white text-base filled"><?php echo htmlspecialchars($action['icon'], ENT_QUOTES, 'UTF-8'); ?></span>
-                        </div>
-                        <div class="w-full">
-                            <h3 class="font-bold text-[11px] text-white leading-tight truncate"><?php echo htmlspecialchars($action['title'], ENT_QUOTES, 'UTF-8'); ?></h3>
-                            <p class="text-[8.5px] <?php echo htmlspecialchars($action['text_color'], ENT_QUOTES, 'UTF-8'); ?> font-medium truncate mt-0.5"><?php echo htmlspecialchars($action['desc'], ENT_QUOTES, 'UTF-8'); ?></p>
-                        </div>
-                        <div
-                            class="absolute -right-2 -bottom-2 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
-                            <span class="material-symbols-outlined text-3xl text-white"><?php echo htmlspecialchars($action['icon'], ENT_QUOTES, 'UTF-8'); ?></span>
-                        </div>
+                        class="pwa-qa-tile" style="--qa: <?php echo htmlspecialchars($qaRenk, ENT_QUOTES, 'UTF-8'); ?>;">
+                        <span class="pwa-qa-icon">
+                            <span class="material-symbols-outlined"><?php echo htmlspecialchars($action['icon'], ENT_QUOTES, 'UTF-8'); ?></span>
+                        </span>
+                        <strong><?php echo htmlspecialchars($action['title'], ENT_QUOTES, 'UTF-8'); ?></strong>
                     </a>
                 <?php endforeach; ?>
-            <?php endif; ?>
-        </div>
+            </div>
+        <?php endif; ?>
         </div>
     </section>
 
@@ -1490,6 +1406,11 @@ $kartSirasi = static fn(string $anahtar): int => (int) array_search($anahtar, $a
                 if (workedEl) workedEl.textContent = actualWorked;
                 if (unpaidEl) unpaidEl.textContent = unpaidLeaveDays;
                 if (paidEl) paidEl.textContent = paidLeaveDays;
+                var segToplam = Math.max(1, actualWorked + unpaidLeaveDays + paidLeaveDays);
+                [['combined-seg-worked', actualWorked], ['combined-seg-unpaid', unpaidLeaveDays], ['combined-seg-paid', paidLeaveDays]].forEach(function (seg) {
+                    var segEl = document.getElementById(seg[0]);
+                    if (segEl) segEl.style.width = (seg[1] / segToplam * 100) + '%';
+                });
                 if (footerLabel) footerLabel.textContent = (includeToday ? 'Bugün dahil' : 'Düne kadar') + ' · Toplam ' + totalDays + ' / ' + daysInMonth + ' gün';
 
             } catch (error) {
@@ -1561,10 +1482,10 @@ $kartSirasi = static fn(string $anahtar): int => (int) array_search($anahtar, $a
                 if (response && response.success && response.data && response.data.length > 0) {
                     if (section) section.style.display = 'block';
                     if (container) {
-                        container.innerHTML = response.data.map(function (duyuru) {
+                        window.etkinlikSliderListe = response.data;
+                        container.innerHTML = response.data.map(function (duyuru, idx) {
                             var bgImg = 'background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-dark) 100%);';
-                            var duyuruJson = JSON.stringify(duyuru).replace(/\\/g, "\\\\").replace(/"/g, "&quot;").replace(/'/g, "\\'");
-                            var onClick = "showEtkinlikFullScreen('" + duyuruJson + "');";
+                            var onClick = "showEtkinlikFullScreen(window.etkinlikSliderListe[" + idx + "]);";
                             var cursorClass = 'cursor-pointer';
 
                             var kalan_gun_html = '';

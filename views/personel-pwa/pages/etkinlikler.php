@@ -66,8 +66,7 @@
     }
 
     function etkinlikKartiHtml(duyuru) {
-        var duyuruJson = JSON.stringify(duyuru).replace(/\\/g, "\\\\").replace(/"/g, "&quot;").replace(/'/g, "\\'");
-        var onClick = "showEtkinlikFullScreen('" + duyuruJson + "');";
+        var onClick = "showEtkinlikFullScreen(etkinlikVerisi[" + etkinlikVerisi.indexOf(duyuru) + "]);";
         var cursorClass = 'cursor-pointer';
 
         var opacityClass = duyuru.gecmis ? 'opacity-60 saturate-50' : '';

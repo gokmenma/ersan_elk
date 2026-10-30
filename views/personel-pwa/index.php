@@ -253,17 +253,9 @@ if ($isKaskiKacak) {
     }
 }
 
-// Durum çubuğu, sayfanın en üstündeki başlık alanıyla aynı renkte olmalı.
-// "primary" tema rengini, "surface" ise açık/koyu arayüz yüzeyini izler.
-$pageStatusMode = in_array($page, [
-    'ana-sayfa', 'puantaj', 'profil', 'ekip-takibi', 'etkinlikler'
-], true) ? 'primary' : 'surface';
-$pageStatusColor = null;
-
-if ($page === 'ihbar') {
-    $pageStatusMode = 'fixed';
-    $pageStatusColor = '#dc2626';
-}
+// Durum çubuğu tüm sayfalarda gövde zemin rengiyle aynıdır (açık: #e6eaef, koyu: #121212).
+$pageStatusLight = '#e6eaef';
+$pageStatusDark = '#121212';
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -273,7 +265,7 @@ if ($page === 'ihbar') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="<?= htmlspecialchars($pageStatusColor ?? ($pageStatusMode === 'surface' ? '#ffffff' : '#135bec'), ENT_QUOTES, 'UTF-8') ?>">
+    <meta name="theme-color" content="<?= htmlspecialchars($pageStatusLight, ENT_QUOTES, 'UTF-8') ?>">
     <meta name="description" content="Ersan Elektrik - Mobil Uygulama">
 
     <!-- Harici CSS önbellekte kalsa bile uygulama içi geçişte loader görünmez. -->
@@ -361,15 +353,11 @@ if ($page === 'ihbar') {
 
             // Update meta theme-color
             const meta = document.querySelector('meta[name="theme-color"]');
-            const pageStatusMode = <?= json_encode($pageStatusMode) ?>;
-            const fixedPageStatusColor = <?= json_encode($pageStatusColor) ?>;
+            const pageStatusLight = <?= json_encode($pageStatusLight) ?>;
+            const pageStatusDark = <?= json_encode($pageStatusDark) ?>;
             window.syncPageStatusBar = function () {
                 const isDark = document.documentElement.classList.contains('dark');
-                const color = pageStatusMode === 'fixed'
-                    ? fixedPageStatusColor
-                    : (pageStatusMode === 'surface'
-                        ? (isDark ? '#1e1e1e' : '#ffffff')
-                        : (getComputedStyle(r).getPropertyValue('--primary').trim() || t.primary));
+                const color = isDark ? pageStatusDark : pageStatusLight;
                 document.documentElement.style.setProperty('--page-status-color', color);
                 if (meta) meta.setAttribute('content', color);
             };
@@ -411,7 +399,7 @@ if ($page === 'ihbar') {
     class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white min-h-screen pb-20">
 
     <!-- Status Bar Spacer (iOS) -->
-    <div class="h-safe-top" style="background-color: var(--page-status-color, var(--primary));"></div>
+    <div class="h-safe-top" style="background-color: var(--page-status-color, #e6eaef);"></div>
 
     <!-- Main Content -->
     <main id="main-content" class="min-h-screen">
@@ -1176,11 +1164,9 @@ if ($page === 'ihbar') {
             let fileAttachmentHtml = '';
             if (hasImage) {
                 fileAttachmentHtml = `
-                    <div class="mt-8">
-                        <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 pl-1">EKLİ GÖRSEL / DOSYA</p>
-                        <div class="rounded-2xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800 relative bg-slate-100 dark:bg-slate-800">
-                            <img src="${escapeHtml(duyuru.resim)}" class="w-full h-auto object-cover max-h-[400px]" alt="Etkinlik Görseli">
-                        </div>
+                    <div class="duyuru-attach">
+                        <p class="duyuru-attach-label">EKLİ GÖRSEL / DOSYA</p>
+                        <img src="${escapeHtml(duyuru.resim)}" class="duyuru-attach-img" alt="Etkinlik Görseli" onerror="this.closest('.duyuru-attach').remove()">
                     </div>
                 `;
             }
@@ -1188,68 +1174,40 @@ if ($page === 'ihbar') {
             let linkHtml = '';
             if (duyuru.hedef_sayfa) {
                 linkHtml += `
-                <div class="mt-8">
-                    <a href="${escapeHtml(duyuru.hedef_sayfa)}" class="btn-primary w-full py-4 text-center rounded-2xl flex justify-center items-center gap-2 font-bold shadow-lg shadow-primary/30 active:scale-95 transition-transform">
-                        <span>Detayı İncele</span>
-                        <span class="material-symbols-outlined">arrow_forward</span>
-                    </a>
-                </div>
+                <a href="${escapeHtml(duyuru.hedef_sayfa)}" class="duyuru-btn duyuru-btn--primary">
+                    <span>Detayı İncele</span>
+                    <span class="material-symbols-outlined">arrow_forward</span>
+                </a>
                 `;
             }
 
-            // Always add a link to the activities page
             linkHtml += `
-            <div class="mt-4">
-                <a href="?page=etkinlikler" class="w-full py-4 text-center rounded-2xl flex justify-center items-center gap-2 font-semibold text-slate-500 hover:text-primary dark:text-slate-400 border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-card-dark/50 active:scale-95 transition-transform">
-                    <span class="material-symbols-outlined">format_list_bulleted</span>
-                    <span>Tüm Duyuruları Gör</span>
-                </a>
-            </div>
+            <a href="?page=etkinlikler" class="duyuru-btn duyuru-btn--ghost">
+                <span class="material-symbols-outlined">format_list_bulleted</span>
+                <span>Tüm Duyuruları Gör</span>
+            </a>
             `;
 
             let kalanGunHtml = '';
             if (duyuru.kalan_gun) {
-                kalanGunHtml = `
-                    <div class="absolute -top-4 -right-2 pointer-events-none select-none z-0 flex flex-col items-end opacity-20">
-                        <span class="text-[12rem] font-black leading-[0.8] tracking-tighter bg-gradient-to-bl from-white to-transparent text-transparent bg-clip-text">${escapeHtml(duyuru.kalan_gun)}</span>
-                    </div>
-                `;
+                kalanGunHtml = `<span class="duyuru-hero-num" aria-hidden="true">${escapeHtml(duyuru.kalan_gun)}</span>`;
             } else if (duyuru.gecmis) {
-                kalanGunHtml = `<div class="mt-4"><span class="badge badge-danger bg-red-500/80 backdrop-blur-md text-white border-none py-1.5 px-3 shadow-md">Geçmiş Etkinlik</span></div>`;
+                kalanGunHtml = `<span class="duyuru-hero-pill duyuru-hero-pill--past">Geçmiş Etkinlik</span>`;
             }
 
             const html = `
-                <div class="header-main relative px-6 pt-12 pb-8 flex flex-col items-start shadow-xl rounded-b-[2.5rem] safe-area-top shrink-0 overflow-hidden" style="${bgImg}">
-                    <div class="absolute inset-0 opacity-10 overflow-hidden rounded-b-[2.5rem] pointer-events-none">
-                        <svg class="absolute -right-4 top-0 w-32 h-32" viewBox="0 0 100 100" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="50" cy="50" r="50" />
-                        </svg>
-                        <svg class="absolute -left-12 -bottom-12 w-48 h-48" viewBox="0 0 100 100" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="50" cy="50" r="50" />
-                        </svg>
-                    </div>
-                    
-                    ${kalanGunHtml}
-
-                    <div class="relative w-full z-10 flex flex-col h-full">
-                        <div class="flex items-center justify-between mb-6">
-                            <div class="w-10 h-10"></div> <!-- Placeholder -->
-                            <span class="bg-white/20 backdrop-blur-md border border-white/10 text-white rounded-lg px-3 py-1 text-[11px] font-semibold tracking-wide shadow-sm">${escapeHtml(duyuru.tarih)}</span>
-                        </div>
-
-                        <div class="flex flex-col justify-end mt-2">
-                            <h1 class="text-white text-2xl font-black tracking-tight leading-[1.15] break-words" style="text-shadow: 0 4px 8px rgba(0,0,0,0.5);">${escapeHtml(duyuru.baslik)}</h1>
-                            ${duyuru.kalan_gun ? `<div class="mt-2 flex items-center gap-2">
-                                <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span>
-                                <span class="text-[11px] font-bold text-white/90 uppercase tracking-[0.2em]">${escapeHtml(duyuru.kalan_gun)} GÜN KALDI</span>
-                            </div>` : ''}
+                <div class="duyuru-detay">
+                    <div class="duyuru-hero" style="${bgImg}">
+                        ${kalanGunHtml}
+                        <div class="duyuru-hero-body">
+                            <span class="duyuru-hero-pill">${escapeHtml(duyuru.tarih)}</span>
+                            <h1 class="duyuru-hero-title">${escapeHtml(duyuru.baslik)}</h1>
+                            ${duyuru.kalan_gun ? `<div class="duyuru-hero-meta"><span class="duyuru-hero-dot"></span><span>${escapeHtml(duyuru.kalan_gun)} GÜN KALDI</span></div>` : ''}
                         </div>
                     </div>
-                </div>
 
-                <div class="px-5 pb-8 flex-1 bg-transparent -mt-5 relative z-20">
-                    <div class="bg-white dark:bg-card-dark rounded-[2rem] p-6 shadow-xl shadow-black/5 dark:shadow-black/20 border border-slate-100 dark:border-slate-800">
-                        <div class="text-slate-700 dark:text-slate-300 text-[15px] leading-relaxed duyuru-content">${duyuru.icerik || ''}</div>
+                    <div class="duyuru-body-card">
+                        <div class="duyuru-content">${duyuru.icerik || ''}</div>
                         ${fileAttachmentHtml}
                     </div>
                     ${linkHtml}

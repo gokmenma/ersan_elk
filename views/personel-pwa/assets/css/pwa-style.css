@@ -4159,3 +4159,346 @@ textarea.pwa-km-input { min-height: 92px; padding: 14px 16px; font-size: 14px; f
 @media (prefers-reduced-motion: reduce) {
   .pwa-km-act.is-next::after { animation: none !important; }
 }
+
+/* ===== Hızlı İşlemler (Yönetici Mobil Uyumlu Kısayol Kutuları) ===== */
+.pwa-qa-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.pwa-qa-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 82px;
+  padding: 10px 4px 8px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1.5px solid rgba(var(--qa), 0.42);
+  box-shadow: 0 2px 8px rgba(var(--qa), 0.04);
+  text-align: center;
+  text-decoration: none;
+  transition: transform 0.15s ease;
+}
+
+.pwa-qa-tile:active {
+  transform: scale(0.96);
+}
+
+.pwa-qa-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 11px;
+  background: rgba(var(--qa), 0.12);
+  color: rgb(var(--qa));
+}
+
+.pwa-qa-icon .material-symbols-outlined {
+  font-size: 20px;
+  font-variation-settings: 'FILL' 0, 'wght' 500;
+}
+
+.pwa-qa-tile strong {
+  display: block;
+  width: 100%;
+  padding: 0 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  color: #0f172a;
+}
+
+.dark .pwa-qa-tile {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.dark .pwa-qa-tile strong {
+  color: #f1f5f9;
+}
+
+/* ===== Genel Özet: Segmentli Çubuk ve Metrik Kutuları ===== */
+.pwa-card-link {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-decoration: none;
+}
+
+.pwa-card-link .material-symbols-outlined {
+  font-size: 14px;
+}
+
+.pwa-seg-track {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 13px;
+  padding: 2.5px;
+  margin-bottom: 12px;
+  border-radius: 999px;
+  background: #eef1f5;
+}
+
+.pwa-seg-pill {
+  height: 100%;
+  min-width: 0;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.pwa-seg-pill[style*="width:0"],
+.pwa-seg-pill[style*="width: 0"] {
+  display: none;
+}
+
+.pwa-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.pwa-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px;
+  border-radius: 16px;
+  background: #eff2f7;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.pwa-metric span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.pwa-metric i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.pwa-metric strong {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: #0f172a;
+}
+
+.pwa-card-foot {
+  margin: 12px 0 0;
+  text-align: center;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.dark .pwa-seg-track {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.dark .pwa-metric {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.dark .pwa-metric strong {
+  color: #f5f7fa;
+}
+
+.dark .pwa-card-link,
+.dark .pwa-metric span {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+
+/* ===== Duyuru Detay (Tam Ekran Modal) ===== */
+html:not(.dark) #pwa-full-modal {
+  background: #e6eaef;
+}
+
+#pwa-full-modal .duyuru-detay {
+  padding: calc(var(--safe-area-inset-top) + 64px) 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.duyuru-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 28px;
+  padding: 22px 20px;
+  color: #fff;
+  box-shadow: 0 14px 28px -12px rgba(15, 23, 42, 0.35);
+}
+
+.duyuru-hero-num {
+  position: absolute;
+  top: -14px;
+  right: 6px;
+  font-size: 9rem;
+  font-weight: 900;
+  line-height: 0.8;
+  letter-spacing: -0.05em;
+  color: rgba(255, 255, 255, 0.16);
+  pointer-events: none;
+}
+
+.duyuru-hero-body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.duyuru-hero-pill {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.duyuru-hero-pill--past {
+  background: rgba(25, 29, 36, 0.55);
+}
+
+.duyuru-hero-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  word-break: break-word;
+}
+
+.duyuru-hero-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  opacity: 0.92;
+}
+
+.duyuru-hero-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.duyuru-body-card {
+  background: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 28px;
+  padding: 20px;
+  box-shadow: 0 10px 24px -14px rgba(15, 23, 42, 0.28);
+}
+
+.duyuru-content {
+  color: #1e293b;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.65;
+  word-break: break-word;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.duyuru-attach {
+  margin-top: 20px;
+}
+
+.duyuru-attach-label {
+  margin: 0 0 8px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: #94a3b8;
+}
+
+.duyuru-attach-img {
+  display: block;
+  width: 100%;
+  max-height: 400px;
+  object-fit: cover;
+  border-radius: 20px;
+}
+
+.duyuru-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 20px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform 0.15s ease;
+}
+
+.duyuru-btn:active {
+  transform: scale(0.97);
+}
+
+.duyuru-btn--primary {
+  background: #191d24;
+  color: #fff;
+  box-shadow: 0 10px 20px -10px rgba(25, 29, 36, 0.6);
+}
+
+.duyuru-btn--ghost {
+  background: #ffffff;
+  color: #475569;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+}
+
+html:not(.dark) #pwa-full-modal > .fixed.top-0 button {
+  background: #ffffff;
+  color: #191d24;
+  box-shadow: 0 6px 16px -6px rgba(15, 23, 42, 0.35);
+}
+
+html:not(.dark) #pwa-full-modal > button.fixed.bottom-6 {
+  background: #191d24;
+}
+
+.dark .duyuru-body-card,
+.dark .duyuru-btn--ghost {
+  background: #1e1e1e;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.dark .duyuru-content {
+  color: #e2e8f0;
+}
+
+.dark .duyuru-btn--ghost {
+  color: #cbd5e1;
+}

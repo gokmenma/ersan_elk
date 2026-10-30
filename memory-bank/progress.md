@@ -1,5 +1,13 @@
 # Progress
 
+## 2026-10-30 — Personel PWA Ana Sayfa / KM Güncellemesi
+- [x] Saha Görevi ve Araç KM kartları durum bazlı animasyonlu sahnelere çevrildi (bekleyen iş / devam eden iş); Chrome 390px ile üç KM ve iki görev durumu doğrulandı.
+- [x] KM bildirimi: Sabah/Akşam butonları, fotoğraftan yapay zekâ ile KM okuma, yapışkan gönder butonu, hızlı yanıt (AI arka planda).
+- [x] Durum çubuğu rengi tüm sayfalarda gövde rengiyle eşitlendi; servis çalışanı önbellek revizyonu eklendi.
+- [ ] Gerçek bir gösterge fotoğrafıyla `read-km-photo` doğruluğu ve arka plan AI onayı canlıda denenmeli.
+- [ ] iPhone'da durum çubuğu yazı rengi (açık/koyu sistem görünümü) cihazda doğrulanmalı.
+- [ ] Sunucuya deploy; `van.png`, `van-wheel.png` yeni dosyaları ile birlikte commit edilmeli.
+
 ## 2026-10-28 — Mobil SPA Personel Takip Modülü
 - [x] `PersonelTakipModel` + `api/personel-takip.php` (gün durumu, personel detayı, analiz, mesai ayarı, konum isteği, gecikme açıklaması).
 - [x] Yetki: `personnel_tracking` (`personel-takip/list`); sunucu tarafı 403 ve CSRF 419 doğrulandı, yetkisiz kullanıcıda menü/rota gizli.

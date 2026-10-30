@@ -8,7 +8,8 @@
 // updateViaCache="none" kullanılarak worker bağımlılıklarının eski HTTP
 // önbelleğinden gelmesi de engellenir.
 const KUYRUK_SURUM = "34";
-const CACHE_NAME = "personel-pwa-v" + KUYRUK_SURUM;
+const ONBELLEK_REVIZYON = "20261030";
+const CACHE_NAME = "personel-pwa-v" + KUYRUK_SURUM + "-" + ONBELLEK_REVIZYON;
 const SAYFA_CACHE = "personel-pwa-sayfa-v6";
 const OFFLINE_URL = "offline.html";
 
@@ -26,6 +27,8 @@ const PRECACHE_ASSETS = [
   "./offline.html",
   "./assets/icons/app-192.png?v=2",
   "./assets/images/logo-3d-splash.png?v=1",
+  "./assets/images/van.png?v=6",
+  "./assets/images/van-wheel.png?v=3",
 ];
 
 // Çevrimdışı kuyruk mantığı sayfa ile ortak; uygulama kapalıyken de

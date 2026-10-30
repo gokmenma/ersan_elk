@@ -264,7 +264,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#135bec">
+    <meta name="theme-color" content="#e6eaef">
     <link rel="icon" type="image/x-icon" href="assets/icons/app-favicon.ico?v=2">
     <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/app-192.png?v=2">
     <link rel="apple-touch-icon" href="assets/icons/app-apple-touch-180.png?v=2">
@@ -305,8 +305,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             r.style.setProperty('--primary', t.primary);
             r.style.setProperty('--primary-dark', t.dark);
 
-            const meta = document.querySelector('meta[name="theme-color"]');
-            if (meta) meta.setAttribute('content', t.primary);
         })();
     </script>
 
