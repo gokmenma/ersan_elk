@@ -22,6 +22,7 @@ class KmBildirimAiKontrolService
     private string $apiKey;
     private string $model;
     private int $firmaId;
+    private string $reasoningEffort = 'medium';
 
     public function __construct()
     {
@@ -126,6 +127,32 @@ class KmBildirimAiKontrolService
         ];
     }
 
+    public function fotografKmOku(string $path, string $mime): array
+    {
+        if (!in_array($mime, ['image/jpeg', 'image/png', 'image/webp'], true) || !is_file($path)) {
+            throw new Exception('Fotoğraf biçimi yapay zekâ analizi için uygun değil.');
+        }
+
+        $oncekiSeviye = $this->reasoningEffort;
+        $this->reasoningEffort = 'low';
+        try {
+            $analiz = $this->analyzeImage(['path' => $path, 'mime' => $mime], (object) ['plaka' => '-', 'tur' => '-']);
+        } finally {
+            $this->reasoningEffort = $oncekiSeviye;
+        }
+
+        $km = $analiz['odometer_km'] ?? null;
+        $guven = (int) ($analiz['km_confidence'] ?? 0);
+        $gorunur = ($analiz['dashboard_visible'] ?? false) === true;
+
+        return [
+            'km' => ($km !== null && (int) $km > 0) ? (int) $km : null,
+            'guven' => max(0, min(100, $guven)),
+            'gosterge_gorunur' => $gorunur,
+            'ondalik_hane' => ($analiz['has_decimal_digit'] ?? null) === true,
+        ];
+    }
+
     private function getBildirim(int $id): ?object
     {
         $stmt = $this->db->prepare("SELECT akb.*, a.plaka
@@ -208,7 +235,7 @@ class KmBildirimAiKontrolService
             // GPT-5 ailesinde muhakeme token'lari da ayni butceden dusulur.
             // Dusuk limit, gorsel okunabildigi halde bos/yarim JSON uretebiliyordu.
             'max_tokens' => 4000,
-            'reasoning_effort' => 'medium',
+            'reasoning_effort' => $this->reasoningEffort,
         ];
 
         return $this->sendAiRequest($payload, 'ana okuma');

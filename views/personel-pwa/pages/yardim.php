@@ -5,26 +5,16 @@
 ?>
 <div class="flex flex-col min-h-screen">
     <!-- Header -->
-    <header class="bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-800 px-4 py-4 sticky top-0 z-30">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <a href="?page=ana-sayfa" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-slate-600">arrow_back</span>
-                </a>
-                <div>
-                    <h1 class="text-xl font-bold text-slate-900 dark:text-white">Yardım & Destek</h1>
-                    <p class="text-sm text-slate-500">Destek taleplerinizi yönetin</p>
-                </div>
-            </div>
-            <button id="open-ticket-button" onclick="openNewTicketModal()" class="w-12 h-12 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20 active:scale-95 transition-all">
-                <span class="material-symbols-outlined">add</span>
-            </button>
-        </div>
-    </header>
+    <?php pwaPageHeader([
+        'eyebrow' => 'DESTEK',
+        'title' => 'Yardım & Destek',
+        'subtitle' => 'Destek taleplerinizi yönetin',
+        'actions' => '<button type="button" onclick="openNewTicketModal()" id="open-ticket-button" class="pwa-circle-btn pwa-circle-btn--primary" aria-label="Yeni Destek Talebi" title="Yeni Destek Talebi"><span class="material-symbols-outlined">add</span></button>',
+    ]); ?>
 
     <!-- Stats -->
-    <section class="px-4 py-6">
-        <div class="grid grid-cols-3 gap-3">
+    <section class="px-4 pb-3">
+        <div class="grid grid-cols-3 gap-3 pwa-stat-strip">
             <div class="card p-3 text-center bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800">
                 <p class="text-xs text-blue-600 dark:text-blue-400 font-bold mb-1">AÇIK</p>
                 <p class="text-2xl font-black text-blue-700 dark:text-blue-300" id="stat-bekleyen">0</p>

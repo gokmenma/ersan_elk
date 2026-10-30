@@ -2045,3 +2045,19 @@
 
 ## 2026-10-30 — Mobil SPA renk paletleri
 - Tamamlandı: palet tokenları, tercih servisi, profil seçici, build alındı. Cihaz/tarayıcıda görsel doğrulama bekliyor.
+
+- [x] Personel PWA navbar yönetici mobil dock görünümüne getirildi (2026-10-30).
+
+- [~] Personel PWA header standardı: İcralarım örnek sayfa yapıldı; kalan sayfalar bekliyor.
+
+- [x] Personel PWA header standardı tüm sayfalara uygulandı; Roboto Condensed geçişi tamamlandı (2026-10-30).
+
+- [x] Personel PWA ikon + preloader + koyu özet kartı (2026-10-30). Kalan: Performans Özeti (JS ile çizilen) kartları hâlâ açık tema.
+
+- [x] Personel PWA Diğer menüsü yönetici mobil stili (2026-10-30).
+
+- [x] Personel PWA alt bar özelleştirme + menü araması (2026-10-30). Tercih cihaz/tarayıcı bazlı (cookie).
+
+- [~] Personel PWA sayfa tasarımı: Talepler, İzin, Nöbet, Yardım, KM, İhbar, Bordro sekmeleri tamam; Zimmetler/Kaçak/Aparat detay kartları kaldı.
+
+- [x] Personel PWA ana sayfa kartları sürükleyerek sıralanabilir (migration uygulanmalı).

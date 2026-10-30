@@ -93,7 +93,33 @@
         });
     }
 
-    async function openKmBildirModal(editData = null, zorunluSabah = false, gorevBitirSonrasi = false, oncekiAksamEksik = false) {
+    function kmEsc(value) {
+        return String(value ?? '').replace(/[&<>"']/g, ch => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[ch]));
+    }
+
+    async function kmFotoKucult(file) {
+        const url = URL.createObjectURL(file);
+        try {
+            const img = await new Promise((resolve, reject) => {
+                const el = new Image();
+                el.onload = () => resolve(el);
+                el.onerror = () => reject(new Error('Fotoğraf okunamadı.'));
+                el.src = url;
+            });
+            const scale = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+            canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.88));
+            if (!blob) throw new Error('Fotoğraf hazırlanamadı.');
+            return new File([blob], 'km-okuma.jpg', { type: 'image/jpeg', lastModified: Date.now() });
+        } finally {
+            URL.revokeObjectURL(url);
+        }
+    }
+
+    async function openKmBildirModal(editData = null, zorunluSabah = false, gorevBitirSonrasi = false, oncekiAksamEksik = false, istenenTur = null) {
         if (!sharedAktifAracId && !editData) {
             Alert.warning('Araç Zimmeti Yok', 'Zimmetinizde aktif bir araç bulunmuyor.');
             return;
@@ -101,141 +127,240 @@
 
         let plaka = editData ? editData.plaka : sharedAktifAracPlaka;
         let aracId = editData ? editData.arac_id : sharedAktifAracId;
-        if (!editData && sharedAktifAraclar.length > 1) {
-            const aracSecimi = await Swal.fire({
-                title: 'Araç Seçin',
-                input: 'select',
-                inputOptions: Object.fromEntries(sharedAktifAraclar.map(arac => [arac.id, arac.plaka])),
-                inputPlaceholder: 'KM bildirimi yapılacak araç',
-                showCancelButton: true,
-                confirmButtonText: 'Devam Et',
-                cancelButtonText: 'İptal',
-                inputValidator: value => value ? undefined : 'Lütfen bir araç seçin.'
-            });
-            if (!aracSecimi.isConfirmed) return;
-            aracId = parseInt(aracSecimi.value, 10);
-            plaka = sharedAktifAraclar.find(arac => arac.id === aracId)?.plaka || '';
+        if (!editData) {
+            const bildirilenler = (istenenTur && window.kmBugunBildirilen && window.kmBugunBildirilen[istenenTur]) || {};
+            const adaylar = sharedAktifAraclar.filter(arac => !bildirilenler[arac.id]);
+            if (adaylar.length === 0) {
+                Alert.warning('Bildirim Tamam', 'Bu dönem için tüm araçlarınızın KM bildirimi yapılmış.');
+                return;
+            }
+            if (adaylar.length === 1) {
+                aracId = adaylar[0].id;
+                plaka = adaylar[0].plaka;
+            } else {
+                const aracSecimi = await Swal.fire({
+                    title: 'Araç Seçin',
+                    input: 'select',
+                    inputOptions: Object.fromEntries(adaylar.map(arac => [arac.id, arac.plaka])),
+                    inputPlaceholder: 'KM bildirimi yapılacak araç',
+                    showCancelButton: true,
+                    confirmButtonText: 'Devam Et',
+                    cancelButtonText: 'İptal',
+                    inputValidator: value => value ? undefined : 'Lütfen bir araç seçin.'
+                });
+                if (!aracSecimi.isConfirmed) return;
+                aracId = parseInt(aracSecimi.value, 10);
+                plaka = adaylar.find(arac => arac.id === aracId)?.plaka || '';
+            }
         }
+
+        const varsayilanTur = editData
+            ? editData.tur
+            : (gorevBitirSonrasi ? 'aksam' : (zorunluSabah ? 'sabah' : (istenenTur || (new Date().getHours() >= 13 ? 'aksam' : 'sabah'))));
+        const mevcutResim = editData && editData.resim_url ? editData.resim_url : '';
+        const mevcutNot = editData && editData.aciklama ? editData.aciklama : '';
 
         showPwaFullModal({
             html: `
-                <div class="header-main relative px-6 pt-12 pb-8 flex flex-col items-start shadow-xl rounded-b-[2.5rem] safe-area-top shrink-0 overflow-hidden" 
-                     style="background: linear-gradient(135deg, #135bec 0%, #0d47c1 100%);">
-                    <div class="flex items-center justify-between w-full mb-4">
-                        <span class="bg-white/20 backdrop-blur-md border border-white/10 text-white rounded-lg px-3 py-1 text-[11px] font-semibold tracking-wide shadow-sm">ARAÇ TAKİP</span>
+                <div class="pwa-km-hero safe-area-top shrink-0">
+                    <span class="pwa-km-hero-badge"><span class="material-symbols-outlined">directions_car</span>ARAÇ TAKİP</span>
+                    <h1>${editData ? 'Bildirim Düzenle' : 'KM Bildirimi'}</h1>
+                    <p>${zorunluSabah ? 'Göreve başlamak için ' : ''}<span class="pwa-km-plate">${kmEsc(plaka)}</span> plakalı araç için ${zorunluSabah ? 'sabah ' : ''}göstergenin fotoğrafını ekleyin, KM'yi sizin için okuyalım.</p>
+                    <div class="pwa-km-hero-gauge" aria-hidden="true">
+                        <svg viewBox="0 0 56 56" fill="none" stroke-linecap="round">
+                            <path class="arc-bg" d="M8 40 A22 22 0 1 1 48 40" stroke-width="4"/>
+                            <path class="arc-fg" pathLength="100" d="M8 40 A22 22 0 1 1 48 40" stroke-width="4"/>
+                            <g class="needle"><path d="M28 34 L28 13" stroke="#fff" stroke-width="3.5"/></g>
+                            <circle cx="28" cy="34" r="3.5" fill="#fff"/>
+                        </svg>
                     </div>
-                    <h1 class="text-white text-2xl font-black tracking-tight leading-[1.15]" style="text-shadow: 0 4px 8px rgba(0,0,0,0.5);">${editData ? 'Bildirim Düzenle' : 'KM Bildirimi'}</h1>
-                    <p class="text-blue-100/80 text-sm font-medium mt-1">${zorunluSabah ? 'Göreve başlamak için ' : ''}${plaka} plakalı araç için ${zorunluSabah ? 'sabah ' : ''}KM bilgisini giriniz.</p>
                 </div>
 
-                <div class="px-5 pb-8 flex-1 bg-transparent -mt-5 relative z-20">
-                    <div class="bg-white dark:bg-card-dark rounded-[2rem] p-6 shadow-xl shadow-black/5 dark:shadow-black/20 border border-slate-100 dark:border-slate-800">
-                    <form id="km-bildirim-form" class="space-y-6">
-                        <input type="hidden" name="arac_id" value="${aracId}">
-                        ${editData ? `<input type="hidden" name="id" value="${editData.id}">` : ''}
+                <div class="pb-6 flex-1 bg-transparent">
+                    <div class="pwa-km-sheet pwa-fx-card--indigo">
+                    <form id="km-bildirim-form" class="pwa-km-form">
+                        <input type="hidden" name="arac_id" value="${kmEsc(aracId)}">
+                        ${editData ? `<input type="hidden" name="id" value="${kmEsc(editData.id)}">` : ''}
                         ${oncekiAksamEksik ? `
-                            <div class="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
-                                <span class="material-symbols-outlined text-xl">warning</span>
-                                <p class="text-xs font-bold leading-5">Dünkü akşam KM bildiriminiz eksik. Bugünkü başlangıç KM bilginizi eksiksiz giriniz.</p>
+                            <div class="pwa-km-alert">
+                                <span class="material-symbols-outlined">warning</span>
+                                <p>Dünkü akşam KM bildiriminiz eksik. Bugünkü başlangıç KM bilginizi eksiksiz giriniz.</p>
                             </div>
                         ` : ''}
-                        
-                        <!-- Bildirim Türü (Side-by-side Switch) -->
-                        <div class="flex items-center justify-between gap-4 py-2">
-                            <label class="text-sm font-bold text-slate-700 dark:text-slate-300">Bildirim Türü</label>
-                            <div class="relative w-44 bg-slate-100 dark:bg-slate-800/50 rounded-2xl p-1 flex items-center h-12 shadow-inner border border-slate-200 dark:border-slate-800 overflow-hidden shrink-0">
-                                <div id="km-tur-handle" 
-                                    class="absolute h-[calc(100%-8px)] w-[calc(50%-4px)] bg-gradient-to-r from-amber-400 to-orange-500 rounded-xl shadow-lg transition-all duration-300 ease-out left-[4px] translate-x-0">
+
+                        <div class="pwa-km-field" style="--i:0">
+                            <div class="pwa-km-label">
+                                <span>Gösterge Fotoğrafı</span>
+                                ${editData ? '<span class="pwa-km-edit-note">Değiştirmek istemiyorsanız dokunmayın</span>' : '<span class="pwa-km-step">1</span>'}
+                            </div>
+                            <input type="file" name="resim" id="km-resim-input" accept="image/*" class="hidden">
+                            <label for="km-resim-input" id="km-shot" class="pwa-km-shot pwa-fx-card--indigo${mevcutResim ? ' has-image' : ''}">
+                                <div class="pwa-km-shot-empty" id="resim-placeholder">
+                                    <div class="pwa-fx-orb pwa-fx-orb--float"><span class="material-symbols-outlined">add_a_photo</span></div>
+                                    <span class="pwa-km-drop-text">Fotoğraf çek veya yükle</span>
+                                    <span class="pwa-km-drop-sub">Kamera ya da galeri açılır · KM otomatik okunur</span>
                                 </div>
-                                <button type="button" onclick="setKmTur('sabah')" 
-                                    class="relative flex-1 h-full flex items-center justify-center gap-1 z-10 transition-colors duration-300 text-white" id="btn-tur-sabah">
-                                    <span class="material-symbols-outlined text-base">wb_sunny</span>
-                                    <span class="text-[11px] font-extrabold uppercase tracking-tight">Sabah</span>
-                                </button>
-                                <button type="button" onclick="setKmTur('aksam')" ${zorunluSabah ? 'disabled' : ''}
-                                    class="relative flex-1 h-full flex items-center justify-center gap-1 z-10 transition-colors duration-300 text-slate-500" id="btn-tur-aksam">
-                                    <span class="material-symbols-outlined text-base">nights_stay</span>
-                                    <span class="text-[11px] font-extrabold uppercase tracking-tight">Akşam</span>
-                                </button>
-                                <input type="hidden" name="tur" id="km-tur-input" value="${editData ? editData.tur : (gorevBitirSonrasi ? 'aksam' : 'sabah')}">
+                                <div class="pwa-km-shot-view">
+                                    <img id="resim-preview" alt="" src="${kmEsc(mevcutResim)}">
+                                    <span class="pwa-km-scan"></span>
+                                    <span class="pwa-km-shot-change"><span class="material-symbols-outlined">photo_camera</span>Değiştir</span>
+                                </div>
+                            </label>
+                            <div id="km-ai-status" class="pwa-km-ai hidden" data-state="reading" aria-live="polite">
+                                <span class="material-symbols-outlined" id="km-ai-icon">progress_activity</span>
+                                <span id="km-ai-text"></span>
                             </div>
                         </div>
 
-                        <!-- Tarih Seçimi -->
-                        <div class="flex items-center justify-between gap-4 py-2">
-                            <label class="text-sm font-bold text-slate-700 dark:text-slate-300">Rapor Tarihi</label>
-                            <div class="relative w-44">
-                                <input type="date" name="tarih" id="km-tarih-input" required 
-                                    min="${(() => { 
-                                        let d = new Date(); 
-                                        d.setDate(d.getDate() - 1); 
-                                        return d.toLocaleDateString('en-CA'); 
-                                    })()}" 
+                        <div class="pwa-km-field" style="--i:1">
+                            <div class="pwa-km-label">
+                                <span id="km-label">Başlangıç KM</span>
+                                <span id="last-km-hint" class="pwa-km-hint hidden">Önceki: - KM</span>
+                            </div>
+                            <div class="pwa-km-input-wrap" id="km-value-wrap">
+                                <span class="material-symbols-outlined">speed</span>
+                                <input type="number" inputmode="numeric" name="bitis_km" id="km-value-input" required value="${editData ? kmEsc(editData.bitis_km) : ''}"
+                                    class="pwa-km-input"
+                                    placeholder="Fotoğraftan okunur veya elle girin">
+                            </div>
+                        </div>
+
+                        <div class="pwa-km-field" style="--i:2">
+                            <div class="pwa-km-label"><span>Bildirim Türü</span></div>
+                            <div class="pwa-km-seg" id="km-tur-switch" data-tur="${kmEsc(varsayilanTur)}">
+                                <div id="km-tur-handle" class="pwa-km-seg-handle"></div>
+                                <button type="button" onclick="setKmTur('sabah')" class="is-active" id="btn-tur-sabah">
+                                    <span class="material-symbols-outlined">wb_sunny</span>Sabah
+                                </button>
+                                <button type="button" onclick="setKmTur('aksam')" ${zorunluSabah ? 'disabled' : ''} id="btn-tur-aksam">
+                                    <span class="material-symbols-outlined">nights_stay</span>Akşam
+                                </button>
+                                <input type="hidden" name="tur" id="km-tur-input" value="${kmEsc(varsayilanTur)}">
+                            </div>
+                        </div>
+
+                        <div class="pwa-km-field" style="--i:3">
+                            <div class="pwa-km-label"><span>Rapor Tarihi</span></div>
+                            <div class="pwa-km-input-wrap pwa-km-input-wrap--date">
+                                <input type="date" name="tarih" id="km-tarih-input" required
+                                    min="${(() => {
+                                        let d = new Date();
+                                        d.setDate(d.getDate() - 1);
+                                        return d.toLocaleDateString('en-CA');
+                                    })()}"
                                     max="${new Date().toLocaleDateString('en-CA')}"
-                                    value="${editData ? editData.tarih : (new Date().toLocaleDateString('en-CA'))}"
+                                    value="${editData ? kmEsc(editData.tarih) : (new Date().toLocaleDateString('en-CA'))}"
                                     ${zorunluSabah ? 'readonly' : ''}
-                                    class="w-full pl-4 pr-10 py-3 bg-slate-100 dark:bg-slate-800/50 border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold text-xs text-slate-700 dark:text-slate-300">
-                                <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-400">
-                                    <span class="material-symbols-outlined text-sm">calendar_month</span>
-                                </div>
+                                    class="pwa-km-input pwa-km-input--date">
+                                <span class="material-symbols-outlined">calendar_month</span>
                             </div>
                         </div>
 
-                        <!-- KM Değeri -->
-                        <div class="space-y-2">
-                            <div class="flex justify-between items-center ml-1">
-                                <label class="text-sm font-bold text-slate-700 dark:text-slate-300" id="km-label">Başlangıç KM</label>
-                                <span id="last-km-hint" class="text-[10px] font-bold text-primary/70 italic hidden">Önceki: - KM</span>
-                            </div>
-                            <div class="relative group">
-                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-slate-400">
-                                    <span class="material-symbols-outlined">speed</span>
-                                </div>
-                                <input type="number" name="bitis_km" id="km-value-input" required value="${editData ? editData.bitis_km : ''}"
-                                    class="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-slate-800 rounded-2xl focus:border-primary focus:ring-0 transition-all font-bold text-lg"
-                                    placeholder="Güncel KM değerini girin">
-                            </div>
-                        </div>
-
-                        <!-- Açıklama -->
-                        <div class="space-y-2">
-                            <label class="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1">Açıklama (Opsiyonel)</label>
-                            <textarea name="aciklama" rows="3"
-                                class="w-full p-4 bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-slate-800 rounded-2xl focus:border-primary focus:ring-0 transition-all text-sm"
-                                placeholder="Eklemek istediğiniz notlar...">${editData ? editData.aciklama : ''}</textarea>
-                        </div>
-
-                        <!-- Resim Yükleme -->
-                        <div class="space-y-2">
-                            <label class="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1">KM Gösterge Resmi ${editData ? '<span class="text-[10px] text-primary font-medium">(Değiştirmek istemiyorsanız boş bırakın)</span>' : ''}</label>
-                            <div class="relative group">
-                                <input type="file" name="resim" id="km-resim-input" accept="image/*" capture="environment" class="hidden">
-                                <label for="km-resim-input" 
-                                    class="flex flex-col items-center justify-center w-full min-h-[160px] border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-800/30 cursor-pointer hover:border-primary/50 transition-all p-4 text-center">
-                                    <div class="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                                        <span class="material-symbols-outlined text-3xl">add_a_photo</span>
-                                    </div>
-                                    <span class="text-sm font-bold text-slate-600 dark:text-slate-400" id="resim-placeholder">Fotoğraf Çek</span>
-                                    <img id="resim-preview" src="${editData && editData.resim_url ? editData.resim_url : ''}" class="${editData && editData.resim_url ? '' : 'hidden'} mt-2 rounded-xl max-h-[120px] object-cover border-2 border-primary/20 shadow-lg">
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="pt-4">
-                            <button type="submit" id="km-submit-btn"
-                                class="w-full py-4 bg-gradient-to-r from-primary to-primary-dark text-white font-bold rounded-2xl shadow-lg shadow-primary/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-                                <span class="material-symbols-outlined">${editData ? 'save' : 'send'}</span>
-                                <span id="km-submit-text">${editData ? 'DEĞİŞİKLİKLERİ KAYDET' : 'KM GÖNDER'}</span>
+                        <div class="pwa-km-field" style="--i:4">
+                            <button type="button" id="km-note-toggle" class="pwa-km-note-toggle${mevcutNot ? ' hidden' : ''}">
+                                <span class="material-symbols-outlined">edit_note</span>Not ekle (opsiyonel)
                             </button>
+                            <div id="km-note-wrap" class="${mevcutNot ? '' : 'hidden'}">
+                                <div class="pwa-km-label"><span>Açıklama (Opsiyonel)</span></div>
+                                <textarea name="aciklama" rows="3" class="pwa-km-input"
+                                    placeholder="Eklemek istediğiniz notlar...">${kmEsc(mevcutNot)}</textarea>
+                            </div>
                         </div>
                     </form>
                     </div>
                 </div>
+
+                <div class="pwa-km-sticky pwa-fx-card--indigo">
+                    <button type="submit" form="km-bildirim-form" id="km-submit-btn" class="pwa-fx-btn">
+                        <span class="material-symbols-outlined">${editData ? 'save' : 'send'}</span>
+                        <span id="km-submit-text">${editData ? 'DEĞİŞİKLİKLERİ KAYDET' : 'KM GÖNDER'}</span>
+                    </button>
+                </div>
             `,
             onOpen: () => {
                 let currentLastKm = 0;
+                let kmElleGirildi = false;
+                let okumaSayaci = 0;
+                const modalEl = document.getElementById('pwa-full-modal');
+                if (modalEl) modalEl.classList.add('pwa-km-modal');
 
-                // Previous KM bilgisini çek
+                const kmInput = document.getElementById('km-value-input');
+                const kmWrap = document.getElementById('km-value-wrap');
+                const aiBox = document.getElementById('km-ai-status');
+                const aiIcon = document.getElementById('km-ai-icon');
+                const aiText = document.getElementById('km-ai-text');
+                const shot = document.getElementById('km-shot');
+
+                const setAiDurum = (durum, metin) => {
+                    if (!aiBox) return;
+                    const ikonlar = { reading: 'progress_activity', ok: 'auto_awesome', warn: 'info', fail: 'edit_note' };
+                    aiBox.dataset.state = durum;
+                    aiIcon.textContent = ikonlar[durum] || 'info';
+                    aiText.textContent = metin;
+                    aiBox.classList.remove('hidden');
+                };
+
+                const kmYaz = (hedef) => {
+                    kmWrap.classList.remove('is-ai');
+                    void kmWrap.offsetWidth;
+                    kmWrap.classList.add('is-ai');
+                    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                        kmInput.value = hedef;
+                        return;
+                    }
+                    const sure = 700;
+                    const basla = performance.now();
+                    const adim = (simdi) => {
+                        const t = Math.min(1, (simdi - basla) / sure);
+                        kmInput.value = Math.round(hedef * (1 - Math.pow(1 - t, 3)));
+                        if (t < 1) requestAnimationFrame(adim);
+                        else kmInput.value = hedef;
+                    };
+                    requestAnimationFrame(adim);
+                };
+
+                const fotodanKmOku = async (file) => {
+                    const sayac = ++okumaSayaci;
+                    shot.classList.add('is-reading');
+                    setAiDurum('reading', 'Göstergedeki KM okunuyor…');
+                    try {
+                        const kucuk = await kmFotoKucult(file);
+                        const response = await API.request('read-km-photo', { arac_id: aracId, resim: kucuk }, false);
+                        if (sayac !== okumaSayaci) return;
+
+                        if (!response || !response.success) {
+                            setAiDurum('fail', (response && response.message) || 'KM okunamadı. Lütfen elle giriniz.');
+                            kmInput.focus();
+                            return;
+                        }
+                        const veri = response.data || {};
+                        if (!veri.okundu || !veri.km) {
+                            setAiDurum('fail', 'KM net okunamadı. Fotoğrafı yakından çekebilir veya KM\'yi elle girebilirsiniz.');
+                            kmInput.focus();
+                            return;
+                        }
+                        if (kmElleGirildi) {
+                            setAiDurum('warn', 'Okunan değer: ' + Number(veri.km).toLocaleString('tr-TR') + ' KM. Girdiğiniz değer korundu.');
+                            return;
+                        }
+                        kmYaz(parseInt(veri.km, 10));
+                        if (currentLastKm > 0 && veri.km < currentLastKm) {
+                            setAiDurum('warn', 'Okunan değer önceki KM\'den (' + currentLastKm.toLocaleString('tr-TR') + ') düşük. Lütfen kontrol edin.');
+                        } else if (veri.ondalik_hane) {
+                            setAiDurum('warn', 'Yapay zekâ okudu. Ondalık hane yok sayıldı, lütfen kontrol edin.');
+                        } else {
+                            setAiDurum('ok', 'Yapay zekâ okudu · Lütfen değeri kontrol edin.');
+                        }
+                    } catch (error) {
+                        console.error('KM fotoğraf okuma hatası:', error);
+                        if (sayac === okumaSayaci) {
+                            setAiDurum('fail', 'KM okunamadı. Lütfen elle giriniz.');
+                        }
+                    } finally {
+                        if (sayac === okumaSayaci) shot.classList.remove('is-reading');
+                    }
+                };
+
                 const fetchLastKm = async () => {
                     const dateInput = document.getElementById('km-tarih-input');
                     const turInput = document.getElementById('km-tur-input');
@@ -255,7 +380,7 @@
                             tarih: dateInput.value,
                             tur: turInput.value
                         };
-                        
+
                         if (editData && editData.id) {
                             params.exclude_id = editData.id;
                         }
@@ -264,7 +389,7 @@
 
                         if (response.success) {
                             currentLastKm = parseInt(response.last_km || 0);
-                            
+
                             if (response.exists) {
                                 hint.innerHTML = `<span class="text-red-500 font-bold"><span class="material-symbols-outlined text-xs align-middle">warning</span> Bu döneme ait bildirim zaten var!</span>`;
                                 hint.classList.remove('hidden');
@@ -289,112 +414,118 @@
                     }
                 };
 
-                // Switch Kontrolü
-                window.setKmTur = (val) => {
-                    if (zorunluSabah && val !== 'sabah') return;
-
-                    const handle = document.getElementById('km-tur-handle');
+                const turUiUygula = (val) => {
                     const input = document.getElementById('km-tur-input');
+                    const sw = document.getElementById('km-tur-switch');
                     const btnSabah = document.getElementById('btn-tur-sabah');
                     const btnAksam = document.getElementById('btn-tur-aksam');
                     const kmLabel = document.getElementById('km-label');
-                    
-                    if (!handle || !input) return;
-                    
+                    if (!input || !sw) return;
                     input.value = val;
-                    if (val === 'sabah') {
-                        handle.classList.remove('translate-x-full', 'from-indigo-500', 'to-purple-600');
-                        handle.classList.add('translate-x-0', 'from-amber-400', 'to-orange-500');
-                        btnSabah.classList.replace('text-slate-500', 'text-white');
-                        btnAksam.classList.replace('text-white', 'text-slate-500');
-                        kmLabel.innerText = 'Başlangıç KM';
-                    } else {
-                        handle.classList.remove('translate-x-0', 'from-amber-400', 'to-orange-500');
-                        handle.classList.add('translate-x-full', 'from-indigo-500', 'to-purple-600');
-                        btnAksam.classList.replace('text-slate-500', 'text-white');
-                        btnSabah.classList.replace('text-white', 'text-slate-500');
-                        kmLabel.innerText = 'Bitiş KM';
-                    }
+                    sw.dataset.tur = val;
+                    btnSabah.classList.toggle('is-active', val === 'sabah');
+                    btnAksam.classList.toggle('is-active', val !== 'sabah');
+                    kmLabel.innerText = val === 'sabah' ? 'Başlangıç KM' : 'Bitiş KM';
+                };
 
+                window.setKmTur = (val) => {
+                    if (zorunluSabah && val !== 'sabah') return;
+                    turUiUygula(val);
                     fetchLastKm();
                 };
 
-                // Tarih değişince son KM'yi tekrar çek
+                turUiUygula(varsayilanTur);
+
                 const dateInput = document.getElementById('km-tarih-input');
                 if (dateInput) {
                     dateInput.addEventListener('change', fetchLastKm);
                 }
 
-                // İlk yükleme
                 fetchLastKm();
 
-                // Edit Modu ise switch ayarla
-                if (editData) {
-                    setKmTur(editData.tur);
-                } else if (gorevBitirSonrasi) {
-                    setKmTur('aksam');
-                }
+                kmInput.addEventListener('input', () => {
+                    kmElleGirildi = true;
+                    kmWrap.classList.remove('is-ai');
+                });
 
-                 // Resim önizleme
-                const resimInput = document.getElementById('km-resim-input');
-                if (resimInput) {
-                    resimInput.addEventListener('change', function(e) {
-                        const file = e.target.files[0];
-                        if (file) {
-                            const reader = new FileReader();
-                            reader.onload = function(event) {
-                                const preview = document.getElementById('resim-preview');
-                                const placeholder = document.getElementById('resim-placeholder');
-                                preview.src = event.target.result;
-                                preview.classList.remove('hidden');
-                                placeholder.classList.add('hidden');
-                            }
-                            reader.readAsDataURL(file);
-                        }
+                const noteToggle = document.getElementById('km-note-toggle');
+                if (noteToggle) {
+                    noteToggle.addEventListener('click', () => {
+                        noteToggle.classList.add('hidden');
+                        const wrap = document.getElementById('km-note-wrap');
+                        wrap.classList.remove('hidden');
+                        const alan = wrap.querySelector('textarea');
+                        if (alan) alan.focus();
                     });
                 }
 
-                // Form submit
+                const resimInput = document.getElementById('km-resim-input');
+                if (resimInput) {
+                    resimInput.addEventListener('change', function (e) {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = function (event) {
+                            const preview = document.getElementById('resim-preview');
+                            preview.src = event.target.result;
+                            shot.classList.add('has-image');
+                        };
+                        reader.readAsDataURL(file);
+                        fotodanKmOku(file);
+                    });
+
+                    if (!editData) {
+                        try {
+                            resimInput.click();
+                        } catch (e) {
+                            console.warn('Fotoğraf seçici otomatik açılamadı:', e);
+                        }
+                    }
+                }
+
                 const form = document.getElementById('km-bildirim-form');
                 if (form) {
-                    form.addEventListener('submit', async function(e) {
+                    form.addEventListener('submit', async function (e) {
                         e.preventDefault();
                         const f = e.target;
-                        
+
                         const btn = document.getElementById('km-submit-btn');
                         const btnText = document.getElementById('km-submit-text');
-                        
+
+                        const rInput = document.getElementById('km-resim-input');
+                        if (!editData && rInput.files.length === 0) {
+                            Alert.warning('Fotoğraf Zorunlu', 'Lütfen KM gösterge fotoğrafını çekiniz veya yükleyiniz.');
+                            return;
+                        }
+
                         const bitisKm = parseInt(f.querySelector('[name=bitis_km]').value);
+                        if (!bitisKm || bitisKm <= 0) {
+                            Alert.warning('KM Girilmedi', 'Lütfen KM değerini giriniz.');
+                            kmInput.focus();
+                            return;
+                        }
                         if (currentLastKm > 0 && bitisKm < currentLastKm) {
                             Alert.error('Geçersiz KM', `Girilen KM değeri önceki değerden (${currentLastKm}) düşük olamaz.`);
                             return;
                         }
 
-                        const rInput = document.getElementById('km-resim-input');
-                        if (!editData && rInput.files.length === 0) {
-                            Alert.warning('Resim Zorunlu', 'Lütfen KM gösterge resmini çekiniz veya yükleyiniz.');
-                            return;
-                        }
-
-                        // Buton durumunu ayarla
                         btn.disabled = true;
-                        btnText.innerText = 'GÖNDERİLİYOR...';
+                        btnText.innerText = 'FOTOĞRAF HAZIRLANIYOR...';
                         btn.classList.add('opacity-70');
 
-                        // Resim varsa filigran ekle
                         let resimFile = rInput.files[0];
                         if (resimFile) {
                             const now = new Date();
                             const timestamp = now.toLocaleDateString('tr-TR') + ' ' + now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
                             const turLabel = f.querySelector('[name=tur]').value === 'sabah' ? 'Sabah Bildirimi' : 'Akşam Bildirimi';
-                            
+
                             const watermarkLines = [
                                 sharedPersonelAdi,
                                 plaka,
                                 turLabel,
                                 timestamp
                             ];
-                            
+
                             try {
                                 resimFile = await watermarkImage(resimFile, watermarkLines);
                             } catch (error) {
@@ -406,7 +537,8 @@
                             }
                         }
 
-                        // Verileri hazırla
+                        btnText.innerText = 'GÖNDERİLİYOR...';
+
                         const data = {
                             arac_id: f.querySelector('[name=arac_id]').value,
                             bitis_km: bitisKm,
@@ -415,7 +547,7 @@
                             aciklama: f.querySelector('[name=aciklama]').value,
                             resim: resimFile
                         };
-                        
+
                         if (editData) {
                             data.id = editData.id;
                         }
@@ -428,14 +560,15 @@
                                 const gorevBaslatilacak = zorunluSabah
                                     && data.tur === 'sabah'
                                     && data.tarih === new Date().toLocaleDateString('en-CA');
-                                
-                                // Sayfa yenileme veya modal güncelleme
+
+                                if (data.tarih === new Date().toLocaleDateString('en-CA') && typeof kmBildirimiKaydedildi === 'function') {
+                                    kmBildirimiKaydedildi(data.tur, parseInt(data.arac_id, 10), data.bitis_km);
+                                }
+
                                 if (typeof loadAllKmReports === 'function') {
                                     loadAllKmReports();
-                                    closePwaFullModal();
-                                } else {
-                                    closePwaFullModal();
                                 }
+                                closePwaFullModal();
 
                                 if (gorevBaslatilacak && typeof gorevBasla === 'function') {
                                     setTimeout(gorevBasla, 350);

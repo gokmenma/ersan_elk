@@ -7,31 +7,16 @@
 
 <div class="flex flex-col min-h-screen">
     <!-- Header -->
-    <header
-        class="bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-800 px-4 py-4 sticky top-0 z-30">
-        <div class="flex items-center justify-between">
-            <div>
-                <h1 class="text-xl font-bold text-slate-900 dark:text-white">Nöbet Takibi</h1>
-                <p class="text-sm text-slate-500">Nöbetlerinizi görüntüleyin ve yönetin</p>
-            </div>
-            <div class="flex items-center gap-2">
-                <button onclick="openYeniTalepModal()"
-                    class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-primary">add</span>
-                </button>
-                <button onclick="openTaleplerModal()"
-                    class="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center relative">
-                    <span class="material-symbols-outlined text-amber-600">swap_horiz</span>
-                    <span id="talep-badge"
-                        class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center hidden">0</span>
-                </button>
-            </div>
-        </div>
-    </header>
+    <?php pwaPageHeader([
+        'eyebrow' => 'VARDİYA',
+        'title' => 'Nöbet Takibi',
+        'subtitle' => 'Nöbetlerinizi görüntüleyin ve yönetin',
+        'actions' => '<button type="button" onclick="openYeniTalepModal()" class="pwa-circle-btn pwa-circle-btn--primary" aria-label="Yeni Talep" title="Yeni Talep"><span class="material-symbols-outlined">add</span></button><button type="button" onclick="openTaleplerModal()" class="pwa-circle-btn" aria-label="Talepler" title="Talepler"><span class="material-symbols-outlined">swap_horiz</span><span id="talep-badge" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center hidden">0</span></button>',
+    ]); ?>
 
     <!-- Stats Summary -->
-    <section class="px-4 py-4 bg-slate-50 dark:bg-background-dark">
-        <div class="grid grid-cols-3 gap-3">
+    <section class="px-4 pb-3">
+        <div class="grid grid-cols-3 gap-3 pwa-stat-strip">
             <div class="card p-3 text-center relative overflow-hidden">
                 <div class="absolute top-0 right-0 w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-full -mr-4 -mt-4">
                 </div>
@@ -65,7 +50,7 @@
 
     <!-- View Toggle & Month Selector -->
     <div
-        class="px-4 py-3 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-800 sticky top-[73px] z-20">
+        class="px-4 py-3 pwa-toolbar">
         <div class="flex items-center justify-between gap-3">
             <!-- Month/Week Selector -->
             <div class="flex items-center gap-2">

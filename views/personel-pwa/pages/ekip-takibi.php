@@ -24,77 +24,61 @@ if (!empty($sonOkumaTarihi) && $sonOkumaTarihi < date('Y-m-01')) {
 }
 ?>
 
-<div class="flex flex-col min-h-screen pb-8">
+<div class="flex flex-col min-h-screen pb-28 ekp-page">
     <!-- Header -->
-    <header class="bg-gradient-primary text-white px-4 pt-6 pb-16 relative overflow-hidden">
-        <!-- Background Pattern -->
-        <div class="absolute inset-0 opacity-10">
-            <div class="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -mr-32 -mt-32"></div>
-            <div class="absolute bottom-0 left-0 w-40 h-40 bg-white rounded-full -ml-20 mb-10"></div>
-        </div>
-
-        <div class="relative z-10 flex items-center justify-between">
-            <div>
-                <h1 class="text-xl font-bold">Ekip Takibi</h1>
-                <p class="text-white/70 text-xs mt-0.5" id="bolge-adi-header">Yükleniyor...</p>
-            </div>
-            <button onclick="toggleDarkMode()"
-                class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                <span class="material-symbols-outlined" id="theme-icon">dark_mode</span>
-            </button>
-        </div>
-    </header>
+    <?php pwaPageHeader([
+        'eyebrow' => 'EKİP',
+        'title' => 'Ekip Takibi',
+        'subtitle' => 'Yükleniyor...',
+        'subtitle_id' => 'bolge-adi-header',
+        'actions' => '<button type="button" onclick="toggleDarkMode()" class="pwa-circle-btn" aria-label="Tema değiştir" title="Tema değiştir"><span class="material-symbols-outlined" id="theme-icon">dark_mode</span></button>',
+    ]); ?>
 
     <!-- Summary Cards -->
-    <section class="px-4 -mt-10 relative z-20">
-        <div class="card p-5">
-            <div class="grid grid-cols-2 gap-4 text-center">
-                <div
-                    class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-100 dark:border-slate-700">
-                    <div class="flex items-center justify-center gap-1.5 mb-1">
-                        <span class="material-symbols-outlined text-primary text-lg" id="summary-card-1-icon">bar_chart</span>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 font-medium truncate" id="summary-card-1-label">Dönem Toplamı</p>
-                    </div>
-                    <p class="text-2xl font-black text-slate-900 dark:text-white" id="summary-daily">-</p>
-                    <p class="text-[10px] text-slate-400 mt-0.5 truncate" id="summary-card-1-sub">Okunan Abone</p>
+    <section class="px-4 relative z-20">
+        <div class="ekp-kpi-grid">
+            <div class="ekp-kpi">
+                <div class="ekp-kpi__top">
+                    <span class="ekp-kpi__icon ekp-kpi__icon--blue"><span class="material-symbols-outlined" id="summary-card-1-icon">bar_chart</span></span>
+                    <span class="ekp-kpi__chip">TOPLAM</span>
                 </div>
-                <div
-                    class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-100 dark:border-slate-700">
-                    <div class="flex items-center justify-center gap-1.5 mb-1">
-                        <span class="material-symbols-outlined text-primary text-lg" id="summary-card-2-icon">trending_up</span>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 font-medium truncate" id="summary-card-2-label">Günlük Ort.</p>
-                    </div>
-                    <p class="text-2xl font-black text-slate-900 dark:text-white" id="summary-monthly">-</p>
-                    <p class="text-[10px] text-slate-400 mt-0.5 truncate" id="summary-card-2-sub">Bölge Ortalaması</p>
-                </div>
+                <p class="ekp-kpi__label" id="summary-card-1-label">Dönem Toplamı</p>
+                <p class="ekp-kpi__value" id="summary-daily">-</p>
+                <p class="ekp-kpi__sub" id="summary-card-1-sub">Okunan Abone</p>
             </div>
-
-            <!-- Ekip Sayısı & Ort -->
-            <div class="grid grid-cols-3 gap-2 mt-3">
-                <div class="text-center">
-                    <p class="text-lg font-bold text-primary" id="summary-ekip-count">-</p>
-                    <p class="text-[10px] text-slate-400" id="summary-sub-1-label">Toplam Ekip</p>
+            <div class="ekp-kpi">
+                <div class="ekp-kpi__top">
+                    <span class="ekp-kpi__icon ekp-kpi__icon--violet"><span class="material-symbols-outlined" id="summary-card-2-icon">trending_up</span></span>
+                    <span class="ekp-kpi__chip">ORTALAMA</span>
                 </div>
-                <div class="text-center">
-                    <p class="text-lg font-bold text-emerald-600" id="summary-daily-avg">-</p>
-                    <p class="text-[10px] text-slate-400" id="summary-sub-2-label">Aktif Ekip</p>
-                </div>
-                <div class="text-center">
-                    <p class="text-lg font-bold text-amber-600" id="summary-monthly-avg">-</p>
-                    <p class="text-[10px] text-slate-400" id="summary-sub-3-label">Ekip Başına Ort.</p>
-                </div>
+                <p class="ekp-kpi__label" id="summary-card-2-label">Günlük Ort.</p>
+                <p class="ekp-kpi__value" id="summary-monthly">-</p>
+                <p class="ekp-kpi__sub" id="summary-card-2-sub">Bölge Ortalaması</p>
             </div>
-
-            <div class="mt-3 text-center border-t border-slate-100 dark:border-slate-700 pt-2">
-                <p class="text-[10px] text-slate-400 font-medium">Son Güncelleme:
-                    <?php echo Helper::getLastUpdateDate('endeks_okuma'); ?>
-                </p>
+            <div class="ekp-kpi">
+                <div class="ekp-kpi__top">
+                    <span class="ekp-kpi__icon ekp-kpi__icon--green"><span class="material-symbols-outlined">groups</span></span>
+                    <span class="ekp-kpi__chip"><span id="summary-ekip-count">-</span> <span id="summary-sub-1-label">Toplam Ekip</span></span>
+                </div>
+                <p class="ekp-kpi__label" id="summary-sub-2-label">Aktif Ekip</p>
+                <p class="ekp-kpi__value" id="summary-daily-avg">-</p>
+                <p class="ekp-kpi__sub">Okuma yapan ekipler</p>
+            </div>
+            <div class="ekp-kpi">
+                <div class="ekp-kpi__top">
+                    <span class="ekp-kpi__icon ekp-kpi__icon--amber"><span class="material-symbols-outlined">emoji_events</span></span>
+                    <span class="ekp-kpi__chip">EKİP</span>
+                </div>
+                <p class="ekp-kpi__label" id="summary-sub-3-label">Ekip Başına Ort.</p>
+                <p class="ekp-kpi__value" id="summary-monthly-avg">-</p>
+                <p class="ekp-kpi__sub">Aktif ekip ortalaması</p>
             </div>
         </div>
+        <p class="ekp-updated">Son Güncelleme: <?php echo Helper::getLastUpdateDate('endeks_okuma'); ?></p>
     </section>
 
     <!-- Delayed Readings Alert (Slim) -->
-    <section class="px-4 mt-4 hidden" id="delayed-readings-section" onclick="openDelayedReadings()">
+    <section class="px-4 hidden" id="delayed-readings-section" onclick="openDelayedReadings()">
         <div
             class="bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800/20 rounded-xl p-3 flex items-center justify-between cursor-pointer active:scale-95 transition-transform">
             <div class="flex items-center gap-2">
@@ -110,10 +94,10 @@ if (!empty($sonOkumaTarihi) && $sonOkumaTarihi < date('Y-m-01')) {
     </section>
 
     <!-- Date Filter Section -->
-    <section class="px-4 mt-4">
-        <div class="card p-3.5">
+    <section class="px-4">
+        <div class="card ekp-filter">
             <!-- Hızlı Filtre Hapları (Pills) -->
-            <div class="flex items-center gap-1.5 overflow-x-auto pb-2 disable-scrollbar mb-2.5">
+            <div class="flex items-center gap-2 overflow-x-auto pb-3 disable-scrollbar">
                 <button type="button" onclick="setQuickDate('today')" id="pill-today"
                     class="date-pill px-3 py-1 text-xs font-semibold rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary transition-colors whitespace-nowrap">
                     Bugün
@@ -140,13 +124,13 @@ if (!empty($sonOkumaTarihi) && $sonOkumaTarihi < date('Y-m-01')) {
             </div>
 
             <!-- Custom Date Inputs -->
-            <div class="flex items-center gap-2">
-                <div class="flex-1">
+            <div class="ekp-dates">
+                <div>
                     <label class="text-[11px] text-slate-500 font-medium mb-1 block">Başlangıç</label>
                     <input type="date" id="filter-start-date" class="form-input text-sm w-full"
                         value="<?php echo $defaultStartDate; ?>" onchange="handleDateChange('start')">
                 </div>
-                <div class="flex-1">
+                <div>
                     <label class="text-[11px] text-slate-500 font-medium mb-1 block">Bitiş</label>
                     <input type="date" id="filter-end-date" class="form-input text-sm w-full"
                         value="<?php echo $defaultEndDate; ?>" onchange="handleDateChange('end')">
@@ -156,7 +140,7 @@ if (!empty($sonOkumaTarihi) && $sonOkumaTarihi < date('Y-m-01')) {
     </section>
 
     <!-- Chart Section -->
-    <section class="px-4 mt-4">
+    <section class="px-4">
         <div class="card p-4">
             <div class="flex items-center justify-between mb-3">
                 <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider" id="chart-section-title">Ekip Performansı</h3>
@@ -174,12 +158,12 @@ if (!empty($sonOkumaTarihi) && $sonOkumaTarihi < date('Y-m-01')) {
     </section>
 
     <!-- Ekip List -->
-    <section class="px-4 mt-4">
-        <div class="flex items-center justify-between mb-3">
+    <section class="px-4">
+        <div class="flex items-center justify-between mb-3 px-1">
             <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider">Ekipler</h3>
             <span class="text-xs text-slate-400 font-medium" id="ekip-list-period-badge"></span>
         </div>
-        <div id="ekip-list" class="flex flex-col gap-3">
+        <div id="ekip-list" class="flex flex-col gap-3.5">
             <!-- Skeleton -->
             <div class="card p-4 animate-pulse">
                 <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4 mb-2"></div>
@@ -245,6 +229,36 @@ if (!empty($sonOkumaTarihi) && $sonOkumaTarihi < date('Y-m-01')) {
         </div>
     </div>
 </div>
+
+<style>
+    .ekp-page { gap: 16px; }
+    .ekp-page > section { margin-top: 0 !important; }
+    .ekp-page > #empty-state { margin-top: 0 !important; }
+    .ekp-page .card { border-radius: 24px; }
+    .ekp-kpi-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .ekp-kpi { background: #fff; border-radius: 24px; padding: 14px; border: 1px solid rgba(255, 255, 255, .9); box-shadow: 0 6px 16px -10px rgba(15, 23, 42, .18); min-width: 0; }
+    .dark .ekp-kpi { background: #1a2130; border-color: #334155; }
+    .ekp-kpi__top { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 14px; }
+    .ekp-kpi__icon { width: 36px; height: 36px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .ekp-kpi__icon .material-symbols-outlined { font-size: 20px; }
+    .ekp-kpi__icon--blue { background: #eff6ff; color: #3b82f6; }
+    .ekp-kpi__icon--violet { background: #f5f3ff; color: #8b5cf6; }
+    .ekp-kpi__icon--green { background: #ecfdf5; color: #10b981; }
+    .ekp-kpi__icon--amber { background: #fffbeb; color: #f59e0b; }
+    .ekp-kpi__chip { font-size: 10px; font-weight: 800; letter-spacing: .03em; color: #64748b; background: #f1f5f9; border-radius: 999px; padding: 4px 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    .dark .ekp-kpi__chip { background: #0f172a; color: #94a3b8; }
+    .ekp-kpi__label { font-size: 11px; font-weight: 600; color: #64748b; }
+    .ekp-kpi__value { font-size: 26px; font-weight: 800; line-height: 1.15; color: #0f172a; margin: 2px 0; }
+    .dark .ekp-kpi__value { color: #fff; }
+    .ekp-kpi__sub { font-size: 11px; font-weight: 600; color: #94a3b8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ekp-updated { text-align: center; font-size: 10px; font-weight: 600; color: #94a3b8; margin-top: 10px; }
+    .ekp-filter { padding: 16px !important; overflow: hidden; }
+    .ekp-filter .disable-scrollbar { margin: 0 -16px; padding: 0 16px 14px; }
+    .ekp-dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .ekp-dates > div { min-width: 0; }
+    .ekp-dates input { min-width: 0; width: 100%; }
+    .ekp-page .date-pill { flex-shrink: 0; white-space: nowrap; padding: 8px 14px; font-size: 12px; }
+</style>
 
 <script>
     let ekipTakibiData = null;

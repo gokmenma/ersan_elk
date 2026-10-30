@@ -10,26 +10,17 @@ use App\Helper\Date;
 
 <div class="flex flex-col min-h-screen pb-8">
     <!-- Header with Profile Photo -->
-    <header class="bg-gradient-primary text-white px-4 pt-6 pb-16 relative overflow-hidden">
-        <!-- Background Pattern -->
-        <div class="absolute inset-0 opacity-10">
-            <div class="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -mr-32 -mt-32"></div>
-            <div class="absolute bottom-0 left-0 w-40 h-40 bg-white rounded-full -ml-20 mb-10"></div>
-        </div>
-
-        <div class="relative z-10 flex items-center justify-between">
-            <h1 class="text-xl font-bold">Profilim</h1>
-            <button onclick="toggleDarkMode()"
-                class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                <span class="material-symbols-outlined" id="theme-icon">dark_mode</span>
-            </button>
-        </div>
-    </header>
+    <?php pwaPageHeader([
+        'eyebrow' => 'HESABIM',
+        'title' => 'Profilim',
+        'subtitle' => 'Kişisel bilgileriniz ve ayarlar',
+        'actions' => '<button type="button" onclick="toggleDarkMode()" class="pwa-circle-btn" aria-label="Tema değiştir" title="Tema değiştir"><span class="material-symbols-outlined" id="theme-icon">dark_mode</span></button>',
+    ]); ?>
 
     <!-- Profile Card -->
-    <section class="px-4 -mt-12 relative z-20">
+    <section class="px-4 relative z-20">
         <div class="card p-6 text-center">
-            <div class="relative w-24 h-24 mx-auto -mt-16">
+            <div class="relative w-24 h-24 mx-auto">
                 <div
                     class="w-24 h-24 rounded-full bg-slate-200 dark:bg-slate-700 border-4 border-white dark:border-card-dark overflow-hidden shadow-lg">
                     <?php 

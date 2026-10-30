@@ -21,3 +21,4 @@
 [03-Sep-2026 19:42:17 Europe/Istanbul] PHP Warning:  Undefined array key "REQUEST_METHOD" in /opt/lampp/htdocs/ersan_elk/views/personel-pwa/api.php on line 516
 [03-Sep-2026 19:42:28 Europe/Istanbul] PHP Warning:  Undefined array key "REQUEST_METHOD" in /opt/lampp/htdocs/ersan_elk/views/personel-pwa/api.php on line 42
 [03-Sep-2026 19:42:29 Europe/Istanbul] PHP Warning:  Undefined array key "REQUEST_METHOD" in /opt/lampp/htdocs/ersan_elk/views/personel-pwa/api.php on line 516
+[30-Oct-2026 22:55:03 Europe/Istanbul] PWA KM fotoğraf okuma: Personel ID: 113, Araç ID: 39, Sonuç: okunamadı

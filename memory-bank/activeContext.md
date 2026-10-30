@@ -3434,3 +3434,35 @@
 - Sütun yöneticisi: kayıtlı sıra/gizleme varsa tablo init tamamlanana kadar gizlenir (dt-colman-pending), sayfa yenilenirken gizli sütun titremesi yok.
 - Sütun yöneticisi: filtre satırı (thead 2. satır) hücreleri orijinal indekslerle etiketlenip sıra/gizleme ile eşitlenir (filtresiz sütunun boş hücresi artık kalmaz).
 - Titreme: layouts/head-style.php sonuna head içi erken betik eklendi; kayıtlı sütun durumu olan tablolar (table#id) JS hazır olana kadar (dt-colman-ready) CSS ile gizlenir, 4 sn güvenlik zamanlayıcısı.
+
+## 2026-10-30 — Personel PWA alt navigasyon
+- `views/personel-pwa/assets/css/pwa-style.css` sonuna yönetici mobil (`mobile-spa` `.bottom-nav`) ile aynı yüzen obsidian hap dock stili eklendi (yalnızca CSS, işaretleme değişmedi).
+
+- Personel PWA merkezi sayfa başlığı: `views/personel-pwa/partials/page-header.php` (`pwaPageHeader()`), CSS `.pwa-topbar*` pwa-style.css sonunda; gri zemin (#e6eaef) ve Bento kart stili (yalnızca açık tema) eklendi. Örnek uygulama: `pages/icralar.php`. Diğer sayfalar henüz eski header ile.
+
+- Personel PWA: tüm sayfa başlıkları `pwaPageHeader()` ile standartlaştı (ana-sayfa özel hero, aparat, bordro, izin, ihbar, talep, zimmetler, kacak, nobet, yardim, yardim-detay, km-bildirimleri, puantaj, ekip-takibi, profil, icralar). Font Roboto Condensed (`--font-family`, Geist kaldırıldı). Sticky sekme offsetleri top-0 yapıldı.
+
+- Personel PWA: uygulama ikonu (assets/icons/app-*.png, manifest, favicon, apple-touch) ve preloader (#loading-overlay) yönetici mobil splash ile aynı yapıldı; Ana Sayfa "Genel Özet" kartı koyu Bento (.pwa-bento-dark). sw.js KUYRUK_SURUM=34.
+
+- Personel PWA "Daha Fazla" menüsü yönetici mobil nav-sheet stiline çevrildi (index.php $moreMenuItems, .pwa-nav-sheet* CSS).
+
+- Personel PWA: navbar özelleştirme (cookie pwa_nav, sunucuda katalogla doğrulanır; index.php $navCatalog + MoreMenu JS), menü arama kutusu, ihbar/defter arama kutuları pill stili.
+
+- Personel PWA menü: Profil ve Çıkış butonları listeden kaldırıldı, arama satırının sağına ikon butonu olarak (önce profil) eklendi.
+
+- Personel PWA etkinlikler sayfası: standart header + Aktif/Tümü/Geçmiş sekmeleri (istemci tarafı filtre).
+
+- Personel PWA ortak bileşenler (pwa-style.css): .pwa-hero-dark (koyu özet kartı), .pwa-pill-row/.pwa-filter-pill (hap filtreler), .pwa-search-bar (arama), .empty-state beyaz kart. Talepler sayfası bu kitle yeniden tasarlandı; diğer sayfalar sırada.
+
+- Personel PWA: tüm sayfalarda stat kartları .pwa-stat-strip (koyu şerit), sekme/filtre anahtarları hap stili (#main-content kapsamlı CSS), sticky araç çubukları .pwa-toolbar. Zimmetler/Kaçak/Aparat/Bordro kartları henüz özel tasarım almadı.
+
+- Personel PWA zimmetler: kategori kartları koyu hero (.pwa-hero-dark) içinde tıklanabilir 2x2 kutular; toplam aktif zimmet sayacı eklendi.
+
+## Personel PWA Ana Sayfa Kart Sıralaması (2026-10-30)
+- `personel.pwa_ana_sayfa_siralama` (migration: database/migrations/2026_10_30_add_pwa_ana_sayfa_siralama_to_personel.sql), PersonelModel::getAnaSayfaSiralama/saveAnaSayfaSiralama, api.php `update_ana_sayfa_siralama`, ana-sayfa.php "Kartları Sırala" modalı (sürükle + ok). Kartlar flex-col içinde CSS `order` ile sıralanır.
+
+- Personel PWA iş takip (puantaj): koyu hero özet, .pwa-seg pill sekmeler, pill filtre girdileri, defter sorgu butonu beyaz kart.
+
+- Personel PWA: genel bg-slate-50 şeffaflaştırma kuralı yalnızca sayfa kapsayıcılarına daraltıldı (izin takvim hücreleri görünür); izin takvimi .pwa-cal-card beyaz kart içinde.
+
+- Personel PWA: kaçak sayfası pill sekme/kart/boş durum; tüm tarih/saat girdileri yönetici mobil pill stili (global CSS).

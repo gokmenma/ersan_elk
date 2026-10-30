@@ -5,6 +5,8 @@
  */
 use App\Helper\Helper;
 
+$anaSayfaSiralama = (new \App\Model\PersonelModel())->getAnaSayfaSiralama((int) $personel_id);
+$kartSirasi = static fn(string $anahtar): int => (int) array_search($anahtar, $anaSayfaSiralama, true) + 1;
 ?>
 
 <div class="flex flex-col min-h-screen">
@@ -44,68 +46,45 @@ use App\Helper\Helper;
         </div>
     </div>
     <!-- Header -->
-    <header class="bg-gradient-primary text-white px-4 pt-4 pb-8 rounded-b-3xl relative overflow-hidden">
-        <!-- Background Pattern -->
-        <div class="absolute inset-0 opacity-10">
-            <div class="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -mr-32 -mt-32"></div>
-            <div class="absolute bottom-0 left-0 w-40 h-40 bg-white rounded-full -ml-20 -mb-20"></div>
-        </div>
-
-        <div class="relative z-10">
-            <!-- User Info & Notification -->
-            <div class="flex items-center justify-between mb-6">
-                <a href="?page=profil" class="flex items-center gap-3">
-                    <div
-                        class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center overflow-hidden active:scale-90 transition-transform">
-                        <?php 
-                        $pResim = $personel->resim_yolu ?? '';
-                        if (!empty($pResim)): ?>
-                            <img src="<?php echo Helper::base_url($pResim); ?>" alt="Profil"
-                                class="w-full h-full object-cover">
-                        <?php else: ?>
-                            <span class="material-symbols-outlined text-2xl">person</span>
-                        <?php endif; ?>
-                    </div>
-                    <div>
-                        <p class="text-white/80 text-sm">Hoş geldin,</p>
-                        <h1 class="text-xl font-bold"><?php echo $personel->adi_soyadi ?? 'Personel'; ?></h1>
-                    </div>
-                </a>
-                <div class="flex items-center gap-2">
-                    <button onclick="Theme.toggleDarkMode()"
-                        class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center active:scale-95 transition-transform">
-                        <span class="material-symbols-outlined dark:hidden">dark_mode</span>
-                        <span class="material-symbols-outlined hidden dark:block">light_mode</span>
-                    </button>
-                    <button onclick="openNotificationModal()"
-                        class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center relative active:scale-95 transition-transform">
-                        <span class="material-symbols-outlined">notifications</span>
-                        <span id="notification-badge"
-                            class="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full text-[10px] font-bold flex items-center justify-center border-2 border-primary hidden"></span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Welcome Message -->
-            <div class="mb-2">
-                <p class="text-white/80 text-sm">
-                    <?php
-                    $hour = date('H');
-                    if ($hour < 12)
-                        echo 'Günaydın!';
-                    elseif ($hour < 18)
-                        echo 'İyi günler!';
-                    else
-                        echo 'İyi akşamlar!';
-                    ?>
-                </p>
-                <p class="text-white/90 text-base">İşte bugünkü özet bilgileriniz.</p>
+    <?php
+    $_gunler = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+    $_aylar = ['', 'OCAK', 'ŞUBAT', 'MART', 'NİSAN', 'MAYIS', 'HAZİRAN', 'TEMMUZ', 'AĞUSTOS', 'EYLÜL', 'EKİM', 'KASIM', 'ARALIK'];
+    $_tarihEtiket = mb_strtoupper(date('j') . ' ' . $_aylar[(int) date('n')] . ' ' . $_gunler[(int) date('w')], 'UTF-8');
+    $_adSoyad = trim((string) ($personel->adi_soyadi ?? 'Personel'));
+    $_ilkAd = preg_split('/\s+/u', $_adSoyad)[0] ?? $_adSoyad;
+    $_saat = (int) date('H');
+    $_selam = $_saat < 12 ? 'Günaydın!' : ($_saat < 18 ? 'İyi günler!' : 'İyi akşamlar!');
+    $pResim = $personel->resim_yolu ?? '';
+    ?>
+    <header class="pwa-home-hero">
+        <div class="pwa-topbar pwa-topbar--home">
+            <a href="?page=profil" class="pwa-avatar-circle pwa-avatar-circle--photo" aria-label="Profilim">
+                <?php if (!empty($pResim)): ?>
+                    <img src="<?php echo htmlspecialchars(Helper::base_url($pResim), ENT_QUOTES, 'UTF-8'); ?>" alt="Profil" class="w-full h-full object-cover">
+                <?php else: ?>
+                    <span class="material-symbols-outlined">person</span>
+                <?php endif; ?>
+            </a>
+            <div class="pwa-topbar__actions">
+<button type="button" onclick="Theme.toggleDarkMode()" class="pwa-circle-btn" aria-label="Tema değiştir">
+                    <span class="material-symbols-outlined dark:hidden">dark_mode</span>
+                    <span class="material-symbols-outlined hidden dark:block">light_mode</span>
+                </button>
+                <button type="button" onclick="openNotificationModal()" class="pwa-circle-btn" aria-label="Bildirimler">
+                    <span class="material-symbols-outlined">notifications</span>
+                    <span id="notification-badge"
+                        class="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center hidden"
+                        style="border:2px solid #fff"></span>
+                </button>
             </div>
         </div>
+        <span class="pwa-topbar__eyebrow"><?php echo htmlspecialchars($_tarihEtiket, ENT_QUOTES, 'UTF-8'); ?></span>
+        <h1 class="pwa-home-hero__title">Merhaba, <?php echo htmlspecialchars($_ilkAd, ENT_QUOTES, 'UTF-8'); ?></h1>
+        <p class="pwa-topbar__subtitle"><?php echo htmlspecialchars($_selam, ENT_QUOTES, 'UTF-8'); ?> İşte bugünkü özet bilgileriniz.</p>
     </header>
 
     <!-- Etkinlik Slider -->
-    <section class="px-4 mt-[-20px] relative z-20 mb-4" id="etkinlik-slider-section" style="display: none;">
+    <section class="px-4 relative z-20 mb-4" id="etkinlik-slider-section" data-home-card="etkinlik" style="display: none; order: <?php echo $kartSirasi('etkinlik'); ?>;">
         <div class="flex overflow-x-auto hide-scrollbar snap-x snap-mandatory gap-3 pb-2"
             id="etkinlik-slider-container">
             <!-- Slider öğeleri buraya yüklenecek -->
@@ -114,8 +93,9 @@ use App\Helper\Helper;
 
     <!-- Görev Takip Bileşeni -->
     <?php if (($personel->saha_takibi ?? 0) == 1): ?>
-        <section class="px-4 relative z-20 mb-4">
-            <div id="gorev-takip-card" class="card overflow-hidden">
+        <section class="px-4 relative z-20 mb-4" data-home-card="gorev" style="order: <?php echo $kartSirasi('gorev'); ?>;">
+            <div id="gorev-takip-card" class="card pwa-fx-card pwa-fx-card--green" data-gorev-state="idle">
+                <div class="pwa-card-head"><div class="pwa-card-title"><span class="material-symbols-outlined">my_location</span><span>Saha Görevi</span></div></div>
                 <!-- Loading State -->
                 <div id="gorev-loading" class="p-6 flex items-center justify-center">
                     <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -123,64 +103,89 @@ use App\Helper\Helper;
 
                 <!-- Görev Durumu Container -->
                 <div id="gorev-durumu-container" class="hidden">
+                    <div class="pwa-fx-scene-wrap">
+                        <div class="pwa-fx-scene" aria-hidden="true">
+                            <div class="pwa-fx-layer pwa-fx-layer--hills" style="--t:160px;--d:16s"></div>
+                            <div class="pwa-fx-layer pwa-fx-layer--cones" style="--t:260px;--d:3.25s"></div>
+                            <div class="pwa-fx-ground" style="--gd:0.6s"></div>
+                            <span class="pwa-fx-shadow"></span>
+                            <div class="pwa-fx-actor pwa-fx-worker">
+                                <svg viewBox="0 0 120 140" fill="none">
+                                    <g class="wk-body">
+                                        <g transform="translate(58 58)"><g class="limb uarm uarm-b"><rect x="-5.5" y="-3" width="11" height="20" rx="5.5" fill="#cbd5e1"/><g transform="translate(0 14)"><g class="limb farm farm-b"><rect x="-5" y="0" width="10" height="17" rx="5" fill="#cbd5e1"/><circle cx="0" cy="18" r="5.8" fill="#e9ac80"/></g></g></g></g>
+                                        <g transform="translate(57 86)"><g class="limb thigh thigh-b"><rect x="-7.5" y="-2" width="15" height="24" rx="7.5" fill="#1e40af"/><g transform="translate(0 19)"><g class="limb shin shin-b"><rect x="-6.8" y="0" width="13.6" height="23" rx="6.8" fill="#1e40af"/><path d="M-7.5 20h14c7 0 10 3 10 7v4h-24z" fill="#7c2d12"/></g></g></g></g>
+                                        <rect x="46" y="50" width="30" height="40" rx="13" fill="#f1f5f9"/>
+                                        <path d="M46 66c0-9 4-16 13-16h4c9 0 13 7 13 16v20c0 3-2 5-5 5H51c-3 0-5-2-5-5z" fill="#f97316"/>
+                                        <path d="M55 50l6 11 6-11z" fill="#f1f5f9"/>
+                                        <rect x="52" y="52" width="5" height="39" rx="2" fill="#94a3b8"/>
+                                        <rect x="65" y="52" width="5" height="39" rx="2" fill="#94a3b8"/>
+                                        <rect x="46" y="70" width="30" height="5" fill="#e2e8f0" opacity=".95"/>
+                                        <rect x="46" y="84" width="30" height="7" rx="3.5" fill="#475569"/>
+                                        <rect x="57" y="83" width="8" height="9" rx="2" fill="#fbbf24"/>
+                                        <g transform="translate(60 86)"><g class="limb thigh thigh-f"><rect x="-7.5" y="-2" width="15" height="24" rx="7.5" fill="#2563eb"/><g transform="translate(0 19)"><g class="limb shin shin-f"><rect x="-6.8" y="0" width="13.6" height="23" rx="6.8" fill="#2563eb"/><path d="M-7.5 20h14c7 0 10 3 10 7v4h-24z" fill="#c2410c"/></g></g></g></g>
+                                        <g class="wk-head">
+                                            <rect x="56" y="44" width="11" height="12" rx="5" fill="#e9ac80"/>
+                                            <circle cx="62" cy="30" r="18" fill="#f7c9a4"/>
+                                            <circle cx="50" cy="34" r="4" fill="#f2b88f"/>
+                                            <circle cx="80" cy="36" r="3.2" fill="#f2b88f"/>
+                                            <g class="wk-blink"><ellipse cx="75" cy="31" rx="3" ry="4.2" fill="#fff"/><circle cx="76.2" cy="32" r="2.3" fill="#3b2418"/></g>
+                                            <g class="wk-blink"><ellipse cx="67" cy="31" rx="4.2" ry="5" fill="#fff"/><circle cx="68.7" cy="32" r="3" fill="#3b2418"/><circle cx="69.7" cy="30.6" r="1" fill="#fff"/></g>
+                                            <circle cx="66" cy="41" r="3.2" fill="#f9a8a0" opacity=".55"/>
+                                            <path d="M67 42q5.5 6.5 11-1z" fill="#fff" stroke="#9a3412" stroke-width="1.3" stroke-linejoin="round"/>
+                                            <path d="M43 26c0-13 8-19 19-19s19 6 19 19z" fill="#fbbf24"/>
+                                            <path d="M48 15c4-5 8-7 13-7v18H48z" fill="#fde68a" opacity=".55"/>
+                                            <rect x="59" y="6" width="6" height="20" rx="3" fill="#f59e0b"/>
+                                            <rect x="40" y="24" width="54" height="7" rx="3.5" fill="#f59e0b"/>
+                                        </g>
+                                        <g transform="translate(61 58)"><g class="limb uarm uarm-f"><rect x="-5.5" y="-3" width="11" height="20" rx="5.5" fill="#f8fafc"/><g transform="translate(0 14)"><g class="limb farm farm-f"><rect x="-5" y="0" width="10" height="17" rx="5" fill="#f8fafc"/><circle cx="0" cy="18" r="5.8" fill="#f7c9a4"/></g></g></g></g>
+                                    </g>
+                                </svg>
+                            </div>
+                            <span class="pwa-fx-bubble pwa-fx-bubble--start"><span class="material-symbols-outlined">touch_app</span>Göreve başla!</span>
+                            <span class="pwa-fx-pin"><span class="material-symbols-outlined">location_on</span></span>
+                        </div>
+                    </div>
+
                     <!-- GÖREVE BAŞLA (Görev Yok) -->
-                    <div id="gorev-basla-panel" class="p-4 hidden">
-                        <div class="flex items-center gap-3 mb-4">
-                            <div
-                                class="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                                <span class="material-symbols-outlined text-green-600 text-2xl">play_circle</span>
-                            </div>
-                            <div class="flex-1">
-                                <h3 class="font-bold text-slate-900 dark:text-white">Saha Görev Takibi</h3>
-                                <p class="text-xs text-slate-500">Konumunuz kayıt altına alınacaktır</p>
+                    <div id="gorev-basla-panel" class="pwa-fx-body hidden">
+                        <div class="pwa-fx-scene-title">
+                            <h3 class="pwa-fx-title">Saha Görev Takibi</h3>
+                            <p class="pwa-fx-sub">Konumunuz kayıt altına alınacaktır</p>
+                        </div>
+
+                        <div id="konum-izni-uyari" onclick="requestKonumIzni()" class="hidden pwa-fx-notice">
+                            <span class="material-symbols-outlined">location_off</span>
+                            <div>
+                                <strong>Konum İzni Gerekli</strong>
+                                <span class="pwa-fx-notice-text">Göreve başlamak için buraya tıklayarak konum izni vermeniz gerekmektedir.</span>
                             </div>
                         </div>
 
-                        <!-- Konum İzni Uyarı -->
-                        <div id="konum-izni-uyari" onclick="requestKonumIzni()"
-                            class="hidden bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 mb-4 cursor-pointer active:scale-[0.98] transition-all">
-                            <div class="flex items-start gap-2">
-                                <span class="material-symbols-outlined text-amber-600 text-lg">warning</span>
-                                <div>
-                                    <p class="text-sm font-medium text-amber-800 dark:text-amber-200">Konum İzni Gerekli</p>
-                                    <p class="text-xs text-amber-600 dark:text-amber-400">Göreve başlamak için buraya
-                                        tıklayarak konum izni
-                                        vermeniz gerekmektedir.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <button id="btn-gorev-basla" onclick="gorevBasla()"
-                            class="w-full py-4 px-6 rounded-xl font-bold text-white text-lg transition-all duration-300 flex items-center justify-center gap-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg shadow-green-500/30 active:scale-[0.98]">
-                            <span class="material-symbols-outlined text-2xl">play_arrow</span>
+                        <button id="btn-gorev-basla" onclick="gorevBasla()" class="pwa-fx-btn pwa-fx-btn--play">
+                            <span class="material-symbols-outlined">play_arrow</span>
                             <span>Göreve Başla</span>
                         </button>
                     </div>
 
                     <!-- GÖREVİ BİTİR (Görev Var) -->
                     <div id="gorev-bitir-panel" class="hidden">
-                        <!-- Aktif Görev Bilgi Kartı -->
-                        <div class="bg-gradient-to-r from-primary to-primary-dark text-white p-4 rounded-t-xl">
-                            <div class="flex items-center gap-3">
-                                <div
-                                    class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center animate-pulse">
-                                    <span class="material-symbols-outlined text-2xl">location_on</span>
-                                </div>
-                                <div class="flex-1">
-                                    <p class="text-white/80 text-xs">Aktif Görev Devam Ediyor</p>
-                                    <p class="font-bold text-lg" id="gorev-baslangic-saat">--:--</p>
-                                </div>
-                                <div class="text-right">
-                                    <p class="text-white/80 text-xs">Geçen Süre</p>
-                                    <p class="font-bold text-lg" id="gorev-gecen-sure">0 dk</p>
-                                </div>
+                        <div class="pwa-fx-live">
+                            <div class="pwa-fx-live-dot">
+                                <span class="material-symbols-outlined text-2xl">location_on</span>
+                            </div>
+                            <div class="flex-1">
+                                <small>Aktif Görev Devam Ediyor</small>
+                                <b id="gorev-baslangic-saat">--:--</b>
+                            </div>
+                            <div class="text-right">
+                                <small>Geçen Süre</small>
+                                <b id="gorev-gecen-sure">0 dk</b>
                             </div>
                         </div>
 
-                        <div class="p-4">
-                            <button id="btn-gorev-bitir" onclick="gorevBitir()"
-                                class="w-full py-4 px-6 rounded-xl font-bold text-white text-lg transition-all duration-300 flex items-center justify-center gap-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg shadow-red-500/30 active:scale-[0.98]">
-                                <span class="material-symbols-outlined text-2xl">stop_circle</span>
+                        <div class="pwa-fx-body pwa-fx-card--red">
+                            <button id="btn-gorev-bitir" onclick="gorevBitir()" class="pwa-fx-btn">
+                                <span class="material-symbols-outlined">stop_circle</span>
                                 <span>Görevi Bitir</span>
                             </button>
                         </div>
@@ -191,35 +196,95 @@ use App\Helper\Helper;
 
         <?php if ($aktifAracZimmeti): ?>
         <!-- ARAÇ KM TAKİBİ (Separate Premium Card) -->
-        <section class="px-4 mt-6">
-            <div class="card overflow-hidden border-none shadow-xl shadow-indigo-500/10 bg-white dark:bg-slate-900 group">
-                <div class="p-5 flex flex-col gap-4">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
-                            <span class="material-symbols-outlined text-3xl">directions_car</span>
-                        </div>
-                        <div class="flex-1">
-                            <h3 class="text-base font-bold text-slate-800 dark:text-white line-clamp-1">Araç KM Yönetimi</h3>
-                            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Aktif Araçlar: <span class="text-indigo-600 dark:text-indigo-400 font-bold"><?php echo htmlspecialchars(implode(', ', array_map(static fn($zimmet) => (string) $zimmet->plaka, $aktifAracZimmetleri ?? [])), ENT_QUOTES, 'UTF-8'); ?></span></p>
-                        </div>
-                        <div class="text-right">
-                            <div class="px-2 py-1 rounded-md bg-indigo-50 dark:bg-indigo-900/30 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800">
-                                AKTİF
+        <?php
+        $kmBildirimModel = new \App\Model\AracKmBildirimModel();
+        $kmBugun = ['sabah' => [], 'aksam' => []];
+        $kmAracSayisi = count($aktifAracZimmetleri ?? []);
+        $kmSatirlari = $kmBildirimModel->getGunlukBildirimler(
+            (int) $personel_id,
+            array_map(static fn($kmZimmet) => (int) $kmZimmet->arac_id, $aktifAracZimmetleri ?? []),
+            date('Y-m-d')
+        );
+        foreach ($kmSatirlari as $kmSatir) {
+            if (isset($kmBugun[$kmSatir->tur]) && !isset($kmBugun[$kmSatir->tur][(int) $kmSatir->arac_id])) {
+                $kmBugun[$kmSatir->tur][(int) $kmSatir->arac_id] = (int) $kmSatir->km;
+            }
+        }
+        $kmSabahVar = $kmBugun['sabah'] !== [];
+        $kmAksamVar = $kmBugun['aksam'] !== [];
+        $kmSahneDurumu = $kmAksamVar ? 'done' : ($kmSabahVar ? 'driving' : 'parked');
+        $kmButonlari = [];
+        foreach (['sabah' => 'Sabah', 'aksam' => 'Akşam'] as $kmTur => $kmEtiket) {
+            $kmBildirilen = count($kmBugun[$kmTur]);
+            $kmTamam = $kmAracSayisi > 0 && $kmBildirilen >= $kmAracSayisi;
+            if ($kmBildirilen === 0) {
+                $kmAltMetin = 'KM bildir';
+            } elseif ($kmTamam && $kmAracSayisi === 1) {
+                $kmAltMetin = number_format((int) reset($kmBugun[$kmTur]), 0, ',', '.') . ' km';
+            } elseif ($kmTamam) {
+                $kmAltMetin = $kmBildirilen . ' araç bildirildi';
+            } else {
+                $kmAltMetin = $kmBildirilen . '/' . $kmAracSayisi . ' araç';
+            }
+            $kmButonlari[$kmTur] = ['etiket' => $kmEtiket, 'tamam' => $kmTamam, 'alt' => $kmAltMetin];
+        }
+        $kmSiradaki = !$kmButonlari['sabah']['tamam'] ? 'sabah' : (!$kmButonlari['aksam']['tamam'] ? 'aksam' : '');
+        ?>
+        <section class="px-4 mt-6" data-home-card="km" style="order: <?php echo $kartSirasi('km'); ?>;">
+            <div id="km-card" class="card pwa-fx-card pwa-fx-card--indigo border-none shadow-xl shadow-indigo-500/10 bg-white dark:bg-slate-900" data-km-state="<?php echo htmlspecialchars($kmSahneDurumu, ENT_QUOTES, 'UTF-8'); ?>">
+                <div class="pwa-card-head"><div class="pwa-card-title"><span class="material-symbols-outlined">directions_car</span><span>Araç KM Yönetimi</span></div><span class="pwa-card-pill">AKTİF</span></div>
+                <div class="pwa-fx-body">
+                    <div class="pwa-fx-scene pwa-fx-scene--road" role="button" tabindex="0" aria-label="Günlük KM bildir" onclick="kmSiradakiBildir()" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); kmSiradakiBildir(); }">
+                        <div class="pwa-fx-layer pwa-fx-layer--hills" style="--t:160px;--d:7s"></div>
+                        <div class="pwa-fx-layer pwa-fx-layer--trees" style="--t:200px;--d:1.5s"></div>
+                        <div class="pwa-fx-ground" style="--gd:0.35s"></div>
+                        <span class="pwa-fx-speed" style="left:12%;top:34px;width:46px;animation-delay:0s"></span>
+                        <span class="pwa-fx-speed" style="left:6%;top:56px;width:64px;animation-delay:.3s"></span>
+                        <span class="pwa-fx-speed" style="left:18%;top:78px;width:38px;animation-delay:.6s"></span>
+                        <span class="pwa-fx-shadow" style="width:150px;margin-left:-75px;bottom:5px;animation-duration:.36s"></span>
+                        <span class="pwa-fx-bubble pwa-fx-bubble--km-parked"><span class="material-symbols-outlined">speed</span>KM bildir</span>
+                        <span class="pwa-fx-bubble pwa-fx-bubble--km-done"><span class="material-symbols-outlined">task_alt</span>KM tamam</span>
+                        <div class="pwa-fx-actor pwa-fx-van">
+                            <div class="pwa-fx-van-body">
+                                <span class="pwa-fx-beam"></span>
+                                <span class="pwa-fx-hazard pwa-fx-hazard--rear"></span>
+                                <span class="pwa-fx-hazard pwa-fx-hazard--front"></span>
+                                <img class="pwa-fx-van-img" src="assets/images/van.png?v=6" alt="" draggable="false">
+                                <img class="pwa-fx-van-wheel pwa-fx-van-wheel--r" src="assets/images/van-wheel.png?v=3" alt="" draggable="false">
+                                <img class="pwa-fx-van-wheel pwa-fx-van-wheel--f" src="assets/images/van-wheel.png?v=3" alt="" draggable="false">
                             </div>
                         </div>
                     </div>
 
-                    <button onclick="openKmBildirModal()"
-                        class="w-full py-4 px-6 rounded-2xl font-black text-white text-base transition-all duration-300 flex items-center justify-center gap-3 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 shadow-lg shadow-indigo-500/40 active:scale-[0.97] border-none group-active:translate-y-0.5">
-                        <span class="material-symbols-outlined text-2xl animate-pulse">speed</span>
-                        <span class="tracking-tight uppercase">Günlük KM Bildir</span>
-                    </button>
-                    
-                    <div class="flex items-center justify-center gap-2 mt-1">
-                        <span class="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span>
-                        <p class="text-[10px] text-slate-400 dark:text-slate-500 font-medium italic">Resimli bildirim zorunludur</p>
-                        <span class="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span>
+                    <div class="pwa-fx-scene-title">
+                        <p class="pwa-fx-title">Aktif Araçlarınız</p>
+                        <div class="pwa-fx-chips">
+                            <?php foreach (($aktifAracZimmetleri ?? []) as $zimmetIndex => $zimmet): ?>
+                                <span class="pwa-fx-chip" style="animation-delay: <?php echo (int) ($zimmetIndex * 90 + 200); ?>ms;"><?php echo htmlspecialchars((string) $zimmet->plaka, ENT_QUOTES, 'UTF-8'); ?></span>
+                            <?php endforeach; ?>
+                        </div>
+                        <p class="pwa-fx-state pwa-fx-state--parked"><span class="material-symbols-outlined">schedule</span>Bugünkü KM bildiriminiz bekleniyor</p>
+                        <p class="pwa-fx-state pwa-fx-state--driving"><span class="material-symbols-outlined">route</span>Sabah KM bildirildi · Akşam KM'yi gün sonunda girin</p>
+                        <p class="pwa-fx-state pwa-fx-state--done"><span class="material-symbols-outlined">task_alt</span>Bugünkü KM bildirimleriniz tamam</p>
                     </div>
+
+                    <div class="pwa-km-actions" id="km-actions">
+                        <?php foreach ($kmButonlari as $kmTur => $kmBtn): ?>
+                            <button type="button" id="km-btn-<?php echo $kmTur; ?>" data-tur="<?php echo $kmTur; ?>"
+                                class="pwa-km-act pwa-km-act--<?php echo $kmTur; ?><?php echo $kmBtn['tamam'] ? ' is-done' : ($kmSiradaki === $kmTur ? ' is-next' : ''); ?>"
+                                onclick="openKmBildirModal(null, false, false, false, '<?php echo $kmTur; ?>')"
+                                <?php echo $kmBtn['tamam'] ? 'disabled' : ''; ?>>
+                                <span class="pwa-km-act-ico"><span class="material-symbols-outlined"><?php echo $kmTur === 'sabah' ? 'wb_sunny' : 'nights_stay'; ?></span></span>
+                                <span class="pwa-km-act-txt">
+                                    <b><?php echo htmlspecialchars($kmBtn['etiket'], ENT_QUOTES, 'UTF-8'); ?></b>
+                                    <small data-km-alt><?php echo htmlspecialchars($kmBtn['alt'], ENT_QUOTES, 'UTF-8'); ?></small>
+                                </span>
+                                <span class="material-symbols-outlined pwa-km-act-ok">check_circle</span>
+                            </button>
+                        <?php endforeach; ?>
+                    </div>
+
+                    <div class="pwa-fx-foot"><i></i><span>Resimli bildirim zorunludur</span><i></i></div>
                 </div>
             </div>
         </section>
@@ -229,15 +294,14 @@ use App\Helper\Helper;
 
     <?php if (!$isBuro): ?>
     <!-- Performance Summary -->
-    <section class="px-4 mt-6">
-        <div class="flex items-center justify-between mb-3">
-            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Performans Özeti</h2>
-        </div>
-
-        <div id="work-stats-container" class="grid grid-cols-2 gap-3">
-            <!-- Loading -->
-            <div class="col-span-2 py-8 flex justify-center">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    <section class="px-4 mt-6" data-home-card="performans" style="order: <?php echo $kartSirasi('performans'); ?>;">
+        <div class="card pwa-card-body">
+            <div class="pwa-card-head pwa-card-head--flush"><div class="pwa-card-title"><span class="material-symbols-outlined">insights</span><span>Performans Özeti</span></div></div>
+            <div id="work-stats-container" class="grid grid-cols-2 gap-3">
+                <!-- Loading -->
+                <div class="col-span-2 py-8 flex justify-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
             </div>
         </div>
     </section>
@@ -245,14 +309,11 @@ use App\Helper\Helper;
 
 
     <!-- Özet Bilgiler (Combined) -->
-    <section class="px-4 relative z-20 mt-5">
-        <div class="flex items-center justify-between mb-3 px-1">
-            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Genel Özet</h2>
-            <span class="text-xs text-slate-400 font-medium" id="combined-donem-label">Mart 2026</span>
-        </div>
-
+    <section class="px-4 relative z-20 mt-5" data-home-card="ozet" style="order: <?php echo $kartSirasi('ozet'); ?>;">
         <div
-            class="card overflow-hidden border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/40 dark:shadow-none bg-white dark:bg-slate-900">
+            class="card pwa-bento-dark overflow-hidden">
+            <div class="pwa-card-head"><div class="pwa-card-title"><span class="material-symbols-outlined">calendar_month</span><span>Genel Özet</span></div><span class="pwa-card-pill" id="combined-donem-label">Mart 2026</span></div>
+
             <?php if (false): ?>
                 <!-- Financial Header (Minimal) -->
                 <div class="p-5 relative border-b border-slate-50 dark:border-slate-800">
@@ -522,15 +583,10 @@ use App\Helper\Helper;
     }
     ?>
 
-    <section class="px-4 mt-6 overflow-hidden">
-        <div class="flex items-center justify-between mb-3">
-            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Hızlı İşlemler</h2>
-            <button type="button" onclick="openHizliIslemlerModal()" class="text-xs font-semibold text-primary flex items-center gap-1 bg-primary/10 hover:bg-primary/20 px-2.5 py-1 rounded-lg transition-colors active:scale-95">
-                <span class="material-symbols-outlined text-sm">tune</span>
-                <span>Düzenle</span>
-            </button>
-        </div>
-        <div class="flex overflow-x-auto hide-scrollbar gap-3 pb-6 snap-x snap-mandatory">
+    <section class="px-4 mt-6 overflow-hidden" data-home-card="hizli" style="order: <?php echo $kartSirasi('hizli'); ?>;">
+        <div class="card pwa-card-body overflow-hidden">
+        <div class="pwa-card-head pwa-card-head--flush"><div class="pwa-card-title"><span class="material-symbols-outlined">bolt</span><span>Hızlı İşlemler</span></div><button type="button" onclick="openHizliIslemlerModal()" class="pwa-card-pill pwa-card-pill--btn"><span class="material-symbols-outlined">tune</span><span>Düzenle</span></button></div>
+        <div class="flex overflow-x-auto hide-scrollbar gap-3 snap-x snap-mandatory">
             <?php if (empty($activeQuickActions)): ?>
                 <div class="w-full p-4 text-center text-xs text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-2xl">
                     Henüz eklenmiş bir hızlı işlem yok. "Düzenle" butonundan ekleyebilirsiniz.
@@ -555,6 +611,7 @@ use App\Helper\Helper;
                     </a>
                 <?php endforeach; ?>
             <?php endif; ?>
+        </div>
         </div>
     </section>
 
@@ -824,7 +881,67 @@ use App\Helper\Helper;
             }
         }
 
+        function setGorevSahne(durum) {
+            var kart = document.getElementById('gorev-takip-card');
+            if (kart) kart.dataset.gorevState = durum;
+        }
+
+        var kmBugunBildirilen = <?php echo json_encode(['sabah' => (object) ($kmBugun['sabah'] ?? []), 'aksam' => (object) ($kmBugun['aksam'] ?? [])]); ?>;
+        var kmAracSayisi = <?php echo (int) ($kmAracSayisi ?? 0); ?>;
+
+        function kmButonlariniGuncelle() {
+            var siradaki = '';
+            ['sabah', 'aksam'].forEach(function (tur) {
+                var idler = Object.keys(kmBugunBildirilen[tur] || {});
+                var tamam = kmAracSayisi > 0 && idler.length >= kmAracSayisi;
+                if (!tamam && !siradaki) siradaki = tur;
+                var btn = document.getElementById('km-btn-' + tur);
+                if (!btn) return;
+                var alt = 'KM bildir';
+                if (tamam && kmAracSayisi === 1) {
+                    alt = Number(kmBugunBildirilen[tur][idler[0]]).toLocaleString('tr-TR') + ' km';
+                } else if (tamam) {
+                    alt = idler.length + ' araç bildirildi';
+                } else if (idler.length > 0) {
+                    alt = idler.length + '/' + kmAracSayisi + ' araç';
+                }
+                var altEl = btn.querySelector('[data-km-alt]');
+                if (altEl) altEl.textContent = alt;
+                btn.disabled = tamam;
+                btn.classList.toggle('is-done', tamam);
+            });
+            ['sabah', 'aksam'].forEach(function (tur) {
+                var btn = document.getElementById('km-btn-' + tur);
+                if (btn) btn.classList.toggle('is-next', !btn.disabled && tur === siradaki);
+            });
+            return siradaki;
+        }
+
+        function kmBildirimiKaydedildi(tur, aracId, km) {
+            if (!kmBugunBildirilen[tur]) return;
+            kmBugunBildirilen[tur][aracId] = km;
+            kmButonlariniGuncelle();
+            var aksamVar = Object.keys(kmBugunBildirilen.aksam).length > 0;
+            var sabahVar = Object.keys(kmBugunBildirilen.sabah).length > 0;
+            setKmSahneDurumu(aksamVar ? 'done' : (sabahVar ? 'driving' : 'parked'));
+        }
+
+        function kmSiradakiBildir() {
+            var siradaki = kmButonlariniGuncelle();
+            if (!siradaki) {
+                Alert.success('Tamamlandı', 'Bugünkü sabah ve akşam KM bildirimleriniz tamam.');
+                return;
+            }
+            openKmBildirModal(null, false, false, false, siradaki);
+        }
+
+        function setKmSahneDurumu(durum) {
+            var kart = document.getElementById('km-card');
+            if (kart) kart.dataset.kmState = durum;
+        }
+
         function showGorevBaslaPanel() {
+            setGorevSahne('idle');
             var baslaPanel = document.getElementById('gorev-basla-panel');
             var bitirPanel = document.getElementById('gorev-bitir-panel');
             if (baslaPanel) baslaPanel.classList.remove('hidden');
@@ -835,6 +952,7 @@ use App\Helper\Helper;
         }
 
         function showGorevBitirPanel(data) {
+            setGorevSahne('walking');
             var baslaPanel = document.getElementById('gorev-basla-panel');
             var bitirPanel = document.getElementById('gorev-bitir-panel');
             if (baslaPanel) baslaPanel.classList.add('hidden');
@@ -1274,10 +1392,7 @@ use App\Helper\Helper;
                     }
 
                     container.innerHTML = `
-                        <div class="col-span-2 card p-4 flex flex-col gap-2 relative overflow-hidden group">
-                            <div class="absolute -right-2 -bottom-2 opacity-[0.05] group-hover:opacity-[0.1] transition-opacity">
-                                <span class="material-symbols-outlined text-8xl text-primary">task_alt</span>
-                            </div>
+                        <div class="col-span-2 flex flex-col gap-2">
                             <div class="flex items-center gap-2 mb-2">
                                 <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                                     <span class="material-symbols-outlined text-primary text-xl">fact_check</span>
@@ -1783,6 +1898,135 @@ use App\Helper\Helper;
                 Toast.show('Bir hata oluştu', 'error');
             }
         }
+
+        // ===== Ana Sayfa Kart Sürükle-Bırak Sıralaması =====
+        (function() {
+            const style = document.createElement('style');
+            style.textContent = '[data-home-card]{position:relative}'
+                + '.home-card-dragging{opacity:.55;transform:scale(.98);transition:transform .15s ease}'
+                + 'body.is-card-dragging{user-select:none;-webkit-user-select:none;cursor:grabbing}'
+                + '#home-card-drop-indicator{position:fixed;height:4px;border-radius:4px;background:#2563eb;z-index:60;pointer-events:none;display:none;box-shadow:0 0 8px rgba(37,99,235,.6)}';
+            document.head.appendChild(style);
+
+            const indicator = document.createElement('div');
+            indicator.id = 'home-card-drop-indicator';
+            document.body.appendChild(indicator);
+
+            function kartlar() {
+                return Array.prototype.slice.call(document.querySelectorAll('[data-home-card]'))
+                    .filter(function(el) { return el.offsetParent !== null || el.getClientRects().length > 0; });
+            }
+
+            function siraliAnahtarlar() {
+                return Array.prototype.slice.call(document.querySelectorAll('[data-home-card]'))
+                    .sort(function(a, b) { return (parseInt(a.style.order, 10) || 0) - (parseInt(b.style.order, 10) || 0); })
+                    .map(function(el) { return el.getAttribute('data-home-card'); });
+            }
+
+            function hedefBul(clientY, surukleyen) {
+                const liste = kartlar().filter(function(el) { return el !== surukleyen; });
+                for (let i = 0; i < liste.length; i++) {
+                    const r = liste[i].getBoundingClientRect();
+                    if (clientY >= r.top && clientY <= r.bottom) {
+                        return { el: liste[i], ust: clientY < r.top + r.height / 2, rect: r };
+                    }
+                }
+                return null;
+            }
+
+            async function kaydet(siralama) {
+                try {
+                    const formData = new FormData();
+                    formData.append('action', 'update_ana_sayfa_siralama');
+                    formData.append('siralama', JSON.stringify(siralama));
+                    const response = await fetch('api.php', { method: 'POST', body: formData });
+                    const data = await response.json();
+                    if (!data.success) throw new Error(data.message || 'Kaydedilemedi');
+                } catch (err) {
+                    console.error('Ana sayfa sıralama hatası:', err);
+                    if (typeof Toast !== 'undefined') Toast.show('Sıralama kaydedilemedi', 'error');
+                }
+            }
+
+            function surukle(kart, e) {
+                if (e.button && e.button !== 0) return;
+                e.preventDefault();
+                const tutamac = e.currentTarget;
+                let hedef = null;
+                try { tutamac.setPointerCapture(e.pointerId); } catch (err) {}
+                kart.classList.add('home-card-dragging');
+                document.body.classList.add('is-card-dragging');
+                if (navigator.vibrate) { try { navigator.vibrate(12); } catch (err) {} }
+
+                function hareket(ev) {
+                    hedef = hedefBul(ev.clientY, kart);
+                    if (hedef) {
+                        indicator.style.display = 'block';
+                        indicator.style.left = (hedef.rect.left + 16) + 'px';
+                        indicator.style.width = (hedef.rect.width - 32) + 'px';
+                        indicator.style.top = ((hedef.ust ? hedef.rect.top : hedef.rect.bottom) - 2) + 'px';
+                    } else {
+                        indicator.style.display = 'none';
+                    }
+                    if (ev.clientY < 70) window.scrollBy(0, -8);
+                    else if (ev.clientY > window.innerHeight - 70) window.scrollBy(0, 8);
+                }
+
+                function bitir() {
+                    tutamac.removeEventListener('pointermove', hareket);
+                    tutamac.removeEventListener('pointerup', bitir);
+                    tutamac.removeEventListener('pointercancel', iptal);
+                    temizle();
+                    if (!hedef) return;
+                    const anahtar = kart.getAttribute('data-home-card');
+                    const hedefAnahtar = hedef.el.getAttribute('data-home-card');
+                    const sira = siraliAnahtarlar().filter(function(k) { return k !== anahtar; });
+                    const konum = sira.indexOf(hedefAnahtar) + (hedef.ust ? 0 : 1);
+                    sira.splice(konum, 0, anahtar);
+                    sira.forEach(function(k, i) {
+                        const el = document.querySelector('[data-home-card="' + k + '"]');
+                        if (el) el.style.order = i + 1;
+                    });
+                    kaydet(sira);
+                }
+
+                function iptal() {
+                    tutamac.removeEventListener('pointermove', hareket);
+                    tutamac.removeEventListener('pointerup', bitir);
+                    tutamac.removeEventListener('pointercancel', iptal);
+                    hedef = null;
+                    temizle();
+                }
+
+                function temizle() {
+                    kart.classList.remove('home-card-dragging');
+                    document.body.classList.remove('is-card-dragging');
+                    indicator.style.display = 'none';
+                }
+
+                tutamac.addEventListener('pointermove', hareket);
+                tutamac.addEventListener('pointerup', bitir);
+                tutamac.addEventListener('pointercancel', iptal);
+            }
+
+            document.querySelectorAll('[data-home-card]').forEach(function(kart) {
+                const tutamac = document.createElement('div');
+                tutamac.setAttribute('role', 'button');
+                tutamac.setAttribute('aria-label', 'Kartı sürükleyip taşı');
+                tutamac.title = 'Sürükle ve taşı';
+                tutamac.innerHTML = '<span class="material-symbols-outlined">drag_indicator</span>';
+                tutamac.addEventListener('pointerdown', function(e) { surukle(kart, e); });
+
+                const baslik = kart.querySelector('.pwa-card-head');
+                if (baslik) {
+                    tutamac.className = 'pwa-card-handle';
+                    baslik.insertBefore(tutamac, baslik.firstChild);
+                } else {
+                    tutamac.className = 'pwa-card-handle pwa-card-handle--float';
+                    kart.insertBefore(tutamac, kart.firstChild);
+                }
+            });
+        })();
 
         // ===== Hızlı İşlemler Özelleştirme Mantığı =====
         const ALL_ACTION_CATALOG = <?php echo json_encode(array_values($availableQuickActions), JSON_UNESCAPED_UNICODE); ?>;

@@ -14,20 +14,12 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') {
 
 <div class="flex flex-col min-h-screen">
     <!-- Header -->
-        <header
-            class="bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-800 px-4 py-4 sticky top-0 z-30">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h1 class="text-xl font-bold text-slate-900 dark:text-white">Bordrolar</h1>
-                    <p class="text-sm text-slate-500">Kazançlarınızı inceleyin</p>
-                </div>
-                <button onclick="openNewAvansModal()" id="avans-yeni-btn"
-                    class="btn-primary flex items-center gap-2 px-4 py-2.5 text-sm">
-                    <span class="material-symbols-outlined text-lg">add_card</span>
-                    <span>Avans</span>
-                </button>
-            </div>
-        </header>
+        <?php pwaPageHeader([
+        'eyebrow' => 'KAZANÇLARIM',
+        'title' => 'Bordrolar',
+        'subtitle' => 'Kazançlarınızı inceleyin',
+        'actions' => '<button type="button" onclick="openNewAvansModal()" id="avans-yeni-btn" class="pwa-circle-btn pwa-circle-btn--primary" aria-label="Avans Talebi" title="Avans Talebi"><span class="material-symbols-outlined">add_card</span></button>',
+    ]); ?>
 
         <?php if (false): ?>
         <!-- Stats Summary -->
@@ -54,7 +46,7 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') {
 
         <!-- Tab Navigation -->
         <div
-            class="px-4 py-2 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-800 sticky top-[73px] z-20">
+            class="px-4 py-2 pwa-toolbar">
             <div class="flex gap-2">
                 <button onclick="changeTab('bordro')" class="tab-btn active px-4 py-2 text-sm font-semibold rounded-lg" data-tab="bordro">Resmî Bordrolar</button>
                 <button onclick="changeTab('avans')"

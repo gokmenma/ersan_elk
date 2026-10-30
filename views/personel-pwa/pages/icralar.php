@@ -5,17 +5,40 @@
 ?>
 
 <div class="flex flex-col min-h-screen">
-    <header class="bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-800 px-4 py-4 sticky top-0 z-30">
-        <div class="flex items-center justify-between">
-            <div>
-                <h1 class="text-xl font-bold text-slate-900 dark:text-white">İcralarım</h1>
-                <p class="text-sm text-slate-500">İcra ve haciz dosyalarınız</p>
+    <?php pwaPageHeader(['eyebrow' => 'DOSYALARIM', 'title' => 'İcralarım', 'subtitle' => 'İcra ve haciz dosyalarınız', 'back' => '?page=ana-sayfa']); ?>
+
+    <section class="px-4 pb-3" id="icra-ozet" style="display:none">
+        <div class="pwa-hero-dark">
+            <div class="pwa-hero-dark__top">
+                <div>
+                    <span class="pwa-hero-dark__eyebrow">İCRA ÖZETİ</span>
+                    <h2 class="pwa-hero-dark__value" id="icra-ozet-kalan">₺0,00</h2>
+                    <p class="pwa-hero-dark__sub" id="icra-ozet-sub">Toplam kalan borç</p>
+                </div>
+                <span class="pwa-hero-dark__icon"><span class="material-symbols-outlined">gavel</span></span>
+            </div>
+            <div class="pwa-hero-dark__stats" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+                <div class="pwa-hero-dark__stat">
+                    <span class="material-symbols-outlined">folder_open</span>
+                    <strong id="icra-ozet-borc" style="font-size:14px">₺0,00</strong>
+                    <small>Toplam Borç</small>
+                </div>
+                <div class="pwa-hero-dark__stat">
+                    <span class="material-symbols-outlined">payments</span>
+                    <strong id="icra-ozet-kesilen" style="font-size:14px">₺0,00</strong>
+                    <small>Toplam Kesilen</small>
+                </div>
+                <div class="pwa-hero-dark__stat">
+                    <span class="material-symbols-outlined">percent</span>
+                    <strong id="icra-ozet-yuzde" style="font-size:14px">%0</strong>
+                    <small>Ödenen</small>
+                </div>
             </div>
         </div>
-    </header>
+    </section>
 
     <!-- Content Area -->
-    <div class="flex-1 px-4 py-4 bg-slate-50 dark:bg-background-dark">
+    <div class="flex-1 px-4 pb-4">
         <div class="flex flex-col gap-3" id="icralar-list">
             <!-- Loading Skeletons -->
             <div class="card p-4">
@@ -94,6 +117,17 @@
             const response = await API.request('getIcralar');
 
             if (response.success && response.data.length > 0) {
+                const toplamBorc = response.data.reduce((t, i) => t + parseFloat(i.toplam_borc || 0), 0);
+                const toplamKalan = response.data.reduce((t, i) => t + parseFloat(i.kalan_tutar || 0), 0);
+                const toplamKesilen = Math.max(0, toplamBorc - toplamKalan);
+                const devamSayi = response.data.filter(i => i.durum !== 'bitti').length;
+                const toplamYuzde = toplamBorc > 0 ? Math.min(100, Math.round((toplamKesilen / toplamBorc) * 100)) : 0;
+                document.getElementById('icra-ozet-kalan').textContent = Format.currency(toplamKalan);
+                document.getElementById('icra-ozet-sub').textContent = `Toplam kalan borç · ${response.data.length} dosya, ${devamSayi} devam ediyor`;
+                document.getElementById('icra-ozet-borc').textContent = Format.currency(toplamBorc);
+                document.getElementById('icra-ozet-kesilen').textContent = Format.currency(toplamKesilen);
+                document.getElementById('icra-ozet-yuzde').textContent = '%' + toplamYuzde;
+                document.getElementById('icra-ozet').style.display = '';
                 container.innerHTML = response.data.map(icra => {
                     const isBitti = icra.durum === 'bitti';
                     const durumRenk = isBitti ? 'emerald' : 'rose';

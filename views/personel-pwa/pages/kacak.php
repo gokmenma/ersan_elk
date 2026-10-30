@@ -17,20 +17,13 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
 <div class="flex flex-col min-h-screen bg-slate-50 dark:bg-background-dark pb-20">
 
     <!-- Minimal başlık -->
-    <header
-        class="bg-white dark:bg-card-dark px-4 pt-4 pb-3 sticky top-0 z-30 border-b border-slate-200 dark:border-slate-800">
-        <div class="flex items-center justify-between gap-3">
-            <div>
-                <h1 class="text-lg font-bold text-slate-800 dark:text-white">Kaçak İşlemleri</h1>
-                <p class="text-xs text-slate-400 mt-1" id="kacak-ozet-satiri">Yükleniyor...</p>
-            </div>
-            <button onclick="openKacakBildirModal()"
-                class="flex items-center gap-1 bg-primary text-white px-4 py-2 rounded-xl font-bold text-sm">
-                <span class="material-symbols-outlined text-lg">add</span>
-                <span>Bildir</span>
-            </button>
-        </div>
-    </header>
+    <?php pwaPageHeader([
+        'eyebrow' => 'KAÇAK KONTROL',
+        'title' => 'Kaçak İşlemleri',
+        'subtitle' => 'Yükleniyor...',
+        'subtitle_id' => 'kacak-ozet-satiri',
+        'actions' => '<button type="button" onclick="openKacakBildirModal()" class="pwa-circle-btn pwa-circle-btn--primary" aria-label="Kaçak Bildir" title="Kaçak Bildir"><span class="material-symbols-outlined">add</span></button>',
+    ]); ?>
 
     <!-- Çevrimdışı kuyruk durumu -->
     <section id="kacak-kuyruk-serit" class="px-4 pt-4" style="display:none">
@@ -56,41 +49,106 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
         </div>
     </section>
 
-    <!-- Dönem -->
-    <section class="px-4 pt-4">
-        <div class="flex items-center gap-2">
-            <input type="date" id="kacak-bas" class="flex-1 px-3 py-2 rounded-xl bg-white dark:bg-card-dark
-                border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-800 dark:text-white">
-            <input type="date" id="kacak-bit" class="flex-1 px-3 py-2 rounded-xl bg-white dark:bg-card-dark
-                border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-800 dark:text-white">
-            <button onclick="loadKacakKayitlar()"
-                class="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center">
-                <span class="material-symbols-outlined text-lg">search</span>
-            </button>
+    <!-- Özet Kartı -->
+    <section class="kcp-section">
+        <div class="kcp-hero">
+            <div class="kcp-hero__top">
+                <div>
+                    <div class="kcp-hero__total" id="kcp-sum-toplam">0</div>
+                    <div class="kcp-hero__label">toplam tutanak</div>
+                </div>
+                <div class="kcp-hero__rate">
+                    <strong id="kcp-sum-oran">%0</strong>
+                    <span>Onay Oranı</span>
+                </div>
+            </div>
+            <div class="kcp-hero__bar">
+                <span id="kcp-seg-beklemede" style="background:#fbbf24;width:0"></span>
+                <span id="kcp-seg-onaylandi" style="background:#34d399;width:0"></span>
+                <span id="kcp-seg-reddedildi" style="background:#f87171;width:0"></span>
+            </div>
+            <div class="kcp-hero__grid">
+                <div><small><i style="background:#fbbf24"></i>Bekleyen</small><b id="kcp-sum-beklemede">0</b></div>
+                <div><small><i style="background:#34d399"></i>Onaylı</small><b id="kcp-sum-onaylandi">0</b></div>
+                <div><small><i style="background:#f87171"></i>Red</small><b id="kcp-sum-reddedildi">0</b></div>
+            </div>
         </div>
     </section>
 
-    <!-- Filtre sekmeleri -->
-    <section class="px-4 pt-4 mb-3">
-        <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-            <button onclick="filterKacak('all', this)"
-                class="kacak-tab flex-1 py-2 rounded-xl text-xs font-bold text-primary bg-white dark:bg-card-dark">Tümü</button>
-            <button onclick="filterKacak('beklemede', this)"
-                class="kacak-tab flex-1 py-2 rounded-xl text-xs font-bold text-slate-500">Bekleyen</button>
-            <button onclick="filterKacak('onaylandi', this)"
-                class="kacak-tab flex-1 py-2 rounded-xl text-xs font-bold text-slate-500">Onaylı</button>
-            <button onclick="filterKacak('reddedildi', this)"
-                class="kacak-tab flex-1 py-2 rounded-xl text-xs font-bold text-slate-500">Red</button>
+    <!-- Dönem ve filtre -->
+    <section class="kcp-section">
+        <div class="kcp-filter-card">
+            <div class="flex items-center gap-2">
+                <input type="date" id="kacak-bas" class="kcp-date">
+                <input type="date" id="kacak-bit" class="kcp-date">
+                <button onclick="loadKacakKayitlar()" aria-label="Ara"
+                    class="pwa-circle-btn pwa-circle-btn--primary" style="width:44px;height:44px;flex-shrink:0">
+                    <span class="material-symbols-outlined text-lg">search</span>
+                </button>
+            </div>
+            <div class="kcp-chips">
+                <button type="button" onclick="filterKacak('all', this)" class="kacak-tab kcp-chip active">Tümü</button>
+                <button type="button" onclick="filterKacak('beklemede', this)" class="kacak-tab kcp-chip"><i style="background:#f59e0b"></i>Bekleyen</button>
+                <button type="button" onclick="filterKacak('onaylandi', this)" class="kacak-tab kcp-chip"><i style="background:#10b981"></i>Onaylı</button>
+                <button type="button" onclick="filterKacak('reddedildi', this)" class="kacak-tab kcp-chip"><i style="background:#ef4444"></i>Red</button>
+            </div>
         </div>
     </section>
 
     <!-- Liste -->
-    <section class="px-4 flex-1">
-        <div id="kacak-list" class="space-y-3">
+    <section class="px-4 pt-4 flex-1">
+        <div id="kacak-list" class="kcp-list">
             <div class="text-center py-10 text-sm text-slate-400">Yükleniyor...</div>
         </div>
     </section>
 </div>
+
+<style>
+    .kcp-section { padding: 16px 16px 0; }
+    .kcp-list { display: flex; flex-direction: column; gap: 14px; }
+    #kacak-transfer-panel:empty { display: none; }
+
+    .kcp-hero { background: #191d24; color: #fff; border-radius: 28px; padding: 20px; box-shadow: 0 8px 20px -10px rgba(0, 0, 0, .35); }
+    .kcp-hero__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .kcp-hero__total { font-size: 40px; font-weight: 800; line-height: 1; }
+    .kcp-hero__label { font-size: 12px; color: rgba(255, 255, 255, .6); margin-top: 6px; font-weight: 600; }
+    .kcp-hero__rate { background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .08); border-radius: 16px; padding: 8px 12px; text-align: center; }
+    .kcp-hero__rate strong { display: block; font-size: 16px; font-weight: 800; color: #34d399; }
+    .kcp-hero__rate span { font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: rgba(255, 255, 255, .6); }
+    .kcp-hero__bar { display: flex; gap: 4px; height: 8px; margin: 18px 0 16px; }
+    .kcp-hero__bar span { display: block; height: 100%; border-radius: 999px; transition: width .3s ease; }
+    .kcp-hero__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .kcp-hero__grid > div { background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .08); border-radius: 16px; padding: 10px 6px; text-align: center; }
+    .kcp-hero__grid small { display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 10px; font-weight: 700; color: rgba(255, 255, 255, .6); }
+    .kcp-hero__grid small i { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+    .kcp-hero__grid b { display: block; font-size: 18px; font-weight: 800; margin-top: 4px; }
+
+    .kcp-filter-card { background: #fff; border-radius: 24px; padding: 14px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 6px 16px -10px rgba(15, 23, 42, .18); border: 1px solid rgba(255, 255, 255, .9); }
+    .dark .kcp-filter-card { background: #1a2130; border-color: #334155; }
+    .kcp-date { flex: 1; min-width: 0; padding: 10px 12px; border-radius: 14px; background: #f8fafc; border: 1px solid #e2e8f0; font-size: 12px; font-weight: 600; color: #0f172a; }
+    .dark .kcp-date { background: #0f172a; border-color: #334155; color: #fff; }
+    .kcp-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+    .kcp-chip { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px; font-size: 12px; font-weight: 700; background: #fff; color: #64748b; border: 1px solid #e2e8f0; }
+    .kcp-chip i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .dark .kcp-chip { background: #1e293b; color: #94a3b8; border-color: #334155; }
+    .kcp-chip.active { background: #dc2626; color: #fff; border-color: #dc2626; box-shadow: 0 2px 6px rgba(220, 38, 38, .35); }
+
+    .kcp-card { background: #fff; border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 10px; cursor: pointer; box-shadow: 0 6px 16px -10px rgba(15, 23, 42, .18); border: 1px solid rgba(255, 255, 255, .9); transition: transform .15s ease; }
+    .kcp-card:active { transform: scale(.985); }
+    .dark .kcp-card { background: #1a2130; border-color: #334155; }
+    .kcp-card__head { display: flex; align-items: center; gap: 10px; }
+    .kcp-card__icon { width: 36px; height: 36px; border-radius: 12px; background: #fef2f2; color: #dc2626; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .kcp-card__icon .material-symbols-outlined { font-size: 20px; }
+    .kcp-card__title { flex: 1; min-width: 0; font-size: 14px; font-weight: 800; color: #0f172a; line-height: 1.25; }
+    .dark .kcp-card__title { color: #fff; }
+    .kcp-card__title small { display: block; font-size: 11px; font-weight: 600; color: #64748b; margin-top: 2px; }
+    .kcp-card__tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .kcp-tag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; font-size: 10px; font-weight: 700; background: #f1f5f9; color: #475569; }
+    .kcp-card__red { font-size: 12px; color: #b91c1c; background: #fef2f2; border-radius: 12px; padding: 8px 10px; }
+    .kcp-card__foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 10px; border-top: 1px solid #f1f5f9; font-size: 11px; color: #94a3b8; }
+    .dark .kcp-card__foot { border-top-color: #334155; }
+    .kcp-card__actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+</style>
 
 <!-- ============ BİLDİRİM MODALI ============ -->
 <div id="kacak-bildir-modal" class="modal-overlay" style="z-index: 200;">
@@ -572,9 +630,10 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 reddedildi: ['text-red-600', 'Reddedildi']
             };
             const [renk, etiket] = map[k.onay_durumu] || map.beklemede;
-            let html = `<span class="text-xs font-bold ${renk}">${etiket}</span>`;
+            const rozet = { beklemede: 'badge-warning', onaylandi: 'badge-success', reddedildi: 'badge-danger' }[k.onay_durumu] || 'badge-warning';
+            let html = `<span class="badge ${rozet}">${etiket}</span>`;
             if (k.durum === 'iptal') {
-                html += ` <span class="text-xs font-bold text-slate-400">· İPTAL</span>`;
+                html += ` <span class="badge badge-gray">İPTAL</span>`;
             }
             return html;
         }
@@ -586,33 +645,43 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 'Usülsüz': 'text-blue-600',
                 'Pasif Abone': 'text-purple-600'
             };
-            const turRenk = turRenkMap[k.tur] || 'text-amber-600';
-            const fotoSatiri = parseInt(k.foto_sayisi || 0, 10) > 0
-                ? `<span class="text-xs text-slate-400">· ${k.foto_sayisi} belge</span>` : '';
-            const redSatiri = (k.onay_durumu === 'reddedildi' && k.red_nedeni)
-                ? `<p class="text-xs text-red-600 mt-2">Red nedeni: ${esc(k.red_nedeni)}</p>` : '';
-            const duzenleBtn = k.duzenlenebilir
-                ? `<div class="grid grid-cols-2 gap-2 mt-3"><button type="button" onclick="event.stopPropagation(); kacakDuzenle('${esc(k.edit_token)}')"
-                    class="py-2 rounded-xl bg-primary/10 text-primary text-xs font-bold flex items-center justify-center gap-1"><span class="material-symbols-outlined text-base">edit</span>Düzenle</button><button type="button" onclick="event.stopPropagation(); kacakSil('${esc(k.edit_token)}')" class="py-2 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 text-xs font-bold flex items-center justify-center gap-1"><span class="material-symbols-outlined text-base">delete</span>Sil</button></div>` : '';
+            const turRenk = turRenkMap[k.tur] || '';
             const medyaBtn = k.medya_eklenebilir
                 ? `<button type="button" onclick="event.stopPropagation(); kacakMedyaAc(${parseInt(k.id, 10)})"
-                    class="w-full mt-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold flex items-center justify-center gap-1"><span class="material-symbols-outlined text-base">add_a_photo</span>Fotoğraf / Video / Açıklama Ekle</button>` : '';
+                    class="w-full py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold flex items-center justify-center gap-1"><span class="material-symbols-outlined text-base">add_a_photo</span>Fotoğraf / Video / Açıklama Ekle</button>` : '';
 
             return `
-            <div onclick="kacakDetayAc(${k.id})"
-                class="bg-white dark:bg-card-dark p-4 rounded-xl border border-slate-200 dark:border-slate-800">
-                <div class="flex items-center justify-between gap-3">
-                    <span class="text-sm font-black ${turRenk}">${esc(k.tur)}</span>
-                    ${durumRozeti(k)}
+            <div onclick="kacakDetayAc(${parseInt(k.id, 10)})" class="kcp-card">
+                <div class="kcp-card__head">
+                    <span class="kcp-card__icon"><span class="material-symbols-outlined">gpp_maybe</span></span>
+                    <p class="kcp-card__title">${esc(k.abone_adi || 'Abone belirtilmemiş')}<small>${esc(k.ilce || 'İlçe yok')} · No: ${esc(k.tutanak_no || '-')}</small></p>
+                    <div class="flex flex-col items-end gap-1">${durumRozeti(k)}</div>
                 </div>
-                <p class="text-sm font-bold text-slate-800 dark:text-white mt-2">${esc(k.abone_adi || 'Abone belirtilmemiş')}</p>
-                <p class="text-xs text-slate-400 mt-1">
-                    ${esc(k.tarih_formatted)} · ${esc(k.ilce || 'İlçe yok')} · No: ${esc(k.tutanak_no || '-')} ${fotoSatiri}
-                </p>
-                ${redSatiri}
-                ${duzenleBtn}
+                <div class="kcp-card__tags">
+                    <span class="kcp-tag ${turRenk}">${esc(k.tur)}</span>
+                    ${parseInt(k.foto_sayisi || 0, 10) > 0 ? `<span class="kcp-tag">${parseInt(k.foto_sayisi, 10)} belge</span>` : ''}
+                </div>
+                ${(k.onay_durumu === 'reddedildi' && k.red_nedeni) ? `<p class="kcp-card__red">Red nedeni: ${esc(k.red_nedeni)}</p>` : ''}
+                ${k.duzenlenebilir ? `<div class="kcp-card__actions"><button type="button" onclick="event.stopPropagation(); kacakDuzenle('${esc(k.edit_token)}')"
+                    class="py-2 rounded-xl bg-primary/10 text-primary text-xs font-bold flex items-center justify-center gap-1"><span class="material-symbols-outlined text-base">edit</span>Düzenle</button><button type="button" onclick="event.stopPropagation(); kacakSil('${esc(k.edit_token)}')" class="py-2 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 text-xs font-bold flex items-center justify-center gap-1"><span class="material-symbols-outlined text-base">delete</span>Sil</button></div>` : ''}
                 ${medyaBtn}
+                <div class="kcp-card__foot"><span>${esc(k.tarih_formatted)}</span></div>
             </div>`;
+        }
+
+        function kacakOzetKartiniYaz() {
+            const sayi = d => kacakKayitlar.filter(k => k.onay_durumu === d).length;
+            const toplam = kacakKayitlar.length;
+            const v = { beklemede: sayi('beklemede'), onaylandi: sayi('onaylandi'), reddedildi: sayi('reddedildi') };
+            const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+            set('kcp-sum-toplam', toplam);
+            const sonuc = v.onaylandi + v.reddedildi;
+            set('kcp-sum-oran', '%' + (sonuc ? Math.round(v.onaylandi / sonuc * 100) : 0));
+            Object.keys(v).forEach(d => {
+                set('kcp-sum-' + d, v[d]);
+                const seg = document.getElementById('kcp-seg-' + d);
+                if (seg) seg.style.width = (toplam ? v[d] / toplam * 100 : 0) + '%';
+            });
         }
 
         function listeyiCiz() {
@@ -631,9 +700,11 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 : kacakKayitlar.filter(k => k.onay_durumu === aktifFiltre)
             ).filter(k => !k.client_uuid || !kuyruktakiUuidler.has(k.client_uuid));
 
+            kacakOzetKartiniYaz();
+
             const el = document.getElementById('kacak-list');
             el.innerHTML = (liste.length === 0 && kuyruk.length === 0)
-                ? '<div class="text-center py-10 text-sm text-slate-400">Kayıt bulunamadı</div>'
+                ? '<div class="empty-state"><div class="empty-state-icon"><span class="material-symbols-outlined">gpp_maybe</span></div><p class="text-slate-600 dark:text-slate-400 font-medium">Kayıt bulunamadı</p><p class="text-sm text-slate-500">Seçili dönemde kaçak kaydı yok.</p></div>'
                 : liste.map(kartHtml).join('');
         }
 
@@ -767,10 +838,8 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
 
         window.filterKacak = function (durum, btn) {
             aktifFiltre = durum;
-            document.querySelectorAll('.kacak-tab').forEach(b => {
-                b.className = 'kacak-tab flex-1 py-2 rounded-xl text-xs font-bold text-slate-500';
-            });
-            btn.className = 'kacak-tab flex-1 py-2 rounded-xl text-xs font-bold text-primary bg-white dark:bg-card-dark';
+            document.querySelectorAll('.kacak-tab').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
             listeyiCiz();
         };
 

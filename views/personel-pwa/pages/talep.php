@@ -7,68 +7,58 @@
 
 <div class="flex flex-col min-h-screen">
     <!-- Header -->
-    <header
-        class="bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-800 px-4 py-4 sticky top-0 z-30">
-        <div class="flex items-center justify-between">
-            <div>
-                <h1 class="text-xl font-bold text-slate-900 dark:text-white">Talepler</h1>
-                <p class="text-sm text-slate-500">Taleplerinizi takip edin</p>
-            </div>
-            <button onclick="openNewTalepModal()" class="btn-primary flex items-center gap-2 px-4 py-2.5 text-sm">
-                <span class="material-symbols-outlined text-lg">add_circle</span>
-                <span>Bildir</span>
-            </button>
-        </div>
-    </header>
+    <?php pwaPageHeader([
+        'eyebrow' => 'TALEP YÖNETİMİ',
+        'title' => 'Talepler',
+        'subtitle' => 'Taleplerinizi takip edin',
+        'actions' => '<button type="button" onclick="openNewTalepModal()" class="pwa-circle-btn pwa-circle-btn--primary" aria-label="Talep Bildir" title="Talep Bildir"><span class="material-symbols-outlined">add_circle</span></button>',
+    ]); ?>
 
-    <!-- Stats Summary -->
-    <section class="px-4 py-4 bg-slate-50 dark:bg-background-dark">
-        <div class="grid grid-cols-3 gap-3">
-            <div class="card p-3 text-center">
-                <div class="flex items-center justify-center gap-2 mb-1">
-                    <span class="material-symbols-outlined text-primary text-lg">pending_actions</span>
+    <section class="px-4 pb-3">
+        <div class="pwa-hero-dark">
+            <div class="pwa-hero-dark__top">
+                <div>
+                    <span class="pwa-hero-dark__eyebrow">TALEP MERKEZİ</span>
+                    <h2 class="pwa-hero-dark__value"><span id="acik-talepler">0</span> açık talep</h2>
+                    <p class="pwa-hero-dark__sub">Bildirdiğiniz talepler burada takip edilir</p>
                 </div>
-                <p class="text-xl font-bold text-slate-900 dark:text-white" id="acik-talepler">0</p>
-                <p class="text-[10px] text-slate-500">Açık Talep</p>
+                <span class="pwa-hero-dark__icon"><span class="material-symbols-outlined">assignment</span></span>
             </div>
-            <div class="card p-3 text-center">
-                <div class="flex items-center justify-center gap-2 mb-1">
-                    <span class="material-symbols-outlined text-green-500 text-lg">check_circle</span>
+            <div class="pwa-hero-dark__stats">
+                <div class="pwa-hero-dark__stat">
+                    <span class="material-symbols-outlined">check_circle</span>
+                    <strong id="cozulen-talepler">0</strong>
+                    <small>Bu Ay Çözülen</small>
                 </div>
-                <p class="text-xl font-bold text-slate-900 dark:text-white" id="cozulen-talepler">0</p>
-                <p class="text-[10px] text-slate-500">Bu Ay Çözülen</p>
-            </div>
-            <div class="card p-3 text-center bg-primary/5 border-primary/20">
-                <div class="flex items-center justify-center gap-2 mb-1">
-                    <span class="material-symbols-outlined text-primary text-lg">timer</span>
+                <div class="pwa-hero-dark__stat">
+                    <span class="material-symbols-outlined">timer</span>
+                    <strong id="ort-sure">0</strong>
+                    <small>Ort. Süre (Saat)</small>
                 </div>
-                <p class="text-xl font-bold text-primary" id="ort-sure">0</p>
-                <p class="text-[10px] text-primary">Ort. Süre (Saat)</p>
             </div>
         </div>
     </section>
 
-    <!-- Tab Navigation -->
-    <div
-        class="px-4 py-2 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-800 sticky top-[73px] z-20">
-        <div class="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
-            <button onclick="changeTalepTab('tum')"
-                class="talep-tab-btn active flex-1 py-2 text-sm font-semibold rounded-md" data-tab="tum">
-                Tümü
+    <div class="px-4 pb-3">
+        <div class="pwa-pill-row" role="tablist" aria-label="Talep filtresi">
+            <button type="button" role="tab" onclick="changeTalepTab('tum')" class="talep-tab-btn pwa-filter-pill is-active" data-tab="tum">
+                <span class="material-symbols-outlined">apps</span>Tümü <em data-talep-sayi="tum">0</em>
             </button>
-            <button onclick="changeTalepTab('devam')"
-                class="talep-tab-btn flex-1 py-2 text-sm font-medium rounded-md text-slate-500" data-tab="devam">
-                Devam Eden
+            <button type="button" role="tab" onclick="changeTalepTab('devam')" class="talep-tab-btn pwa-filter-pill" data-tab="devam">
+                <span class="material-symbols-outlined">schedule</span>Devam Eden <em data-talep-sayi="devam">0</em>
             </button>
-            <button onclick="changeTalepTab('cozuldu')"
-                class="talep-tab-btn flex-1 py-2 text-sm font-medium rounded-md text-slate-500" data-tab="cozuldu">
-                Çözüldü
+            <button type="button" role="tab" onclick="changeTalepTab('cozuldu')" class="talep-tab-btn pwa-filter-pill" data-tab="cozuldu">
+                <span class="material-symbols-outlined">task_alt</span>Çözüldü <em data-talep-sayi="cozuldu">0</em>
             </button>
         </div>
+        <label class="pwa-search-bar">
+            <span class="material-symbols-outlined">search</span>
+            <input type="search" id="talep-search" placeholder="Referans, başlık veya konum ara…" aria-label="Taleplerde ara" autocomplete="off">
+        </label>
     </div>
 
     <!-- Talep List -->
-    <div class="flex-1 px-4 py-4">
+    <div class="flex-1 px-4 pb-4">
         <div class="flex flex-col gap-3" id="talep-list">
             <!-- Talep items will be loaded here -->
             <div class="shimmer h-20 rounded-xl"></div>
@@ -230,16 +220,6 @@
 </div>
 
 <style>
-    .talep-tab-btn.active {
-        background: white;
-        color: var(--primary);
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-
-    .dark .talep-tab-btn.active {
-        background: #1a2130;
-    }
-
     .kategori-chip.active {
         background: rgba(var(--primary-rgb), 0.1);
         border-color: var(--primary);
@@ -332,10 +312,25 @@
         const container = document.getElementById('talep-list');
         let filtered = taleplerData;
 
+        const sayilar = {
+            tum: taleplerData.length,
+            devam: taleplerData.filter(a => a.durum !== 'cozuldu').length,
+            cozuldu: taleplerData.filter(a => a.durum === 'cozuldu').length
+        };
+        document.querySelectorAll('[data-talep-sayi]').forEach(el => {
+            el.textContent = sayilar[el.getAttribute('data-talep-sayi')];
+        });
+
         if (currentTalepTab === 'devam') {
             filtered = taleplerData.filter(a => a.durum !== 'cozuldu');
         } else if (currentTalepTab === 'cozuldu') {
             filtered = taleplerData.filter(a => a.durum === 'cozuldu');
+        }
+
+        const aramaKutusu = document.getElementById('talep-search');
+        const terim = aramaKutusu ? aramaKutusu.value.toLocaleLowerCase('tr-TR').trim() : '';
+        if (terim) {
+            filtered = filtered.filter(a => [a.ref_no, a.baslik, a.konum].join(' ').toLocaleLowerCase('tr-TR').includes(terim));
         }
 
         if (filtered.length === 0) {
@@ -389,18 +384,27 @@
     `).join('');
     }
 
+    document.addEventListener('DOMContentLoaded', () => {
+        const aramaKutusu = document.getElementById('talep-search');
+        if (aramaKutusu) {
+            aramaKutusu.addEventListener('input', () => {
+                if (taleplerData.length) renderTalepler();
+            });
+        }
+    });
+
     function changeTalepTab(tab) {
         currentTalepTab = tab;
 
         // Update tab buttons
         document.querySelectorAll('.talep-tab-btn').forEach(btn => {
-            btn.classList.remove('active');
-            btn.classList.add('text-slate-500');
+            btn.classList.remove('is-active');
+            btn.setAttribute('aria-selected', 'false');
         });
 
-        const activeBtn = document.querySelector(`[data-tab="${tab}"]`);
-        activeBtn.classList.add('active');
-        activeBtn.classList.remove('text-slate-500');
+        const activeBtn = document.querySelector(`.talep-tab-btn[data-tab="${tab}"]`);
+        activeBtn.classList.add('is-active');
+        activeBtn.setAttribute('aria-selected', 'true');
 
         renderTalepler();
     }

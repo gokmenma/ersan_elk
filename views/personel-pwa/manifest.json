@@ -6,67 +6,24 @@
   "start_url": "index.php",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#f6f6f8",
+  "background_color": "#191d24",
   "theme_color": "#135bec",
   "lang": "tr",
   "icons": [
     {
-      "src": "assets/icons/icon-72.png",
-      "sizes": "72x72",
-      "type": "image/png"
-    },
-    {
-      "src": "assets/icons/icon-96.png",
-      "sizes": "96x96",
-      "type": "image/png"
-    },
-    {
-      "src": "assets/icons/icon-128.png",
-      "sizes": "128x128",
-      "type": "image/png"
-    },
-    {
-      "src": "assets/icons/icon-144-new.png",
-      "sizes": "144x144",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "assets/icons/icon-144-new.png",
-      "sizes": "144x144",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "assets/icons/icon-152.png",
-      "sizes": "152x152",
-      "type": "image/png"
-    },
-    {
-      "src": "assets/icons/icon-192-new.png",
+      "src": "assets/icons/app-192.png?v=2",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "assets/icons/icon-192-new.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "assets/icons/icon-384.png",
-      "sizes": "384x384",
-      "type": "image/png"
-    },
-    {
-      "src": "assets/icons/icon-512-new.png",
+      "src": "assets/icons/app-512.png?v=2",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "assets/icons/icon-512-new.png",
+      "src": "assets/icons/app-maskable-512.png?v=2",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
@@ -81,21 +38,34 @@
       "label": "Ana Sayfa"
     }
   ],
-  "categories": ["business", "productivity"],
+  "categories": [
+    "business",
+    "productivity"
+  ],
   "shortcuts": [
     {
       "name": "İzin Talebi",
       "short_name": "İzin",
       "description": "Yeni izin talebi oluştur",
       "url": "index.php?page=izin",
-      "icons": [{ "src": "assets/icons/shortcut-izin.png", "sizes": "96x96" }]
+      "icons": [
+        {
+          "src": "assets/icons/shortcut-izin.png",
+          "sizes": "96x96"
+        }
+      ]
     },
     {
       "name": "Talep Oluştur",
       "short_name": "Talep",
       "description": "Yeni talep bildirimi",
       "url": "index.php?page=talep",
-      "icons": [{ "src": "assets/icons/shortcut-ariza.png", "sizes": "96x96" }]
+      "icons": [
+        {
+          "src": "assets/icons/shortcut-ariza.png",
+          "sizes": "96x96"
+        }
+      ]
     }
   ],
   "related_applications": [],

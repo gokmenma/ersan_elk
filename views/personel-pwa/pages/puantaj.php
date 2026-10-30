@@ -63,34 +63,28 @@ if ($isKacakKontrol && $hasKacak) {
 
 <div class="flex flex-col min-h-screen pb-8">
     <!-- Header -->
-    <header class="bg-gradient-primary text-white px-4 pt-6 pb-16 relative overflow-hidden">
-        <!-- Background Pattern -->
-        <div class="absolute inset-0 opacity-10">
-            <div class="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -mr-32 -mt-32"></div>
-            <div class="absolute bottom-0 left-0 w-40 h-40 bg-white rounded-full -ml-20 mb-10"></div>
-        </div>
+    <?php pwaPageHeader([
+        'eyebrow' => 'SAHA',
+        'title' => 'İş Takip',
+        'subtitle' => 'Günlük iş ve puantaj durumunuz',
+        'actions' => '<button type="button" onclick="toggleDarkMode()" class="pwa-circle-btn" aria-label="Tema değiştir" title="Tema değiştir"><span class="material-symbols-outlined" id="theme-icon">dark_mode</span></button>',
+    ]); ?>
 
-        <div class="relative z-10 flex items-center justify-between">
-            <h1 class="text-xl font-bold">İş Takip</h1>
-            <button onclick="toggleDarkMode()"
-                class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                <span class="material-symbols-outlined" id="theme-icon">dark_mode</span>
-            </button>
-        </div>
-    </header>
-
-    <!-- Stats Card -->
-    <section class="px-4 -mt-10 relative z-20">
-        <div class="card p-5">
-            <div class="grid grid-cols-2 gap-3 text-center">
+    <section class="px-4">
+        <div class="pwa-hero-dark">
+            <div class="pwa-hero-dark__top">
                 <div>
-                    <p class="text-2xl font-bold text-red-600" id="sonuclanan-is">-</p>
-                    <p class="text-xs text-slate-500" id="label-toplam">Toplam İş</p>
-                    <p class="text-[10px] text-slate-400 font-medium mt-0.5" id="label-date"></p>
+                    <span class="pwa-hero-dark__eyebrow">İŞ TAKİP MERKEZİ</span>
+                    <h2 class="pwa-hero-dark__value"><span id="sonuclanan-is">-</span> <span class="pwa-hero-dark__unit" id="label-toplam">Toplam İş</span></h2>
+                    <p class="pwa-hero-dark__sub" id="label-date"></p>
                 </div>
-                <div>
-                    <p class="text-2xl font-bold text-green-600" id="toplam-is">-</p>
-                    <p class="text-xs text-slate-500" id="label-sonuclanan">Sonuçlanan</p>
+                <span class="pwa-hero-dark__icon"><span class="material-symbols-outlined">checklist</span></span>
+            </div>
+            <div class="pwa-hero-dark__stats pwa-hero-dark__stats--single">
+                <div class="pwa-hero-dark__stat">
+                    <span class="material-symbols-outlined">task_alt</span>
+                    <strong id="toplam-is">-</strong>
+                    <small id="label-sonuclanan">Sonuçlanan</small>
                 </div>
             </div>
         </div>
@@ -98,7 +92,7 @@ if ($isKacakKontrol && $hasKacak) {
 
     <!-- Tab Navigation -->
     <section class="px-4 mt-4">
-        <div class="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+        <div class="pwa-seg">
             <?php if ($isKacakKontrol): ?>
                 <?php if ($hasKacak): ?>
                 <button onclick="switchTab('kacak')" id="tab-btn-kacak" 
@@ -166,7 +160,7 @@ if ($isKacakKontrol && $hasKacak) {
 
 
     <!-- Filter Section -->
-    <section class="px-4 mt-6">
+    <section class="px-4 mt-4">
         <div class="flex flex-col gap-3">
             <!-- Defter Sorgulama Toggle (Yellow Area) -->
             <?php if ($isEndeksOkuma): ?>

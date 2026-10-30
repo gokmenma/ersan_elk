@@ -2425,6 +2425,34 @@ class PersonelModel extends Model
         return $stmt->execute([$json, $personelId]);
     }
 
+    public const PWA_ANA_SAYFA_KARTLARI = ['etkinlik', 'gorev', 'km', 'performans', 'ozet', 'hizli'];
+
+    public function getAnaSayfaSiralama(int $personelId): array
+    {
+        $stmt = $this->db->prepare("SELECT pwa_ana_sayfa_siralama FROM {$this->table} WHERE id = ?");
+        $stmt->execute([$personelId]);
+        $decoded = json_decode((string) $stmt->fetchColumn(), true);
+
+        return $this->normalizeAnaSayfaSiralama(is_array($decoded) ? $decoded : []);
+    }
+
+    public function saveAnaSayfaSiralama(int $personelId, array $items): bool
+    {
+        $json = json_encode($this->normalizeAnaSayfaSiralama($items), JSON_UNESCAPED_UNICODE);
+
+        $stmt = $this->db->prepare("UPDATE {$this->table} SET pwa_ana_sayfa_siralama = ? WHERE id = ?");
+        return $stmt->execute([$json, $personelId]);
+    }
+
+    private function normalizeAnaSayfaSiralama(array $items): array
+    {
+        $valid = array_values(array_unique(array_filter($items, function ($item) {
+            return in_array($item, self::PWA_ANA_SAYFA_KARTLARI, true);
+        })));
+
+        return array_merge($valid, array_values(array_diff(self::PWA_ANA_SAYFA_KARTLARI, $valid)));
+    }
+
     /**
      * Personelin özel iş türü birim ücretlerini listeler
      */

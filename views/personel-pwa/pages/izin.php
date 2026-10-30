@@ -7,23 +7,16 @@
 
 <div class="flex flex-col min-h-screen">
     <!-- Header -->
-    <header
-        class="bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-800 px-4 py-4 sticky top-0 z-30">
-        <div class="flex items-center justify-between">
-            <div>
-                <h1 class="text-xl font-bold text-slate-900 dark:text-white">İzin İşlemleri</h1>
-                <p class="text-sm text-slate-500">İzinlerinizi yönetin</p>
-            </div>
-            <button onclick="openNewIzinModal()" class="btn-primary flex items-center gap-2 px-4 py-2.5 text-sm">
-                <span class="material-symbols-outlined text-lg">add</span>
-                <span>Yeni</span>
-            </button>
-        </div>
-    </header>
+    <?php pwaPageHeader([
+        'eyebrow' => 'İZİN YÖNETİMİ',
+        'title' => 'İzin İşlemleri',
+        'subtitle' => 'İzinlerinizi yönetin',
+        'actions' => '<button type="button" onclick="openNewIzinModal()" class="pwa-circle-btn pwa-circle-btn--primary" aria-label="Yeni İzin" title="Yeni İzin"><span class="material-symbols-outlined">add</span></button>',
+    ]); ?>
 
     <!-- Stats Summary -->
-    <section class="px-4 py-4 bg-slate-50 dark:bg-background-dark">
-        <div class="grid grid-cols-3 gap-3">
+    <section class="px-4 pt-1 pb-4">
+        <div class="grid grid-cols-3 gap-3 pwa-stat-strip">
             <div class="card p-3 text-center relative overflow-hidden cursor-pointer" onclick="showHakedisDetay()">
                 <div class="absolute top-0 right-0 w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-full -mr-4 -mt-4">
                 </div>
@@ -57,8 +50,8 @@
 
     <!-- View Toggle & Month Selector -->
     <div
-        class="px-4 py-3 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-800 sticky top-[73px] z-20">
-        <div class="flex flex-col gap-3">
+        class="px-4 pwa-toolbar izn-toolbar">
+        <div class="flex flex-col gap-4">
             <div class="flex items-center justify-between gap-3">
                 <!-- Month/Week Selector -->
                 <div id="month-selector" class="flex items-center gap-2" style="display: none;">
@@ -116,25 +109,26 @@
             </div>
 
             <!-- Calendar Stats (Visible in Calendar View) -->
-            <div id="calendar-stats" class="flex items-center justify-between gap-2 px-1 mb-2" style="display: none;">
-                <div class="flex flex-col items-center justify-center flex-1 bg-blue-50/50 dark:bg-blue-900/10 rounded-lg py-1.5 border border-blue-100 dark:border-blue-800/30">
-                    <span class="text-[9px] text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider">Çalışılan</span>
-                    <span class="text-base font-black text-blue-700 dark:text-blue-300 leading-none mt-0.5" id="stat-calisilan">-</span>
+            <div id="calendar-stats" class="izn-stats" style="display: none;">
+                <div class="izn-stat izn-stat--blue">
+                    <span>Çalışılan</span>
+                    <b id="stat-calisilan">-</b>
                 </div>
-                <div class="flex flex-col items-center justify-center flex-1 bg-amber-50/50 dark:bg-amber-900/10 rounded-lg py-1.5 border border-amber-100 dark:border-amber-800/30">
-                    <span class="text-[9px] text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">Ücretsiz</span>
-                    <span class="text-base font-black text-amber-700 dark:text-amber-300 leading-none mt-0.5" id="stat-ucretsiz">-</span>
+                <div class="izn-stat izn-stat--amber">
+                    <span>Ücretsiz</span>
+                    <b id="stat-ucretsiz">-</b>
                 </div>
-                <div class="flex flex-col items-center justify-center flex-1 bg-green-50/50 dark:bg-green-900/10 rounded-lg py-1.5 border border-green-100 dark:border-green-800/30">
-                    <span class="text-[9px] text-green-600 dark:text-green-400 font-bold uppercase tracking-wider">Ücretli</span>
-                    <span class="text-base font-black text-green-700 dark:text-green-300 leading-none mt-0.5" id="stat-ucretli">-</span>
+                <div class="izn-stat izn-stat--green">
+                    <span>Ücretli</span>
+                    <b id="stat-ucretli">-</b>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Calendar View -->
-    <div id="calendar-view" class="px-4 py-4" style="display: none;">
+    <div id="calendar-view" class="px-4 pb-28" style="display: none;">
+    <div class="pwa-cal-card">
         <!-- Week Days Header -->
         <div class="grid grid-cols-7 gap-1 mb-2">
             <div class="text-center text-[10px] font-semibold text-slate-500 py-1">Pzt</div>
@@ -170,13 +164,14 @@
             </div>
         </div>
     </div>
+    </div>
 
     <!-- İzin List View -->
-    <div id="list-view" class="flex-1 px-4 py-4">
-        <div class="flex flex-col gap-3" id="izin-list">
+    <div id="list-view" class="flex-1 px-4 pt-2 pb-28">
+        <div class="izn-list" id="izin-list">
             <!-- İzin items will be loaded here -->
-            <div class="shimmer h-24 rounded-xl"></div>
-            <div class="shimmer h-24 rounded-xl"></div>
+            <div class="shimmer h-24 rounded-3xl"></div>
+            <div class="shimmer h-24 rounded-3xl"></div>
         </div>
     </div>
 </div>
@@ -310,6 +305,31 @@
         </div>
     </div>
 </div>
+
+<style>
+    .izn-toolbar { padding-bottom: 16px !important; }
+    .izn-list { display: flex; flex-direction: column; gap: 14px; }
+    .izn-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .izn-stat { background: #fff; border-radius: 20px; padding: 12px 8px; text-align: center; border: 1px solid rgba(255, 255, 255, .9); box-shadow: 0 6px 16px -10px rgba(15, 23, 42, .18); }
+    .dark .izn-stat { background: #1a2130; border-color: #334155; }
+    .izn-stat span { display: block; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #64748b; }
+    .izn-stat b { display: block; font-size: 22px; font-weight: 800; line-height: 1; margin-top: 6px; }
+    .izn-stat--blue b { color: #2563eb; }
+    .izn-stat--amber b { color: #d97706; }
+    .izn-stat--green b { color: #059669; }
+    .izn-card { background: #fff; border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 12px; cursor: pointer; box-shadow: 0 6px 16px -10px rgba(15, 23, 42, .18); border: 1px solid rgba(255, 255, 255, .9); transition: transform .15s ease; }
+    .izn-card:active { transform: scale(.985); }
+    .dark .izn-card { background: #1a2130; border-color: #334155; }
+    .izn-card__head { display: flex; align-items: center; gap: 12px; }
+    .izn-card__icon { width: 40px; height: 40px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .izn-card__title { flex: 1; min-width: 0; font-size: 14px; font-weight: 800; color: #0f172a; line-height: 1.25; }
+    .dark .izn-card__title { color: #fff; }
+    .izn-card__title small { display: block; font-size: 12px; font-weight: 600; color: #64748b; margin-top: 2px; }
+    .izn-card__foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 10px; border-top: 1px solid #f1f5f9; font-size: 11px; color: #94a3b8; }
+    .dark .izn-card__foot { border-top-color: #334155; }
+    .izn-card__foot span { display: inline-flex; align-items: center; gap: 4px; }
+    .izn-card__foot .material-symbols-outlined { font-size: 14px; }
+</style>
 
 <script>
     let currentFilter = 'all';
@@ -903,10 +923,10 @@
 
     function renderIzinler() {
         const container = document.getElementById('izin-list');
-        let filtered = izinlerData;
+        let filtered = izinGruplari();
 
         if (currentFilter !== 'all') {
-            filtered = izinlerData.filter(i => i.durum === currentFilter);
+            filtered = filtered.filter(i => i.durum === currentFilter);
         }
 
         if (filtered.length === 0) {
@@ -923,33 +943,50 @@
         }
 
         container.innerHTML = filtered.map(izin => `
-        <div class="card p-4" onclick="showIzinDetay(${izin.id})">
-            <div class="flex items-start gap-4">
-                <div class="w-12 h-12 rounded-xl ${izin.renk} flex items-center justify-center flex-shrink-0">
+        <div class="izn-card" onclick="showIzinDetay(${izin.id})">
+            <div class="izn-card__head">
+                <div class="izn-card__icon ${izin.renk}">
                     <span class="material-symbols-outlined text-xl">${izin.ikon}</span>
                 </div>
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-start justify-between gap-2">
-                        <div>
-                            <p class="font-bold text-sm text-slate-900 dark:text-white">${izin.izin_tipi_text}</p>
-                            <p class="text-xs text-slate-500 mt-0.5">${izin.baslangic} - ${izin.bitis}</p>
-                        </div>
-                        <span class="badge ${getStatusBadge(izin.durum)} flex-shrink-0">${izin.durum_text}</span>
-                    </div>
-                    <div class="flex items-center gap-4 mt-3">
-                        <div class="flex items-center gap-1 text-xs text-slate-500">
-                            <span class="material-symbols-outlined text-sm">schedule</span>
-                            <span>${izin.toplam_gun} Gün</span>
-                        </div>
-                        <div class="flex items-center gap-1 text-xs text-slate-500">
-                            <span class="material-symbols-outlined text-sm">calendar_today</span>
-                            <span>${izin.talep_tarihi}</span>
-                        </div>
-                    </div>
-                </div>
+                <p class="izn-card__title">${izin.izin_tipi_text}<small>${izin.baslangic === izin.bitis ? izin.baslangic : izin.baslangic + ' - ' + izin.bitis}</small></p>
+                <span class="badge ${getStatusBadge(izin.durum)} flex-shrink-0">${izin.durum_text}</span>
+            </div>
+            <div class="izn-card__foot">
+                <span><span class="material-symbols-outlined">schedule</span>${izin.toplam_gun} Gün</span>
+                <span><span class="material-symbols-outlined">calendar_today</span>${izin.talep_tarihi}</span>
             </div>
         </div>
     `).join('');
+    }
+
+    function izinTarihiParse(str) {
+        const [g, a, y] = String(str).split('.').map(Number);
+        return new Date(y, a - 1, g).getTime();
+    }
+
+    function izinGruplari() {
+        const GUN = 86400000;
+        const sirali = [...izinlerData].sort((x, y) => izinTarihiParse(x.baslangic) - izinTarihiParse(y.baslangic) || x.id - y.id);
+        const gruplar = [];
+
+        sirali.forEach(izin => {
+            const onceki = gruplar.find(g =>
+                g.izin_tipi === izin.izin_tipi &&
+                g.durum === izin.durum &&
+                izinTarihiParse(izin.baslangic) - izinTarihiParse(g.bitis) <= GUN &&
+                izinTarihiParse(izin.bitis) >= izinTarihiParse(g.baslangic)
+            );
+            if (onceki) {
+                onceki.ids.push(izin.id);
+                if (izinTarihiParse(izin.bitis) > izinTarihiParse(onceki.bitis)) onceki.bitis = izin.bitis;
+                onceki.toplam_gun = (Number(onceki.toplam_gun) || 0) + (Number(izin.toplam_gun) || 0);
+                if (izin.aciklama && !onceki.aciklama) onceki.aciklama = izin.aciklama;
+            } else {
+                gruplar.push({ ...izin, ids: [izin.id] });
+            }
+        });
+
+        return gruplar.sort((x, y) => izinTarihiParse(y.baslangic) - izinTarihiParse(x.baslangic));
     }
 
     function filterIzinler(filter) {
@@ -983,7 +1020,7 @@
     async function showIzinDetay(id) {
         Modal.open('izin-detay-modal');
 
-        const izin = izinlerData.find(i => parseInt(i.id) === parseInt(id));
+        const izin = izinGruplari().find(g => g.ids.some(x => parseInt(x) === parseInt(id)));
         if (!izin) return;
 
         document.getElementById('izin-detay-content').innerHTML = `
@@ -1052,7 +1089,7 @@
         const actionsContainer = document.getElementById('izin-detay-actions');
         if (izin.durum === 'beklemede') {
             actionsContainer.innerHTML = `
-            <button onclick="cancelIzin(${izin.id})" class="flex-1 py-3 bg-red-50 dark:bg-red-900/20 text-red-600 font-semibold rounded-xl">
+            <button onclick="cancelIzin('${izin.ids.join(',')}')" class="flex-1 py-3 bg-red-50 dark:bg-red-900/20 text-red-600 font-semibold rounded-xl">
                 İptal Et
             </button>
             <button onclick="Modal.close('izin-detay-modal')" class="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold rounded-xl">
@@ -1161,7 +1198,11 @@
         if (!isConfirmed) return;
 
         try {
-            const response = await API.request('cancelIzinTalebi', { id: id });
+            let response = { success: true };
+            for (const tekId of String(id).split(',')) {
+                response = await API.request('cancelIzinTalebi', { id: tekId });
+                if (!response.success) break;
+            }
 
             if (response.success) {
                 Toast.show('İzin talebi iptal edildi', 'success');

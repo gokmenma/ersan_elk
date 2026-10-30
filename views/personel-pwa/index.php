@@ -285,8 +285,9 @@ if ($page === 'ihbar') {
     <link rel="manifest" href="manifest.json">
 
     <!-- Favicon & App Icons -->
-    <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192-new.png">
-    <link rel="apple-touch-icon" href="assets/icons/icon-192-new.png">
+    <link rel="icon" type="image/x-icon" href="assets/icons/app-favicon.ico?v=2">
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/app-192.png?v=2">
+    <link rel="apple-touch-icon" href="assets/icons/app-apple-touch-180.png?v=2">
 
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap"
@@ -414,9 +415,69 @@ if ($page === 'ihbar') {
 
     <!-- Main Content -->
     <main id="main-content" class="min-h-screen">
+        <?php require_once __DIR__ . '/partials/page-header.php'; ?>
         <?php include "pages/{$page}.php"; ?>
     </main>
 
+    <?php
+    $navMaxSlots = 3;
+    $navCatalog = [
+        'puantaj' => ['label' => 'İş Takibi', 'eyebrow' => 'SAHA', 'icon' => 'checklist', 'tone' => 'blue', 'show' => !$isBuro],
+        'ekip-takibi' => ['label' => 'Ekip Takibi', 'eyebrow' => 'EKİP', 'icon' => 'groups', 'tone' => 'blue', 'show' => (bool) ($isEndeksOkuma && $isEkipSefi)],
+        'nobet' => ['label' => 'Nöbet Takibi', 'eyebrow' => 'VARDİYA', 'icon' => 'nights_stay', 'tone' => 'purple', 'show' => (bool) $isKesmeAcma],
+        'zimmetler' => ['label' => 'Zimmetler', 'eyebrow' => 'ENVANTER', 'icon' => 'inventory_2', 'tone' => 'amber', 'show' => true],
+        'talep' => ['label' => 'Talepler', 'eyebrow' => 'TALEP YÖNETİMİ', 'icon' => 'assignment', 'tone' => 'emerald', 'show' => true],
+        'izin' => ['label' => 'İzinler', 'eyebrow' => 'İNSAN KAYNAKLARI', 'icon' => 'calendar_today', 'tone' => 'amber', 'show' => true],
+        'bordro' => ['label' => 'Bordrolar ve Avans', 'navLabel' => 'Bordro', 'eyebrow' => 'FİNANS', 'icon' => 'payments', 'tone' => 'emerald', 'show' => true],
+        'profil' => ['label' => 'Profil', 'eyebrow' => 'HESABIM', 'icon' => 'person', 'tone' => 'blue', 'show' => true],
+        'yardim' => ['label' => 'Yardım & Destek', 'navLabel' => 'Destek', 'eyebrow' => 'DESTEK', 'icon' => 'support_agent', 'tone' => 'purple', 'show' => true],
+        'ihbar' => ['label' => 'İhbar Yönetimi', 'navLabel' => 'İhbar', 'eyebrow' => 'KAÇAK KONTROL', 'icon' => 'campaign', 'tone' => 'coral', 'show' => true],
+        'kacak' => ['label' => 'Kaçak İşlemleri', 'navLabel' => 'Kaçak', 'eyebrow' => 'KAÇAK KONTROL', 'icon' => 'gpp_maybe', 'tone' => 'amber', 'show' => (bool) $isKacakKontrol],
+        'aparat' => ['label' => 'Aparat Takip', 'navLabel' => 'Aparat', 'eyebrow' => 'SAHA', 'icon' => 'build', 'tone' => 'purple', 'show' => (bool) $isKesmeAcma],
+        'km-bildirimleri' => ['label' => 'KM Bildirimleri', 'navLabel' => 'KM', 'eyebrow' => 'ARAÇ', 'icon' => 'speed', 'tone' => 'purple', 'show' => true],
+        'etkinlikler' => ['label' => 'Etkinlikler', 'eyebrow' => 'KURUM', 'icon' => 'event', 'tone' => 'emerald', 'show' => true],
+        'icralar' => ['label' => 'İcralarım', 'navLabel' => 'İcra', 'eyebrow' => 'DOSYALARIM', 'icon' => 'gavel', 'tone' => 'coral', 'show' => (bool) $hasIcra],
+    ];
+    $navCatalog = array_filter($navCatalog, static fn(array $m): bool => $m['show']);
+
+    $navVarsayilan = [
+        $isBuro ? 'izin' : 'puantaj',
+        ($isEndeksOkuma && $isEkipSefi) ? 'ekip-takibi' : ($isKesmeAcma ? 'nobet' : 'zimmetler'),
+        'talep',
+    ];
+    $navKeys = $navVarsayilan;
+    if (isset($_COOKIE['pwa_nav']) && is_string($_COOKIE['pwa_nav'])) {
+        $cerezAnahtarlar = $_COOKIE['pwa_nav'] === '-' ? [] : explode(',', $_COOKIE['pwa_nav']);
+        $gecerli = [];
+        foreach ($cerezAnahtarlar as $anahtar) {
+            if (isset($navCatalog[$anahtar]) && !in_array($anahtar, $gecerli, true)) {
+                $gecerli[] = $anahtar;
+            }
+        }
+        $navKeys = array_slice($gecerli, 0, $navMaxSlots);
+    }
+    $navKeys = array_values(array_filter($navKeys, static fn(string $k): bool => isset($navCatalog[$k])));
+    $moreActive = isset($navCatalog[$page]) && !in_array($page, $navKeys, true);
+
+    $menuPayload = [
+        'items' => [],
+        'nav' => $navKeys,
+        'default' => array_values(array_filter($navVarsayilan, static fn(string $k): bool => isset($navCatalog[$k]))),
+        'max' => $navMaxSlots,
+        'page' => $page,
+        'cookiePath' => rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/') . '/',
+    ];
+    foreach ($navCatalog as $anahtar => $m) {
+        $menuPayload['items'][] = [
+            'key' => $anahtar,
+            'label' => $m['label'],
+            'navLabel' => $m['navLabel'] ?? $m['label'],
+            'eyebrow' => $m['eyebrow'],
+            'icon' => $m['icon'],
+            'tone' => $m['tone'],
+        ];
+    }
+    ?>
     <!-- Bottom Navigation -->
     <?php if ($isKaskiKacak): ?>
     <nav
@@ -450,77 +511,37 @@ if ($page === 'ihbar') {
             <span class="material-symbols-outlined <?php echo $page === 'ana-sayfa' ? 'filled' : ''; ?>">home</span>
             <span class="text-[10px] font-semibold">Ana Sayfa</span>
         </a>
-        <?php if ($isBuro): ?>
-            <a href="?page=izin"
-                class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'izin' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
-                <span class="material-symbols-outlined <?php echo $page === 'izin' ? 'filled' : ''; ?>">calendar_today</span>
-                <span class="text-[10px] font-semibold">İzinler</span>
+        <?php foreach ($navKeys as $_navKey): $_navMod = $navCatalog[$_navKey]; $_navAktif = $page === $_navKey; ?>
+            <a href="?page=<?= htmlspecialchars($_navKey, ENT_QUOTES, 'UTF-8') ?>"
+                class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $_navAktif ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
+                <span class="material-symbols-outlined <?php echo $_navAktif ? 'filled' : ''; ?>"><?= htmlspecialchars($_navMod['icon'], ENT_QUOTES, 'UTF-8') ?></span>
+                <span class="text-[10px] font-semibold"><?= htmlspecialchars($_navMod['navLabel'] ?? $_navMod['label'], ENT_QUOTES, 'UTF-8') ?></span>
             </a>
-        <?php else: ?>
-            <a href="?page=puantaj"
-                class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'puantaj' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
-                <span class="material-symbols-outlined <?php echo $page === 'puantaj' ? 'filled' : ''; ?>">checklist</span>
-                <span class="text-[10px] font-semibold">İş Takibi</span>
-            </a>
-        <?php endif; ?>
-        <?php if ($isEndeksOkuma && $isEkipSefi): ?>
-            <a href="?page=ekip-takibi"
-                class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'ekip-takibi' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
-                <span class="material-symbols-outlined <?php echo $page === 'ekip-takibi' ? 'filled' : ''; ?>">groups</span>
-                <span class="text-[10px] font-semibold">Ekip Takibi</span>
-            </a>
-        <?php elseif ($isKesmeAcma): ?>
-            <a href="?page=nobet"
-                class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'nobet' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
-                <span class="material-symbols-outlined <?php echo $page === 'nobet' ? 'filled' : ''; ?>">nights_stay</span>
-                <span class="text-[10px] font-semibold">Nöbet Takibi</span>
-            </a>
-        <?php else: ?>
-            <a href="?page=zimmetler"
-                class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'zimmetler' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
-                <span
-                    class="material-symbols-outlined <?php echo $page === 'zimmetler' ? 'filled' : ''; ?>">inventory_2</span>
-                <span class="text-[10px] font-semibold">Zimmetler</span>
-            </a>
-        <?php endif; ?>
-        <a href="?page=talep"
-            class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'talep' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
-            <span class="material-symbols-outlined <?php echo $page === 'talep' ? 'filled' : ''; ?>">assignment</span>
-            <span class="text-[10px] font-semibold">Talepler</span>
-        </a>
-        <?php
-        $moreActivePages = ['profil', 'etkinlikler', 'bordro', 'izin', 'km-bildirimleri', 'ihbar', 'kacak', 'aparat'];
-        $isZimmetInBottomNav = !(($isEndeksOkuma && $isEkipSefi) || $isKesmeAcma);
-        // Zimmetler zaten bottom nav'da gösteriliyorsa diğer menüde highlight etme
-        if (!$isZimmetInBottomNav) {
-            $moreActivePages[] = 'zimmetler';
-        }
-        ?>
+        <?php endforeach; ?>
         <button type="button" onclick="toggleMoreMenu()"
-            class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo in_array($page, $moreActivePages) ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
+            class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $moreActive ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
             <span
-                class="material-symbols-outlined <?php echo in_array($page, $moreActivePages) ? 'filled' : ''; ?>">more_horiz</span>
+                class="material-symbols-outlined <?php echo $moreActive ? 'filled' : ''; ?>">more_horiz</span>
             <span class="text-[10px] font-semibold">Diğer</span>
         </button>
     </nav>
     <?php endif; ?>
 
     <!-- Loading Overlay -->
-    <div id="loading-overlay"
-        class="fixed inset-0 bg-white dark:bg-background-dark z-[100] flex items-center justify-center transition-all duration-500">
+    <div id="loading-overlay" class="fixed inset-0 z-[100] flex items-center justify-center" role="status" aria-live="polite">
         <div class="loader-container">
-            <div class="ekg-loader">
-                <svg viewBox="0 0 300 100" class="ekg-svg">
-                    <path class="ekg-line-bg"
-                        d="M 0 50 L 30 50 L 35 45 L 40 55 L 45 50 L 55 50 L 60 10 L 65 90 L 70 50 L 80 45 L 85 55 L 90 45 L 95 55 L 100 50 L 110 10 L 115 90 L 120 50 L 130 45 L 135 55 L 140 50 L 300 50" />
-                    <path class="ekg-line"
-                        d="M 0 50 L 30 50 L 35 45 L 40 55 L 45 50 L 55 50 L 60 10 L 65 90 L 70 50 L 80 45 L 85 55 L 90 45 L 95 55 L 100 50 L 110 10 L 115 90 L 120 50 L 130 45 L 135 55 L 140 50 L 300 50" />
-                </svg>
+            <div class="splash-stage-3d">
+                <div class="splash-glow"></div>
+                <div class="splash-orbit"></div>
+                <div class="splash-orbit splash-orbit--inner"></div>
+                <div class="splash-logo-card-3d">
+                    <img src="assets/images/logo-3d-splash.png?v=1" width="104" height="104" alt="Ersan Elektrik">
+                </div>
             </div>
-            <div class="flex flex-col items-center gap-1">
-                <h2 class="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Ersan <span
-                        class="text-primary">Elektrik</span></h2>
-                <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Yükleniyor...</p>
+            <div class="splash-meta">
+                <span class="splash-kicker">ERSAN ELEKTRİK</span>
+                <strong class="splash-title">Personel Portalı</strong>
+                <div class="splash-loader"><i></i></div>
             </div>
         </div>
     </div>
@@ -530,126 +551,46 @@ if ($page === 'ihbar') {
         class="fixed inset-0 bg-black/50 z-[60] opacity-0 pointer-events-none transition-opacity duration-300"
         onclick="closeMoreMenu()"></div>
     <div id="more-menu-sheet"
-        class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-2xl z-[61] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom">
-        <div class="flex justify-center pt-2 pb-1">
-            <div class="w-8 h-1 bg-slate-300 dark:bg-slate-600 rounded-full"></div>
-        </div>
-        <div class="px-4 pb-4 max-h-[75vh] overflow-y-auto">
-            <div class="flex flex-col gap-1">
-                <a href="javascript:void(0)" onclick="logout()"
-                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'logout' ? 'bg-primary/10' : ''; ?>">
-                    <div class="w-9 h-9 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                        <span class="material-symbols-outlined text-red-600 text-lg">logout</span>
-                    </div>
-                    <span class="font-medium text-slate-900 dark:text-white text-sm">Çıkış
-                        Yap</span>
-                </a>
-
-                <a href="?page=profil"
-                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'profil' ? 'bg-primary/10' : ''; ?>">
-                    <div class="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                        <span class="material-symbols-outlined text-blue-600 text-lg">person</span>
-                    </div>
-                    <span class="font-medium text-slate-900 dark:text-white text-sm">Profil</span>
-                    <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
-                </a>
-
-                <a href="?page=yardim"
-                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'yardim' ? 'bg-primary/10' : ''; ?>">
-                    <div class="w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-                        <span class="material-symbols-outlined text-indigo-600 text-lg">support_agent</span>
-                    </div>
-                    <span class="font-medium text-slate-900 dark:text-white text-sm">Yardım & Destek</span>
-                    <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
-                </a>
-                <a href="?page=ihbar"
-                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'ihbar' ? 'bg-primary/10' : ''; ?>">
-                    <div class="w-9 h-9 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                        <span class="material-symbols-outlined text-red-600 text-lg">campaign</span>
-                    </div>
-                    <span class="font-medium text-slate-900 dark:text-white text-sm">İhbar Yönetimi</span>
-                    <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
-                </a>
-
-                <?php if ($isKacakKontrol): ?>
-                    <a href="?page=kacak"
-                        class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'kacak' ? 'bg-primary/10' : ''; ?>">
-                        <div class="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                            <span class="material-symbols-outlined text-amber-600 text-lg">gpp_maybe</span>
-                        </div>
-                        <span class="font-medium text-slate-900 dark:text-white text-sm">Kaçak İşlemleri</span>
-                        <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
-                    </a>
-                <?php endif; ?>
-
-                <?php if ($isKesmeAcma): ?>
-                    <a href="?page=aparat"
-                        class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'aparat' ? 'bg-primary/10' : ''; ?>">
-                        <div class="w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-                            <span class="material-symbols-outlined text-indigo-600 text-lg">build</span>
-                        </div>
-                        <span class="font-medium text-slate-900 dark:text-white text-sm">Aparat Takip</span>
-                        <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
-                    </a>
-                <?php endif; ?>
-
-                <a href="?page=km-bildirimleri"
-                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'km-bildirimleri' ? 'bg-primary/10' : ''; ?>">
-                    <div class="w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-                        <span class="material-symbols-outlined text-indigo-600 text-lg">speed</span>
-                    </div>
-                    <span class="font-medium text-slate-900 dark:text-white text-sm">KM Bildirimleri</span>
-                    <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
-                </a>
-                <a href="?page=etkinlikler"
-                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'etkinlikler' ? 'bg-primary/10' : ''; ?>">
-                    <div class="w-9 h-9 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                        <span class="material-symbols-outlined text-green-600 text-lg">event</span>
-                    </div>
-                    <span class="font-medium text-slate-900 dark:text-white text-sm">Etkinlikler</span>
-                    <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
-                </a>
-                <a href="?page=bordro"
-                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'bordro' ? 'bg-primary/10' : ''; ?>">
-                    <div
-                        class="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                        <span class="material-symbols-outlined text-emerald-600 text-lg">payments</span>
-                    </div>
-                    <span class="font-medium text-slate-900 dark:text-white text-sm">Bordrolar ve Avans</span>
-                    <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
-                </a>
-                <a href="?page=izin"
-                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'izin' ? 'bg-primary/10' : ''; ?>">
-                    <div
-                        class="w-9 h-9 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
-                        <span class="material-symbols-outlined text-orange-600 text-lg">calendar_today</span>
-                    </div>
-                    <span class="font-medium text-slate-900 dark:text-white text-sm">İzinler</span>
-                    <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
-                </a>
-                <?php if ($hasIcra): ?>
-                    <a href="?page=icralar"
-                        class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'icralar' ? 'bg-primary/10' : ''; ?>">
-                        <div class="w-9 h-9 rounded-lg bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
-                            <span class="material-symbols-outlined text-rose-600 text-lg">gavel</span>
-                        </div>
-                        <span class="font-medium text-slate-900 dark:text-white text-sm">İcralarım</span>
-                        <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
-                    </a>
-                <?php endif; ?>
-                <?php if (!$isZimmetInBottomNav): ?>
-                    <a href="?page=zimmetler"
-                        class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'zimmetler' ? 'bg-primary/10' : ''; ?>">
-                        <div class="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                            <span class="material-symbols-outlined text-amber-600 text-lg">inventory_2</span>
-                        </div>
-                        <span class="font-medium text-slate-900 dark:text-white text-sm">Zimmetler</span>
-                        <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
-                    </a>
-                <?php endif; ?>
+        class="pwa-nav-sheet translate-y-full" role="dialog" aria-modal="true" aria-label="Daha Fazla">
+        <header class="pwa-nav-sheet__header">
+            <div class="pwa-nav-sheet__titles">
+                <span class="pwa-nav-sheet__eyebrow" id="more-menu-eyebrow">HIZLI ERİŞİM &amp; MENÜ</span>
+                <h2 class="pwa-nav-sheet__title" id="more-menu-title">Daha Fazla</h2>
+                <p class="pwa-nav-sheet__subtitle" id="more-menu-subtitle">Modüller ve araçlar</p>
             </div>
+            <div class="pwa-topbar__actions">
+                <button type="button" id="more-menu-edit-btn" class="pwa-circle-btn" aria-label="Menü düzenini özelleştir" title="Menüyü Düzenle" onclick="MoreMenu.toggleEdit()">
+                    <span class="material-symbols-outlined">tune</span>
+                </button>
+                <button type="button" class="pwa-circle-btn" aria-label="Kapat" onclick="closeMoreMenu()">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+        </header>
+        <div class="pwa-nav-sheet__content" id="more-menu-content"></div>
+        <div class="pwa-nav-sheet-bar" id="more-menu-search-wrap">
+            <label class="pwa-nav-sheet-search">
+                <span class="material-symbols-outlined pwa-nav-sheet-search__icon">search</span>
+                <input type="text" id="more-menu-search" class="pwa-nav-sheet-search__input" placeholder="Menülerde ara…"
+                    aria-label="Menülerde ara" autocomplete="off" enterkeyhint="search">
+                <button type="button" id="more-menu-search-clear" class="pwa-nav-sheet-search__clear" aria-label="Aramayı temizle" hidden>
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </label>
+            <a href="?page=profil" class="pwa-circle-btn pwa-nav-sheet-bar__btn" aria-label="Profil" title="Profil">
+                <span class="material-symbols-outlined">person</span>
+            </a>
+            <button type="button" class="pwa-circle-btn pwa-nav-sheet-bar__btn pwa-nav-sheet-bar__btn--danger" aria-label="Çıkış Yap" title="Çıkış Yap" onclick="logout()">
+                <span class="material-symbols-outlined">logout</span>
+            </button>
+        </div>
+        <div class="pwa-nav-sheet-footer" id="more-menu-footer" hidden>
+            <button type="button" class="pwa-nav-sheet-footer__btn" onclick="MoreMenu.resetDefault()">Varsayılana Sıfırla</button>
+            <button type="button" class="pwa-nav-sheet-footer__btn pwa-nav-sheet-footer__btn--primary" onclick="MoreMenu.save()">Düzeni Kaydet</button>
         </div>
     </div>
+
+    <script>window.PWA_MENU = <?= json_encode($menuPayload, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
 
     <?php if ($_pwaCanliDestekAktif): ?>
         <!-- Floating Chat Button -->
@@ -822,6 +763,213 @@ if ($page === 'ihbar') {
 
     <!-- More Menu Scripts -->
     <script>
+        const MoreMenu = {
+            data: window.PWA_MENU || { items: [], nav: [], default: [], max: 3, page: '', cookiePath: '/' },
+            editMode: false,
+            draft: [],
+            query: '',
+            feedback: '',
+
+            norm(t) { return String(t || '').toLocaleLowerCase('tr-TR').trim(); },
+            item(key) { return this.data.items.find((m) => m.key === key); },
+
+            el(tag, cls, text) {
+                const n = document.createElement(tag);
+                if (cls) n.className = cls;
+                if (text !== undefined) n.textContent = text;
+                return n;
+            },
+            icon(name, cls) { return this.el('span', 'material-symbols-outlined' + (cls ? ' ' + cls : ''), name); },
+
+            init() {
+                const input = document.getElementById('more-menu-search');
+                const clear = document.getElementById('more-menu-search-clear');
+                if (!input) return;
+                input.addEventListener('input', () => {
+                    this.query = input.value;
+                    clear.hidden = !input.value;
+                    this.render();
+                });
+                clear.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    input.value = '';
+                    this.query = '';
+                    clear.hidden = true;
+                    input.focus();
+                    this.render();
+                });
+                this.render();
+            },
+
+            reset() {
+                this.editMode = false;
+                this.feedback = '';
+                this.query = '';
+                const input = document.getElementById('more-menu-search');
+                if (input) input.value = '';
+                const clear = document.getElementById('more-menu-search-clear');
+                if (clear) clear.hidden = true;
+                this.render();
+            },
+
+            toggleEdit() {
+                this.editMode = !this.editMode;
+                this.draft = this.data.nav.slice();
+                this.feedback = '';
+                this.query = '';
+                const input = document.getElementById('more-menu-search');
+                if (input) input.value = '';
+                this.render();
+            },
+
+            togglePin(key) {
+                const i = this.draft.indexOf(key);
+                if (i >= 0) {
+                    this.draft.splice(i, 1);
+                    this.feedback = '';
+                } else if (this.draft.length >= this.data.max) {
+                    this.feedback = 'Alt bar dolu. Önce bir kısayolu çıkarın.';
+                } else {
+                    this.draft.push(key);
+                    this.feedback = '';
+                }
+                this.render();
+            },
+
+            move(key, dir) {
+                const i = this.draft.indexOf(key);
+                const j = i + dir;
+                if (i < 0 || j < 0 || j >= this.draft.length) return;
+                [this.draft[i], this.draft[j]] = [this.draft[j], this.draft[i]];
+                this.render();
+            },
+
+            resetDefault() {
+                this.draft = this.data.default.slice();
+                this.feedback = '';
+                this.render();
+            },
+
+            save() {
+                const value = this.draft.length ? this.draft.join(',') : '-';
+                const secure = location.protocol === 'https:' ? '; Secure' : '';
+                document.cookie = 'pwa_nav=' + encodeURIComponent(value) + '; path=' + this.data.cookiePath + '; max-age=31536000; SameSite=Lax' + secure;
+                location.reload();
+            },
+
+            row(m, opts) {
+                const tag = opts.edit ? 'button' : 'a';
+                const a = this.el(tag, 'pwa-nav-sheet-item pwa-nav-sheet-item--' + m.tone + (opts.active ? ' is-active' : '') + (opts.pinned ? ' is-pinned' : ''));
+                if (opts.edit) {
+                    a.type = 'button';
+                    a.addEventListener('click', () => this.togglePin(m.key));
+                } else if (opts.onclick) {
+                    a.href = 'javascript:void(0)';
+                    a.addEventListener('click', opts.onclick);
+                } else {
+                    a.href = '?page=' + encodeURIComponent(m.key);
+                }
+                const ic = this.el('span', 'pwa-nav-sheet-item__icon');
+                ic.appendChild(this.icon(m.icon));
+                const body = this.el('span', 'pwa-nav-sheet-item__body');
+                body.appendChild(this.el('span', 'pwa-nav-sheet-item__eyebrow', m.eyebrow));
+                body.appendChild(this.el('span', 'pwa-nav-sheet-item__label', m.label));
+                a.append(ic, body);
+                if (opts.edit) {
+                    a.appendChild(this.el('span', 'pwa-nav-sheet-item__pin' + (opts.pinned ? ' is-on' : ''), opts.pinned ? 'ALT BARDA' : 'SABİTLE'));
+                } else {
+                    a.appendChild(this.icon('chevron_right', 'pwa-nav-sheet-item__arrow'));
+                }
+                return a;
+            },
+
+            render() {
+                const content = document.getElementById('more-menu-content');
+                if (!content) return;
+                content.replaceChildren();
+
+                document.getElementById('more-menu-eyebrow').textContent = this.editMode ? 'KİŞİSELLEŞTİRME' : 'HIZLI ERİŞİM & MENÜ';
+                document.getElementById('more-menu-title').textContent = this.editMode ? 'Alt Bar Düzeni' : 'Daha Fazla';
+                document.getElementById('more-menu-subtitle').textContent = this.editMode ? 'Alt bardaki kısayolları seçin ve sıralayın' : 'Modüller ve araçlar';
+                document.getElementById('more-menu-edit-btn').classList.toggle('pwa-circle-btn--primary', this.editMode);
+                document.getElementById('more-menu-search-wrap').hidden = this.editMode;
+                document.getElementById('more-menu-footer').hidden = !this.editMode;
+
+                if (this.editMode) {
+                    this.renderEdit(content);
+                    return;
+                }
+
+                const term = this.norm(this.query);
+                const list = this.el('div', 'pwa-nav-sheet__list');
+                let count = 0;
+                this.data.items.forEach((m) => {
+                    if (m.key === 'profil' || this.data.nav.includes(m.key)) return;
+                    if (term && !this.norm(m.label + ' ' + m.eyebrow).includes(term)) return;
+                    list.appendChild(this.row(m, { active: this.data.page === m.key }));
+                    count++;
+                });
+                if (!count) content.appendChild(this.el('div', 'pwa-nav-sheet-empty', 'Aramanızla eşleşen menü bulunamadı.'));
+                content.appendChild(list);
+            },
+
+            renderEdit(content) {
+                if (this.feedback) content.appendChild(this.el('div', 'pwa-nav-sheet-feedback', this.feedback));
+
+                const dock = this.el('div', 'pwa-nav-dock');
+                dock.appendChild(this.el('span', 'pwa-nav-dock__title', 'ALT BAR KISAYOLLARI (' + this.draft.length + '/' + this.data.max + ')'));
+                const slots = this.el('div', 'pwa-nav-dock__slots');
+                const fixed = (iconName, label) => {
+                    const s = this.el('div', 'pwa-nav-slot is-fixed');
+                    s.append(this.icon(iconName), this.el('span', 'pwa-nav-slot__label', label), this.el('span', 'pwa-nav-slot__tag', 'Sabit'));
+                    return s;
+                };
+                slots.appendChild(fixed('home', 'Ana Sayfa'));
+                this.draft.forEach((key, i) => {
+                    const m = this.item(key);
+                    if (!m) return;
+                    const s = this.el('div', 'pwa-nav-slot');
+                    const rm = this.el('button', 'pwa-nav-slot__remove');
+                    rm.type = 'button';
+                    rm.setAttribute('aria-label', m.label + ' kısayolunu çıkar');
+                    rm.appendChild(this.icon('close'));
+                    rm.addEventListener('click', () => this.togglePin(key));
+                    const ctrl = this.el('div', 'pwa-nav-slot__move');
+                    const left = this.el('button', '', '');
+                    left.type = 'button';
+                    left.disabled = i === 0;
+                    left.setAttribute('aria-label', 'Sola taşı');
+                    left.appendChild(this.icon('chevron_left'));
+                    left.addEventListener('click', () => this.move(key, -1));
+                    const right = this.el('button', '', '');
+                    right.type = 'button';
+                    right.disabled = i === this.draft.length - 1;
+                    right.setAttribute('aria-label', 'Sağa taşı');
+                    right.appendChild(this.icon('chevron_right'));
+                    right.addEventListener('click', () => this.move(key, 1));
+                    ctrl.append(left, right);
+                    s.append(rm, this.icon(m.icon), this.el('span', 'pwa-nav-slot__label', m.navLabel), ctrl);
+                    slots.appendChild(s);
+                });
+                for (let i = this.draft.length; i < this.data.max; i++) {
+                    const s = this.el('div', 'pwa-nav-slot is-empty');
+                    s.append(this.el('span', 'pwa-nav-slot__plus', '+'), this.el('span', 'pwa-nav-slot__label', 'Boş Slot'));
+                    slots.appendChild(s);
+                }
+                slots.appendChild(fixed('more_horiz', 'Diğer'));
+                dock.appendChild(slots);
+                content.appendChild(dock);
+
+                const list = this.el('div', 'pwa-nav-sheet__list');
+                this.data.items.forEach((m) => {
+                    list.appendChild(this.row(m, { edit: true, pinned: this.draft.includes(m.key) }));
+                });
+                content.appendChild(list);
+            },
+        };
+
+        document.addEventListener('DOMContentLoaded', () => MoreMenu.init());
+
         function toggleMoreMenu() {
             const overlay = document.getElementById('more-menu-overlay');
             const sheet = document.getElementById('more-menu-sheet');
@@ -834,6 +982,7 @@ if ($page === 'ihbar') {
                 overlay.classList.remove('pointer-events-none', 'opacity-0');
                 overlay.classList.add('opacity-100');
                 sheet.classList.remove('translate-y-full');
+                MoreMenu.reset();
             }
         }
 
@@ -1007,6 +1156,7 @@ if ($page === 'ihbar') {
             setTimeout(() => {
                 modal.style.display = 'none';
                 modal.classList.remove('ihbar-form-modal');
+                modal.classList.remove('pwa-km-modal');
                 document.getElementById('pwa-full-modal-content').innerHTML = ''; // memory clean
             }, 300);
         }

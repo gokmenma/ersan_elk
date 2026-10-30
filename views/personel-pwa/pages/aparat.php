@@ -151,23 +151,14 @@ $uyeAdlari = implode(', ', array_column($ekipUyeleri, 'adi_soyadi'));
 
 <div class="flex flex-col min-h-screen bg-slate-50 dark:bg-background-dark pb-20">
 
-    <header class="bg-white dark:bg-card-dark px-4 pt-4 pb-3 sticky top-0 z-30 border-b border-slate-200 dark:border-slate-800">
-        <div class="flex items-center justify-between gap-3">
-            <div class="flex-1">
-                <h1 class="text-lg font-bold text-slate-800 dark:text-white">Aparat Takip</h1>
-                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-semibold" id="aparat-uye-satiri">
-                    <?= $uyeAdlari !== '' ? htmlspecialchars($uyeAdlari, ENT_QUOTES, 'UTF-8') : 'Personel atanmamış' ?>
-                </p>
-                <p class="text-xs text-slate-400" id="aparat-ekip-satiri">
-                    <?= $aktifEkip ? htmlspecialchars($aktifEkip['tur_adi'], ENT_QUOTES, 'UTF-8') : 'Ekip tanımlı değil' ?>
-                </p>
-            </div>
-            <div class="text-right">
-                <p class="text-xs text-slate-400">Bugün</p>
-                <p class="text-sm font-bold text-slate-800 dark:text-white" id="aparat-bugun-sayi">0 işlem</p>
-            </div>
-        </div>
-    </header>
+    <?php pwaPageHeader([
+        'eyebrow' => $aktifEkip ? (string) $aktifEkip['tur_adi'] : 'Ekip tanımlı değil',
+        'eyebrow_id' => 'aparat-ekip-satiri',
+        'title' => 'Aparat Takip',
+        'subtitle' => $uyeAdlari !== '' ? $uyeAdlari : 'Personel atanmamış',
+        'subtitle_id' => 'aparat-uye-satiri',
+        'actions' => '<span class="pwa-topbar__chip">Bugün<strong id="aparat-bugun-sayi">0 işlem</strong></span>',
+    ]); ?>
 
     <?php if (!$aktifEkip): ?>
         <section class="px-4 pt-6">

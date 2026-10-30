@@ -7,26 +7,17 @@
 
 <div class="flex flex-col min-h-screen">
     <!-- Header -->
-    <header class="px-4 pt-5 pb-6 sticky top-0 z-30 shadow-lg"
-        style="background: linear-gradient(135deg, #dc2626 0%, #7f1d1d 100%); border-radius: 0 0 24px 24px;">
-        <div class="flex items-center justify-between gap-3">
-            <div>
-                <span class="bg-white/20 backdrop-blur-md border border-white/10 text-white rounded-lg px-3 py-1 text-[11px] font-semibold tracking-wide shadow-sm">KAÇAK KONTROL</span>
-                <h1 class="text-white text-xl font-black tracking-tight mt-2">İhbarlar</h1>
-                <p class="text-red-100/80 text-xs font-medium mt-0.5">Kaçak Su ihbarlarını takip edin</p>
-            </div>
-            <button onclick="openYeniIhbarModal()"
-                class="flex-shrink-0 flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold rounded-2xl bg-white text-red-700 shadow-lg active:scale-95 transition-transform">
-                <span class="material-symbols-outlined text-lg">add_circle</span>
-                <span>İhbar Yap</span>
-            </button>
-        </div>
-    </header>
+    <?php pwaPageHeader([
+        'eyebrow' => 'KAÇAK KONTROL',
+        'title' => 'İhbarlar',
+        'subtitle' => 'Kaçak Su ihbarlarını takip edin',
+        'actions' => '<button type="button" onclick="openYeniIhbarModal()" class="pwa-circle-btn pwa-circle-btn--primary" aria-label="İhbar Yap" title="İhbar Yap"><span class="material-symbols-outlined">add_circle</span></button>',
+    ]); ?>
 
-    <div id="ihbar-transfer-panel" class="px-4 py-3" aria-live="polite"></div>
+    <div id="ihbar-transfer-panel" class="ihb-transfer" aria-live="polite"></div>
     <!-- Tab Navigation -->
     <div
-        class="px-4 py-2 bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-800 sticky top-[108px] z-20">
+        class="px-4 pt-4 pb-1 pwa-toolbar">
         <div class="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
             <button onclick="changeIhbarTab('gelen')"
                 class="ihbar-tab-btn active flex-1 py-2 text-sm font-semibold rounded-md transition-all" data-tab="gelen">
@@ -40,8 +31,36 @@
         </div>
     </div>
 
+    <!-- Özet Kartı -->
+    <div class="ihb-section">
+        <div class="ihb-hero" id="ihbar-summary">
+            <div class="ihb-hero__top">
+                <div>
+                    <div class="ihb-hero__total" id="ihb-sum-toplam">0</div>
+                    <div class="ihb-hero__label" id="ihb-sum-label">toplam ihbar</div>
+                </div>
+                <div class="ihb-hero__rate">
+                    <strong id="ihb-sum-oran">%0</strong>
+                    <span>Olumlu Başarı</span>
+                </div>
+            </div>
+            <div class="ihb-hero__bar">
+                <span id="ihb-seg-devam" style="background:#38bdf8;width:0"></span>
+                <span id="ihb-seg-olumlu" style="background:#34d399;width:0"></span>
+                <span id="ihb-seg-olumsuz" style="background:#f87171;width:0"></span>
+            </div>
+            <div class="ihb-hero__grid">
+                <div><small><i style="background:#94a3b8"></i>Yeni</small><b id="ihb-sum-yeni">0</b></div>
+                <div><small><i style="background:#38bdf8"></i>Devam</small><b id="ihb-sum-devam">0</b></div>
+                <div><small><i style="background:#34d399"></i>Olumlu</small><b id="ihb-sum-olumlu">0</b></div>
+                <div><small><i style="background:#f87171"></i>Olumsuz</small><b id="ihb-sum-olumsuz">0</b></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Filtre & Arama Alanı -->
-    <div class="px-4 pt-3 pb-1 bg-slate-50 dark:bg-background-dark space-y-2.5">
+    <div class="ihb-section">
+      <div class="ihb-filter-card">
         <!-- Arama Çubuğu & Detaylı Filtre Butonu -->
         <div class="flex items-center gap-2">
             <div class="relative flex-1">
@@ -140,8 +159,9 @@
             </div>
         </div>
 
+      </div>
         <!-- Filtre Sonuç Bilgi Satırı -->
-        <div class="flex items-center justify-between text-[11px] text-slate-500 px-0.5 pt-0.5" id="ihbar-filter-summary">
+        <div class="flex items-center justify-between text-[11px] text-slate-500 px-2 pt-3" id="ihbar-filter-summary">
             <span id="ihbar-count-text">Yükleniyor...</span>
             <button type="button" id="ihbar-clear-all-link" onclick="resetAllIhbarFilters()" class="text-red-600 font-semibold hidden hover:underline">
                 Filtreleri Temizle
@@ -150,11 +170,11 @@
     </div>
 
     <!-- İhbar List -->
-    <div class="flex-1 px-4 py-4">
-        <div class="flex flex-col gap-3" id="ihbar-list">
-            <div class="shimmer h-20 rounded-xl"></div>
-            <div class="shimmer h-20 rounded-xl"></div>
-            <div class="shimmer h-20 rounded-xl"></div>
+    <div class="flex-1 px-4 pt-1 pb-28">
+        <div class="ihb-list" id="ihbar-list">
+            <div class="shimmer h-24 rounded-3xl"></div>
+            <div class="shimmer h-24 rounded-3xl"></div>
+            <div class="shimmer h-24 rounded-3xl"></div>
         </div>
     </div>
 </div>
@@ -184,6 +204,49 @@
 </div>
 
 <style>
+    .ihb-transfer:empty { display: none; }
+    .ihb-transfer { padding: 12px 16px 0; }
+    .ihb-section { padding: 16px 16px 0; }
+    .ihb-list { display: flex; flex-direction: column; gap: 14px; }
+
+    .ihb-hero { background: #191d24; color: #fff; border-radius: 28px; padding: 20px; box-shadow: 0 8px 20px -10px rgba(0, 0, 0, .35); }
+    .ihb-hero__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .ihb-hero__total { font-size: 40px; font-weight: 800; line-height: 1; }
+    .ihb-hero__label { font-size: 12px; color: rgba(255, 255, 255, .6); margin-top: 6px; font-weight: 600; }
+    .ihb-hero__rate { background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .08); border-radius: 16px; padding: 8px 12px; text-align: center; }
+    .ihb-hero__rate strong { display: block; font-size: 16px; font-weight: 800; color: #34d399; }
+    .ihb-hero__rate span { font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: rgba(255, 255, 255, .6); }
+    .ihb-hero__bar { display: flex; gap: 4px; height: 8px; margin: 18px 0 16px; }
+    .ihb-hero__bar span { display: block; height: 100%; border-radius: 999px; min-width: 0; transition: width .3s ease; }
+    .ihb-hero__grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .ihb-hero__grid > div { background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .08); border-radius: 16px; padding: 10px 6px; text-align: center; }
+    .ihb-hero__grid small { display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 10px; font-weight: 700; color: rgba(255, 255, 255, .6); }
+    .ihb-hero__grid small i { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+    .ihb-hero__grid b { display: block; font-size: 18px; font-weight: 800; margin-top: 4px; }
+
+    .ihb-filter-card { background: #fff; border-radius: 24px; padding: 14px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 6px 16px -10px rgba(15, 23, 42, .18); border: 1px solid rgba(255, 255, 255, .9); }
+    .dark .ihb-filter-card { background: #1a2130; border-color: #334155; }
+    .ihb-filter-card .ihbar-durum-chip { border-radius: 999px; padding: 7px 12px; }
+
+    .ihb-card { background: #fff; border-radius: 24px; padding: 16px; box-shadow: 0 6px 16px -10px rgba(15, 23, 42, .18); border: 1px solid rgba(255, 255, 255, .9); display: flex; flex-direction: column; gap: 10px; cursor: pointer; transition: transform .15s ease; }
+    .ihb-card:active { transform: scale(.985); }
+    .dark .ihb-card { background: #1a2130; border-color: #334155; }
+    .ihb-card__head { display: flex; align-items: center; gap: 10px; }
+    .ihb-card__icon { width: 36px; height: 36px; border-radius: 12px; background: #eff6ff; color: #3b82f6; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .ihb-card__icon .material-symbols-outlined { font-size: 20px; }
+    .ihb-card__title { flex: 1; min-width: 0; font-size: 14px; font-weight: 800; color: #0f172a; line-height: 1.25; }
+    .ihb-card__title span { font-weight: 600; color: #64748b; }
+    .dark .ihb-card__title { color: #fff; }
+    .ihb-card__desc { font-size: 12px; color: #64748b; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .ihb-card__tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .ihb-tag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; font-size: 10px; font-weight: 700; background: #f1f5f9; color: #475569; }
+    .ihb-tag--tur { background: #fef2f2; color: #b91c1c; border: 1px solid #fee2e2; }
+    .ihb-card__foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 10px; border-top: 1px solid #f1f5f9; font-size: 11px; }
+    .dark .ihb-card__foot { border-top-color: #334155; }
+    .ihb-card__foot .ekip { color: var(--primary); font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ihb-card__foot .tarih { color: #94a3b8; flex-shrink: 0; margin-left: auto; }
+    .ihb-edit-btn { width: 30px; height: 30px; border-radius: 10px; background: #f1f5f9; color: #475569; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
     .ihbar-tab-btn.active {
         background: white;
         color: var(--primary);
@@ -528,6 +591,8 @@
             });
         }
 
+        updateIhbarSummary(rawData);
+
         Object.keys(counts).forEach(k => {
             const el = document.getElementById('chip-count-' + k);
             if (el) el.textContent = counts[k];
@@ -635,27 +700,53 @@
         }
 
         container.innerHTML = filteredData.map(ihbar => `
-        <div class="card p-4" onclick="showIhbarDetay(${ihbar.id}, '${currentIhbarTab}')">
-            <div class="flex items-start justify-between gap-2">
-                <div class="flex-1 min-w-0">
-                    ${ihbar.ihbar_turu ? `<span class="inline-flex mb-1 px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 text-[10px] font-bold border border-red-100 dark:border-red-900/50">${ihbar.ihbar_turu}</span>` : ''}
-                    <p class="font-bold text-sm text-slate-900 dark:text-white">${ihbar.ilce || '-'} / ${ihbar.mahalle || '-'}</p>
-                    <p class="text-xs text-slate-500 mt-0.5 line-clamp-2">${ihbar.aciklama || ''}</p>
-                </div>
-                <div class="flex flex-col items-end gap-2 flex-shrink-0">
-                    <span class="badge ${ihbarDurumBadge(ihbar.durum)}">${ihbarDurumText(ihbar.durum)}</span>
-                    ${(currentIhbarTab === 'bildirdiklerim' && ihbar.duzenlenebilir) ? `
-                    <button type="button" onclick="event.stopPropagation(); startEditIhbar('${ihbar.edit_token}');"
-                        class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center border border-slate-200 dark:border-slate-700 hover:bg-primary/10 hover:text-primary hover:border-primary transition-all">
-                        <span class="material-symbols-outlined text-[16px]">edit</span>
-                    </button>` : ''}
-                </div>
+        <div class="ihb-card" onclick="showIhbarDetay(${Number(ihbar.id)}, '${currentIhbarTab}')">
+            <div class="ihb-card__head">
+                <span class="ihb-card__icon"><span class="material-symbols-outlined">location_on</span></span>
+                <p class="ihb-card__title">${ihbEsc(ihbar.ilce || '-')} <span>· ${ihbEsc(ihbar.mahalle || '-')}</span></p>
+                <span class="badge ${ihbarDurumBadge(ihbar.durum)}">${ihbEsc(ihbarDurumText(ihbar.durum))}</span>
             </div>
-            <div class="flex items-center justify-between mt-3">
-                <span class="text-xs text-slate-400">${ihbar.tarih}</span>
-                ${ihbar.atanan_ekip_adi ? `<span class="text-xs text-primary font-medium">${ihbar.atanan_ekip_adi}</span>` : ''}
+            ${ihbar.aciklama ? `<p class="ihb-card__desc">${ihbEsc(ihbar.aciklama)}</p>` : ''}
+            ${(ihbar.ihbar_turu || ihbar.komsu_abone_no) ? `<div class="ihb-card__tags">
+                ${ihbar.ihbar_turu ? `<span class="ihb-tag ihb-tag--tur">${ihbEsc(ihbar.ihbar_turu)}</span>` : ''}
+                ${ihbar.komsu_abone_no ? `<span class="ihb-tag">Abone: ${ihbEsc(ihbar.komsu_abone_no)}</span>` : ''}
+            </div>` : ''}
+            <div class="ihb-card__foot">
+                ${ihbar.atanan_ekip_adi ? `<span class="ekip">${ihbEsc(ihbar.atanan_ekip_adi)}</span>` : ''}
+                <span class="tarih">${ihbEsc(ihbar.tarih || '')}</span>
+                ${(currentIhbarTab === 'bildirdiklerim' && ihbar.duzenlenebilir) ? `
+                <button type="button" onclick="event.stopPropagation(); startEditIhbar('${ihbEsc(ihbar.edit_token)}');" class="ihb-edit-btn" aria-label="Düzenle">
+                    <span class="material-symbols-outlined text-[16px]">edit</span>
+                </button>` : ''}
             </div>
         </div>`).join('');
+    }
+
+    function ihbEsc(value) {
+        return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    }
+
+    function updateIhbarSummary(rawData) {
+        const list = Array.isArray(rawData) ? rawData : [];
+        const sayi = d => list.filter(i => (i.durum || '').toLowerCase() === d).length;
+        const toplam = list.length;
+        const yeni = sayi('yeni');
+        const devam = sayi('yonlendirildi') + sayi('islemde');
+        const olumlu = sayi('olumlu');
+        const olumsuz = sayi('olumsuz');
+        const sonuclanan = olumlu + olumsuz;
+        const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+        set('ihb-sum-toplam', toplam);
+        set('ihb-sum-yeni', yeni);
+        set('ihb-sum-devam', devam);
+        set('ihb-sum-olumlu', olumlu);
+        set('ihb-sum-olumsuz', olumsuz);
+        set('ihb-sum-oran', '%' + (sonuclanan ? Math.round(olumlu / sonuclanan * 100) : 0));
+        const yuzde = v => (toplam ? (v / toplam * 100) : 0) + '%';
+        [['ihb-seg-devam', devam], ['ihb-seg-olumlu', olumlu], ['ihb-seg-olumsuz', olumsuz]].forEach(([id, v]) => {
+            const el = document.getElementById(id);
+            if (el) el.style.width = yuzde(v);
+        });
     }
 
     async function startEditIhbar(token) {

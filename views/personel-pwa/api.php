@@ -153,6 +153,36 @@ function response($success, $data = null, $message = '')
 }
 
 /**
+ * Yanıtı istemciye hemen gönderip bağlantıyı kapatır; betik arka planda sürer.
+ * Eşzamanlı çalışan aktarım (pwaTransfer) varsa gönderilmez ve false döner.
+ */
+function responseEarly($success, $data = null, $message = ''): bool
+{
+    if (isset($GLOBALS['pwaTransfer']) || headers_sent()) {
+        return false;
+    }
+
+    ignore_user_abort(true);
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
+    }
+
+    $json = json_encode(['success' => $success, 'data' => $data, 'message' => $message], JSON_UNESCAPED_UNICODE);
+    header('Content-Encoding: none');
+    header('Connection: close');
+    header('Content-Length: ' . strlen((string) $json));
+    echo $json;
+    while (ob_get_level() > 0) {
+        ob_end_flush();
+    }
+    flush();
+    if (function_exists('fastcgi_finish_request')) {
+        fastcgi_finish_request();
+    }
+    return true;
+}
+
+/**
  * Aparat takip ekranı yalnızca kesme-açma departmanındaki personele açıktır.
  */
 function aparatYetkiKontrol($personel): void
@@ -561,6 +591,37 @@ try {
                 ], 'Hızlı işlemler başarıyla güncellendi.');
             } else {
                 response(false, null, 'Hızlı işlemler güncellenirken bir hata oluştu.');
+            }
+            break;
+
+        case 'update_ana_sayfa_siralama':
+            $PersonelModel = new PersonelModel();
+            $rawItems = $_POST['siralama'] ?? [];
+            if (is_string($rawItems)) {
+                $rawItems = json_decode($rawItems, true) ?? [];
+            }
+            if (!is_array($rawItems)) {
+                response(false, null, 'Geçersiz veri biçimi.');
+            }
+
+            if ($PersonelModel->saveAnaSayfaSiralama($personel_id, $rawItems)) {
+                try {
+                    $LogModel = new \App\Model\SystemLogModel();
+                    $LogModel->logAction(
+                        0,
+                        'PWA Ana Sayfa Sıralaması Güncellendi',
+                        "[Personel PWA] " . ($personel->adi_soyadi ?? 'Personel') . " (ID: $personel_id) ana sayfa kart sırasını güncelledi.",
+                        \App\Model\SystemLogModel::LEVEL_INFO
+                    );
+                } catch (\Exception $e) {
+                    error_log('Ana sayfa sıralama log hatası: ' . $e->getMessage());
+                }
+
+                response(true, [
+                    'siralama' => $PersonelModel->getAnaSayfaSiralama($personel_id)
+                ], 'Ana sayfa sıralaması kaydedildi.');
+            } else {
+                response(false, null, 'Sıralama kaydedilemedi.');
             }
             break;
 
@@ -5531,6 +5592,15 @@ try {
                 $kayitId = $id > 0 ? $id : (int) \App\Helper\Security::decrypt($result);
                 $aiSonuc = null;
 
+                $erkenYanitGonderildi = responseEarly(
+                    true,
+                    ['otomatik_onaylandi' => false, 'ai_kontrol_bekliyor' => true],
+                    'KM bildiriminiz alındı. Fotoğraf yapay zekâ ile kontrol ediliyor; onay gerekirse bildirim olarak iletilecek.'
+                );
+                if ($erkenYanitGonderildi) {
+                    set_time_limit(300);
+                }
+
                 // Fotoğraf kaydedildikten hemen sonra yapay zekâ kontrolünü çalıştır.
                 // Analiz hatası bildirim kaydını bozmaz; kayıt manuel onayda kalır.
                 try {
@@ -5593,6 +5663,10 @@ try {
                     }
                 }
 
+                if ($erkenYanitGonderildi) {
+                    exit;
+                }
+
                 $mesaj = $otomatikOnaylandi
                     ? 'KM bildiriminiz fotoğrafla eşleşti ve otomatik olarak onaylandı.'
                     : 'KM bildiriminiz otomatik onaylanmadı ve yönetici onayına gönderildi. Neden: ' . $aiNedeni;
@@ -5620,6 +5694,67 @@ try {
             response(true, $data);
             break;
             
+        case 'read-km-photo':
+            $arac_id = isset($_POST['arac_id']) ? intval($_POST['arac_id']) : 0;
+            $AracZimmetModel = new \App\Model\AracZimmetModel();
+            if ($arac_id <= 0 || !$AracZimmetModel->hasAktifZimmet((int) $personel_id, $arac_id)) {
+                response(false, null, 'Seçilen araç aktif olarak size zimmetli değil.');
+            }
+
+            $simdi = time();
+            $okumalar = array_values(array_filter(
+                (array) ($_SESSION['km_foto_okumalari'] ?? []),
+                static fn($zaman) => $simdi - (int) $zaman < 600
+            ));
+            if (count($okumalar) >= 12) {
+                response(false, null, 'Çok sık fotoğraf okutuldu. Lütfen biraz bekleyin veya KM değerini elle giriniz.');
+            }
+            $okumalar[] = $simdi;
+            $_SESSION['km_foto_okumalari'] = $okumalar;
+
+            $dosya = $_FILES['resim'] ?? null;
+            if (!$dosya || ($dosya['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || empty($dosya['tmp_name']) || !is_uploaded_file($dosya['tmp_name'])) {
+                response(false, null, 'Fotoğraf alınamadı. Lütfen tekrar deneyiniz.');
+            }
+            if ((int) $dosya['size'] > 8 * 1024 * 1024) {
+                response(false, null, 'Fotoğraf çok büyük. Lütfen tekrar çekiniz.');
+            }
+            $dosyaMime = (string) (new \finfo(FILEINFO_MIME_TYPE))->file($dosya['tmp_name']);
+            if (!in_array($dosyaMime, ['image/jpeg', 'image/png', 'image/webp'], true)) {
+                response(false, null, 'Yalnızca JPG, PNG veya WEBP fotoğraf okutabilirsiniz.');
+            }
+
+            session_write_close();
+
+            try {
+                $okunan = (new \App\Service\KmBildirimAiKontrolService())->fotografKmOku($dosya['tmp_name'], $dosyaMime);
+            } catch (\Throwable $e) {
+                error_log('PWA KM fotoğraf okuma hatası (personel ' . (int) $personel_id . ', araç ' . $arac_id . '): ' . $e->getMessage());
+                response(false, null, 'Fotoğraftan KM okunamadı. KM değerini elle girebilirsiniz.');
+            }
+
+            $okunduMu = $okunan['km'] !== null && $okunan['gosterge_gorunur'] && $okunan['guven'] >= 60;
+            $logKullanici = (int) ($_SESSION['user_id'] ?? 0);
+            $logMesaj = 'Personel ID: ' . (int) $personel_id . ', Araç ID: ' . $arac_id . ', Sonuç: '
+                . ($okunduMu ? 'KM ' . $okunan['km'] . ' okundu (güven %' . $okunan['guven'] . ')' : 'okunamadı');
+            if ($logKullanici > 0) {
+                try {
+                    (new \App\Model\SystemLogModel())->logAction($logKullanici, 'KM Fotoğraf Okuma', $logMesaj, \App\Model\SystemLogModel::LEVEL_INFO);
+                } catch (\Throwable $logHatasi) {
+                    error_log('PWA KM fotoğraf okuma logu yazılamadı: ' . $logHatasi->getMessage());
+                }
+            } else {
+                error_log('PWA KM fotoğraf okuma: ' . $logMesaj);
+            }
+
+            response(true, [
+                'okundu' => $okunduMu,
+                'km' => $okunduMu ? $okunan['km'] : null,
+                'guven' => $okunan['guven'],
+                'ondalik_hane' => $okunan['ondalik_hane'],
+            ], $okunduMu ? 'KM değeri fotoğraftan okundu.' : 'Göstergedeki KM net okunamadı.');
+            break;
+
         case 'get-last-km':
             $arac_id = isset($_POST['arac_id']) ? intval($_POST['arac_id']) : 0;
             $tarih = $_POST['tarih'] ?? date('Y-m-d');

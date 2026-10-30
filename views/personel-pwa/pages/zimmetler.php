@@ -6,96 +6,44 @@
 
 <div class="flex flex-col min-h-screen">
     <!-- Header -->
-    <header
-        class="bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-800 px-4 py-4 sticky top-0 z-30">
-        <div class="flex items-center justify-between">
-            <div>
-                <h1 class="text-xl font-bold text-slate-900 dark:text-white">Zimmetler</h1>
-                <p class="text-sm text-slate-500">Üzerinizdeki demirbaşlar</p>
-            </div>
-            <div class="flex items-center gap-2">
-                <button onclick="exportZimmetToExcel()"
-                    class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 transition-all active:scale-90"
-                    title="Excel'e Aktar">
-                    <span class="material-symbols-outlined">download</span>
-                </button>
-                <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-primary">inventory_2</span>
-                </div>
-            </div>
-        </div>
-    </header>
+    <?php pwaPageHeader([
+        'eyebrow' => 'ENVANTER',
+        'title' => 'Zimmetler',
+        'subtitle' => 'Üzerinizdeki demirbaşlar',
+        'actions' => '<button type="button" onclick="exportZimmetToExcel()" class="pwa-circle-btn" aria-label="Excel\'e Aktar" title="Excel\'e Aktar"><span class="material-symbols-outlined">download</span></button>',
+    ]); ?>
 
-    <!-- Stats Summary Section -->
-    <section class="px-4 py-4 bg-slate-50 dark:bg-background-dark">
-        <div class="grid grid-cols-2 gap-3">
-            <!-- Araç Zimmetleri -->
-            <div id="card-arac" onclick="toggleZimmetCategory('arac')"
-                class="card p-3 flex flex-col gap-2 cursor-pointer transition-all border-2 border-transparent relative overflow-hidden group">
-                <div class="flex items-center justify-between z-10">
-                    <div
-                        class="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600">
-                        <span class="material-symbols-outlined">directions_car</span>
-                    </div>
-                    <p class="text-xl font-black text-slate-900 dark:text-white" id="arac-zimmet-count">0</p>
+    <section class="px-4 pb-3">
+        <div class="pwa-hero-dark">
+            <div class="pwa-hero-dark__top">
+                <div>
+                    <span class="pwa-hero-dark__eyebrow">ZİMMET MERKEZİ</span>
+                    <h2 class="pwa-hero-dark__value"><span id="zimmet-toplam-count">0</span> aktif zimmet</h2>
+                    <p class="pwa-hero-dark__sub">Kategoriye dokunarak listeyi filtreleyin</p>
                 </div>
-                <div class="z-10">
-                    <p class="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Araçlar</p>
-                </div>
-                <!-- Subtle Background Decorative Icon -->
-                <span
-                    class="material-symbols-outlined absolute -right-2 -bottom-2 text-6xl text-slate-200/20 dark:text-slate-700/10 pointer-events-none group-hover:scale-110 transition-transform">directions_car</span>
+                <span class="pwa-hero-dark__icon"><span class="material-symbols-outlined">inventory_2</span></span>
             </div>
-
-            <!-- Teknoloji (Telefon, Tablet, Yazıcı) -->
-            <div id="card-tech" onclick="toggleZimmetCategory('tech')"
-                class="card p-3 flex flex-col gap-2 cursor-pointer transition-all border-2 border-transparent relative overflow-hidden group">
-                <div class="flex items-center justify-between z-10">
-                    <div
-                        class="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600">
-                        <span class="material-symbols-outlined">devices</span>
-                    </div>
-                    <p class="text-xl font-black text-slate-900 dark:text-white" id="tech-zimmet-count">0</p>
+            <div class="pwa-hero-dark__stats">
+                <div id="card-arac" onclick="toggleZimmetCategory('arac')" role="button" tabindex="0" class="pwa-hero-dark__stat pwa-hero-dark__stat--tile">
+                    <span class="material-symbols-outlined">directions_car</span>
+                    <strong id="arac-zimmet-count">0</strong>
+                    <small>Araçlar</small>
                 </div>
-                <div class="z-10">
-                    <p class="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Teknoloji</p>
+                <div id="card-tech" onclick="toggleZimmetCategory('tech')" role="button" tabindex="0" class="pwa-hero-dark__stat pwa-hero-dark__stat--tile">
+                    <span class="material-symbols-outlined">devices</span>
+                    <strong id="tech-zimmet-count">0</strong>
+                    <small>Teknoloji</small>
                 </div>
-                <span
-                    class="material-symbols-outlined absolute -right-2 -bottom-2 text-6xl text-slate-200/20 dark:text-slate-700/10 pointer-events-none group-hover:scale-110 transition-transform">devices</span>
-            </div>
-
-            <!-- Sayaçlar (Sıfır & Hurda) -->
-            <div id="card-sayac" onclick="showSayacDetay()"
-                class="card p-3 flex flex-col gap-2 cursor-pointer transition-all border-2 border-transparent relative overflow-hidden group bg-rose-50/50 dark:bg-rose-900/5 hover:bg-rose-50 dark:hover:bg-rose-900/10">
-                <div class="flex items-center justify-between z-10">
-                    <div
-                        class="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center text-rose-600">
-                        <span class="material-symbols-outlined">speed</span>
-                    </div>
-                    <p class="text-xl font-black text-slate-900 dark:text-white" id="sayac-zimmet-count">0</p>
+                <div id="card-sayac" onclick="showSayacDetay()" role="button" tabindex="0" class="pwa-hero-dark__stat pwa-hero-dark__stat--tile">
+                    <span class="material-symbols-outlined">speed</span>
+                    <strong id="sayac-zimmet-count">0</strong>
+                    <small>Sayaçlar</small>
                 </div>
-                <div class="z-10">
-                    <p class="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Sayaçlar</p>
+                <div id="card-aparat" onclick="showAparatDetay()" role="button" tabindex="0" class="pwa-hero-dark__stat pwa-hero-dark__stat--tile">
+                    <span class="material-symbols-outlined">build</span>
+                    <strong id="aparat-zimmet-count">0</strong>
+                    <small>Aparatlar</small>
                 </div>
-                <span
-                    class="material-symbols-outlined absolute -right-2 -bottom-2 text-6xl text-slate-200/20 dark:text-slate-700/10 pointer-events-none group-hover:scale-110 transition-transform">speed</span>
-            </div>
-
-            <!-- Aparatlar -->
-            <div id="card-aparat" onclick="showAparatDetay()"
-                class="card p-3 flex flex-col gap-2 cursor-pointer transition-all border-2 border-transparent relative overflow-hidden group bg-amber-50/50 dark:bg-amber-900/5 hover:bg-amber-50 dark:hover:bg-amber-900/10">
-                <div class="flex items-center justify-between z-10">
-                    <div
-                        class="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600">
-                        <span class="material-symbols-outlined">build</span>
-                    </div>
-                    <p class="text-xl font-black text-slate-900 dark:text-white" id="aparat-zimmet-count">0</p>
-                </div>
-                <div class="z-10">
-                    <p class="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Aparatlar</p>
-                </div>
-                <span
-                    class="material-symbols-outlined absolute -right-2 -bottom-2 text-6xl text-slate-200/20 dark:text-slate-700/10 pointer-events-none group-hover:scale-110 transition-transform">build</span>
             </div>
         </div>
 
@@ -347,6 +295,7 @@
         // Aparatlarda miktar toplamı önemli olabilir
         const aparatTotal = aparatlar.reduce((sum, item) => sum + (parseInt(item.miktar) || 0), 0);
         document.getElementById('aparat-zimmet-count').textContent = aparatTotal;
+        document.getElementById('zimmet-toplam-count').textContent = aktifler.length;
     }
 
     function toggleZimmetCategory(category) {

@@ -1,31 +1,14 @@
-<div class="header-main bg-primary relative px-4 pt-12 pb-6 flex items-center shadow-lg rounded-b-[2rem] safe-area-top">
-    <!-- Header Background Pattern -->
-    <div class="absolute inset-0 opacity-10 overflow-hidden rounded-b-[2rem]">
-        <svg class="absolute -right-4 top-0 w-32 h-32" viewBox="0 0 100 100" fill="currentColor"
-            xmlns="http://www.w3.org/2000/svg">
-            <circle cx="50" cy="50" r="50" />
-        </svg>
-        <svg class="absolute -left-12 -bottom-12 w-48 h-48" viewBox="0 0 100 100" fill="currentColor"
-            xmlns="http://www.w3.org/2000/svg">
-            <circle cx="50" cy="50" r="50" />
-        </svg>
-    </div>
+<?php pwaPageHeader(['eyebrow' => 'KURUM', 'title' => 'Tüm Etkinlikler', 'subtitle' => 'Geçmiş ve yaklaşan etkinlik/duyurular', 'back' => '?page=ana-sayfa']); ?>
 
-    <!-- Header Content -->
-    <div class="relative z-10 flex items-center gap-3 w-full">
-        <!-- Back Button Option -->
-        <a href="?page=ana-sayfa"
-            class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur border border-white/20 flex items-center justify-center text-white cursor-pointer active:scale-95 transition-transform">
-            <span class="material-symbols-outlined font-light">arrow_back</span>
-        </a>
-        <div class="flex-1">
-            <h1 class="text-white text-xl font-bold tracking-tight">Tüm Etkinlikler</h1>
-            <p class="text-white/80 text-xs">Geçmiş ve yaklaşan etkinlik/duyurular</p>
-        </div>
+<div class="px-4">
+    <div class="pwa-filter-tabs" role="tablist" aria-label="Etkinlik filtresi">
+        <button type="button" role="tab" class="pwa-filter-pill is-active" data-etkinlik-sekme="aktif">Aktif <span data-etkinlik-sayi="aktif">0</span></button>
+        <button type="button" role="tab" class="pwa-filter-pill" data-etkinlik-sekme="tumu">Tümü <span data-etkinlik-sayi="tumu">0</span></button>
+        <button type="button" role="tab" class="pwa-filter-pill" data-etkinlik-sekme="gecmis">Geçmiş <span data-etkinlik-sayi="gecmis">0</span></button>
     </div>
 </div>
 
-<div class="px-4 mt-6">
+<div class="px-4 mt-4">
     <div id="etkinlikler-loading" class="flex items-center justify-center py-8">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
     </div>
@@ -36,9 +19,80 @@
 </div>
 
 <script>
+    var etkinlikVerisi = [];
+    var etkinlikSekme = 'aktif';
+
     document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('[data-etkinlik-sekme]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                etkinlikSekme = btn.getAttribute('data-etkinlik-sekme');
+                renderEtkinlikler();
+            });
+        });
         loadAllEtkinlikler();
     });
+
+    function renderEtkinlikler() {
+        var container = document.getElementById('etkinlikler-container');
+        var sayilar = {
+            aktif: etkinlikVerisi.filter(function (d) { return !d.gecmis; }).length,
+            gecmis: etkinlikVerisi.filter(function (d) { return d.gecmis; }).length,
+            tumu: etkinlikVerisi.length
+        };
+        document.querySelectorAll('[data-etkinlik-sekme]').forEach(function (btn) {
+            var aktif = btn.getAttribute('data-etkinlik-sekme') === etkinlikSekme;
+            btn.classList.toggle('is-active', aktif);
+            btn.setAttribute('aria-selected', aktif ? 'true' : 'false');
+        });
+        document.querySelectorAll('[data-etkinlik-sayi]').forEach(function (el) {
+            el.textContent = sayilar[el.getAttribute('data-etkinlik-sayi')];
+        });
+
+        var liste = etkinlikVerisi.filter(function (d) {
+            if (etkinlikSekme === 'aktif') return !d.gecmis;
+            if (etkinlikSekme === 'gecmis') return !!d.gecmis;
+            return true;
+        });
+
+        if (!liste.length) {
+            container.innerHTML = '<div class="flex flex-col items-center justify-center py-10 bg-white dark:bg-card-dark rounded-2xl shadow-sm">' +
+                '<span class="material-symbols-outlined text-4xl text-slate-300 mb-2">event_busy</span>' +
+                '<p class="text-sm font-medium text-slate-500">Bu filtrede etkinlik bulunmuyor.</p>' +
+                '</div>';
+            return;
+        }
+
+        container.innerHTML = liste.map(etkinlikKartiHtml).join('');
+    }
+
+    function etkinlikKartiHtml(duyuru) {
+        var duyuruJson = JSON.stringify(duyuru).replace(/\\/g, "\\\\").replace(/"/g, "&quot;").replace(/'/g, "\\'");
+        var onClick = "showEtkinlikFullScreen('" + duyuruJson + "');";
+        var cursorClass = 'cursor-pointer';
+
+        var opacityClass = duyuru.gecmis ? 'opacity-60 saturate-50' : '';
+
+        var bgImg = 'background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-dark) 100%);';
+
+        var kalan_gun_html = '';
+        if (duyuru.kalan_gun !== null && duyuru.kalan_gun !== undefined && !duyuru.gecmis) {
+            kalan_gun_html = '<div class="absolute -top-6 -right-2 pointer-events-none select-none z-0 flex flex-col items-end opacity-80">' +
+                '<span class="text-[9rem] font-black leading-[0.8] tracking-tighter bg-gradient-to-bl from-white/70 to-white/0 text-transparent bg-clip-text">' + escapeHtml(duyuru.kalan_gun) + '</span>' +
+                '<span class="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] relative -top-6 pr-6">GÜN KALDI</span>' +
+                '</div>';
+        }
+
+        return '<div class="rounded-2xl p-4 text-white shadow-lg relative overflow-hidden transition-transform active:scale-[0.98] ' + cursorClass + ' ' + opacityClass + '" ' +
+            'style="' + bgImg + '" onclick="' + onClick + '">' +
+            kalan_gun_html +
+            '<div class="relative z-10 pr-2">' +
+            '<span class="badge badge-primary bg-white/20 text-white border-none mb-2 text-[10px]">' + escapeHtml(duyuru.tarih) + '</span>' +
+            (duyuru.gecmis ? '<span class="badge badge-danger bg-red-500/80 text-white border-none mb-2 ml-2 text-[10px]">Geçmiş Etkinlik</span>' : '') +
+            '<h3 class="font-bold text-lg leading-tight mb-2 text-white max-w-[85%]">' + escapeHtml(duyuru.baslik) + '</h3>' +
+            '<p class="text-xs text-white/80 line-clamp-3 leading-relaxed max-w-[85%]">' + escapeHtml(duyuru.icerik ? duyuru.icerik.replace(/<[^>]*>?/gm, '') : '') + '</p>' +
+            '</div>' +
+            '</div>';
+    }
 
     async function loadAllEtkinlikler() {
         var container = document.getElementById('etkinlikler-container');
@@ -50,34 +104,8 @@
             container.classList.remove('hidden');
 
             if (response.success && response.data && response.data.length > 0) {
-                container.innerHTML = response.data.map(function (duyuru) {
-                    var duyuruJson = JSON.stringify(duyuru).replace(/\\/g, "\\\\").replace(/"/g, "&quot;").replace(/'/g, "\\'");
-                    var onClick = "showEtkinlikFullScreen('" + duyuruJson + "');";
-                    var cursorClass = 'cursor-pointer';
-
-                    var opacityClass = duyuru.gecmis ? 'opacity-60 saturate-50' : '';
-
-                    var bgImg = 'background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-dark) 100%);';
-
-                    var kalan_gun_html = '';
-                    if (duyuru.kalan_gun !== null && duyuru.kalan_gun !== undefined && !duyuru.gecmis) {
-                        kalan_gun_html = '<div class="absolute -top-6 -right-2 pointer-events-none select-none z-0 flex flex-col items-end opacity-80">' +
-                            '<span class="text-[9rem] font-black leading-[0.8] tracking-tighter bg-gradient-to-bl from-white/70 to-white/0 text-transparent bg-clip-text">' + escapeHtml(duyuru.kalan_gun) + '</span>' +
-                            '<span class="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] relative -top-6 pr-6">GÜN KALDI</span>' +
-                            '</div>';
-                    }
-
-                    return '<div class="rounded-2xl p-4 text-white shadow-lg relative overflow-hidden transition-transform active:scale-[0.98] ' + cursorClass + ' ' + opacityClass + '" ' +
-                        'style="' + bgImg + '" onclick="' + onClick + '">' +
-                        kalan_gun_html +
-                        '<div class="relative z-10 pr-2">' +
-                        '<span class="badge badge-primary bg-white/20 text-white border-none mb-2 text-[10px]">' + escapeHtml(duyuru.tarih) + '</span>' +
-                        (duyuru.gecmis ? '<span class="badge badge-danger bg-red-500/80 text-white border-none mb-2 ml-2 text-[10px]">Geçmiş Etkinlik</span>' : '') +
-                        '<h3 class="font-bold text-lg leading-tight mb-2 text-white max-w-[85%]">' + escapeHtml(duyuru.baslik) + '</h3>' +
-                        '<p class="text-xs text-white/80 line-clamp-3 leading-relaxed max-w-[85%]">' + escapeHtml(duyuru.icerik ? duyuru.icerik.replace(/<[^>]*>?/gm, '') : '') + '</p>' +
-                        '</div>' +
-                        '</div>';
-                }).join('');
+                etkinlikVerisi = response.data;
+                renderEtkinlikler();
             } else {
                 container.innerHTML = '<div class="flex flex-col items-center justify-center py-10 bg-white dark:bg-card-dark rounded-2xl shadow-sm">' +
                     '<span class="material-symbols-outlined text-4xl text-slate-300 mb-2">event_busy</span>' +

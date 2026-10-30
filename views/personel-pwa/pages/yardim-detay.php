@@ -10,22 +10,15 @@ $id = is_numeric($id) ? (int) $id : 0;
 ?>
 <div class="flex flex-col h-screen bg-slate-50 dark:bg-card-dark">
     <!-- Header -->
-    <header class="bg-white dark:bg-card-dark border-b border-slate-200 dark:border-slate-800 px-4 py-4 sticky top-0 z-30">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3 overflow-hidden">
-                <a href="?page=yardim" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
-                    <span class="material-symbols-outlined text-slate-600">arrow_back</span>
-                </a>
-                <div class="overflow-hidden">
-                    <h1 class="text-sm font-bold text-slate-900 dark:text-white truncate" id="ticket-subject">Yükleniyor...</h1>
-                    <p class="text-[10px] text-slate-500 font-medium tracking-widest" id="ticket-ref-no">#000000</p>
-                </div>
-            </div>
-            <div id="ticket-status-badge">
-                <div class="shimmer w-16 h-6 rounded-lg"></div>
-            </div>
-        </div>
-    </header>
+    <?php pwaPageHeader([
+        'eyebrow' => 'DESTEK TALEBİ',
+        'title' => 'Yükleniyor...',
+        'title_id' => 'ticket-subject',
+        'subtitle' => '#000000',
+        'subtitle_id' => 'ticket-ref-no',
+        'back' => '?page=yardim',
+        'actions' => '<span id="ticket-status-badge"><span class="shimmer w-16 h-6 rounded-lg block"></span></span>',
+    ]); ?>
 
     <!-- Chat Area -->
     <div id="chat-messages" class="flex-1 overflow-y-auto px-4 py-6 space-y-6 bg-slate-50 dark:bg-card-dark pb-44">

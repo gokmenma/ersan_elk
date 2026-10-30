@@ -261,6 +261,32 @@ class AracKmBildirimModel extends Model
         return $sql->fetchColumn() !== false;
     }
 
+    /**
+     * Personelin verilen araçlar için belirli bir gündeki geçerli (reddedilmemiş) KM bildirimlerini getirir.
+     * Kayıtlar en yeniden eskiye sıralanır; yönetici düzeltmesi (onaylanan_km) varsa o değer döner.
+     */
+    public function getGunlukBildirimler(int $personelId, array $aracIds, string $tarih): array
+    {
+        $aracIds = array_values(array_unique(array_filter(array_map('intval', $aracIds))));
+        if ($aracIds === []) {
+            return [];
+        }
+
+        $yer = implode(',', array_fill(0, count($aracIds), '?'));
+        $sql = $this->db->prepare("SELECT arac_id, tur, COALESCE(onaylanan_km, bitis_km) AS km
+            FROM {$this->table}
+            WHERE personel_id = ?
+            AND firma_id = ?
+            AND tarih = ?
+            AND durum != 'reddedildi'
+            AND silinme_tarihi IS NULL
+            AND arac_id IN ({$yer})
+            ORDER BY id DESC");
+        $sql->execute(array_merge([$personelId, (int) ($_SESSION['firma_id'] ?? 0), $tarih], $aracIds));
+
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
     /** Aktif arac zimmeti olan personellerin son N tamamlanmis gundeki aksam eksiklerini getirir. */
     public function getEveningMissingCounts($days = 30)
     {

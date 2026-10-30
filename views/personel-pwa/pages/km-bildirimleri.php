@@ -4,24 +4,15 @@ $aktifAracZimmeti = $aktifAracZimmetleri[0] ?? null;
 ?>
 <div class="flex flex-col min-h-screen bg-slate-50 dark:bg-background-dark pb-20">
     <!-- Header -->
-    <header class="bg-white dark:bg-card-dark px-4 pt-4 pb-4 sticky top-0 z-30 border-b border-slate-100 dark:border-slate-800 shadow-sm">
-        <div class="flex items-center justify-between gap-4">
-            <div class="flex flex-col">
-                <h1 class="text-xl font-black text-slate-800 dark:text-white tracking-tight">KM Takibi</h1>
-                <p class="text-xs text-slate-400 font-medium">Bildirimlerinizi takip edin</p>
-            </div>
-            <?php if ($aktifAracZimmeti): ?>
-            <button onclick="openKmBildirModal()" 
-                class="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-xl font-bold shadow-lg shadow-primary/30 transition-all active:scale-95">
-                <span class="material-symbols-outlined text-lg">add_circle</span>
-                <span class="text-sm">YENİ BİLDİR</span>
-            </button>
-            <?php endif; ?>
-        </div>
-    </header>
+    <?php pwaPageHeader([
+        'eyebrow' => 'ARAÇ',
+        'title' => 'KM Takibi',
+        'subtitle' => 'Bildirimlerinizi takip edin',
+        'actions' => $aktifAracZimmeti ? '<button type="button" onclick="openKmBildirModal()" class="pwa-circle-btn pwa-circle-btn--primary" aria-label="Yeni KM Bildir" title="Yeni KM Bildir"><span class="material-symbols-outlined">add_circle</span></button>' : '',
+    ]); ?>
 
     <!-- Stats -->
-    <section class="p-4 grid grid-cols-3 gap-3">
+    <section class="pwa-stat-strip grid grid-cols-3 gap-3">
         <div class="bg-white dark:bg-card-dark p-3 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col items-center justify-center text-center">
             <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-1">
                 <span class="material-symbols-outlined text-sm">assignment</span>
