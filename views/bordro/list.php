@@ -1278,6 +1278,8 @@ if (!empty($dbGelirler)) {
                                 </table>
                             </div>
                             <?php require_once dirname(__DIR__, 2) . '/layouts/datatable-core.php'; ?>
+                            <link rel="stylesheet" href="assets/libs/datatables.net-colreorder/css/colReorder.bootstrap4.min.css">
+                            <script src="assets/libs/datatables.net-colreorder/js/dataTables.colReorder.min.js"></script>
                             <script src="views/bordro/js/bordro.js?v=<?= filemtime(__DIR__ . '/js/bordro.js') ?>"></script>
                             <script>initBordroTable();</script>
                         </div>

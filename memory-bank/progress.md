@@ -2036,3 +2036,9 @@
 
 ## 2026-10-29 — Mobil SPA bordro: kart tıklama, İşlemler menüsü, puantaj sheet
 - PayrollView.vue, services/bordro.js, public/api/bordro.php güncellendi (kart→detay, Hesapla/İşlemler, puantaj bottom sheet, permissions haritası).
+
+## 2026-10-30 — Mobil SPA Kesme/Açma Karşılaştırması
+- Tamamlandı: model metodu, API section, servis, kart tanımı/sıralaması, Vue kartı, build. Tarayıcıda oturumlu görsel doğrulama yapılmadı.
+
+## 2026-10-30 — Merkezi DataTables sütun yöneticisi
+- Tamamlandı: modül, CSS, personel geçişi. Chrome ile doğrulandı: personel (gizle, sürükle, genişlik, yenileme sonrası kalıcılık, sıfırlama), cari, kullanıcı, demirbaş, araç takip. gelir-gider/efatura/bordro kendi yapısıyla devam ediyor.

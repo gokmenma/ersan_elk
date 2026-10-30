@@ -3409,3 +3409,21 @@
 - Gün kutusu puantaj-detay (GET) aksiyonunu açar; kırılım hesaplama snapshot'ındaki matrahlar alanından okunur (yeniden hesaplanmaz).
 - Puantaj bottom sheet masaüstü takvimine çevrildi: aylık takvim (X/HT/izin kodları, renkli hücreler) + Toplam/Ücretli/Ücretsiz özet kartları. Veri: PersonelIzinleriModel::getAyTakvimi (yeni, masaüstü puantaj_izin.php mantığıyla aynı), endpoint puantaj-detay; yetki `personel/puantaj` (permissions.puantaj).
 - Puantaj sheet takvimi PuantajView'daki "Ay İçi Günlük Takvim" görünümüne (clean-calendar-box, calendar-tile, kod renk haritası) uyarlandı; salt okunur.
+
+## 2026-10-30 — Mobil SPA ana sayfa: Kesme/Açma Karşılaştırması kartı
+- Yeni `kesme_comparison` kartı (HomeView.vue): Olumlu/Olumsuz/Tümü ve Bölge/Personel geçişi, 4 KPI, açılır detay listesi ve genel toplam; endeks kartının `endeks-*` stilleri yeniden kullanıldı.
+- API: `dashboard.php?section=kesme_comparison` (`puantaj/raporlar` yetkisi, yetkisizse 403); veri `MobileDashboardModel::kesmeComparison()` → `PuantajModel::getKesmeMonthlyComparisonByDay`.
+- Mobil derleme yenilendi (mobile-spa/dist).
+
+## 2026-10-30 — Merkezi DataTables sütun yöneticisi
+- `assets/js/datatable-columns.js` + `assets/css/datatable-columns.css` (layouts/datatable-core.php ile yüklenir): uygun tüm DataTables'a otomatik "Sütunlar" menüsü (gizle/göster, sürükle-sırala), başlık kenarından genişlik ayarı (çift tık = sıfırla), ColReorder başlık sürükleme. Tercihler localStorage `dtcm:v1:<sayfa>#<tabloId>`.
+- Uygunluk: colReorder/scrollX/colspan-rowspan'lı başlık, <3 sütun, `#columnList` olan sayfa ve `data-column-manager="off"` hariç. Uygun tabloda Responsive kapatılır, tablo `.table-responsive` ile sarılır.
+- Personel listesi merkeze taşındı (özel Sütunlar dropdown'ı ve JS'i kaldırıldı); araç çubuğunda `data-dt-colman-for="membersTable"` yuvası kullanılır.
+- Düzeltme (evrak-takip): ColReorder, ajax kaynaklı + sayısal mData (dizi indeksli) tablolarda gövde hücrelerini taşımıyordu; bu tablolar yönetici dışı bırakıldı. Sunucu taraflı tablolarda istek (`columns`, `order.column`) özgün sütun düzenine çevrilir; sürükleme sonrası `draw(false)` ile gövde yenilenir.
+- efatura/gelen-list: eski (çalışmayan) Sütunlar menüsü kaldırıldı, merkezi yönetici devralındı (data-dt-colman-for=tblGelenFaturalar).
+- Evrak-takip gibi ajax+sayısal mData tablolarda yönetici 'resize' modunda çalışır (gizle/göster + genişlik, sürükle-sırala yok). Genişlik stilleri !important ile uygulanır (sayfa CSS'indeki width:1px !important'i ezmek için).
+- Sütun yöneticisi: her başlık için en uzun kelime + dolgu + filtre butonu kadar otomatik asgari genişlik (kelimeler bölünmez); daraltma bu sınırın altına inemez.
+- Evrak listesi: TİP sütunu sıralanabilir yapıldı (sunucu haritasında vardı). Genişlik sürüklemesi artık fare >2px hareket ettiyse sonraki tıklamayı (sıralamayı) yutar.
+- Bordro listesi: ColReorder yerel kopyası (assets/libs/datatables.net-colreorder) views/bordro/list.php içinde core'dan sonra yüklenir; sütun yöneticisi bordroda çalışır. Sütun listesi menü açılırken yeniden çizilir (Sortable geç yüklenebilir).
+- Asgari sütun genişliği: en uzun kelime + sol/sağ dolgu (filtre butonu payı zaten sağ dolguda) + 4px; filtre butonu çift sayılmıyordu düzeltildi (TARİH 143→101px).
+- Merkezi sütun yöneticisi: başlığı tablo gövdesine sürükleyip bırakınca sütun gizlenir (kesikli bırakma alanı + toast). Evrak-takip: sayısal mData fonksiyon getter'a çevrilerek sürükle-sırala açıldı; CEVAP ve E-İMZA sıralanabilir.

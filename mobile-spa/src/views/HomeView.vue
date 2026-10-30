@@ -27,6 +27,7 @@ import {
   FolderOpen,
   Gauge,
   GitCompare,
+  Power,
   GripVertical,
   Info,
   Layers,
@@ -54,7 +55,7 @@ import {
 } from '@lucide/vue'
 import TopBar from '../components/TopBar.vue'
 import { auth } from '../services/auth.js'
-import { getDashboard, getEndeksComparison, readDashboardCache, saveDashboardSettings, syncDailyOperations, writeDashboardCache } from '../services/dashboard.js'
+import { getDashboard, getEndeksComparison, getKesmeComparison, readDashboardCache, saveDashboardSettings, syncDailyOperations, writeDashboardCache } from '../services/dashboard.js'
 import { notificationsState, toggleNotificationsDrawer } from '../services/notifications.js'
 import { canGlobalSearch, openSearchSheet } from '../services/search.js'
 
@@ -107,6 +108,7 @@ const DEFAULT_CARD_ORDER = [
   'vehicles',
   'operations',
   'endeks_comparison',
+  'kesme_comparison',
   'quick_actions',
   'announcements',
 ]
@@ -159,6 +161,12 @@ const CARD_DEFINITIONS = {
     title: 'Endeks Karşılaştırması',
     icon: GitCompare,
     description: 'Bölge ve personel bazlı aylık okuma karşılaştırması',
+  },
+  kesme_comparison: {
+    id: 'kesme_comparison',
+    title: 'Kesme/Açma Karşılaştırması',
+    icon: Power,
+    description: 'Bölge ve personel bazlı aylık kesme/açma karşılaştırması',
   },
   quick_actions: {
     id: 'quick_actions',
@@ -576,6 +584,7 @@ function isCardVisible(cardId) {
   if (cardId === 'vehicles') return Boolean(vehicles.value)
   if (cardId === 'operations') return operations.value.length > 0
   if (cardId === 'endeks_comparison') return endeksCanView.value
+  if (cardId === 'kesme_comparison') return kesmeCanView.value
   if (cardId === 'quick_actions') return actions.value.length > 0
   return true
 }
@@ -685,6 +694,73 @@ watch(
   () => [endeksCanView.value, cardSettings.value.endeks_comparison?.hidden],
   ([canView, hidden]) => {
     if (canView && !hidden && !endeksData.value) loadEndeksComparison()
+  },
+  { immediate: true },
+)
+
+// Kesme/Açma Karşılaştırması (yetki sunucuda doğrulanır; yetkisizse veri hiç gelmez)
+const kesmeCanView = computed(() => (dashboard.value.operations || []).some((item) => item.key === 'reading'))
+const kesmeData = ref(null)
+const kesmeLoading = ref(false)
+const kesmeError = ref('')
+const kesmeView = ref('bolge') // 'bolge' | 'personel'
+const kesmeType = ref('olumlu') // 'olumlu' | 'olumsuz' | 'all'
+const kesmeDetailOpen = ref(false)
+
+const kesmePeriods = computed(() => (kesmeData.value?.periods || []).map((period) => ({ ...period, short_label: String(period.label).split(' ')[0] })))
+
+const kesmeRows = computed(() => {
+  const periods = kesmePeriods.value
+  const source = kesmeData.value?.types?.[kesmeType.value]?.[kesmeView.value] || {}
+  const lastLabel = periods[periods.length - 1]?.label
+  return Object.keys(source)
+    .map((key) => {
+      const entry = source[key]
+      if (kesmeView.value === 'bolge') {
+        const personCount = Number(entry.periods?.[lastLabel]?.personel_sayisi) || 0
+        return endeksRow(key, personCount ? `${personCount} personel` : '', entry.periods, periods)
+      }
+      return endeksRow(entry.personel_adi, `${entry.ekip_adi || '-'} · ${entry.bolge || '-'}`, entry.periods, periods)
+    })
+    .sort((a, b) => b.last - a.last)
+})
+
+const kesmeMax = computed(() => Math.max(1, ...kesmeRows.value.flatMap((row) => row.values)))
+
+const kesmeTotals = computed(() => {
+  const count = kesmePeriods.value.length
+  const values = Array.from({ length: count }, (_, index) => kesmeRows.value.reduce((sum, row) => sum + (row.values[index] || 0), 0))
+  const last = values[count - 1] || 0
+  const prev = count > 1 ? values[count - 2] : 0
+  return { values, diff: last - prev, trend: endeksTrend(last, prev) }
+})
+
+const kesmeOverview = computed(() => {
+  const day = Math.max(1, Number(kesmeData.value?.gun) || 1)
+  const total = kesmeTotals.value.values[kesmeTotals.value.values.length - 1] || 0
+  const rising = kesmeRows.value.filter((row) => row.trend.pct > 0).length
+  return { total, average: Math.round(total / day), day, rising, others: kesmeRows.value.length - rising }
+})
+
+const kesmeTypeLabel = computed(() => ({ olumlu: 'Olumlu', olumsuz: 'Olumsuz', all: 'Tümü' })[kesmeType.value])
+
+async function loadKesmeComparison() {
+  if (kesmeLoading.value || !kesmeCanView.value) return
+  kesmeLoading.value = true
+  kesmeError.value = ''
+  try {
+    kesmeData.value = await getKesmeComparison()
+  } catch (reason) {
+    kesmeError.value = reason.message
+  } finally {
+    kesmeLoading.value = false
+  }
+}
+
+watch(
+  () => [kesmeCanView.value, cardSettings.value.kesme_comparison?.hidden],
+  ([canView, hidden]) => {
+    if (canView && !hidden && !kesmeData.value) loadKesmeComparison()
   },
   { immediate: true },
 )
@@ -1780,6 +1856,128 @@ onMounted(() => {
                 </div>
 
                 <p class="endeks-foot">Her ayın 1'i ile {{ endeksOverview.day }}'i arası abone okuma sayıları karşılaştırılmaktadır.</p>
+                </div>
+              </template>
+            </section>
+
+            <!-- 5c. KESME/AÇMA KARŞILAŞTIRMASI -->
+            <section
+              v-else-if="cardId === 'kesme_comparison' && kesmeCanView"
+              class="bento-card bento-card--white endeks-card"
+            >
+              <div class="card-inner-head">
+                <div class="card-inner-title">
+                  <Power :size="16" class="text-primary" />
+                  <span>Kesme/Açma Karşılaştırması</span>
+                </div>
+                <div class="card-inner-controls">
+                  <span
+                    class="card-inner-handle"
+                    role="button"
+                    tabindex="0"
+                    title="Sürükle ve taşı"
+                    aria-label="Sürükle ve taşı"
+                    @pointerdown.stop="startHandleDrag(cardId, $event)"
+                    @touchstart.stop="startHandleDrag(cardId, $event)"
+                  >
+                    <GripVertical :size="14" />
+                  </span>
+                </div>
+              </div>
+
+              <div class="op-mode-toggle">
+                <button type="button" class="op-mode-btn" :class="{ 'is-active': kesmeType === 'olumlu' }" @click="kesmeType = 'olumlu'">Olumlu</button>
+                <button type="button" class="op-mode-btn" :class="{ 'is-active': kesmeType === 'olumsuz' }" @click="kesmeType = 'olumsuz'">Olumsuz</button>
+                <button type="button" class="op-mode-btn" :class="{ 'is-active': kesmeType === 'all' }" @click="kesmeType = 'all'">Tümü</button>
+              </div>
+              <div class="op-mode-toggle mt-2">
+                <button type="button" class="op-mode-btn" :class="{ 'is-active': kesmeView === 'bolge' }" @click="kesmeView = 'bolge'">Bölge</button>
+                <button type="button" class="op-mode-btn" :class="{ 'is-active': kesmeView === 'personel' }" @click="kesmeView = 'personel'">Personel</button>
+              </div>
+
+              <p v-if="kesmeLoading && !kesmeData" class="endeks-note">Yükleniyor…</p>
+              <p v-else-if="kesmeError && !kesmeData" class="endeks-note">
+                {{ kesmeError }}
+                <button type="button" class="endeks-retry" @click="loadKesmeComparison">Tekrar dene</button>
+              </p>
+              <p v-else-if="!kesmeRows.length" class="endeks-note">Bu filtreye ait sonuçlanan iş bulunamadı.</p>
+
+              <template v-else>
+                <div class="endeks-kpis">
+                  <div class="endeks-kpi">
+                    <span>Bu dönem · {{ kesmeTypeLabel }}</span>
+                    <strong>{{ endeksFmt(kesmeOverview.total) }}</strong>
+                    <small>İlk {{ kesmeOverview.day }} gün</small>
+                  </div>
+                  <div class="endeks-kpi" :class="`endeks-tone--${kesmeTotals.trend.tone}`">
+                    <span>Önceki aya göre</span>
+                    <strong>{{ kesmeTotals.trend.text }}</strong>
+                    <small>{{ kesmeTotals.diff > 0 ? '+' : '' }}{{ endeksFmt(kesmeTotals.diff) }} net iş</small>
+                  </div>
+                  <div class="endeks-kpi">
+                    <span>Günlük ort.</span>
+                    <strong>{{ endeksFmt(kesmeOverview.average) }}</strong>
+                    <small>Takvim günü başına</small>
+                  </div>
+                  <div class="endeks-kpi">
+                    <span>Aktif {{ kesmeView === 'bolge' ? 'bölge' : 'personel' }}</span>
+                    <strong>{{ endeksFmt(kesmeRows.length) }}</strong>
+                    <small>{{ kesmeOverview.rising }} yükselişte · {{ kesmeOverview.others }} diğer</small>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  class="endeks-detail-toggle"
+                  :aria-expanded="kesmeDetailOpen"
+                  @click="kesmeDetailOpen = !kesmeDetailOpen"
+                >
+                  <ChevronDown :size="14" class="endeks-chevron" :class="{ 'is-open': kesmeDetailOpen }" />
+                  <span>{{ kesmeView === 'bolge' ? 'Bölge' : 'Personel' }} detaylarını {{ kesmeDetailOpen ? 'gizle' : 'göster' }}</span>
+                </button>
+
+                <div v-show="kesmeDetailOpen" class="endeks-detail">
+                  <div class="endeks-list">
+                    <article v-for="row in kesmeRows" :key="`${kesmeType}-${kesmeView}-${row.name}-${row.sub}`" class="endeks-row" :class="`endeks-tone--${row.trend.tone}`">
+                      <div class="endeks-row-head">
+                        <span class="endeks-dot"></span>
+                        <span class="endeks-name">
+                          <strong>{{ row.name }}</strong>
+                          <small v-if="row.sub">{{ row.sub }}</small>
+                        </span>
+                        <span class="endeks-badge">
+                          {{ row.trend.text }}
+                          <small>{{ row.diff > 0 ? '+' : '' }}{{ endeksFmt(row.diff) }}</small>
+                        </span>
+                      </div>
+                      <div class="endeks-periods">
+                        <div v-for="(period, index) in kesmePeriods" :key="period.label" class="endeks-period" :class="{ 'is-current': period.is_current }">
+                          <span>{{ period.short_label }}</span>
+                          <strong>{{ endeksFmt(row.values[index]) }}</strong>
+                          <i class="endeks-bar"><b :style="{ width: `${Math.max(row.values[index] ? 4 : 0, (row.values[index] / kesmeMax) * 100)}%` }"></b></i>
+                        </div>
+                      </div>
+                    </article>
+                    <article class="endeks-row endeks-total" :class="`endeks-tone--${kesmeTotals.trend.tone}`">
+                      <div class="endeks-row-head">
+                        <span class="endeks-name">
+                          <strong>Genel Toplam</strong>
+                          <small>{{ kesmeRows.length }} {{ kesmeView === 'bolge' ? 'bölge' : 'personel' }}</small>
+                        </span>
+                        <span class="endeks-badge">
+                          {{ kesmeTotals.trend.text }}
+                          <small>{{ kesmeTotals.diff > 0 ? '+' : '' }}{{ endeksFmt(kesmeTotals.diff) }}</small>
+                        </span>
+                      </div>
+                      <div class="endeks-periods">
+                        <div v-for="(period, index) in kesmePeriods" :key="period.label" class="endeks-period" :class="{ 'is-current': period.is_current }">
+                          <span>{{ period.short_label }}</span>
+                          <strong>{{ endeksFmt(kesmeTotals.values[index]) }}</strong>
+                        </div>
+                      </div>
+                    </article>
+                  </div>
+                  <p class="endeks-foot">Her ayın 1'i ile {{ kesmeOverview.day }}'i arası sonuçlanan kesme/açma işleri karşılaştırılmaktadır.</p>
                 </div>
               </template>
             </section>

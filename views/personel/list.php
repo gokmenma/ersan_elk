@@ -213,66 +213,9 @@ if (Gate::canWithMessage("personel_listesi")) {
                             border-color: #3e4556 !important;
                         }
 
-                        [data-bs-theme="dark"] .column-order-item:hover {
-                            background-color: rgba(255, 255, 255, 0.05) !important;
-                        }
-
                         [data-bs-theme="dark"] .personel-hover-preview {
                             border-color: #3e4556 !important;
                             background: #2a3042 !important;
-                        }
-
-                        /* Column toggle checkboxes color */
-                        .col-toggle-check:checked {
-                            background-color: var(--bs-primary) !important;
-                            border-color: var(--bs-primary) !important;
-                        }
-
-                        .dropdown-item:active {
-                            background-color: rgba(var(--bs-primary-rgb), 0.1) !important;
-                            color: inherit !important;
-                        }
-
-                        .column-order-item {
-                            transition: background-color 0.2s;
-                            user-select: none;
-                        }
-
-                        .column-order-item:hover {
-                            background-color: rgba(0, 0, 0, 0.03);
-                        }
-
-                        .drag-handle {
-                            color: #adb5bd;
-                            transition: all 0.2s;
-                            cursor: grab !important;
-                            position: relative;
-                            z-index: 10;
-                        }
-
-                        .drag-handle:active {
-                            cursor: grabbing !important;
-                        }
-
-                        .drag-handle:hover {
-                            color: var(--bs-primary);
-                            background-color: rgba(var(--bs-primary-rgb), 0.1);
-                            border-radius: 4px;
-                        }
-
-                        .sorting-active .dropdown-item {
-                            pointer-events: none;
-                        }
-
-                        .sorting-active .drag-handle {
-                            pointer-events: auto;
-                        }
-
-                        .sortable-fallback {
-                            opacity: 0.9 !important;
-                            background: white !important;
-                            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1) !important;
-                            cursor: grabbing !important;
                         }
 
                         #membersTable {
@@ -361,33 +304,7 @@ if (Gate::canWithMessage("personel_listesi")) {
 
                             </div>
                             <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1 personel-action-toolbar">
-                                <div class="dropdown d-inline-block">
-                                    <button type="button"
-                                        class="btn btn-link btn-sm text-secondary text-decoration-none px-2 d-flex align-items-center"
-                                        id="columnToggle" data-bs-toggle="dropdown" aria-haspopup="true"
-                                        aria-expanded="false" title="Sütunları Göster/Gizle">
-                                        <i class="mdi mdi-view-column fs-5 me-1"></i> Sütunlar
-                                    </button>
-                                    <div class="dropdown-menu dropdown-menu-end p-0 shadow-lg border-0"
-                                        aria-labelledby="columnToggle" style="min-width: 250px;">
-                                        <div
-                                            class="p-2 border-bottom d-flex justify-content-between align-items-center bg-light bg-opacity-50">
-                                            <span class="fw-semibold font-size-12 text-muted uppercase">SÜTUN
-                                                GÖRÜNÜMÜ</span>
-                                            <button type="button" id="btnResetColumns"
-                                                class="btn btn-sm btn-link text-primary text-decoration-none p-0 font-size-12 fw-bold">
-                                                <i class="mdi mdi-refresh me-1"></i>VARSAYILAN
-                                            </button>
-                                        </div>
-                                        <div class="p-2 text-center" style="max-height: 400px; overflow-y: auto;"
-                                            id="columnList">
-                                            <div class="text-primary py-5">
-                                                <i class="bx bx-loader-alt bx-spin fs-1"></i>
-                                                <div class="mt-2 font-size-13 fw-semibold text-muted">Yükleniyor...</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <span class="d-inline-block" data-dt-colman-for="membersTable"></span>
                                 <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
                                 <a href="index?p=personel/manage" id="saveButton"
                                     class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center">

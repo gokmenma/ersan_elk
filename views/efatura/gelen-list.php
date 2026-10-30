@@ -264,19 +264,7 @@ $title = 'Gelen Faturalar';
                     </div>
                 </div>
 
-                <!-- Sütunlar Butonu (ColVis & Drag-Drop Yönetimi) -->
-                <div class="dropdown d-inline-block">
-                    <button type="button" class="btn btn-sm btn-subtle-secondary px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs dropdown-toggle" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" id="btnHeaderColVis" title="Sütunları Yönet">
-                        <i class="bx bx-columns font-size-15 text-primary"></i> <span class="d-none d-sm-inline font-size-12">Sütunlar</span>
-                    </button>
-                    <div class="dropdown-menu dropdown-menu-end shadow-lg border p-2" style="min-width: 230px; max-height: 400px; overflow-y: auto;" id="columnListContainer">
-                        <div class="d-flex align-items-center justify-content-between px-2 pb-1.5 border-bottom mb-1">
-                            <span class="font-size-11 fw-bold text-uppercase text-muted">Sütun Görünürlüğü</span>
-                            <button type="button" class="btn btn-link p-0 font-size-11 text-primary text-decoration-none" id="btnResetColumns">Sıfırla</button>
-                        </div>
-                        <div id="columnList" class="d-flex flex-column gap-1"></div>
-                    </div>
-                </div>
+                <span class="d-inline-block" data-dt-colman-for="tblGelenFaturalar"></span>
             </div>
         </div>
 

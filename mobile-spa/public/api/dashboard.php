@@ -70,6 +70,18 @@ if (($_GET['section'] ?? '') === 'endeks_comparison') {
     }
 }
 
+if (($_GET['section'] ?? '') === 'kesme_comparison') {
+    if (!$permissions['reports']) {
+        dashboardResponse(['success' => false, 'message' => 'Bu verilere erişim yetkiniz yok.'], 403);
+    }
+    try {
+        dashboardResponse(['success' => true, 'data' => $model->kesmeComparison()]);
+    } catch (Throwable $error) {
+        error_log('Mobile kesme comparison API: ' . $error->getMessage());
+        dashboardResponse(['success' => false, 'message' => 'Kesme/Açma karşılaştırması alınamadı.'], 500);
+    }
+}
+
 try {
     $data = [
         'announcements' => $model->announcements(),

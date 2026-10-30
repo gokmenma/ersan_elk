@@ -362,6 +362,23 @@ class MobileDashboardModel
         ];
     }
 
+    public function kesmeComparison(): array
+    {
+        $data = (new PuantajModel())->getKesmeMonthlyComparisonByDay('all');
+        $types = [];
+        foreach (['olumlu', 'olumsuz', 'all'] as $type) {
+            $types[$type] = [
+                'bolge' => $data['types'][$type]['bolge'] ?? [],
+                'personel' => $data['types'][$type]['personel'] ?? [],
+            ];
+        }
+        return [
+            'gun' => (int) ($data['gun'] ?? 0),
+            'periods' => $data['periods'] ?? [],
+            'types' => $types,
+        ];
+    }
+
     public function illegalUse(): array
     {
         $model = new PuantajModel();
@@ -411,6 +428,8 @@ class MobileDashboardModel
             'birthdays',
             'vehicles',
             'operations',
+            'endeks_comparison',
+            'kesme_comparison',
             'quick_actions',
         ];
 

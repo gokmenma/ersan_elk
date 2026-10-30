@@ -42,6 +42,13 @@ export async function getEndeksComparison() {
   return payload.data || {}
 }
 
+export async function getKesmeComparison() {
+  const response = await fetch('/api/dashboard.php?section=kesme_comparison', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+  const payload = await response.json().catch(() => ({ success: false, message: 'Sunucudan geçersiz yanıt alındı.' }))
+  if (!response.ok || !payload.success) throw new Error(payload.message || 'Kesme/Açma karşılaştırması alınamadı.')
+  return payload.data || {}
+}
+
 export async function saveDashboardSettings(order, settings = {}) {
   const response = await fetch('/api/dashboard.php', {
     method: 'POST',

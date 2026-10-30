@@ -1,0 +1,142 @@
+table.dataTable thead th.dt-colman-th {
+  position: relative;
+}
+
+.dt-colman-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 7px;
+  cursor: col-resize;
+  z-index: 5;
+  user-select: none;
+  touch-action: none;
+}
+
+.dt-colman-resizer::after {
+  content: "";
+  position: absolute;
+  top: 25%;
+  bottom: 25%;
+  right: 2px;
+  width: 2px;
+  border-radius: 2px;
+  background: transparent;
+  transition: background-color 0.15s;
+}
+
+table.dataTable thead th:hover > .dt-colman-resizer::after {
+  background: rgba(var(--bs-primary-rgb), 0.35);
+}
+
+.dt-colman-resizer:hover::after {
+  background: var(--bs-primary) !important;
+}
+
+body.dt-colman-resizing,
+body.dt-colman-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+table.dataTable.dt-colman-fixed {
+  table-layout: fixed;
+  min-width: 100%;
+}
+
+table.dataTable.dt-colman-fixed th,
+table.dataTable.dt-colman-fixed td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dt-colman-menu {
+  min-width: 270px;
+}
+
+.dt-colman-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.dt-colman-item {
+  gap: 8px;
+  cursor: default;
+  user-select: none;
+  transition: background-color 0.2s;
+}
+
+.dt-colman-item:hover {
+  background-color: rgba(var(--bs-primary-rgb), 0.06);
+}
+
+.dt-colman-handle {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #adb5bd;
+  cursor: grab !important;
+  transition: all 0.2s;
+}
+
+.dt-colman-handle:active {
+  cursor: grabbing !important;
+}
+
+.dt-colman-handle:hover {
+  color: var(--bs-primary);
+  background-color: rgba(var(--bs-primary-rgb), 0.1);
+  border-radius: 4px;
+}
+
+.dt-colman-sorting .dropdown-item {
+  pointer-events: none;
+}
+
+.dt-colman-sorting .dt-colman-handle {
+  pointer-events: auto;
+}
+
+.dt-colman-check:checked {
+  background-color: var(--bs-primary) !important;
+  border-color: var(--bs-primary) !important;
+}
+
+.dt-colman-menu .dropdown-item:active {
+  background-color: rgba(var(--bs-primary-rgb), 0.1) !important;
+  color: inherit !important;
+}
+
+.dt-colman-bar {
+  padding: 6px 4px 0;
+}
+
+.dt-colman-dropzone {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 20;
+  pointer-events: none;
+  border: 2px dashed var(--bs-primary);
+  background: rgba(var(--bs-primary-rgb), 0.08);
+  color: var(--bs-primary);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.dt-colman-dropzone.active {
+  display: flex;
+}
+
+.dt-colman-dropzone i {
+  font-size: 28px;
+}

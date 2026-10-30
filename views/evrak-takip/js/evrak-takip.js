@@ -953,7 +953,7 @@ $(document).ready(function () {
       },
       columnDefs: [
         { targets: 3, type: "date" },
-        { targets: [0, 1, 2, 9, 10, 11, 12], orderable: false }
+        { targets: [0, 2, 11, 12], orderable: false }
       ]
     }) : {
       processing: true,
@@ -962,7 +962,7 @@ $(document).ready(function () {
       order: [[3, "desc"]],
       columnDefs: [
         { targets: 3, type: "date" },
-        { targets: [0, 1, 2, 9, 10, 11, 12], orderable: false }
+        { targets: [0, 2, 11, 12], orderable: false }
       ],
       language: { url: "assets/libs/datatables.net/js/tr.json" }
     };

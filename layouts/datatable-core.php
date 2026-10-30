@@ -4,3 +4,5 @@
 <link rel="stylesheet" href="assets/css/datatable-filters.css?v=<?= filemtime('assets/css/datatable-filters.css') ?>">
 <script src="assets/js/datatable-filters.js?v=<?= filemtime('assets/js/datatable-filters.js') ?>"></script>
 <script src="assets/js/datatables.init.js?v=<?= filemtime('assets/js/datatables.init.js') ?>"></script>
+<link rel="stylesheet" href="assets/css/datatable-columns.css?v=<?= filemtime('assets/css/datatable-columns.css') ?>">
+<script src="assets/js/datatable-columns.js?v=<?= filemtime('assets/js/datatable-columns.js') ?>"></script>
