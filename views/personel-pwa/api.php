@@ -2062,6 +2062,8 @@ try {
 
             $newId = (int) $TalepModel->getDb()->lastInsertId();
 
+            $erkenYanitGonderildi = responseEarly(true, ['id' => $newId, 'ref_no' => $ref_no], 'Talebiniz başarıyla oluşturuldu. Referans No: ' . $ref_no);
+
             // Bildirim ve Mail Gönderimi
             try {
                 $logFile = dirname(dirname(__DIR__)) . '/debug_bildirim.log';
@@ -2195,6 +2197,9 @@ try {
                 error_log('Talep bildirim süreci hatası: ' . $e->getMessage());
             }
 
+            if ($erkenYanitGonderildi) {
+                exit;
+            }
             response(true, ['id' => $newId, 'ref_no' => $ref_no], 'Talebiniz başarıyla oluşturuldu. Referans No: ' . $ref_no);
             break;
 

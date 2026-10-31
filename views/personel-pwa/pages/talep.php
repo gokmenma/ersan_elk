@@ -176,6 +176,23 @@
 </div>
 
 <style>
+    #talep-detay-content { display: flex; flex-direction: column; gap: 12px; }
+    .talep-detay-dot { display: inline-block; width: 10px; height: 10px; border-radius: 9999px; flex-shrink: 0; }
+    .talep-detay-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .talep-detay-tile { padding: 12px 14px; border-radius: 18px; background: #f1f4f8; min-width: 0; }
+    .talep-detay-tile small { display: block; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #64748b; }
+    .talep-detay-tile strong { display: block; margin-top: 3px; font-size: 14px; font-weight: 700; color: #161920; word-break: break-word; }
+    .dark .talep-detay-tile { background: rgba(255, 255, 255, .06); }
+    .dark .talep-detay-tile strong { color: #e8ecf2; }
+    .talep-detay-steps { display: flex; flex-direction: column; gap: 12px; }
+    .talep-detay-step { display: flex; align-items: center; gap: 12px; }
+    .talep-detay-step p { margin: 0; font-size: 13px; font-weight: 700; color: #161920; }
+    .talep-detay-step small { font-size: 11px; font-weight: 600; color: #64748b; }
+    .dark .talep-detay-step p { color: #e8ecf2; }
+    .talep-detay-step__dot { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9999px; flex-shrink: 0; color: #fff; background: #191d24; }
+    .talep-detay-step__dot .material-symbols-outlined { font-size: 16px; }
+    .talep-detay-step__dot.is-success { background: #22c55e; }
+    .dark .talep-detay-step__dot.is-done { background: #e8ecf2; color: #161920; }
     .kategori-chip { padding: 10px 16px; border-radius: 999px; border: 2px solid transparent; background: #f1f4f8; font-size: 13px; font-weight: 700; color: #475569; transition: all .2s ease; }
     .oncelik-btn { padding: 12px 0; border-radius: 18px; border: 2px solid transparent; background: #f1f4f8; font-size: 13px; font-weight: 700; color: #475569; transition: all .2s ease; }
     .dark .kategori-chip, .dark .oncelik-btn { background: rgba(255, 255, 255, .06); color: #cbd5e1; }
@@ -468,102 +485,77 @@
         if (!talep) return;
 
         document.getElementById('talep-modal-title').textContent = '#' + talep.ref_no;
+        const konumHtml = talep.latitude && talep.longitude
+            ? `<a href="https://www.google.com/maps?q=${encodeURIComponent(talep.latitude)},${encodeURIComponent(talep.longitude)}" target="_blank" rel="noopener" class="text-primary flex items-center gap-1">${escapeHtml(talep.konum)}<span class="material-symbols-outlined" style="font-size:14px">open_in_new</span></a>`
+            : escapeHtml(talep.konum);
+        const adimlar = [
+            { ikon: 'add', renk: 'is-done', baslik: 'Oluşturuldu', alt: talep.tarih },
+            talep.durum !== 'beklemede' ? { ikon: 'pending', renk: 'is-done', baslik: 'İşleme Alındı', alt: 'Talep inceleniyor' } : null,
+            talep.durum === 'cozuldu' ? { ikon: 'check', renk: 'is-success', baslik: 'Çözüldü', alt: talep.cozum_tarihi || '' } : null
+        ].filter(Boolean);
+
         document.getElementById('talep-detay-content').innerHTML = `
-        <div class="flex flex-col gap-4">
-            <div class="flex items-center gap-3 mb-2">
-                <div class="w-12 h-12 rounded-xl ${getKategoriColor(talep.kategori)} flex items-center justify-center">
+        <section class="pwa-sheet-card">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl ${getKategoriColor(talep.kategori)} flex items-center justify-center flex-shrink-0">
                     <span class="material-symbols-outlined text-xl">${getKategoriIcon(talep.kategori)}</span>
                 </div>
-                <div>
-                    <p class="font-bold text-slate-900 dark:text-white">${talep.baslik}</p>
-                    <span class="badge ${getStatusBadge(talep.durum)}">${talep.durum_text}</span>
+                <div class="min-w-0 flex-1">
+                    <p class="font-bold text-slate-900 dark:text-white truncate">${escapeHtml(talep.baslik)}</p>
+                    <span class="badge ${getStatusBadge(talep.durum)}">${escapeHtml(talep.durum_text)}</span>
                 </div>
             </div>
-            
-            <div class="grid grid-cols-2 gap-3">
-                <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl">
-                    <p class="text-xs text-slate-500 mb-1">Konum</p>
-                    ${talep.latitude && talep.longitude ?
-                `<a href="https://www.google.com/maps?q=${talep.latitude},${talep.longitude}" target="_blank" class="font-semibold text-sm text-primary hover:underline flex items-center gap-1">
-                        ${talep.konum}
-                        <span class="material-symbols-outlined text-xs">open_in_new</span>
-                    </a>` :
-                `<p class="font-semibold text-sm text-slate-900 dark:text-white">${talep.konum}</p>`
-            }
+            <div class="talep-detay-grid">
+                <div class="talep-detay-tile">
+                    <small>Konum</small>
+                    <strong>${konumHtml}</strong>
                 </div>
-                <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl">
-                    <p class="text-xs text-slate-500 mb-1">Kategori</p>
-                    <p class="font-semibold text-sm text-slate-900 dark:text-white">${talep.kategori_text}</p>
+                <div class="talep-detay-tile">
+                    <small>Kategori</small>
+                    <strong>${escapeHtml(talep.kategori_text)}</strong>
+                </div>
+                <div class="talep-detay-tile" style="grid-column: 1 / -1">
+                    <small>Öncelik</small>
+                    <strong class="flex items-center gap-2"><span class="talep-detay-dot ${getOncelikColor(talep.oncelik)}"></span>${escapeHtml(talep.oncelik_text)}</strong>
                 </div>
             </div>
-            
-            <div class="flex items-center gap-3 py-3 border-t border-slate-100 dark:border-slate-800">
-                <span class="w-3 h-3 rounded-full ${getOncelikColor(talep.oncelik)}"></span>
-                <span class="text-slate-600 dark:text-slate-400">Öncelik:</span>
-                <span class="font-bold text-slate-900 dark:text-white">${talep.oncelik_text}</span>
-            </div>
-            
-            <div>
-                <p class="text-xs text-slate-500 mb-1">Açıklama</p>
-                <p class="text-sm text-slate-700 dark:text-slate-300">${talep.aciklama}</p>
-            </div>
-            
-            ${talep.cozum_aciklama ? `
-            <div class="mt-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
-                <p class="text-xs text-green-600 dark:text-green-400 font-semibold mb-1">Sonuç Açıklaması</p>
-                <p class="text-sm text-green-700 dark:text-green-300">${talep.cozum_aciklama}</p>
-            </div>
-            ` : ''}
+        </section>
 
-            ${talep.foto ? `
-            <div>
-                <p class="text-xs text-slate-500 mb-2">Fotoğraf</p>
-                <div class="relative">
-                    <img src="https://ersantr.com/${talep.foto}" 
-                         class="w-full max-w-[250px] rounded-xl cursor-pointer bg-slate-100 border border-slate-200" 
-                         onclick="window.open('https://ersantr.com/${talep.foto}', '_blank')"
-                         onerror="this.onerror=null; this.src='data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22200%22%20height%3D%22150%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23f1f5f9%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20font-family%3D%22sans-serif%22%20font-size%3D%2212%22%20fill%3D%22%2394a3b8%22%20text-anchor%3D%22middle%22%20dy%3D%22.3em%22%3EResim%20Yüklenemedi%3C%2Ftext%3E%3C%2Fsvg%3E';">
-                </div>
-            </div>
-            ` : ''}
+        <section class="pwa-sheet-card">
+            <h2 class="pwa-card-title"><span class="material-symbols-outlined">notes</span>Açıklama</h2>
+            <p class="text-sm text-slate-700 dark:text-slate-300" style="margin:0;white-space:pre-line">${escapeHtml(talep.aciklama)}</p>
+        </section>
 
-            <div class="mt-2">
-                <p class="text-xs text-slate-500 mb-3">Süreç</p>
-                <div class="flex flex-col gap-3">
-                    <div class="flex items-start gap-3">
-                        <div class="w-6 h-6 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                            <span class="material-symbols-outlined text-white text-sm">add</span>
-                        </div>
-                        <div>
-                            <p class="text-sm font-medium text-slate-900 dark:text-white">Oluşturuldu</p>
-                            <p class="text-xs text-slate-500">${talep.tarih}</p>
-                        </div>
+        ${talep.cozum_aciklama ? `
+        <section class="pwa-sheet-card">
+            <h2 class="pwa-card-title"><span class="material-symbols-outlined">task_alt</span>Sonuç Açıklaması</h2>
+            <p class="text-sm text-slate-700 dark:text-slate-300" style="margin:0;white-space:pre-line">${escapeHtml(talep.cozum_aciklama)}</p>
+        </section>
+        ` : ''}
+
+        ${talep.foto ? `
+        <section class="pwa-sheet-card">
+            <h2 class="pwa-card-title"><span class="material-symbols-outlined">image</span>Fotoğraf</h2>
+            <img src="https://ersantr.com/${encodeURI(talep.foto)}"
+                 class="w-full rounded-2xl cursor-pointer bg-slate-100 border border-slate-200"
+                 onclick="window.open(this.src, '_blank')"
+                 onerror="this.onerror=null; this.src='data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22200%22%20height%3D%22150%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23f1f5f9%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20font-family%3D%22sans-serif%22%20font-size%3D%2212%22%20fill%3D%22%2394a3b8%22%20text-anchor%3D%22middle%22%20dy%3D%22.3em%22%3EResim%20Yüklenemedi%3C%2Ftext%3E%3C%2Fsvg%3E';">
+        </section>
+        ` : ''}
+
+        <section class="pwa-sheet-card">
+            <h2 class="pwa-card-title"><span class="material-symbols-outlined">timeline</span>Süreç</h2>
+            <div class="talep-detay-steps">
+                ${adimlar.map(a => `
+                <div class="talep-detay-step">
+                    <span class="talep-detay-step__dot ${a.renk}"><span class="material-symbols-outlined">${a.ikon}</span></span>
+                    <div>
+                        <p>${escapeHtml(a.baslik)}</p>
+                        <small>${escapeHtml(a.alt)}</small>
                     </div>
-                    ${talep.durum !== 'beklemede' ? `
-                    <div class="flex items-start gap-3">
-                        <div class="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                            <span class="material-symbols-outlined text-primary text-sm">pending</span>
-                        </div>
-                        <div>
-                            <p class="text-sm font-medium text-slate-900 dark:text-white">İşleme Alındı</p>
-                            <p class="text-xs text-slate-500">Talep inceleniyor</p>
-                        </div>
-                    </div>
-                    ` : ''}
-                    ${talep.durum === 'cozuldu' ? `
-                    <div class="flex items-start gap-3">
-                        <div class="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
-                            <span class="material-symbols-outlined text-white text-sm">check</span>
-                        </div>
-                        <div>
-                            <p class="text-sm font-medium text-slate-900 dark:text-white">Çözüldü</p>
-                            <p class="text-xs text-slate-500">${talep.cozum_tarihi || ''}</p>
-                        </div>
-                    </div>
-                    ` : ''}
-                </div>
+                </div>`).join('')}
             </div>
-        </div>
+        </section>
         `;
     }
 
