@@ -30,6 +30,27 @@ function taleplerResponse(array $payload, int $status = 200): never
     exit;
 }
 
+function taleplerErkenYanit(array $payload): void
+{
+    ignore_user_abort(true);
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
+    }
+    $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    http_response_code(200);
+    header('Content-Encoding: none');
+    header('Connection: close');
+    header('Content-Length: ' . strlen((string) $json));
+    echo $json;
+    while (ob_get_level() > 0) {
+        ob_end_flush();
+    }
+    flush();
+    if (function_exists('fastcgi_finish_request')) {
+        fastcgi_finish_request();
+    }
+}
+
 if (empty($_SESSION['user_id']) || empty($_SESSION['user']) || empty($_SESSION['firma_id'])) {
     taleplerResponse(['success' => false, 'message' => 'Oturumunuz sona ermiş.'], 401);
 }
@@ -282,6 +303,7 @@ if ($method === 'POST') {
                         $avansModel->avansHesabaIsle($id);
                     }
                     $systemLogModel->logAction($currentUserId, 'Avans Onaylama', "Avans talebi onaylandı. ID: $id", SystemLogModel::LEVEL_IMPORTANT);
+                    taleplerErkenYanit(['success' => true, 'message' => 'Avans talebi onaylandı.']);
                     try {
                         $av = $avansModel->find($id);
                         if ($av && $av->personel_id) {
@@ -292,7 +314,7 @@ if ($method === 'POST') {
                             ]);
                         }
                     } catch (\Throwable $e) {}
-                    taleplerResponse(['success' => true, 'message' => 'Avans talebi onaylandı.']);
+                    exit;
                 }
                 taleplerResponse(['success' => false, 'message' => 'Avans onaylanamadı.'], 500);
 
@@ -302,6 +324,7 @@ if ($method === 'POST') {
                 if ($avansModel->updateDurum($id, 'reddedildi', $aciklama)) {
                     $bildirimModel->markRequestNotificationAsRead($currentUserId, 'avans', $id);
                     $systemLogModel->logAction($currentUserId, 'Avans Reddetme', "Avans talebi reddedildi. ID: $id, Sebep: $aciklama", SystemLogModel::LEVEL_IMPORTANT);
+                    taleplerErkenYanit(['success' => true, 'message' => 'Avans talebi reddedildi.']);
                     try {
                         $av = $avansModel->find($id);
                         if ($av && $av->personel_id) {
@@ -312,7 +335,7 @@ if ($method === 'POST') {
                             ]);
                         }
                     } catch (\Throwable $e) {}
-                    taleplerResponse(['success' => true, 'message' => 'Avans talebi reddedildi.']);
+                    exit;
                 }
                 taleplerResponse(['success' => false, 'message' => 'İşlem tamamlanamadı.'], 500);
 
@@ -330,6 +353,7 @@ if ($method === 'POST') {
                 if ($izinModel->updateDurum($id, 'Onaylandı', $aciklama, $farkliBas, $farkliBit)) {
                     $bildirimModel->markRequestNotificationAsRead($currentUserId, 'izin', $id);
                     $systemLogModel->logAction($currentUserId, 'İzin Onaylama', "İzin talebi onaylandı. ID: $id", SystemLogModel::LEVEL_IMPORTANT);
+                    taleplerErkenYanit(['success' => true, 'message' => 'İzin talebi onaylandı.']);
                     try {
                         $iz = $izinModel->find($id);
                         if ($iz && $iz->personel_id) {
@@ -340,7 +364,7 @@ if ($method === 'POST') {
                             ]);
                         }
                     } catch (\Throwable $e) {}
-                    taleplerResponse(['success' => true, 'message' => 'İzin talebi onaylandı.']);
+                    exit;
                 }
                 taleplerResponse(['success' => false, 'message' => 'İzin onaylanamadı.'], 500);
 
@@ -350,6 +374,7 @@ if ($method === 'POST') {
                 if ($izinModel->updateDurum($id, 'Reddedildi', $aciklama)) {
                     $bildirimModel->markRequestNotificationAsRead($currentUserId, 'izin', $id);
                     $systemLogModel->logAction($currentUserId, 'İzin Reddetme', "İzin talebi reddedildi. ID: $id, Sebep: $aciklama", SystemLogModel::LEVEL_IMPORTANT);
+                    taleplerErkenYanit(['success' => true, 'message' => 'İzin talebi reddedildi.']);
                     try {
                         $iz = $izinModel->find($id);
                         if ($iz && $iz->personel_id) {
@@ -360,7 +385,7 @@ if ($method === 'POST') {
                             ]);
                         }
                     } catch (\Throwable $e) {}
-                    taleplerResponse(['success' => true, 'message' => 'İzin talebi reddedildi.']);
+                    exit;
                 }
                 taleplerResponse(['success' => false, 'message' => 'İşlem tamamlanamadı.'], 500);
 
@@ -369,6 +394,7 @@ if ($method === 'POST') {
                 if ($talepModel->updateDurum($id, 'islemde', null)) {
                     $bildirimModel->markRequestNotificationAsRead($currentUserId, 'talep', $id);
                     $systemLogModel->logAction($currentUserId, 'Talep İşleme Alma', "Talep işleme alındı. ID: $id", SystemLogModel::LEVEL_IMPORTANT);
+                    taleplerErkenYanit(['success' => true, 'message' => 'Talep işleme alındı.']);
                     try {
                         $tl = $talepModel->getTalepDetay($id);
                         if ($tl && $tl->personel_id) {
@@ -379,7 +405,7 @@ if ($method === 'POST') {
                             ]);
                         }
                     } catch (\Throwable $e) {}
-                    taleplerResponse(['success' => true, 'message' => 'Talep işleme alındı.']);
+                    exit;
                 }
                 taleplerResponse(['success' => false, 'message' => 'İşlem güncellenemedi.'], 500);
 
@@ -396,6 +422,7 @@ if ($method === 'POST') {
                 if ($talepModel->updateDurum($id, 'cozuldu', $aciklama)) {
                     $bildirimModel->markRequestNotificationAsRead($currentUserId, 'talep', $id);
                     $systemLogModel->logAction($currentUserId, 'Talep Çözüldü İşaretleme', "Talep çözüldü. ID: $id", SystemLogModel::LEVEL_IMPORTANT);
+                    taleplerErkenYanit(['success' => true, 'message' => 'Talep çözüldü olarak işaretlendi.']);
                     try {
                         $tl = $talepModel->find($id);
                         if ($tl && $tl->personel_id) {
@@ -406,7 +433,7 @@ if ($method === 'POST') {
                             ]);
                         }
                     } catch (\Throwable $e) {}
-                    taleplerResponse(['success' => true, 'message' => 'Talep çözüldü olarak işaretlendi.']);
+                    exit;
                 }
                 taleplerResponse(['success' => false, 'message' => 'İşlem tamamlanamadı.'], 500);
 
@@ -430,6 +457,6 @@ if ($method === 'POST') {
         }
     } catch (\Throwable $e) {
         error_log('Mobile talepler API error: ' . $e->getMessage());
-        taleplerResponse(['success' => false, 'message' => 'İşlem sırasında bir hata oluştu: ' . $e->getMessage()], 500);
+        taleplerResponse(['success' => false, 'message' => 'İşlem sırasında bir hata oluştu.'], 500);
     }
 }
