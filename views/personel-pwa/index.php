@@ -455,7 +455,7 @@ $pageStatusDark = '#121212';
         'zimmetler' => ['label' => 'Zimmetler', 'eyebrow' => 'ENVANTER', 'icon' => 'inventory_2', 'tone' => 'amber', 'show' => true],
         'talep' => ['label' => 'Talepler', 'eyebrow' => 'TALEP YÖNETİMİ', 'icon' => 'assignment', 'tone' => 'emerald', 'show' => true],
         'izin' => ['label' => 'İzinler', 'eyebrow' => 'İNSAN KAYNAKLARI', 'icon' => 'calendar_today', 'tone' => 'amber', 'show' => true],
-        'bordro' => ['label' => 'Bordrolar ve Avans', 'navLabel' => 'Bordro', 'eyebrow' => 'FİNANS', 'icon' => 'payments', 'tone' => 'emerald', 'show' => true],
+        'bordro' => ['label' => 'Avans ve Bordrolar', 'navLabel' => 'Bordro', 'eyebrow' => 'FİNANS', 'icon' => 'payments', 'tone' => 'emerald', 'show' => true],
         'profil' => ['label' => 'Profil', 'eyebrow' => 'HESABIM', 'icon' => 'person', 'tone' => 'blue', 'show' => true],
         'yardim' => ['label' => 'Yardım & Destek', 'navLabel' => 'Destek', 'eyebrow' => 'DESTEK', 'icon' => 'support_agent', 'tone' => 'purple', 'show' => true],
         'ihbar' => ['label' => 'İhbar Yönetimi', 'navLabel' => 'İhbar', 'eyebrow' => 'KAÇAK KONTROL', 'icon' => 'campaign', 'tone' => 'coral', 'show' => true],

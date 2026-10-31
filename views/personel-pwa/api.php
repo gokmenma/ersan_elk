@@ -302,24 +302,7 @@ function pwaIhbarLog(string $event, array $context = []): void
 /**
  * Resim yollarını PWA için düzeltir
  */
-function getPwaImageUrl($path)
-{
-    if (empty($path))
-        return '';
-
-    $host = $_SERVER['HTTP_HOST'];
-    $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https:' : 'http:';
-
-    // Eğer 'personel.' ile başlayan bir subdomain kullanılıyorsa (örn: personel.ersantr.com) 
-    // Ana dizin (parent domain) üzerinden dosyayı çekelim.
-    if (strpos($host, 'personel.') === 0) {
-        $mainHost = substr($host, 9);
-        return $protocol . '//' . $mainHost . '/' . $path;
-    }
-
-    // Subdomain yoksa veya local klasör yapısı ise klasik ../../uploads mantığı
-    return '../../' . $path;
-}
+require_once __DIR__ . '/partials/pwa-image-url.php';
 
 function handleYardimFileUpload($file)
 {
@@ -1273,6 +1256,8 @@ try {
                     $durum_text = 'Onaylandı';
                 if ($item->durum == 'reddedildi')
                     $durum_text = 'Reddedildi';
+                if (stripos((string) $item->durum, 'iptal') !== false)
+                    $durum_text = 'İptal';
 
                 return [
                     'id' => $item->id,
@@ -1317,6 +1302,8 @@ try {
                 'talep_tarihi' => date('Y-m-d H:i:s')
             ]);
             $newId = $AvansModel->getDb()->lastInsertId();
+
+            $erkenYanitGonderildi = responseEarly(true, null, 'Avans talebiniz başarıyla oluşturuldu');
 
             // Bildirim ve Mail Gönderimi
             try {
@@ -1387,6 +1374,9 @@ try {
                 error_log('Avans bildirim süreci hatası: ' . $e->getMessage());
             }
 
+            if ($erkenYanitGonderildi) {
+                exit;
+            }
             response(true, null, 'Avans talebiniz başarıyla oluşturuldu');
             break;
 
@@ -1553,13 +1543,48 @@ try {
                     }
                 }
 
+                $surec = [[
+                    'tip' => 'talep',
+                    'baslik' => 'Talep oluşturuldu',
+                    'kisi' => null,
+                    'tarih' => !empty($item->olusturma_tarihi) ? date('d.m.Y H:i', strtotime($item->olusturma_tarihi)) : null,
+                    'aciklama' => (!empty($item->talep_baslangic_tarihi) && !empty($item->talep_bitis_tarihi))
+                        ? date('d.m.Y', strtotime($item->talep_baslangic_tarihi)) . ' - ' . date('d.m.Y', strtotime($item->talep_bitis_tarihi)) . ' (' . (float) $item->talep_gun . ' gün) talep edildi'
+                        : null
+                ]];
+                foreach (($item->onaylar ?? []) as $onay) {
+                    $onayDurum = mb_strtolower(trim((string) $onay->durum), 'UTF-8');
+                    if (strpos($onayDurum, 'kısmi') !== false || strpos($onayDurum, 'kismi') !== false) {
+                        $tip = 'kismi';
+                    } elseif ($onayDurum === 'onaylandı' || $onayDurum === 'onaylandi') {
+                        $tip = 'onay';
+                    } elseif ($onayDurum === 'reddedildi') {
+                        $tip = 'red';
+                    } elseif ($onayDurum === 'iptal edildi') {
+                        $tip = 'iptal';
+                    } else {
+                        $tip = 'bekliyor';
+                    }
+                    $surec[] = [
+                        'tip' => $tip,
+                        'baslik' => trim((string) $onay->durum) !== '' ? trim((string) $onay->durum) : 'İşlem yapıldı',
+                        'kisi' => $onay->adi,
+                        'tarih' => !empty($onay->tarih) ? date('d.m.Y H:i', strtotime($onay->tarih)) : null,
+                        'aciklama' => $onay->aciklama
+                    ];
+                }
+
                 return [
                     'id' => $item->id,
+                    'surec' => $surec,
                     'izin_tipi' => $item->izin_tipi_id,
                     'izin_tipi_text' => $izin_tipi_text,
                     'baslangic' => date('d.m.Y', strtotime($item->baslangic_tarihi)),
                     'bitis' => date('d.m.Y', strtotime($item->bitis_tarihi)),
                     'toplam_gun' => $item->toplam_gun,
+                    'talep_baslangic' => !empty($item->talep_baslangic_tarihi) ? date('d.m.Y', strtotime($item->talep_baslangic_tarihi)) : null,
+                    'talep_bitis' => !empty($item->talep_bitis_tarihi) ? date('d.m.Y', strtotime($item->talep_bitis_tarihi)) : null,
+                    'talep_gun' => isset($item->talep_gun) ? $item->talep_gun : null,
                     'talep_tarihi' => date('d.m.Y', strtotime($item->olusturma_tarihi)),
                     'durum' => $durum,
                     'durum_text' => $durum_text,
@@ -1743,10 +1768,15 @@ try {
                 'baslangic_tarihi' => $baslangic,
                 'bitis_tarihi' => $bitis,
                 'toplam_gun' => $toplam_gun,
+                'talep_baslangic_tarihi' => $baslangic,
+                'talep_bitis_tarihi' => $bitis,
+                'talep_gun' => $toplam_gun,
                 'aciklama' => $aciklama,
                 'olusturma_tarihi' => date('Y-m-d H:i:s')
             ]);
             $newId = $IzinModel->getDb()->lastInsertId();
+
+            $erkenYanitGonderildi = responseEarly(true, null, 'İzin talebiniz başarıyla oluşturuldu');
 
             // İzin onayı yapacak personeli getir ve mail gönder
             // İzin onayı yapacak personeli getir ve bildirim/mail gönder
@@ -1872,6 +1902,9 @@ try {
                 error_log('İzin bildirim süreci hatası: ' . $e->getMessage());
             }
 
+            if ($erkenYanitGonderildi) {
+                exit;
+            }
             response(true, null, 'İzin talebiniz başarıyla oluşturuldu');
 
             break;
@@ -3509,57 +3542,12 @@ try {
             break;
 
         case 'getEtkinlikSlider':
-            $PersonelModel = new PersonelModel();
-            $db = $PersonelModel->getDb();
-            // Duyuruları son eklenenden geriye doğru al
-            $duyuruSql = "SELECT id, baslik, icerik, resim, hedef_sayfa, tarih, etkinlik_tarihi
-                        FROM duyurular
-                        WHERE silinme_tarihi IS NULL 
-                        AND firma_id = ?
-                        AND pwa_goster = 1
-                        AND durum = 'Yayında'
-                        AND (alici_tipi = 'toplu' OR FIND_IN_SET(?, alici_ids))
-                        AND (etkinlik_tarihi IS NULL OR DATE(etkinlik_tarihi) >= ?)
-                        ORDER BY id DESC
-                        LIMIT 5";
-            $stmt = $db->prepare($duyuruSql);
-            $stmt->execute([$_SESSION['firma_id'], $personel_id, date('Y-m-d')]);
-            $duyurular = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            // Resim URL formatı (varsa) ve içerik kısaltması vb. işlemleri yapabiliriz
-            $formattedDuyurular = array_map(function ($d) {
-                $tarih_metni = date('d.m.Y H:i', strtotime($d['tarih']));
-                $kalan_gun = null;
-                $kalan_gun_text = null;
-
-                if ($d['etkinlik_tarihi']) {
-                    $tarih_metni = "Son: " . date('d.m.Y', strtotime($d['etkinlik_tarihi']));
-
-                    // Kalan günü hesapla
-                    $etkinlikDateTime = new DateTime($d['etkinlik_tarihi']);
-                    $etkinlikDateTime->setTime(0, 0, 0);
-                    $bugun = new DateTime();
-                    $bugun->setTime(0, 0, 0);
-
-                    if ($etkinlikDateTime >= $bugun) {
-                        $diff = $bugun->diff($etkinlikDateTime);
-                        $kalan_gun = $diff->days;
-                        $kalan_gun_text = sprintf("%02d", $kalan_gun);
-                    }
-                }
-
-                return [
-                    'id' => $d['id'],
-                    'baslik' => $d['baslik'],
-                    'icerik' => $d['icerik'],
-                    'resim' => getPwaImageUrl($d['resim']),
-                    'tarih' => $tarih_metni,
-                    'kalan_gun' => $kalan_gun_text,
-                    'hedef_sayfa' => $d['hedef_sayfa']
-                ];
-            }, $duyurular);
-
-            response(true, $formattedDuyurular);
+            $sliderListe = (new \App\Model\DuyuruModel())->getPwaSlider((int) $_SESSION['firma_id'], (int) $personel_id);
+            foreach ($sliderListe as &$sliderKayit) {
+                $sliderKayit['resim'] = getPwaImageUrl($sliderKayit['resim']);
+            }
+            unset($sliderKayit);
+            response(true, $sliderListe);
             break;
 
         case 'getAllEtkinlikler':

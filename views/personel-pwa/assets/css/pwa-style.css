@@ -782,6 +782,31 @@ body.modal-open .pwa-bottom-navigation {
   }
 }
 
+/* ===== Ana Sayfa İskelet (skeleton) ===== */
+.pwa-skel {
+  display: block;
+  border-radius: 16px;
+  background: linear-gradient(90deg, #eef1f5 25%, #e1e6ed 50%, #eef1f5 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s linear infinite;
+}
+
+.dark .pwa-skel {
+  background: linear-gradient(90deg, #232833 25%, #2c3340 50%, #232833 75%);
+  background-size: 200% 100%;
+}
+
+.pwa-skel-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pwa-skel { animation: none; }
+}
+
 /* ===== Animations ===== */
 /*
  * Çok sayfalı PHP yapısını koruyarak aynı origin'deki sayfalar arasında
@@ -4961,3 +4986,46 @@ input.ihbar-input:focus {
 .dark .pwa-endeks-retry {
   color: #60a5fa;
 }
+
+.izd-hero { display: flex; align-items: center; gap: 12px; }
+.izd-hero__icon { flex: none; width: 46px; height: 46px; border-radius: 16px; display: flex; align-items: center; justify-content: center; background: rgba(var(--primary-rgb, 19, 91, 236), .1); color: var(--primary); }
+.izd-hero__title { margin: 0 0 4px; font-size: 16px; font-weight: 800; color: #161920; }
+.dark .izd-hero__title { color: #e8ecf2; }
+.izd-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.izd-pill--onaylandi { background: #dcfce7; color: #15803d; }
+.izd-pill--beklemede { background: #fef3c7; color: #b45309; }
+.izd-pill--reddedildi { background: #fee2e2; color: #b91c1c; }
+.izd-pill--iptal_edildi { background: #e2e8f0; color: #475569; }
+.izd-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.izd-stat { padding: 12px 14px; border-radius: 20px; background: #f1f4f8; }
+.dark .izd-stat { background: rgba(255, 255, 255, .06); }
+.izd-stat small { display: block; margin-bottom: 4px; font-size: 11px; font-weight: 700; color: #64748b; }
+.izd-stat b { font-size: 16px; font-weight: 800; color: #161920; }
+.dark .izd-stat b { color: #f1f5f9; }
+.izd-total { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 20px; background: rgba(var(--primary-rgb, 19, 91, 236), .08); font-size: 13px; font-weight: 700; color: #475569; }
+.izd-total .material-symbols-outlined { color: var(--primary); font-size: 22px; }
+.dark .izd-total { color: #cbd5e1; }
+.izd-total b { margin-left: auto; font-size: 16px; font-weight: 800; color: #161920; }
+.dark .izd-total b { color: #f1f5f9; }
+.izd-text { margin: 0; font-size: 13px; font-weight: 600; line-height: 1.5; color: #334155; }
+.dark .izd-text { color: #cbd5e1; }
+.izd-steps { position: relative; display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.izd-step { position: relative; display: flex; gap: 12px; padding-bottom: 16px; }
+.izd-step:last-child { padding-bottom: 0; }
+.izd-step::before { content: ''; position: absolute; left: 15px; top: 32px; bottom: 0; width: 2px; background: #e2e8f0; }
+.dark .izd-step::before { background: rgba(255, 255, 255, .1); }
+.izd-step:last-child::before { display: none; }
+.izd-step__dot { flex: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #e2e8f0; color: #475569; z-index: 1; }
+.izd-step__dot .material-symbols-outlined { font-size: 18px; }
+.izd-step--talep .izd-step__dot { background: rgba(var(--primary-rgb, 19, 91, 236), .14); color: var(--primary); }
+.izd-step--onay .izd-step__dot { background: #dcfce7; color: #15803d; }
+.izd-step--kismi .izd-step__dot { background: #dbeafe; color: #1d4ed8; }
+.izd-step--red .izd-step__dot { background: #fee2e2; color: #b91c1c; }
+.izd-step--bekliyor .izd-step__dot { background: #fef3c7; color: #b45309; }
+.izd-step--sirada .izd-step__dot { background: #fff; border: 2px dashed #cbd5e1; color: #94a3b8; }
+.izd-step__body { flex: 1; min-width: 0; padding-top: 4px; }
+.izd-step__title { margin: 0; font-size: 13px; font-weight: 800; color: #161920; }
+.dark .izd-step__title { color: #e8ecf2; }
+.izd-step__meta { margin: 2px 0 0; font-size: 11px; font-weight: 600; color: #64748b; }
+.izd-step__note { margin: 6px 0 0; padding: 8px 12px; border-radius: 14px; background: #f1f4f8; font-size: 12px; font-weight: 600; line-height: 1.45; color: #334155; }
+.dark .izd-step__note { background: rgba(255, 255, 255, .06); color: #cbd5e1; }

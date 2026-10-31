@@ -245,7 +245,7 @@
 
             <div class="pwa-sheet__footer">
                 <button type="button" onclick="Modal.close('izin-modal')" class="pwa-btn pwa-btn--ghost">İptal</button>
-                <button type="submit" class="pwa-btn pwa-btn--primary">
+                <button type="submit" id="izin-submit-btn" class="pwa-btn pwa-btn--primary">
                     <span class="material-symbols-outlined" style="font-size:18px">send</span>Talebi Gönder
                 </button>
             </div>
@@ -270,7 +270,7 @@
             <!-- Content will be loaded dynamically -->
         </div>
 
-        <div class="flex gap-3 mt-6" id="izin-detay-actions">
+        <div class="flex gap-3 mt-4" id="izin-detay-actions">
             <!-- Action buttons -->
         </div>
     </div>
@@ -367,6 +367,7 @@
     // Calendar State
     let currentView = 'calendar';
     let currentDate = new Date();
+    currentDate.setDate(1);
     const aylar = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
     const gunler = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 
@@ -1151,65 +1152,63 @@
         const izin = izinGruplari().find(g => g.ids.some(x => parseInt(x) === parseInt(id)));
         if (!izin) return;
 
+        const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const temizle = metin => {
+            const t = String(metin || '').trim();
+            const half = Math.floor(t.length / 2);
+            return (t.length > 20 && t.substring(0, half).trim() === t.substring(half).trim()) ? t.substring(0, half).trim() : t;
+        };
+        const stepIcons = { talep: 'send', onay: 'check_circle', kismi: 'rule', red: 'cancel', iptal: 'block', bekliyor: 'hourglass_top', sirada: 'schedule' };
+
+        const talepFarkli = !!(izin.talep_baslangic && izin.talep_bitis) && (izin.talep_baslangic !== izin.baslangic || izin.talep_bitis !== izin.bitis) && izin.ids.length === 1;
+        const surec = (izin.surec || []).map(a => ({ ...a }));
+        if (izin.durum === 'beklemede' && !surec.some(a => a.tip === 'bekliyor' || a.tip === 'kismi')) {
+            surec.push({ tip: 'sirada', baslik: 'Yönetici onayı bekleniyor', kisi: null, tarih: null, aciklama: null });
+        }
+        const surecHtml = surec.map(a => `
+            <li class="izd-step izd-step--${esc(a.tip)}">
+                <span class="izd-step__dot"><span class="material-symbols-outlined">${stepIcons[a.tip] || 'radio_button_checked'}</span></span>
+                <div class="izd-step__body">
+                    <p class="izd-step__title">${esc(a.baslik)}</p>
+                    ${(a.kisi || a.tarih) ? `<p class="izd-step__meta">${esc([a.kisi, a.tarih].filter(Boolean).join(' • '))}</p>` : ''}
+                    ${a.aciklama ? `<p class="izd-step__note">${esc(temizle(a.aciklama))}</p>` : ''}
+                </div>
+            </li>`).join('');
+
         document.getElementById('izin-detay-content').innerHTML = `
-        <div class="flex flex-col gap-4">
-            <div class="flex items-center gap-3 mb-2">
-                <div class="w-12 h-12 rounded-xl ${izin.renk} flex items-center justify-center">
-                    <span class="material-symbols-outlined text-xl">${izin.ikon}</span>
+        <div class="pwa-sheet__body" style="padding:0 0 4px">
+            <div class="pwa-sheet-card">
+                <div class="izd-hero">
+                    <span class="izd-hero__icon"><span class="material-symbols-outlined">${esc(izin.ikon)}</span></span>
+                    <div>
+                        <p class="izd-hero__title">${esc(izin.izin_tipi_text)}</p>
+                        <span class="izd-pill izd-pill--${esc(izin.durum)}">${esc(izin.durum_text)}</span>
+                    </div>
                 </div>
+                <div class="izd-stats">
+                    <div class="izd-stat"><small>${talepFarkli ? 'Onaylanan Başlangıç' : 'Başlangıç'}</small><b>${esc(izin.baslangic)}</b></div>
+                    <div class="izd-stat"><small>${talepFarkli ? 'Onaylanan Bitiş' : 'Bitiş'}</small><b>${esc(izin.bitis)}</b></div>
+                </div>
+                ${talepFarkli ? `
+                <div class="izd-stat" style="background:rgba(var(--primary-rgb, 19, 91, 236), .08)">
+                    <small>Talep Ettiğiniz</small>
+                    <b>${esc(izin.talep_baslangic)} - ${esc(izin.talep_bitis)} <span style="font-weight:700;color:#64748b">(${esc(Number(izin.talep_gun))} gün)</span></b>
+                </div>` : ''}
+                <div class="izd-total">
+                    <span class="material-symbols-outlined">schedule</span>${talepFarkli ? 'Onaylanan Süre' : 'Toplam Süre'}
+                    <b>${esc(izin.toplam_gun)} Gün</b>
+                </div>
+                ${izin.aciklama ? `
                 <div>
-                    <p class="font-bold text-slate-900 dark:text-white">${izin.izin_tipi_text}</p>
-                    <span class="badge ${getStatusBadge(izin.durum)}">${izin.durum_text}</span>
-                </div>
+                    <p class="pwa-card-label" style="margin-bottom:6px">Açıklamanız</p>
+                    <p class="izd-text">${esc(izin.aciklama)}</p>
+                </div>` : ''}
             </div>
-            
-            ${izin.onay_aciklama ? `
-            <div class="${(izin.durum === 'onaylandi' || izin.durum === 'onaylandı') ? 'bg-green-50 dark:bg-green-900/10 border-green-100 dark:border-green-900/30' : 'bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-900/30'} border p-3 rounded-xl">
-                <div class="flex items-center justify-between mb-2">
-                    <p class="text-xs ${(izin.durum === 'onaylandi' || izin.durum === 'onaylandı') ? 'text-green-600 dark:text-green-500' : 'text-red-500'} font-bold uppercase tracking-wider">İşlem Sonucu / Açıklama</p>
-                    ${izin.onaylayan ? `<span class="text-[10px] text-slate-400 dark:text-slate-500 font-medium">${izin.onaylayan} • ${izin.onay_tarihi || ''}</span>` : ''}
-                </div>
-                <p class="text-sm text-slate-700 dark:text-slate-300">
-                    ${(function() {
-                        let text = izin.onay_aciklama.trim();
-                        let half = Math.floor(text.length / 2);
-                        if (text.length > 20 && text.substring(0, half).trim() === text.substring(half).trim()) {
-                            return text.substring(0, half).trim();
-                        }
-                        return text;
-                    })()}
-                </p>
+
+            <div class="pwa-sheet-card">
+                <p class="pwa-card-title"><span class="material-symbols-outlined">timeline</span>Talep Süreci</p>
+                <ol class="izd-steps">${surecHtml}</ol>
             </div>
-            ` : (izin.red_nedeni ? `
-            <div class="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 p-3 rounded-xl">
-                <p class="text-xs text-red-500 mb-1 font-medium">Red Nedeni</p>
-                <p class="text-sm text-red-700 dark:text-red-400">${izin.red_nedeni}</p>
-            </div>
-            ` : '')}
-            
-            <div class="grid grid-cols-2 gap-4">
-                <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl">
-                    <p class="text-xs text-slate-500 mb-1">Başlangıç</p>
-                    <p class="font-semibold text-slate-900 dark:text-white">${izin.baslangic}</p>
-                </div>
-                <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl">
-                    <p class="text-xs text-slate-500 mb-1">Bitiş</p>
-                    <p class="font-semibold text-slate-900 dark:text-white">${izin.bitis}</p>
-                </div>
-            </div>
-            
-            <div class="flex items-center gap-3 py-3 border-t border-b border-slate-100 dark:border-slate-800">
-                <span class="material-symbols-outlined text-slate-400">schedule</span>
-                <span class="text-slate-600 dark:text-slate-400">Toplam Süre:</span>
-                <span class="font-bold text-slate-900 dark:text-white ml-auto">${izin.toplam_gun} Gün</span>
-            </div>
-            
-            ${izin.aciklama ? `
-            <div>
-                <p class="text-xs text-slate-500 mb-1">Açıklama</p>
-                <p class="text-sm text-slate-700 dark:text-slate-300">${izin.aciklama}</p>
-            </div>
-            ` : ''}
         </div>
     `;
 
@@ -1217,21 +1216,21 @@
         const actionsContainer = document.getElementById('izin-detay-actions');
         if (izin.durum === 'beklemede') {
             actionsContainer.innerHTML = `
-            <button onclick="cancelIzin('${izin.ids.join(',')}')" class="flex-1 py-3 bg-red-50 dark:bg-red-900/20 text-red-600 font-semibold rounded-xl">
-                İptal Et
-            </button>
-            <button onclick="Modal.close('izin-detay-modal')" class="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold rounded-xl">
-                Kapat
-            </button>
+            <button onclick="cancelIzin('${izin.ids.join(',')}')" class="pwa-btn flex-1" style="background:#fee2e2;color:#b91c1c">İptal Et</button>
+            <button onclick="Modal.close('izin-detay-modal')" class="pwa-btn pwa-btn--ghost flex-1">Kapat</button>
         `;
         } else {
             actionsContainer.innerHTML = `
-            <button onclick="Modal.close('izin-detay-modal')" class="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold rounded-xl">
-                Kapat
-            </button>
+            <button onclick="Modal.close('izin-detay-modal')" class="pwa-btn pwa-btn--ghost w-full">Kapat</button>
         `;
         }
     }
+
+    (function () {
+        const st = document.createElement('style');
+        st.textContent = '@keyframes izin-spin{to{transform:rotate(360deg)}}';
+        document.head.appendChild(st);
+    })();
 
     async function submitIzinTalebi(form) {
         const formData = Form.serialize(form);
@@ -1297,8 +1296,15 @@
             }
         }
 
+        const submitBtn = document.getElementById('izin-submit-btn');
+        const submitHtml = submitBtn.innerHTML;
+        if (submitBtn.disabled) return;
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '.85';
+        submitBtn.innerHTML = '<span style="width:18px;height:18px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;display:inline-block;animation:izin-spin .7s linear infinite"></span>Gönderiliyor...';
+
         try {
-            const response = await API.request('createIzinTalebi', formData);
+            const response = await API.request('createIzinTalebi', formData, false);
 
             if (response.success) {
                 Toast.show('İzin talebiniz başarıyla gönderildi', 'success');
@@ -1313,6 +1319,10 @@
             }
         } catch (error) {
             Toast.show('Bir hata oluştu', 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = '';
+            submitBtn.innerHTML = submitHtml;
         }
     }
 

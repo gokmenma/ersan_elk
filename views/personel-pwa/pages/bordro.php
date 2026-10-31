@@ -16,7 +16,7 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') {
     <!-- Header -->
         <?php pwaPageHeader([
         'eyebrow' => 'KAZANÇLARIM',
-        'title' => 'Bordrolar',
+        'title' => 'Avans ve Bordrolar',
         'subtitle' => 'Kazançlarınızı inceleyin',
         'actions' => '<button type="button" onclick="openNewAvansModal()" id="avans-yeni-btn" class="pwa-circle-btn pwa-circle-btn--primary" aria-label="Avans Talebi" title="Avans Talebi"><span class="material-symbols-outlined">add_card</span></button>',
     ]); ?>
@@ -45,33 +45,68 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') {
         <?php endif; ?>
 
         <!-- Tab Navigation -->
-        <div
-            class="px-4 py-2 pwa-toolbar">
-            <div class="flex gap-2">
-                <button onclick="changeTab('bordro')" class="tab-btn active px-4 py-2 text-sm font-semibold rounded-lg" data-tab="bordro">Resmî Bordrolar</button>
-                <button onclick="changeTab('avans')"
-                    class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg text-slate-500" data-tab="avans">
-                    Avans Talepleri
-                </button>
+        <div class="px-4 pt-1 pb-3">
+            <div class="pwa-filter-tabs" role="tablist" aria-label="Bordro bölümleri">
+                <button type="button" role="tab" onclick="changeTab('avans')" class="bordro-tab-btn pwa-filter-pill is-active" data-tab="avans" aria-selected="true">Avans Talepleri</button>
+                <button type="button" role="tab" onclick="changeTab('bordro')" class="bordro-tab-btn pwa-filter-pill" data-tab="bordro" aria-selected="false">Resmî Bordrolar</button>
             </div>
         </div>
 
         <!-- Content Area -->
         <div class="flex-1 px-4 py-4">
             <!-- Bordro List -->
-            <div id="bordro-tab" class="tab-content">
+            <div id="bordro-tab" class="tab-content hidden">
                 <?php require dirname(__DIR__) . '/bordro-yayin-panel.php'; ?>
             </div>
 
             <!-- Avans List -->
-            <div id="avans-tab" class="tab-content hidden">
+            <div id="avans-tab" class="tab-content">
                 <div id="avans-kisit-uyari"
                     class="hidden card p-4 mb-3 bg-orange-50 dark:bg-orange-900/20 flex items-center gap-3">
                     <span class="material-symbols-outlined text-orange-600 dark:text-orange-400">info</span>
                     <p class="text-sm font-medium text-orange-600 dark:text-orange-400" id="avans-kisit-mesaj"></p>
                 </div>
+                <div class="pwa-hero-dark mb-3">
+                    <div class="pwa-hero-dark__top">
+                        <div>
+                            <span class="pwa-hero-dark__eyebrow">AVANS MERKEZİ</span>
+                            <h2 class="pwa-hero-dark__value"><span id="avans-bekleyen">0</span> bekleyen talep</h2>
+                            <p class="pwa-hero-dark__sub">Avans taleplerinizi buradan takip edin</p>
+                        </div>
+                        <span class="pwa-hero-dark__icon"><span class="material-symbols-outlined">account_balance_wallet</span></span>
+                    </div>
+                    <div class="pwa-hero-dark__stats">
+                        <div class="pwa-hero-dark__stat">
+                            <span class="material-symbols-outlined">payments</span>
+                            <strong id="advance-limit">0 ₺</strong>
+                            <small>Kullanılabilir Limit</small>
+                        </div>
+                        <div class="pwa-hero-dark__stat">
+                            <span class="material-symbols-outlined">check_circle</span>
+                            <strong id="avans-onaylanan">0 ₺</strong>
+                            <small>Onaylanan Toplam</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pwa-pill-row mb-3" role="tablist" aria-label="Avans filtresi">
+                    <button type="button" role="tab" onclick="filterAvans('tum')" class="avans-filtre-btn pwa-filter-pill is-active" data-filtre="tum">
+                        <span class="material-symbols-outlined">apps</span>Tümü <em data-avans-sayi="tum">0</em>
+                    </button>
+                    <button type="button" role="tab" onclick="filterAvans('beklemede')" class="avans-filtre-btn pwa-filter-pill" data-filtre="beklemede">
+                        <span class="material-symbols-outlined">schedule</span>Beklemede <em data-avans-sayi="beklemede">0</em>
+                    </button>
+                    <button type="button" role="tab" onclick="filterAvans('onaylandi')" class="avans-filtre-btn pwa-filter-pill" data-filtre="onaylandi">
+                        <span class="material-symbols-outlined">task_alt</span>Onaylandı <em data-avans-sayi="onaylandi">0</em>
+                    </button>
+                    <button type="button" role="tab" onclick="filterAvans('reddedildi')" class="avans-filtre-btn pwa-filter-pill" data-filtre="reddedildi">
+                        <span class="material-symbols-outlined">cancel</span>Reddedildi <em data-avans-sayi="reddedildi">0</em>
+                    </button>
+                </div>
+
                 <div class="flex flex-col gap-3" id="avans-list">
-                    <!-- Avans items will be loaded here -->
+                    <div class="shimmer h-20 rounded-xl"></div>
+                    <div class="shimmer h-20 rounded-xl"></div>
                 </div>
             </div>
         </div>
@@ -161,10 +196,7 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') {
 </div>
 
 <style>
-    .tab-btn.active {
-        background: rgba(var(--primary-rgb), 0.1);
-        color: var(--primary);
-    }
+    .pwa-filter-pill em { font-style: normal; font-size: 11px; opacity: .7; margin-left: 4px; }
 </style>
 
 <script>
@@ -172,6 +204,9 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') {
     let currentEditingAvans = null;
     let avansTalepEdebilir = true;
     let avansKisitMesaji = '';
+    let avansListesi = [];
+    let avansFiltre = 'tum';
+    const spinnerHtml = '<span class="material-symbols-outlined animate-spin">refresh</span>';
 
     document.addEventListener('DOMContentLoaded', function () {
 
@@ -187,12 +222,13 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') {
 
     function changeTab(tab) {
         // Update tab buttons
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.classList.remove('active');
-            btn.classList.add('text-slate-500');
+        document.querySelectorAll('.bordro-tab-btn').forEach(btn => {
+            btn.classList.remove('is-active');
+            btn.setAttribute('aria-selected', 'false');
         });
-        document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
-        document.querySelector(`[data-tab="${tab}"]`).classList.remove('text-slate-500');
+        const aktif = document.querySelector(`.bordro-tab-btn[data-tab="${tab}"]`);
+        aktif.classList.add('is-active');
+        aktif.setAttribute('aria-selected', 'true');
 
         // Update tab content
         document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
@@ -227,13 +263,58 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') {
     }
 
     async function loadAvansTalepleri() {
-        const container = document.getElementById('avans-list');
-
         try {
             const response = await API.request('getAvansTalepleri');
+            avansListesi = response.success ? response.data : [];
+            updateAvansOzet();
+            renderAvanslar();
+        } catch (error) {
+            console.error('Avans load error:', error);
+        }
+    }
 
-            if (response.success && response.data.length > 0) {
-                container.innerHTML = response.data.map(avans => `
+    function updateAvansOzet() {
+        const sayi = { tum: avansListesi.length, beklemede: 0, onaylandi: 0, reddedildi: 0 };
+        let onaylanan = 0;
+        avansListesi.forEach(a => {
+            if (sayi[a.durum] !== undefined) sayi[a.durum]++;
+            if (a.durum === 'onaylandi') onaylanan += parseFloat(a.tutar || 0);
+        });
+        document.querySelectorAll('[data-avans-sayi]').forEach(el => {
+            el.textContent = sayi[el.dataset.avansSayi] || 0;
+        });
+        document.getElementById('avans-bekleyen').textContent = sayi.beklemede;
+        document.getElementById('avans-onaylanan').textContent = Format.currency(onaylanan);
+    }
+
+    function filterAvans(filtre) {
+        avansFiltre = filtre;
+        document.querySelectorAll('.avans-filtre-btn').forEach(btn => {
+            const aktif = btn.dataset.filtre === filtre;
+            btn.classList.toggle('is-active', aktif);
+            btn.setAttribute('aria-selected', aktif ? 'true' : 'false');
+        });
+        renderAvanslar();
+    }
+
+    function renderAvanslar() {
+        const container = document.getElementById('avans-list');
+        const liste = avansFiltre === 'tum' ? avansListesi : avansListesi.filter(a => a.durum === avansFiltre);
+
+        if (liste.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <span class="material-symbols-outlined">request_quote</span>
+                    </div>
+                    <p class="text-slate-600 dark:text-slate-400 font-medium">Avans talebiniz yok</p>
+                    <p class="text-sm text-slate-500">Yeni avans talebi oluşturabilirsiniz.</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = liste.map(avans => `
                 <div class="card p-4 cursor-pointer" onclick='showAvansDetay(${JSON.stringify(avans).replace(/'/g, "&#39;")})'>
                     <div class="flex items-center gap-4 mb-3">
                         <div class="w-12 h-12 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
@@ -247,14 +328,14 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') {
                             <span class="badge ${getStatusBadge(avans.durum)}">${avans.durum_text}</span>
                         </div>
                     </div>
-                    
+
                     ${avans.durum === 'beklemede' ? `
                     <div class="flex gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                         <button onclick='event.stopPropagation(); editAvans(${JSON.stringify(avans).replace(/'/g, "&#39;")})' class="flex-1 py-2 text-xs font-semibold text-blue-600 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center gap-1">
                             <span class="material-symbols-outlined text-sm">edit</span>
                             Düzenle
                         </button>
-                        <button onclick="event.stopPropagation(); deleteAvans(${avans.id})" class="flex-1 py-2 text-xs font-semibold text-red-600 bg-red-50 dark:bg-red-900/20 rounded-lg flex items-center justify-center gap-1">
+                        <button onclick="event.stopPropagation(); deleteAvans(${avans.id}, this)" class="flex-1 py-2 text-xs font-semibold text-red-600 bg-red-50 dark:bg-red-900/20 rounded-lg flex items-center justify-center gap-1">
                             <span class="material-symbols-outlined text-sm">delete</span>
                             Sil
                         </button>
@@ -262,20 +343,6 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') {
                     ` : ''}
                 </div>
             `).join('');
-            } else {
-                container.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-state-icon">
-                        <span class="material-symbols-outlined">request_quote</span>
-                    </div>
-                    <p class="text-slate-600 dark:text-slate-400 font-medium">Avans talebiniz yok</p>
-                    <p class="text-sm text-slate-500">Yeni avans talebi oluşturabilirsiniz.</p>
-                </div>
-            `;
-            }
-        } catch (error) {
-            console.error('Avans load error:', error);
-        }
     }
 
     function getStatusBadge(status) {
@@ -382,7 +449,7 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') {
         Modal.open('avans-modal');
     }
 
-    async function deleteAvans(id) {
+    async function deleteAvans(id, btn) {
         const isConfirmed = await Alert.confirm(
             'Sil',
             'Bu avans talebini silmek istediğinize emin misiniz?',
@@ -391,6 +458,12 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') {
         );
 
         if (!isConfirmed) return;
+
+        const eskiHtml = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = spinnerHtml;
+        }
 
         try {
             const response = await API.request('deleteAvansTalebi', { id: id });
@@ -401,9 +474,11 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') {
                 loadStats();
             } else {
                 Toast.show(response.message || 'Bir hata oluştu', 'error');
+                if (btn) { btn.disabled = false; btn.innerHTML = eskiHtml; }
             }
         } catch (error) {
             Toast.show('Bir hata oluştu', 'error');
+            if (btn) { btn.disabled = false; btn.innerHTML = eskiHtml; }
         }
     }
 
@@ -428,6 +503,11 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') {
             return;
         }
 
+        const submitBtn = document.getElementById('avans-submit-btn');
+        const eskiHtml = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = spinnerHtml;
+
         try {
             const response = await API.request(action, formData);
 
@@ -442,6 +522,9 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') {
             }
         } catch (error) {
             Toast.show('Bir hata oluştu', 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = eskiHtml;
         }
     }
 

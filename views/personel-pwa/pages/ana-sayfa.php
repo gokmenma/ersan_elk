@@ -6,6 +6,12 @@
 use App\Helper\Helper;
 
 $anaSayfaSiralama = (new \App\Model\PersonelModel())->getAnaSayfaSiralama((int) $personel_id);
+require_once __DIR__ . '/../partials/pwa-image-url.php';
+$etkinlikSlider = (new \App\Model\DuyuruModel())->getPwaSlider((int) ($_SESSION['firma_id'] ?? 0), (int) $personel_id);
+foreach ($etkinlikSlider as &$etkinlikKayit) {
+    $etkinlikKayit['resim'] = getPwaImageUrl($etkinlikKayit['resim']);
+}
+unset($etkinlikKayit);
 $kartSirasi = static fn(string $anahtar): int => (int) array_search($anahtar, $anaSayfaSiralama, true) + 1;
 ?>
 
@@ -84,11 +90,28 @@ $kartSirasi = static fn(string $anahtar): int => (int) array_search($anahtar, $a
     </header>
 
     <!-- Etkinlik Slider -->
-    <section class="px-4 relative z-20 mb-4" id="etkinlik-slider-section" data-home-card="etkinlik" style="display: none; order: <?php echo $kartSirasi('etkinlik'); ?>;">
+    <section class="px-4 relative z-20 mb-4" id="etkinlik-slider-section" data-home-card="etkinlik" style="<?php echo $etkinlikSlider ? '' : 'display: none; '; ?>order: <?php echo $kartSirasi('etkinlik'); ?>;">
         <div class="flex overflow-x-auto hide-scrollbar snap-x snap-mandatory gap-3 pb-2"
             id="etkinlik-slider-container">
-            <!-- Slider öğeleri buraya yüklenecek -->
+            <?php foreach ($etkinlikSlider as $etkinlikIdx => $duyuru): ?>
+                <div class="snap-center shrink-0 w-[85%] sm:w-[300px] rounded-2xl p-4 text-white shadow-lg relative overflow-hidden transition-transform active:scale-[0.98] cursor-pointer"
+                    style="background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-dark) 100%);"
+                    onclick="showEtkinlikFullScreen(window.etkinlikSliderListe[<?php echo (int) $etkinlikIdx; ?>]);">
+                    <?php if ($duyuru['kalan_gun'] !== null): ?>
+                        <div class="absolute -top-6 -right-2 pointer-events-none select-none z-0 flex flex-col items-end opacity-80">
+                            <span class="text-[9rem] font-black leading-[0.8] tracking-tighter bg-gradient-to-bl from-white/70 to-white/0 text-transparent bg-clip-text"><?php echo htmlspecialchars((string) $duyuru['kalan_gun'], ENT_QUOTES, 'UTF-8'); ?></span>
+                            <span class="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] relative -top-6 pr-6">GÜN KALDI</span>
+                        </div>
+                    <?php endif; ?>
+                    <div class="relative z-10 pr-2">
+                        <span class="badge badge-primary bg-white/20 text-white border-none mb-2 text-[10px]"><?php echo htmlspecialchars((string) $duyuru['tarih'], ENT_QUOTES, 'UTF-8'); ?></span>
+                        <h3 class="font-bold text-lg leading-tight mb-1 text-white truncate max-w-[85%]"><?php echo htmlspecialchars((string) $duyuru['baslik'], ENT_QUOTES, 'UTF-8'); ?></h3>
+                        <p class="text-xs text-white/80 line-clamp-2 max-w-[85%]"><?php echo htmlspecialchars(strip_tags((string) $duyuru['icerik']), ENT_QUOTES, 'UTF-8'); ?></p>
+                    </div>
+                </div>
+            <?php endforeach; ?>
         </div>
+        <script>window.etkinlikSliderListe = <?php echo json_encode($etkinlikSlider, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;</script>
     </section>
 
     <!-- Görev Takip Bileşeni -->
@@ -97,8 +120,11 @@ $kartSirasi = static fn(string $anahtar): int => (int) array_search($anahtar, $a
             <div id="gorev-takip-card" class="card pwa-fx-card pwa-fx-card--green" data-gorev-state="idle">
                 <div class="pwa-card-head"><div class="pwa-card-title"><span class="material-symbols-outlined">my_location</span><span>Saha Görevi</span></div></div>
                 <!-- Loading State -->
-                <div id="gorev-loading" class="p-6 flex items-center justify-center" style="min-height:300px">
-                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <div id="gorev-loading" class="p-4" style="min-height:300px" aria-hidden="true">
+                    <span class="pwa-skel" style="height:170px;border-radius:24px"></span>
+                    <span class="pwa-skel" style="height:18px;width:55%;margin-top:18px"></span>
+                    <span class="pwa-skel" style="height:12px;width:75%;margin-top:10px"></span>
+                    <span class="pwa-skel" style="height:52px;margin-top:18px"></span>
                 </div>
 
                 <!-- Görev Durumu Container -->
@@ -299,9 +325,7 @@ $kartSirasi = static fn(string $anahtar): int => (int) array_search($anahtar, $a
             <div class="pwa-card-head pwa-card-head--flush"><div class="pwa-card-title"><span class="material-symbols-outlined">insights</span><span>Performans Özeti</span></div></div>
             <div id="work-stats-container" class="grid grid-cols-2 gap-3">
                 <!-- Loading -->
-                <div class="col-span-2 py-8 flex justify-center">
-                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
+                <div class="col-span-2"><div class="pwa-skel-grid" aria-hidden="true"><span class="pwa-skel" style="height:84px"></span><span class="pwa-skel" style="height:84px"></span><span class="pwa-skel" style="height:84px"></span><span class="pwa-skel" style="height:84px"></span></div></div>
             </div>
         </div>
     </section>
@@ -314,9 +338,7 @@ $kartSirasi = static fn(string $anahtar): int => (int) array_search($anahtar, $a
                 <div class="pwa-card-title"><span class="material-symbols-outlined">compare_arrows</span><span>Endeks Karşılaştırması</span><span class="pwa-card-pill" id="endeks-kapsam-label">-</span></div>
             </div>
             <div id="endeks-karsilastirma-container">
-                <div class="py-6 flex justify-center">
-                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
+                <div aria-hidden="true"><span class="pwa-skel" style="height:120px"></span></div>
             </div>
         </div>
     </section>
@@ -667,8 +689,6 @@ $kartSirasi = static fn(string $anahtar): int => (int) array_search($anahtar, $a
             document.addEventListener('visibilitychange', function () {
                 if (document.visibilityState === 'visible') loadNotificationCount();
             });
-            // Load events slider
-            loadEtkinlikSlider();
             // Load work stats (büro personeli olmayanlar için)
             if (!userIsBuro) {
                 loadWorkStats();
@@ -1213,8 +1233,8 @@ $kartSirasi = static fn(string $anahtar): int => (int) array_search($anahtar, $a
             if (!container) return;
 
             // Show loading if container is empty or has items (to show refresh)
-            if (container.children.length > 1 || container.querySelector('.animate-spin') === null) {
-                container.innerHTML = '<div class="col-span-2 py-8 flex justify-center"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>';
+            if (container.children.length > 1 || container.querySelector('.pwa-skel') === null) {
+                container.innerHTML = '<div class="col-span-2"><div class="pwa-skel-grid" aria-hidden="true"><span class="pwa-skel" style="height:84px"></span><span class="pwa-skel" style="height:84px"></span><span class="pwa-skel" style="height:84px"></span><span class="pwa-skel" style="height:84px"></span></div></div>';
             }
 
             try {
@@ -1609,50 +1629,6 @@ $kartSirasi = static fn(string $anahtar): int => (int) array_search($anahtar, $a
                 }
             } catch (error) {
                 console.error('Notification count error:', error);
-            }
-        }
-
-        async function loadEtkinlikSlider() {
-            var container = document.getElementById('etkinlik-slider-container');
-            var section = document.getElementById('etkinlik-slider-section');
-
-            try {
-                var response = await API.request('getEtkinlikSlider');
-
-                if (response && response.success && response.data && response.data.length > 0) {
-                    if (section) section.style.display = 'block';
-                    if (container) {
-                        window.etkinlikSliderListe = response.data;
-                        container.innerHTML = response.data.map(function (duyuru, idx) {
-                            var bgImg = 'background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-dark) 100%);';
-                            var onClick = "showEtkinlikFullScreen(window.etkinlikSliderListe[" + idx + "]);";
-                            var cursorClass = 'cursor-pointer';
-
-                            var kalan_gun_html = '';
-                            if (duyuru.kalan_gun !== null && duyuru.kalan_gun !== undefined) {
-                                kalan_gun_html = '<div class="absolute -top-6 -right-2 pointer-events-none select-none z-0 flex flex-col items-end opacity-80">' +
-                                    '<span class="text-[9rem] font-black leading-[0.8] tracking-tighter bg-gradient-to-bl from-white/70 to-white/0 text-transparent bg-clip-text">' + escapeHtml(duyuru.kalan_gun) + '</span>' +
-                                    '<span class="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] relative -top-6 pr-6">GÜN KALDI</span>' +
-                                    '</div>';
-                            }
-
-                            return '<div class="snap-center shrink-0 w-[85%] sm:w-[300px] rounded-2xl p-4 text-white shadow-lg relative overflow-hidden transition-transform active:scale-[0.98] ' + cursorClass + '" ' +
-                                'style="' + bgImg + '" onclick="' + onClick + '">' +
-                                kalan_gun_html +
-                                '<div class="relative z-10 pr-2">' +
-                                '<span class="badge badge-primary bg-white/20 text-white border-none mb-2 text-[10px]">' + escapeHtml(duyuru.tarih) + '</span>' +
-                                '<h3 class="font-bold text-lg leading-tight mb-1 text-white truncate max-w-[85%]">' + escapeHtml(duyuru.baslik) + '</h3>' +
-                                '<p class="text-xs text-white/80 line-clamp-2 max-w-[85%]">' + escapeHtml(duyuru.icerik ? duyuru.icerik.replace(/<[^>]*>?/gm, '') : '') + '</p>' +
-                                '</div>' +
-                                '</div>';
-                        }).join('');
-                    }
-                } else {
-                    if (section) section.style.display = 'none';
-                }
-            } catch (error) {
-                console.error('Slider load error:', error);
-                if (section) section.style.display = 'none';
             }
         }
 
