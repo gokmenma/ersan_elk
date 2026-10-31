@@ -1092,6 +1092,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 }
                             }
                         }
+                        if (in_array($odemeTurLower, ['fazla_mesai', 'mesai'], true)) {
+                            if (($snapshotEkOdemeNetleri[(int) $odeme->id] ?? null) === 0.0) {
+                                continue;
+                            }
+                            $nobetGosterim = clone $odeme;
+                            $nobetGosterim->tutar = $hesaplananTutar;
+                            $nobetGosterim->aciklama = preg_match('/\(([^()]*Saat[^()]*)\)/u', $aciklama, $saatDetay)
+                                ? '[Nöbet] Puantaj Nöbeti (' . $saatDetay[1] . ')'
+                                : '[Nöbet] Ek Nöbet';
+                            $nobetOdemeler[] = $nobetGosterim;
+                            $toplamNobetTutar += $hesaplananTutar;
+                            continue;
+                        }
                         if (!isset($ekOdemelerNonPuantaj[$tur])) { $ekOdemelerNonPuantaj[$tur] = ['toplam' => 0, 'adet' => 0, 'kayit_sayisi' => 0, 'items' => []]; }
                         $ekOdemelerNonPuantaj[$tur]['toplam'] += $hesaplananTutar;
                         $ekOdemelerNonPuantaj[$tur]['adet'] += $hesaplananAdet;
@@ -1181,6 +1194,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             $adet = intval($detayMatch[1]);
                             $birimFiyat = trim($detayMatch[2]);
                             $birimEtiket = 'Gün';
+                        } elseif (preg_match('/(\d+(?:[\.,]\d+)?)\s*Saat\s*x\s*([0-9\.,]+)\s*₺?/iu', $detayMetin, $detayMatch)) {
+                            $adet = (float) str_replace(',', '.', $detayMatch[1]);
+                            $birimFiyat = trim($detayMatch[2]);
+                            $birimEtiket = 'Saat';
                         } elseif (preg_match('/(\d+)\s*Adet\s*x\s*([0-9\.,]+)\s*₺?/iu', $detayMetin, $detayMatch)) {
                             $adet = intval($detayMatch[1]); 
                             $birimFiyat = trim($detayMatch[2]);
@@ -1554,7 +1571,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 if (!empty($nobetOdemeler)) {
                     $collId = "colNobet_" . $bp->id;
-                    $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collId . '" aria-expanded="false">
+                    $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collId . '" aria-expanded="true">
                                 <td><div class="d-flex align-items-center"><i class="bx bx-time-five me-2 text-success"></i><span>Nöbet Ödemeleri</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
                                 <td class="text-end text-success fw-bold">+' . number_format($toplamNobetTutar, 2, ',', '.') . ' ₺</td>
                               </tr>';
@@ -1562,7 +1579,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         foreach ($grup['fiyat_kirilim'] as $kirilim) {
                             $detStr = $kirilim['adet'] > 0 ? $kirilim['adet'] . ' ' . ($kirilim['birim_etiket'] ?? 'Adet') : '';
                             $birim = $kirilim['birim_fiyat'] !== '' ? ' x ' . $kirilim['birim_fiyat'] . ' ₺' : '';
-                            $html .= '<tr class="child-row collapse ' . $collId . '">
+                            $html .= '<tr class="child-row collapse show ' . $collId . '">
                                         <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>' . htmlspecialchars($grup['ana']) . ' <small class="text-muted">' . $detStr . $birim . '</small></td>
                                         <td class="text-end pe-4">+' . number_format($kirilim['tutar'], 2, ',', '.') . ' ₺</td>
                                       </tr>';
@@ -1614,18 +1631,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 // RTÇ / HTÇ satırları
-                if ($rtcGunModal > 0 && !$asgariMatrarhGoster) {
-                    $rtcResmiTutar = round(floatval($asgariUcretNet) / 30 * $rtcGunModal, 2);
-                    $collRtc = "cRTC_" . $bp->id;
-                    $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collRtc . '" aria-expanded="false">
-                                <td><div class="d-flex align-items-center"><i class="bx bx-calendar-check me-2 text-warning"></i><span>Resmi Tatil Çalışma</span><span class="badge bg-warning text-dark fw-normal ms-2">' . $rtcGunModal . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
-                                <td class="text-end fw-semibold text-warning">' . number_format($rtcResmiTutar, 2, ',', '.') . ' ₺</td>
-                              </tr>
-                              <tr class="child-row collapse ' . $collRtc . '">
-                                <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Resmi alacağa dahil <small class="text-muted">(asgari ücret/30 × ' . $rtcGunModal . ' gün)</small></td>
-                                <td class="text-end pe-4 text-warning">' . number_format($rtcResmiTutar, 2, ',', '.') . ' ₺</td>
-                              </tr>';
-                }
                 if ($htcGunModal > 0 && $nominalMaas > 0) {
                     $htcToplamTutar = round($nominalMaas / 30 * $htcGunModal, 2);
                     $collHtc = "cHTC_" . $bp->id;
@@ -1688,6 +1693,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                     ? ' (' . number_format($normalSaatlik, 2, ',', '.') . ' ₺ × 1,5)'
                                     : '';
                                 $html .= '<tr class="child-row collapse ' . $calismaDetayId . '"><td class="ps-4"><i class="bx bx-time-five me-1 opacity-50"></i>Toplam Fazla Mesai<span class="calculation-note">' . number_format($saatlikNet, 2, ',', '.') . ' ₺ × ' . number_format($mesaiSaat, 2, ',', '.') . ' saat' . $artirimliNotu . '</span></td><td class="text-end pe-4 fw-semibold">' . number_format($mesaiSaat, 2, ',', '.') . ' Saat</td></tr>';
+                                foreach ([
+                                    ['Nöbetten Gelen', 'nobet_saat', 'nobet_tutar'],
+                                    ['Puantaj Fazla Mesaisi', 'puantaj_saat', 'puantaj_tutar'],
+                                ] as [$kaynakEtiket, $kaynakSaatKey, $kaynakTutarKey]) {
+                                    $kaynakSaat = floatval($muhasebeFazlaMesaiOzeti[$kaynakSaatKey] ?? 0);
+                                    if ($kaynakSaat > 0) {
+                                        $html .= '<tr class="child-row collapse ' . $calismaDetayId . '"><td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>' . $kaynakEtiket . '<span class="calculation-note">' . number_format($kaynakSaat, 2, ',', '.') . ' Saat</span></td><td class="text-end pe-4">+' . number_format(floatval($muhasebeFazlaMesaiOzeti[$kaynakTutarKey] ?? 0), 2, ',', '.') . ' ₺</td></tr>';
+                                    }
+                                }
                             } else {
                                 $htcGunlukNet = $htcGunModal > 0 ? round(floatval($bed['tutar']) / $htcGunModal, 2) : 0.0;
                                 $html .= '<tr class="child-row collapse ' . $calismaDetayId . '"><td class="ps-4"><i class="bx bx-calendar-check me-1 opacity-50"></i>Hafta Tatili Çalışması<span class="calculation-note">' . number_format($htcGunlukNet, 2, ',', '.') . ' ₺ × ' . $htcGunModal . ' gün</span></td><td class="text-end pe-4 fw-semibold">' . $htcGunModal . ' Gün</td></tr>';

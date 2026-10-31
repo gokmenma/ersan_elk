@@ -208,10 +208,13 @@ class BordroPersonelModel extends Model
     }
 
     /** Nöbet satırını değiştirmeden, resmî banka tabanının eksik kalan hakedişini tamamlar. */
-    private function nobetResmiTabanTamamlama(float $hakedis, float $resmiTaban, array $ekOdemeler): float
+    private function nobetResmiTabanTamamlama(float $hakedis, float $resmiTaban, array $ekOdemeler, float $rtcResmiNet = 0.0): float
     {
+        if ($rtcResmiNet > 0) {
+            return max(0.0, round($resmiTaban - $hakedis, 2));
+        }
         foreach ($ekOdemeler as $ek) {
-            if (($ek['kod'] ?? '') === 'hafta_ici_nobet' && (float) ($ek['resmi_banka_net'] ?? 0) > 0) {
+            if (in_array($ek['kod'] ?? '', ['hafta_ici_nobet', 'fazla_mesai'], true) && (float) ($ek['resmi_banka_net'] ?? 0) > 0) {
                 return max(0.0, round($resmiTaban - $hakedis, 2));
             }
         }
@@ -3241,7 +3244,7 @@ class BordroPersonelModel extends Model
             if ($isPuantaj) {
                 $grupKodu = strpos($aciklama, '[Kaçak Kontrol]') === 0 ? 'kacak_kontrol' : 'puantaj';
                 $etiket = $grupKodu === 'kacak_kontrol' ? 'Kaçak Kontrol Hakedişi' : 'Puantaj Hakedişi';
-            } elseif ($kod === 'hafta_ici_nobet' || strpos($kod, 'nobet') !== false) {
+            } elseif ($kod === 'hafta_ici_nobet' || strpos($kod, 'nobet') !== false || in_array($kod, ['fazla_mesai', 'mesai'], true)) {
                 $grupKodu = 'nobet';
                 $etiket = 'Nöbet Ödemeleri';
             } else {
@@ -4611,6 +4614,8 @@ class BordroPersonelModel extends Model
 
         $toplamNet = 0.0;
         $toplamSaat = 0;
+        $nobetNet = 0.0;
+        $nobetSaat = 0;
         foreach ($kalemler as $kalem) {
             $veri = is_array($kalem) ? $kalem : get_object_vars($kalem);
             $tur = mb_strtolower((string) ($veri['tur'] ?? $veri['kod'] ?? ''), 'UTF-8');
@@ -4623,8 +4628,10 @@ class BordroPersonelModel extends Model
                 }
                 if (preg_match('/(\d+)\s*Gün\s*x\s*(\d+)\s*Saat/iu', $aciklama, $eslesme)) {
                     $toplamSaat += intval($eslesme[1]) * intval($eslesme[2]);
+                    $nobetSaat += intval($eslesme[1]) * intval($eslesme[2]);
                 }
                 $toplamNet += max(0.0, $hedefNet);
+                $nobetNet += max(0.0, $hedefNet);
                 continue;
             }
 
@@ -4632,7 +4639,7 @@ class BordroPersonelModel extends Model
                 if (preg_match('/([\d\.,]+)\s*Saat/iu', $aciklama, $eslesme)) {
                     $toplamSaat += floatval(str_replace(',', '.', $eslesme[1]));
                 }
-                $toplamNet += max(0.0, (float) ($veri['net_etki'] ?? $veri['tutar'] ?? 0));
+                $toplamNet += max(0.0, (float) (($veri['resmi_banka_net'] ?? 0) ?: ($veri['net_etki'] ?? $veri['tutar'] ?? 0)));
             }
         }
 
@@ -4640,6 +4647,10 @@ class BordroPersonelModel extends Model
             'etiket' => 'Fazla Mesai Ücreti (Net)',
             'tutar' => round($toplamNet, 2),
             'saat' => $toplamSaat,
+            'nobet_saat' => $nobetSaat,
+            'nobet_tutar' => round($nobetNet, 2),
+            'puantaj_saat' => max(0, $toplamSaat - $nobetSaat),
+            'puantaj_tutar' => round($toplamNet - $nobetNet, 2),
             'snapshot' => $snapshotVar,
         ];
     }
@@ -6560,6 +6571,7 @@ class BordroPersonelModel extends Model
         // Hesaplama için değişkenler
         $brutEkOdemeler = 0;       // Brüt maaşa eklenecek (SGK + Vergi hesaplanacak)
         $netEkOdemeler = 0;        // Direct net'e eklenecek
+        $resmiFazlaMesaiYemekDusumu = 0.0;
         $vergiliMatrahEkleri = 0;  // Sadece gelir vergisi matrahına eklenecek
         $sgkMatrahEkleri = 0;      // SGK matrahına eklenecek
         $damgaMatrahEkleri = 0;    // Damga vergisi matrahına eklenecek
@@ -7122,6 +7134,21 @@ class BordroPersonelModel extends Model
 
             unset($toplamTutar); // Bir sonraki döngü için temizle
 
+            if ($turLower === 'fazla_mesai'
+                && $parametre && $parametre->hesaplama_tipi === 'net'
+                && strpos((string) ($odeme->aciklama ?? ''), '[Puantaj Fazla Mesai]') === 0) {
+                $resmiFazlaMesai = round((float) $tutar, 2);
+                $oncekiBankaKatkisi = round((float) ($detay['resmi_banka_net'] ?? 0), 2);
+                $netEkOdemeler -= $tutar;
+                $yontemliOdemeler['banka'] += $resmiFazlaMesai - $oncekiBankaKatkisi;
+                if (isset($yontemliOdemeler['elden'])) {
+                    $yontemliOdemeler['elden'] -= max(0.0, round($tutar - $oncekiBankaKatkisi, 2));
+                }
+                $detay['resmi_banka_net'] = $resmiFazlaMesai;
+                $detay['net_etki'] = 0;
+                $resmiFazlaMesaiYemekDusumu += $resmiFazlaMesai;
+            }
+
             // İcra matrahına dahil mi?
             if ($parametre && !empty($parametre->icra_pirim_dahil) && $parametre->icra_pirim_dahil == 1) {
                 $isAbsorbed = $this->hasMaasaDahilSosyalYardim($kayit) && ($parametre->odeme_yontemi ?? 'banka') === 'banka';
@@ -7620,7 +7647,7 @@ class BordroPersonelModel extends Model
                     + max(0, $yemekHavuzunaTasinabilirEkOdeme)
                     + max(0, $htcNetFazlaHesap), 2);
             $yardimlarIcinKalanSozlesmeLimiti = max(0, round(
-                $yemekTavanHedefi - $asgariSozlesmePayi,
+                $yemekTavanHedefi - $asgariSozlesmePayi - floatval($rtcHedefNetHesap ?? 0) - $resmiFazlaMesaiYemekDusumu,
                 2
             ));
             $yemekHamToplam = min($hesaplananYemekToplam, $yardimlarIcinKalanSozlesmeLimiti);
@@ -7713,7 +7740,7 @@ class BordroPersonelModel extends Model
             }
             $ekOdemeBankaNetiHesap = $resmiBankaEkOdemeNeti;
             $resmiBankaTabani = round($asgariYatacak + $hesaplananYemekToplam + $hesaplananEsToplam + floatval($rtcHtcBankaNetiHesap ?? 0) + $ekOdemeBankaNetiHesap, 2);
-            $resmiTabanTamamlama = $this->nobetResmiTabanTamamlama($netMaasIcinDagitim, $resmiBankaTabani, $ekOdemeDetaylari);
+            $resmiTabanTamamlama = $this->nobetResmiTabanTamamlama($netMaasIcinDagitim, $resmiBankaTabani, $ekOdemeDetaylari, floatval($rtcHedefNetHesap ?? 0));
             $netMaas += $resmiTabanTamamlama;
             $netMaasIcinDagitim = $netMaas;
             $bankaHakedisTavani = $netMaas;
@@ -7763,7 +7790,7 @@ class BordroPersonelModel extends Model
 
             if ($isPrimUsulu || $isNetMaas) {
                 $resmiBankaTabani = round(($asgariUcretNet / 30) * $nonKurUcretGunu + floatval($yontemliOdemeler['banka'] ?? 0), 2);
-                $resmiTabanTamamlama = $this->nobetResmiTabanTamamlama($netMaas, $resmiBankaTabani, $ekOdemeDetaylari);
+                $resmiTabanTamamlama = $this->nobetResmiTabanTamamlama($netMaas, $resmiBankaTabani, $ekOdemeDetaylari, floatval($rtcHedefNetHesap ?? 0));
                 $netMaas += $resmiTabanTamamlama;
             }
 

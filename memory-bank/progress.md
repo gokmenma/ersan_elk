@@ -2081,3 +2081,7 @@
 - [~] Personel PWA sayfa tasarımı: Talepler, İzin, Nöbet, Yardım, KM, İhbar, Bordro sekmeleri tamam; Zimmetler/Kaçak/Aparat detay kartları kaldı.
 
 - [x] Personel PWA ana sayfa kartları sürükleyerek sıralanabilir (migration uygulanmalı).
+
+- [x] Bordro detayı ve Kontrol Excel'i: sözleşme tarafındaki fazla mesai `Nöbet Ödemeleri` grubuna alındı (masaüstü ve yönetici mobil aynı `get-detail-old` çıktısını kullanır).
+
+- [x] Puantaj fazla mesaisi resmî alacağa alındı, RTÇ yemek limitinden düşüldü (yemek tam lira/gün). Eski/yeni kod 86 personelde geçici DB kopyasında karşılaştırıldı.

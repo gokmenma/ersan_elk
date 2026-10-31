@@ -1160,6 +1160,58 @@ final class BordroBankaDagilimiTest extends TestCase
         );
     }
 
+    public function testResmiTabanRtcVeFazlaMesaiIcinTamamlanir(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $method = new ReflectionMethod($model, 'nobetResmiTabanTamamlama');
+        $method->setAccessible(true);
+
+        self::assertSame(1684.53, $method->invoke($model, 28075.50, 29760.03, [['kod' => 'fazla_mesai', 'resmi_banka_net' => 748.68]], 935.85));
+        self::assertSame(748.68, $method->invoke($model, 28075.50, 28824.18, [['kod' => 'fazla_mesai', 'resmi_banka_net' => 748.68]]));
+        self::assertSame(0.0, $method->invoke($model, 52360.00, 29760.03, [['kod' => 'fazla_mesai', 'resmi_banka_net' => 748.68]], 935.85));
+        self::assertSame(0.0, $method->invoke($model, 28075.50, 28824.18, []));
+    }
+
+    public function testYeniSnapshottaFazlaMesaiSozlesmeOzetineGirmez(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $row = (object) [
+            'hesaplama_detay' => json_encode([
+                'maas_durumu' => 'Prim Usülü',
+                'ek_odemeler' => [
+                    ['kod' => 'hafta_ici_nobet', 'aciklama' => '[Nöbet] Hafta İçi (2 Gün x 4 Saat x 500,00 ₺)', 'tutar' => 1000, 'net_etki' => 1000],
+                    ['kod' => 'fazla_mesai', 'aciklama' => '[Puantaj Fazla Mesai] (4 Saat x 187,17 ₺)', 'tutar' => 748.68, 'net_etki' => 0, 'resmi_banka_net' => 748.68],
+                ],
+            ], JSON_UNESCAPED_UNICODE),
+        ];
+
+        $ozet = $model->getSozlesmeAlacagiKalemleri(['maasDurumu' => 'Prim Usülü', 'yuvarlamaFarki' => 0], $row);
+
+        self::assertSame(1000.0, $ozet['toplam']);
+    }
+
+    public function testSozlesmeOzetindeFazlaMesaiNobetGrubundaGosterilirVeToplamDegismez(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $row = (object) [
+            'hesaplama_detay' => json_encode([
+                'maas_durumu' => 'Prim Usülü',
+                'ek_odemeler' => [
+                    ['kod' => 'hafta_ici_nobet', 'aciklama' => '[Nöbet] Hafta İçi (2 Gün x 4 Saat x 500,00 ₺)', 'tutar' => 1000, 'net_etki' => 1000],
+                    ['kod' => 'fazla_mesai', 'aciklama' => '[Puantaj Fazla Mesai] (4 Saat x 187,17 ₺)', 'tutar' => 748.68, 'net_etki' => 748.68],
+                ],
+            ], JSON_UNESCAPED_UNICODE),
+        ];
+
+        $ozet = $model->getSozlesmeAlacagiKalemleri(['maasDurumu' => 'Prim Usülü', 'yuvarlamaFarki' => 0], $row);
+
+        self::assertSame(1748.68, $ozet['toplam']);
+        self::assertSame([
+            ['etiket' => 'Puantaj Hakedişi', 'tutar' => 0.0],
+            ['etiket' => 'Nöbet Ödemeleri', 'tutar' => 1748.68],
+        ], $ozet['kalemler']);
+    }
+
     public function testPrimUsuluSozlesmeOzetindeSnapshotPuantajHedefNetiKullanilir(): void
     {
         $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();

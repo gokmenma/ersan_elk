@@ -3487,3 +3487,13 @@
 - Personel PWA: genel bg-slate-50 şeffaflaştırma kuralı yalnızca sayfa kapsayıcılarına daraltıldı (izin takvim hücreleri görünür); izin takvimi .pwa-cal-card beyaz kart içinde.
 
 - Personel PWA: kaçak sayfası pill sekme/kart/boş durum; tüm tarih/saat girdileri yönetici mobil pill stili (global CSS).
+
+- Bordro detayı: sözleşme alacağında `Fazla Mesai` satırı kaldırıldı; puantaj/arife fazla mesai hakedişi `Nöbet Ödemeleri` grubunda `Puantaj Nöbeti` olarak gösteriliyor. Yalnız gösterim değişti, tutarlar ve snapshot aynı. Resmî tarafta `Fazla Mesai Ücreti (Net)` korunuyor.
+
+- Bordro detayı: sözleşme tarafındaki hafta içi/hafta sonu nöbet alt satırları ve tutarları varsayılan açık gösteriliyor.
+
+- Bordro hesabı: `[Puantaj Fazla Mesai]` artık yalnız resmî kalem (snapshot `net_etki=0`, `resmi_banka_net=4 saat × 187,17`), toplam hakedişe eklenmez; RTÇ ve bu tutar yemek üst limitinden düşülür. Yeni kural yalnız yeniden hesaplanan bordrolara uygulanır. Yerel DB'de `yapilan_isler` Ekim verisi yok: Ekim yeniden hesabı puantaj hakedişini sıfırlar (1907, 1920, 1924 etkilendi).
+
+- Bordro detayı resmî kartında fazla mesai açılımı `Nöbetten Gelen` ve `Puantaj Fazla Mesaisi` kaynaklarına ayrıldı.
+
+- Bordro detayı: sözleşme kartından RTÇ satırı kaldırıldı; hakediş resmî tabanın altındaysa RTÇ/fazla mesai için hakediş tabana tamamlanıyor (düşük puantajlı prim usulü).

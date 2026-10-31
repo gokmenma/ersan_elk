@@ -30,7 +30,7 @@ Bu kurallar bordro/list ekranindaki gosterim, detay modalı, Excel export ve maa
 - Eski detayın sözleşme kazanç satırlarında teknik ek ödeme kodu (`aylik_arac_kirasi`, `kacak_ihbar_primi` vb.) kullanıcıya gösterilmez; bordro döneminde geçerli `bordro_parametreleri.etiket` değeri kullanılır.
 - Kendi alacağı hesabında sözleşme günlük ücreti, maaş hesap günü, sözleşme üzerine eklenen tam HTÇ hakedişi ve diğer kazançlar ayrı gösterilir. Prim usulü **Puantaj Hakedişi** akordeon başlığında puantaj kaynaklarından hesaplanan toplam işlem/adet rozeti gösterilir; akordeon açıldığında işlem adı, adet, birim fiyat ve tutar kırılımları doğrudan bu satırın altında listelenir. Bu açıklayıcı görünüm hakediş veya ödeme toplamını değiştirmez.
 - Sözleşme alacağı tarafındaki **Hafta İçi Nöbet** detayı yalnız `gün × sözleşme nöbet tutarı` biçiminde (ör. `2 Gün × 500,00 ₺`) gösterilir. Bordro kaynağındaki teknik `4 Saat` bilgisi bu sözleşme detayına yazılmaz; saat bilgisi yalnız resmî **Fazla Mesai Ücreti (Net)** hesabında kullanılır.
-- Sözleşme alacağı tarafında hafta içi ve hafta sonu nöbet hakedişleri tek **Nöbet Ödemeleri** açılır başlığında toplanır. Başlık toplam nöbet tutarını; açılım hafta içi için `gün × birim tutar`, hafta sonu için `adet × birim tutar` kırılımını ayrı satırlarda gösterir. Puantajdan girilen manuel fazla mesai bu gruba katılmaz.
+- Sözleşme alacağı tarafında hafta içi ve hafta sonu nöbet hakedişleri tek **Nöbet Ödemeleri** açılır başlığında toplanır. Başlık toplam nöbet tutarını; alt satırlar hafta içi için `gün × birim tutar`, hafta sonu için `adet × birim tutar` kırılımını ve her birinin tutarını gösterir. Bu alt satırlar detay açıldığında varsayılan olarak görünürdür; kullanıcı başlıktan kapatabilir. Puantajdan veya arife otomasyonundan gelen fazla mesai hakedişi de sözleşme tarafında ayrı `Fazla Mesai` satırı olarak çizilmez; aynı grupta `Puantaj Nöbeti (saat × birim tutar)` kırılımıyla gösterilir.
 - Resmî alacak hesabında günlük net asgari ücret × banka günü, yemek, eş yardımı ve diğer resmî eklemeler gösterilir ve panel kesinti öncesi resmî alacakla tamamlanır. Banka kesintileri sağdaki **Kesintiler** kartında kırmızı eksi kalemler olarak, net banka ödemesi ise alt ödeme sonucunda gösterilir.
 - Resmî banka matrahı kayıtlı kalemlere ayrılırken Muhasebe Excel'iyle aynı öncelik uygulanır: asgari/normal ücret ve eş yardımından sonra kayıtlı resmî RTÇ, HTÇ, fazla mesai ve resmî prim kalemleri ayrılır; yemek yardımı kalan resmî matrahla sınırlandırılır. Böylece yemek havuzuna kaynak olan HTÇ gibi bir resmî kalem detayda kaybolmaz ve resmî kart kalemleri toplamı kayıtlı banka matrahını aşmaz.
 - Bu öncelik sırası yalnız `BordroPersonelModel::getMuhasebeResmiKalemDagilimi()` metodunda tanımlanır. Bordro detay modalı ve Muhasebe Excel'i bu metodun sonucunu kullanır; görünüm dosyalarında ikinci bir resmî dağıtım hesabı kurulamaz.
@@ -188,7 +188,7 @@ Bu modda maas hesaplamasinin tabani asgari net ucrettir, hedef ise personelin so
 ```text
 asgariHakedis = (asgari_ucret_net / 30) * maasHesapGunu
 hedefHakedis = (hedef_net_maas_tutari / 30) * maasHesapGunu
-yemekUstLimiti = max(0, hedefHakedis - asgariHakedis - esYardimi - bankaUzerindenOdenecekRtcHtc)
+yemekUstLimiti = max(0, hedefHakedis - asgariHakedis - esYardimi - resmiRtcNet - resmiFazlaMesaiNet + htcNetFazla)
 ```
 
 Yemek yardimi bu üst limitten hesaplanir. RTÇ'nin banka üzerinden ödenen resmî neti sözleşme netinin
@@ -649,9 +649,17 @@ edilen kısımdır. `elden_tutardan` kesintisi ana kesinti kartından gizlenemez
 - Yetkili tarafından güncel dış sistem verisi uygulandığında önceden hesaplanmış bordro snapshot'ı otomatik değiştirilmez. İlgili dönemdeki tüm personel bordroları yeniden hesaplanmadan dönem kapatılamaz.
 - Mutabakat snapshot'ı ve geçmiş fark/çözüm kayıtları geriye dönük değiştirilmez veya silinmez.
 
+# Puantaj fazla mesaisi yalnız resmî alacaktır (2026-10-31)
+
+- `[Puantaj Fazla Mesai]` kalemi (arife otomasyonu dahil) sözleşme hakedişine eklenmez; snapshot'ta `net_etki = 0`, resmî tutarı `resmi_banka_net` olarak saklanır. Banka tarafında `Fazla Mesai Ücreti (Net)` olarak ödenir ve toplam hakedişi artırmaz; aynı tutar yemek üst limitinden düşülür, elden/yemek ile dengelenir.
+- RTÇ resmî neti de sözleşme netinin bileşeni olduğundan yemek üst limitinden düşülür. Böylece resmî kartta yemek yardımı `tam lira günlük × fiilî gün` olarak kalır; banka tavanı kırpması küsurat üretmez.
+- RTÇ sözleşme kartında hiçbir maaş türünde satır olarak çizilmez. Hakediş resmî tabanın (asgari + RTÇ + fazla mesai + hafta içi nöbet resmî neti + yardımlar) altında kalırsa toplam hakediş resmî tabana tamamlanır; resmî kalemler banka tavanında kırpılmaz.
+- Resmî kartta RTÇ `Resmi Tatil Çalışması (Net)`, fazla mesai ise `Fazla Mesai Ücreti (Net)` satırında gösterilir; fazla mesai açılımı `Nöbetten Gelen` ve `Puantaj Fazla Mesaisi` kaynaklarını saat ve tutarla ayırır.
+- Bu kural yalnız yeniden hesaplanan bordrolara uygulanır. Eski snapshot'larda fazla mesai hakedişi `Nöbet Ödemeleri` altında `Puantaj Nöbeti` olarak görünür; kayıtlı tutarlar değişmez. Elle girilen `mesai` ek ödemeleri bu kuralın dışındadır.
+
 # Fazla mesai ve hafta içi nöbet gösterim ayrımı
 
-- Sözleşme alacağı tarafında hafta içi nöbetin personel hakedişi ile puantajdan girilen manuel fazla mesai ayrı satırlarda gösterilir; biri diğerinin etiketi altında birleştirilmez.
+- Sözleşme alacağı tarafında `Fazla Mesai` etiketi gösterilmez; hafta içi nöbet, hafta sonu nöbet ve puantaj/arife fazla mesai hakedişleri tek `Nöbet Ödemeleri` satırında toplanır. Detay modalı ve Bordro Kontrol Excel'i aynı gruplamayı kullanır. Fazla mesai etiketi yalnız resmî alacak tarafında kullanılır.
 - Resmî alacak tarafında hafta içi nöbetin kanuni fazla mesai karşılığı ile puantaj fazla mesaisi tek `Fazla Mesai Ücreti (Net)` satırında birleştirilir; saat detayı iki kaynağın toplamını gösterir.
 - Bu sunum ayrımı kayıtlı snapshot tutarlarını veya ödeme kanallarını değiştirmez.
 
