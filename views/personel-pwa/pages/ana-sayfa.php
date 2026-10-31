@@ -60,13 +60,13 @@ $kartSirasi = static fn(string $anahtar): int => (int) array_search($anahtar, $a
     $_ilkAd = preg_split('/\s+/u', $_adSoyad)[0] ?? $_adSoyad;
     $_saat = (int) date('H');
     $_selam = $_saat < 12 ? 'Günaydın!' : ($_saat < 18 ? 'İyi günler!' : 'İyi akşamlar!');
-    $pResim = $personel->resim_yolu ?? '';
+    $pResim = pwaProfilFotoUrl($personel);
     ?>
     <header class="pwa-home-hero">
         <div class="pwa-topbar pwa-topbar--home">
             <a href="?page=profil" class="pwa-avatar-circle pwa-avatar-circle--photo" aria-label="Profilim">
                 <?php if (!empty($pResim)): ?>
-                    <img src="<?php echo htmlspecialchars(Helper::base_url($pResim), ENT_QUOTES, 'UTF-8'); ?>" alt="Profil" class="w-full h-full object-cover">
+                    <img src="<?php echo htmlspecialchars($pResim, ENT_QUOTES, 'UTF-8'); ?>" alt="Profil" class="w-full h-full object-cover" onerror="this.outerHTML='<span class=&quot;material-symbols-outlined&quot;>person</span>'">
                 <?php else: ?>
                     <span class="material-symbols-outlined">person</span>
                 <?php endif; ?>

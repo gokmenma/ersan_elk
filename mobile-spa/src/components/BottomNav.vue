@@ -1231,19 +1231,27 @@ async function handleLogout() {
           </div>
 
           <div v-if="!editMode" class="nav-sheet-search">
-            <Search :size="17" class="nav-sheet-search__icon" />
-            <input
-              ref="menuSearchInput"
-              v-model="menuSearch"
-              type="text"
-              class="nav-sheet-search__input"
-              placeholder="Menülerde ara…"
-              aria-label="Menülerde ara"
-              autocomplete="off"
-              enterkeyhint="search"
-            />
-            <button v-if="menuSearch" type="button" class="nav-sheet-search__clear" aria-label="Aramayı temizle" @click="clearMenuSearch">
-              <X :size="14" />
+            <div class="nav-sheet-search__field">
+              <Search :size="17" class="nav-sheet-search__icon" />
+              <input
+                ref="menuSearchInput"
+                v-model="menuSearch"
+                type="text"
+                class="nav-sheet-search__input"
+                placeholder="Menülerde ara…"
+                aria-label="Menülerde ara"
+                autocomplete="off"
+                enterkeyhint="search"
+              />
+              <button v-if="menuSearch" type="button" class="nav-sheet-search__clear" aria-label="Aramayı temizle" @click="clearMenuSearch">
+                <X :size="14" />
+              </button>
+            </div>
+            <button type="button" class="nav-sheet-search__action" aria-label="Profil" title="Profil" @click="selectOperation({ to: '/profil' })">
+              <UserRound :size="19" />
+            </button>
+            <button type="button" class="nav-sheet-search__action nav-sheet-search__action--danger" aria-label="Güvenli Çıkış" title="Güvenli Çıkış" @click="handleLogout">
+              <LogOut :size="19" />
             </button>
           </div>
 
@@ -1266,24 +1274,6 @@ async function handleLogout() {
             >
               <Check :size="17" />
               <span>{{ savingOrder ? 'Kaydediliyor…' : 'Düzeni Kaydet' }}</span>
-            </button>
-          </div>
-          <div v-else class="nav-sheet-footer">
-            <button
-              type="button"
-              class="nav-sheet-footer__btn"
-              @click="selectOperation({ to: '/profil' })"
-            >
-              <UserRound :size="18" />
-              <span>Profil</span>
-            </button>
-            <button
-              type="button"
-              class="nav-sheet-footer__btn nav-sheet-footer__btn--danger"
-              @click="handleLogout"
-            >
-              <LogOut :size="18" />
-              <span>Güvenli Çıkış</span>
             </button>
           </div>
         </div>

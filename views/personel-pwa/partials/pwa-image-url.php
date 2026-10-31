@@ -20,3 +20,23 @@ function getPwaImageUrl($path)
     return '../../' . $path;
 }
 }
+
+if (!function_exists('pwaProfilFotoUrl')) {
+    function pwaProfilFotoUrl($personel): string
+    {
+        $adaylar = [$personel->personel_resim_yolu ?? '', $personel->resim_yolu ?? ''];
+        foreach ($adaylar as $yol) {
+            $yol = ltrim(trim((string) $yol), '/');
+            if ($yol === '' || strpos($yol, '..') !== false) {
+                continue;
+            }
+            if (is_file(dirname(__DIR__, 2) . '/' . $yol)) {
+                return '../../' . $yol;
+            }
+            if (is_file(dirname(__DIR__) . '/' . $yol)) {
+                return $yol;
+            }
+        }
+        return '';
+    }
+}

@@ -24,16 +24,17 @@ use App\Helper\Date;
                 <div
                     class="w-24 h-24 rounded-full bg-slate-200 dark:bg-slate-700 border-4 border-white dark:border-card-dark overflow-hidden shadow-lg">
                     <?php 
-                    $pResim = $personel->resim_yolu ?? '';
+                    require_once __DIR__ . '/../partials/pwa-image-url.php';
+                    $pResim = pwaProfilFotoUrl($personel);
                     if (!empty($pResim)): ?>
-                        <img id="profile-image" src="<?php echo Helper::base_url($pResim); ?>" alt="Profil"
-                            class="w-full h-full object-cover">
+                        <img id="profile-image" src="<?php echo htmlspecialchars($pResim, ENT_QUOTES, 'UTF-8'); ?>" alt="Profil"
+                            class="w-full h-full object-cover" onerror="this.classList.add('hidden');document.getElementById('profile-placeholder').classList.remove('hidden')">
                     <?php else: ?>
-                        <div id="profile-placeholder" class="w-full h-full flex items-center justify-center bg-primary/10">
-                            <span class="material-symbols-outlined text-primary text-4xl">person</span>
-                        </div>
                         <img id="profile-image" src="" alt="Profil" class="w-full h-full object-cover hidden">
                     <?php endif; ?>
+                    <div id="profile-placeholder" class="w-full h-full flex items-center justify-center bg-primary/10<?php echo !empty($pResim) ? ' hidden' : ''; ?>">
+                        <span class="material-symbols-outlined text-primary text-4xl">person</span>
+                    </div>
                 </div>
                 <button onclick="document.getElementById('profile-upload').click()"
                     class="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center shadow-lg border-2 border-white dark:border-card-dark">
