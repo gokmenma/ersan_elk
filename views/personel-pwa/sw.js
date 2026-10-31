@@ -8,7 +8,7 @@
 // updateViaCache="none" kullanılarak worker bağımlılıklarının eski HTTP
 // önbelleğinden gelmesi de engellenir.
 const KUYRUK_SURUM = "34";
-const ONBELLEK_REVIZYON = "20261030";
+const ONBELLEK_REVIZYON = "20261031";
 const CACHE_NAME = "personel-pwa-v" + KUYRUK_SURUM + "-" + ONBELLEK_REVIZYON;
 const SAYFA_CACHE = "personel-pwa-sayfa-v6";
 const OFFLINE_URL = "offline.html";
@@ -278,33 +278,45 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Diğer istekler - stale while revalidate
-  event.respondWith(
-    caches.match(event.request, {
-      ignoreSearch: new URL(event.request.url).origin === self.location.origin &&
-        new URL(event.request.url).pathname.startsWith(new URL("./assets/", self.location.href).pathname),
-    }).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request)
-        .then((networkResponse) => {
-          // Başarılı GET yanıtlarını önbelleğe al
-          if (networkResponse && networkResponse.status === 200 && event.request.method === "GET") {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache).catch(() => {});
-            }).catch(() => {});
-          }
-          return networkResponse;
-        })
-        .catch(() => {
-          // Network hatası durumunda önbellekten dön
-          return cachedResponse;
-        });
-
-      // Önbellekte varsa hemen dön, yoksa fetch'i bekle
-      return cachedResponse || fetchPromise;
-    }),
-  );
+  // Diğer istekler: sürümlü (?v=) statik dosyalar tam URL eşleşmesiyle önbellekten,
+  // aksi halde ağdan alınır. Bozuk/HTML yanıtlar asla önbelleğe yazılmaz ve
+  // respondWith'e hiçbir zaman undefined verilmez (stilsiz sayfa sorunu).
+  event.respondWith(statikIstegiCoz(event.request));
 });
+
+function statikYanitGecerli(request, response) {
+  if (!response || response.status !== 200 || response.type === "opaque") return false;
+  const tur = (response.headers.get("content-type") || "").toLowerCase();
+  const yol = new URL(request.url).pathname;
+  if (/\.(css|js)$/i.test(yol) && tur.indexOf("text/html") !== -1) return false;
+  return true;
+}
+
+async function statikIstegiCoz(request) {
+  const url = new URL(request.url);
+  const ayniKok = url.origin === self.location.origin;
+  const cache = await caches.open(CACHE_NAME);
+  const tamEslesme = await cache.match(request);
+
+  if (tamEslesme && ayniKok && url.searchParams.has("v")) {
+    return tamEslesme;
+  }
+
+  try {
+    const ag = await fetch(request);
+    if (statikYanitGecerli(request, ag)) {
+      cache.put(request, ag.clone()).catch(() => {});
+      return ag;
+    }
+    if (ag && ag.ok === false && tamEslesme) return tamEslesme;
+    return ag;
+  } catch (e) {
+    if (tamEslesme) return tamEslesme;
+    const benzer = await cache.match(request, { ignoreSearch: true });
+    if (benzer) return benzer;
+    return new Response("", { status: 504, statusText: "Gateway Timeout" });
+  }
+}
 
 // Push notification
 self.addEventListener("push", (event) => {

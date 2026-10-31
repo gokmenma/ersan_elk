@@ -396,6 +396,41 @@ $pageStatusDark = '#121212';
          özel class'ları Tailwind utility'lerinin ezmemesi için (CDN'in eski davranışıyla aynı sıra). -->
     <link rel="stylesheet" href="assets/css/tailwind-build.css?v=<?= filemtime(__DIR__ . '/assets/css/tailwind-build.css') ?>">
     <link rel="canonical" href="https://www.personel.ersantr.com/index.php" />
+    <script>
+        (function () {
+            var KEY = 'pwaStilOnarimZamani';
+            function onar() {
+                try {
+                    var son = parseInt(sessionStorage.getItem(KEY) || '0', 10);
+                    if (Date.now() - son < 60000) return;
+                    sessionStorage.setItem(KEY, String(Date.now()));
+                } catch (e) { return; }
+                var isler = [];
+                if (window.caches) {
+                    isler.push(caches.keys().then(function (k) {
+                        return Promise.all(k.map(function (n) { return caches.delete(n); }));
+                    }));
+                }
+                if (navigator.serviceWorker) {
+                    isler.push(navigator.serviceWorker.getRegistrations().then(function (r) {
+                        return Promise.all(r.map(function (x) { return x.unregister(); }));
+                    }));
+                }
+                Promise.all(isler).catch(function () {}).then(function () { location.reload(); });
+            }
+            function kontrol() {
+                var linkler = document.querySelectorAll('link[rel="stylesheet"][href*="assets/css/"]');
+                for (var i = 0; i < linkler.length; i++) {
+                    if (!linkler[i].sheet) { onar(); return; }
+                }
+            }
+            document.addEventListener('error', function (e) {
+                var t = e.target;
+                if (t && t.tagName === 'LINK' && t.rel === 'stylesheet' && /assets\/css\//.test(t.href)) onar();
+            }, true);
+            window.addEventListener('load', function () { setTimeout(kontrol, 300); });
+        })();
+    </script>
 
 </head>
 
