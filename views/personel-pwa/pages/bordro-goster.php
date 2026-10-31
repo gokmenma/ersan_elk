@@ -51,7 +51,18 @@ try {
         exit;
     }
     $kalemler = '';
+    $gorunenKalemler = [];
+    $yuvarlamaKurus = 0;
     foreach ($i['kalemler'] as $k) {
+        if (mb_strtolower((string) $k['etiket'], 'UTF-8') === 'yemek günlük yuvarlama farkı') { $yuvarlamaKurus += (int) $k['kurus']; continue; }
+        $gorunenKalemler[] = $k;
+    }
+    if ($yuvarlamaKurus !== 0) {
+        $yemekIndex = array_search('yemek yardımı', array_map(static fn($k) => mb_strtolower((string) $k['etiket'], 'UTF-8'), $gorunenKalemler), true);
+        if ($yemekIndex === false) $gorunenKalemler[] = ['etiket' => 'Yemek yardımı', 'kurus' => $yuvarlamaKurus];
+        else $gorunenKalemler[$yemekIndex]['kurus'] += $yuvarlamaKurus;
+    }
+    foreach ($gorunenKalemler as $k) {
         $kalemler .= '<tr><td>' . $esc($k['etiket']) . '</td><td class="amount">' . $esc($para($k['kurus'])) . '</td></tr>';
     }
     $testBilgisi = $d['durum'] === 'test'

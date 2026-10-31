@@ -65,6 +65,19 @@
     return j.data;
   }
 
+  function gorunenKalemler(kalemler) {
+    const sonuc = (kalemler || []).map(k => ({...k, kurus:Number(k.kurus || 0)}));
+    const yuvarlamaMi = k => String(k.etiket || '').toLocaleLowerCase('tr-TR').includes('yemek günlük yuvarlama farkı');
+    const yuvarlama = sonuc.filter(yuvarlamaMi).reduce((toplam, k) => toplam + k.kurus, 0);
+    const gorunen = sonuc.filter(k => !yuvarlamaMi(k));
+    if (yuvarlama) {
+      const yemek = gorunen.find(k => String(k.etiket || '').toLocaleLowerCase('tr-TR') === 'yemek yardımı');
+      if (yemek) yemek.kurus += yuvarlama;
+      else gorunen.push({etiket:'Yemek yardımı', kurus:yuvarlama});
+    }
+    return gorunen;
+  }
+
   function suz() {
     return kayitlar.filter(r => {
       if (!filtre) return true;
@@ -182,7 +195,7 @@
                 </tr>
               </thead>
               <tbody>
-                ${(kayit.kalemler || []).map(k => `
+                ${gorunenKalemler(kayit.kalemler).map(k => `
                   <tr style="border-bottom: 1px solid #f1f5f9;">
                     <td class="py-2.5 text-dark ps-3 fs-13">${esc(k.etiket)}</td>
                     <td class="py-2.5 text-end fw-semibold pe-3 fs-13 text-dark">${esc(para(k.kurus))}</td>
@@ -587,7 +600,7 @@
         <div class="table-responsive">
           <table class="table table-sm table-hover align-middle mb-0">
             <tbody>
-              ${(i.kalemler || []).map(k => `
+              ${gorunenKalemler(i.kalemler).map(k => `
                 <tr>
                   <td class="py-2 text-secondary ps-2">${esc(k.etiket)}</td>
                   <td class="py-2 text-end fw-bold text-dark pe-2">${esc(para(k.kurus))}</td>
@@ -747,7 +760,7 @@
           data: null,
           orderable: false,
           searchable: false,
-          render: r => `<button type="button" class="btn btn-sm btn-outline-primary yayin-detay d-inline-flex align-items-center gap-1" data-token="${esc(r?.token || '')}"><i class="bx bx-search-alt"></i> İncele</button>`
+          render: r => `<div class="d-inline-flex gap-1"><button type="button" class="btn btn-sm btn-outline-primary yayin-detay d-inline-flex align-items-center gap-1" data-token="${esc(r?.token || '')}"><i class="bx bx-search-alt"></i> İncele</button>${(!r?.beyan_tarihi && !r?.talep_sayisi && r?.durum !== 'arsiv') ? `<button type="button" class="btn btn-sm btn-outline-danger yayin-sil d-inline-flex align-items-center" title="Sil" data-token="${esc(r?.token || '')}"><i class="bx bx-trash"></i></button>` : ''}</div>`
         }
       ]
     }));
@@ -760,6 +773,29 @@
       if (token) {
         calistir(() => detay(token));
       }
+    });
+
+    $('#bordroYayinTable').on('click', '.yayin-sil', async function () {
+      let tr = $(this).closest('tr');
+      if (tr.hasClass('child')) tr = tr.prev();
+      const r = tablo.row(tr).data();
+      const token = $(this).data('token') || r?.token;
+      if (!token) return;
+      const onay = await Swal.fire({
+        icon: 'warning',
+        title: 'Yayın Silinsin mi?',
+        text: `${r?.personel || 'Personel'} için onaylanmamış yayın silinecek ve personel PWA'sında görünmeyecek.`,
+        showCancelButton: true,
+        confirmButtonText: 'Evet, Sil',
+        cancelButtonText: 'Vazgeç',
+        confirmButtonColor: '#dc3545'
+      });
+      if (!onay.isConfirmed) return;
+      calistir(async () => {
+        await api('yayin-sil', {token});
+        await yukle();
+        mesaj('Yayın silindi.', false);
+      });
     });
 
     el('bordroYayinModal')?.addEventListener('shown.bs.modal', () => tablo.columns.adjust());

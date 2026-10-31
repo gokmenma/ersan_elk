@@ -17,14 +17,15 @@ final class BordroYayinIcerikTest extends TestCase
         ];
     }
 
-    public function testDahilYemekYuvarlamasiAyriVeKalemlerBankaNetineEsit(): void
+    public function testDahilYemekYuvarlamasiYemekToplamindaGosterilirVeKalemlerBankaNetineEsit(): void
     {
         $r = Icerik::olustur(...$this->data());
         self::assertSame(3100000, array_sum(array_column($r['kalemler'], 'kurus')));
-        self::assertSame(50, $r['kalemler'][2]['kurus']);
-        self::assertSame('Yemek günlük yuvarlama farkı', $r['kalemler'][2]['etiket']);
-        self::assertSame('Resmî tatil', $r['kalemler'][4]['etiket']);
-        self::assertSame('Avans', $r['kalemler'][5]['etiket']);
+        self::assertSame('Yemek yardımı', $r['kalemler'][1]['etiket']);
+        self::assertSame(400000, $r['kalemler'][1]['kurus']);
+        self::assertNotContains('Yemek günlük yuvarlama farkı', array_column($r['kalemler'], 'etiket'));
+        self::assertSame('Resmî tatil', $r['kalemler'][3]['etiket']);
+        self::assertSame('Avans', $r['kalemler'][4]['etiket']);
         self::assertArrayNotHasKey('elden_odeme', $r);
         self::assertArrayNotHasKey('tc_kimlik_no', $r);
         self::assertStringNotContainsString('9000', json_encode($r));

@@ -15,6 +15,7 @@ $data = match ($action) {
     'yayin-takip' => $yayinModel->takip($firma, $donem),
     'yayin-detay' => $yayinModel->detay($firma, \App\Helper\BordroYayinGuvenlik::id($_POST['token'] ?? null)),
     'yayin-yanitla' => $yayinModel->yanitla($firma, \App\Helper\BordroYayinGuvenlik::id($_POST['talep_token'] ?? null), $userId, (string) ($_POST['mesaj'] ?? '')),
+    'yayin-sil' => $yayinModel->yayinSil($firma, \App\Helper\BordroYayinGuvenlik::id($_POST['token'] ?? null), $userId),
     default => throw new \DomainException('Geçersiz yayın işlemi.'),
 };
 if ($action === 'yayin-yanitla' && is_array($data) && !empty($data['personel_id'])) {
@@ -28,6 +29,10 @@ if ($action === 'yayin-yanitla' && is_array($data) && !empty($data['personel_id'
     } catch (\Throwable $bildirimHatasi) {
         error_log('Bordro itiraz sonuç bildirimi: ' . $bildirimHatasi->getMessage());
     }
+}
+if ($action === 'yayin-sil') {
+    $SystemLog->logAction($userId, 'Bordro Yayını', 'Onaylanmamış yayın silindi: ' . ($data['personel'] ?? '') . ' (' . ($data['pusula_no'] ?? '') . ')', \App\Model\SystemLogModel::LEVEL_IMPORTANT);
+    $data = ['silindi' => true];
 }
 // Önizleme yanıtında da ham kayıt/personel ID taşınmaz.
 if ($action === 'yayin-onizle') {

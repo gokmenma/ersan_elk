@@ -31,9 +31,7 @@ final class BordroYayinIcerikService
         // Bankaya aktarılmayan personelde resmî banka dökümü sıfırdır.
         if ($matrah > 0) {
             $ekle('Resmî net ücret tabanı', self::kurus((float) $hesap['resmiNetTaban']));
-            $yuvarlama = !empty($hesap['isInclusive']) ? self::kurus((float) $hesap['yuvarlamaFarki']) : 0;
-            $ekle('Yemek yardımı', (!empty($hesap['isInclusive']) ? self::kurus((float) $ozet['resmi_yemek_yardimi']) : 0) - $yuvarlama);
-            $ekle('Yemek günlük yuvarlama farkı', $yuvarlama);
+            $ekle('Yemek yardımı', !empty($hesap['isInclusive']) ? self::kurus((float) $ozet['resmi_yemek_yardimi']) : 0);
             $ekle('Eş yardımı', !empty($hesap['isInclusive']) ? self::kurus((float) $ozet['es_yardimi']) : 0);
             foreach ($hesap['bankaEkOdemeDetaylari'] ?? [] as $ek) {
                 // Etiketlerdeki serbest açıklama ve birim tutarlar yayınlanmaz.

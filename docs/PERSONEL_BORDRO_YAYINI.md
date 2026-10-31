@@ -22,7 +22,7 @@ Mevcut `personel_gorsun` alanı yeni yayın akışını başlatmaz. Eski finansa
 - `hesaplaOrtakGosterimDegerleri()` ve `getMuhasebeOdemeOzeti()` çıktıları kullanılır. Maaş, yemek, RTÇ/HTÇ veya kesinti dağıtım kuralları değiştirilmez.
 - Ortak modelin resmî ücret tabanı ve banka kesinti etiketleri sunum için ayrıca dışa açılır. Elden ve iç hesap bilgileri yayın içeriğine girmez.
 - Kayıtlı `banka_odemesi`, ortak hesap neti ve döküm kalem toplamı kuruş bazında eşit olmalıdır. Eksik hesaplanmış, manuel dağılımı açıklanamayan veya tutarsız kayıtlar yayını durdurur.
-- Günlük yemek yuvarlama farkı ayrı satırdır. Ortak hesabın kazanç tavanı, kazanç kalemlerinden düşükse uygulanmış tavan farkı ayrı satır gösterilir; pozitif açıklanamayan fark yeni kazanç gibi tamamlanmaz.
+- Maaşa dahil yemek yardımı, günlük yuvarlama farkı dahil tek toplam `Yemek yardımı` satırı olarak gösterilir (personel PWA ile aynı); yuvarlama farkı ayrı satır olmaz. Ortak hesabın kazanç tavanı, kazanç kalemlerinden düşükse uygulanmış tavan farkı ayrı satır gösterilir; pozitif açıklanamayan fark yeni kazanç gibi tamamlanmaz.
 - Banka kesinti kalemlerinin toplamı gerçekleşen banka kesintisine eşitse ayrı gösterilir. Tavan/dağılım nedeniyle yalnız bir kısmı bankadan düşmüşse ortak model satır payı üretmediği için gerçekleşen banka kesintisi toplam olarak gösterilir; elden kesinti bilgisi yayınlanmaz.
 - Yayın içeriği personel adı, dönem/görev bilgileri, günler ve resmî kalemleri içerir. Sürüm, SHA-256, yayınlayan, yayın zamanı ve olay geçmişi saklanır. Hash içerik bütünlüğü kontrolüdür.
 - Onay metni v2: **Ücret hesap pusulasını okudum ve onaylıyorum.** Sunucu zamanı, personel, döküm/sürüm, metin sürümü, içerik hash'i ve teknik işlem kanıtları kaydedilir. OTP/e-imza eklenmemiştir.

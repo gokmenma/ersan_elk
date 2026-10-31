@@ -175,6 +175,23 @@ final class BordroYayinModel extends Model
         });
     }
 
+    public function yayinSil(int $firma, int $dokumId, int $user): array
+    {
+        return $this->atomik(function () use ($firma, $dokumId, $user) {
+            $row = $this->dokum($firma, $dokumId, null, true);
+            if (!empty($row['beyan_tarihi'])) throw new DomainException('Okuma beyanı verilmiş döküm silinemez.');
+            $talep = (int) $this->sorgu('SELECT COUNT(*) FROM bordro_yayin_talep WHERE dokum_id = ? AND is_active = 1', [$dokumId])->fetchColumn();
+            if ($talep > 0) throw new DomainException('İnceleme talebi bulunan döküm silinemez.');
+            $this->sorgu('UPDATE bordro_yayin_dokum SET is_active = 0, deleted_at = NOW() WHERE id = ?', [$dokumId]);
+            $this->sorgu('UPDATE bordro_yayin_kuyruk SET is_active = 0, deleted_at = NOW() WHERE dokum_id = ? AND is_active = 1', [$dokumId]);
+            $this->olay($dokumId, 'silindi', 'user', $user, 'Onaylanmamış yayın yönetici tarafından silindi');
+            $kalan = (int) $this->sorgu('SELECT COUNT(*) FROM bordro_yayin_dokum WHERE yayin_id = ? AND is_active = 1', [(int) $row['yayin_id']])->fetchColumn();
+            if ($kalan === 0) $this->sorgu('UPDATE bordro_yayin SET is_active = 0, deleted_at = NOW() WHERE id = ?', [(int) $row['yayin_id']]);
+            $icerik = $this->icerik($row);
+            return ['personel' => (string) ($icerik['personel'] ?? ''), 'pusula_no' => (string) $row['pusula_no']];
+        });
+    }
+
     private function olay(int $dokum, string $tur, string $aktor, int $id, ?string $detay = null): void
     {
         $this->sorgu('INSERT INTO bordro_yayin_olay (dokum_id, tur, aktor_tipi, aktor_id, detay) VALUES (?, ?, ?, ?, ?)', [$dokum, $tur, $aktor, $id, $detay]);
