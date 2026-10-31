@@ -8,7 +8,7 @@
 // updateViaCache="none" kullanılarak worker bağımlılıklarının eski HTTP
 // önbelleğinden gelmesi de engellenir.
 const KUYRUK_SURUM = "34";
-const ONBELLEK_REVIZYON = "20261031";
+const ONBELLEK_REVIZYON = "20261031b";
 const CACHE_NAME = "personel-pwa-v" + KUYRUK_SURUM + "-" + ONBELLEK_REVIZYON;
 const SAYFA_CACHE = "personel-pwa-sayfa-v6";
 const OFFLINE_URL = "offline.html";

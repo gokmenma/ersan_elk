@@ -2069,7 +2069,7 @@ onMounted(() => {
               </div>
 
               <strong class="block text-sm font-bold text-white truncate drop-shadow-sm">{{ announcements[0].title }}</strong>
-              <p class="text-xs text-white/90 line-clamp-2 mt-1 leading-snug">{{ announcements[0].content }}</p>
+              <p class="announcement-excerpt text-xs text-white/90 mt-1 leading-snug">{{ announcements[0].content }}</p>
               <div class="flex items-center gap-1.5 text-[11px] font-semibold text-white/90 mt-2.5 pt-1.5 border-t border-white/15">
                 <span>Detayları görüntüle</span>
                 <ArrowRight :size="13" class="ms-auto" />
@@ -2271,8 +2271,13 @@ onMounted(() => {
             <CalendarDays :size="12" />
             <span>Etkinlik: {{ formatDate(selectedAnnouncement.event_date) }}</span>
           </div>
-          <p class="text-sm text-slate-700 leading-relaxed whitespace-pre-line mt-2">
-            {{ selectedAnnouncement.raw_content || selectedAnnouncement.content }}
+          <div
+            v-if="selectedAnnouncement.html"
+            class="announcement-html text-sm text-slate-700 leading-relaxed mt-2"
+            v-html="selectedAnnouncement.html"
+          ></div>
+          <p v-else class="text-sm text-slate-700 leading-relaxed whitespace-pre-line mt-2">
+            {{ selectedAnnouncement.content }}
           </p>
         </div>
 

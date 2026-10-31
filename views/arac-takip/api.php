@@ -4500,7 +4500,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     if ($report->resim_yolu) {
                         $resimBtn = '
                             <button type="button" class="btn btn-sm btn-soft-info btn-view-km-img" 
-                                    data-img="' . \App\Helper\Helper::base_url($report->resim_yolu) . '"
+                                    data-img="views/arac-takip/km-foto.php?id=' . (int) $report->id . '"
                                     data-plaka="' . htmlspecialchars($report->plaka) . '"
                                     data-date="' . date('d.m.Y', strtotime($report->tarih)) . '"
                                     data-tur="' . ucfirst($report->tur) . '">
@@ -4542,7 +4542,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                         if ($report->resim_yolu) {
                             $actionHtml .= '
                                 <button type="button" class="btn btn-sm btn-soft-info btn-view-km-img" 
-                                        data-img="' . \App\Helper\Helper::base_url($report->resim_yolu) . '"
+                                        data-img="views/arac-takip/km-foto.php?id=' . (int) $report->id . '"
                                         data-plaka="' . htmlspecialchars($report->plaka) . '"
                                         data-date="' . date('d.m.Y', strtotime($report->tarih)) . '"
                                         data-tur="' . ucfirst($report->tur) . '">
@@ -4570,7 +4570,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                         if ($report->resim_yolu) {
                             $actionHtml .= '
                                 <button type="button" class="btn btn-sm btn-soft-info btn-view-km-img" 
-                                        data-img="' . \App\Helper\Helper::base_url($report->resim_yolu) . '"
+                                        data-img="views/arac-takip/km-foto.php?id=' . (int) $report->id . '"
                                         data-plaka="' . htmlspecialchars($report->plaka) . '"
                                         data-date="' . date('d.m.Y', strtotime($report->tarih)) . '"
                                         data-tur="' . ucfirst($report->tur) . '">

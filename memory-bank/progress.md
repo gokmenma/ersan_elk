@@ -1,5 +1,17 @@
 # Progress
 
+## 2026-10-31 — Mobil SPA KM Onayları Varsayılan Tarih Filtresi
+- [x] Bekleyen sekmesi `Tümü`, diğer sekmeler `Bugün` ile açılıyor; önceki günden kalan bekleyen kayıtlar gizlenmiyor.
+
+## 2026-10-31 — Personel PWA KM Fotoğraf Servisi
+- [x] `uploads/km_bildirim` doğrudan erişime kapalı (403) olduğundan PWA KM geçmişi `views/personel-pwa/km-foto.php` üzerinden sunuluyor; personel yalnız kendi fotoğrafını görebilir.
+- [x] Masaüstü (`views/arac-takip/km-foto.php`, `arac_km_onaylari`), eski `mobile/pages/km-onaylari.php` ve RN (`km.php?action=foto`, JWT + `AuthImage`) da yetkili servise geçirildi.
+
+## 2026-10-31 — Personel PWA Ana Sayfa Endeks Karşılaştırması
+- [x] `getEndeksKarsilastirma` API aksiyonu: memur kendi verisi, şef kendi bölge ekibi; kapsam sunucuda belirlenir.
+- [x] Şef toplamı yönetici mobil kartıyla birebir eşleşti; şef/memur oturumlarıyla API ve 390px Chrome ekran görüntüsü (açık/koyu) doğrulandı.
+- [ ] Sunucuya deploy.
+
 ## 2026-10-30 — Personel PWA Ana Sayfa / KM Güncellemesi
 - [x] Saha Görevi ve Araç KM kartları durum bazlı animasyonlu sahnelere çevrildi (bekleyen iş / devam eden iş); Chrome 390px ile üç KM ve iki görev durumu doğrulandı.
 - [x] KM bildirimi: Sabah/Akşam butonları, fotoğraftan yapay zekâ ile KM okuma, yapışkan gönder butonu, hızlı yanıt (AI arka planda).

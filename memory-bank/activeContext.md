@@ -1,5 +1,18 @@
 # Active Context
 
+## Personel PWA — KM Fotoğraf Servisi (2026-10-31)
+- `uploads/km_bildirim/.htaccess` doğrudan erişimi kapatıyor (403). PWA KM geçmişi artık `views/personel-pwa/km-foto.php` kullanıyor; sahiplik `AracKmBildirimModel::getPersonelResimYolu()` ile doğrulanıyor.
+- Masaüstü ve eski mobil `views/arac-takip/km-foto.php` (`arac_km_onaylari`), RN `km.php?action=foto` + `AuthImage` kullanıyor. Dosya çözümleme ortak: `AracKmBildirimModel::resimDosyasiniBul()`.
+- `Security::encrypt` çıktısı zaten URL-kodlu; yeniden `rawurlencode` edilmez.
+
+## Personel PWA — Ana Sayfa Endeks Karşılaştırması (2026-10-31)
+- **Kapsam**: Yönetici mobildeki Endeks Karşılaştırması kartı personel PWA ana sayfasına eklendi (`data-home-card="endeks"`, yalnız Endeks Okuma departmanı). Son 3 ay, her ayın 1'i ile bugünün gün numarası arası karşılaştırılır.
+- **Veri kapsamı sunucuda belirlenir** (istemciden parametre alınmaz): API aksiyonu `getEndeksKarsilastirma` (`views/personel-pwa/api.php`). Memur → yalnız `personel_id` kendi kayıtları; şef (görevi "Şef" + aktif `ekip_sefi_mi=1`) → şefi olduğu ekip kodunun `ekip_bolge` bölgesindeki tüm okumalar (Ekip Takibi ile aynı ekip tanımı). Endeks Okuma dışı personel reddedilir.
+- **Model**: `EndeksOkumaModel::getScopedMonthlyComparisonByDay()`; dönem üretimi `buildDayAlignedPeriods()` yardımcısına taşındı ve yönetici `getMonthlyComparisonByDay()` da bunu kullanır (davranış aynı). Şef toplamı yönetici kartındaki aynı bölge toplamıyla 3 dönemde birebir doğrulandı.
+- **Arayüz**: KPI (bu ay / önceki aya göre % / günlük ort.), ay çubukları, açılır kişi (şef) veya ekip kodu (birden çok ekip kodlu memur) listesi; şef listesinde kendi satırı "Siz" ile vurgulanır. Stiller `pwa-style.css` → `pwa-endeks-*` (açık/koyu tema).
+- **Sıralama**: `PersonelModel::PWA_ANA_SAYFA_KARTLARI` içine `endeks` eklendi; kayıtlı sırası olan personelde kart sona eklenir.
+- **Önbellek notu**: `sw.js` artık `?v=` sürümlü statik dosyaları tam URL eşleşmesiyle sunuyor; `filemtime` ile sürümlenen CSS/JS değişince `ONBELLEK_REVIZYON` artırmak gerekmiyor.
+
 ## Personel PWA — Ana Sayfa Animasyonlu Kartlar, KM Akışı, Durum Çubuğu (2026-10-30)
 - **Saha Görevi / Araç KM kartları**: `views/personel-pwa/pages/ana-sayfa.php` + `assets/css/pwa-style.css` (`pwa-fx-*`). Durum, kart üzerindeki `data-gorev-state` (`idle`/`walking`) ve `data-km-state` (`parked`/`driving`/`done`) niteliğiyle yönetilir; JS `setGorevSahne()`, `setKmSahneDurumu()`, `kmBildirimiKaydedildi()`, `kmSiradakiBildir()`. KM durumu sunucuda `AracKmBildirimModel::getGunlukBildirimler()` ile hesaplanır. Personel illüstrasyonu ve araç (Courier, ER-SAN amblemli; `assets/images/van.png`, `van-wheel.png`) elle çizim/işlenmiş görseldir.
 - **KM butonları**: tek buton yerine Sabah/Akşam; bildirilen KM butonda görünür ve buton pasif olur. Çok araçta `1/2 araç` gösterimi, modal seçim listesinde bildirilmiş araçlar elenir.

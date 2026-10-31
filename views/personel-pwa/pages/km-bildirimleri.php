@@ -146,8 +146,8 @@ $aktifAracZimmeti = $aktifAracZimmetleri[0] ?? null;
             
             html += `
                 <div class="bg-white dark:bg-card-dark p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-4 active:scale-[0.98] transition-all">
-                    <div class="w-14 h-14 rounded-2xl overflow-hidden shrink-0 border border-slate-200 dark:border-slate-700 shadow-inner">
-                        <img src="${item.resim_url}" class="w-full h-full object-cover">
+                    <div class="w-14 h-14 rounded-2xl overflow-hidden shrink-0 border border-slate-200 dark:border-slate-700 shadow-inner flex items-center justify-center bg-slate-50 dark:bg-slate-800">
+                        ${item.resim_url ? `<img src="${item.resim_url}" loading="lazy" alt="" class="w-full h-full object-cover" onerror="this.outerHTML='<span class=&quot;material-symbols-outlined text-slate-300&quot;>image_not_supported</span>'">` : `<span class="material-symbols-outlined text-slate-300">image_not_supported</span>`}
                     </div>
                     
                     <div class="flex-1 min-w-0">

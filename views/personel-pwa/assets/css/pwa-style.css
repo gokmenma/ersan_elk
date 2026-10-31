@@ -2813,7 +2813,6 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  animation: pwaFxRise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .pwa-fx-card::before {
@@ -2839,7 +2838,6 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  animation: pwaFxRise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .pwa-fx-hero {
@@ -4642,4 +4640,324 @@ input.ihbar-input:focus {
 .dark input.pwa-input:focus,
 .dark input.ihbar-input:focus {
   background-color: rgba(var(--primary-rgb, 19, 91, 236), 0.12);
+}
+
+/* ===== Ana Sayfa: Endeks Karşılaştırması ===== */
+#endeks-karsilastirma-section .pwa-metric small {
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-align: center;
+}
+
+#endeks-karsilastirma-section .pwa-metric strong.pwa-endeks-trend {
+  font-size: 19px;
+}
+
+.pwa-endeks-tone--up { --endeks-tone: #059669; }
+.pwa-endeks-tone--new { --endeks-tone: #0284c7; }
+.pwa-endeks-tone--flat { --endeks-tone: #64748b; }
+.pwa-endeks-tone--soft { --endeks-tone: #d97706; }
+.pwa-endeks-tone--warn { --endeks-tone: #ea580c; }
+.pwa-endeks-tone--crit { --endeks-tone: #dc2626; }
+
+.pwa-metric.pwa-endeks-tone--up strong,
+.pwa-metric.pwa-endeks-tone--new strong,
+.pwa-metric.pwa-endeks-tone--soft strong,
+.pwa-metric.pwa-endeks-tone--warn strong,
+.pwa-metric.pwa-endeks-tone--crit strong {
+  color: var(--endeks-tone);
+}
+
+.pwa-endeks-periods {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.pwa-endeks-period {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.pwa-endeks-period strong {
+  min-width: 56px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.pwa-endeks-bar {
+  display: block;
+  height: 10px;
+  border-radius: 999px;
+  background: #eef1f5;
+  overflow: hidden;
+}
+
+.pwa-endeks-bar b {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #94a3b8;
+  transition: width 0.4s ease;
+}
+
+.pwa-endeks-period.is-current {
+  color: #135bec;
+}
+
+.pwa-endeks-period.is-current .pwa-endeks-bar b {
+  background: #135bec;
+}
+
+.pwa-endeks-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 12px;
+  border-radius: 999px;
+  background: #eff2f7;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.pwa-endeks-toggle .material-symbols-outlined {
+  font-size: 18px;
+  transition: transform 0.2s ease;
+}
+
+.pwa-endeks-toggle.is-open .material-symbols-outlined {
+  transform: rotate(180deg);
+}
+
+.pwa-endeks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.pwa-endeks-list[hidden] {
+  display: none;
+}
+
+.pwa-endeks-row-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pwa-endeks-months {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.pwa-endeks-month {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 6px 4px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.pwa-endeks-month span {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.pwa-endeks-month strong {
+  font-size: 13.5px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #0f172a;
+}
+
+.pwa-endeks-month.is-current {
+  background: rgba(19, 91, 236, 0.1);
+}
+
+.pwa-endeks-month.is-current span,
+.pwa-endeks-month.is-current strong {
+  color: #135bec;
+}
+
+.dark .pwa-endeks-month {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dark .pwa-endeks-month span {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.dark .pwa-endeks-month strong {
+  color: #f5f7fa;
+}
+
+.dark .pwa-endeks-month.is-current {
+  background: rgba(96, 165, 250, 0.15);
+}
+
+.dark .pwa-endeks-month.is-current span,
+.dark .pwa-endeks-month.is-current strong {
+  color: #60a5fa;
+}
+
+.pwa-endeks-row {
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: #f6f8fb;
+  border: 1px solid rgba(15, 23, 42, 0.05);
+}
+
+.pwa-endeks-row.is-self {
+  border-color: rgba(19, 91, 236, 0.35);
+  background: rgba(19, 91, 236, 0.06);
+}
+
+.pwa-endeks-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--endeks-tone, #94a3b8);
+}
+
+.pwa-endeks-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.pwa-endeks-name strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.pwa-endeks-name strong em {
+  margin-left: 4px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #135bec;
+  color: #ffffff;
+  font-size: 9.5px;
+  font-style: normal;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.pwa-endeks-name small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.pwa-endeks-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex: none;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--endeks-tone, #64748b);
+}
+
+.pwa-endeks-badge small {
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.pwa-endeks-note {
+  margin: 0;
+  padding: 18px 4px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.pwa-endeks-retry {
+  margin-left: 4px;
+  font-weight: 700;
+  color: #135bec;
+  text-decoration: underline;
+}
+
+.dark .pwa-endeks-tone--up { --endeks-tone: #34d399; }
+.dark .pwa-endeks-tone--new { --endeks-tone: #38bdf8; }
+.dark .pwa-endeks-tone--flat { --endeks-tone: #94a3b8; }
+.dark .pwa-endeks-tone--soft { --endeks-tone: #fbbf24; }
+.dark .pwa-endeks-tone--warn { --endeks-tone: #fb923c; }
+.dark .pwa-endeks-tone--crit { --endeks-tone: #f87171; }
+
+.dark .pwa-endeks-period {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.dark .pwa-endeks-period strong,
+.dark .pwa-endeks-name strong {
+  color: #f5f7fa;
+}
+
+.dark .pwa-endeks-bar {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.dark .pwa-endeks-bar b {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.dark .pwa-endeks-period.is-current {
+  color: #60a5fa;
+}
+
+.dark .pwa-endeks-period.is-current .pwa-endeks-bar b {
+  background: #60a5fa;
+}
+
+.dark .pwa-endeks-toggle {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.dark .pwa-endeks-row {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.07);
+}
+
+.dark .pwa-endeks-row.is-self {
+  background: rgba(96, 165, 250, 0.1);
+  border-color: rgba(96, 165, 250, 0.35);
+}
+
+.dark .pwa-endeks-retry {
+  color: #60a5fa;
 }

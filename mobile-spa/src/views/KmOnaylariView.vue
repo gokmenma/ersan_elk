@@ -67,7 +67,8 @@ const datePresets = [
   { key: '30d', label: 'Son 1 Ay' },
   { key: 'all', label: 'Tümü' },
 ]
-const datePreset = ref('today') // 'today' | '7d' | '30d' | 'all' | 'custom'
+const defaultDatePreset = (tab) => (tab === 'pending' ? 'all' : 'today')
+const datePreset = ref(defaultDatePreset(kmState.activeTab)) // 'today' | '7d' | '30d' | 'all' | 'custom'
 const customDateFrom = ref('')
 const customDateTo = ref('')
 
@@ -114,7 +115,7 @@ function setDatePreset(key) {
 
 function handleCustomDateChange() {
   if (!customDateFrom.value && !customDateTo.value) {
-    setDatePreset('today')
+    setDatePreset(defaultDatePreset(kmState.activeTab))
     return
   }
   if (customDateFrom.value && customDateTo.value && customDateFrom.value > customDateTo.value) {
@@ -653,6 +654,12 @@ function goToPage(p) {
   if (p < 1 || p > pagination.value.totalPages || p === pagination.value.page) return
   loadReports(p)
 }
+
+watch(() => kmState.activeTab, (newTab) => {
+  datePreset.value = defaultDatePreset(newTab)
+  customDateFrom.value = ''
+  customDateTo.value = ''
+}, { flush: 'sync' })
 
 watch(() => kmState.activeTab, (newTab) => {
   selectionMode.value = false

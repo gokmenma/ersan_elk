@@ -64,6 +64,38 @@ class AracKmBildirimModel extends Model
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
+    public function getPersonelResimYolu(int $id, int $personelId): ?string
+    {
+        $sql = $this->db->prepare("SELECT resim_yolu FROM {$this->table} WHERE id = :id AND personel_id = :pid LIMIT 1");
+        $sql->execute(['id' => $id, 'pid' => $personelId]);
+        $resimYolu = trim((string) $sql->fetchColumn());
+
+        return $resimYolu !== '' ? $resimYolu : null;
+    }
+
+    public static function resimDosyasiniBul(string $resimYolu): ?string
+    {
+        $temizYol = ltrim(str_replace('\\', '/', trim($resimYolu)), '/');
+        $kokDizin = realpath(dirname(__DIR__, 2) . '/uploads/km_bildirim');
+        if ($temizYol === '' || !$kokDizin) {
+            return null;
+        }
+
+        $adaylar = [dirname(__DIR__, 2) . '/' . $temizYol, $kokDizin . '/' . basename($temizYol)];
+        foreach (['webp', 'jpg', 'jpeg', 'png'] as $uzanti) {
+            $adaylar[] = $kokDizin . '/' . pathinfo($temizYol, PATHINFO_FILENAME) . '.' . $uzanti;
+        }
+
+        foreach ($adaylar as $aday) {
+            $dosya = realpath($aday);
+            if ($dosya && str_starts_with($dosya, $kokDizin . DIRECTORY_SEPARATOR) && is_file($dosya)) {
+                return $dosya;
+            }
+        }
+
+        return null;
+    }
+
     public function getPersonelHistory($personelId, $limit = 20)
     {
         $sql = $this->db->prepare("

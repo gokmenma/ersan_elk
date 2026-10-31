@@ -94,6 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $logModel->logAction($_SESSION['user_id'] ?? 0, 'Duyuru Oluşturma', "Yeni duyuru ({$data['baslik']}) oluşturuldu.", SystemLogModel::LEVEL_INFO);
                 }
 
+                unset($_SESSION['home_slider_notifications_cache_' . ($_SESSION['firma_id'] ?? 0)]);
                 echo json_encode(['status' => 'success', 'message' => $msg]);
                 break;
 
@@ -102,6 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if ($id) {
                     $model->updateDuyuru($id, ['silinme_tarihi' => date('Y-m-d H:i:s')]);
                     $logModel->logAction($_SESSION['user_id'] ?? 0, 'Duyuru Silme', "Duyuru #{$id} silindi.", SystemLogModel::LEVEL_IMPORTANT);
+                    unset($_SESSION['home_slider_notifications_cache_' . ($_SESSION['firma_id'] ?? 0)]);
                     echo json_encode(['status' => 'success', 'message' => 'Duyuru silindi.']);
                 } else {
                     throw new Exception('Geçersiz ID.');

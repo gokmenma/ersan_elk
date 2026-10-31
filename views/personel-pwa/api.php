@@ -2962,6 +2962,40 @@ try {
             ]);
             break;
 
+        case 'getEndeksKarsilastirma':
+            if (stripos($personel->departman ?? '', 'Endeks Okuma') === false) {
+                response(false, null, 'Endeks karşılaştırması yalnızca Endeks Okuma personeli için gösterilir.');
+            }
+
+            $kapsamBolge = null;
+            if (stripos($personel->gorev ?? '', 'Şef') !== false && isOkumaSefiMi($PersonelModel, $personel, $personel_id)) {
+                foreach ($PersonelModel->getEkipGecmisi($personel_id) as $g) {
+                    if (($g->ekip_sefi_mi ?? 0) == 1 && (empty($g->bitis_tarihi) || $g->bitis_tarihi >= date('Y-m-d'))) {
+                        $sefEkipKodu = (new \App\Model\TanimlamalarModel())->find($g->ekip_kodu_id);
+                        $sefBolge = trim($sefEkipKodu->ekip_bolge ?? '');
+                        $kapsamBolge = $sefBolge !== '' ? $sefBolge : null;
+                        break;
+                    }
+                }
+            }
+
+            try {
+                $karsilastirma = (new \App\Model\EndeksOkumaModel())->getScopedMonthlyComparisonByDay(
+                    (int) ($_SESSION['firma_id'] ?? 0),
+                    (int) $personel_id,
+                    $kapsamBolge
+                );
+            } catch (\Throwable $e) {
+                error_log('PWA endeks karşılaştırma hatası: ' . $e->getMessage());
+                response(false, null, 'Endeks karşılaştırması yüklenemedi.');
+            }
+
+            response(true, array_merge($karsilastirma, [
+                'kapsam' => $kapsamBolge !== null ? 'ekip' : 'kendi',
+                'bolge' => $kapsamBolge,
+            ]));
+            break;
+
         case 'getKacakKontrolData':
             $startDate = $_POST['start_date'] ?? '';
             $endDate = $_POST['end_date'] ?? '';
@@ -5687,7 +5721,7 @@ try {
             foreach ($history as $item) {
                 $item->tarih_format = date('d.m.Y', strtotime($item->tarih));
                 $item->tur_label = $item->tur === 'sabah' ? 'Sabah' : 'Akşam';
-                $item->resim_url = !empty($item->resim_yolu) ? \App\Helper\Helper::base_url($item->resim_yolu) : null;
+                $item->resim_url = !empty($item->resim_yolu) ? 'km-foto.php?id=' . (int) $item->id : null;
                 $data[] = $item;
             }
             

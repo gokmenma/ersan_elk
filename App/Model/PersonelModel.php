@@ -2425,7 +2425,7 @@ class PersonelModel extends Model
         return $stmt->execute([$json, $personelId]);
     }
 
-    public const PWA_ANA_SAYFA_KARTLARI = ['etkinlik', 'gorev', 'km', 'performans', 'ozet', 'hizli'];
+    public const PWA_ANA_SAYFA_KARTLARI = ['etkinlik', 'gorev', 'km', 'performans', 'endeks', 'ozet', 'hizli'];
 
     public function getAnaSayfaSiralama(int $personelId): array
     {

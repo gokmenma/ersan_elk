@@ -14,7 +14,7 @@ class DuyuruModel extends Model
         parent::__construct($this->table);
     }
 
-    public function getAll($activeOnly = false)
+    public function getAll($activeOnly = false, $adminOnly = false)
     {
         $sql = "SELECT * FROM {$this->table} WHERE firma_id = :firma_id AND silinme_tarihi IS NULL";
         $params = [
@@ -24,6 +24,10 @@ class DuyuruModel extends Model
         if ($activeOnly) {
             $sql .= " AND durum = 'Yayında' AND (etkinlik_tarihi IS NULL OR DATE(etkinlik_tarihi) >= :today)";
             $params['today'] = date('Y-m-d');
+        }
+
+        if ($adminOnly) {
+            $sql .= " AND ana_sayfada_goster = 1";
         }
 
         $sql .= " ORDER BY tarih DESC";

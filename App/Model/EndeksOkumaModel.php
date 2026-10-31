@@ -518,49 +518,7 @@ class EndeksOkumaModel extends Model
     public function getMonthlyComparisonByDay(): array
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $today = new \DateTime();
-        $dayOfMonth = (int) $today->format('j'); // Ayın kaçı (1-31)
-
-        $periods = [];
-        $monthNamesTr = [
-            1 => 'Ocak',
-            2 => 'Şubat',
-            3 => 'Mart',
-            4 => 'Nisan',
-            5 => 'Mayıs',
-            6 => 'Haziran',
-            7 => 'Temmuz',
-            8 => 'Ağustos',
-            9 => 'Eylül',
-            10 => 'Ekim',
-            11 => 'Kasım',
-            12 => 'Aralık'
-        ];
-
-        // Son 3 ay (2 önceki ay + bu ay)
-        for ($i = 2; $i >= 0; $i--) {
-            $d = new \DateTime('first day of this month');
-            if ($i > 0) {
-                $d->modify("-{$i} months");
-            }
-            $year = $d->format('Y');
-            $month = (int) $d->format('n');
-            $monthPadded = $d->format('m');
-
-            $start = "{$year}-{$monthPadded}-01";
-            // O ayın gün sınırı: ayın gün sayısından fazla olamaz
-            $daysInMonth = (int) $d->format('t');
-            $maxDay = min($dayOfMonth, $daysInMonth);
-            $end = "{$year}-{$monthPadded}-" . str_pad($maxDay, 2, '0', STR_PAD_LEFT);
-
-            $periods[] = [
-                'start' => $start,
-                'end' => $end,
-                'label' => $monthNamesTr[$month] . ' ' . $year,
-                'short_label' => $monthNamesTr[$month],
-                'is_current' => ($i === 0)
-            ];
-        }
+        [$periods, $dayOfMonth] = $this->buildDayAlignedPeriods();
 
         $result = [
             'bolge' => [],
@@ -671,6 +629,104 @@ class EndeksOkumaModel extends Model
             ];
         }, $regionStmt->fetchAll(PDO::FETCH_OBJ));
 
+        return $result;
+    }
+
+    private function buildDayAlignedPeriods(): array
+    {
+        $today = new \DateTime();
+        $dayOfMonth = (int) $today->format('j'); // Ayın kaçı (1-31)
+
+        $periods = [];
+        $monthNamesTr = [
+            1 => 'Ocak',
+            2 => 'Şubat',
+            3 => 'Mart',
+            4 => 'Nisan',
+            5 => 'Mayıs',
+            6 => 'Haziran',
+            7 => 'Temmuz',
+            8 => 'Ağustos',
+            9 => 'Eylül',
+            10 => 'Ekim',
+            11 => 'Kasım',
+            12 => 'Aralık'
+        ];
+
+        // Son 3 ay (2 önceki ay + bu ay)
+        for ($i = 2; $i >= 0; $i--) {
+            $d = new \DateTime('first day of this month');
+            if ($i > 0) {
+                $d->modify("-{$i} months");
+            }
+            $year = $d->format('Y');
+            $month = (int) $d->format('n');
+            $monthPadded = $d->format('m');
+
+            $start = "{$year}-{$monthPadded}-01";
+            // O ayın gün sınırı: ayın gün sayısından fazla olamaz
+            $daysInMonth = (int) $d->format('t');
+            $maxDay = min($dayOfMonth, $daysInMonth);
+            $end = "{$year}-{$monthPadded}-" . str_pad($maxDay, 2, '0', STR_PAD_LEFT);
+
+            $periods[] = [
+                'start' => $start,
+                'end' => $end,
+                'label' => $monthNamesTr[$month] . ' ' . $year,
+                'short_label' => $monthNamesTr[$month],
+                'is_current' => ($i === 0)
+            ];
+        }
+
+        return [$periods, $dayOfMonth];
+    }
+
+    public function getScopedMonthlyComparisonByDay(int $firmaId, int $personelId, ?string $bolge = null): array
+    {
+        [$periods, $dayOfMonth] = $this->buildDayAlignedPeriods();
+
+        $result = [
+            'periods' => $periods,
+            'gun' => $dayOfMonth,
+            'personeller' => [],
+        ];
+
+        $scopeSql = $bolge !== null ? 'TRIM(def.ekip_bolge) = ?' : 't.personel_id = ?';
+        $scopeParam = $bolge !== null ? $bolge : $personelId;
+
+        $sql = "SELECT t.personel_id, t.ekip_kodu_id,
+                    p.adi_soyadi AS personel_adi,
+                    def.tur_adi AS ekip_adi,
+                    SUM(t.okunan_abone_sayisi) AS toplam,
+                    COUNT(DISTINCT t.tarih) AS gun_sayisi
+                FROM {$this->table} t
+                LEFT JOIN personel p ON t.personel_id = p.id
+                LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
+                WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
+                  AND {$scopeSql}
+                GROUP BY t.personel_id, t.ekip_kodu_id, p.adi_soyadi, def.tur_adi";
+        $stmt = $this->db->prepare($sql);
+
+        foreach ($periods as $period) {
+            $stmt->execute([$firmaId, $period['start'], $period['end'], $scopeParam]);
+            foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $row) {
+                $pKey = $row->personel_id . '_' . $row->ekip_kodu_id;
+                if (!isset($result['personeller'][$pKey])) {
+                    $result['personeller'][$pKey] = [
+                        'personel_adi' => $row->personel_adi ?: '-',
+                        'ekip_adi' => $row->ekip_adi ?: '-',
+                        'kendisi' => (int) $row->personel_id === $personelId,
+                        'periods' => [],
+                    ];
+                }
+                $result['personeller'][$pKey]['periods'][$period['label']] = [
+                    'toplam' => (int) $row->toplam,
+                    'gun_sayisi' => (int) $row->gun_sayisi,
+                ];
+            }
+        }
+
+        $result['personeller'] = array_values($result['personeller']);
         return $result;
     }
 

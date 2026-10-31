@@ -97,7 +97,7 @@ $kartSirasi = static fn(string $anahtar): int => (int) array_search($anahtar, $a
             <div id="gorev-takip-card" class="card pwa-fx-card pwa-fx-card--green" data-gorev-state="idle">
                 <div class="pwa-card-head"><div class="pwa-card-title"><span class="material-symbols-outlined">my_location</span><span>Saha Görevi</span></div></div>
                 <!-- Loading State -->
-                <div id="gorev-loading" class="p-6 flex items-center justify-center">
+                <div id="gorev-loading" class="p-6 flex items-center justify-center" style="min-height:300px">
                     <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
 
@@ -300,6 +300,21 @@ $kartSirasi = static fn(string $anahtar): int => (int) array_search($anahtar, $a
             <div id="work-stats-container" class="grid grid-cols-2 gap-3">
                 <!-- Loading -->
                 <div class="col-span-2 py-8 flex justify-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <?php endif; ?>
+
+    <?php if ($isEndeksOkuma ?? false): ?>
+    <section class="px-4 mt-6" id="endeks-karsilastirma-section" data-home-card="endeks" style="order: <?php echo $kartSirasi('endeks'); ?>;">
+        <div class="card pwa-card-body">
+            <div class="pwa-card-head pwa-card-head--flush">
+                <div class="pwa-card-title"><span class="material-symbols-outlined">compare_arrows</span><span>Endeks Karşılaştırması</span><span class="pwa-card-pill" id="endeks-kapsam-label">-</span></div>
+            </div>
+            <div id="endeks-karsilastirma-container">
+                <div class="py-6 flex justify-center">
                     <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
             </div>
@@ -660,6 +675,9 @@ $kartSirasi = static fn(string $anahtar): int => (int) array_search($anahtar, $a
             }
             // Load çalışma bilgileri
             loadCalismaStats();
+            if (document.getElementById('endeks-karsilastirma-section')) {
+                loadEndeksKarsilastirma();
+            }
 
             // --- ANLIK KONUM İSTEĞİ KONTROLÜ (Saha personeli için) ---
             if (userHasSahaTakibi) {
@@ -1341,6 +1359,128 @@ $kartSirasi = static fn(string $anahtar): int => (int) array_search($anahtar, $a
                 console.error('Work stats load error:', error);
                 container.innerHTML = '<div class="col-span-2 card p-6 text-center text-red-500 text-sm">Veriler yüklenirken bir hata oluştu.</div>';
             }
+        }
+
+        var endeksFormatter = new Intl.NumberFormat('tr-TR');
+        var endeksDetayAcik = false;
+
+        function endeksFmt(value) {
+            return endeksFormatter.format(Number(value) || 0);
+        }
+
+        function endeksTrend(current, previous) {
+            if (!previous) {
+                return current > 0 ? { pct: 100, text: 'Yeni', tone: 'new' } : { pct: 0, text: '-', tone: 'flat' };
+            }
+            var rounded = Math.round(((current - previous) / previous) * 1000) / 10;
+            var tone = rounded <= -20 ? 'crit' : rounded <= -10 ? 'warn' : rounded < 0 ? 'soft' : rounded > 0 ? 'up' : 'flat';
+            return { pct: rounded, text: (rounded > 0 ? '+' : '') + rounded.toFixed(1).replace('.', ',') + '%', tone: tone };
+        }
+
+        function endeksSigned(value) {
+            return (value > 0 ? '+' : '') + endeksFmt(value);
+        }
+
+        async function loadEndeksKarsilastirma() {
+            var container = document.getElementById('endeks-karsilastirma-container');
+            if (!container) return;
+            try {
+                var response = await API.request('getEndeksKarsilastirma');
+                if (!response.success) {
+                    throw new Error(response.message || 'Endeks karşılaştırması yüklenemedi.');
+                }
+                renderEndeksKarsilastirma(response.data || {});
+            } catch (error) {
+                container.innerHTML = '<p class="pwa-endeks-note">' + escapeHtml(error.message || 'Endeks karşılaştırması yüklenemedi.')
+                    + ' <button type="button" class="pwa-endeks-retry" onclick="loadEndeksKarsilastirma()">Tekrar dene</button></p>';
+            }
+        }
+
+        function toggleEndeksDetay() {
+            endeksDetayAcik = !endeksDetayAcik;
+            var detay = document.getElementById('endeks-detay');
+            var btn = document.getElementById('endeks-detay-btn');
+            if (detay) detay.hidden = !endeksDetayAcik;
+            if (btn) {
+                btn.setAttribute('aria-expanded', endeksDetayAcik ? 'true' : 'false');
+                btn.querySelector('.pwa-endeks-toggle-text').textContent = btn.getAttribute('data-baslik') + (endeksDetayAcik ? ' gizle' : ' göster');
+                btn.classList.toggle('is-open', endeksDetayAcik);
+            }
+        }
+
+        function renderEndeksKarsilastirma(data) {
+            var container = document.getElementById('endeks-karsilastirma-container');
+            var label = document.getElementById('endeks-kapsam-label');
+            var periods = Array.isArray(data.periods) ? data.periods : [];
+            var ekipMi = data.kapsam === 'ekip';
+            var day = Math.max(1, Number(data.gun) || 1);
+
+            if (label) label.textContent = ekipMi ? ('Ekibim' + (data.bolge ? ' · ' + data.bolge : '')) : 'Kişisel';
+
+            var rows = (Array.isArray(data.personeller) ? data.personeller : []).map(function (p) {
+                var values = periods.map(function (period) {
+                    return Number(p.periods && p.periods[period.label] && p.periods[period.label].toplam) || 0;
+                });
+                var last = values[values.length - 1] || 0;
+                var prev = values.length > 1 ? values[values.length - 2] : 0;
+                return { name: p.personel_adi, sub: p.ekip_adi, kendisi: !!p.kendisi, values: values, diff: last - prev, trend: endeksTrend(last, prev) };
+            }).sort(function (a, b) { return a.trend.pct - b.trend.pct; });
+
+            if (!periods.length || !rows.length) {
+                container.innerHTML = '<p class="pwa-endeks-note">Karşılaştırılacak okuma verisi bulunamadı.</p>';
+                return;
+            }
+
+            var totals = periods.map(function (_, index) {
+                return rows.reduce(function (sum, row) { return sum + (row.values[index] || 0); }, 0);
+            });
+            var current = totals[totals.length - 1] || 0;
+            var previous = totals.length > 1 ? totals[totals.length - 2] : 0;
+            var trend = endeksTrend(current, previous);
+            var max = Math.max.apply(null, [1].concat(totals));
+
+            var html = '<div class="pwa-metrics">'
+                + '<div class="pwa-metric"><span>Bu ay</span><strong>' + endeksFmt(current) + '</strong><small>İlk ' + day + ' gün</small></div>'
+                + '<div class="pwa-metric pwa-endeks-tone--' + trend.tone + '"><span>Önceki aya göre</span><strong class="pwa-endeks-trend">' + escapeHtml(trend.text) + '</strong><small>' + endeksSigned(current - previous) + ' okuma</small></div>'
+                + '<div class="pwa-metric"><span>Günlük ort.</span><strong>' + endeksFmt(Math.round(current / day)) + '</strong><small>Takvim günü</small></div>'
+                + '</div>';
+
+            html += '<div class="pwa-endeks-periods">' + periods.map(function (period, index) {
+                var width = totals[index] ? Math.max(4, (totals[index] / max) * 100) : 0;
+                return '<div class="pwa-endeks-period' + (period.is_current ? ' is-current' : '') + '">'
+                    + '<span>' + escapeHtml(period.short_label) + '</span>'
+                    + '<i class="pwa-endeks-bar"><b style="width:' + width.toFixed(1) + '%"></b></i>'
+                    + '<strong>' + endeksFmt(totals[index]) + '</strong>'
+                    + '</div>';
+            }).join('') + '</div>';
+
+            if (ekipMi || rows.length > 1) {
+                var detayBaslik = ekipMi ? 'Ekip detaylarını' : 'Ekip kodu detaylarını';
+                html += '<button type="button" id="endeks-detay-btn" class="pwa-endeks-toggle' + (endeksDetayAcik ? ' is-open' : '') + '" data-baslik="' + detayBaslik + '" aria-expanded="' + (endeksDetayAcik ? 'true' : 'false') + '" onclick="toggleEndeksDetay()">'
+                    + '<span class="material-symbols-outlined">expand_more</span>'
+                    + '<span class="pwa-endeks-toggle-text">' + detayBaslik + ' ' + (endeksDetayAcik ? 'gizle' : 'göster') + '</span>'
+                    + '</button>';
+
+                html += '<div id="endeks-detay" class="pwa-endeks-list"' + (endeksDetayAcik ? '' : ' hidden') + '>' + rows.map(function (row) {
+                    return '<div class="pwa-endeks-row pwa-endeks-tone--' + row.trend.tone + (row.kendisi && ekipMi ? ' is-self' : '') + '">'
+                        + '<div class="pwa-endeks-row-head">'
+                        + '<span class="pwa-endeks-dot"></span>'
+                        + '<span class="pwa-endeks-name"><strong>' + escapeHtml(ekipMi ? row.name : row.sub) + (row.kendisi && ekipMi ? ' <em>Siz</em>' : '') + '</strong>'
+                        + (ekipMi ? '<small>' + escapeHtml(row.sub) + '</small>' : '') + '</span>'
+                        + '<span class="pwa-endeks-badge">' + escapeHtml(row.trend.text) + '<small>' + endeksSigned(row.diff) + '</small></span>'
+                        + '</div>'
+                        + '<div class="pwa-endeks-months">' + periods.map(function (period, index) {
+                            return '<div class="pwa-endeks-month' + (period.is_current ? ' is-current' : '') + '">'
+                                + '<span>' + escapeHtml(period.short_label) + '</span>'
+                                + '<strong>' + endeksFmt(row.values[index]) + '</strong>'
+                                + '</div>';
+                        }).join('') + '</div>'
+                        + '</div>';
+                }).join('') + '</div>';
+            }
+
+            html += '<p class="pwa-card-foot">Her ayın 1\'i ile ' + day + '\'i arası okunan abone sayıları karşılaştırılmaktadır.</p>';
+            container.innerHTML = html;
         }
 
         async function loadCalismaStats() {

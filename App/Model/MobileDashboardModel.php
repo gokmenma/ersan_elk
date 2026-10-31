@@ -18,14 +18,34 @@ class MobileDashboardModel
         }
     }
 
+    private static function announcementHtml(string $content): string
+    {
+        if (str_contains($content, '&lt;')) {
+            $content = html_entity_decode($content, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        }
+        $content = strip_tags($content, '<b><strong><i><em><u><br><div><p><ul><ol><li><span>');
+        $content = preg_replace('/<(\w+)\s[^>]*>/u', '<$1>', $content) ?? '';
+        $content = preg_replace('/(<div><br><\/div>\s*){2,}/iu', '<div><br></div>', $content) ?? $content;
+        return trim($content);
+    }
+
+    private static function announcementText(string $content): string
+    {
+        $html = self::announcementHtml($content);
+        $html = preg_replace('/<\/(div|p|li)>|<br\s*\/?>/i', ' ', $html) ?? $html;
+        $text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        return trim(preg_replace('/\s+/u', ' ', $text) ?? $text);
+    }
+
     public function announcements(): array
     {
-        $rows = $this->safely(fn() => (new DuyuruModel())->getAll(true), []);
+        $rows = $this->safely(fn() => (new DuyuruModel())->getAll(true, true), []);
         return array_map(static fn(object $row): array => [
             'id' => (int) ($row->id ?? 0),
             'title' => trim((string) ($row->baslik ?? 'Duyuru')),
-            'content' => trim(strip_tags((string) ($row->icerik ?? ''))),
-            'raw_content' => trim((string) ($row->icerik ?? '')),
+            'content' => self::announcementText((string) ($row->icerik ?? '')),
+            'raw_content' => self::announcementText((string) ($row->icerik ?? '')),
+            'html' => self::announcementHtml((string) ($row->icerik ?? '')),
             'date' => (string) ($row->tarih ?? ''),
             'event_date' => (string) ($row->etkinlik_tarihi ?? ''),
             'image' => !empty($row->resim) ? (string) $row->resim : null,

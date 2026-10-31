@@ -360,7 +360,7 @@ function renderReports(reports) {
         });
     } else {
         reports.forEach(r => {
-            const imgUrl = r.resim_yolu ? '../' + r.resim_yolu : '../assets/images/no-image.png';
+            const imgUrl = r.resim_yolu ? '../views/arac-takip/km-foto.php?id=' + encodeURIComponent(r.id) : '../assets/images/no-image.png';
             const personelResim = r.personel_resim ? '../' + r.personel_resim : '';
             const firstChar = escapeHtml((r.personel_adi || 'P').charAt(0).toUpperCase());
             const turText = r.tur === 'sabah' ? 'Sabah Bildirimi' : 'Akşam Bildirimi';
