@@ -113,10 +113,16 @@ $sources=[
         <div class="bg-primary-subtle text-primary rounded-3 d-flex align-items-center justify-content-center" style="width:38px;height:38px"><i class="bx bx-list-ul fs-5"></i></div>
         <div><h5 class="font-size-14 fw-bold mb-0" id="listTitle">Endeks Okuma Farkları</h5><small class="text-muted" id="listSubtitle">Okuyucu bazında günlük okunan abone sayıları</small></div>
       </div>
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <span id="selectionInfo" class="font-size-12 text-muted d-none"><span id="selectionCount">0</span> fark seçildi · <a href="#" id="btnClearSelection">Temizle</a></span>
+        <button type="button" id="btnApplySelected" class="btn btn-sm btn-success shadow-sm" disabled><i class="bx bx-check-double me-1"></i>Seçilenleri Uygula</button>
+        <button type="button" id="btnApplyFiltered" class="btn btn-sm btn-outline-success bg-white shadow-sm" title="Kaynak, dönem ve tablo filtrelerine uyan tüm bekleyen farkları uygular"><i class="bx bx-filter-alt me-1"></i>Filtredeki Tümünü Uygula</button>
+      </div>
     </div>
     <div class="card-body">
       <table id="mutabakatTable" class="table table-bordered table-hover nowrap align-middle w-100 mb-0">
         <thead><tr>
+          <th data-filter="none" class="mt-select-col"><label class="mt-check" title="Bu sayfadaki bekleyen farkları seç"><input type="checkbox" id="chkSelectPage" aria-label="Bu sayfadaki bekleyen farkları seç"><span class="mt-check-box"></span></label></th>
           <th data-filter="date">Tarih</th>
           <th data-filter="string">Kayıt</th>
           <th data-filter="select" data-filter-options="Yeni kayıt|Kayıt silinmiş|Miktar arttı|Miktar azaldı|Bilgi değişti">Değişiklik</th>
@@ -156,6 +162,19 @@ $sources=[
 .mutabakat-detail{padding:8px 4px}
 .mutabakat-detail table{max-width:760px}
 .mutabakat-detail tr.changed td{background:var(--bs-warning-bg-subtle)}
+.mt-select-col{width:44px;padding-left:0!important;padding-right:0!important}
+.mt-check{display:inline-flex;align-items:center;justify-content:center;margin:0;cursor:pointer;line-height:1}
+.mt-check input{position:absolute;opacity:0;width:0;height:0;pointer-events:none}
+.mt-check-box{width:20px;height:20px;border-radius:7px;border:1.5px solid #cbd5e1;background:#fff;display:inline-flex;align-items:center;justify-content:center;transition:background .15s ease,border-color .15s ease,box-shadow .15s ease,transform .1s ease}
+.mt-check:hover .mt-check-box{border-color:#556ee6;box-shadow:0 0 0 3px rgba(85,110,230,.14)}
+.mt-check:active .mt-check-box{transform:scale(.92)}
+.mt-check input:focus-visible+.mt-check-box{box-shadow:0 0 0 3px rgba(85,110,230,.35)}
+.mt-check input:checked+.mt-check-box,.mt-check input:indeterminate+.mt-check-box{background:#556ee6;border-color:#556ee6;box-shadow:0 2px 6px rgba(85,110,230,.35)}
+.mt-check input:checked+.mt-check-box::after{content:"";width:5px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg) translate(-1px,-1px)}
+.mt-check input:indeterminate+.mt-check-box::after{content:"";width:10px;height:2px;border-radius:2px;background:#fff}
+.mt-check input:disabled+.mt-check-box{opacity:.45;cursor:not-allowed}
+[data-bs-theme="dark"] .mt-check-box{background:#2a3042;border-color:#4a5372}
+@media (prefers-reduced-motion:reduce){.mt-check-box{transition:none}}
 .table-action-btn{width:27px;height:27px;padding:0;display:inline-flex;align-items:center;justify-content:center}
 </style>
 <script>
@@ -177,6 +196,7 @@ $(function(){
  };
  const periodStates={snapshot_bekliyor:['Kopya bekleniyor','secondary'],on_kontrol:['Ön kontrolde','info'],fark_var:['Fark var','danger'],mutabik:['Mutabık','success'],hata:['Kontrol eksik','warning']};
  const state={kaynak:'okuma',durum:'acik'};
+ const selected=new Set();
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const num=v=>Number(v||0).toLocaleString('tr-TR',{maximumFractionDigits:2});
  const signed=v=>{const n=Number(v||0);return (n>0?'+':n<0?'−':'')+num(Math.abs(n))};
@@ -185,9 +205,10 @@ $(function(){
 
  $('#mutabakatDonem').select2({minimumResultsForSearch:Infinity,width:'100%'});
 
- const table=$('#mutabakatTable').DataTable(applyLengthStateSave({...getDatatableOptions(),processing:true,serverSide:true,order:[[0,'desc']],
+ const table=$('#mutabakatTable').DataTable(applyLengthStateSave({...getDatatableOptions(),processing:true,serverSide:true,order:[[1,'desc']],
   ajax:{url:api,type:'POST',data:d=>{d.action='list';d.kaynak=state.kaynak;d.durum=state.durum;d.period_id=$('#mutabakatDonem').val()||''}},
   columns:[
+   {data:null,orderable:false,searchable:false,className:'text-center mt-select-col',width:'44px',render:r=>r.durum==='acik'?`<label class="mt-check" title="Toplu uygulama için seç"><input type="checkbox" class="row-select" data-id="${esc(r.encrypted_id)}" ${selected.has(r.encrypted_id)?'checked':''} aria-label="Toplu uygulama için seç"><span class="mt-check-box"></span></label>`:''},
    {data:'islem_tarihi',render:v=>trDate(v)},
    {data:'kayit',orderable:false,render:(v,t,r)=>`<div class="fw-semibold text-truncate" style="max-width:320px" title="${esc(v)}">${esc(v)}</div>${r.kayit_detay?`<div class="text-muted font-size-11 text-truncate" style="max-width:320px">${esc(r.kayit_detay)}</div>`:''}`},
    {data:'fark_tipi',render:(v,t,r)=>{const d=diffTypes[v]||[v,'secondary','',''];const extra=v==='alan_degismis'&&r.degisen_alanlar.length?`<div class="text-muted font-size-11 mt-1">${esc(r.degisen_alanlar.join(', '))}</div>`:'';return badge(d[0],d[1],d[2],d[3])+extra}},
@@ -210,7 +231,7 @@ $(function(){
  }
 
  $('#mutabakatTable tbody').on('click','tr',function(e){
-  if($(e.target).closest('td:last-child, .btn, a').length)return;
+  if($(e.target).closest('td:last-child, td.mt-select-col, .btn, a').length)return;
   const row=table.row(this);
   if(!row.data())return;
   if(row.child.isShown()){row.child.hide();$(this).removeClass('shown')}
@@ -278,7 +299,7 @@ $(function(){
   },'json');
  }
 
- function reloadAll(){table.ajax.reload();summary()}
+ function reloadAll(){clearSelection();table.ajax.reload();summary()}
 
  $('input[name="mutabakatKaynak"]').on('change',function(){
   state.kaynak=this.value;
@@ -309,6 +330,57 @@ $(function(){
    },'json').fail(xhr=>Swal.fire('Hata',xhr.responseJSON?.message||'İşlem tamamlanamadı.','error'));
   });
  });
+
+ function syncSelection(){
+  const n=selected.size;
+  $('#selectionCount').text(num(n));
+  $('#selectionInfo').toggleClass('d-none',n===0);
+  $('#btnApplySelected').prop('disabled',n===0).html(`<i class="bx bx-check-double me-1"></i>Seçilenleri Uygula${n?` (${num(n)})`:''}`);
+  const boxes=$('#mutabakatTable .row-select'),checked=boxes.filter(':checked').length;
+  $('#chkSelectPage').prop({checked:boxes.length>0&&checked===boxes.length,indeterminate:checked>0&&checked<boxes.length,disabled:boxes.length===0});
+ }
+ function clearSelection(){selected.clear();$('#mutabakatTable .row-select').prop('checked',false);syncSelection()}
+ table.on('draw',syncSelection);
+ $('#mutabakatTable').on('change','.row-select',function(){
+  this.checked?selected.add(this.dataset.id):selected.delete(this.dataset.id);
+  syncSelection();
+ });
+ $('#chkSelectPage').on('click',function(e){
+  e.stopPropagation();
+  const on=this.checked;
+  $('#mutabakatTable .row-select').each(function(){this.checked=on;on?selected.add(this.dataset.id):selected.delete(this.dataset.id)});
+  syncSelection();
+ });
+ $('#btnClearSelection').on('click',function(e){e.preventDefault();clearSelection()});
+
+ function bulkApply(mode){
+  const base={...table.ajax.params(),action:'apply_bulk',mode,csrf_token:csrf};
+  if(mode==='selected')base.ids=[...selected];
+  $.post(api,{...base,preview:1},pre=>{
+   if(pre.status!=='success'){Swal.fire('Bilgi',pre.message,'info');return}
+   const count=pre.data.count,label=sources[state.kaynak].label;
+   const scope=mode==='selected'?'Seçtiğiniz':'Mevcut kaynak, dönem ve tablo filtrelerine uyan';
+   Swal.fire({title:`${num(count)} farkı uygula`,
+    html:`<div class="text-start font-size-13"><p class="mb-2">${esc(scope)} <strong>${num(count)}</strong> bekleyen <strong>${esc(label)}</strong> farkının güncel değeri puantaja yazılacak.</p>
+     <div class="alert alert-warning py-2 px-2 mb-0 font-size-12">Bu işlem geri alınamaz. Uygulama sonrası dönemdeki bordrolar yeniden hesaplanmalıdır. Ekip/personel eşleşmesi bulunamayan farklar atlanır ve raporlanır.</div></div>`,
+    input:'textarea',inputLabel:'Çözüm gerekçesi (tüm farklara yazılır)',inputPlaceholder:'Örn: Dış sistemde sonradan girilen kesme sonuçları',
+    showCancelButton:true,confirmButtonText:'Uygula',cancelButtonText:'Vazgeç',confirmButtonColor:'#34c38f',
+    preConfirm:v=>{if(!v||v.trim().length<5){Swal.showValidationMessage('En az 5 karakter girin');return false}return v}})
+   .then(x=>{
+    if(!x.isConfirmed)return;
+    Swal.fire({title:'Uygulanıyor…',html:`${num(count)} fark işleniyor, lütfen bekleyin.`,allowOutsideClick:false,didOpen:()=>Swal.showLoading()});
+    $.post(api,{...base,reason:x.value},res=>{
+     if(res.status!=='success'){Swal.fire('Hata',res.message,'error');return}
+     const failed=Object.entries(res.data.failed||{});
+     const list=failed.length?`<ul class="text-start font-size-12 mt-2 mb-0">${failed.map(([m,c])=>`<li>${esc(m)}: <strong>${num(c)}</strong></li>`).join('')}</ul>`:'';
+     Swal.fire({icon:failed.length?'warning':'success',title:failed.length?'Kısmen uygulandı':'Uygulandı',html:esc(res.message)+list});
+     clearSelection();table.ajax.reload(null,false);summary();
+    },'json').fail(xhr=>Swal.fire('Hata',xhr.responseJSON?.message||'İşlem tamamlanamadı.','error'));
+   });
+  },'json').fail(xhr=>Swal.fire('Hata',xhr.responseJSON?.message||'İşlem tamamlanamadı.','error'));
+ }
+ $('#btnApplySelected').on('click',()=>bulkApply('selected'));
+ $('#btnApplyFiltered').on('click',()=>bulkApply('filtered'));
 
  $('#btnHideInfo,#btnShowInfo').on('click',function(){
   const hidden=this.id==='btnHideInfo'?true:!document.documentElement.classList.contains('mutabakat-info-hidden');

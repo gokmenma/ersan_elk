@@ -319,13 +319,67 @@ class PuantajMutabakatModel extends Model
 
     public function ajaxList(array $params, int $firmaId): array
     {
-        $periodId=(int)($params['period_id']??0);
-        $source=self::normalizeSource((string)($params['kaynak']??''));
         $start=max(0,(int)($params['start']??0)); $length=min(100,max(10,(int)($params['length']??25)));
-        [$from,$bind]=$this->differenceScope($firmaId,$periodId,$source);
+        [$from,$scopeBind]=$this->differenceScope($firmaId,(int)($params['period_id']??0),self::normalizeSource((string)($params['kaynak']??'')));
         $total=$this->db->prepare("SELECT COUNT(*) $from");
-        $total->execute($bind);
+        $total->execute($scopeBind);
+        [$filtered,$bind]=$this->filteredScope($params,$firmaId);
 
+        $orderable=[1=>'f.islem_tarihi',3=>'f.fark_tipi',4=>'f.eski_miktar',5=>'f.yeni_miktar',6=>'(f.yeni_miktar-f.eski_miktar)',7=>'f.durum'];
+        $orderColumn=(int)($params['order'][0]['column']??1);
+        $orderDir=strtolower((string)($params['order'][0]['dir']??'desc'))==='asc'?'ASC':'DESC';
+        $order=($orderable[$orderColumn]??'f.islem_tarihi').' '.$orderDir.',f.id DESC';
+
+        $count=$this->db->prepare("SELECT COUNT(*) $filtered");
+        $count->execute($bind);
+        $stmt=$this->db->prepare(
+            "SELECT f.id,f.kontrol_gunu,f.kaynak,f.islem_tarihi,f.kaynak_anahtar,f.fark_tipi,f.eski_miktar,f.yeni_miktar,
+                    f.eski_payload_json,f.yeni_payload_json,f.durum,f.cozum_tarihi,f.cozum_gerekcesi,d.donem
+             $filtered ORDER BY $order LIMIT $start,$length"
+        );
+        $stmt->execute($bind);
+        return ['draw'=>(int)($params['draw']??0),'recordsTotal'=>(int)$total->fetchColumn(),'recordsFiltered'=>(int)$count->fetchColumn(),'data'=>$stmt->fetchAll(PDO::FETCH_ASSOC)];
+    }
+
+    public function openDifferenceIds(array $params,int $firmaId,int $limit): array
+    {
+        [$filtered,$bind]=$this->filteredScope(['durum'=>'acik']+$params,$firmaId);
+        $stmt=$this->db->prepare("SELECT f.id $filtered AND f.durum='acik' ORDER BY f.islem_tarihi,f.id LIMIT ".max(1,$limit));
+        $stmt->execute($bind);
+        return array_map('intval',$stmt->fetchAll(PDO::FETCH_COLUMN));
+    }
+
+    public function filterDifferenceIds(array $ids,array $params,int $firmaId): array
+    {
+        $ids=array_values(array_unique(array_filter(array_map('intval',$ids))));
+        if (!$ids) return [];
+        [$from,$bind]=$this->differenceScope($firmaId,(int)($params['period_id']??0),self::normalizeSource((string)($params['kaynak']??'')));
+        $stmt=$this->db->prepare("SELECT f.id $from AND f.durum='acik' AND f.id IN (".implode(',',array_fill(0,count($ids),'?')).') ORDER BY f.islem_tarihi,f.id');
+        $stmt->execute(array_merge($bind,$ids));
+        return array_map('intval',$stmt->fetchAll(PDO::FETCH_COLUMN));
+    }
+
+    public function applyDifferences(array $ids,int $firmaId,int $userId,string $reason): array
+    {
+        if (mb_strlen(trim($reason)) < 5) throw new RuntimeException('Çözüm gerekçesi en az 5 karakter olmalıdır.');
+        $applied=0; $failed=[];
+        foreach ($ids as $id) {
+            try {
+                $this->applyDifference((int)$id,$firmaId,$userId,$reason);
+                $applied++;
+            } catch (RuntimeException $e) {
+                $failed[$e->getMessage()]=($failed[$e->getMessage()]??0)+1;
+            } catch (\Throwable $e) {
+                error_log('Puantaj mutabakat toplu uygulama hatası (fark '.$id.'): '.$e->getMessage());
+                $failed['Beklenmeyen hata']=($failed['Beklenmeyen hata']??0)+1;
+            }
+        }
+        return ['applied'=>$applied,'failed'=>$failed];
+    }
+
+    private function filteredScope(array $params,int $firmaId): array
+    {
+        [$from,$bind]=$this->differenceScope($firmaId,(int)($params['period_id']??0),self::normalizeSource((string)($params['kaynak']??'')));
         $where='';
         $status=(string)($params['durum']??'acik');
         if (in_array($status,self::STATUSES,true)) { $where.=' AND f.durum=?'; $bind[]=$status; }
@@ -335,13 +389,13 @@ class PuantajMutabakatModel extends Model
             $like='%'.$search.'%'; array_push($bind,$like,$like,$like,$like);
         }
         $columns=[
-            0=>['f.islem_tarihi','date',[]],
-            1=>["CONCAT_WS(' ',f.kaynak_anahtar,f.eski_payload_json,f.yeni_payload_json)",'string',[]],
-            2=>['f.fark_tipi','select',self::DIFF_TYPES],
-            3=>['f.eski_miktar','number',[]],
-            4=>['f.yeni_miktar','number',[]],
-            5=>['(f.yeni_miktar-f.eski_miktar)','number',[]],
-            6=>['f.durum','select',self::STATUSES],
+            1=>['f.islem_tarihi','date',[]],
+            2=>["CONCAT_WS(' ',f.kaynak_anahtar,f.eski_payload_json,f.yeni_payload_json)",'string',[]],
+            3=>['f.fark_tipi','select',self::DIFF_TYPES],
+            4=>['f.eski_miktar','number',[]],
+            5=>['f.yeni_miktar','number',[]],
+            6=>['(f.yeni_miktar-f.eski_miktar)','number',[]],
+            7=>['f.durum','select',self::STATUSES],
         ];
         foreach ((array)($params['columns']??[]) as $i=>$column) {
             $raw=trim((string)($column['search']['value']??''));
@@ -351,21 +405,7 @@ class PuantajMutabakatModel extends Model
             if ($condition==='') continue;
             $where.=' AND '.$condition; array_push($bind,...$values);
         }
-
-        $orderable=[0=>'f.islem_tarihi',2=>'f.fark_tipi',3=>'f.eski_miktar',4=>'f.yeni_miktar',5=>'(f.yeni_miktar-f.eski_miktar)',6=>'f.durum'];
-        $orderColumn=(int)($params['order'][0]['column']??0);
-        $orderDir=strtolower((string)($params['order'][0]['dir']??'desc'))==='asc'?'ASC':'DESC';
-        $order=($orderable[$orderColumn]??'f.islem_tarihi').' '.$orderDir.',f.id DESC';
-
-        $count=$this->db->prepare("SELECT COUNT(*) $from $where");
-        $count->execute($bind);
-        $stmt=$this->db->prepare(
-            "SELECT f.id,f.kontrol_gunu,f.kaynak,f.islem_tarihi,f.kaynak_anahtar,f.fark_tipi,f.eski_miktar,f.yeni_miktar,
-                    f.eski_payload_json,f.yeni_payload_json,f.durum,f.cozum_tarihi,f.cozum_gerekcesi,d.donem
-             $from $where ORDER BY $order LIMIT $start,$length"
-        );
-        $stmt->execute($bind);
-        return ['draw'=>(int)($params['draw']??0),'recordsTotal'=>(int)$total->fetchColumn(),'recordsFiltered'=>(int)$count->fetchColumn(),'data'=>$stmt->fetchAll(PDO::FETCH_ASSOC)];
+        return [$from.$where,$bind];
     }
 
     private function columnCondition(string $expr,string $type,string $raw,array $labels): array
