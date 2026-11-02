@@ -45,6 +45,16 @@ final class PuantajMutabakatServiceTest extends TestCase
         self::assertNull(PuantajMutabakatModel::classifyDifference($old,$old));
     }
 
+    public function testEmptyAndWhitespaceValuesAreNotReportedAsFieldChange(): void
+    {
+        $row=static fn(array $payload,string $hash): array=>['miktar'=>1,'veri_hash'=>$hash,'payload_json'=>json_encode($payload,JSON_UNESCAPED_UNICODE)];
+        $old=$row(['ekip'=>'EKİP 1','sonuc_aciklama'=>null],'a');
+        self::assertNull(PuantajMutabakatModel::classifyDifference($old,$row(['ekip'=>'EKİP 1','sonuc_aciklama'=>''],'b')));
+        self::assertNull(PuantajMutabakatModel::classifyDifference($row(['sonuc_aciklama'=>'rekor değişti '],'a'),$row(['sonuc_aciklama'=>'rekor değişti'],'b')));
+        self::assertSame('alan_degismis',PuantajMutabakatModel::classifyDifference($old,$row(['ekip'=>'EKİP 2','sonuc_aciklama'=>''],'b')));
+        self::assertSame('alan_degismis',PuantajMutabakatModel::classifyDifference($old,$row(['ekip'=>'EKİP 1','sonuc_aciklama'=>'yeni not'],'b')));
+    }
+
     public function testSealRowsAreSeparatedFromCutRows(): void
     {
         $service=(new ReflectionClass(PuantajMutabakatService::class))->newInstanceWithoutConstructor();

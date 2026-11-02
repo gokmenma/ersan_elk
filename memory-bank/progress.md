@@ -19,7 +19,8 @@
 - [x] Tarayıcıda doğrulandı (sekme geçişi, detay satırı, Uygula diyaloğu); lint temiz.
 - [x] Toplu uygulama (seçilenler / filtredeki tümü), politika SQL'i, SystemLog kaydı.
 - [ ] Kesme cron'u geçmiş günleri yeniden sorgulamıyor (geç girilen sonuçlar puantaja gelmiyor).
-- [ ] Karşılaştırma hataları: `null`/`""` sahte "Bilgi değişti", firma 2 okuma verisinin tamamı "Yeni kayıt", kontrol günleri arası tekrar eden açık farklar.
+- [x] Sahte "Bilgi değişti" (null/boş metin/boşluk) düzeltildi; birim testi eklendi.
+- [ ] Firma 2 (Meta Yapı) okuma/kesme verisinin tamamı "Yeni kayıt"; kontrol günleri arası tekrar eden açık farklar.
 
 ## 2026-10-31 — Mobil SPA KM Onayları Varsayılan Tarih Filtresi
 - [x] Bekleyen sekmesi `Tümü`, diğer sekmeler `Bugün` ile açılıyor; önceki günden kalan bekleyen kayıtlar gizlenmiyor.

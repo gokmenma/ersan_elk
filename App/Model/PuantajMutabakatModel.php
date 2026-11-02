@@ -276,8 +276,21 @@ class PuantajMutabakatModel extends Model
         if (!$old || !$new) return null;
         if ((float)$new['miktar'] < (float)$old['miktar']) return 'miktar_azalmis';
         if ((float)$new['miktar'] > (float)$old['miktar']) return 'miktar_artmis';
-        if ((string)$new['veri_hash'] !== (string)$old['veri_hash']) return 'alan_degismis';
-        return null;
+        if ((string)$new['veri_hash'] === (string)$old['veri_hash']) return null;
+        $oldPrint=self::payloadFingerprint($old);
+        return ($oldPrint!==null && $oldPrint===self::payloadFingerprint($new)) ? null : 'alan_degismis';
+    }
+
+    private static function payloadFingerprint(array $row): ?string
+    {
+        $payload=json_decode((string)($row['payload_json']??''),true);
+        if (!is_array($payload)) return null;
+        $normalized=[];
+        foreach ($payload as $key=>$value) {
+            $normalized[$key]=is_scalar($value) || $value===null ? trim((string)$value) : json_encode($value,JSON_UNESCAPED_UNICODE);
+        }
+        ksort($normalized);
+        return hash('sha256',json_encode($normalized,JSON_UNESCAPED_UNICODE));
     }
 
     public function closureBlockReason(int $firmaId, string $startDate, string $endDate): ?string
