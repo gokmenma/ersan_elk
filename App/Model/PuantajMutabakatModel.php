@@ -161,7 +161,7 @@ class PuantajMutabakatModel extends Model
 
     public function compareRun(int $runId): int
     {
-        $meta = $this->db->prepare('SELECT donem_id,kontrol_gunu,kaynak,islem_tarihi FROM puantaj_mutabakat_calisma WHERE id=? AND durum=?');
+        $meta = $this->db->prepare('SELECT c.donem_id,c.kontrol_gunu,c.kaynak,c.islem_tarihi,d.firma_id FROM puantaj_mutabakat_calisma c INNER JOIN puantaj_mutabakat_donem d ON d.id=c.donem_id WHERE c.id=? AND c.durum=?');
         $meta->execute([$runId, 'basarili']);
         $run = $meta->fetch(PDO::FETCH_ASSOC);
         if (!$run) throw new RuntimeException('Başarılı mutabakat çalışması bulunamadı.');
@@ -174,6 +174,11 @@ class PuantajMutabakatModel extends Model
             'SELECT kaynak_anahtar,miktar,acik_miktar,veri_hash,payload_json FROM puantaj_mutabakat_guncel WHERE calisma_id=? AND is_active=1',
             [$runId]
         );
+        if (in_array($run['kaynak'],['kesme','muhurleme'],true)) {
+            $unpaid=$this->unpaidResultKeys((int)$run['firma_id']);
+            $snap=$this->withoutUnpaid($snap,$unpaid);
+            $current=$this->withoutUnpaid($current,$unpaid);
+        }
         $keys = array_unique(array_merge(array_keys($snap), array_keys($current)));
 
         $this->db->beginTransaction();
@@ -208,6 +213,38 @@ class PuantajMutabakatModel extends Model
             if ($this->db->inTransaction()) $this->db->rollBack();
             throw $e;
         }
+    }
+
+    private function unpaidResultKeys(int $firmaId): array
+    {
+        $stmt=$this->db->prepare(
+            "SELECT t.tur_adi,t.is_emri_sonucu,
+                    (COALESCE(t.is_turu_ucret,0)>0 OR COALESCE(t.aracli_personel_is_turu_ucret,0)>0 OR COALESCE(t.unvan_ucret,0)>0
+                     OR EXISTS (SELECT 1 FROM personel_is_turu_ucretleri piu WHERE piu.is_turu_id=t.id AND piu.aktif=1 AND piu.silinme_tarihi IS NULL AND (piu.ucret>0 OR piu.aracli_ucret>0))) ucretli
+             FROM tanimlamalar t WHERE t.firma_id=? AND t.grup='is_turu' AND t.silinme_tarihi IS NULL"
+        );
+        $stmt->execute([$firmaId]);
+        $unpaid=[];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $key=self::resultKey((string)$row['tur_adi'],(string)$row['is_emri_sonucu']);
+            $unpaid[$key]=($unpaid[$key]??true) && (int)$row['ucretli']===0;
+        }
+        return array_filter($unpaid);
+    }
+
+    private function withoutUnpaid(array $items,array $unpaid): array
+    {
+        foreach ($items as $key=>$row) {
+            $payload=json_decode((string)($row['payload_json']??''),true) ?: [];
+            if (isset($unpaid[self::resultKey((string)($payload['is_emri_tipi']??''),(string)($payload['is_emri_sonucu']??''))])) unset($items[$key]);
+        }
+        return $items;
+    }
+
+    private static function resultKey(string $type,string $result): string
+    {
+        $normalize=static fn(string $value): string => str_replace('İ','I',mb_strtoupper(trim($value),'UTF-8'));
+        return $normalize($type).'|'.$normalize($result);
     }
 
     public function finalizePeriod(int $periodId, int $checkDay): array

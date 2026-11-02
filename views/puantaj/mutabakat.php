@@ -56,7 +56,7 @@ $sources=[
         </div>
         <div class="col-12 col-lg-4">
           <div class="fw-semibold mb-1"><i class="bx bx-refresh me-1 text-primary"></i>Ayın 1, 2 ve 3'ünde kontrol</div>
-          <div class="text-muted">Her gece 03:00'te kapanan ayın her günü dış sistemden (online sorgulama) yeniden çekilir ve kopyayla karşılaştırılır; dış sistemdeki değer <strong>Güncel</strong> olarak görünür. 1. ve 2. gün ön kontrol, 3. gün final kontroldür. Dış servis boş yanıt verirse fark üretilmez, kontrol eksik sayılır. Ayarlarda e-posta alıcısı tanımlıysa fark raporu CSV olarak gönderilir.</div>
+          <div class="text-muted">Her gece 03:00'te kapanan ayın her günü dış sistemden (online sorgulama) yeniden çekilir ve kopyayla karşılaştırılır; dış sistemdeki değer <strong>Güncel</strong> olarak görünür. 1. ve 2. gün ön kontrol, 3. gün final kontroldür. Birim ücreti olmayan (ücretsiz) iş sonuçları hakedişe girmediği için kesme/açma ve mühürleme karşılaştırmasına dahil edilmez. Dış servis boş yanıt verirse fark üretilmez, kontrol eksik sayılır. Ayarlarda e-posta alıcısı tanımlıysa fark raporu CSV olarak gönderilir.</div>
         </div>
         <div class="col-12 col-lg-4">
           <div class="fw-semibold mb-1"><i class="bx bx-check-shield me-1 text-primary"></i>İnceleme ve bordro</div>
