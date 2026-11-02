@@ -198,9 +198,12 @@ class PuantajMutabakatModel extends Model
                    is_active=IF(durum="uygulandi",is_active,1),deleted_at=IF(durum="uygulandi",deleted_at,NULL)'
             );
             $count = 0;
+            $pairs = $run['kaynak']==='sayac' ? $this->pairMeterChanges($snap,$current) : [];
+            $pairedNew = array_flip($pairs);
             foreach ($keys as $key) {
+                if (isset($pairedNew[$key])) continue;
                 $old = $snap[$key] ?? null;
-                $new = $current[$key] ?? null;
+                $new = $current[$pairs[$key] ?? $key] ?? null;
                 $type = self::classifyDifference($old,$new);
                 if (!$type) continue;
                 $insert->execute([(int)$run['donem_id'], (int)$run['kontrol_gunu'], $run['kaynak'], $run['islem_tarihi'], $key, $type,
@@ -213,6 +216,30 @@ class PuantajMutabakatModel extends Model
             if ($this->db->inTransaction()) $this->db->rollBack();
             throw $e;
         }
+    }
+
+    private function pairMeterChanges(array $snap,array $current): array
+    {
+        $identity=static function(array $row): string {
+            $payload=json_decode((string)($row['payload_json']??''),true) ?: [];
+            $order=trim((string)($payload['isemri_no']??'')); $subscriber=trim((string)($payload['abone_no']??''));
+            return $order==='' || $subscriber==='' ? '' : $order.'|'.$subscriber;
+        };
+        $removed=[]; $added=[];
+        foreach (array_diff_key($snap,$current) as $key=>$row) { if (($id=$identity($row))!=='') $removed[$id][]=$key; }
+        foreach (array_diff_key($current,$snap) as $key=>$row) { if (($id=$identity($row))!=='') $added[$id][]=$key; }
+        $pairs=[];
+        foreach ($removed as $id=>$oldKeys) {
+            if (count($oldKeys)===1 && isset($added[$id]) && count($added[$id])===1) $pairs[$oldKeys[0]]=$added[$id][0];
+        }
+        return $pairs;
+    }
+
+    private static function meterKey(array $payload): ?string
+    {
+        $order=(string)($payload['isemri_no']??'');
+        if ($order==='') return null;
+        return md5($order.'|'.($payload['abone_no']??'').'|'.($payload['takilan_sayacno']??'').'|'.($payload['ekip']??''));
     }
 
     private function unpaidResultKeys(int $firmaId): array
@@ -655,9 +682,11 @@ class PuantajMutabakatModel extends Model
 
     private function applyMeter(array $diff,array $payload,int $firmaId): void
     {
-        $key=$diff['kaynak_anahtar']; $date=$diff['islem_tarihi'];
-        $del=$this->db->prepare("UPDATE sayac_degisim SET silinme_tarihi=NOW() WHERE firma_id=? AND tarih=? AND SUBSTRING_INDEX(islem_id,'_',1)=? AND silinme_tarihi IS NULL");
-        $del->execute([$firmaId,$date,$key]);
+        $oldKey=$diff['kaynak_anahtar']; $date=$diff['islem_tarihi'];
+        $key=$diff['yeni_miktar']>0 ? (self::meterKey($payload) ?? $oldKey) : $oldKey;
+        $keys=array_values(array_unique([$oldKey,$key]));
+        $del=$this->db->prepare("UPDATE sayac_degisim SET silinme_tarihi=NOW() WHERE firma_id=? AND tarih=? AND SUBSTRING_INDEX(islem_id,'_',1) IN (".implode(',',array_fill(0,count($keys),'?')).") AND silinme_tarihi IS NULL");
+        $del->execute(array_merge([$firmaId,$date],$keys));
         $amount=(float)$diff['yeni_miktar'];
         if ($amount<=0) return;
         [$personIds,$teamId]=$this->resolvePeople($firmaId,$date,(string)($payload['ekip']??''),false);

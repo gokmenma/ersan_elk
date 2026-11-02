@@ -55,6 +55,31 @@ final class PuantajMutabakatServiceTest extends TestCase
         self::assertSame('alan_degismis',PuantajMutabakatModel::classifyDifference($old,$row(['ekip'=>'EKİP 1','sonuc_aciklama'=>'yeni not'],'b')));
     }
 
+    public function testCorrectedMeterNumberIsPairedAsSingleChange(): void
+    {
+        $row=static fn(string $order,string $subscriber,string $meter): array=>['payload_json'=>json_encode(['isemri_no'=>$order,'abone_no'=>$subscriber,'takilan_sayacno'=>$meter])];
+        $model=(new ReflectionClass(PuantajMutabakatModel::class))->newInstanceWithoutConstructor();
+        $pair=new ReflectionMethod(PuantajMutabakatModel::class,'pairMeterChanges');
+        $pair->setAccessible(true);
+
+        $snap=['a'=>$row('1','10','236124532'),'same'=>$row('2','20','111')];
+        $current=['c'=>$row('1','10','26124532'),'same'=>$row('2','20','111'),'new'=>$row('9','90','999')];
+        self::assertSame(['a'=>'c'],$pair->invoke($model,$snap,$current));
+
+        $ambiguous=['c1'=>$row('1','10','1'),'c2'=>$row('1','10','2')];
+        self::assertSame([],$pair->invoke($model,['a'=>$row('1','10','0')],$ambiguous));
+        self::assertSame([],$pair->invoke($model,['a'=>$row('','','0')],['c'=>$row('','','1')]));
+    }
+
+    public function testMeterKeyRebuiltFromPayloadMatchesServiceKey(): void
+    {
+        $service=(new ReflectionClass(PuantajMutabakatService::class))->newInstanceWithoutConstructor();
+        $items=$service->normalizeMeterRows([['EKIP'=>' EKİP 44 ','ISEMRI_NO'=>'780682','ABONE_NO'=>'200305','TAKILAN_SAYACNO'=>'26124532 ']],'2026-10-30');
+        $meterKey=new ReflectionMethod(PuantajMutabakatModel::class,'meterKey');
+        $meterKey->setAccessible(true);
+        self::assertSame($items[0]['anahtar'],$meterKey->invoke(null,$items[0]['payload']));
+    }
+
     public function testSealRowsAreSeparatedFromCutRows(): void
     {
         $service=(new ReflectionClass(PuantajMutabakatService::class))->newInstanceWithoutConstructor();
