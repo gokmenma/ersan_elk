@@ -631,6 +631,7 @@
             <p class="fs-12 text-muted mb-0">
               ${d.beyan_tarihi ? `<i class="bx bx-calendar-check me-1"></i>Onay Tarihi: ${esc(d.beyan_tarihi)}` : '<i class="bx bx-info-circle me-1"></i>Personel henüz PWA üzerinden okudum onayını vermedi.'}
             </p>
+            ${d.beyan_tarihi ? `<p class="fs-12 text-muted mb-0 mt-1"><i class="bx bx-globe me-1"></i>IP Adresi: <span class="fw-semibold text-dark">${esc(d.onay_ip || '—')}</span>${d.onay_cihaz ? `<br><i class="bx bx-mobile-alt me-1"></i>Cihaz: ${esc(d.onay_cihaz)}` : ''}</p>` : ''}
           </div>
         </div>
       </div>

@@ -1,5 +1,33 @@
 # Active Context
 
+## Zimmet Geçici Devir — Personel PWA Onay Akışı ve Ayrı Sekme (2026-11-02)
+- **Akış**: Zimmetli/geçici kullanan personel PWA Zimmetler sayfasından personel seçip "Geçici Devret" der → `zimmet_devirleri` kaydı `beklemede`; seçilen personel "Teslim Aldım" (KM opsiyonel) ile onaylayınca `aktif` olur ve araç onun geçici zimmetine düşer, teslim eden kayıt kapanır (zincirleme). Reddedilirse `reddedildi` (gerekçe zorunlu); gönderen `iptal` ile geri çekebilir. Araç asıl sahibe dönüyorsa onayla `tamamlandi`.
+- **Asıl zimmet değişmez**; PWA'da "Geçici Teslim" bölümü asıl zimmet kartlarından ayrı (gelen talepler, üzerimdekiler [asıl/geçici etiketli], başkasında, geçmiş). Masaüstünde ayrı **Geçici Teslimler** sekmesi (`geciciContent`, `zimmet-gecici-teslim-listesi`), durum filtreleri, bekleyen sayısı rozeti.
+- **SQL**: `database/migrations/2026_11_02_zimmet_devirleri_pwa_onay.sql` (durum enum genişlemesi, `kaynak`, `talep_tarihi`, `yanit_tarihi`, `red_nedeni`, yeni politika). Ön koşul: `2026_11_02_zimmet_devirleri.sql`.
+- **PWA API** (`personel-pwa/api`, yalnız oturum + sahiplik denetimi; ID'ler `Security::encrypt` token): `getGeciciTeslimler`, `getGeciciTeslimPersonelleri`, `createGeciciTeslimTalebi`, `cevaplaGeciciTeslimTalebi`, `geriCekGeciciTeslimTalebi`. Push bildirimi ve araç işlem/sistem logu her adımda.
+- **Kurallar**: aynı araçta tek bekleyen talep; araç gönderende değilse talep açılamaz; web tarafı geri alma/asıl iade/yeni yönetici devri bekleyen talepleri otomatik iptal eder.
+- **Güncelleme (2026-11-02)**: PWA Zimmetler sayfası iki sekmeye ayrıldı (**Zimmetler** / **Geçici Teslim**; gelen talep sayısı rozeti, `?tab=gecici` ile doğrudan açılır, push bildirimleri bu adrese yönlenir). Masaüstünde **Geçici Teslimler** sekmesindeki "Yeni Ekle" modalı açar; modalda araç (aktif zimmet) seçilir (`geciciYeniAc`), satır menüsünden açılınca araç seçimi gizli kalır.
+- **Kart tasarımı**: PWA zimmet kartları (`zk-*`) yönetici mobil `AracView.vue` zimmet kartı gibi sadeleştirildi: TR plaka rozeti + marka/model, durum hapı, alt satırda Teslim Tarihi + Teslim KM (demirbaşta Seri No/Miktar). Geçici teslim kartları da aynı plaka rozetini kullanır. `getZimmetler` araç satırına `teslim_km` eklendi.
+- **Bottom sheet'ler**: Geçici Devret, Teslim Aldım ve Reddet pencereleri Talepler sayfasındaki ortak `pwa-sheet` bileşenleriyle yapıldı (`gecici-devret-modal`, `gt-karar-modal`); SweetAlert yalnız başarı/hata ve geri çekme onayında kalır.
+- **Devret kısayolları**: araç zimmet kartında ve zimmet geçmişi sheet'inde "Geçici Devret" butonu (araç başkasındaysa "Şu an X kullanıyor", bekleyen talep varsa "onay bekleniyor" notu görünür). Geçici kullanan "Geri Ver / Devret" dediğinde aracı kendisine teslim eden personel seçili ve listenin başında gelir (`veren_token`).
+- **Açık**: bekleyen talebin süre aşımı yok; demirbaş türü ve kalıcı devir yapılmadı.
+
+## Zimmet Geçici Teslim (Personeller Arası Devir) (2026-11-02)
+- **Tablo**: `zimmet_devirleri` (SQL: `database/migrations/2026_11_02_zimmet_devirleri.sql`). Türden bağımsız: `zimmet_turu` (`arac`; ileride `demirbas` vb.), `kaynak_zimmet_id` (asıl zimmet), `nesne_id` (araç/demirbaş), `devir_turu` (`gecici`; `kalici` ileride asıl zimmetin devri için ayrıldı), `veren/alan_personel_id`, `teslim_tarihi`/`iade_tarihi` (DATETIME), `teslim_sayac`/`iade_sayac` (araçta KM), `durum` (`aktif`/`iade_edildi`/`iptal`).
+- **Kural**: Geçici teslim asıl zimmet kaydını (`arac_zimmetleri.personel_id`) değiştirmez; "şu an kullanan" bilgisini tutar. Aktif teslim varken yeni teslim zincirleme yapılır (önceki kayıt aynı anda kapanır, veren = mevcut kullanan). Asıl sahibe dönüş yalnız "Geri Al" ile. Hatalı kayıt gerekçeli iptal edilir (soft delete). Asıl zimmet iade edilince aktif geçici teslim otomatik kapanır.
+- **Model**: `App\Model\ZimmetDevirModel` (geciciDevirOlustur transaction + FOR UPDATE, iadeAl, iptalEt, aktifDevirleriKapat, getAktifDevirHaritasi, getByZimmet, getByNesne).
+- **API** (`arac-takip/api`, `arac_takip_yonetim`): `zimmet-gecici-devir`, `zimmet-gecici-devir-iade`, `zimmet-gecici-devir-iptal`, `zimmet-devir-gecmisi`; `zimmet-listesi` yanıtına `gecici_devir_*` ve `kullanan_personel_id` eklendi. Her işlem `arac_islem_loglari` + `system_logs`'a yazılır.
+- **Arayüz**: `views/arac-takip/modal/zimmet-devir-modal.php` (Geçici Teslim / Geri Al / Teslim Hareketleri), zimmet satırında "Şu an: X" rozeti. Modal başlıkları `premium-modal-header` ile yazıldı (app.js global dönüştürücüsü id'li alt başlıkları silmesin diye).
+- **Açık**: KM girişleri/puantajın kullanan personele bağlanması, mobil SPA/PWA tarafı ve demirbaş entegrasyonu yapılmadı.
+
+## Puantaj Mutabakatı Sayfası Yenilendi (2026-11-02)
+- `views/puantaj/mutabakat.php`: kaynak sekmeleri (Endeks Okuma varsayılan, Kesme/Açma, Sayaç Sökme-Takma, Mühürleme; açık fark rozetli), dönem seçici (`Form::FormSelect2`), kapatılabilir bilgilendirme şeridi, kaynak bazlı 4 KPI kartı (Toplam / Onay Bekleyen [varsayılan filtre] / Uygulanan / Net Miktar Etkisi), Türkçe fark ve durum rozetleri, satıra tıklayınca alan alan Önceki–Güncel karşılaştırması (child row), Uygula diyaloğunda önce→sonra özeti.
+- `PuantajMutabakatModel`: `periods()`, `summary($firmaId,$periodId,$kaynak)`, `describeDifference()`, kolon filtreleri (`mode:value`, select etiketleri koda çevrilir) ve sıralama `ajaxList()` içinde. Liste "etkin fark" kümesini gösterir: dönemin son kontrol günündeki açık farklar (aynı anahtar için uygulanmış satır yoksa) + uygulanmış farklar; kontrol günleri arasında tekrar eden satırlar gizlenir.
+- API'ye yeni aksiyon eklenmedi (`list`/`summary`/`apply`); `period_id` şifreli gelir.
+- "Mutabakat Nasıl Çalışır?" paneli: `PuantajMutabakatModel::periodTimeline()` (snapshot tarihi + kontrol günü bazında `puantaj_mutabakat_calisma` başarılı/hatalı/çalışan sayıları, beklenen = gün × 4 kaynak) `summary` yanıtında `donem.zaman_cizelgesi` olarak döner. Adımlar: ay sonu kopyası (son gün 23:55; 1 saatten geç alınmışsa "Geç alındı"), 1./2. gün ön kontrol, 3. gün final (03:00), sonuç.
+- Ekim 2026 kopyası ay sonunda değil 01.11.2026 03:00'te alınmış (23:55 cron tetiklenmemiş).
+- **Açık bulgular (dokunulmadı)**: (1) `classifyDifference` sayaç payload'ında `null` ile `""` farkını "alan_degismis" sayıyor (firma 1'de 1.294 sahte fark). (2) Firma 2'de tüm okuma kayıtları "eklenmis" — dış veri firma bazında süzülmüyor olabilir. (3) Aynı fark her kontrol gününde ayrı satır olarak açılıyor; `acik_fark_sayisi` bu tekrarları da sayıyor.
+
 ## Personel PWA — KM Fotoğraf Servisi (2026-10-31)
 - `uploads/km_bildirim/.htaccess` doğrudan erişimi kapatıyor (403). PWA KM geçmişi artık `views/personel-pwa/km-foto.php` kullanıyor; sahiplik `AracKmBildirimModel::getPersonelResimYolu()` ile doğrulanıyor.
 - Masaüstü ve eski mobil `views/arac-takip/km-foto.php` (`arac_km_onaylari`), RN `km.php?action=foto` + `AuthImage` kullanıyor. Dosya çözümleme ortak: `AracKmBildirimModel::resimDosyasiniBul()`.
@@ -3497,3 +3525,5 @@
 - Bordro detayı resmî kartında fazla mesai açılımı `Nöbetten Gelen` ve `Puantaj Fazla Mesaisi` kaynaklarına ayrıldı.
 
 - Bordro detayı: sözleşme kartından RTÇ satırı kaldırıldı; hakediş resmî tabanın altındaysa RTÇ/fazla mesai için hakediş tabana tamamlanıyor (düşük puantajlı prim usulü).
+
+- Ücret hesap pusulası PDF (personel PWA ve Raporlar > Ücret Bordroları ortak şablonu `views/bordro/partials/ucret-hesap-pusulasi.php`): "Çalışma ve İzin Günleri" tablosuna kayıtlı snapshot `matrahlar.ucretsiz_izin_gunu` ile "Ücretsiz İzin" sütunu eklendi (hesaplama değişmedi).

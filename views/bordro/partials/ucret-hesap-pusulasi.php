@@ -45,7 +45,7 @@ $bilgiSag = [
 $gunler = [
     'SSK Gün' => $m['ssk_gunu'] ?? null, 'Normal Gün' => $m['normal_gun'] ?? null,
     'Hafta Tatili' => $m['hafta_tatili_gunu'] ?? null, 'Genel Tatil' => $m['genel_tatil_gunu'] ?? null,
-    'Ücretli İzin' => $m['ucretli_izin_gunu'] ?? null, 'Rapor' => $m['rapor_gunu'] ?? null,
+    'Ücretli İzin' => $m['ucretli_izin_gunu'] ?? null, 'Ücretsiz İzin' => $m['ucretsiz_izin_gunu'] ?? null, 'Rapor' => $m['rapor_gunu'] ?? null,
 ];
 $eksik = (int) ($m['rapor_gunu'] ?? 0) + (int) ($m['ucretsiz_izin_gunu'] ?? 0);
 $yasalGruplar = [
@@ -80,7 +80,7 @@ td, th { padding: 2px 3px; vertical-align: top; font-weight: normal; }
 <?php endforeach; ?>
 </tr></table>
 <table class="p-grid" style="margin-top: 8px;">
-<tr><th colspan="7" class="p-heading">ÇALIŞMA VE İZİN GÜNLERİ</th></tr>
+<tr><th colspan="8" class="p-heading">ÇALIŞMA VE İZİN GÜNLERİ</th></tr>
 <tr><td>Tür</td><?php foreach ($gunler as $etiket => $gun): ?><td align="center"><?= $e($etiket) ?></td><?php endforeach; ?></tr>
 <tr><td>Gün Sayısı</td><?php foreach ($gunler as $gun): ?><td align="center"><?= $e($gun ?? '—') ?></td><?php endforeach; ?></tr>
 <tr><td>Toplam Tutar</td><?php foreach (array_keys($gunler) as $i => $etiket): ?><td class="p-money"><?= $i === 0 ? $para($m['calisan_brut_maas'] ?? null) : $para(($pusula['detay']['gun_tutarlari'] ?? [])[$etiket] ?? null) ?></td><?php endforeach; ?></tr>

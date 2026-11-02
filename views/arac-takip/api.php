@@ -16,6 +16,7 @@ use App\Model\AracKmBildirimModel;
 use App\Model\AracDashboardModel;
 use App\Model\SystemLogModel;
 use App\Model\AracIslemLogModel;
+use App\Model\ZimmetDevirModel;
 use App\Model\PermissionPolicyModel;
 use App\Service\Gate;
 
@@ -54,6 +55,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
     $Servis = new AracServisModel();
     $KmBildirim = new AracKmBildirimModel();
     $AracLog = new AracIslemLogModel();
+    $ZimmetDevir = new ZimmetDevirModel();
+
+    $devirTarihCoz = function ($deger, bool $saatli = true) {
+        $deger = trim((string) $deger);
+        if ($deger === '') {
+            return null;
+        }
+        foreach (['d.m.Y H:i', 'd.m.Y H:i:s', 'Y-m-d H:i', 'Y-m-d H:i:s', 'Y-m-d\\TH:i', 'd.m.Y', 'Y-m-d'] as $format) {
+            $dt = \DateTime::createFromFormat('!' . $format, $deger);
+            if ($dt && $dt->format($format) === $deger) {
+                return $saatli ? $dt->format('Y-m-d H:i:s') : $dt->format('Y-m-d');
+            }
+        }
+        throw new Exception('Geçersiz tarih formatı: ' . htmlspecialchars($deger, ENT_QUOTES, 'UTF-8'));
+    };
+
+    $aracZimmetGetir = function (int $zimmetId) use ($Zimmet) {
+        $zimmet = $zimmetId > 0 ? $Zimmet->find($zimmetId) : null;
+        if (!$zimmet || (int) $zimmet->firma_id !== (int) ($_SESSION['firma_id'] ?? 0) || !empty($zimmet->silinme_tarihi)) {
+            throw new Exception('Zimmet kaydı bulunamadı veya bu işlem için yetkiniz yok.');
+        }
+        return $zimmet;
+    };
 
     // Zimmet teslim/iade fotoğraflarını şifreleyerek diske yazan ve meta bilgisini kaydeden yardımcı
     $zimmetFotoIsle = function ($zimmetId, $fileKey, $tur) use ($ZimmetFoto) {
@@ -922,6 +946,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 // Zimmet iade işlemini yap
                 $Zimmet->iadeEt($zimmet_id, $iade_km, $notlar, $iade_tarihi);
 
+                $kapatilanDevir = $ZimmetDevir->aktifDevirleriKapat(
+                    ZimmetDevirModel::TUR_ARAC,
+                    $zimmet_id,
+                    $iade_tarihi . ' ' . date('H:i:s'),
+                    $iade_km > 0 ? $iade_km : null,
+                    'Asıl zimmetin iadesi ile kapatıldı.'
+                );
+
                 // İade fotoğraflarını şifreleyerek kaydet
                 $iadeFotoSayisi = $zimmetFotoIsle($zimmet_id, 'iade_fotograflari', 'iade');
 
@@ -944,6 +976,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
 
                 if ($zimmetBilgi) {
                     $AracLog->ekle((int) $zimmetBilgi->arac_id, 'Zimmet İade', "Zimmet (#{$zimmet_id}) iade alındı. Tarih: " . date('d.m.Y', strtotime($iade_tarihi)) . ", İade KM: {$iade_km}");
+                    if ($kapatilanDevir > 0) {
+                        $AracLog->ekle((int) $zimmetBilgi->arac_id, 'Geçici Teslim Kapatma', "Zimmet (#{$zimmet_id}) iadesi ile aktif geçici teslim kaydı kapatıldı.");
+                    }
                     (new SystemLogModel())->logAction($_SESSION['user_id'] ?? 0, 'Araç Zimmet İade', "Araç ID: {$zimmetBilgi->arac_id}, zimmet (#{$zimmet_id}) iade alındı.", SystemLogModel::LEVEL_INFO);
                 }
 
@@ -1007,6 +1042,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
 
             case 'zimmet-listesi':
                 $zimmetler = $Zimmet->all();
+                $aktifDevirler = $ZimmetDevir->getAktifDevirHaritasi(ZimmetDevirModel::TUR_ARAC);
+                $bekleyenTalepler = $ZimmetDevir->getBekleyenTalepHaritasi(ZimmetDevirModel::TUR_ARAC);
+                foreach ($zimmetler as $z) {
+                    $bekleyen = $z->durum === 'aktif' ? ($bekleyenTalepler[(int) $z->id] ?? null) : null;
+                    $z->bekleyen_talep_alan_adi = $bekleyen->alan_personel_adi ?? null;
+                    $devir = $z->durum === 'aktif' ? ($aktifDevirler[(int) $z->id] ?? null) : null;
+                    $z->gecici_devir_id = $devir ? (int) $devir->id : null;
+                    $z->gecici_devir_alan_adi = $devir->alan_personel_adi ?? null;
+                    $z->gecici_devir_teslim_tarihi = $devir ? date('d.m.Y H:i', strtotime($devir->teslim_tarihi)) : null;
+                    $z->gecici_devir_planlanan_iade = ($devir && $devir->planlanan_iade_tarihi) ? Date::dmY($devir->planlanan_iade_tarihi) : null;
+                    $z->gecici_devir_teslim_km = $devir->teslim_sayac ?? null;
+                    $z->kullanan_personel_id = $devir ? (int) $devir->alan_personel_id : (int) $z->personel_id;
+                }
                 echo json_encode(['status' => 'success', 'data' => $zimmetler]);
                 break;
 
@@ -1139,6 +1187,213 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 $SystemLog->logAction($_SESSION['user_id'] ?? 0, 'Araç Zimmet Güncelleme', "Araç zimmet (#{$zimmet_id}) bilgileri güncellendi." . $fotoMesaj, SystemLogModel::LEVEL_IMPORTANT);
 
                 echo json_encode(['status' => 'success', 'message' => 'Araç zimmet kaydı başarıyla güncellendi.' . $fotoMesaj]);
+                break;
+
+            case 'zimmet-gecici-devir':
+                $zimmet = $aracZimmetGetir(intval($_POST['gecici_zimmet_id'] ?? 0));
+                if ($zimmet->durum !== 'aktif') {
+                    throw new Exception('Yalnızca aktif zimmetler geçici olarak teslim edilebilir.');
+                }
+
+                $alanPersonelId = intval($_POST['alan_personel_id'] ?? 0);
+                $teslimTarihi = $devirTarihCoz($_POST['gecici_teslim_tarihi'] ?? '') ?? date('Y-m-d H:i:s');
+                $planlananIade = $devirTarihCoz($_POST['gecici_planlanan_iade'] ?? '', false);
+                $teslimKm = intval($_POST['gecici_teslim_km'] ?? 0);
+                $aciklama = trim((string) ($_POST['gecici_aciklama'] ?? '')) ?: null;
+
+                $aktifDevir = $ZimmetDevir->getAktifDevir(ZimmetDevirModel::TUR_ARAC, (int) $zimmet->id);
+                $verenPersonelId = $aktifDevir ? (int) $aktifDevir->alan_personel_id : (int) $zimmet->personel_id;
+
+                if ($alanPersonelId <= 0) {
+                    throw new Exception('Teslim alacak personeli seçiniz.');
+                }
+                if ($alanPersonelId === $verenPersonelId) {
+                    throw new Exception('Araç zaten seçilen personelde.');
+                }
+                if ($alanPersonelId === (int) $zimmet->personel_id) {
+                    throw new Exception('Araç asıl zimmet sahibine dönüyorsa "Geçici Teslimi Geri Al" işlemini kullanınız.');
+                }
+
+                $alanPersonel = (new \App\Model\PersonelModel())->find($alanPersonelId);
+                if (!$alanPersonel || (int) $alanPersonel->firma_id !== (int) ($_SESSION['firma_id'] ?? 0) || !empty($alanPersonel->silinme_tarihi)) {
+                    throw new Exception('Teslim alacak personel bulunamadı.');
+                }
+
+                if (strtotime($teslimTarihi) < strtotime($zimmet->zimmet_tarihi)) {
+                    throw new Exception('Teslim tarihi, asıl zimmet tarihinden önce olamaz.');
+                }
+                if ($planlananIade !== null && strtotime($planlananIade) < strtotime(date('Y-m-d', strtotime($teslimTarihi)))) {
+                    throw new Exception('Planlanan iade tarihi, teslim tarihinden önce olamaz.');
+                }
+
+                $zincirNotu = $aktifDevir ? "{$alanPersonel->adi_soyadi} adlı personele devredildi." : null;
+
+                $yeniDevirId = $ZimmetDevir->geciciDevirOlustur([
+                    'zimmet_turu' => ZimmetDevirModel::TUR_ARAC,
+                    'kaynak_zimmet_id' => (int) $zimmet->id,
+                    'nesne_id' => (int) $zimmet->arac_id,
+                    'veren_personel_id' => $verenPersonelId,
+                    'alan_personel_id' => $alanPersonelId,
+                    'teslim_tarihi' => $teslimTarihi,
+                    'planlanan_iade_tarihi' => $planlananIade,
+                    'teslim_sayac' => $teslimKm > 0 ? $teslimKm : null,
+                    'aciklama' => $aciklama,
+                ], $zincirNotu);
+
+                if ($teslimKm > 0) {
+                    $Arac->updateKm((int) $zimmet->arac_id, $teslimKm);
+                }
+
+                $verenAdi = $aktifDevir->alan_personel_adi ?? ((new \App\Model\PersonelModel())->find($verenPersonelId)->adi_soyadi ?? ('Personel #' . $verenPersonelId));
+                $logMetni = "{$verenAdi} → {$alanPersonel->adi_soyadi} geçici teslim (Devir #{$yeniDevirId}, Zimmet #{$zimmet->id}). Tarih: " . date('d.m.Y H:i', strtotime($teslimTarihi)) . ($teslimKm > 0 ? ", KM: {$teslimKm}" : '');
+                $AracLog->ekle((int) $zimmet->arac_id, 'Geçici Teslim', $logMetni);
+                (new SystemLogModel())->logAction($_SESSION['user_id'] ?? 0, 'Araç Geçici Teslim', "Araç ID: {$zimmet->arac_id}, " . $logMetni, SystemLogModel::LEVEL_INFO);
+
+                echo json_encode(['status' => 'success', 'message' => "Araç geçici olarak {$alanPersonel->adi_soyadi} adlı personele teslim edildi. Asıl zimmet kaydı değişmedi."]);
+                break;
+
+            case 'zimmet-gecici-devir-iade':
+                $devirId = intval($_POST['gecici_devir_id'] ?? 0);
+                $devir = $devirId > 0 ? $ZimmetDevir->getById($devirId) : null;
+                if (!$devir || $devir->zimmet_turu !== ZimmetDevirModel::TUR_ARAC) {
+                    throw new Exception('Geçici teslim kaydı bulunamadı veya bu işlem için yetkiniz yok.');
+                }
+                if ($devir->durum !== 'aktif') {
+                    throw new Exception('Bu geçici teslim kaydı zaten kapatılmış.');
+                }
+                $zimmet = $aracZimmetGetir((int) $devir->kaynak_zimmet_id);
+
+                $iadeTarihi = $devirTarihCoz($_POST['gecici_iade_tarihi'] ?? '') ?? date('Y-m-d H:i:s');
+                $iadeKm = intval($_POST['gecici_iade_km'] ?? 0);
+                $iadeNotu = trim((string) ($_POST['gecici_iade_notu'] ?? '')) ?: null;
+
+                if (strtotime($iadeTarihi) < strtotime($devir->teslim_tarihi)) {
+                    throw new Exception('Geri alma tarihi, teslim tarihinden önce olamaz.');
+                }
+                if ($iadeKm > 0 && $devir->teslim_sayac !== null && $iadeKm < (int) $devir->teslim_sayac) {
+                    throw new Exception('Geri alma KM\'si, teslim KM\'sinden (' . (int) $devir->teslim_sayac . ') küçük olamaz.');
+                }
+
+                if (!$ZimmetDevir->iadeAl($devirId, $iadeTarihi, $iadeKm > 0 ? $iadeKm : null, $iadeNotu)) {
+                    throw new Exception('Geçici teslim kaydı güncellenemedi. Listeyi yenileyip tekrar deneyin.');
+                }
+
+                if ($iadeKm > 0) {
+                    $Arac->updateKm((int) $zimmet->arac_id, $iadeKm);
+                }
+
+                $asilSahip = $Zimmet->getAktifZimmetByArac((int) $zimmet->arac_id)->personel_adi ?? 'asıl zimmet sahibi';
+                $logMetni = "{$devir->alan_personel_adi} → {$asilSahip} geçici teslim geri alındı (Devir #{$devirId}, Zimmet #{$zimmet->id}). Tarih: " . date('d.m.Y H:i', strtotime($iadeTarihi)) . ($iadeKm > 0 ? ", KM: {$iadeKm}" : '');
+                $AracLog->ekle((int) $zimmet->arac_id, 'Geçici Teslim İade', $logMetni);
+                (new SystemLogModel())->logAction($_SESSION['user_id'] ?? 0, 'Araç Geçici Teslim İade', "Araç ID: {$zimmet->arac_id}, " . $logMetni, SystemLogModel::LEVEL_INFO);
+
+                echo json_encode(['status' => 'success', 'message' => "Araç {$asilSahip} adlı asıl zimmet sahibine geri alındı."]);
+                break;
+
+            case 'zimmet-gecici-devir-iptal':
+                $devirId = intval($_POST['devir_id'] ?? 0);
+                $devir = $devirId > 0 ? $ZimmetDevir->getById($devirId) : null;
+                if (!$devir || $devir->zimmet_turu !== ZimmetDevirModel::TUR_ARAC) {
+                    throw new Exception('Geçici teslim kaydı bulunamadı veya bu işlem için yetkiniz yok.');
+                }
+                if (!in_array($devir->durum, ['aktif', 'beklemede'], true)) {
+                    throw new Exception('Yalnızca aktif veya onay bekleyen geçici teslim kayıtları iptal edilebilir.');
+                }
+                $zimmet = $aracZimmetGetir((int) $devir->kaynak_zimmet_id);
+                $iptalNotu = trim((string) ($_POST['iptal_notu'] ?? ''));
+                if ($iptalNotu === '') {
+                    throw new Exception('İptal gerekçesi zorunludur.');
+                }
+
+                $iptalBasarili = $devir->durum === 'beklemede'
+                    ? $ZimmetDevir->talepYoneticiIptal($devirId, 'Yönetici iptali: ' . $iptalNotu)
+                    : $ZimmetDevir->iptalEt($devirId, 'İptal: ' . $iptalNotu);
+                if (!$iptalBasarili) {
+                    throw new Exception('Geçici teslim kaydı iptal edilemedi.');
+                }
+
+                $logMetni = ($devir->durum === 'beklemede' ? 'Geçici teslim talebi' : 'Geçici teslim kaydı') . " iptal edildi (Devir #{$devirId}, {$devir->veren_personel_adi} → {$devir->alan_personel_adi}). Gerekçe: {$iptalNotu}";
+                $AracLog->ekle((int) $zimmet->arac_id, 'Geçici Teslim İptal', $logMetni);
+                (new SystemLogModel())->logAction($_SESSION['user_id'] ?? 0, 'Araç Geçici Teslim İptal', "Araç ID: {$zimmet->arac_id}, " . $logMetni, SystemLogModel::LEVEL_IMPORTANT);
+
+                echo json_encode(['status' => 'success', 'message' => 'Geçici teslim kaydı iptal edildi.']);
+                break;
+
+            case 'zimmet-gecici-teslim-listesi':
+                $durumFiltre = (string) ($_POST['durum'] ?? '');
+                if (!in_array($durumFiltre, ['', 'beklemede', 'aktif', 'iade_edildi', 'tamamlandi', 'reddedildi', 'iptal'], true)) {
+                    $durumFiltre = '';
+                }
+                $tarihFmt = static fn($t) => $t ? date('d.m.Y H:i', strtotime($t)) : null;
+                $satirlar = [];
+                foreach ($ZimmetDevir->listele(ZimmetDevirModel::TUR_ARAC, $durumFiltre) as $h) {
+                    $satirlar[] = [
+                        'id' => (int) $h->id,
+                        'zimmet_id' => (int) $h->kaynak_zimmet_id,
+                        'plaka' => $h->nesne_adi,
+                        'marka_model' => $h->nesne_detay,
+                        'asil_personel_adi' => $h->asil_personel_adi,
+                        'veren_personel_adi' => $h->veren_personel_adi,
+                        'alan_personel_adi' => $h->alan_personel_adi,
+                        'kaynak' => $h->kaynak,
+                        'talep_tarihi' => $tarihFmt($h->talep_tarihi),
+                        'teslim_tarihi' => $h->durum === 'beklemede' || $h->durum === 'reddedildi' ? null : $tarihFmt($h->teslim_tarihi),
+                        'planlanan_iade_tarihi' => $h->planlanan_iade_tarihi ? Date::dmY($h->planlanan_iade_tarihi) : null,
+                        'iade_tarihi' => $tarihFmt($h->iade_tarihi),
+                        'teslim_km' => $h->teslim_sayac,
+                        'iade_km' => $h->iade_sayac,
+                        'durum' => $h->durum,
+                        'aciklama' => $h->aciklama,
+                        'iade_notu' => $h->iade_notu,
+                        'red_nedeni' => $h->red_nedeni,
+                        'olusturan' => $h->olusturan_kullanici_adi,
+                    ];
+                }
+                echo json_encode([
+                    'status' => 'success',
+                    'data' => $satirlar,
+                    'ozet' => $ZimmetDevir->ozet(ZimmetDevirModel::TUR_ARAC),
+                ]);
+                break;
+
+            case 'zimmet-devir-gecmisi':
+                $zimmet = $aracZimmetGetir(intval($_POST['zimmet_id'] ?? 0));
+                $hareketler = [];
+                foreach ($ZimmetDevir->getByZimmet(ZimmetDevirModel::TUR_ARAC, (int) $zimmet->id) as $h) {
+                    $hareketler[] = [
+                        'id' => (int) $h->id,
+                        'devir_turu' => $h->devir_turu,
+                        'veren_personel_adi' => $h->veren_personel_adi ?? '-',
+                        'alan_personel_adi' => $h->alan_personel_adi ?? '-',
+                        'teslim_tarihi' => date('d.m.Y H:i', strtotime($h->teslim_tarihi)),
+                        'planlanan_iade_tarihi' => $h->planlanan_iade_tarihi ? Date::dmY($h->planlanan_iade_tarihi) : null,
+                        'iade_tarihi' => $h->iade_tarihi ? date('d.m.Y H:i', strtotime($h->iade_tarihi)) : null,
+                        'teslim_km' => $h->teslim_sayac,
+                        'iade_km' => $h->iade_sayac,
+                        'durum' => $h->durum,
+                        'aciklama' => $h->aciklama,
+                        'iade_notu' => $h->iade_notu,
+                        'red_nedeni' => $h->red_nedeni,
+                        'kaynak' => $h->kaynak,
+                        'olusturan' => $h->olusturan_kullanici_adi ?: ($h->kaynak === 'pwa' ? 'Personel (PWA)' : null),
+                        'olusturma_tarihi' => date('d.m.Y H:i', strtotime($h->olusturma_tarihi)),
+                        'iade_alan' => $h->iade_alan_kullanici_adi,
+                    ];
+                }
+
+                $arac = $Arac->find((int) $zimmet->arac_id);
+                $asilPersonel = (new \App\Model\PersonelModel())->find((int) $zimmet->personel_id);
+
+                echo json_encode([
+                    'status' => 'success',
+                    'data' => [
+                        'plaka' => $arac->plaka ?? '-',
+                        'asil_personel_adi' => $asilPersonel->adi_soyadi ?? '-',
+                        'zimmet_tarihi' => Date::dmY($zimmet->zimmet_tarihi),
+                        'zimmet_durum' => $zimmet->durum,
+                        'hareketler' => $hareketler,
+                    ],
+                ]);
                 break;
 
             case 'zimmet-form-yazdir':

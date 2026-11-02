@@ -17,14 +17,30 @@ try {
     $userId=(int)($_SESSION['user_id']??0);
     if ($firmaId<=0 || $userId<=0) throw new RuntimeException('Geçerli oturum bulunamadı.');
     $model=new PuantajMutabakatModel();
+    $periodToken=(string)($_POST['period_id']??'');
+    $periodId=$periodToken!=='' ? (int)Security::decrypt($periodToken) : 0;
     if ($action==='list') {
-        $result=$model->ajaxList($_POST,$firmaId);
-        foreach ($result['data'] as &$row) { $row['encrypted_id']=Security::encrypt((int)$row['id']); unset($row['id'],$row['eski_payload_json'],$row['yeni_payload_json']); }
+        $result=$model->ajaxList(['period_id'=>$periodId]+$_POST,$firmaId);
+        foreach ($result['data'] as &$row) {
+            $row+=PuantajMutabakatModel::describeDifference($row);
+            $row['encrypted_id']=Security::encrypt((int)$row['id']);
+            unset($row['id'],$row['eski_payload_json'],$row['yeni_payload_json']);
+        }
         unset($row);
         echo json_encode($result,JSON_UNESCAPED_UNICODE); exit;
     }
     if ($action==='summary') {
-        echo json_encode(['status'=>'success','data'=>$model->summary($firmaId)],JSON_UNESCAPED_UNICODE); exit;
+        $data=$model->summary($firmaId,$periodId,(string)($_POST['kaynak']??''));
+        $data->donem=null;
+        foreach ($model->periods($firmaId) as $period) {
+            if ($periodId===0 || (int)$period['id']===$periodId) {
+                $data->donem=['donem'=>$period['donem'],'durum'=>$period['durum'],'son_kontrol_tarihi'=>$period['son_kontrol_tarihi'],
+                    'final_kontrol_tarihi'=>$period['final_kontrol_tarihi'],'yeniden_hesaplama_gerekli'=>(int)$period['yeniden_hesaplama_gerekli'],
+                    'zaman_cizelgesi'=>$model->periodTimeline((int)$period['id'])];
+                break;
+            }
+        }
+        echo json_encode(['status'=>'success','data'=>$data],JSON_UNESCAPED_UNICODE); exit;
     }
     if ($action==='apply') {
         $token=(string)($_POST['csrf_token']??'');
@@ -34,7 +50,11 @@ try {
         echo json_encode(['status'=>'success','message'=>'Güncel dış sistem verisi uygulandı. Bordro yeniden hesaplanmalıdır.'],JSON_UNESCAPED_UNICODE); exit;
     }
     throw new RuntimeException('Geçersiz işlem.');
-} catch (\Throwable $e) {
+} catch (RuntimeException $e) {
     http_response_code(http_response_code()>=400?http_response_code():400);
     echo json_encode(['status'=>'error','message'=>$e->getMessage()],JSON_UNESCAPED_UNICODE);
+} catch (\Throwable $e) {
+    error_log('Puantaj mutabakat API hatası: '.$e->getMessage());
+    http_response_code(500);
+    echo json_encode(['status'=>'error','message'=>'İşlem sırasında beklenmeyen bir hata oluştu.'],JSON_UNESCAPED_UNICODE);
 }

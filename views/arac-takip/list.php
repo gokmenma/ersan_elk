@@ -422,6 +422,14 @@ usort($yakitAraclar, static function ($a, $b) {
                                 </button>
                             </li>
                             <li class="nav-item" role="presentation">
+                                <button class="nav-link <?php echo $activeTab === 'gecici' ? 'active' : ''; ?>"
+                                    id="gecici-tab" data-bs-toggle="tab" data-bs-target="#geciciContent" type="button"
+                                    role="tab">
+                                    <i class="bx bx-transfer-alt me-1"></i> Geçici Teslimler
+                                    <span class="badge bg-warning-subtle text-warning rounded-pill ms-1 d-none" id="geciciBekleyenSayi"></span>
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
                                 <button class="nav-link <?php echo $activeTab === 'yakit' ? 'active' : ''; ?>"
                                     id="yakit-tab" data-bs-toggle="tab" data-bs-target="#yakitContent" type="button"
                                     role="tab">
@@ -727,6 +735,42 @@ usort($yakitAraclar, static function ($a, $b) {
                                             <td colspan="7" class="text-center text-muted py-4">
                                                 Yükleniyor...
                                             </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade <?php echo $activeTab === 'gecici' ? 'show active' : ''; ?>"
+                            id="geciciContent" role="tabpanel">
+                            <div class="d-flex flex-wrap align-items-center gap-2 mb-3 status-filter-group" id="geciciDurumFiltre">
+                                <button type="button" class="btn btn-sm btn-soft-primary active" data-durum="">Tümü <span class="badge bg-primary ms-1" data-ozet="toplam">0</span></button>
+                                <button type="button" class="btn btn-sm btn-soft-warning" data-durum="beklemede">Onay Bekleyen <span class="badge bg-warning ms-1" data-ozet="beklemede">0</span></button>
+                                <button type="button" class="btn btn-sm btn-soft-info" data-durum="aktif">Teslimde <span class="badge bg-info ms-1" data-ozet="aktif">0</span></button>
+                                <button type="button" class="btn btn-sm btn-soft-secondary" data-durum="kapanan">Kapanan <span class="badge bg-secondary ms-1" data-ozet="kapanan">0</span></button>
+                                <button type="button" class="btn btn-sm btn-soft-danger" data-durum="iptal_red">Red / İptal <span class="badge bg-danger ms-1" data-ozet="iptal_red">0</span></button>
+                                <small class="text-muted ms-auto">Asıl zimmet kayıtları değişmez; burada yalnızca personeller arası geçici teslimler listelenir.</small>
+                            </div>
+                            <div class="table-responsive">
+                                <table id="geciciTable" class="table table-hover table-bordered nowrap w-100">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="text-center" style="width:5%">Sıra</th>
+                                            <th data-filter="string">Araç</th>
+                                            <th data-filter="string">Asıl Zimmet Sahibi</th>
+                                            <th data-filter="string">Teslim Eden</th>
+                                            <th data-filter="string">Teslim Alan</th>
+                                            <th data-filter="string">Talep / Teslim</th>
+                                            <th data-filter="string">Geri Alma</th>
+                                            <th class="text-center">KM</th>
+                                            <th class="text-center" data-filter="string">Kaynak</th>
+                                            <th class="text-center" data-filter="string">Durum</th>
+                                            <th class="text-center" style="width:8%">İşlemler</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="geciciTableBody">
+                                        <tr>
+                                            <td colspan="11" class="text-center text-muted py-4">Yükleniyor...</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -1302,6 +1346,7 @@ usort($yakitAraclar, static function ($a, $b) {
 <?php include_once "modal/arac-modal.php"; ?>
 <?php include_once "modal/zimmet-modal.php"; ?>
 <?php include_once "modal/zimmet-iade-modal.php"; ?>
+<?php include_once "modal/zimmet-devir-modal.php"; ?>
 
 <!-- Shadcn Style Context Menu -->
 <div id="arac-context-menu" class="dropdown-menu shadow-sm border" style="display: none; position: fixed; z-index: 9999; min-width: 200px; border-radius: 8px; padding: 4px; background: #ffffff; border-color: #e2e8f0 !important;">

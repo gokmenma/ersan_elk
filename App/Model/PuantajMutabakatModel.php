@@ -10,6 +10,15 @@ use App\Helper\EkipHelper;
 class PuantajMutabakatModel extends Model
 {
     public const START_PERIOD = '2026-10';
+    public const SOURCES = ['okuma','kesme','sayac','muhurleme'];
+    public const DIFF_TYPES = ['Yeni kayıt'=>'eklenmis','Kayıt silinmiş'=>'silinmis','Miktar arttı'=>'miktar_artmis','Miktar azaldı'=>'miktar_azalmis','Bilgi değişti'=>'alan_degismis'];
+    public const STATUSES = ['Onay bekliyor'=>'acik','Uygulandı'=>'uygulandi'];
+    private const FIELD_LABELS = [
+        'bolge'=>'Bölge','kullanici_adi'=>'Okuyucu','defter'=>'Defter','sayac_durum'=>'Sayaç Durumu','ekip'=>'Ekip',
+        'is_emri_tipi'=>'İş Emri Tipi','is_emri_sonucu'=>'İş Emri Sonucu','acik'=>'Açık İş','isemri_no'=>'İş Emri No',
+        'abone_no'=>'Abone No','isemri_sebep'=>'İş Emri Sebebi','memur'=>'Memur','sonuclandiran_kullanici'=>'Sonuçlandıran',
+        'isemri_sonucu'=>'İş Emri Sonucu','sonuc_aciklama'=>'Sonuç Açıklaması','takilan_sayacno'=>'Takılan Sayaç No','kayit_tarihi'=>'Kayıt Tarihi',
+    ];
     protected $table = 'puantaj_mutabakat_donem';
 
     public function activeCompanyIds(): array
@@ -263,31 +272,215 @@ class PuantajMutabakatModel extends Model
         }
     }
 
-    public function ajaxList(array $params, int $firmaId): array
+    public function periods(int $firmaId): array
     {
-        $periodId = (int)($params['period_id'] ?? 0);
-        $start=max(0,(int)($params['start']??0)); $length=min(100,max(10,(int)($params['length']??25)));
-        $search=trim((string)($params['search']['value']??''));
-        $where='d.firma_id=? AND f.is_active=1 AND (?=0 OR f.donem_id=?)'; $bind=[$firmaId,$periodId,$periodId];
-        if ($search!=='') { $where.=' AND (f.fark_tipi LIKE ? OR f.kaynak LIKE ? OR f.islem_tarihi LIKE ? OR f.durum LIKE ?)'; $like='%'.$search.'%'; array_push($bind,$like,$like,$like,$like); }
-        $count=$this->db->prepare("SELECT COUNT(*) FROM puantaj_mutabakat_fark f INNER JOIN puantaj_mutabakat_donem d ON d.id=f.donem_id WHERE $where");
-        $count->execute($bind); $filtered=(int)$count->fetchColumn();
-        $stmt = $this->db->prepare(
-            "SELECT f.*, d.donem FROM puantaj_mutabakat_fark f
-             INNER JOIN puantaj_mutabakat_donem d ON d.id=f.donem_id
-             WHERE $where ORDER BY f.islem_tarihi DESC,f.id DESC LIMIT $start,$length"
-        );
-        $stmt->execute($bind);
-        $total=$this->db->prepare('SELECT COUNT(*) FROM puantaj_mutabakat_fark f INNER JOIN puantaj_mutabakat_donem d ON d.id=f.donem_id WHERE d.firma_id=? AND f.is_active=1');
-        $total->execute([$firmaId]);
-        return ['draw'=>(int)($params['draw']??0),'recordsTotal'=>(int)$total->fetchColumn(),'recordsFiltered'=>$filtered,'data'=>$stmt->fetchAll(PDO::FETCH_ASSOC)];
+        $stmt=$this->db->prepare('SELECT id,donem,durum,son_kontrol_tarihi,final_kontrol_tarihi,yeniden_hesaplama_gerekli FROM puantaj_mutabakat_donem WHERE firma_id=? ORDER BY donem DESC');
+        $stmt->execute([$firmaId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function summary(int $firmaId): object
+    public function periodTimeline(int $periodId): array
     {
-        $stmt = $this->db->prepare("SELECT COUNT(*) toplam, SUM(durum='mutabik') mutabik, SUM(durum='fark_var') farkli, COALESCE(SUM(acik_fark_sayisi),0) acik_fark FROM puantaj_mutabakat_donem WHERE firma_id=?");
-        $stmt->execute([$firmaId]);
-        return $stmt->fetch(PDO::FETCH_OBJ) ?: (object)[];
+        $stmt=$this->db->prepare('SELECT donem,snapshot_tarihi FROM puantaj_mutabakat_donem WHERE id=?');
+        $stmt->execute([$periodId]);
+        $period=$stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$period) return [];
+        [, $end]=$this->periodRange((string)$period['donem']);
+        $runs=$this->db->prepare(
+            "SELECT kontrol_gunu,SUM(durum='basarili') basarili,SUM(durum='hata') hata,SUM(durum='calisiyor') calisiyor,MIN(baslama_tarihi) baslama,MAX(bitis_tarihi) bitis
+             FROM puantaj_mutabakat_calisma WHERE donem_id=? GROUP BY kontrol_gunu"
+        );
+        $runs->execute([$periodId]);
+        $checks=[];
+        foreach ($runs->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $checks[(int)$row['kontrol_gunu']]=['basarili'=>(int)$row['basarili'],'hata'=>(int)$row['hata'],'calisiyor'=>(int)$row['calisiyor'],'baslama'=>$row['baslama'],'bitis'=>$row['bitis']];
+        }
+        return ['donem_sonu'=>$end,'snapshot_tarihi'=>$period['snapshot_tarihi'],'beklenen'=>(int)(new DateTimeImmutable($end))->format('j')*count(self::SOURCES),'kontroller'=>$checks];
+    }
+
+    public static function normalizeSource(string $source): string
+    {
+        return in_array($source,self::SOURCES,true) ? $source : 'okuma';
+    }
+
+    private function differenceScope(int $firmaId,int $periodId,?string $source): array
+    {
+        $sql="FROM puantaj_mutabakat_fark f
+              INNER JOIN puantaj_mutabakat_donem d ON d.id=f.donem_id
+              INNER JOIN (SELECT donem_id,MAX(kontrol_gunu) son_gun FROM puantaj_mutabakat_fark WHERE is_active=1 GROUP BY donem_id) m ON m.donem_id=f.donem_id
+              WHERE d.firma_id=? AND f.is_active=1 AND (?=0 OR f.donem_id=?)
+              AND (f.durum='uygulandi' OR (f.kontrol_gunu=m.son_gun AND NOT EXISTS (
+                  SELECT 1 FROM puantaj_mutabakat_fark u WHERE u.donem_id=f.donem_id AND u.durum='uygulandi' AND u.is_active=1
+                  AND u.kaynak=f.kaynak AND u.islem_tarihi=f.islem_tarihi AND u.kaynak_anahtar=f.kaynak_anahtar)))";
+        $bind=[$firmaId,$periodId,$periodId];
+        if ($source!==null) { $sql.=' AND f.kaynak=?'; $bind[]=$source; }
+        return [$sql,$bind];
+    }
+
+    public function ajaxList(array $params, int $firmaId): array
+    {
+        $periodId=(int)($params['period_id']??0);
+        $source=self::normalizeSource((string)($params['kaynak']??''));
+        $start=max(0,(int)($params['start']??0)); $length=min(100,max(10,(int)($params['length']??25)));
+        [$from,$bind]=$this->differenceScope($firmaId,$periodId,$source);
+        $total=$this->db->prepare("SELECT COUNT(*) $from");
+        $total->execute($bind);
+
+        $where='';
+        $status=(string)($params['durum']??'acik');
+        if (in_array($status,self::STATUSES,true)) { $where.=' AND f.durum=?'; $bind[]=$status; }
+        $search=trim((string)($params['search']['value']??''));
+        if ($search!=='') {
+            $where.=' AND (f.kaynak_anahtar LIKE ? OR f.eski_payload_json LIKE ? OR f.yeni_payload_json LIKE ? OR f.islem_tarihi LIKE ?)';
+            $like='%'.$search.'%'; array_push($bind,$like,$like,$like,$like);
+        }
+        $columns=[
+            0=>['f.islem_tarihi','date',[]],
+            1=>["CONCAT_WS(' ',f.kaynak_anahtar,f.eski_payload_json,f.yeni_payload_json)",'string',[]],
+            2=>['f.fark_tipi','select',self::DIFF_TYPES],
+            3=>['f.eski_miktar','number',[]],
+            4=>['f.yeni_miktar','number',[]],
+            5=>['(f.yeni_miktar-f.eski_miktar)','number',[]],
+            6=>['f.durum','select',self::STATUSES],
+        ];
+        foreach ((array)($params['columns']??[]) as $i=>$column) {
+            $raw=trim((string)($column['search']['value']??''));
+            if ($raw==='' || !isset($columns[(int)$i])) continue;
+            [$expr,$type,$labels]=$columns[(int)$i];
+            [$condition,$values]=$this->columnCondition($expr,$type,$raw,$labels);
+            if ($condition==='') continue;
+            $where.=' AND '.$condition; array_push($bind,...$values);
+        }
+
+        $orderable=[0=>'f.islem_tarihi',2=>'f.fark_tipi',3=>'f.eski_miktar',4=>'f.yeni_miktar',5=>'(f.yeni_miktar-f.eski_miktar)',6=>'f.durum'];
+        $orderColumn=(int)($params['order'][0]['column']??0);
+        $orderDir=strtolower((string)($params['order'][0]['dir']??'desc'))==='asc'?'ASC':'DESC';
+        $order=($orderable[$orderColumn]??'f.islem_tarihi').' '.$orderDir.',f.id DESC';
+
+        $count=$this->db->prepare("SELECT COUNT(*) $from $where");
+        $count->execute($bind);
+        $stmt=$this->db->prepare(
+            "SELECT f.id,f.kontrol_gunu,f.kaynak,f.islem_tarihi,f.kaynak_anahtar,f.fark_tipi,f.eski_miktar,f.yeni_miktar,
+                    f.eski_payload_json,f.yeni_payload_json,f.durum,f.cozum_tarihi,f.cozum_gerekcesi,d.donem
+             $from $where ORDER BY $order LIMIT $start,$length"
+        );
+        $stmt->execute($bind);
+        return ['draw'=>(int)($params['draw']??0),'recordsTotal'=>(int)$total->fetchColumn(),'recordsFiltered'=>(int)$count->fetchColumn(),'data'=>$stmt->fetchAll(PDO::FETCH_ASSOC)];
+    }
+
+    private function columnCondition(string $expr,string $type,string $raw,array $labels): array
+    {
+        [$mode,$value]=str_contains($raw,':') ? explode(':',$raw,2) : [$type==='select'?'multi':'contains',$raw];
+        if ($mode==='null') return ["($expr IS NULL OR $expr='')",[]];
+        if ($mode==='not_null') return ["($expr IS NOT NULL AND $expr<>'')",[]];
+        $parts=array_map('trim',explode('|',$value));
+
+        if ($type==='select') {
+            $codes=[];
+            foreach ($parts as $part) {
+                if (isset($labels[$part])) $codes[]=$labels[$part];
+                elseif (in_array($part,$labels,true)) $codes[]=$part;
+            }
+            if (!$codes) return ['1=0',[]];
+            return ["$expr IN (".implode(',',array_fill(0,count($codes),'?')).')',array_values(array_unique($codes))];
+        }
+
+        if ($type==='date') {
+            $first=$this->filterDate($parts[0]??''); $second=$this->filterDate($parts[1]??'');
+            if ($first===null) return ['',[]];
+            return match ($mode) {
+                'before'=>["$expr<?",[$first]],
+                'after'=>["$expr>?",[$first]],
+                'between'=>$second!==null ? ["$expr BETWEEN ? AND ?",[$first,$second]] : ["$expr>=?",[$first]],
+                default=>["$expr=?",[$first]],
+            };
+        }
+
+        $text=$parts[0]??'';
+        if ($text==='') return ['',[]];
+        if ($type==='number') {
+            $number=str_contains($text,',') ? str_replace(',','.',str_replace('.','',$text)) : $text;
+            if (!is_numeric($number)) return ['1=0',[]];
+            $operators=['equals'=>'=','not_equals'=>'<>','greater_than'=>'>','less_than'=>'<','greater_equal'=>'>=','less_equal'=>'<='];
+            if (isset($operators[$mode])) return ["$expr{$operators[$mode]}?",[(float)$number]];
+            return ["CAST($expr AS CHAR) LIKE ?",['%'.$number.'%']];
+        }
+
+        return match ($mode) {
+            'not_contains'=>["$expr NOT LIKE ?",['%'.$text.'%']],
+            'starts_with'=>["$expr LIKE ?",[$text.'%']],
+            'ends_with'=>["$expr LIKE ?",['%'.$text]],
+            'equals'=>["$expr=?",[$text]],
+            'not_equals'=>["$expr<>?",[$text]],
+            default=>["$expr LIKE ?",['%'.$text.'%']],
+        };
+    }
+
+    private function filterDate(string $value): ?string
+    {
+        if (preg_match('/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})$/',$value,$m)) return checkdate((int)$m[2],(int)$m[1],(int)$m[3]) ? sprintf('%04d-%02d-%02d',$m[3],$m[2],$m[1]) : null;
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/',$value,$m)) return checkdate((int)$m[2],(int)$m[3],(int)$m[1]) ? $value : null;
+        return null;
+    }
+
+    public function summary(int $firmaId,int $periodId=0,string $source='okuma'): object
+    {
+        $source=self::normalizeSource($source);
+        [$from,$bind]=$this->differenceScope($firmaId,$periodId,null);
+        $stmt=$this->db->prepare(
+            "SELECT f.kaynak,f.fark_tipi,COUNT(*) toplam,SUM(f.durum='acik') acik,SUM(f.durum='uygulandi') uygulandi,
+                    COALESCE(SUM(IF(f.durum='acik',f.yeni_miktar-f.eski_miktar,0)),0) net_etki,MAX(f.kontrol_gunu) son_kontrol_gunu
+             $from GROUP BY f.kaynak,f.fark_tipi"
+        );
+        $stmt->execute($bind);
+        $result=(object)['kaynak'=>$source,'toplam'=>0,'acik'=>0,'uygulandi'=>0,'net_etki'=>0.0,'son_kontrol_gunu'=>0,
+            'kaynaklar'=>array_fill_keys(self::SOURCES,0),'fark_tipleri'=>array_fill_keys(array_values(self::DIFF_TYPES),0)];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $result->kaynaklar[$row['kaynak']]+=(int)$row['acik'];
+            $result->son_kontrol_gunu=max($result->son_kontrol_gunu,(int)$row['son_kontrol_gunu']);
+            if ($row['kaynak']!==$source) continue;
+            $result->toplam+=(int)$row['toplam'];
+            $result->acik+=(int)$row['acik'];
+            $result->uygulandi+=(int)$row['uygulandi'];
+            $result->net_etki+=(float)$row['net_etki'];
+            $result->fark_tipleri[$row['fark_tipi']]+=(int)$row['acik'];
+        }
+        return $result;
+    }
+
+    public static function describeDifference(array $row): array
+    {
+        $old=json_decode((string)($row['eski_payload_json']??''),true) ?: [];
+        $new=json_decode((string)($row['yeni_payload_json']??''),true) ?: [];
+        $payload=$new+$old;
+        $value=static fn(string $key): string => trim((string)($payload[$key]??''));
+        if ($row['kaynak']==='okuma') {
+            $title=$value('kullanici_adi');
+            $details=[$value('bolge'),$value('defter')!=='' ? 'Defter '.$value('defter') : '',$value('sayac_durum')];
+        } elseif ($row['kaynak']==='sayac') {
+            $title=$value('ekip');
+            $details=[$value('isemri_no')!=='' ? 'İş emri '.$value('isemri_no') : '',$value('abone_no')!=='' ? 'Abone '.$value('abone_no') : '',$value('isemri_sebep')];
+        } else {
+            $title=$value('ekip');
+            $details=[$value('is_emri_tipi'),$value('is_emri_sonucu')];
+        }
+
+        $fields=[]; $changed=[];
+        foreach (array_unique(array_merge(array_keys($old),array_keys($new))) as $key) {
+            $before=array_key_exists($key,$old) ? self::displayValue($old[$key]) : null;
+            $after=array_key_exists($key,$new) ? self::displayValue($new[$key]) : null;
+            $label=self::FIELD_LABELS[$key]??$key;
+            $isChanged=$old && $new && $before!==$after;
+            if ($isChanged) $changed[]=$label;
+            $fields[]=['alan'=>$label,'eski'=>$before,'yeni'=>$after,'degisti'=>$isChanged];
+        }
+        return ['kayit'=>$title!=='' ? $title : 'Tanımsız kayıt','kayit_detay'=>implode(' · ',array_filter($details)),'degisen_alanlar'=>$changed,'alanlar'=>$fields];
+    }
+
+    private static function displayValue(mixed $value): string
+    {
+        if (is_float($value) || is_int($value)) return rtrim(rtrim(number_format((float)$value,4,',','.'),'0'),',');
+        return trim((string)$value);
     }
 
     public function reportRows(int $periodId,int $checkDay): array

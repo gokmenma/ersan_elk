@@ -858,7 +858,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && empty($username_err)) {
             <div>
                 <span class="portal-badge">
                     <span class="badge-dot"></span>
-                    Personel Portalı
+                    Yönetici Portalı
                 </span>
             </div>
         </div>

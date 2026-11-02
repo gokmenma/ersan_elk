@@ -14,6 +14,18 @@ final class BordroPusulaService
             || (empty($detay['ortak_sonuc']['gosterim']) && empty($detay['odeme_dagilimi']))) {
             throw new DomainException('Hesaplanmadı: geçerli kayıtlı bordro dökümü bulunamadı.');
         }
+        if (!array_key_exists('hafta_tatili_gunu', $detay['matrahlar']) && !empty($row->personel_id)) {
+            $detay['matrahlar']['hafta_tatili_gunu'] = (int) $model->getGunSayisiByKisaKod((int) $row->personel_id, $donem->baslangic_tarihi, $donem->bitis_tarihi, 'HT')
+                + $model->getOzelCalismaGunSayisi((int) $row->personel_id, $donem->baslangic_tarihi, $donem->bitis_tarihi, 'hafta_tatili_calismasi');
+            if ($detay['matrahlar']['hafta_tatili_gunu'] === 0) {
+                $bas = max(strtotime($donem->baslangic_tarihi), strtotime($row->ise_giris_tarihi ?? $donem->baslangic_tarihi));
+                $bit = strtotime($donem->bitis_tarihi);
+                if (!empty($row->isten_cikis_tarihi) && $row->isten_cikis_tarihi !== '0000-00-00') $bit = min($bit, strtotime($row->isten_cikis_tarihi));
+                for ($gun = $bas; $gun <= $bit; $gun = strtotime('+1 day', $gun)) {
+                    if (date('w', $gun) === '0') $detay['matrahlar']['hafta_tatili_gunu']++;
+                }
+            }
+        }
         $hesap = $model->hesaplaOrtakGosterimDegerleri($row, $donem, (float) ($detay['parametreler']['asgari_ucret_net'] ?? 0));
         $ozet = $model->getMuhasebeOdemeOzeti($hesap);
         $resmi = BordroYayinIcerikService::olustur($row, $donem, $hesap, $ozet);

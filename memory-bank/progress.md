@@ -1,5 +1,24 @@
 # Progress
 
+## 2026-11-02 — Zimmet Geçici Devir: PWA Onay Akışı
+- [x] Talep → onay/red/geri çekme akışı, PWA "Geçici Teslim" bölümü (koyu tema dahil), masaüstü Geçici Teslimler sekmesi.
+- [x] CLI ile 18 adımlı senaryo (yetkisiz, çift talep, red, zincir, asıl sahibe dönüş) ve Chrome ekran kontrolü; test verileri temizlendi.
+- [ ] Sunucuda iki SQL'in sırayla çalıştırılması ve deploy; PWA için `sw.js` önbellek revizyonu gerekirse artırılacak.
+- [ ] Bekleyen talep zaman aşımı, demirbaş türü, kalıcı devir.
+
+## 2026-11-02 — Zimmet Geçici Teslim (Araç)
+- [x] Genel `zimmet_devirleri` tablosu + `ZimmetDevirModel`, 4 API aksiyonu ve izin politikaları (`arac_takip_yonetim`).
+- [x] Zimmet listesinde Geçici Teslim / Geri Al / Teslim Hareketleri; zincirleme teslim, gerekçeli iptal, asıl iade ile otomatik kapanış.
+- [x] API doğrulamaları CLI ile, arayüz Chrome ile test edildi; test kayıtları temizlendi.
+- [ ] Sunucuda SQL çalıştırılması ve deploy.
+- [ ] Demirbaş zimmetine genişletme, kalıcı devir (asıl zimmetin devri).
+
+## 2026-11-02 — Puantaj Mutabakatı Sayfası Kullanılabilirlik
+- [x] Kaynak sekmeleri (varsayılan Endeks Okuma), dönem seçici, kaynak bazlı KPI kartları, Türkçe rozetler, Önceki/Güncel/Fark kolonları, detay satırı.
+- [x] Sunucu tarafı kolon filtreleri ve sıralama (`PuantajMutabakatModel::ajaxList`).
+- [x] Tarayıcıda doğrulandı (sekme geçişi, detay satırı, Uygula diyaloğu); lint temiz.
+- [ ] Karşılaştırma hataları: `null`/`""` sahte "Bilgi değişti", firma 2 okuma verisinin tamamı "Yeni kayıt", kontrol günleri arası tekrar eden açık farklar.
+
 ## 2026-10-31 — Mobil SPA KM Onayları Varsayılan Tarih Filtresi
 - [x] Bekleyen sekmesi `Tümü`, diğer sekmeler `Bugün` ile açılıyor; önceki günden kalan bekleyen kayıtlar gizlenmiyor.
 
@@ -2085,3 +2104,5 @@
 - [x] Bordro detayı ve Kontrol Excel'i: sözleşme tarafındaki fazla mesai `Nöbet Ödemeleri` grubuna alındı (masaüstü ve yönetici mobil aynı `get-detail-old` çıktısını kullanır).
 
 - [x] Puantaj fazla mesaisi resmî alacağa alındı, RTÇ yemek limitinden düşüldü (yemek tam lira/gün). Eski/yeni kod 86 personelde geçici DB kopyasında karşılaştırıldı.
+
+- [x] Ücret hesap pusulası PDF: ücretsiz izin günleri gösterildi.

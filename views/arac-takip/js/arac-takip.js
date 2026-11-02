@@ -1019,6 +1019,343 @@ const AracTakip = {
     });
   },
 
+  devirEsc: function (v) {
+    return $("<div>").text(v === null || v === undefined ? "" : String(v)).html().replace(/"/g, "&quot;");
+  },
+
+  devirTarihPicker: function (selector, saatli) {
+    const el = $(selector)[0];
+    if (!el || typeof flatpickr === "undefined") return;
+    if (el._flatpickr) el._flatpickr.destroy();
+    flatpickr(el, {
+      locale: "tr",
+      allowInput: true,
+      enableTime: !!saatli,
+      time_24hr: true,
+      dateFormat: saatli ? "d.m.Y H:i" : "d.m.Y",
+    });
+  },
+
+  devirSimdi: function () {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, "0");
+    return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  },
+
+  devirPost: function (data, btn, onSuccess) {
+    const originalText = btn ? btn.html() : "";
+    if (btn) btn.html('<i class="bx bx-loader-alt bx-spin me-1"></i> İşleniyor...').prop("disabled", true);
+
+    $.ajax({
+      url: this.apiUrl,
+      type: "POST",
+      data: data,
+      processData: !(data instanceof FormData),
+      contentType: data instanceof FormData ? false : "application/x-www-form-urlencoded; charset=UTF-8",
+      success: function (response) {
+        if (response.status === "success") {
+          Swal.fire({ icon: "success", title: "Başarılı", text: response.message, timer: 1800, showConfirmButton: false });
+          onSuccess && onSuccess(response);
+        } else {
+          Swal.fire("Hata", response.message || "İşlem tamamlanamadı.", "error");
+        }
+      },
+      error: function () {
+        Swal.fire("Hata", "Bir hata oluştu.", "error");
+      },
+      complete: function () {
+        if (btn) btn.html(originalText).prop("disabled", false);
+      },
+    });
+  },
+
+  geciciTeslimHazirla: function (d, zimmetSecimli) {
+    $("#geciciTeslimForm")[0].reset();
+    $("#gecici_teslim_zimmet_id").val(d.id || "");
+    $("#gecici-teslim-plaka").text(d.plaka ? `${d.plaka} plakalı araç` : "Teslim edilecek aracı seçin");
+    $("#gecici-teslim-asil").text(d.asil || "-");
+    $("#gecici-teslim-veren").text(d.kullanan || "-");
+    $("#gecici-zimmet-sec-wrap").toggleClass("d-none", !zimmetSecimli);
+    $("#gecici-teslim-bilgi").toggleClass("d-none", !!zimmetSecimli && !d.id);
+    $("#btnGeciciTeslimKaydet").prop("disabled", !!zimmetSecimli && !d.id);
+
+    const select = $("#gecici_teslim_alan_personel_id");
+    const haric = [String(d.kullananId || ""), String(d.asilId || "")];
+    select.find("option").each(function () {
+      $(this).prop("disabled", haric.includes(String($(this).val())));
+    });
+    select.val(null).trigger("change");
+  },
+
+  geciciTeslimTarihleriniKur: function () {
+    this.devirTarihPicker("#gecici_teslim_tarihi", true);
+    this.devirTarihPicker("#gecici_planlanan_iade", false);
+    $("#gecici_teslim_tarihi")[0]._flatpickr
+      ? $("#gecici_teslim_tarihi")[0]._flatpickr.setDate(this.devirSimdi(), true, "d.m.Y H:i")
+      : $("#gecici_teslim_tarihi").val(this.devirSimdi());
+  },
+
+  geciciTeslimAc: function (el) {
+    this.geciciTeslimHazirla($(el).data(), false);
+    this.geciciTeslimTarihleriniKur();
+    $("#geciciTeslimModal").modal("show");
+  },
+
+  geciciYeniAc: function () {
+    const self = this;
+    $.post(this.apiUrl, { action: "zimmet-listesi" }, function (response) {
+      if (response.status !== "success") {
+        Swal.fire("Hata", response.message || "Zimmet listesi alınamadı.", "error");
+        return;
+      }
+      self.geciciZimmetler = {};
+      const secenekler = (response.data || [])
+        .filter((z) => z.durum === "aktif")
+        .map((z) => {
+          self.geciciZimmetler[z.id] = z;
+          const kullanan = z.gecici_devir_alan_adi || z.personel_adi;
+          const bekleyen = z.bekleyen_talep_alan_adi ? " · onay bekliyor" : "";
+          return `<option value="${z.id}">${self.devirEsc(z.plaka)} — ${self.devirEsc(kullanan)}${bekleyen}</option>`;
+        });
+
+      self.geciciTeslimHazirla({}, true);
+      $("#gecici_zimmet_sec").html('<option value=""></option>' + secenekler.join("")).val(null).trigger("change");
+      self.geciciTeslimTarihleriniKur();
+      $("#geciciTeslimModal").modal("show");
+    }, "json").fail(function () {
+      Swal.fire("Hata", "Zimmet listesi alınamadı.", "error");
+    });
+  },
+
+  geciciZimmetSecildi: function (zimmetId) {
+    const z = (this.geciciZimmetler || {})[zimmetId];
+    if (!z) {
+      this.geciciTeslimHazirla({}, true);
+      return;
+    }
+    const alanSecimi = $("#gecici_zimmet_sec").val();
+    this.geciciTeslimHazirla({
+      id: z.id,
+      plaka: z.plaka,
+      asil: z.personel_adi,
+      kullanan: z.gecici_devir_alan_adi || z.personel_adi,
+      kullananId: z.kullanan_personel_id,
+      asilId: z.personel_id,
+    }, true);
+    $("#gecici_zimmet_sec").val(alanSecimi);
+    $("#gecici-teslim-bilgi").removeClass("d-none");
+  },
+
+  geciciTeslimKaydet: function () {
+    if (!$("#gecici_teslim_alan_personel_id").val()) {
+      Swal.fire("Uyarı", "Teslim alacak personeli seçiniz.", "warning");
+      return;
+    }
+    if (!$("#gecici_teslim_tarihi").val()) {
+      Swal.fire("Uyarı", "Teslim tarihini giriniz.", "warning");
+      return;
+    }
+    const formData = new FormData($("#geciciTeslimForm")[0]);
+    formData.append("action", "zimmet-gecici-devir");
+    this.devirPost(formData, $("#btnGeciciTeslimKaydet"), () => {
+      $("#geciciTeslimModal").modal("hide");
+      AracTakip.devirListeleriniYenile();
+    });
+  },
+
+  geciciIadeAc: function (el) {
+    const d = $(el).data();
+    $("#geciciTeslimIadeForm")[0].reset();
+    $("#gecici_iade_devir_id").val(d.devirId);
+    $("#gecici-iade-bilgi").text(`${d.plaka || ""} · ${d.kullanan || "-"} → ${d.asil || "-"}`);
+    $("#gecici_iade_km").attr("min", d.km || 0);
+
+    this.devirTarihPicker("#gecici_iade_tarihi", true);
+    $("#gecici_iade_tarihi")[0]._flatpickr
+      ? $("#gecici_iade_tarihi")[0]._flatpickr.setDate(this.devirSimdi(), true, "d.m.Y H:i")
+      : $("#gecici_iade_tarihi").val(this.devirSimdi());
+
+    $("#geciciTeslimIadeModal").modal("show");
+  },
+
+  geciciIadeKaydet: function () {
+    if (!$("#gecici_iade_tarihi").val()) {
+      Swal.fire("Uyarı", "Geri alma tarihini giriniz.", "warning");
+      return;
+    }
+    const formData = new FormData($("#geciciTeslimIadeForm")[0]);
+    formData.append("action", "zimmet-gecici-devir-iade");
+    this.devirPost(formData, $("#btnGeciciTeslimIadeKaydet"), () => {
+      $("#geciciTeslimIadeModal").modal("hide");
+      AracTakip.devirListeleriniYenile();
+    });
+  },
+
+  geciciTeslimIptal: function (devirId, zimmetId) {
+    Swal.fire({
+      title: "Geçici teslimi iptal et",
+      text: "Bekleyen talep ya da hatalı girilen kayıt iptal edilir. Kayıt silinmez, iptal olarak işaretlenir.",
+      input: "text",
+      inputPlaceholder: "İptal gerekçesi",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "İptal Et",
+      cancelButtonText: "Vazgeç",
+      confirmButtonColor: "#f46a6a",
+      inputValidator: (v) => (!v || !v.trim() ? "İptal gerekçesi zorunludur." : undefined),
+    }).then((r) => {
+      if (!r.isConfirmed) return;
+      this.devirPost({ action: "zimmet-gecici-devir-iptal", devir_id: devirId, iptal_notu: r.value }, null, () => {
+        AracTakip.devirListeleriniYenile();
+        if ($("#zimmetDevirGecmisiModal").hasClass("show")) AracTakip.zimmetDevirGecmisi(zimmetId);
+      });
+    });
+  },
+
+  zimmetDevirGecmisi: function (zimmetId) {
+    const self = this;
+    const tbody = $("#zimmetDevirGecmisiBody");
+    tbody.html('<tr><td colspan="11" class="text-center p-4 text-muted"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Yükleniyor...</td></tr>');
+    $("#devirGecmisiPlaka, #devirGecmisiAsil").text("");
+
+    const modalEl = document.getElementById("zimmetDevirGecmisiModal");
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+
+    $.post(this.apiUrl, { action: "zimmet-devir-gecmisi", zimmet_id: zimmetId }, function (response) {
+      if (response.status !== "success") {
+        tbody.html(`<tr><td colspan="11" class="text-center p-4 text-danger">${self.devirEsc(response.message || "Kayıtlar alınamadı.")}</td></tr>`);
+        return;
+      }
+      const d = response.data;
+      $("#devirGecmisiPlaka").text(d.plaka);
+      $("#devirGecmisiAsil").text(`Asıl zimmet sahibi: ${d.asil_personel_adi} · Zimmet tarihi: ${d.zimmet_tarihi}`);
+
+      if (!d.hareketler.length) {
+        tbody.html('<tr><td colspan="11" class="text-center p-4 text-muted">Bu zimmet için personeller arası teslim hareketi bulunmuyor.</td></tr>');
+        return;
+      }
+
+      const durumlar = self.devirDurumRozetleri;
+      const e = (v) => (v === null || v === undefined || v === "" ? "-" : self.devirEsc(v));
+
+      tbody.html(d.hareketler.map((h) => {
+        const notlar = [h.aciklama, h.iade_notu, h.red_nedeni].filter(Boolean).map((n) => self.devirEsc(n)).join("<br>") || "-";
+        const islem = h.durum === "aktif" || h.durum === "beklemede"
+          ? `<button type="button" class="btn btn-sm btn-soft-danger zimmet-gecici-iptal" data-devir-id="${h.id}" data-zimmet-id="${zimmetId}" title="Hatalı kaydı iptal et"><i class="bx bx-x"></i></button>`
+          : "";
+        return `<tr class="${h.durum === "iptal" ? "text-decoration-line-through text-muted" : ""}">
+            <td>${e(h.veren_personel_adi)}</td>
+            <td class="fw-semibold">${e(h.alan_personel_adi)}</td>
+            <td class="text-center">${e(h.teslim_tarihi)}</td>
+            <td class="text-center">${e(h.planlanan_iade_tarihi)}</td>
+            <td class="text-center">${e(h.iade_tarihi)}</td>
+            <td class="text-center">${e(h.teslim_km)}</td>
+            <td class="text-center">${e(h.iade_km)}</td>
+            <td class="small text-wrap" style="min-width:180px">${notlar}</td>
+            <td class="text-center small">${e(h.olusturan)}<br><span class="text-muted">${e(h.olusturma_tarihi)}</span></td>
+            <td class="text-center">${durumlar[h.durum] || e(h.durum)}</td>
+            <td class="text-center">${islem}</td>
+          </tr>`;
+      }).join(""));
+    }).fail(function () {
+      tbody.html('<tr><td colspan="11" class="text-center p-4 text-danger">Kayıtlar alınamadı.</td></tr>');
+    });
+  },
+
+  devirDurumRozetleri: {
+    beklemede: '<span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Onay Bekliyor</span>',
+    aktif: '<span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Teslimde</span>',
+    iade_edildi: '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Geri Alındı</span>',
+    tamamlandi: '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Asıl Sahibe Döndü</span>',
+    reddedildi: '<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Reddedildi</span>',
+    iptal: '<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">İptal</span>',
+  },
+
+  geciciDurumFiltre: "",
+  geciciVeri: [],
+
+  devirListeleriniYenile: function () {
+    if ($("#zimmetContent").hasClass("active")) this.zimmetListesiYukle();
+    if ($("#geciciContent").hasClass("active")) this.geciciListesiYukle();
+  },
+
+  geciciListesiYukle: function () {
+    const self = this;
+    const tbody = $("#geciciTableBody");
+    if ($.fn.DataTable.isDataTable("#geciciTable")) {
+      $("#geciciTable").DataTable().clear().destroy();
+    }
+    self.showLoading(tbody);
+
+    $.post(this.apiUrl, { action: "zimmet-gecici-teslim-listesi" }, function (response) {
+      if (response.status !== "success") {
+        tbody.html(`<tr><td colspan="11" class="text-center text-danger py-4">${self.devirEsc(response.message || "Kayıtlar alınamadı.")}</td></tr>`);
+        return;
+      }
+      self.geciciVeri = response.data || [];
+      const ozet = response.ozet || {};
+      $("#geciciDurumFiltre [data-ozet]").each(function () {
+        $(this).text(ozet[$(this).data("ozet")] || 0);
+      });
+      const bekleyen = parseInt(ozet.beklemede || 0, 10);
+      $("#geciciBekleyenSayi").text(bekleyen).toggleClass("d-none", bekleyen === 0);
+      self.geciciTabloCiz();
+    }).fail(function () {
+      tbody.html('<tr><td colspan="11" class="text-center text-danger py-4">Kayıtlar alınamadı.</td></tr>');
+    });
+  },
+
+  geciciTabloCiz: function () {
+    const self = this;
+    const e = (v) => (v === null || v === undefined || v === "" ? "-" : self.devirEsc(v));
+    const gruplar = { kapanan: ["iade_edildi", "tamamlandi"], iptal_red: ["reddedildi", "iptal"] };
+    const f = self.geciciDurumFiltre;
+    const satirlar = self.geciciVeri.filter((h) => !f || (gruplar[f] ? gruplar[f].includes(h.durum) : h.durum === f));
+
+    if ($.fn.DataTable.isDataTable("#geciciTable")) {
+      $("#geciciTable").DataTable().clear().destroy();
+    }
+
+    const html = satirlar.map((h, i) => {
+      const tarih = h.durum === "beklemede" || h.durum === "reddedildi"
+        ? `<span class="text-muted small">Talep:</span> ${e(h.talep_tarihi)}`
+        : e(h.teslim_tarihi);
+      const km = [h.teslim_km, h.iade_km].some((v) => v !== null && v !== "")
+        ? `${e(h.teslim_km)} → ${e(h.iade_km)}` : "-";
+      const not = [h.aciklama, h.iade_notu, h.red_nedeni].filter(Boolean).map((n) => self.devirEsc(n)).join(" | ");
+      const menu = [];
+      if (h.durum === "aktif") {
+        menu.push(`<li><a class="dropdown-item text-warning zimmet-gecici-geri-al" href="javascript:void(0);" data-devir-id="${h.id}" data-plaka="${self.devirEsc(h.plaka)}" data-kullanan="${self.devirEsc(h.alan_personel_adi)}" data-asil="${self.devirEsc(h.asil_personel_adi)}" data-km="${h.teslim_km || ""}"><i class="bx bx-undo me-2"></i> Asıl Sahibe Geri Al</a></li>`);
+      }
+      if (h.durum === "aktif" || h.durum === "beklemede") {
+        menu.push(`<li><a class="dropdown-item text-danger zimmet-gecici-iptal" href="javascript:void(0);" data-devir-id="${h.id}" data-zimmet-id="${h.zimmet_id}"><i class="bx bx-x-circle me-2"></i> ${h.durum === "beklemede" ? "Talebi İptal Et" : "Kaydı İptal Et"}</a></li>`);
+      }
+      menu.push(`<li><a class="dropdown-item text-secondary zimmet-devir-gecmisi" href="javascript:void(0);" data-id="${h.zimmet_id}"><i class="bx bx-list-ul me-2"></i> Teslim Hareketleri</a></li>`);
+
+      return `<tr title="${not}">
+          <td class="text-center">${i + 1}</td>
+          <td><strong>${e(h.plaka)}</strong><br><small class="text-muted">${e(h.marka_model)}</small></td>
+          <td>${e(h.asil_personel_adi)}</td>
+          <td>${e(h.veren_personel_adi)}</td>
+          <td class="fw-semibold">${e(h.alan_personel_adi)}</td>
+          <td>${tarih}${h.planlanan_iade_tarihi ? `<br><small class="text-muted">Planlanan: ${e(h.planlanan_iade_tarihi)}</small>` : ""}</td>
+          <td>${e(h.iade_tarihi)}</td>
+          <td class="text-center small">${km}</td>
+          <td class="text-center">${h.kaynak === "pwa" ? '<span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-1 font-size-11">Personel</span>' : '<span class="badge bg-light text-muted border rounded-pill px-2 py-1 font-size-11">Yönetim</span>'}</td>
+          <td class="text-center">${self.devirDurumRozetleri[h.durum] || e(h.durum)}</td>
+          <td class="text-center">
+            <div class="dropdown">
+              <button class="btn btn-soft-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="bx bx-dots-vertical-rounded"></i></button>
+              <ul class="dropdown-menu dropdown-menu-end">${menu.join("")}</ul>
+            </div>
+          </td>
+        </tr>`;
+    }).join("");
+
+    $("#geciciTableBody").html(html);
+    self.initDataTable("#geciciTable");
+  },
+
   zimmetListesiYukle: function () {
     const self = this;
     if ($.fn.DataTable.isDataTable("#zimmetTable")) {
@@ -1040,7 +1377,7 @@ const AracTakip = {
             html += `<tr data-created-by="${z.olusturan_kullanici_adi || ''}" data-created-at="${self.formatDateTime(z.olusturma_tarihi) || ''}">
                             <td class="text-center">${index + 1}</td>
                             <td><strong>${z.plaka}</strong><br><small class="text-muted">${z.marka || ""} ${z.model || ""}</small></td>
-                            <td>${z.personel_adi}</td>
+                            <td>${z.personel_adi}${z.gecici_devir_id ? `<br><span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill font-size-11 mt-1" title="Geçici teslim: ${self.devirEsc(z.gecici_devir_teslim_tarihi)}${z.gecici_devir_planlanan_iade ? ' · Planlanan geri alma: ' + self.devirEsc(z.gecici_devir_planlanan_iade) : ''}"><i class="bx bx-transfer-alt me-1"></i>Şu an: ${self.devirEsc(z.gecici_devir_alan_adi)}</span>` : ''}${z.bekleyen_talep_alan_adi ? `<br><span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill font-size-11 mt-1"><i class="bx bx-time-five me-1"></i>Onay bekliyor: ${self.devirEsc(z.bekleyen_talep_alan_adi)}</span>` : ''}</td>
                             <td>${self.formatDate(z.zimmet_tarihi)}</td>
                             <td>${z.iade_tarihi ? self.formatDate(z.iade_tarihi) : "-"}</td>
                             <td class="text-center">${durumBadge}</td>
@@ -1062,6 +1399,25 @@ const AracTakip = {
                                                 </a>
                                             </li>
                                         ` : ''}
+                                        ${z.durum === "aktif" ? `
+                                            <li>
+                                                <a class="dropdown-item text-info zimmet-gecici-teslim" href="javascript:void(0);" data-id="${z.id}" data-plaka="${self.devirEsc(z.plaka)}" data-asil="${self.devirEsc(z.personel_adi)}" data-kullanan="${self.devirEsc(z.gecici_devir_alan_adi || z.personel_adi)}" data-kullanan-id="${z.kullanan_personel_id || ''}" data-asil-id="${z.personel_id || ''}">
+                                                    <i class="bx bx-transfer-alt me-2"></i> ${z.gecici_devir_id ? 'Başka Personele Geçici Teslim' : 'Geçici Teslim Et'}
+                                                </a>
+                                            </li>
+                                        ` : ''}
+                                        ${z.gecici_devir_id ? `
+                                            <li>
+                                                <a class="dropdown-item text-warning zimmet-gecici-geri-al" href="javascript:void(0);" data-devir-id="${z.gecici_devir_id}" data-plaka="${self.devirEsc(z.plaka)}" data-kullanan="${self.devirEsc(z.gecici_devir_alan_adi)}" data-asil="${self.devirEsc(z.personel_adi)}" data-km="${z.gecici_devir_teslim_km || ''}">
+                                                    <i class="bx bx-undo me-2"></i> Geçici Teslimi Geri Al
+                                                </a>
+                                            </li>
+                                        ` : ''}
+                                        <li>
+                                            <a class="dropdown-item text-secondary zimmet-devir-gecmisi" href="javascript:void(0);" data-id="${z.id}">
+                                                <i class="bx bx-list-ul me-2"></i> Teslim Hareketleri
+                                            </a>
+                                        </li>
                                         <li>
                                             <a class="dropdown-item text-primary zimmet-form-yazdir" href="javascript:void(0);" data-id="${z.id}">
                                                 <i class="bx bx-printer me-2"></i> Zimmet Formu Yazdır
@@ -1635,7 +1991,7 @@ const AracTakip = {
     const contextMenu = $("#arac-context-menu");
     if (!contextMenu.length) return;
 
-    $(document).on("contextmenu", "#aracTable tbody tr, #zimmetTable tbody tr, #servisTable tbody tr", function (e) {
+    $(document).on("contextmenu", "#aracTable tbody tr, #zimmetTable tbody tr, #geciciTable tbody tr, #servisTable tbody tr", function (e) {
       // Input veya textarea üzerinde sağ tıklandığında engelleme
       if ($(e.target).is("input, textarea, select")) return;
 
@@ -3470,6 +3826,9 @@ $(document).ready(function () {
         AracTakip.resetServisModal();
         modalId = "#servisModal";
         break;
+      case "gecici-tab":
+        AracTakip.geciciYeniAc();
+        return;
     }
 
     if (modalId) {
@@ -3587,6 +3946,39 @@ $(document).ready(function () {
   $(document).on("click", "#btnZimmetIadeKaydet", (e) => {
     e.preventDefault();
     AracTakip.zimmetIadeKaydet();
+  });
+  $(document).on("change", "#gecici_zimmet_sec", function () {
+    AracTakip.geciciZimmetSecildi($(this).val());
+  });
+  $(document).on("click", ".zimmet-gecici-teslim", function (e) {
+    e.preventDefault();
+    AracTakip.geciciTeslimAc(this);
+  });
+  $(document).on("click", "#btnGeciciTeslimKaydet", (e) => {
+    e.preventDefault();
+    AracTakip.geciciTeslimKaydet();
+  });
+  $(document).on("click", ".zimmet-gecici-geri-al", function (e) {
+    e.preventDefault();
+    AracTakip.geciciIadeAc(this);
+  });
+  $(document).on("click", "#btnGeciciTeslimIadeKaydet", (e) => {
+    e.preventDefault();
+    AracTakip.geciciIadeKaydet();
+  });
+  $(document).on("click", ".zimmet-devir-gecmisi", function (e) {
+    e.preventDefault();
+    AracTakip.zimmetDevirGecmisi($(this).data("id"));
+  });
+  $(document).on("click", "#geciciDurumFiltre [data-durum]", function () {
+    $("#geciciDurumFiltre [data-durum]").removeClass("active");
+    $(this).addClass("active");
+    AracTakip.geciciDurumFiltre = $(this).data("durum") || "";
+    AracTakip.geciciTabloCiz();
+  });
+  $(document).on("click", ".zimmet-gecici-iptal", function (e) {
+    e.preventDefault();
+    AracTakip.geciciTeslimIptal($(this).data("devir-id"), $(this).data("zimmet-id"));
   });
   $(document).on("click", ".zimmet-foto-goster", function (e) {
     e.preventDefault();
@@ -4034,6 +4426,7 @@ $(document).ready(function () {
     window.history.replaceState({}, "", url);
 
     if (target === "#zimmetContent") AracTakip.zimmetListesiYukle();
+    else if (target === "#geciciContent") AracTakip.geciciListesiYukle();
     else if (target === "#yakitContent") loadTabList("yakit");
     else if (target === "#kmContent") loadTabList("km");
     else if (target === "#servisContent") loadTabList("servis");
@@ -4068,6 +4461,7 @@ $(document).ready(function () {
   if (activeTabBtn.length > 0) {
     const activeTarget = activeTabBtn.attr("data-bs-target");
     if (activeTarget === "#zimmetContent") AracTakip.zimmetListesiYukle();
+    else if (activeTarget === "#geciciContent") AracTakip.geciciListesiYukle();
     else if (activeTarget === "#yakitContent") loadTabList("yakit");
     else if (activeTarget === "#kmContent") loadTabList("km");
     else if (activeTarget === "#servisContent") loadTabList("servis");
