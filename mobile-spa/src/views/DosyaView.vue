@@ -44,7 +44,7 @@ const bolumler = ref(['dosyalarim'])
 const baglam = ref({ seviye: 0, alan: 'kisisel', klasor_acabilir: false })
 const erisimSheet = ref(null)
 const erisimKullanicilari = ref([])
-const BOLUM_ADLARI = { dosyalarim: 'Dosyalarım', paylasilan: 'Paylaşılan', ortak: 'Ortak Alan', diger: 'Diğerleri' }
+const BOLUM_ADLARI = { dosyalarim: 'Dosyalarım', paylasilan: 'Paylaşılan', ortak: 'Ortak Alan', diger: 'Tüm Kullanıcılar' }
 const fileInput = ref(null)
 const yukleniyor = ref(false)
 

@@ -99,7 +99,7 @@ $(function () {
         dosyalarim: ['bx-user', 'text-primary', 'Dosyalarım'],
         paylasilan: ['bx-share-alt', 'text-info', 'Benimle Paylaşılanlar'],
         ortak: ['bx-buildings', 'text-success', 'Ortak Alan'],
-        diger: ['bx-group', 'text-secondary', 'Diğer Kullanıcılar']
+        diger: ['bx-group', 'text-secondary', 'Tüm Kullanıcılar']
     };
 
     const siraKaydet = (kap, secici) => {
