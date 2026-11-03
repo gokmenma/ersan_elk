@@ -1,5 +1,10 @@
 # Active Context
 
+## Dosya Yönetimi — Word/Excel Tarayıcıda Önizleme (2026-11-03)
+- docx → `docx-preview`, xlsx/xls/csv → SheetJS (0.20.3), txt → düz metin; sunucuda dönüşüm yok, 10 MB üstü ve eski `.doc` indirilir. Sunucu `onizleme` türünü (`pdf|goruntu|docx|tablo|metin`) `DosyaYonetimiService::onizlemeTuru` ile verir; `onizleme=1` parametresi erişim logunda "goruntule" yazar.
+- Masaüstü kütüphaneleri `assets/libs/dosya-onizleme/` (lazy yüklenir); mobilde `docx-preview` ve `xlsx` npm bağımlılığı, dinamik import (ayrı chunk).
+- Güvenlik: tablo hücreleri `textContent` ile yazılır, docx çıktısında script/iframe/olay nitelikleri ve tehlikeli bağlantılar temizlenir.
+
 ## Dosya Yönetimi — Süper Admin İstisnası Kaldırıldı (2026-11-03)
 - Hiç kimse (süper admin dahil) kendisine ait veya kendisiyle paylaşılmayan dosya/klasörü göremez. "Tüm Kullanıcılar" bölümü ve süper admin atlamaları (`seviyeHaritasi`, `kapsamKosulu`, `dosyaSeviyesi`, `dosyaTasi`) kaldırıldı.
 - Ortak Alan kuralı aynı: rol kısıtı varsa kullanıcının rolü eşleşmeli (süper admin dahil); kısıt yoksa herkes görür. Süper admin yalnız `dosya_yonetimi_ortak_alan` yetkisi için hâlâ muaf.

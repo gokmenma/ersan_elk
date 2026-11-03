@@ -113,6 +113,16 @@ $gunOptions = ['1' => '1 gün', '3' => '3 gün', '7' => '7 gün', '14' => '14 g�
 .dosya-segment .dosya-gorunum.active { background: var(--bs-primary); color: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, .18); }
 @media (max-width: 575px) { .dosya-segment .dosya-gorunum span { display: none; } }
 #dosyaTable tbody tr { cursor: pointer; }
+.onizleme-docx { padding: 16px; background: var(--bs-tertiary-bg); overflow: auto; max-height: 78vh; }
+.onizleme-docx .docx-wrapper { background: transparent !important; padding: 0 !important; }
+.onizleme-docx .docx-wrapper > section.docx { box-shadow: 0 2px 12px rgba(0, 0, 0, .15); margin-bottom: 16px !important; }
+.onizleme-sekmeler { display: flex; gap: 4px; flex-wrap: wrap; padding: 10px 12px; border-bottom: 1px solid var(--bs-border-color); background: var(--bs-tertiary-bg); }
+.onizleme-sekmeler button { padding: 4px 12px; border: 0; border-radius: 8px; background: transparent; font-size: 12px; font-weight: 600; color: var(--bs-secondary-color); }
+.onizleme-sekmeler button.active { background: var(--bs-primary); color: #fff; }
+.onizleme-tablo { overflow: auto; max-height: 70vh; }
+.onizleme-tablo table { font-size: 12px; white-space: nowrap; }
+.onizleme-tablo tr:first-child th { position: sticky; top: 0; background: var(--bs-tertiary-bg); }
+.onizleme-metin { margin: 0; padding: 16px; max-height: 78vh; overflow: auto; white-space: pre-wrap; word-break: break-word; font-size: 13px; }
 </style>
 
 <?php include 'layouts/breadcrumb.php'; ?>
@@ -379,8 +389,9 @@ $gunOptions = ['1' => '1 gün', '3' => '3 gün', '7' => '7 gün', '14' => '14 g�
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header premium-modal-header">
-                <h5 class="modal-title fw-bold" id="onizlemeBaslik">Önizleme</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                <h5 class="modal-title fw-bold text-truncate" id="onizlemeBaslik">Önizleme</h5>
+                <button type="button" class="btn btn-sm btn-subtle-primary ms-auto me-2" id="btnOnizlemeIndir"><i class="bx bx-download"></i> İndir</button>
+                <button type="button" class="btn-close ms-0" data-bs-dismiss="modal" aria-label="Kapat"></button>
             </div>
             <div class="modal-body p-0" id="onizlemeIcerik" style="min-height: 70vh;"></div>
         </div>

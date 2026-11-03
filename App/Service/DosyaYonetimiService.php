@@ -196,6 +196,19 @@ class DosyaYonetimiService
         ];
     }
 
+    public static function onizlemeTuru(string $uzanti, int $boyut): ?string
+    {
+        $harita = [
+            'pdf' => 'pdf', 'jpg' => 'goruntu', 'jpeg' => 'goruntu', 'png' => 'goruntu',
+            'docx' => 'docx', 'xlsx' => 'tablo', 'xls' => 'tablo', 'csv' => 'tablo', 'txt' => 'metin',
+        ];
+        $tur = $harita[$uzanti] ?? null;
+        if ($tur !== null && !in_array($tur, ['pdf', 'goruntu'], true) && $boyut > 10485760) {
+            return null;
+        }
+        return $tur;
+    }
+
     public function dosyaSatiri(object $d): array
     {
         return [
@@ -212,6 +225,7 @@ class DosyaYonetimiService
             'tarih' => $d->created_at,
             'seviye' => $this->dosyaSeviyesi($d),
             'onizlenebilir' => in_array($d->uzanti, ['pdf', 'jpg', 'jpeg', 'png'], true),
+            'onizleme' => self::onizlemeTuru((string) $d->uzanti, (int) $d->boyut),
         ];
     }
 
@@ -652,10 +666,10 @@ class DosyaYonetimiService
         $this->log("Erişim kaldırıldı: {$erisim->nesne_tur} #{$erisim->nesne_id} → kullanıcı #{$erisim->user_id}", SystemLogModel::LEVEL_IMPORTANT);
     }
 
-    public function akit($sifreliId, bool $satirIci): never
+    public function akit($sifreliId, bool $satirIci, bool $onizleme = false): never
     {
         $dosya = $this->dosyaGerekli($sifreliId);
-        $this->dosyalar->erisimLogla($this->firmaId, (int) $dosya->id, null, $satirIci ? 'goruntule' : 'indir', $this->kullaniciId);
+        $this->dosyalar->erisimLogla($this->firmaId, (int) $dosya->id, null, ($satirIci || $onizleme) ? 'goruntule' : 'indir', $this->kullaniciId);
         self::dosyaGonder($dosya, $satirIci);
     }
 

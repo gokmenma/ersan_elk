@@ -12,7 +12,7 @@ if (!Gate::allows('dosya_yonetimi_goruntule') && !Gate::isSuperAdmin()) {
 
 try {
     $servis = new DosyaYonetimiService();
-    $servis->akit($_GET['id'] ?? '', isset($_GET['inline']) && $_GET['inline'] === '1');
+    $servis->akit($_GET['id'] ?? '', isset($_GET['inline']) && $_GET['inline'] === '1', isset($_GET['onizleme']) && $_GET['onizleme'] === '1');
 } catch (DomainException $e) {
     http_response_code(404);
     exit('Dosya bulunamadı.');

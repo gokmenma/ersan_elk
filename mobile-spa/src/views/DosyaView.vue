@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   ArrowLeft,
@@ -137,8 +137,97 @@ const aramaDegisti = () => {
   aramaZamani = setTimeout(yukle, 350)
 }
 
+const onizleme = ref(null)
+const onizlemeAlan = ref(null)
+
+function metneCevir(buf) {
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(buf) } catch { return new TextDecoder('windows-1254').decode(buf) }
+}
+
+function temizle(kap) {
+  kap.querySelectorAll('script, iframe, object, embed, link, meta, base, form').forEach((n) => n.remove())
+  kap.querySelectorAll('*').forEach((n) => {
+    Array.from(n.attributes).forEach((a) => { if (/^on/i.test(a.name)) n.removeAttribute(a.name) })
+  })
+  kap.querySelectorAll('a[href]').forEach((a) => {
+    if (!/^(https?:|mailto:|#)/i.test(a.getAttribute('href') || '')) a.removeAttribute('href')
+    else { a.setAttribute('target', '_blank'); a.setAttribute('rel', 'noopener noreferrer') }
+  })
+}
+
+function tabloCiz(kap, kitap, XLSX) {
+  const sekmeler = document.createElement('div')
+  sekmeler.className = 'onizleme-sekmeler'
+  const alan = document.createElement('div')
+  alan.className = 'onizleme-tablo'
+  const goster = (ad) => {
+    const satirlar = XLSX.utils.sheet_to_json(kitap.Sheets[ad], { header: 1, raw: false, defval: '' }).slice(0, 1000)
+    const tablo = document.createElement('table')
+    const govde = document.createElement('tbody')
+    satirlar.forEach((satir, i) => {
+      const tr = document.createElement('tr')
+      satir.slice(0, 40).forEach((h) => {
+        const td = document.createElement(i === 0 ? 'th' : 'td')
+        td.textContent = h == null ? '' : String(h)
+        tr.appendChild(td)
+      })
+      govde.appendChild(tr)
+    })
+    tablo.appendChild(govde)
+    alan.replaceChildren(tablo)
+    sekmeler.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.sayfa === ad))
+  }
+  kitap.SheetNames.forEach((ad) => {
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.dataset.sayfa = ad
+    b.textContent = ad
+    b.addEventListener('click', () => goster(ad))
+    sekmeler.appendChild(b)
+  })
+  kap.replaceChildren(sekmeler, alan)
+  if (kitap.SheetNames.length) goster(kitap.SheetNames[0])
+  else alan.textContent = 'Bu dosyada görüntülenecek sayfa yok.'
+}
+
+async function onizlemeAc(d) {
+  onizleme.value = { dosya: d, durum: 'yukleniyor', mesaj: '' }
+  await nextTick()
+  const kap = onizlemeAlan.value
+  try {
+    const yanit = await fetch(dosyaApi.indirUrl(d.id, false, true), { credentials: 'same-origin' })
+    if (!yanit.ok) throw new Error('Dosya okunamadı.')
+    const buf = await yanit.arrayBuffer()
+    if (!onizleme.value || onizleme.value.dosya !== d) return
+    if (d.onizleme === 'docx') {
+      const { renderAsync } = await import('docx-preview')
+      const sayfa = document.createElement('div')
+      sayfa.className = 'onizleme-docx'
+      kap.replaceChildren(sayfa)
+      await renderAsync(buf, sayfa, null, { className: 'docx', inWrapper: true, breakPages: true, ignoreLastRenderedPageBreak: true })
+      temizle(sayfa)
+    } else if (d.onizleme === 'tablo') {
+      const XLSX = await import('xlsx')
+      const csv = /\.csv$/i.test(d.ad)
+      const kitap = csv ? XLSX.read(metneCevir(buf), { type: 'string', sheetRows: 1001 }) : XLSX.read(buf, { type: 'array', cellDates: true, sheetRows: 1001 })
+      const sayfa = document.createElement('div')
+      kap.replaceChildren(sayfa)
+      tabloCiz(sayfa, kitap, XLSX)
+    } else {
+      const pre = document.createElement('pre')
+      pre.className = 'onizleme-metin'
+      pre.textContent = metneCevir(buf)
+      kap.replaceChildren(pre)
+    }
+    onizleme.value.durum = 'hazir'
+  } catch (e) {
+    if (onizleme.value) onizleme.value = { dosya: d, durum: 'hata', mesaj: e.message || 'Önizleme açılamadı.' }
+  }
+}
+
 function dosyaAc(d) {
-  if (d.onizlenebilir) window.open(dosyaApi.indirUrl(d.id, true), '_blank', 'noopener')
+  if (d.onizleme === 'pdf' || d.onizleme === 'goruntu') window.open(dosyaApi.indirUrl(d.id, true), '_blank', 'noopener')
+  else if (d.onizleme) onizlemeAc(d)
   else window.location.href = dosyaApi.indirUrl(d.id)
 }
 
@@ -372,10 +461,22 @@ onMounted(() => { yukle(); ozetYukle() })
     </template>
 
     <button v-if="yukleyebilir" type="button" class="dosya-fab" aria-label="Dosya yükle" :disabled="yukleniyor" @click="fileInput.click()">
-      <Upload v-if="!yukleniyor" :size="22" /><span v-else class="dosya-fab-yukleniyor" />
-      <span>{{ yukleniyor ? 'Yükleniyor' : 'Yükle' }}</span>
+      <Upload v-if="!yukleniyor" :size="24" /><span v-else class="dosya-fab-yukleniyor" />
     </button>
     <input ref="fileInput" type="file" class="dosya-input" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png" @change="dosyaSecildi">
+
+    <div v-if="onizleme" class="dosya-onizleme" role="dialog" aria-modal="true">
+      <header class="dosya-onizleme-ust">
+        <button type="button" class="clay-circle-btn" aria-label="Önizlemeyi kapat" @click="onizleme = null"><X :size="20" /></button>
+        <strong>{{ onizleme.dosya.ad }}</strong>
+        <a class="clay-circle-btn" :href="dosyaApi.indirUrl(onizleme.dosya.id)" aria-label="İndir"><Download :size="20" /></a>
+      </header>
+      <div class="dosya-onizleme-govde">
+        <p v-if="onizleme.durum === 'yukleniyor'" class="dosya-onizleme-bilgi">Önizleme hazırlanıyor...</p>
+        <p v-else-if="onizleme.durum === 'hata'" class="dosya-onizleme-bilgi">{{ onizleme.mesaj }} Dosyayı indirerek açabilirsiniz.</p>
+        <div ref="onizlemeAlan" class="dosya-onizleme-alan" />
+      </div>
+    </div>
 
     <p v-if="bildirim" class="dosya-toast" role="status">{{ bildirim }}</p>
 
@@ -388,7 +489,7 @@ onMounted(() => { yukle(); ozetYukle() })
           </span>
           <div><h3>{{ sheet.tur === 'dosya' ? gorunenAd(sheet.nesne) : sheet.nesne.ad }}</h3><small>{{ sheet.tur === 'klasor' ? `${sheet.nesne.dosya_sayisi} dosya` : `${boyutYaz(sheet.nesne.boyut)} · ${tarihYaz(sheet.nesne.tarih)}` }}</small></div>
         </div>
-        <button v-if="sheet.tur === 'dosya' && sheet.nesne.onizlenebilir" type="button" @click="dosyaAc(sheet.nesne); sheet = null"><Eye :size="18" /> Önizle</button>
+        <button v-if="sheet.tur === 'dosya' && sheet.nesne.onizleme" type="button" @click="dosyaAc(sheet.nesne); sheet = null"><Eye :size="18" /> Önizle</button>
         <a v-if="sheet.tur === 'dosya'" :href="dosyaApi.indirUrl(sheet.nesne.id)" @click="sheet = null"><Download :size="18" /> İndir</a>
         <button v-if="sheet.tur === 'dosya' && perms.files_share && sheet.nesne.seviye >= 2" type="button" @click="paylasAc"><Share2 :size="18" /> Bağlantı ile paylaş</button>
         <button v-if="perms.files_share && sheet.nesne.seviye >= 2" type="button" @click="erisimAc"><UserPlus :size="18" /> Kullanıcılarla paylaş</button>
@@ -537,7 +638,7 @@ onMounted(() => { yukle(); ozetYukle() })
 .dosya-bos-ikon { width: 72px; height: 72px; display: grid; place-items: center; border-radius: 24px; background: var(--ds-surface); box-shadow: var(--ds-shadow-tile); color: var(--ds-primary); }
 .dosya-hata { text-align: center; padding: 40px 16px; color: #dc2626; }
 
-.dosya-fab { position: fixed; right: 18px; bottom: calc(104px + var(--ds-safe-bottom)); z-index: 20; display: inline-flex; align-items: center; gap: 8px; min-height: 52px; padding: 0 20px; border: 0; border-radius: 999px; background: var(--ds-primary); color: #fff; font: 700 14px var(--ds-font-main); box-shadow: 0 10px 24px rgba(25, 29, 36, .3); }
+.dosya-fab { position: fixed; right: 18px; bottom: calc(104px + var(--ds-safe-bottom)); z-index: 20; display: grid; place-items: center; width: 56px; height: 56px; padding: 0; border: 0; border-radius: 50%; background: var(--ds-primary); color: #fff; font: 700 14px var(--ds-font-main); box-shadow: 0 10px 24px rgba(25, 29, 36, .3); }
 .dosya-fab:active { transform: scale(.96); }
 .dosya-fab:disabled { opacity: .7; }
 .dosya-fab-yukleniyor { width: 18px; height: 18px; border: 2px solid rgba(255, 255, 255, .4); border-top-color: #fff; border-radius: 50%; animation: dosya-don .8s linear infinite; }
@@ -560,4 +661,20 @@ onMounted(() => { yukle(); ozetYukle() })
 .dosya-paylasim span { display: grid; font-size: 13px; color: var(--ds-ink); }
 .dosya-paylasim small { color: var(--ds-muted); font-size: 12px; }
 .dosya-paylasim button { min-height: 44px; flex-shrink: 0; }
+.dosya-onizleme { position: fixed; inset: 0; z-index: 80; display: flex; flex-direction: column; background: var(--ds-canvas); }
+.dosya-onizleme-ust { display: flex; align-items: center; gap: 10px; padding: calc(10px + var(--ds-safe-top)) 14px 10px; background: var(--ds-surface); border-bottom: 1px solid var(--ds-line); }
+.dosya-onizleme-ust strong { flex: 1; min-width: 0; font-size: 15px; color: var(--ds-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dosya-onizleme-govde { flex: 1; min-height: 0; overflow: auto; padding-bottom: var(--ds-safe-bottom); -webkit-overflow-scrolling: touch; }
+.dosya-onizleme-bilgi { margin: 0; padding: 40px 20px; text-align: center; color: var(--ds-muted); }
+.dosya-onizleme-alan :deep(.onizleme-docx) { padding: 8px; overflow: auto; }
+.dosya-onizleme-alan :deep(.docx-wrapper) { background: transparent !important; padding: 0 !important; }
+.dosya-onizleme-alan :deep(.docx-wrapper > section.docx) { box-shadow: 0 2px 10px rgba(0, 0, 0, .15); margin-bottom: 12px !important; }
+.dosya-onizleme-alan :deep(.onizleme-sekmeler) { display: flex; gap: 6px; padding: 10px 12px; overflow-x: auto; background: var(--ds-surface); border-bottom: 1px solid var(--ds-line); position: sticky; top: 0; z-index: 2; }
+.dosya-onizleme-alan :deep(.onizleme-sekmeler button) { flex: 0 0 auto; min-height: 40px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--ds-surface-subtle); font: 600 13px var(--ds-font-main); color: var(--ds-muted); }
+.dosya-onizleme-alan :deep(.onizleme-sekmeler button.active) { background: var(--ds-primary); color: #fff; }
+.dosya-onizleme-alan :deep(.onizleme-tablo) { overflow: auto; }
+.dosya-onizleme-alan :deep(table) { border-collapse: collapse; font-size: 13px; background: var(--ds-surface); }
+.dosya-onizleme-alan :deep(td), .dosya-onizleme-alan :deep(th) { padding: 6px 10px; border: 1px solid var(--ds-line); white-space: nowrap; color: var(--ds-ink); }
+.dosya-onizleme-alan :deep(tr:first-child th) { background: var(--ds-surface-subtle); position: sticky; top: 0; }
+.dosya-onizleme-alan :deep(.onizleme-metin) { margin: 0; padding: 14px; white-space: pre-wrap; word-break: break-word; font-size: 13px; color: var(--ds-ink); }
 </style>

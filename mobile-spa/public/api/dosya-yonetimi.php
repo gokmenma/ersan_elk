@@ -90,7 +90,7 @@ try {
             $veri = $servis->klasorIcerik($girdi['klasor_id'] ?? null, (string) ($girdi['arama'] ?? ''), $girdi['bolum'] ?? null);
             break;
         case 'indir':
-            $servis->akit($girdi['id'] ?? null, ($girdi['inline'] ?? '') === '1');
+            $servis->akit($girdi['id'] ?? null, ($girdi['inline'] ?? '') === '1', ($girdi['onizleme'] ?? '') === '1');
         case 'yukle':
             $dosyalar = $_FILES['dosyalar'] ?? null;
             if (!$dosyalar || !is_array($dosyalar['name'] ?? null)) {

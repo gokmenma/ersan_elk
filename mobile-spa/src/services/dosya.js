@@ -33,7 +33,7 @@ export const dosyaApi = {
   agac: () => request('agac'),
   ozet: () => request('ozet'),
   icerik: (klasorId, arama = '', bolum = 'dosyalarim') => request('icerik', { params: { klasor_id: klasorId || 'kok', arama, bolum } }),
-  indirUrl: (id, inline = false) => `${BASE}?action=indir&id=${encodeURIComponent(id)}${inline ? '&inline=1' : ''}`,
+  indirUrl: (id, inline = false, onizleme = false) => `${BASE}?action=indir&id=${encodeURIComponent(id)}${inline ? '&inline=1' : ''}${onizleme ? '&onizleme=1' : ''}`,
   yukle: (klasorId, files) => {
     const fd = new FormData()
     fd.append('klasor_id', klasorId || '')

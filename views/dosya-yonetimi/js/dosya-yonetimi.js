@@ -227,7 +227,7 @@ $(function () {
         $('#dosyaKonumBilgi').text(ad);
     };
 
-    const dosyaAttr = (d) => 'data-act="ac" data-id="' + esc(d.id) + '" data-ad="' + esc(d.ad) + '" data-onizle="' + (d.onizlenebilir ? 1 : 0) + '"';
+    const dosyaAttr = (d) => 'data-act="ac" data-id="' + esc(d.id) + '" data-ad="' + esc(d.ad) + '" data-onizle="' + esc(d.onizleme || '') + '"';
 
     const dosyaSatirHtml = (d) =>
         '<div class="dosya-row" ' + dosyaAttr(d) + '>' + ikonKutu(d.uzanti) +
@@ -312,7 +312,7 @@ $(function () {
             { data: null, className: 'text-center', orderable: false, searchable: false, render: (v, t, r) => aksiyonlar('dosya', r.id, r.ad, r) }
         ],
         createdRow: function (row, data) {
-            $(row).attr({ 'data-act': 'ac', 'data-id': data.id, 'data-ad': data.ad, 'data-onizle': data.onizlenebilir ? 1 : 0 });
+            $(row).attr({ 'data-act': 'ac', 'data-id': data.id, 'data-ad': data.ad, 'data-onizle': data.onizleme || '' });
             $(row).find('td:not(:last-child)').attr('style', 'cursor: pointer !important');
         },
         order: [[5, 'desc']]
@@ -360,15 +360,128 @@ $(function () {
         yenile();
     });
 
-    const ac = (id, ad, onizle) => {
-        if (String(onizle) === '1') {
+    const LIB = 'assets/libs/dosya-onizleme/';
+    const betikler = {};
+    const betikYukle = (dosya) => betikler[dosya] || (betikler[dosya] = new Promise((coz, red) => {
+        const el = document.createElement('script');
+        el.src = LIB + dosya;
+        el.onload = coz;
+        el.onerror = () => { delete betikler[dosya]; red(new Error('Önizleme bileşeni yüklenemedi.')); };
+        document.head.appendChild(el);
+    }));
+
+    const veriAl = (id) => fetch(INDIR + '?id=' + encodeURIComponent(id) + '&onizleme=1', { credentials: 'same-origin' })
+        .then((r) => { if (!r.ok) throw new Error('Dosya okunamadı.'); return r.arrayBuffer(); });
+
+    const metneCevir = (buf) => {
+        try { return new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch (e) { return new TextDecoder('windows-1254').decode(buf); }
+    };
+
+    const temizle = (kap) => {
+        kap.querySelectorAll('script, iframe, object, embed, link, meta, base, form').forEach((n) => n.remove());
+        kap.querySelectorAll('*').forEach((n) => {
+            Array.from(n.attributes).forEach((a) => { if (/^on/i.test(a.name)) n.removeAttribute(a.name); });
+        });
+        kap.querySelectorAll('a[href]').forEach((a) => {
+            if (!/^(https?:|mailto:|#)/i.test(a.getAttribute('href') || '')) a.removeAttribute('href');
+            else { a.setAttribute('target', '_blank'); a.setAttribute('rel', 'noopener noreferrer'); }
+        });
+    };
+
+    const tabloCiz = (kap, kitap) => {
+        const sekmeler = document.createElement('div');
+        sekmeler.className = 'onizleme-sekmeler';
+        const alan = document.createElement('div');
+        alan.className = 'onizleme-tablo';
+        const goster = (ad) => {
+            const ws = kitap.Sheets[ad];
+            const satirlar = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' }).slice(0, 2000);
+            const tablo = document.createElement('table');
+            tablo.className = 'table table-sm table-bordered mb-0';
+            const govde = document.createElement('tbody');
+            satirlar.forEach((satir, i) => {
+                const tr = document.createElement('tr');
+                satir.slice(0, 60).forEach((hucre) => {
+                    const td = document.createElement(i === 0 ? 'th' : 'td');
+                    td.textContent = hucre == null ? '' : String(hucre);
+                    tr.appendChild(td);
+                });
+                govde.appendChild(tr);
+            });
+            tablo.appendChild(govde);
+            alan.replaceChildren(tablo);
+            sekmeler.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.sayfa === ad));
+        };
+        kitap.SheetNames.forEach((ad) => {
+            const dugme = document.createElement('button');
+            dugme.type = 'button';
+            dugme.dataset.sayfa = ad;
+            dugme.textContent = ad;
+            dugme.addEventListener('click', () => goster(ad));
+            sekmeler.appendChild(dugme);
+        });
+        kap.replaceChildren(sekmeler, alan);
+        if (kitap.SheetNames.length) goster(kitap.SheetNames[0]);
+        else alan.textContent = 'Bu dosyada görüntülenecek sayfa yok.';
+    };
+
+    let onizlemeSayac = 0;
+    const onizlemeAc = (id, ad, tur) => {
+        const sira = ++onizlemeSayac;
+        const kap = document.getElementById('onizlemeIcerik');
+        $('#onizlemeBaslik').text(ad);
+        $('#btnOnizlemeIndir').off('click').on('click', () => { window.location.href = INDIR + '?id=' + encodeURIComponent(id); });
+        kap.innerHTML = '<div class="text-center text-muted p-5"><span class="spinner-border spinner-border-sm me-2"></span>Önizleme hazırlanıyor...</div>';
+        modal('onizlemeModal').show();
+        const aktif = () => sira === onizlemeSayac;
+        const hataGoster = (m) => { if (aktif()) kap.innerHTML = '<div class="dosya-bos"><span class="dosya-bos-ikon"><i class="bx bx-error"></i></span><strong>Önizleme açılamadı</strong><p>' + esc(m || 'Dosya indirerek açabilirsiniz.') + '</p></div>'; };
+
+        if (tur === 'docx') {
+            Promise.all([betikYukle('jszip.min.js'), betikYukle('docx-preview.min.js')])
+                .then(() => veriAl(id))
+                .then((buf) => {
+                    if (!aktif()) return null;
+                    const sayfa = document.createElement('div');
+                    sayfa.className = 'onizleme-docx';
+                    kap.replaceChildren(sayfa);
+                    return window.docx.renderAsync(buf, sayfa, null, { className: 'docx', inWrapper: true, breakPages: true, ignoreLastRenderedPageBreak: true }).then(() => temizle(sayfa));
+                })
+                .catch((e) => hataGoster(e.message));
+        } else if (tur === 'tablo') {
+            Promise.all([betikYukle('xlsx.full.min.js'), veriAl(id)])
+                .then(([, buf]) => {
+                    if (!aktif()) return;
+                    const csv = /\.csv$/i.test(ad);
+                    const kitap = csv ? XLSX.read(metneCevir(buf), { type: 'string', sheetRows: 2001 }) : XLSX.read(buf, { type: 'array', cellDates: true, sheetRows: 2001 });
+                    const sayfa = document.createElement('div');
+                    kap.replaceChildren(sayfa);
+                    tabloCiz(sayfa, kitap);
+                })
+                .catch((e) => hataGoster(e.message));
+        } else if (tur === 'metin') {
+            veriAl(id).then((buf) => {
+                if (!aktif()) return;
+                const pre = document.createElement('pre');
+                pre.className = 'onizleme-metin';
+                pre.textContent = metneCevir(buf);
+                kap.replaceChildren(pre);
+            }).catch((e) => hataGoster(e.message));
+        }
+    };
+
+    const ac = (id, ad, tur) => {
+        tur = String(tur || '');
+        if (tur === 'pdf' || tur === 'goruntu') {
             const url = INDIR + '?id=' + encodeURIComponent(id) + '&inline=1';
-            const goster = /\.pdf$/i.test(ad)
+            const goster = tur === 'pdf'
                 ? '<iframe src="' + esc(url) + '" style="width:100%;height:75vh;border:0" title="' + esc(ad) + '"></iframe>'
                 : '<div class="text-center p-3"><img src="' + esc(url) + '" alt="' + esc(ad) + '" style="max-width:100%;max-height:75vh"></div>';
             $('#onizlemeBaslik').text(ad);
+            $('#btnOnizlemeIndir').off('click').on('click', () => { window.location.href = INDIR + '?id=' + encodeURIComponent(id); });
             $('#onizlemeIcerik').html(goster);
             modal('onizlemeModal').show();
+        } else if (tur === 'docx' || tur === 'tablo' || tur === 'metin') {
+            onizlemeAc(id, ad, tur);
         } else {
             window.location.href = INDIR + '?id=' + encodeURIComponent(id);
         }
@@ -387,7 +500,7 @@ $(function () {
         agacCiz();
         yenile();
     });
-    $('#onizlemeModal').on('hidden.bs.modal', () => $('#onizlemeIcerik').empty());
+    $('#onizlemeModal').on('hidden.bs.modal', () => { onizlemeSayac++; $('#onizlemeIcerik').empty(); });
 
     const aksiyon = (el) => $(el).closest('.action-btn-group');
 
@@ -553,7 +666,20 @@ $(function () {
         if (!Y.yukle) return hata('Dosya yükleme yetkiniz yok.');
         const fd = new FormData();
         fd.append('action', 'yukle');
-        if (secili === 'bolum:ortak' || secili === 'bolum:paylasilan') return hata('Bu bölüme doğrudan dosya yüklenemez. Bir klasör seçin.');
+        if (secili === 'bolum:paylasilan') return hata('Bu bölüme doğrudan dosya yüklenemez. Paylaşılan bir klasörü açıp içine yükleyin.');
+        if (secili === 'bolum:ortak') {
+            const klasorVar = agacListe.some((k) => k.kok && k.bolum === 'ortak');
+            if (!klasorVar && !ortakYetki) return hata('Ortak alanda henüz klasör yok. Önce yetkili bir kullanıcının ortak klasör oluşturması gerekir.');
+            return Swal.fire({
+                icon: 'info',
+                title: klasorVar ? 'Bir ortak klasör seçin' : 'Önce ortak klasör oluşturun',
+                text: klasorVar ? 'Ortak alanda dosyalar klasörlerin içinde tutulur. Soldaki ağaçtan bir klasör seçip tekrar yükleyin.' : 'Ortak alanda dosyalar klasörlerin içinde tutulur. Şimdi bir ortak klasör oluşturabilirsiniz.',
+                showCancelButton: ortakYetki && Y.klasor,
+                showConfirmButton: ortakYetki && Y.klasor,
+                confirmButtonText: 'Klasör Oluştur',
+                cancelButtonText: 'Vazgeç'
+            }).then((s) => { if (s.isConfirmed) yeniKlasor(); });
+        }
         fd.append('klasor_id', seciliId() || '');
         Array.from(dosyalar).forEach((f) => fd.append('dosyalar[]', f));
 
