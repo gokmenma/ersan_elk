@@ -16,6 +16,7 @@ $izinliAksiyonlar = [
     'agac', 'liste', 'ozet', 'klasor-icerik', 'paylasim-listele', 'klasor-rolleri',
     'yukle', 'dosya-yeniden-adlandir', 'dosya-tasi', 'klasor-yeniden-adlandir', 'klasor-tasi',
     'dosya-sil', 'klasor-sil', 'paylasim-olustur', 'paylasim-iptal', 'klasor-olustur', 'klasor-rolleri-kaydet',
+    'klasor-sirala', 'erisim-listele', 'erisim-kullanicilar', 'erisim-ver', 'erisim-kaldir',
 ];
 if (!in_array($action, $izinliAksiyonlar, true)) {
     http_response_code(400);
@@ -47,16 +48,19 @@ try {
             echo json_encode($veri, JSON_UNESCAPED_UNICODE);
             exit;
         case 'klasor-icerik':
-            $veri = $servis->klasorIcerik($_POST['klasor_id'] ?? null, (string) ($_POST['arama'] ?? ''));
+            $veri = $servis->klasorIcerik($_POST['klasor_id'] ?? null, (string) ($_POST['arama'] ?? ''), $_POST['bolum'] ?? null);
             break;
         case 'klasor-olustur':
-            $veri = $servis->klasorOlustur($_POST['parent_id'] ?? null, (string) ($_POST['ad'] ?? ''));
+            $veri = $servis->klasorOlustur($_POST['parent_id'] ?? null, (string) ($_POST['ad'] ?? ''), (string) ($_POST['alan'] ?? 'kisisel'));
             break;
         case 'klasor-yeniden-adlandir':
             $servis->klasorYenidenAdlandir($_POST['id'] ?? null, (string) ($_POST['ad'] ?? ''));
             break;
         case 'klasor-tasi':
             $servis->klasorTasi($_POST['id'] ?? null, $_POST['hedef_id'] ?? null);
+            break;
+        case 'klasor-sirala':
+            $servis->klasorSirala((array) ($_POST['idler'] ?? []));
             break;
         case 'klasor-sil':
             $servis->klasorSil($_POST['id'] ?? null);
@@ -114,6 +118,18 @@ try {
             break;
         case 'paylasim-iptal':
             $servis->paylasimIptal($_POST['id'] ?? null);
+            break;
+        case 'erisim-kullanicilar':
+            $veri = $servis->erisimKullanicilari();
+            break;
+        case 'erisim-listele':
+            $veri = $servis->erisimListele((string) ($_POST['tur'] ?? ''), $_POST['id'] ?? null);
+            break;
+        case 'erisim-ver':
+            $servis->erisimVer((string) ($_POST['tur'] ?? ''), $_POST['id'] ?? null, (int) ($_POST['user_id'] ?? 0), (string) ($_POST['seviye'] ?? 'goruntule'));
+            break;
+        case 'erisim-kaldir':
+            $servis->erisimKaldir($_POST['id'] ?? null);
             break;
     }
 

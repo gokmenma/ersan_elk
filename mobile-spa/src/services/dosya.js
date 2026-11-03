@@ -20,7 +20,7 @@ async function request(action, { method = 'GET', params = {}, body = null } = {}
   }
 
   const response = await fetch(`${BASE}?${query}`, options)
-  const payload = await response.json().catch(() => ({ success: false, message: 'Sunucudan geçersiz yanıt alındı.' }))
+  const payload = await response.json().catch(() => ({ success: false, message: response.status === 413 ? 'Dosya sunucu sınırını aşıyor (413).' : `Sunucudan geçersiz yanıt alındı (HTTP ${response.status}).` }))
   if (!response.ok || !payload.success) {
     const error = new Error(payload.message || 'İşlem gerçekleştirilemedi.')
     error.status = response.status
@@ -32,7 +32,7 @@ async function request(action, { method = 'GET', params = {}, body = null } = {}
 export const dosyaApi = {
   agac: () => request('agac'),
   ozet: () => request('ozet'),
-  icerik: (klasorId, arama = '') => request('icerik', { params: { klasor_id: klasorId || 'kok', arama } }),
+  icerik: (klasorId, arama = '', bolum = 'dosyalarim') => request('icerik', { params: { klasor_id: klasorId || 'kok', arama, bolum } }),
   indirUrl: (id, inline = false) => `${BASE}?action=indir&id=${encodeURIComponent(id)}${inline ? '&inline=1' : ''}`,
   yukle: (klasorId, files) => {
     const fd = new FormData()
@@ -40,7 +40,7 @@ export const dosyaApi = {
     Array.from(files).forEach((f) => fd.append('dosyalar[]', f))
     return request('yukle', { method: 'POST', body: fd })
   },
-  klasorOlustur: (parentId, ad) => request('klasor_olustur', { method: 'POST', body: { parent_id: parentId || '', ad } }),
+  klasorOlustur: (parentId, ad, alan = 'kisisel') => request('klasor_olustur', { method: 'POST', body: { parent_id: parentId || '', ad, alan } }),
   klasorAdlandir: (id, ad) => request('klasor_adlandir', { method: 'POST', body: { id, ad } }),
   klasorSil: (id) => request('klasor_sil', { method: 'POST', body: { id } }),
   dosyaAdlandir: (id, ad) => request('dosya_adlandir', { method: 'POST', body: { id, ad } }),
@@ -48,5 +48,9 @@ export const dosyaApi = {
   dosyaSil: (id) => request('dosya_sil', { method: 'POST', body: { id } }),
   paylasimOlustur: (id, gun, sifre, limit) => request('paylasim_olustur', { method: 'POST', body: { id, gun, sifre, limit } }),
   paylasimListele: (id) => request('paylasim_listele', { params: { id } }),
+  erisimKullanicilari: () => request('erisim_kullanicilar'),
+  erisimListele: (tur, id) => request('erisim_listele', { params: { tur, id } }),
+  erisimVer: (tur, id, userId, seviye) => request('erisim_ver', { method: 'POST', body: { tur, id, user_id: userId, seviye } }),
+  erisimKaldir: (id) => request('erisim_kaldir', { method: 'POST', body: { id } }),
   paylasimIptal: (id) => request('paylasim_iptal', { method: 'POST', body: { id } }),
 }

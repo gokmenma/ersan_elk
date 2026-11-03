@@ -40,8 +40,12 @@ $yetkiHaritasi = [
     'klasor_olustur' => 'dosya_yonetimi_klasor_yonet',
     'klasor_roller' => 'dosya_yonetimi_klasor_yonet',
     'klasor_roller_kaydet' => 'dosya_yonetimi_klasor_yonet',
+    'erisim_listele' => 'dosya_yonetimi_paylas',
+    'erisim_kullanicilar' => 'dosya_yonetimi_paylas',
+    'erisim_ver' => 'dosya_yonetimi_paylas',
+    'erisim_kaldir' => 'dosya_yonetimi_paylas',
 ];
-$okumaAksiyonlari = ['agac', 'ozet', 'icerik', 'indir', 'paylasim_listele', 'klasor_roller'];
+$okumaAksiyonlari = ['agac', 'ozet', 'icerik', 'indir', 'paylasim_listele', 'klasor_roller', 'erisim_listele', 'erisim_kullanicilar'];
 
 $action = (string) ($_GET['action'] ?? $_POST['action'] ?? '');
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
@@ -83,7 +87,7 @@ try {
             $veri = $servis->ozet();
             break;
         case 'icerik':
-            $veri = $servis->klasorIcerik($girdi['klasor_id'] ?? null, (string) ($girdi['arama'] ?? ''));
+            $veri = $servis->klasorIcerik($girdi['klasor_id'] ?? null, (string) ($girdi['arama'] ?? ''), $girdi['bolum'] ?? null);
             break;
         case 'indir':
             $servis->akit($girdi['id'] ?? null, ($girdi['inline'] ?? '') === '1');
@@ -122,7 +126,7 @@ try {
             $servis->dosyaSil($govde['id'] ?? null);
             break;
         case 'klasor_olustur':
-            $veri = $servis->klasorOlustur($govde['parent_id'] ?? null, (string) ($govde['ad'] ?? ''));
+            $veri = $servis->klasorOlustur($govde['parent_id'] ?? null, (string) ($govde['ad'] ?? ''), (string) ($govde['alan'] ?? 'kisisel'));
             break;
         case 'klasor_adlandir':
             $servis->klasorYenidenAdlandir($govde['id'] ?? null, (string) ($govde['ad'] ?? ''));
@@ -153,6 +157,18 @@ try {
             break;
         case 'paylasim_iptal':
             $servis->paylasimIptal($govde['id'] ?? null);
+            break;
+        case 'erisim_kullanicilar':
+            $veri = $servis->erisimKullanicilari();
+            break;
+        case 'erisim_listele':
+            $veri = $servis->erisimListele((string) ($girdi['tur'] ?? ''), $girdi['id'] ?? null);
+            break;
+        case 'erisim_ver':
+            $servis->erisimVer((string) ($govde['tur'] ?? ''), $govde['id'] ?? null, (int) ($govde['user_id'] ?? 0), (string) ($govde['seviye'] ?? 'goruntule'));
+            break;
+        case 'erisim_kaldir':
+            $servis->erisimKaldir($govde['id'] ?? null);
             break;
     }
 

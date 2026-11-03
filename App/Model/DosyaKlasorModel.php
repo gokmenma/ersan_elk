@@ -22,14 +22,30 @@ class DosyaKlasorModel extends Model
         return $stmt->fetch(PDO::FETCH_OBJ) ?: null;
     }
 
+    private ?bool $siraVar = null;
+
+    private function siraKolonuVar(): bool
+    {
+        if ($this->siraVar === null) {
+            $stmt = $this->db->prepare(
+                "SELECT COUNT(*) FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dosya_klasorleri' AND COLUMN_NAME = 'sira'"
+            );
+            $stmt->execute();
+            $this->siraVar = (int) $stmt->fetchColumn() > 0;
+        }
+        return $this->siraVar;
+    }
+
     public function tumKlasorler(int $firmaId): array
     {
+        $sira = $this->siraKolonuVar() ? 'k.sira' : '0';
         $stmt = $this->db->prepare(
-            "SELECT k.id, k.parent_id, k.ad, k.created_at,
+            "SELECT k.id, k.parent_id, k.ad, {$sira} AS sira, k.alan, k.olusturan_id, k.created_at,
                     (SELECT COUNT(*) FROM dosyalar d WHERE d.klasor_id = k.id AND d.is_active = 1 AND d.deleted_at IS NULL) AS dosya_sayisi
              FROM dosya_klasorleri k
              WHERE k.firma_id = ? AND k.is_active = 1 AND k.deleted_at IS NULL
-             ORDER BY k.ad ASC"
+             ORDER BY {$sira} ASC, k.ad ASC"
         );
         $stmt->execute([$firmaId]);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
@@ -51,86 +67,156 @@ class DosyaKlasorModel extends Model
         return $harita;
     }
 
-    /**
-     * Kullanıcının erişebildiği klasör ID listesini döndürür. Bir klasör ve tüm üst klasörleri
-     * rol kısıtı taşıyorsa kullanıcının rollerinden en az biri her kısıtta bulunmalıdır.
-     *
-     * @param array{super: bool, roles: int[]} $erisim
-     * @return int[]
-     */
-    public function erisilebilirKlasorIdleri(int $firmaId, array $erisim): array
-    {
-        $klasorler = $this->tumKlasorler($firmaId);
-        if (!empty($erisim['super'])) {
-            return array_map(static fn($k) => (int) $k->id, $klasorler);
-        }
+    public const SEVIYE_GORUNTULE = 1;
+    public const SEVIYE_DUZENLE = 2;
+    public const SEVIYE_SAHIP = 3;
 
-        $roller = array_map('intval', $erisim['roles'] ?? []);
-        $rolHaritasi = $this->rolHaritasi($firmaId);
-        $parentHaritasi = [];
-        foreach ($klasorler as $k) {
-            $parentHaritasi[(int) $k->id] = $k->parent_id !== null ? (int) $k->parent_id : null;
+    /**
+     * Her klasör için kullanıcının erişim seviyesini hesaplar (0 = erişim yok).
+     * Süper admin ve klasör zincirinde sahibi olduğu klasörler: sahip. Aksi halde zincirdeki
+     * en yüksek kullanıcı yetkisi; ortak alanda yetki yoksa rol kısıtları geçerse görüntüleme.
+     *
+     * @param array{super: bool, user: int, roles: int[], klasor_yetkileri?: array<int,int>} $baglam
+     * @return array<int, array{seviye: int, bolum: string, kok: bool, ad: string, parent_id: ?int, alan: string, dosya_sayisi: int}>
+     */
+    public function seviyeHaritasi(int $firmaId, array $baglam): array
+    {
+        $klasorler = [];
+        foreach ($this->tumKlasorler($firmaId) as $k) {
+            $klasorler[(int) $k->id] = $k;
         }
+        $roller = array_map('intval', $baglam['roles'] ?? []);
+        $rolHaritasi = $this->rolHaritasi($firmaId);
+        $yetkiler = $baglam['klasor_yetkileri'] ?? [];
+        $kullanici = (int) ($baglam['user'] ?? 0);
+        $super = !empty($baglam['super']);
 
         $sonuc = [];
-        foreach ($parentHaritasi as $id => $parent) {
-            $izinli = true;
-            $gezilen = [];
+        foreach ($klasorler as $id => $k) {
+            $sahip = false;
+            $yetki = 0;
+            $rolGecer = true;
             $suan = $id;
-            while ($suan !== null && !isset($gezilen[$suan])) {
+            $gezilen = [];
+            while ($suan !== null && isset($klasorler[$suan]) && !isset($gezilen[$suan])) {
                 $gezilen[$suan] = true;
-                if (!empty($rolHaritasi[$suan]) && !array_intersect($rolHaritasi[$suan], $roller)) {
-                    $izinli = false;
-                    break;
+                if ((int) $klasorler[$suan]->olusturan_id === $kullanici) {
+                    $sahip = true;
                 }
-                $suan = $parentHaritasi[$suan] ?? null;
+                $yetki = max($yetki, (int) ($yetkiler[$suan] ?? 0));
+                if (!empty($rolHaritasi[$suan]) && !array_intersect($rolHaritasi[$suan], $roller)) {
+                    $rolGecer = false;
+                }
+                $suan = $klasorler[$suan]->parent_id !== null ? (int) $klasorler[$suan]->parent_id : null;
             }
-            if ($izinli) {
-                $sonuc[] = $id;
+
+            if ($super || $sahip) {
+                $seviye = self::SEVIYE_SAHIP;
+            } elseif ($yetki > 0) {
+                $seviye = $yetki;
+            } elseif ($k->alan === 'ortak' && $rolGecer) {
+                $seviye = self::SEVIYE_GORUNTULE;
+            } else {
+                $seviye = 0;
+            }
+
+            $sonuc[$id] = [
+                'seviye' => $seviye,
+                'sahip_zincir' => $sahip,
+                'ad' => $k->ad,
+                'parent_id' => $k->parent_id !== null ? (int) $k->parent_id : null,
+                'alan' => $k->alan,
+                'dosya_sayisi' => (int) $k->dosya_sayisi,
+            ];
+        }
+
+        foreach ($sonuc as $id => &$satir) {
+            $ust = $satir['parent_id'];
+            $satir['kok'] = $ust === null || empty($sonuc[$ust]['seviye']);
+            if ($satir['alan'] === 'ortak') {
+                $satir['bolum'] = 'ortak';
+            } elseif ($satir['sahip_zincir']) {
+                $satir['bolum'] = 'dosyalarim';
+            } elseif ($super) {
+                $satir['bolum'] = 'diger';
+            } else {
+                $satir['bolum'] = 'paylasilan';
             }
         }
+        unset($satir);
+
         return $sonuc;
     }
 
-    public function klasorErisebilir(?int $klasorId, int $firmaId, array $erisim): bool
+    /**
+     * @return int[] Seviye >= $asgari olan klasör ID'leri
+     */
+    public function erisilebilirKlasorIdleri(int $firmaId, array $baglam, int $asgari = self::SEVIYE_GORUNTULE): array
     {
-        if ($klasorId === null || $klasorId <= 0) {
-            return true;
-        }
-        return in_array($klasorId, $this->erisilebilirKlasorIdleri($firmaId, $erisim), true);
-    }
-
-    public function agac(int $firmaId, array $erisim): array
-    {
-        $izinli = array_flip($this->erisilebilirKlasorIdleri($firmaId, $erisim));
-        $liste = [];
-        foreach ($this->tumKlasorler($firmaId) as $k) {
-            if (isset($izinli[(int) $k->id])) {
-                $liste[] = $k;
+        $ids = [];
+        foreach ($this->seviyeHaritasi($firmaId, $baglam) as $id => $satir) {
+            if ($satir['seviye'] >= $asgari) {
+                $ids[] = $id;
             }
         }
-        return $liste;
+        return $ids;
     }
 
-    public function olustur(int $firmaId, ?int $parentId, string $ad, int $kullaniciId): int
+    public function seviye(?int $klasorId, int $firmaId, array $baglam): int
+    {
+        if ($klasorId === null || $klasorId <= 0) {
+            return 0;
+        }
+        return $this->seviyeHaritasi($firmaId, $baglam)[$klasorId]['seviye'] ?? 0;
+    }
+
+    public function olustur(int $firmaId, ?int $parentId, string $ad, int $kullaniciId, string $alan = 'kisisel'): int
     {
         $stmt = $this->db->prepare(
-            "INSERT INTO dosya_klasorleri (firma_id, parent_id, ad, olusturan_id, is_active, created_at)
-             VALUES (?, ?, ?, ?, 1, NOW())"
+            "INSERT INTO dosya_klasorleri (firma_id, parent_id, ad, alan, olusturan_id, is_active, created_at)
+             VALUES (?, ?, ?, ?, ?, 1, NOW())"
         );
-        $stmt->execute([$firmaId, $parentId, $ad, $kullaniciId]);
+        $stmt->execute([$firmaId, $parentId, $ad, $alan === 'ortak' ? 'ortak' : 'kisisel', $kullaniciId]);
         return (int) $this->db->lastInsertId();
     }
 
-    public function ayniAdVarMi(int $firmaId, ?int $parentId, string $ad, int $haricId = 0): bool
+    public function ayniAdVarMi(int $firmaId, ?int $parentId, string $ad, int $haricId = 0, ?int $kokSahipId = null, string $alan = 'kisisel'): bool
     {
-        $stmt = $this->db->prepare(
-            "SELECT COUNT(*) FROM dosya_klasorleri
-             WHERE firma_id = ? AND ((parent_id IS NULL AND ? IS NULL) OR parent_id = ?)
-               AND ad = ? AND id <> ? AND is_active = 1 AND deleted_at IS NULL"
-        );
-        $stmt->execute([$firmaId, $parentId, $parentId, $ad, $haricId]);
+        $sql = "SELECT COUNT(*) FROM dosya_klasorleri
+                WHERE firma_id = ? AND ((parent_id IS NULL AND ? IS NULL) OR parent_id = ?)
+                  AND ad = ? AND id <> ? AND is_active = 1 AND deleted_at IS NULL";
+        $bind = [$firmaId, $parentId, $parentId, $ad, $haricId];
+        if ($parentId === null) {
+            $sql .= " AND alan = ?";
+            $bind[] = $alan;
+            if ($alan !== 'ortak') {
+                $sql .= " AND olusturan_id = ?";
+                $bind[] = (int) $kokSahipId;
+            }
+        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($bind);
         return (int) $stmt->fetchColumn() > 0;
+    }
+
+    public function siraKaydet(int $firmaId, array $idler): void
+    {
+        if (!$this->siraKolonuVar()) {
+            throw new \DomainException('Sıralama için 2026_11_03_dosya_klasor_sira.sql çalıştırılmalı.');
+        }
+        $this->db->beginTransaction();
+        try {
+            $stmt = $this->db->prepare(
+                "UPDATE dosya_klasorleri SET sira = ? WHERE id = ? AND firma_id = ? AND is_active = 1 AND deleted_at IS NULL"
+            );
+            foreach (array_values($idler) as $i => $id) {
+                $stmt->execute([($i + 1) * 10, (int) $id, $firmaId]);
+            }
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
     }
 
     public function yenidenAdlandir(int $id, int $firmaId, string $ad): bool

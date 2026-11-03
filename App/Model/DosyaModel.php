@@ -102,21 +102,75 @@ class DosyaModel extends Model
         }
     }
 
-    private function klasorKosulu(array $izinliKlasorler, array &$bind, string $alias = 'd'): string
+    /**
+     * @param array{super: bool, user: int, klasorler: int[], dosyalar: int[]} $kapsam
+     */
+    private function kapsamKosulu(array $kapsam, array &$bind, string $alias = 'd'): string
     {
-        if (!$izinliKlasorler) {
-            return "{$alias}.klasor_id IS NULL";
+        if (!empty($kapsam['super'])) {
+            return '1 = 1';
         }
-        $yerler = [];
-        foreach (array_values($izinliKlasorler) as $i => $id) {
-            $anahtar = 'izin' . $i;
-            $yerler[] = ':' . $anahtar;
-            $bind[$anahtar] = (int) $id;
+        $bind['kapsam_user'] = (int) $kapsam['user'];
+        $parcalar = ["{$alias}.yukleyen_id = :kapsam_user"];
+        $klasorler = array_values($kapsam['klasorler'] ?? []);
+        $dosyalar = array_values($kapsam['dosyalar'] ?? []);
+        if ($klasorler) {
+            $yerler = [];
+            foreach ($klasorler as $i => $id) {
+                $yerler[] = ':kl' . $i;
+                $bind['kl' . $i] = (int) $id;
+            }
+            $parcalar[] = "{$alias}.klasor_id IN (" . implode(',', $yerler) . ')';
         }
-        return "({$alias}.klasor_id IS NULL OR {$alias}.klasor_id IN (" . implode(',', $yerler) . "))";
+        if ($dosyalar) {
+            $yerler = [];
+            foreach ($dosyalar as $i => $id) {
+                $yerler[] = ':df' . $i;
+                $bind['df' . $i] = (int) $id;
+            }
+            $parcalar[] = "{$alias}.id IN (" . implode(',', $yerler) . ')';
+        }
+        return '(' . implode(' OR ', $parcalar) . ')';
     }
 
-    public function ajaxList(array $params, int $firmaId, array $izinliKlasorler): array
+    private function bolumKosulu(string $bolum, array $kapsam, array &$bind, string $alias = 'd'): string
+    {
+        if (!in_array($bolum, ['dosyalarim', 'diger', 'paylasilan'], true) || ($bolum === 'paylasilan' && !($kapsam['dosyalar'] ?? []))) {
+            return '1 = 0';
+        }
+        $bind['bolum_user'] = (int) $kapsam['user'];
+        switch ($bolum) {
+            case 'dosyalarim':
+                return "{$alias}.klasor_id IS NULL AND {$alias}.yukleyen_id = :bolum_user";
+            case 'diger':
+                return "{$alias}.klasor_id IS NULL AND {$alias}.yukleyen_id <> :bolum_user";
+            case 'paylasilan':
+                $dosyalar = array_values($kapsam['dosyalar'] ?? []);
+                if (!$dosyalar) {
+                    return '1 = 0';
+                }
+                $yerler = [];
+                foreach ($dosyalar as $i => $id) {
+                    $yerler[] = ':bd' . $i;
+                    $bind['bd' . $i] = (int) $id;
+                }
+                $klasorKosulu = '1 = 1';
+                $klasorler = array_values($kapsam['klasorler'] ?? []);
+                if ($klasorler) {
+                    $kyer = [];
+                    foreach ($klasorler as $i => $id) {
+                        $kyer[] = ':bk' . $i;
+                        $bind['bk' . $i] = (int) $id;
+                    }
+                    $klasorKosulu = "({$alias}.klasor_id IS NULL OR {$alias}.klasor_id NOT IN (" . implode(',', $kyer) . '))';
+                }
+                return "{$alias}.yukleyen_id <> :bolum_user AND {$alias}.id IN (" . implode(',', $yerler) . ") AND {$klasorKosulu}";
+            default:
+                return '1 = 0';
+        }
+    }
+
+    public function ajaxList(array $params, int $firmaId, array $kapsam): array
     {
         $draw = (int) ($params['draw'] ?? 1);
         $start = max(0, (int) ($params['start'] ?? 0));
@@ -125,9 +179,11 @@ class DosyaModel extends Model
         $arama = trim((string) ($params['search']['value'] ?? ''));
 
         $bind = ['firma' => $firmaId];
-        $where = "d.firma_id = :firma AND d.is_active = 1 AND d.deleted_at IS NULL AND " . $this->klasorKosulu($izinliKlasorler, $bind);
+        $where = "d.firma_id = :firma AND d.is_active = 1 AND d.deleted_at IS NULL AND " . $this->kapsamKosulu($kapsam, $bind);
 
-        if (isset($params['klasor_id']) && $params['klasor_id'] !== '' && $params['klasor_id'] !== 'tum') {
+        if (!empty($params['bolum'])) {
+            $where .= ' AND ' . $this->bolumKosulu((string) $params['bolum'], $kapsam, $bind);
+        } elseif (isset($params['klasor_id']) && $params['klasor_id'] !== '' && $params['klasor_id'] !== 'tum') {
             $klasor = (int) $params['klasor_id'];
             if ($klasor > 0) {
                 $where .= " AND d.klasor_id = :klasor_filtre";
@@ -168,8 +224,11 @@ class DosyaModel extends Model
                      LEFT JOIN dosya_klasorleri k ON k.id = d.klasor_id
                      LEFT JOIN users u ON u.id = d.yukleyen_id";
 
-        $stmt = $this->db->prepare("SELECT COUNT(*) FROM dosyalar d WHERE d.firma_id = :firma AND d.is_active = 1 AND d.deleted_at IS NULL");
-        $stmt->execute(['firma' => $firmaId]);
+        $toplamBind = ['firma' => $firmaId];
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(*) FROM dosyalar d WHERE d.firma_id = :firma AND d.is_active = 1 AND d.deleted_at IS NULL AND " . $this->kapsamKosulu($kapsam, $toplamBind)
+        );
+        $stmt->execute($toplamBind);
         $toplam = (int) $stmt->fetchColumn();
 
         $stmt = $this->db->prepare("SELECT COUNT(*) {$birlesim} WHERE {$where}");
@@ -177,7 +236,7 @@ class DosyaModel extends Model
         $filtreli = (int) $stmt->fetchColumn();
 
         $stmt = $this->db->prepare(
-            "SELECT d.id, d.klasor_id, d.orijinal_ad, d.uzanti, d.mime_tipi, d.boyut, d.aciklama, d.etiketler, d.created_at,
+            "SELECT d.id, d.klasor_id, d.orijinal_ad, d.uzanti, d.mime_tipi, d.boyut, d.aciklama, d.etiketler, d.created_at, d.yukleyen_id,
                     k.ad AS klasor_adi, u.adi_soyadi AS yukleyen_adi
              {$birlesim} WHERE {$where}
              ORDER BY {$siraSutun} {$siraYon}, d.id DESC
@@ -199,12 +258,12 @@ class DosyaModel extends Model
     }
 
     /**
-     * Tek klasörün (veya kökün) doğrudan dosyaları; arama verilirse izinli tüm klasörlerde arar.
+     * Tek klasörün (veya bölüm kökünün) doğrudan dosyaları; arama verilirse erişilebilir tüm dosyalarda arar.
      */
-    public function klasordekiler(int $firmaId, ?int $klasorId, string $arama, array $izinliKlasorler, int $limit = 500): array
+    public function klasordekiler(int $firmaId, ?int $klasorId, string $arama, array $kapsam, ?string $bolum = null, int $limit = 500): array
     {
         $bind = ['firma' => $firmaId];
-        $where = "d.firma_id = :firma AND d.is_active = 1 AND d.deleted_at IS NULL AND " . $this->klasorKosulu($izinliKlasorler, $bind);
+        $where = "d.firma_id = :firma AND d.is_active = 1 AND d.deleted_at IS NULL AND " . $this->kapsamKosulu($kapsam, $bind);
 
         if ($arama !== '') {
             $where .= " AND (d.orijinal_ad LIKE :ara OR d.aciklama LIKE :ara OR d.etiketler LIKE :ara)";
@@ -213,11 +272,11 @@ class DosyaModel extends Model
             $where .= " AND d.klasor_id = :klasor";
             $bind['klasor'] = $klasorId;
         } else {
-            $where .= " AND d.klasor_id IS NULL";
+            $where .= ' AND ' . $this->bolumKosulu($bolum ?? 'dosyalarim', $kapsam, $bind);
         }
 
         $stmt = $this->db->prepare(
-            "SELECT d.id, d.klasor_id, d.orijinal_ad, d.uzanti, d.mime_tipi, d.boyut, d.aciklama, d.etiketler, d.created_at,
+            "SELECT d.id, d.klasor_id, d.orijinal_ad, d.uzanti, d.mime_tipi, d.boyut, d.aciklama, d.etiketler, d.created_at, d.yukleyen_id,
                     k.ad AS klasor_adi, u.adi_soyadi AS yukleyen_adi
              FROM dosyalar d
              LEFT JOIN dosya_klasorleri k ON k.id = d.klasor_id
@@ -234,10 +293,10 @@ class DosyaModel extends Model
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
-    public function summary(int $firmaId, array $izinliKlasorler): object
+    public function summary(int $firmaId, array $kapsam): object
     {
         $bind = ['firma' => $firmaId];
-        $kosul = $this->klasorKosulu($izinliKlasorler, $bind);
+        $kosul = $this->kapsamKosulu($kapsam, $bind);
         $stmt = $this->db->prepare(
             "SELECT COUNT(*) AS toplam_dosya,
                     COALESCE(SUM(d.boyut), 0) AS toplam_boyut,

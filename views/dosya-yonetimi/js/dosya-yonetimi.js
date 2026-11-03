@@ -5,6 +5,9 @@ $(function () {
 
     let secili = 'tum';
     let agacListe = [];
+    let bolumler = ['dosyalarim'];
+    let ortakYetki = false;
+    let icerikBaglami = { seviye: 0, alan: 'kisisel' };
     let gorunum = 'liste';
     try { gorunum = localStorage.getItem('dosya_gorunum') || 'liste'; } catch (e) {}
     let aramaZamani = null;
@@ -35,6 +38,10 @@ $(function () {
         png: '<i class="bx bxs-file-image text-info"></i>'
     }[u] || '<i class="bx bxs-file-blank text-secondary"></i>');
 
+    const ikonTon = (u) => ({ pdf: 'danger', doc: 'primary', docx: 'primary', xls: 'success', xlsx: 'success', csv: 'success', jpg: 'info', jpeg: 'info', png: 'info' }[u] || 'secondary');
+    const ikonKutu = (u) => '<span class="fi fi-' + ikonTon(u) + '">' + ikon(u) + '</span>';
+    const klasorKutu = '<span class="fi fi-warning"><i class="bx bxs-folder"></i></span>';
+
     const hata = (mesaj) => Swal.fire({ icon: 'error', title: 'Hata', text: mesaj || 'İşlem tamamlanamadı.' });
     const basari = (mesaj) => Swal.fire({ icon: 'success', title: mesaj, timer: 1400, showConfirmButton: false });
 
@@ -64,19 +71,20 @@ $(function () {
         guncelleToggle();
     });
 
-    const aksiyonlar = (tur, id, ad, uzanti) => {
-        let h = '<div class="action-btn-group d-inline-flex gap-1" data-tur="' + tur + '" data-id="' + esc(id) + '" data-ad="' + esc(ad) + '">';
+    const aksiyonlar = (tur, id, ad, nesne) => {
+        const sv = Number((nesne && nesne.seviye) || 0);
+        const alan = (nesne && nesne.alan) || '';
+        let h = '<div class="action-btn-group d-inline-flex gap-1" data-tur="' + tur + '" data-id="' + esc(id) + '" data-ad="' + esc(ad) + '" data-seviye="' + sv + '">';
         if (tur === 'dosya') {
             h += '<button type="button" class="btn btn-subtle-primary table-action-btn act-indir" title="İndir"><i class="bx bx-download"></i></button>';
-            if (Y.paylas) h += '<button type="button" class="btn btn-subtle-success table-action-btn act-paylas" title="Paylaş"><i class="bx bx-share-alt"></i></button>';
-        } else if (Y.klasor) {
-            h += '<button type="button" class="btn btn-subtle-success table-action-btn act-rol" title="Erişim Yetkisi"><i class="bx bx-shield-quarter"></i></button>';
+            if (Y.paylas && sv >= 2) h += '<button type="button" class="btn btn-subtle-success table-action-btn act-paylas" title="Bağlantı ile Paylaş"><i class="bx bx-share-alt"></i></button>';
+        } else if (Y.klasor && sv >= 3 && alan === 'ortak') {
+            h += '<button type="button" class="btn btn-subtle-success table-action-btn act-rol" title="Rol Erişimi"><i class="bx bx-shield-quarter"></i></button>';
         }
-        if (Y.duzenle) {
-            h += '<button type="button" class="btn btn-subtle-warning table-action-btn act-ad" title="Yeniden Adlandır"><i class="bx bx-edit"></i></button>';
-            h += '<button type="button" class="btn btn-subtle-secondary table-action-btn act-tasi" title="Taşı"><i class="bx bx-move"></i></button>';
-        }
-        if (Y.sil) h += '<button type="button" class="btn btn-subtle-danger table-action-btn act-sil" title="Sil"><i class="bx bx-trash"></i></button>';
+        if (Y.paylas && sv >= 2) h += '<button type="button" class="btn btn-subtle-info table-action-btn act-erisim" title="Kullanıcılarla Paylaş"><i class="bx bx-user-plus"></i></button>';
+        if (Y.duzenle && sv >= 2) h += '<button type="button" class="btn btn-subtle-warning table-action-btn act-ad" title="Yeniden Adlandır"><i class="bx bx-edit"></i></button>';
+        if (Y.duzenle && sv >= (tur === 'klasor' ? 3 : 2)) h += '<button type="button" class="btn btn-subtle-secondary table-action-btn act-tasi" title="Taşı"><i class="bx bx-move"></i></button>';
+        if (Y.sil && sv >= 3) h += '<button type="button" class="btn btn-subtle-danger table-action-btn act-sil" title="Sil"><i class="bx bx-trash"></i></button>';
         return h + '</div>';
     };
 
@@ -87,67 +95,183 @@ $(function () {
         $('#stat_toplam_boyut').text(boyutYaz(o.toplam_boyut));
     });
 
-    const agacCiz = () => {
-        const cocuklar = {};
-        agacListe.forEach((k) => { (cocuklar[k.parent_id || 'kok'] = cocuklar[k.parent_id || 'kok'] || []).push(k); });
-        const dal = (anahtar) => {
-            const liste = cocuklar[anahtar] || [];
-            if (!liste.length) return '';
-            return '<ul>' + liste.map((k) =>
-                '<li><div class="node' + (secili === k.id ? ' active' : '') + '" data-id="' + esc(k.id) + '"><i class="bx bx-folder text-warning"></i><span>' + esc(k.ad) + '</span><span class="cnt">' + k.dosya_sayisi + '</span></div>' + dal(k.id) + '</li>'
-            ).join('') + '</ul>';
-        };
-        $('#dosyaAgac').html('<ul><li><div class="node' + (secili === 'tum' ? ' active' : '') + '" data-id="tum"><i class="bx bx-home text-primary"></i><span>Tüm Dosyalar</span></div>' + dal('kok') + '</li></ul>');
+    const BOLUM_ADLARI = {
+        dosyalarim: ['bx-user', 'text-primary', 'Dosyalarım'],
+        paylasilan: ['bx-share-alt', 'text-info', 'Benimle Paylaşılanlar'],
+        ortak: ['bx-buildings', 'text-success', 'Ortak Alan'],
+        diger: ['bx-group', 'text-secondary', 'Diğer Kullanıcılar']
     };
 
-    const agacYukle = () => api('agac').then((r) => { agacListe = r.klasorler; agacCiz(); });
+    const siraKaydet = (kap, secici) => {
+        const idler = $(kap).children(secici).map(function () { return $(this).attr('data-fid'); }).get();
+        if (idler.length < 2) return;
+        api('klasor-sirala', { idler }).then(() => agacYukle().then(() => { if (gorunum !== 'liste') icerikYukle(); }), (m) => { hata(m); hepsiniYenile(); });
+    };
+
+    const siralamaBaslat = (kap, secici, tutamac) => {
+        if (!Y.duzenle || typeof Sortable === 'undefined') return;
+        Sortable.create(kap, {
+            animation: 150,
+            draggable: secici,
+            handle: tutamac || undefined,
+            filter: '.tg, .action-btn-group',
+            preventOnFilter: false,
+            ghostClass: 'surukleniyor',
+            onEnd: (e) => { if (e.oldIndex !== e.newIndex) siraKaydet(kap, secici); }
+        });
+    };
+
+    const VARSAYILAN_BOLUMLER = ['dosyalarim', 'paylasilan', 'ortak', 'diger'];
+    const bolumSirasi = () => {
+        let kayitli = [];
+        try { kayitli = JSON.parse(localStorage.getItem('dosya_bolum_sirasi') || '[]'); } catch (e) {}
+        const sira = (Array.isArray(kayitli) ? kayitli : []).filter((b) => VARSAYILAN_BOLUMLER.includes(b));
+        VARSAYILAN_BOLUMLER.forEach((b) => { if (!sira.includes(b)) sira.push(b); });
+        return sira;
+    };
+
+    const acik = new Set();
+    const ustleriAc = (id) => {
+        let k = agacListe.find((x) => x.id === id);
+        while (k && k.parent_id) { acik.add(k.parent_id); k = agacListe.find((x) => x.id === k.parent_id); }
+    };
+
+    const agacCiz = () => {
+        const cocuklar = {};
+        agacListe.forEach((k) => { if (k.parent_id) (cocuklar[k.parent_id] = cocuklar[k.parent_id] || []).push(k); });
+        const dal = (liste) => {
+            if (!liste.length) return '';
+            return '<ul class="sirali">' + liste.map((k) => {
+                const alt = cocuklar[k.id] || [];
+                const a = acik.has(k.id);
+                return '<li' + (Y.duzenle && k.seviye >= 2 ? ' data-fid="' + esc(k.id) + '"' : '') + '><div class="node' + (secili === k.id ? ' active' : '') + '" data-id="' + esc(k.id) + '">' +
+                    (alt.length ? '<span class="tg" data-tg="' + esc(k.id) + '"><i class="bx bx-chevron-' + (a ? 'down' : 'right') + '"></i></span>' : '<span class="tg"></span>') +
+                    '<i class="bx ' + (secili === k.id || a ? 'bxs-folder-open' : 'bxs-folder') + ' text-warning"></i><span class="ad">' + esc(k.ad) + '</span><span class="cnt">' + k.dosya_sayisi + '</span></div>' +
+                    (a ? dal(alt) : '') + '</li>';
+            }).join('') + '</ul>';
+        };
+        let h = '<ul><li><div class="node' + (secili === 'tum' ? ' active' : '') + '" data-id="tum"><span class="tg"></span><i class="bx bx-layer text-primary"></i><span class="ad">Tüm Dosyalar</span></div></li></ul><div class="agac-ayrac"></div>';
+        h += '<div id="bolumSira">';
+        bolumSirasi().filter((b) => bolumler.includes(b)).forEach((b) => {
+            const kokler = agacListe.filter((k) => k.kok && k.bolum === b);
+            const m = BOLUM_ADLARI[b];
+            h += '<ul class="bolum-ul" data-bolum="' + b + '"><li><div class="node bolum' + (secili === 'bolum:' + b ? ' active' : '') + '" data-id="bolum:' + b + '"><span class="tg"></span><i class="bx ' + m[0] + ' ' + m[1] + '"></i><span class="ad">' + m[2] + '</span><span class="cnt">' + kokler.length + '</span></div>' + dal(kokler) + '</li></ul>';
+        });
+        $('#dosyaAgac').html(h + '</div>');
+        const bolumKap = document.getElementById('bolumSira');
+        if (bolumKap && typeof Sortable !== 'undefined') {
+            Sortable.create(bolumKap, {
+                animation: 150,
+                draggable: '.bolum-ul',
+                handle: '.node.bolum',
+                filter: '.tg',
+                preventOnFilter: false,
+                ghostClass: 'surukleniyor',
+                onEnd: () => {
+                    const yeni = $(bolumKap).children('.bolum-ul').map(function () { return $(this).attr('data-bolum'); }).get();
+                    try { localStorage.setItem('dosya_bolum_sirasi', JSON.stringify(yeni)); } catch (e) {}
+                }
+            });
+        }
+        $('#dosyaAgac ul.sirali').each(function () { siralamaBaslat(this, 'li[data-fid]', null); });
+    };
+
+    const agacYukle = () => api('agac').then((r) => {
+        agacListe = r.klasorler;
+        bolumler = r.bolumler || ['dosyalarim'];
+        ortakYetki = Boolean(r.ortak_alan_yetkisi);
+        if (secili !== 'tum' && !secili.startsWith('bolum:') && !agacListe.some((k) => k.id === secili)) secili = 'tum';
+        agacCiz();
+    });
+
+    $('#dosyaAgac').on('click', '.tg[data-tg]', function (e) {
+        e.stopPropagation();
+        const id = String($(this).data('tg'));
+        if (acik.has(id)) acik.delete(id); else acik.add(id);
+        agacCiz();
+    });
 
     $('#dosyaAgac').on('click', '.node', function () {
         secili = String($(this).data('id'));
+        acik.add(secili);
+        ustleriAc(secili);
         agacCiz();
         yenile();
     });
 
     const klasorAdi = (id) => (agacListe.find((k) => k.id === id) || {}).ad;
+    const secimBolumu = () => {
+        if (secili.startsWith('bolum:')) return secili.slice(6);
+        const k = agacListe.find((x) => x.id === secili);
+        return k ? k.bolum : 'dosyalarim';
+    };
+    const konumAdi = () => (secili.startsWith('bolum:') ? BOLUM_ADLARI[secili.slice(6)][2] : (klasorAdi(secili) || ''));
     const konumGuncelle = () => {
-        $('#dosyaKonumBilgi').text(secili === 'tum' ? 'Tüm dosyalar' : (klasorAdi(secili) || 'Klasör'));
+        let ad = 'Tüm dosyalar';
+        if (secili.startsWith('bolum:')) ad = BOLUM_ADLARI[secili.slice(6)][2];
+        else if (secili !== 'tum') ad = klasorAdi(secili) || 'Klasör';
+        $('#dosyaKonumBilgi').text(ad);
     };
 
+    const dosyaAttr = (d) => 'data-act="ac" data-id="' + esc(d.id) + '" data-ad="' + esc(d.ad) + '" data-onizle="' + (d.onizlenebilir ? 1 : 0) + '"';
+
     const dosyaSatirHtml = (d) =>
-        '<div class="dosya-row" data-act="ac" data-id="' + esc(d.id) + '" data-ad="' + esc(d.ad) + '" data-onizle="' + (d.onizlenebilir ? 1 : 0) + '"><span class="ico">' + ikon(d.uzanti) + '</span>' +
-        '<span class="ad" title="' + esc(d.ad) + '">' + esc(d.ad) + '</span><span class="text-muted font-size-12 d-none d-md-inline">' + boyutYaz(d.boyut) + '</span>' +
-        '<span class="text-muted font-size-12 d-none d-lg-inline">' + tarihYaz(d.tarih) + '</span>' + aksiyonlar('dosya', d.id, d.ad, d.uzanti) + '</div>';
+        '<div class="dosya-row" ' + dosyaAttr(d) + '>' + ikonKutu(d.uzanti) +
+        '<span class="ad" title="' + esc(d.ad) + '">' + esc(d.ad) + '<small>' + esc(String(d.uzanti).toUpperCase()) + '</small></span>' +
+        '<span class="kol kol-boyut">' + boyutYaz(d.boyut) + '</span><span class="kol kol-kim">' + esc(d.yukleyen || '-') + '</span>' +
+        '<span class="kol kol-tarih">' + tarihYaz(d.tarih) + '</span><span class="kol-act">' + aksiyonlar('dosya', d.id, d.ad, d) + '</span></div>';
+
+    const fidAttr = (k) => (Y.duzenle && k.seviye >= 2 ? ' data-fid="' + esc(k.id) + '"' : '');
+    const grip = (k) => (Y.duzenle && k.seviye >= 2 ? '<span class="surukle" title="Sıralamak için sürükleyin"><i class="bx bx-grid-vertical"></i></span>' : '');
+
+    const klasorSatirHtml = (k) =>
+        '<div class="dosya-row" data-act="klasor-ac" data-id="' + esc(k.id) + '"' + fidAttr(k) + '>' + grip(k) + klasorKutu +
+        '<span class="ad">' + esc(k.ad) + '<small>Klasör</small></span><span class="kol kol-boyut">' + k.dosya_sayisi + ' dosya</span>' +
+        '<span class="kol kol-kim"></span><span class="kol kol-tarih"></span><span class="kol-act">' + aksiyonlar('klasor', k.id, k.ad, k) + '</span></div>';
 
     const dosyaKartHtml = (d) =>
-        '<div class="col-6 col-md-4 col-xl-3"><div class="dosya-tile" data-act="ac" data-id="' + esc(d.id) + '" data-ad="' + esc(d.ad) + '" data-onizle="' + (d.onizlenebilir ? 1 : 0) + '">' +
-        '<span class="ico">' + ikon(d.uzanti) + '</span><span class="ad">' + esc(d.ad) + '</span>' +
-        '<span class="text-muted font-size-12">' + boyutYaz(d.boyut) + ' · ' + tarihYaz(d.tarih).split(' ')[0] + '</span>' + aksiyonlar('dosya', d.id, d.ad, d.uzanti) + '</div></div>';
+        '<div class="col-6 col-md-4 col-xl-3"><div class="dosya-tile" ' + dosyaAttr(d) + '>' +
+        '<div class="d-flex justify-content-between align-items-start">' + ikonKutu(d.uzanti) + '<span class="badge bg-' + ikonTon(d.uzanti) + '-subtle text-' + ikonTon(d.uzanti) + ' border border-' + ikonTon(d.uzanti) + '-subtle rounded-pill font-size-11">' + esc(String(d.uzanti).toUpperCase()) + '</span></div>' +
+        '<span class="ad">' + esc(d.ad) + '</span>' +
+        '<span class="text-muted font-size-12">' + boyutYaz(d.boyut) + ' · ' + tarihYaz(d.tarih).split(' ')[0] + '</span>' + aksiyonlar('dosya', d.id, d.ad, d) + '</div></div>';
 
     const klasorKartHtml = (k) =>
-        '<div class="col-6 col-md-4 col-xl-3"><div class="dosya-tile" data-act="klasor-ac" data-id="' + esc(k.id) + '"><span class="ico"><i class="bx bxs-folder text-warning"></i></span>' +
-        '<span class="ad">' + esc(k.ad) + '</span><span class="text-muted font-size-12">' + k.dosya_sayisi + ' dosya</span>' + aksiyonlar('klasor', k.id, k.ad) + '</div></div>';
+        '<div class="col-6 col-md-4 col-xl-3"' + fidAttr(k) + '><div class="dosya-tile" data-act="klasor-ac" data-id="' + esc(k.id) + '"><div class="d-flex justify-content-between align-items-start">' + klasorKutu + grip(k) + '</div>' +
+        '<span class="ad">' + esc(k.ad) + '</span><span class="text-muted font-size-12">' + k.dosya_sayisi + ' dosya</span>' + aksiyonlar('klasor', k.id, k.ad, k) + '</div></div>';
+
+    const BOS_MESAJ = {
+        dosyalarim: 'Kişisel alanınız boş. Dosya sürükleyip bırakın ya da “Dosya Yükle” ile ekleyin.',
+        paylasilan: 'Henüz sizinle paylaşılan bir klasör veya dosya yok.',
+        ortak: 'Ortak alanda klasör yok. Yetkiniz varsa “Yeni Klasör” ile başlayın.',
+        diger: 'Diğer kullanıcıların kök dizininde dosya veya klasör yok.'
+    };
 
     const icerikYukle = () => {
         const arama = $('#dosyaArama').val().trim();
-        const hedef = secili === 'tum' ? 'kok' : secili;
-        return api('klasor-icerik', { klasor_id: hedef, arama }).then((r) => {
-            const yol = ['<a href="#" class="yol-link" data-id="tum">Ana Dizin</a>'];
+        const bolum = secimBolumu();
+        const hedef = (secili === 'tum' || secili.startsWith('bolum:')) ? 'kok' : secili;
+        return api('klasor-icerik', { klasor_id: hedef, arama, bolum }).then((r) => {
+            icerikBaglami = { seviye: r.seviye, alan: r.alan };
+            const yol = ['<a href="#" class="yol-link" data-id="bolum:' + esc(bolum) + '"><i class="bx ' + BOLUM_ADLARI[bolum][0] + '"></i> ' + esc(BOLUM_ADLARI[bolum][2]) + '</a>'];
             (r.yol || []).forEach((p) => yol.push('<a href="#" class="yol-link" data-id="' + esc(p.id) + '">' + esc(p.ad) + '</a>'));
-            $('#dosyaYol').html(r.aranan ? '<span class="text-muted">Arama sonuçları</span>' : yol.join(' <i class="bx bx-chevron-right"></i> '));
+            $('#dosyaYol').html(r.aranan ? '<span class="text-muted"><i class="bx bx-search"></i> Arama sonuçları</span>' : yol.join('<i class="bx bx-chevron-right"></i>'));
+            $('#dosyaKonumBilgi').text((r.klasorler || []).length + ' klasör · ' + (r.dosyalar || []).length + ' dosya');
 
             let h = '';
             if (gorunum === 'izgara') {
-                h = '<div class="row g-3">' + (r.klasorler || []).map(klasorKartHtml).join('') + (r.dosyalar || []).map(dosyaKartHtml).join('') + '</div>';
+                h = ((r.klasorler || []).length ? '<div class="row g-3 mb-3 klasor-sira">' + r.klasorler.map(klasorKartHtml).join('') + '</div>' : '') +
+                    ((r.dosyalar || []).length ? '<div class="row g-3">' + r.dosyalar.map(dosyaKartHtml).join('') + '</div>' : '');
             } else {
-                h = (r.klasorler || []).map((k) =>
-                    '<div class="dosya-row" data-act="klasor-ac" data-id="' + esc(k.id) + '"><span class="ico"><i class="bx bxs-folder text-warning"></i></span><span class="ad">' + esc(k.ad) + '</span>' +
-                    '<span class="text-muted font-size-12">' + k.dosya_sayisi + ' dosya</span>' + aksiyonlar('klasor', k.id, k.ad) + '</div>'
-                ).join('') + (r.dosyalar || []).map(dosyaSatirHtml).join('');
+                h = '<div class="dosya-row dosya-row-head"><span class="fi-bos"></span><span class="ad">Ad</span><span class="kol kol-boyut">Boyut</span><span class="kol kol-kim">Yükleyen</span><span class="kol kol-tarih">Tarih</span><span class="kol-act"></span></div>' +
+                    ((r.klasorler || []).length ? '<div class="klasor-sira">' + r.klasorler.map(klasorSatirHtml).join('') + '</div>' : '') + (r.dosyalar || []).map(dosyaSatirHtml).join('');
             }
             if (!(r.klasorler || []).length && !(r.dosyalar || []).length) {
-                h = '<div class="text-center text-muted py-5"><i class="bx bx-folder-open fs-1 d-block mb-2"></i>' + (r.aranan ? 'Aramanızla eşleşen dosya yok.' : 'Bu klasör boş. Dosya sürükleyip bırakabilirsiniz.') + '</div>';
+                const yukleyebilir = Y.yukle && r.seviye >= 2;
+                h = '<div class="dosya-bos"><span class="dosya-bos-ikon"><i class="bx bx-' + (r.aranan ? 'search-alt' : 'cloud-upload') + '"></i></span><strong>' + (r.aranan ? 'Sonuç bulunamadı' : 'Burada henüz bir şey yok') + '</strong><p>' + esc(r.aranan ? 'Aramanızla eşleşen dosya yok.' : (BOS_MESAJ[bolum] || '')) + '</p>' +
+                    (yukleyebilir && !r.aranan ? '<button type="button" class="btn btn-primary btn-sm" id="btnBosYukle"><i class="bx bx-upload"></i> Dosya Seç</button>' : '') + '</div>';
             }
             $('#gorunumIcerik').html(h);
+            $('#gorunumIcerik .klasor-sira').each(function () { siralamaBaslat(this, '[data-fid]', '.surukle'); });
         }, hata);
     };
 
@@ -165,13 +289,13 @@ $(function () {
             error: function (xhr) { hata((xhr.responseJSON && xhr.responseJSON.message) || 'Liste yüklenemedi.'); }
         },
         columns: [
-            { data: 'ad', render: (v, t, r) => '<span class="me-2 fs-5 align-middle">' + ikon(r.uzanti) + '</span>' + esc(v) },
+            { data: 'ad', render: (v, t, r) => '<span class="d-inline-flex align-items-center gap-2">' + ikonKutu(r.uzanti) + '<span class="fw-semibold">' + esc(v) + '</span></span>' },
             { data: 'klasor_adi', render: (v) => esc(v || 'Ana Dizin') },
             { data: 'uzanti', render: (v) => '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">' + esc(String(v).toUpperCase()) + '</span>' },
             { data: 'boyut', className: 'text-end', render: (v, t) => t === 'display' ? boyutYaz(v) : v },
             { data: 'yukleyen', render: (v) => esc(v || '-') },
             { data: 'tarih', render: (v, t) => t === 'display' ? tarihYaz(v) : v },
-            { data: null, className: 'text-center', orderable: false, searchable: false, render: (v, t, r) => aksiyonlar('dosya', r.id, r.ad, r.uzanti) }
+            { data: null, className: 'text-center', orderable: false, searchable: false, render: (v, t, r) => aksiyonlar('dosya', r.id, r.ad, r) }
         ],
         createdRow: function (row, data) {
             $(row).attr({ 'data-act': 'ac', 'data-id': data.id, 'data-ad': data.ad, 'data-onizle': data.onizlenebilir ? 1 : 0 });
@@ -181,7 +305,7 @@ $(function () {
     }));
 
     const gorunumUygula = () => {
-        $('.dosya-gorunum').removeClass('active').filter('[data-gorunum="' + gorunum + '"]').addClass('active');
+        $('.dosya-gorunum').removeClass('active').attr('aria-pressed', 'false').filter('[data-gorunum="' + gorunum + '"]').addClass('active').attr('aria-pressed', 'true');
         $('#gorunumListe').toggleClass('d-none', gorunum !== 'liste');
         $('#gorunumIcerik').toggleClass('d-none', gorunum === 'liste');
     };
@@ -190,7 +314,7 @@ $(function () {
         konumGuncelle();
         gorunumUygula();
         if (gorunum === 'liste') {
-            $('#dosyaYol').html(secili === 'tum' ? '' : '<a href="#" class="yol-link" data-id="tum">Tüm Dosyalar</a> <i class="bx bx-chevron-right"></i> ' + esc(klasorAdi(secili) || ''));
+            $('#dosyaYol').html(secili === 'tum' ? '' : '<a href="#" class="yol-link" data-id="tum">Tümü</a> <i class="bx bx-chevron-right"></i> ' + esc(konumAdi()));
             table.ajax.reload(null, false);
         } else {
             icerikYukle();
@@ -264,12 +388,23 @@ $(function () {
     });
 
     const yeniKlasor = () => {
-        duzenlenen = { tur: 'klasor', id: secili === 'tum' ? null : secili, mod: 'yeni' };
-        $('#klasorAdBaslik').text('Yeni Klasör');
+        const bolum = secimBolumu();
+        let parent = null;
+        let alan = 'kisisel';
+        if (secili !== 'tum' && !secili.startsWith('bolum:')) {
+            parent = secili;
+        } else if (secili === 'bolum:ortak') {
+            if (!ortakYetki) return hata('Ortak alanda klasör oluşturma yetkiniz yok.');
+            alan = 'ortak';
+        } else if (secili === 'bolum:paylasilan' || secili === 'bolum:diger') {
+            return hata('Bu bölümde klasör oluşturulamaz. Önce Dosyalarım veya bir klasör seçin.');
+        }
+        duzenlenen = { tur: 'klasor', id: parent, alan, mod: 'yeni' };
+        $('#klasorAdBaslik').text(alan === 'ortak' ? 'Yeni Ortak Klasör' : 'Yeni Klasör');
         $('#ad_girdi').val('');
         modal('klasorAdModal').show();
     };
-    $('#btnYeniKlasor').on('click', yeniKlasor);
+    $('#btnYeniKlasor, #btnAgacYeni').on('click', yeniKlasor);
     $('#klasorAdModal').on('shown.bs.modal', () => $('#ad_girdi').trigger('focus'));
     $('#ad_girdi').on('keydown', (e) => { if (e.key === 'Enter') $('#btnAdKaydet').trigger('click'); });
 
@@ -278,7 +413,7 @@ $(function () {
         const ad = $('#ad_girdi').val().trim();
         if (!ad) return hata('Ad boş olamaz.');
         let istek;
-        if (duzenlenen.mod === 'yeni') istek = api('klasor-olustur', { parent_id: duzenlenen.id || '', ad });
+        if (duzenlenen.mod === 'yeni') istek = api('klasor-olustur', { parent_id: duzenlenen.id || '', ad, alan: duzenlenen.alan || 'kisisel' });
         else if (duzenlenen.tur === 'klasor') istek = api('klasor-yeniden-adlandir', { id: duzenlenen.id, ad });
         else istek = api('dosya-yeniden-adlandir', { id: duzenlenen.id, ad });
         istek.then(() => { modal('klasorAdModal').hide(); basari('Kaydedildi'); hepsiniYenile(); }, hata);
@@ -288,7 +423,7 @@ $(function () {
         const g = aksiyon(this);
         duzenlenen = { tur: g.data('tur'), id: String(g.data('id')) };
         const secenekler = ['<option value="">Ana Dizin</option>'].concat(
-            agacListe.filter((k) => !(g.data('tur') === 'klasor' && k.id === duzenlenen.id)).map((k) => '<option value="' + esc(k.id) + '">' + esc(k.ad) + '</option>')
+            agacListe.filter((k) => k.seviye >= 2 && !(g.data('tur') === 'klasor' && k.id === duzenlenen.id)).map((k) => '<option value="' + esc(k.id) + '">' + esc(k.ad) + '</option>')
         );
         $('#tasi_hedef').html(secenekler.join('')).val('').trigger('change');
         modal('tasiModal').show();
@@ -362,12 +497,47 @@ $(function () {
         api('paylasim-iptal', { id: $(this).data('id') }).then(paylasimlariYukle, hata);
     });
 
+    const erisimYukle = () => api('erisim-listele', { tur: duzenlenen.tur, id: duzenlenen.id }).then((r) => {
+        duzenlenen.tamYetki = r.tam_yetki;
+        $('#erisim_seviye option[value="duzenle"]').prop('disabled', !r.tam_yetki);
+        if (!r.tam_yetki) $('#erisim_seviye').val('goruntule');
+        $('#erisim_seviye').trigger('change');
+        $('#erisimListe').html(r.erisimler.length ? r.erisimler.map((e) =>
+            '<div class="d-flex justify-content-between align-items-center border-bottom py-2"><div><span class="fw-semibold">' + esc(e.kullanici) + '</span> <span class="badge bg-' + (e.seviye === 'duzenle' ? 'warning' : 'info') + '-subtle text-' + (e.seviye === 'duzenle' ? 'warning' : 'info') + ' border border-' + (e.seviye === 'duzenle' ? 'warning' : 'info') + '-subtle rounded-pill ms-1">' + (e.seviye === 'duzenle' ? 'Düzenleyebilir' : 'Görüntüleyebilir') + '</span></div>' +
+            '<button type="button" class="btn btn-sm btn-subtle-danger act-erisim-kaldir" data-id="' + esc(e.id) + '">Kaldır</button></div>'
+        ).join('') : '<span class="text-muted">Henüz kimseyle paylaşılmadı.</span>');
+    }, hata);
+
+    $(document).on('click', '.act-erisim', function () {
+        const g = aksiyon(this);
+        duzenlenen = { tur: g.data('tur'), id: String(g.data('id')) };
+        $('#erisimNesneAdi').text(g.data('ad'));
+        api('erisim-kullanicilar').then((liste) => {
+            $('#erisim_kullanici').html('<option value="">Kullanıcı seçin</option>' + liste.map((u) => '<option value="' + u.id + '">' + esc(u.ad) + '</option>').join('')).val('').trigger('change');
+            erisimYukle();
+            modal('erisimModal').show();
+        }, hata);
+    });
+    $('#btnErisimEkle').on('click', function () {
+        const kullanici = $('#erisim_kullanici').val();
+        if (!kullanici) return hata('Kullanıcı seçin.');
+        api('erisim-ver', { tur: duzenlenen.tur, id: duzenlenen.id, user_id: kullanici, seviye: $('#erisim_seviye').val() }).then(() => {
+            $('#erisim_kullanici').val('').trigger('change');
+            erisimYukle();
+            hepsiniYenile();
+        }, hata);
+    });
+    $(document).on('click', '.act-erisim-kaldir', function () {
+        api('erisim-kaldir', { id: $(this).data('id') }).then(() => { erisimYukle(); hepsiniYenile(); }, hata);
+    });
+
     const yukle = (dosyalar) => {
         if (!dosyalar || !dosyalar.length) return;
         if (!Y.yukle) return hata('Dosya yükleme yetkiniz yok.');
         const fd = new FormData();
         fd.append('action', 'yukle');
-        fd.append('klasor_id', secili === 'tum' ? '' : secili);
+        if (secili === 'bolum:ortak' || secili === 'bolum:paylasilan' || secili === 'bolum:diger') return hata('Bu bölüme doğrudan dosya yüklenemez. Bir klasör seçin.');
+        fd.append('klasor_id', (secili === 'tum' || secili.startsWith('bolum:')) ? '' : secili);
         Array.from(dosyalar).forEach((f) => fd.append('dosyalar[]', f));
 
         Swal.fire({ title: 'Yükleniyor...', html: '<div class="progress"><div class="progress-bar" id="yuklemeCubuk" style="width:0%"></div></div>', allowOutsideClick: false, showConfirmButton: false });
@@ -388,6 +558,7 @@ $(function () {
         }, (xhr) => hata((xhr.responseJSON && xhr.responseJSON.message) || 'Yükleme başarısız.'));
     };
 
+    $(document).on('click', '#btnBosYukle', () => $('#dosyaInput').trigger('click'));
     $('#btnDosyaYukle').on('click', () => $('#dosyaInput').trigger('click'));
     $('#dosyaInput').on('change', function () { yukle(this.files); this.value = ''; });
 

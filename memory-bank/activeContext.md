@@ -1,5 +1,12 @@
 # Active Context
 
+## Dosya Yönetimi — Kişisel Alan, Ortak Alan ve Kullanıcı Paylaşımı (2026-11-03)
+- **Model**: Varsayılan olarak her şey sahibine özeldir (klasör `olusturan_id`, dosya `yukleyen_id`). Bölümler: Dosyalarım, Benimle Paylaşılanlar, Ortak Alan (rol kısıtlı, `alan='ortak'`), Diğer Kullanıcılar (yalnız süper admin).
+- **Seviyeler**: 1 görüntüle, 2 düzenle, 3 sahip. Hesap `DosyaKlasorModel::seviyeHaritasi` (zincirde sahip → 3, kullanıcı yetkisi zincirden miras, ortak alanda rol geçerse 1). Silme/taşıma (klasör) ve düzenleme yetkisi verme sahibe; düzenleme düzeyindekiler yalnız görüntüleme yetkisi verebilir.
+- **SQL**: `database/migrations/2026_11_03_dosya_yonetimi_kisisel_alan.sql` (`alan` kolonu, `dosya_erisimleri`, `dosya_yonetimi_ortak_alan` yetkisi, `erisim-*` politikaları). Ön koşul ilk migrasyon. Henüz çalıştırılmadı.
+- **Kod**: `DosyaErisimModel`, `DosyaYonetimiService` (erisim* metotları), masaüstü "Kullanıcılarla Paylaş" modalı ve bölümlü ağaç, mobil `DosyaView.vue` bölüm sekmeleri + erişim sheet'i.
+- **Not**: Klasör oluşturma politikası `dosya_yonetimi_klasor_yonet`'e bağlı; kişisel klasör açacak herkese bu yetki verilmeli. Ortak alan kök klasörü için `dosya_yonetimi_ortak_alan` gerekir.
+
 ## Dosya Yönetimi Modülü — Masaüstü + Mobil SPA (2026-11-03)
 - **Amaç**: Şirket evrakları (bilanço vb.) için klasörlü dosya arşivi; PDF/Word/Excel/CSV/TXT/JPG/PNG, 25 MB sınır, indirme, önizleme, arama, süreli açık link paylaşımı.
 - **SQL**: `database/migrations/2026_11_03_dosya_yonetimi.sql` (5 tablo, 6 `dosya_yonetimi_*` yetkisi, menü `dosya-yonetimi/list`, API politikaları, süper admin atamaları). Henüz çalıştırılmadı.
