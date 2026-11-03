@@ -19,6 +19,7 @@ import {
   CreditCard,
   Edit3,
   FileText,
+  FolderOpen,
   Fuel,
   Gauge,
   GripVertical,
@@ -354,6 +355,18 @@ const MODULE_CATALOG = {
     theme: 'purple',
     to: '/evrak-takip',
   },
+  files: {
+    key: 'files',
+    group: 'operasyon',
+    permission: 'files',
+    label: 'Dosya Yönetimi',
+    navLabel: 'Dosyalar',
+    eyebrow: 'ŞİRKET ARŞİVİ',
+    subtitle: 'Klasörlü dosya arşivi, indirme ve paylaşım',
+    icon: FolderOpen,
+    theme: 'purple',
+    to: '/dosyalar',
+  },
   notices: {
     key: 'notices',
     group: 'operasyon',
@@ -506,7 +519,7 @@ const DEFAULT_NAVBAR_KEYS = ['personnel', 'reports', 'requests']
 const DEFAULT_GROUP_KEYS = ['finans', 'operasyon', 'planlama', 'sistem']
 const DEFAULT_GROUP_ITEMS = {
   finans: ['invoices', 'cash', 'current_accounts', 'payroll', 'contracts'],
-  operasyon: ['vehicles', 'km_approvals', 'documents', 'notices', 'illegal', 'reports'],
+  operasyon: ['vehicles', 'km_approvals', 'documents', 'files', 'notices', 'illegal', 'reports'],
   planlama: ['personnel', 'personnel_tracking', 'requests', 'tasks', 'shifts', 'puantaj'],
   sistem: ['logs', 'live_support', 'support'],
 }

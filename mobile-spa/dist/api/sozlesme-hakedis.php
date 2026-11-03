@@ -818,6 +818,7 @@ try {
         $fiyatFarkiDahil = $imalatDonem + $fiyatFarki;
         $kdvRate = (float) ($hakedis['kdv_orani'] ?: 20.0);
         $donemKdvDahil = round($fiyatFarkiDahil * (1 + $kdvRate / 100), 2);
+        $kdvTutari = round($donemKdvDahil - $fiyatFarkiDahil, 2);
         $kumulatifKdvDahil = (float) ($totals['kdv_dahil_toplam'] ?? 0);
 
         $sozlesmeBedeli = (float) $hakedis['sozlesme_bedeli'];
@@ -869,6 +870,9 @@ try {
                 'fiyat_farki_formatted' => number_format($fiyatFarki, 2, ',', '.') . ' ₺',
                 'fiyat_farki_dahil' => $fiyatFarkiDahil,
                 'fiyat_farki_dahil_formatted' => number_format($fiyatFarkiDahil, 2, ',', '.') . ' ₺',
+                'kdv_orani' => $kdvRate,
+                'kdv_tutari' => $kdvTutari,
+                'kdv_tutari_formatted' => number_format($kdvTutari, 2, ',', '.') . ' ₺',
                 'donem_kdv_dahil' => $donemKdvDahil,
                 'donem_kdv_dahil_formatted' => number_format($donemKdvDahil, 2, ',', '.') . ' ₺',
                 'kdv_dahil_toplam' => $donemKdvDahil,

@@ -1,5 +1,14 @@
 # Active Context
 
+## Dosya Yönetimi Modülü — Masaüstü + Mobil SPA (2026-11-03)
+- **Amaç**: Şirket evrakları (bilanço vb.) için klasörlü dosya arşivi; PDF/Word/Excel/CSV/TXT/JPG/PNG, 25 MB sınır, indirme, önizleme, arama, süreli açık link paylaşımı.
+- **SQL**: `database/migrations/2026_11_03_dosya_yonetimi.sql` (5 tablo, 6 `dosya_yonetimi_*` yetkisi, menü `dosya-yonetimi/list`, API politikaları, süper admin atamaları). Henüz çalıştırılmadı.
+- **Katmanlar**: `DosyaKlasorModel`, `DosyaModel`, `DosyaPaylasimModel`; ortak iş mantığı `App\Service\DosyaYonetimiService` (masaüstü ve mobil API aynı servisi kullanır).
+- **Depolama**: `storage/dosya-yonetimi/{firma_id}/` rastgele adla; kök `.htaccess` RewriteRule + dizin `.htaccess` ile kapalı. Yalnızca `views/dosya-yonetimi/indir.php`, mobil `indir` aksiyonu veya `dosya-paylas.php` (token, süre, şifre, limit, oran sınırı) ile sunulur.
+- **Klasör erişimi**: `dosya_klasor_rolleri`; kayıt varsa klasör ve altı yalnız o rollere açık, süper admin hepsini görür.
+- **Masaüstü**: `views/dosya-yonetimi/{list.php,api.php,indir.php,js/dosya-yonetimi.js}`, görünümler Liste/Klasör/Izgara. **Mobil**: `mobile-spa/public/api/dosya-yonetimi.php`, `src/services/dosya.js`, `src/views/DosyaView.vue`, `/dosyalar` rotası, `files*` yetki haritası (`auth.php`), BottomNav kataloğu.
+- **Açık**: SQL çalıştırılıp tarayıcı testi yapılmadı; mobil `dist` derlemesi alınmadı; mobilde taşıma ve klasör rol ekranı yok; sürümleme yok.
+
 ## Zimmet Geçici Devir — Personel PWA Onay Akışı ve Ayrı Sekme (2026-11-02)
 - **Akış**: Zimmetli/geçici kullanan personel PWA Zimmetler sayfasından personel seçip "Geçici Devret" der → `zimmet_devirleri` kaydı `beklemede`; seçilen personel "Teslim Aldım" (KM opsiyonel) ile onaylayınca `aktif` olur ve araç onun geçici zimmetine düşer, teslim eden kayıt kapanır (zincirleme). Reddedilirse `reddedildi` (gerekçe zorunlu); gönderen `iptal` ile geri çekebilir. Araç asıl sahibe dönüyorsa onayla `tamamlandi`.
 - **Asıl zimmet değişmez**; PWA'da "Geçici Teslim" bölümü asıl zimmet kartlarından ayrı (gelen talepler, üzerimdekiler [asıl/geçici etiketli], başkasında, geçmiş). Masaüstünde ayrı **Geçici Teslimler** sekmesi (`geciciContent`, `zimmet-gecici-teslim-listesi`), durum filtreleri, bekleyen sayısı rozeti.

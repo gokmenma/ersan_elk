@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-11-03 — Dosya Yönetimi (Masaüstü + Mobil SPA)
+- [x] SQL, 3 Model, ortak servis, masaüstü API/indirme/liste sayfası/JS, açık paylaşım sayfası, mobil API/servis/görünüm/rota/menü.
+- [x] Tüm yeni PHP dosyalarında `php -l`; mobil `vite build` geçici dizine başarıyla derlendi.
+- [ ] SQL'in çalıştırılması, yetkinin Yetki Kataloğu / Yetki Grubu Düzenleme'de doğrulanması, uçtan uca tarayıcı testi.
+- [ ] Mobil `dist` derlemesi (dist'te başka kişinin bekleyen değişiklikleri var), mobilde taşıma ve klasör rol ekranı.
+
 ## 2026-11-02 — Zimmet Geçici Devir: PWA Onay Akışı
 - [x] Talep → onay/red/geri çekme akışı, PWA "Geçici Teslim" bölümü (koyu tema dahil), masaüstü Geçici Teslimler sekmesi.
 - [x] CLI ile 18 adımlı senaryo (yetkisiz, çift talep, red, zincir, asıl sahibe dönüş) ve Chrome ekran kontrolü; test verileri temizlendi.

@@ -30,6 +30,7 @@ const SozlesmeHakedisView = () => import('./views/SozlesmeHakedisView.vue')
 const SozlesmeDetailView = () => import('./views/SozlesmeDetailView.vue')
 const HakedisDetailView = () => import('./views/HakedisDetailView.vue')
 const SupportView = () => import('./views/SupportView.vue')
+const DosyaView = () => import('./views/DosyaView.vue')
 import { auth } from './services/auth.js'
 
 const router = createRouter({
@@ -39,6 +40,7 @@ const router = createRouter({
     { path: '/firma-secimi', name: 'company-select', component: CompanySelectView, meta: { requiresAuth: true, chrome: false } },
     { path: '/', name: 'home', component: HomeView, meta: { requiresAuth: true, requiresCompany: true } },
     { path: '/evrak-takip', name: 'evrak-takip', component: EvrakView, meta: { requiresAuth: true, requiresCompany: true, permission: 'documents' } },
+    { path: '/dosyalar', name: 'dosyalar', component: DosyaView, meta: { requiresAuth: true, requiresCompany: true, permission: 'files' } },
     { path: '/giden-evrak', name: 'giden-evrak', component: GidenEvrakView, meta: { requiresAuth: true, requiresCompany: true, permission: 'outgoing_documents' } },
     { path: '/giden-evraklar', redirect: '/giden-evrak' },
     { path: '/evrak', redirect: '/evrak-takip' },

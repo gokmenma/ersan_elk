@@ -276,29 +276,34 @@ function exportExcel() {
           </span>
         </div>
 
-        <div class="h-hero-kpi-grid">
-          <!-- Bu Ayki İmalat -->
-          <div class="h-kpi-cell">
-            <span class="kpi-cell-label">BU AYKİ İMALAT</span>
-            <span class="kpi-cell-val text-primary-ink">{{ hakedisData.totals.imalat_donem_formatted }}</span>
-            <span class="kpi-cell-sub">Kümülatif: {{ hakedisData.totals.imalat_kumulatif_formatted }}</span>
-          </div>
-
-          <!-- Fiyat Farkı -->
-          <div class="h-kpi-cell">
-            <span class="kpi-cell-label">FİYAT FARKI</span>
-            <span class="kpi-cell-val text-emerald">{{ hakedisData.totals.fiyat_farki_formatted }}</span>
-            <span class="kpi-cell-sub">Dahil: {{ hakedisData.totals.fiyat_farki_dahil_formatted }}</span>
-          </div>
-        </div>
-
-        <!-- KDV Dahil Toplam ve Gerçekleşme Barı -->
         <div class="h-kpi-highlight-bar">
+          <div class="hl-breakdown">
+            <div class="hl-row">
+              <span class="hl-row-label">Bu Ayki İmalat</span>
+              <span class="hl-row-val">{{ hakedisData.totals.imalat_donem_formatted }}</span>
+            </div>
+            <div class="hl-row">
+              <span class="hl-row-label">Fiyat Farkı</span>
+              <span class="hl-row-val hl-row-val--emerald">{{ hakedisData.totals.fiyat_farki_formatted }}</span>
+            </div>
+            <div class="hl-row hl-row--subtotal">
+              <span class="hl-row-label">KDV Hariç Toplam</span>
+              <span class="hl-row-val">{{ hakedisData.totals.fiyat_farki_dahil_formatted }}</span>
+            </div>
+            <div class="hl-row">
+              <span class="hl-row-label">KDV (%{{ hakedisData.totals.kdv_orani }})</span>
+              <span class="hl-row-val">{{ hakedisData.totals.kdv_tutari_formatted }}</span>
+            </div>
+          </div>
+
           <div class="highlight-main">
             <div class="hl-title-group">
               <span class="hl-label">BU AYKİ KDV DAHİL TOPLAM ÖDEME</span>
               <span v-if="hakedisData.totals.kumulatif_kdv_dahil_formatted" class="hl-sub-kumulatif">
                 Kümülatif KDV Dahil: {{ hakedisData.totals.kumulatif_kdv_dahil_formatted }}
+              </span>
+              <span class="hl-sub-kumulatif">
+                Kümülatif İmalat: {{ hakedisData.totals.imalat_kumulatif_formatted }}
               </span>
             </div>
             <span class="hl-val">{{ hakedisData.totals.donem_kdv_dahil_formatted || hakedisData.totals.kdv_dahil_toplam_formatted }}</span>
@@ -686,39 +691,6 @@ function exportExcel() {
 .badge-durum--hazirlandi { background: var(--ds-amber-soft); color: var(--ds-amber-ink); }
 .badge-durum--taslak { background: var(--ds-surface-subtle); color: var(--ds-muted); }
 
-.h-hero-kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.h-kpi-cell {
-  background: var(--ds-surface-subtle);
-  border-radius: var(--ds-radius-sm);
-  padding: 10px 14px;
-  display: flex;
-  flex-direction: column;
-}
-
-.kpi-cell-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  color: var(--ds-muted);
-}
-
-.kpi-cell-val {
-  font-size: 17px;
-  font-weight: 800;
-  margin-top: 2px;
-}
-
-.kpi-cell-sub {
-  font-size: 11px;
-  color: var(--ds-muted);
-  margin-top: 2px;
-}
-
 .h-kpi-highlight-bar {
   background: var(--dsx-bg-191d24);
   color: #fff;
@@ -727,6 +699,43 @@ function exportExcel() {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.hl-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.hl-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.hl-row--subtotal {
+  padding-top: 6px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.12);
+}
+
+.hl-row-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dsx-fg-94a3b8);
+}
+
+.hl-row-val {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.hl-row-val--emerald {
+  color: #34d399;
 }
 
 .highlight-main {

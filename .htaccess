@@ -6,6 +6,9 @@ RewriteRule ^storage/invoices/ - [F,L]
 # Mobil imza işlem dosyaları ve sabitlenmiş kök sertifikalar web üzerinden sunulmaz.
 RewriteRule ^storage/mobil-imza/ - [F,L]
 
+# Dosya yönetimi dosyaları yalnız yetkili indirme ucu veya süreli paylaşım bağlantısı ile sunulur.
+RewriteRule ^storage/dosya-yonetimi/ - [F,L]
+
 # Arşiv dosyalarına web üzerinden doğrudan erişimi engelle; yalnızca yetkili indirme endpointi kullanılır.
 RewriteRule ^uploads/personel_evraklar/ - [F,L]
 
