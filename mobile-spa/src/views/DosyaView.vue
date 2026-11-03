@@ -208,11 +208,16 @@ async function onizlemeAc(d) {
       temizle(sayfa)
     } else if (d.onizleme === 'tablo') {
       const XLSX = await import('xlsx')
-      const csv = /\.csv$/i.test(d.ad)
-      const kitap = csv ? XLSX.read(metneCevir(buf), { type: 'string', sheetRows: 1001 }) : XLSX.read(buf, { type: 'array', cellDates: true, sheetRows: 1001 })
       const sayfa = document.createElement('div')
       kap.replaceChildren(sayfa)
-      tabloCiz(sayfa, kitap, XLSX)
+      if (/\.xlsx$/i.test(d.ad)) {
+        const [excelModul, zipModul, { xlsxCiz }] = await Promise.all([import('exceljs/dist/exceljs.min.js'), import('jszip'), import('../services/xlsx-cizici.js')])
+        await xlsxCiz(sayfa, buf, { XLSX, ExcelJS: excelModul.default || excelModul, JSZip: zipModul.default || zipModul, maksSatir: 1500 })
+      } else {
+        const csv = /\.csv$/i.test(d.ad)
+        const kitap = csv ? XLSX.read(metneCevir(buf), { type: 'string', sheetRows: 1001 }) : XLSX.read(buf, { type: 'array', cellDates: true, sheetRows: 1001 })
+        tabloCiz(sayfa, kitap, XLSX)
+      }
     } else {
       const pre = document.createElement('pre')
       pre.className = 'onizleme-metin'
@@ -673,6 +678,10 @@ onMounted(() => { yukle(); ozetYukle() })
 .dosya-onizleme-alan :deep(.onizleme-sekmeler button) { flex: 0 0 auto; min-height: 40px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--ds-surface-subtle); font: 600 13px var(--ds-font-main); color: var(--ds-muted); }
 .dosya-onizleme-alan :deep(.onizleme-sekmeler button.active) { background: var(--ds-primary); color: #fff; }
 .dosya-onizleme-alan :deep(.onizleme-tablo) { overflow: auto; }
+.dosya-onizleme-alan :deep(.onizleme-xl) { background: #fff; }
+.dosya-onizleme-alan :deep(.onizleme-xl table) { background: #fff; }
+.dosya-onizleme-alan :deep(.onizleme-xl td) { border-color: inherit; }
+.dosya-onizleme-alan :deep(.onizleme-not) { padding: 10px 14px; font-size: 12px; background: var(--ds-surface-subtle); color: var(--ds-muted); }
 .dosya-onizleme-alan :deep(table) { border-collapse: collapse; font-size: 13px; background: var(--ds-surface); }
 .dosya-onizleme-alan :deep(td), .dosya-onizleme-alan :deep(th) { padding: 6px 10px; border: 1px solid var(--ds-line); white-space: nowrap; color: var(--ds-ink); }
 .dosya-onizleme-alan :deep(tr:first-child th) { background: var(--ds-surface-subtle); position: sticky; top: 0; }

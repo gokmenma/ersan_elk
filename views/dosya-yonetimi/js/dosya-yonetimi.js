@@ -448,14 +448,20 @@ $(function () {
                 })
                 .catch((e) => hataGoster(e.message));
         } else if (tur === 'tablo') {
-            Promise.all([betikYukle('xlsx.full.min.js'), veriAl(id)])
+            const bicimli = /\.xlsx$/i.test(ad);
+            const gerekli = bicimli ? ['xlsx.full.min.js', 'jszip.min.js', 'exceljs.min.js', 'xlsx-cizici.js'] : ['xlsx.full.min.js'];
+            Promise.all([Promise.all(gerekli.map(betikYukle)), veriAl(id)])
                 .then(([, buf]) => {
-                    if (!aktif()) return;
-                    const csv = /\.csv$/i.test(ad);
-                    const kitap = csv ? XLSX.read(metneCevir(buf), { type: 'string', sheetRows: 2001 }) : XLSX.read(buf, { type: 'array', cellDates: true, sheetRows: 2001 });
+                    if (!aktif()) return null;
                     const sayfa = document.createElement('div');
                     kap.replaceChildren(sayfa);
+                    if (bicimli) {
+                        return window.xlsxCiz(sayfa, buf, { XLSX, ExcelJS: window.ExcelJS, JSZip: window.JSZip, maksSatir: 2000 });
+                    }
+                    const csv = /\.csv$/i.test(ad);
+                    const kitap = csv ? XLSX.read(metneCevir(buf), { type: 'string', sheetRows: 2001 }) : XLSX.read(buf, { type: 'array', cellDates: true, sheetRows: 2001 });
                     tabloCiz(sayfa, kitap);
+                    return null;
                 })
                 .catch((e) => hataGoster(e.message));
         } else if (tur === 'metin') {

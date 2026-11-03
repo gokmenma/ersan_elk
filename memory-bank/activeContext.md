@@ -1,5 +1,9 @@
 # Active Context
 
+## Dosya Yönetimi — Excel Biçimli Önizleme (2026-11-03)
+- `.xlsx` önizlemesi artık hücre biçimlerini korur: dolgu/yazı rengi (tema+tint dahil), kalın/italik, birleşik hücreler, kenarlıklar, sütun/satır boyutları, hizalama, sayı biçimi (`₺` vb.). Metni SheetJS (`cell.w`), stili ExcelJS verir; çizici `assets/libs/dosya-onizleme/xlsx-cizici.js` (mobilde `src/services/xlsx-cizici.js`, aynı kod).
+- `.xls`/`.csv` sade tablo olarak kalır (SheetJS topluluk sürümü stil okumaz). Masaüstü 2000, mobil 1500 satır sınırı.
+
 ## Dosya Yönetimi — Word/Excel Tarayıcıda Önizleme (2026-11-03)
 - docx → `docx-preview`, xlsx/xls/csv → SheetJS (0.20.3), txt → düz metin; sunucuda dönüşüm yok, 10 MB üstü ve eski `.doc` indirilir. Sunucu `onizleme` türünü (`pdf|goruntu|docx|tablo|metin`) `DosyaYonetimiService::onizlemeTuru` ile verir; `onizleme=1` parametresi erişim logunda "goruntule" yazar.
 - Masaüstü kütüphaneleri `assets/libs/dosya-onizleme/` (lazy yüklenir); mobilde `docx-preview` ve `xlsx` npm bağımlılığı, dinamik import (ayrı chunk).

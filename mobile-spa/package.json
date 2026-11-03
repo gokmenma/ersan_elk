@@ -12,6 +12,7 @@
   "dependencies": {
     "@lucide/vue": "^1.55.0",
     "docx-preview": "^0.4.1",
+    "exceljs": "^4.4.0",
     "leaflet": "^1.9.4",
     "pdfjs-dist": "^4.10.38",
     "sweetalert2": "^11.26.25",

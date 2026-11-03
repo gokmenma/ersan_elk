@@ -121,6 +121,9 @@ $gunOptions = ['1' => '1 gün', '3' => '3 gün', '7' => '7 gün', '14' => '14 g�
 .onizleme-sekmeler button.active { background: var(--bs-primary); color: #fff; }
 .onizleme-tablo { overflow: auto; max-height: 70vh; }
 .onizleme-tablo table { font-size: 12px; white-space: nowrap; }
+.onizleme-xl { background: #fff; }
+.onizleme-xl table.xl { margin: 0; }
+.onizleme-not { padding: 10px 14px; font-size: 12px; background: var(--bs-warning-bg-subtle); color: var(--bs-body-color); }
 .onizleme-tablo tr:first-child th { position: sticky; top: 0; background: var(--bs-tertiary-bg); }
 .onizleme-metin { margin: 0; padding: 16px; max-height: 78vh; overflow: auto; white-space: pre-wrap; word-break: break-word; font-size: 13px; }
 </style>
