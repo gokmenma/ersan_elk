@@ -26,22 +26,31 @@ function paylasimSayfa(string $baslik, string $icerik, int $durum = 200): never
 $token = (string) ($_GET['t'] ?? $_POST['t'] ?? '');
 $model = new DosyaPaylasimModel();
 
-$limitAnahtari = 'dosya_paylas_deneme_' . md5((string) ($_SERVER['REMOTE_ADDR'] ?? ''));
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+$ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+
+$engel = static function (callable $kontrol): bool {
+    try {
+        return (bool) $kontrol();
+    } catch (Throwable $e) {
+        error_log('dosya-paylas deneme sınırı: ' . $e->getMessage());
+        return false;
+    }
+};
+$basarisiz = static function () use ($model, $ip, $token): void {
+    try {
+        $model->basarisizDenemeKaydet($ip, $token);
+    } catch (Throwable $e) {
+        error_log('dosya-paylas deneme kaydı: ' . $e->getMessage());
+    }
+};
+
+if ($engel(static fn() => $model->ipEngelliMi($ip))) {
+    paylasimSayfa('Çok fazla deneme', '<h1>Çok fazla deneme</h1><p>Lütfen 10 dakika sonra tekrar deneyin.</p>', 429);
 }
-$deneme = $_SESSION[$limitAnahtari] ?? ['n' => 0, 't' => time()];
-if (time() - $deneme['t'] > 600) {
-    $deneme = ['n' => 0, 't' => time()];
-}
-if ($deneme['n'] >= 30) {
-    paylasimSayfa('Çok fazla deneme', '<h1>Çok fazla deneme</h1><p>Lütfen daha sonra tekrar deneyin.</p>', 429);
-}
-$deneme['n']++;
-$_SESSION[$limitAnahtari] = $deneme;
 
 $paylasim = $model->tokenIleBul($token);
 if (!$paylasim) {
+    $basarisiz();
     paylasimSayfa('Bağlantı bulunamadı', '<h1>Bağlantı bulunamadı</h1><p>Bu paylaşım bağlantısı geçersiz.</p>', 404);
 }
 $sorun = $model->gecerliMi($paylasim);
@@ -51,9 +60,13 @@ if ($sorun !== null) {
 
 $sifreHatasi = '';
 if ($paylasim->sifre_hash !== null) {
+    if ($engel(static fn() => $model->baglantiEngelliMi($token))) {
+        paylasimSayfa('Çok fazla deneme', '<h1>Çok fazla hatalı deneme</h1><p>Bu bağlantı geçici olarak kilitlendi. Lütfen 10 dakika sonra tekrar deneyin.</p>', 429);
+    }
     $girilen = (string) ($_POST['sifre'] ?? '');
     if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !password_verify($girilen, $paylasim->sifre_hash)) {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $basarisiz();
             $sifreHatasi = '<p class="h">Şifre hatalı.</p>';
         }
         paylasimSayfa('Şifre gerekli', '<h1>' . $h($paylasim->orijinal_ad) . '</h1><p>Bu dosya şifre ile korunuyor.</p>' . $sifreHatasi

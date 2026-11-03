@@ -167,6 +167,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     throw new Exception('Avans bulunamadı.');
                 }
 
+                $avans->odeme_sekli_text = \App\Model\AvansModel::taksitBilgisi($avans->odeme_sekli ?? null)['metin'];
+
                 echo json_encode([
                     'status' => 'success',
                     'data' => $avans

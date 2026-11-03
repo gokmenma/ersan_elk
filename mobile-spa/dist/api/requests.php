@@ -192,6 +192,8 @@ if ($method === 'GET') {
             'avatar' => resolvePersonelAvatar($pId, $a->personel_resim_yolu ?? null, $a->resim_yolu ?? null),
             'amount' => (float) ($a->tutar ?? 0),
             'amount_formatted' => number_format((float) ($a->tutar ?? 0), 2, ',', '.') . ' ₺',
+            'installment_count' => AvansModel::taksitBilgisi($a->odeme_sekli ?? null)['sayi'],
+            'installment_text' => AvansModel::taksitBilgisi($a->odeme_sekli ?? null)['metin'],
             'date' => formatTaleplerDate($a->talep_tarihi),
             'timestamp' => strtotime($a->talep_tarihi ?? '') ?: 0,
             'description' => $a->aciklama ?? '',

@@ -1,5 +1,11 @@
 # Active Context
 
+## Dosya Yönetimi — Güvenlik Sıkılaştırma (2026-11-03)
+- **İçerik doğrulama**: `App\Service\DosyaIcerikDogrulayici` (yükleme sırasında uzantı+MIME'e ek). docx/xlsx zip yapısı + vbaProject/çalıştırılabilir ve zip-bomb kontrolü, doc/xls OLE imzası + makro taraması, PDF `/JavaScript|/JS|/Launch` reddi, PNG/JPEG imza+getimagesize, txt/csv ikili içerik reddi, MZ/ELF/#! başlıkları reddi.
+- **CSRF**: masaüstü `views/dosya-yonetimi/api.php` artık `X-CSRF-Token` (`window.DOSYA_CSRF`) ister; mobil zaten istiyordu.
+- **Paylaşım denemeleri**: `dosya_paylasim_denemeleri` tablosu (SQL: `database/migrations/2026_11_03_dosya_guvenlik.sql`), IP başına 20 / bağlantı başına 10 başarısız deneme / 10 dk. Tablo yoksa kontrol atlanır (error_log).
+- **Açık**: ClamAV taraması yok; nginx altında `storage/dosya-yonetimi/` sunucu ayarıyla engellenmeli.
+
 ## Dosya Yönetimi — Kişisel Alan, Ortak Alan ve Kullanıcı Paylaşımı (2026-11-03)
 - **Model**: Varsayılan olarak her şey sahibine özeldir (klasör `olusturan_id`, dosya `yukleyen_id`). Bölümler: Dosyalarım, Benimle Paylaşılanlar, Ortak Alan (rol kısıtlı, `alan='ortak'`), Diğer Kullanıcılar (yalnız süper admin).
 - **Seviyeler**: 1 görüntüle, 2 düzenle, 3 sahip. Hesap `DosyaKlasorModel::seviyeHaritasi` (zincirde sahip → 3, kullanıcı yetkisi zincirden miras, ortak alanda rol geçerse 1). Silme/taşıma (klasör) ve düzenleme yetkisi verme sahibe; düzenleme düzeyindekiler yalnız görüntüleme yetkisi verebilir.
@@ -3556,3 +3562,6 @@
 - Zimmetler tablosundaki "Resimler" kolonu kaldırıldı; teslim/iade galeri butonları yalnızca Zimmet Geçmişi modalında.
 
 - Zimmet resim galerisi: butona basınca önce küçük resim (thumbnail) ızgarası modalı (#zimmetGaleriModal) açılır; küçük resim tıklanınca GLightbox. Küçük resimler `zimmet-foto-goruntule.php?...&thumb=1` ile GD ile 320px JPEG üretilir (EXIF yönü uygulanır, görüntüleme logu yalnızca tam boy için).
+
+## Avans Taksit Görünürlüğü
+- Talepler (masaüstü list.php: tablo, kart, onay modalı, detay) ve yönetici mobil (TaleplerView.vue, requests.php) avans taksit bilgisini gösteriyor; kaynak AvansModel::taksitBilgisi().

@@ -492,6 +492,8 @@ $title = "Talep Yönetimi";
                                             <span class="text-success fw-bold font-size-13">
                                                 <?= number_format($avans->tutar, 2, ',', '.') ?> ₺
                                             </span>
+                                            <?php $taksit = AvansModel::taksitBilgisi($avans->odeme_sekli ?? null); ?>
+                                            <div><span class="badge bg-<?= $taksit['sayi'] > 1 ? 'warning' : 'secondary' ?>-subtle text-<?= $taksit['sayi'] > 1 ? 'warning' : 'secondary' ?> border border-<?= $taksit['sayi'] > 1 ? 'warning' : 'secondary' ?>-subtle rounded-pill px-2 py-0 font-size-10 fw-semibold"><?= htmlspecialchars($taksit['metin'], ENT_QUOTES, 'UTF-8') ?></span></div>
                                         </td>
                                         <td>
                                             <span class="text-dark font-size-12"><?= date('d.m.Y H:i', strtotime($avans->talep_tarihi)) ?></span>
@@ -541,7 +543,7 @@ $title = "Talep Yönetimi";
                                                     <button class="table-action-btn btn-subtle-success btn-avans-onayla" type="button"
                                                         data-id="<?= $avans->id ?>"
                                                         data-personel="<?= htmlspecialchars($avans->requester_name ?? '') ?>"
-                                                        data-tutar="<?= $avans->tutar ?>" title="Talebi Onayla">
+                                                        data-tutar="<?= $avans->tutar ?>" data-taksit="<?= htmlspecialchars(AvansModel::taksitBilgisi($avans->odeme_sekli ?? null)['metin'], ENT_QUOTES, 'UTF-8') ?>" title="Talebi Onayla">
                                                         <i class="bx bx-check"></i>
                                                     </button>
                                                     <button class="table-action-btn btn-subtle-danger btn-avans-reddet" type="button"
@@ -590,6 +592,10 @@ $title = "Talep Yönetimi";
                                                 <span class="text-muted small">Talep Tutarı:</span>
                                                 <span class="text-success fw-bold font-size-14"><?= number_format($avans->tutar, 2, ',', '.') ?> ₺</span>
                                             </div>
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <span class="text-muted small">Ödeme Şekli:</span>
+                                                <span class="fw-semibold font-size-12"><?= htmlspecialchars(AvansModel::taksitBilgisi($avans->odeme_sekli ?? null)['metin'], ENT_QUOTES, 'UTF-8') ?></span>
+                                            </div>
                                             <?php
                                             $durumClass = 'warning';
                                             $durumText = ucfirst($avans->durum);
@@ -615,7 +621,7 @@ $title = "Talep Yönetimi";
                                             
                                             <div class="d-flex gap-2 mt-2 pt-2 border-top">
                                                 <?php if (!$showApproved && !$showDeleted && $avans->durum == 'beklemede'): ?>
-                                                    <button class="btn btn-sm btn-subtle-success flex-fill btn-avans-onayla py-1" type="button" data-id="<?= $avans->id ?>" data-personel="<?= htmlspecialchars($avans->requester_name ?? '') ?>" data-tutar="<?= $avans->tutar ?>"><i class="bx bx-check"></i> Onayla</button>
+                                                    <button class="btn btn-sm btn-subtle-success flex-fill btn-avans-onayla py-1" type="button" data-id="<?= $avans->id ?>" data-personel="<?= htmlspecialchars($avans->requester_name ?? '') ?>" data-tutar="<?= $avans->tutar ?>" data-taksit="<?= htmlspecialchars(AvansModel::taksitBilgisi($avans->odeme_sekli ?? null)['metin'], ENT_QUOTES, 'UTF-8') ?>"><i class="bx bx-check"></i> Onayla</button>
                                                     <button class="btn btn-sm btn-subtle-danger flex-fill btn-avans-reddet py-1" type="button" data-id="<?= $avans->id ?>" data-personel="<?= htmlspecialchars($avans->requester_name ?? '') ?>"><i class="bx bx-x"></i> Red</button>
                                                 <?php endif; ?>
                                                 <button class="btn btn-sm btn-subtle-info flex-fill btn-avans-detay py-1" type="button" data-id="<?= $avans->id ?>"><i class="bx bx-show"></i> Detay</button>
@@ -1116,6 +1122,7 @@ $title = "Talep Yönetimi";
                     <div class="alert alert-success-subtle text-success border border-success-subtle rounded-3 p-3 mb-3">
                         <strong id="avans_onay_personel"></strong> personelinin
                         <strong id="avans_onay_tutar" class="text-success fs-6"></strong> tutarındaki avans talebi onaylanacaktır.
+                        <div class="mt-1 font-size-12">Ödeme şekli: <strong id="avans_onay_taksit"></strong></div>
                     </div>
 
                     <div class="mb-3">
@@ -1710,6 +1717,7 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('avans_onay_id').value = id;
             document.getElementById('avans_onay_personel').textContent = personel;
             document.getElementById('avans_onay_tutar').textContent = tutarStr;
+            document.getElementById('avans_onay_taksit').textContent = this.dataset.taksit || 'Tek Kesinti';
             
             const form = document.getElementById('formAvansOnay');
             form?.reset();
@@ -2239,6 +2247,12 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Modern Kullanıcı Dostu Detay Modal Render Fonksiyonu
+    function escapeHtmlTaksit(v) {
+        const d = document.createElement('div');
+        d.textContent = v || 'Tek Kesinti';
+        return d.innerHTML;
+    }
+
     function renderDetay(tip, data) {
         let typeBadge = '';
         let typeIcon = '';
@@ -2293,7 +2307,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (tip === 'avans') {
             html += '<div class="col-sm-3 col-6"><div class="detay-kpi-box"><span class="detay-kpi-label">Talep Tutarı</span><span class="detay-kpi-val text-success font-size-16">' + formatMoney(data.tutar) + '</span></div></div>';
             html += '<div class="col-sm-3 col-6"><div class="detay-kpi-box"><span class="detay-kpi-label">Talep Tarihi</span><span class="detay-kpi-val font-size-13">' + formatDate(data.talep_tarihi) + '</span></div></div>';
-            html += '<div class="col-sm-3 col-6"><div class="detay-kpi-box"><span class="detay-kpi-label">Bordroya İşleme</span><span class="detay-kpi-val text-dark font-size-13"><i class="bx bx-check-double text-success me-1"></i>Otomatik</span></div></div>';
+            html += '<div class="col-sm-3 col-6"><div class="detay-kpi-box"><span class="detay-kpi-label">Ödeme Şekli</span><span class="detay-kpi-val text-dark font-size-13"><i class="bx bx-calendar-event text-warning me-1"></i>' + escapeHtmlTaksit(data.odeme_sekli_text) + '</span></div></div>';
             html += '<div class="col-sm-3 col-6"><div class="detay-kpi-box"><span class="detay-kpi-label">Durum</span><span class="detay-kpi-val text-' + durumClass + ' font-size-13">' + durumText + '</span></div></div>';
         } else if (tip === 'izin') {
             html += '<div class="col-sm-3 col-6"><div class="detay-kpi-box"><span class="detay-kpi-label">İzin Türü</span><span class="detay-kpi-val text-primary font-size-13">' + ucfirst(data.izin_tipi || '-') + '</span></div></div>';

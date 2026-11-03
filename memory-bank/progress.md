@@ -2117,3 +2117,5 @@
 - [x] Ücret hesap pusulası PDF: ücretsiz izin günleri gösterildi.
 
 - [x] Araç Takip Zimmetler sekmesi: Resimler kolonu + GLightbox galeri, geçmiş modalı genişletildi ve lazy galeriye geçirildi.
+
+- [x] Avans taleplerinde taksit bilgisi gösterimi (masaüstü + yönetici mobil)

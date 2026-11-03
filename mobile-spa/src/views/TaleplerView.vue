@@ -622,6 +622,9 @@ async function submitSil() {
             <span v-if="item.type === 'avans'" class="badge-amount">
               {{ item.amount_formatted }}
             </span>
+            <span v-if="item.type === 'avans' && item.installment_count > 1" class="badge-days">
+              {{ item.installment_text }}
+            </span>
             <span v-else-if="item.type === 'izin'" class="badge-days">
               {{ item.days }} Gün
             </span>
@@ -780,7 +783,7 @@ async function submitSil() {
         <header class="modal-card__head head-success">
           <div class="modal-icon-circle"><Wallet :size="22" /></div>
           <h3>Avansı Onayla</h3>
-          <p>{{ activeItem?.name }} · {{ activeItem?.amount_formatted }}</p>
+          <p>{{ activeItem?.name }} · {{ activeItem?.amount_formatted }} · {{ activeItem?.installment_text }}</p>
         </header>
 
         <form class="modal-card__form" @submit.prevent="submitAvansOnay">
@@ -1050,6 +1053,10 @@ async function submitSil() {
               <div v-if="activeItem?.type === 'avans'" class="info-tile">
                 <span>TALEP TUTARI</span>
                 <strong>{{ activeItem?.amount_formatted }}</strong>
+              </div>
+              <div v-if="activeItem?.type === 'avans'" class="info-tile">
+                <span>ÖDEME ŞEKLİ</span>
+                <strong>{{ activeItem?.installment_text || 'Tek Kesinti' }}</strong>
               </div>
               <div v-else-if="activeItem?.type === 'izin'" class="info-tile">
                 <span>İZİN SÜRESİ</span>

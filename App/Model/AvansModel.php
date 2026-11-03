@@ -159,6 +159,18 @@ class AvansModel extends Model
         return $query->fetchAll(PDO::FETCH_OBJ);
     }
 
+    public static function taksitBilgisi(?string $odemeSekli): array
+    {
+        $raw = strtolower(trim((string) $odemeSekli));
+        $sayi = 1;
+        if (is_numeric($raw) && (int) $raw > 1) {
+            $sayi = (int) $raw;
+        } elseif ($raw === "taksit") {
+            $sayi = 2;
+        }
+        return ["sayi" => $sayi, "metin" => $sayi > 1 ? $sayi . " Taksit" : "Tek Kesinti"];
+    }
+
     /**
      * Tüm bekleyen avans taleplerini personel bilgileriyle getirir
      */

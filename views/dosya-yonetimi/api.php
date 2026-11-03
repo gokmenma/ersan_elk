@@ -30,6 +30,14 @@ if (empty($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
     exit;
 }
 
+$csrfIstek = (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_POST['csrf_token'] ?? '');
+$csrfOturum = (string) ($_SESSION['csrf_token'] ?? '');
+if ($csrfIstek === '' || $csrfOturum === '' || !hash_equals($csrfOturum, $csrfIstek)) {
+    http_response_code(419);
+    echo json_encode(['status' => 'error', 'message' => 'Güvenlik doğrulaması başarısız. Lütfen sayfayı yenileyin.']);
+    exit;
+}
+
 Gate::authorizeApiPolicy('dosya-yonetimi/api', $action);
 
 try {

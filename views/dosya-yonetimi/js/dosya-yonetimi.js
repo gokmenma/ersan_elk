@@ -2,6 +2,7 @@ $(function () {
     const API = 'views/dosya-yonetimi/api.php';
     const INDIR = 'views/dosya-yonetimi/indir.php';
     const Y = window.DOSYA_YETKI || {};
+    const CSRF = { 'X-CSRF-Token': window.DOSYA_CSRF || '' };
 
     let secili = 'tum';
     let agacListe = [];
@@ -46,7 +47,7 @@ $(function () {
     const basari = (mesaj) => Swal.fire({ icon: 'success', title: mesaj, timer: 1400, showConfirmButton: false });
 
     const api = (action, data) => $.ajax({
-        url: API, type: 'POST', dataType: 'json', data: Object.assign({ action }, data || {})
+        url: API, type: 'POST', dataType: 'json', headers: CSRF, data: Object.assign({ action }, data || {})
     }).then(
         (r) => r.data,
         (xhr) => $.Deferred().reject((xhr.responseJSON && xhr.responseJSON.message) || 'İşlem tamamlanamadı.')
@@ -282,6 +283,7 @@ $(function () {
         ajax: {
             url: API,
             type: 'POST',
+            headers: CSRF,
             data: function (d) {
                 d.action = 'liste';
                 d.klasor_id = secili;
@@ -542,7 +544,7 @@ $(function () {
 
         Swal.fire({ title: 'Yükleniyor...', html: '<div class="progress"><div class="progress-bar" id="yuklemeCubuk" style="width:0%"></div></div>', allowOutsideClick: false, showConfirmButton: false });
         $.ajax({
-            url: API, type: 'POST', data: fd, processData: false, contentType: false, dataType: 'json',
+            url: API, type: 'POST', headers: CSRF, data: fd, processData: false, contentType: false, dataType: 'json',
             xhr: function () {
                 const x = $.ajaxSettings.xhr();
                 if (x.upload) x.upload.addEventListener('progress', (e) => {

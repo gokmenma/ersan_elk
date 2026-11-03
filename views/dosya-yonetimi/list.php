@@ -382,5 +382,6 @@ $gunOptions = ['1' => '1 gün', '3' => '3 gün', '7' => '7 gün', '14' => '14 g�
 
 <script>
     window.DOSYA_YETKI = <?= json_encode($yetki) ?>;
+    window.DOSYA_CSRF = <?= json_encode(\App\Helper\Security::csrf()) ?>;
 </script>
 <script src="views/dosya-yonetimi/js/dosya-yonetimi.js?v=<?php echo time(); ?>"></script>

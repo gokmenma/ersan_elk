@@ -101,4 +101,35 @@ class DosyaPaylasimModel extends Model
         $stmt->execute([$id]);
         return $stmt->rowCount() > 0;
     }
+
+    public const IP_LIMITI = 20;
+    public const BAGLANTI_LIMITI = 10;
+    public const PENCERE_DAKIKA = 10;
+
+    public function basarisizDenemeKaydet(string $ip, string $token): void
+    {
+        $stmt = $this->db->prepare("INSERT INTO dosya_paylasim_denemeleri (ip, token_hash, created_at) VALUES (?, ?, NOW())");
+        $stmt->execute([substr($ip, 0, 45), hash('sha256', $token)]);
+        if (random_int(1, 50) === 1) {
+            $this->db->exec("DELETE FROM dosya_paylasim_denemeleri WHERE created_at < (NOW() - INTERVAL 1 DAY)");
+        }
+    }
+
+    public function ipEngelliMi(string $ip): bool
+    {
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(*) FROM dosya_paylasim_denemeleri WHERE ip = ? AND created_at >= (NOW() - INTERVAL " . self::PENCERE_DAKIKA . " MINUTE)"
+        );
+        $stmt->execute([substr($ip, 0, 45)]);
+        return (int) $stmt->fetchColumn() >= self::IP_LIMITI;
+    }
+
+    public function baglantiEngelliMi(string $token): bool
+    {
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(*) FROM dosya_paylasim_denemeleri WHERE token_hash = ? AND created_at >= (NOW() - INTERVAL " . self::PENCERE_DAKIKA . " MINUTE)"
+        );
+        $stmt->execute([hash('sha256', $token)]);
+        return (int) $stmt->fetchColumn() >= self::BAGLANTI_LIMITI;
+    }
 }

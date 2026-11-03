@@ -446,6 +446,8 @@ class DosyaYonetimiService
             throw new \DomainException('Dosya içeriği uzantısıyla uyuşmuyor.');
         }
 
+        DosyaIcerikDogrulayici::dogrula($dosya['tmp_name'], $uzanti);
+
         $dizin = DosyaModel::depoDizini($this->firmaId);
         if (!is_dir($dizin) && !mkdir($dizin, 0775, true) && !is_dir($dizin)) {
             error_log('Dosya yönetimi dizini oluşturulamadı: ' . $dizin);
