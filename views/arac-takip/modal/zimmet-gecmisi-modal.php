@@ -1,5 +1,5 @@
 <div class="modal fade" id="zimmetGecmisiModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header d-flex align-items-center justify-content-between">
                 <h5 class="modal-title mb-0"><i class="bx bx-history me-2"></i>Zimmet Geçmişi: <span id="gecmisAracPlaka" class="text-primary"></span></h5>

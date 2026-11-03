@@ -52,6 +52,42 @@ class AracZimmetFotoModel extends Model
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
+    public const GRUP_ARALIK_SANIYE = 600;
+
+    public function gruplaFotolar(array $fotolar): array
+    {
+        usort($fotolar, fn($a, $b) => (int) $a->id <=> (int) $b->id);
+        $gruplar = [];
+        $son = [];
+        foreach ($fotolar as $foto) {
+            $tur = $foto->foto_turu;
+            $zaman = strtotime($foto->olusturma_tarihi ?? 'now');
+            $mevcut = $son[$tur] ?? null;
+            if ($mevcut === null || ($zaman - $mevcut['zaman']) > self::GRUP_ARALIK_SANIYE) {
+                $no = ($mevcut['no'] ?? 0) + 1;
+                $gruplar[$tur . '-' . $no] = [
+                    'anahtar' => $tur . '-' . $no,
+                    'tur' => $tur,
+                    'no' => $no,
+                    'adet' => 0,
+                    'tarih' => date('d.m.Y H:i', $zaman),
+                ];
+            } else {
+                $no = $mevcut['no'];
+            }
+            $son[$tur] = ['no' => $no, 'zaman' => $zaman];
+            $foto->grup = $tur . '-' . $no;
+            $gruplar[$foto->grup]['adet']++;
+        }
+        $liste = array_values($gruplar);
+        $turSayilari = array_count_values(array_column($liste, 'tur'));
+        foreach ($liste as &$g) {
+            $g['coklu'] = $turSayilari[$g['tur']] > 1;
+        }
+        unset($g);
+        return $liste;
+    }
+
     public function getById($id)
     {
         $sql = $this->db->prepare("

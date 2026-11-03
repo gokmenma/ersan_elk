@@ -1418,6 +1418,8 @@ usort($yakitAraclar, static function ($a, $b) {
         background-color: #f8fafc !important;
     }
 </style>
+<link rel="stylesheet" href="assets/libs/glightbox/css/glightbox.min.css">
+<script src="assets/libs/glightbox/js/glightbox.min.js"></script>
 <?php include_once "modal/zimmet-gecmisi-modal.php"; ?>
 <?php include_once "modal/arac-islem-gecmisi-modal.php"; ?>
 <?php include_once "modal/zimmet-duzenle-modal.php"; ?>

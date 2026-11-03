@@ -853,6 +853,51 @@ const AracTakip = {
     });
   },
 
+  zimmetGaleriButonu: function (zimmetId, gruplar) {
+    if (!gruplar || gruplar.length === 0) return '<span class="text-muted">-</span>';
+    const dugmeler = gruplar.map((g) => {
+      const iade = g.tur === "iade";
+      const etiket = (iade ? "İade" : "Teslim") + (g.coklu ? " " + g.no : "");
+      return `<button type="button" class="btn btn-sm btn-subtle-${iade ? "warning" : "primary"} py-0 px-2 font-size-11 fw-semibold text-nowrap zimmet-galeri-ac" data-id="${zimmetId}" data-grup="${g.anahtar}" title="${etiket} · ${g.tarih} · ${g.adet} resim"><i class="bx bx-images me-1"></i>${etiket} <span class="ms-1">${g.adet}</span></button>`;
+    });
+    return `<div class="d-inline-flex flex-column gap-1">${dugmeler.join("")}</div>`;
+  },
+
+  zimmetGaleriAc: function (zimmetId, grup) {
+    if (typeof GLightbox === "undefined") {
+      Swal.fire("Hata", "Galeri bileşeni yüklenemedi.", "error");
+      return;
+    }
+    if (this._zimmetGaleri) {
+      this._zimmetGaleri.destroy();
+      this._zimmetGaleri = null;
+    }
+    $.post(this.apiUrl, { action: "zimmet-foto-listele", zimmet_id: zimmetId }, (response) => {
+      if (response.status !== "success" || !response.data || response.data.length === 0) {
+        Swal.fire("Bilgi", "Bu zimmet için resim bulunmuyor.", "info");
+        return;
+      }
+      const url = (f) => "views/arac-takip/zimmet-foto-goruntule.php?id=" + encodeURIComponent(f.id);
+      const turFiltreli = response.data.filter((f) => !grup || f.grup === grup);
+      const resimler = turFiltreli.filter((f) => !f.is_pdf);
+      const pdfler = turFiltreli.filter((f) => f.is_pdf);
+      if (resimler.length === 0) {
+        window.open(url(pdfler[0]), "_blank");
+        return;
+      }
+      const elements = resimler.map((f) => ({
+        href: url(f),
+        type: "image",
+        title: f.foto_turu === "iade" ? "İade" : "Teslim",
+        description: f.orijinal_ad || "",
+      }));
+      this._zimmetGaleri = GLightbox({ elements: elements, loop: true, touchNavigation: true, preload: false, zoomable: true });
+      this._zimmetGaleri.open();
+    }, "json").fail(() => {
+      Swal.fire("Hata", "Resimler alınamadı.", "error");
+    });
+  },
+
   zimmetGecmisi: function(aracId, plaka) {
     console.log("Arac Takip: Zimmet geçmişi isteniyor.", {aracId, plaka});
     $("#gecmisAracPlaka").text(plaka);
@@ -882,39 +927,7 @@ const AracTakip = {
                         ? '<span class="badge bg-success">Aktif</span>' 
                         : '<span class="badge bg-secondary">İade Edildi</span>';
                     
-                    let fotoHtml = '';
-                    const teslimFotolar = (z.fotolar || []).filter(f => f.foto_turu === 'teslim');
-                    const iadeFotolar = (z.fotolar || []).filter(f => f.foto_turu === 'iade');
-
-                    if (teslimFotolar.length > 0) {
-                        fotoHtml += '<div class="d-flex align-items-center mb-1"><span class="badge bg-light text-dark py-1 px-2 me-1" style="font-size: 0.65rem; min-width: 50px;">Teslim:</span>';
-                        teslimFotolar.forEach(f => {
-                            const url = "views/arac-takip/zimmet-foto-goruntule.php?id=" + encodeURIComponent(f.id);
-                            if (f.is_pdf) {
-                                fotoHtml += `<a href="${url}" target="_blank" class="btn btn-xs btn-outline-danger p-0 px-1 me-1" title="${f.orijinal_ad}" style="font-size: 0.75rem;"><i class="bx bxs-file-pdf"></i> PDF</a>`;
-                            } else {
-                                fotoHtml += `<img src="${url}" class="rounded border me-1 zimmet-gecmis-thumb" data-url="${url}" style="width: 32px; height: 32px; object-fit: cover; cursor: pointer;" title="${f.orijinal_ad}">`;
-                            }
-                        });
-                        fotoHtml += '</div>';
-                    }
-
-                    if (iadeFotolar.length > 0) {
-                        fotoHtml += '<div class="d-flex align-items-center"><span class="badge bg-light text-dark py-1 px-2 me-1" style="font-size: 0.65rem; min-width: 50px;">İade:</span>';
-                        iadeFotolar.forEach(f => {
-                            const url = "views/arac-takip/zimmet-foto-goruntule.php?id=" + encodeURIComponent(f.id);
-                            if (f.is_pdf) {
-                                fotoHtml += `<a href="${url}" target="_blank" class="btn btn-xs btn-outline-danger p-0 px-1 me-1" title="${f.orijinal_ad}" style="font-size: 0.75rem;"><i class="bx bxs-file-pdf"></i> PDF</a>`;
-                            } else {
-                                fotoHtml += `<img src="${url}" class="rounded border me-1 zimmet-gecmis-thumb" data-url="${url}" style="width: 32px; height: 32px; object-fit: cover; cursor: pointer;" title="${f.orijinal_ad}">`;
-                            }
-                        });
-                        fotoHtml += '</div>';
-                    }
-
-                    if (!fotoHtml) {
-                        fotoHtml = '<span class="text-muted">-</span>';
-                    }
+                    const fotoHtml = this.zimmetGaleriButonu(z.id, z.foto_gruplari);
 
                     html += `<tr>
                         <td class="text-center">${index + 1}</td>
@@ -1832,13 +1845,13 @@ const AracTakip = {
         });
         self.updateKmSummaryCards();
       } else {
-        const colCount = $("#kmTable").find("thead tr:first th").length || 8;
+        const colCount = $("#kmTable").find("thead tr:first th").length || 7;
         let tds = `<td>-</td><td>${response.message || "Veri yükleniyor..."}</td>`;
         for (let i = 2; i < colCount; i++) tds += "<td></td>";
         tbody.html(`<tr>${tds}</tr>`);
       }
     }).fail(function (xhr) {
-      const colCount = $("#kmTable").find("thead tr:first th").length || 8;
+      const colCount = $("#kmTable").find("thead tr:first th").length || 7;
       let tds = `<td>-</td><td>Hata: ${xhr.statusText}</td>`;
       for (let i = 2; i < colCount; i++) tds += "<td></td>";
       tbody.html(`<tr>${tds}</tr>`);
@@ -2628,13 +2641,13 @@ const AracTakip = {
         self.updateServisSummaryCards();
       } else {
         const colCount =
-          $("#servisTable").find("thead tr:first th").length || 8;
+          $("#servisTable").find("thead tr:first th").length || 7;
         let tds = `<td>-</td><td>${response.message || "Veri yükleniyor..."}</td>`;
         for (let i = 2; i < colCount; i++) tds += "<td></td>";
         tbody.html(`<tr>${tds}</tr>`);
       }
     }).fail(function (xhr) {
-      const colCount = $("#servisTable").find("thead tr:first th").length || 8;
+      const colCount = $("#servisTable").find("thead tr:first th").length || 7;
       let tds = `<td>-</td><td>Hata: ${xhr.statusText}</td>`;
       for (let i = 2; i < colCount; i++) tds += "<td></td>";
       tbody.html(`<tr>${tds}</tr>`);
@@ -3979,6 +3992,11 @@ $(document).ready(function () {
   $(document).on("click", ".zimmet-gecici-iptal", function (e) {
     e.preventDefault();
     AracTakip.geciciTeslimIptal($(this).data("devir-id"), $(this).data("zimmet-id"));
+  });
+  $(document).on("click", ".zimmet-galeri-ac", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    AracTakip.zimmetGaleriAc($(this).data("id"), $(this).attr("data-grup"));
   });
   $(document).on("click", ".zimmet-foto-goster", function (e) {
     e.preventDefault();

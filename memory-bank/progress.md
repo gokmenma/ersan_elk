@@ -2109,3 +2109,5 @@
 - [x] Puantaj fazla mesaisi resmî alacağa alındı, RTÇ yemek limitinden düşüldü (yemek tam lira/gün). Eski/yeni kod 86 personelde geçici DB kopyasında karşılaştırıldı.
 
 - [x] Ücret hesap pusulası PDF: ücretsiz izin günleri gösterildi.
+
+- [x] Araç Takip Zimmetler sekmesi: Resimler kolonu + GLightbox galeri, geçmiş modalı genişletildi ve lazy galeriye geçirildi.

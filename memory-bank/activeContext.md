@@ -3532,3 +3532,9 @@
 - Bordro detayı: sözleşme kartından RTÇ satırı kaldırıldı; hakediş resmî tabanın altındaysa RTÇ/fazla mesai için hakediş tabana tamamlanıyor (düşük puantajlı prim usulü).
 
 - Ücret hesap pusulası PDF (personel PWA ve Raporlar > Ücret Bordroları ortak şablonu `views/bordro/partials/ucret-hesap-pusulasi.php`): "Çalışma ve İzin Günleri" tablosuna kayıtlı snapshot `matrahlar.ucretsiz_izin_gunu` ile "Ücretsiz İzin" sütunu eklendi (hesaplama değişmedi).
+
+- Araç Takip > Zimmetler: tabloya "Resimler" kolonu (ikon + adet rozeti) eklendi; tıklayınca `zimmet-foto-listele` ile resimler tembel (lazy) çekilip GLightbox galerisinde açılır. Zimmet Geçmişi modalı `modal-xl` yapıldı, fotoğraf küçük resimleri yerine aynı galeri ikonu kullanılıyor. `zimmet-listesi` yanıtına `foto_sayisi` eklendi (`AracZimmetFotoModel::countByZimmetler`).
+
+- Zimmet resim galerisi teslim/iade olarak ayrıldı: her zimmette ayrı "Teslim n" ve "İade n" butonları, her biri yalnızca kendi türünü GLightbox ile açar.
+
+- Zimmetler tablosundaki "Resimler" kolonu kaldırıldı; teslim/iade galeri butonları yalnızca Zimmet Geçmişi modalında.

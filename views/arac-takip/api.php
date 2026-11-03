@@ -997,10 +997,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 }
 
                 $fotolar = $ZimmetFoto->getByZimmet($zimmet_id);
+                $ZimmetFoto->gruplaFotolar($fotolar);
                 $data = [];
                 foreach ($fotolar as $foto) {
                     $data[] = [
                         'id' => Security::encrypt($foto->id),
+                        'grup' => $foto->grup,
                         'foto_turu' => $foto->foto_turu,
                         'orijinal_ad' => $foto->orijinal_ad,
                         'mime_tipi' => $foto->mime_tipi,
@@ -1071,10 +1073,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     $g->olusturma_tarihi_fmt = isset($g->olusturma_tarihi) ? date('d.m.Y H:i', strtotime($g->olusturma_tarihi)) : '-';
                     
                     $fotolar = $ZimmetFoto->getByZimmet($g->id);
+                    $g->foto_gruplari = $ZimmetFoto->gruplaFotolar($fotolar);
                     $g->fotolar = [];
                     foreach ($fotolar as $foto) {
                         $g->fotolar[] = [
                             'id' => Security::encrypt($foto->id),
+                            'grup' => $foto->grup,
                             'foto_turu' => $foto->foto_turu,
                             'orijinal_ad' => $foto->orijinal_ad,
                             'mime_tipi' => $foto->mime_tipi,
