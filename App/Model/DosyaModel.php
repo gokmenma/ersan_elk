@@ -103,13 +103,10 @@ class DosyaModel extends Model
     }
 
     /**
-     * @param array{super: bool, user: int, klasorler: int[], dosyalar: int[]} $kapsam
+     * @param array{user: int, klasorler: int[], dosyalar: int[]} $kapsam
      */
     private function kapsamKosulu(array $kapsam, array &$bind, string $alias = 'd'): string
     {
-        if (!empty($kapsam['super'])) {
-            return '1 = 1';
-        }
         $bind['kapsam_user'] = (int) $kapsam['user'];
         $parcalar = ["{$alias}.yukleyen_id = :kapsam_user"];
         $klasorler = array_values($kapsam['klasorler'] ?? []);
@@ -135,15 +132,13 @@ class DosyaModel extends Model
 
     private function bolumKosulu(string $bolum, array $kapsam, array &$bind, string $alias = 'd'): string
     {
-        if (!in_array($bolum, ['dosyalarim', 'diger', 'paylasilan'], true) || ($bolum === 'paylasilan' && !($kapsam['dosyalar'] ?? []))) {
+        if (!in_array($bolum, ['dosyalarim', 'paylasilan'], true) || ($bolum === 'paylasilan' && !($kapsam['dosyalar'] ?? []))) {
             return '1 = 0';
         }
         $bind['bolum_user'] = (int) $kapsam['user'];
         switch ($bolum) {
             case 'dosyalarim':
                 return "{$alias}.klasor_id IS NULL AND {$alias}.yukleyen_id = :bolum_user";
-            case 'diger':
-                return "{$alias}.klasor_id IS NULL AND {$alias}.yukleyen_id <> :bolum_user";
             case 'paylasilan':
                 $dosyalar = array_values($kapsam['dosyalar'] ?? []);
                 if (!$dosyalar) {

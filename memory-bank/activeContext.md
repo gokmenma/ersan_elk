@@ -1,5 +1,9 @@
 # Active Context
 
+## Dosya Yönetimi — Süper Admin İstisnası Kaldırıldı (2026-11-03)
+- Hiç kimse (süper admin dahil) kendisine ait veya kendisiyle paylaşılmayan dosya/klasörü göremez. "Tüm Kullanıcılar" bölümü ve süper admin atlamaları (`seviyeHaritasi`, `kapsamKosulu`, `dosyaSeviyesi`, `dosyaTasi`) kaldırıldı.
+- Ortak Alan kuralı aynı: rol kısıtı varsa kullanıcının rolü eşleşmeli (süper admin dahil); kısıt yoksa herkes görür. Süper admin yalnız `dosya_yonetimi_ortak_alan` yetkisi için hâlâ muaf.
+
 ## Dosya Yönetimi — Güvenlik Sıkılaştırma (2026-11-03)
 - **İçerik doğrulama**: `App\Service\DosyaIcerikDogrulayici` (yükleme sırasında uzantı+MIME'e ek). docx/xlsx zip yapısı + vbaProject/çalıştırılabilir ve zip-bomb kontrolü, doc/xls OLE imzası + makro taraması, PDF `/JavaScript|/JS|/Launch` reddi, PNG/JPEG imza+getimagesize, txt/csv ikili içerik reddi, MZ/ELF/#! başlıkları reddi.
 - **CSRF**: masaüstü `views/dosya-yonetimi/api.php` artık `X-CSRF-Token` (`window.DOSYA_CSRF`) ister; mobil zaten istiyordu.

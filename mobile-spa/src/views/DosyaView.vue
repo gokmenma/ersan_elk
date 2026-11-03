@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import {
   ArrowLeft,
   ChevronRight,
+  CornerLeftUp,
   Download,
   EllipsisVertical,
   Eye,
@@ -23,6 +24,7 @@ import {
   Upload,
   X,
 } from '@lucide/vue'
+import Swal from 'sweetalert2'
 import { auth } from '../services/auth.js'
 import { dosyaApi } from '../services/dosya.js'
 
@@ -44,7 +46,16 @@ const bolumler = ref(['dosyalarim'])
 const baglam = ref({ seviye: 0, alan: 'kisisel', klasor_acabilir: false })
 const erisimSheet = ref(null)
 const erisimKullanicilari = ref([])
-const BOLUM_ADLARI = { dosyalarim: 'Dosyalarım', paylasilan: 'Paylaşılan', ortak: 'Ortak Alan', diger: 'Tüm Kullanıcılar' }
+const uzantiGoster = ref(localStorage.getItem('dosya_uzanti_goster_mobil') !== '0')
+const uzantiDegistir = () => {
+  uzantiGoster.value = !uzantiGoster.value
+  try { localStorage.setItem('dosya_uzanti_goster_mobil', uzantiGoster.value ? '1' : '0') } catch { /* depolama kapalı */ }
+}
+const gorunenAd = (d) => {
+  const son = `.${String(d.uzanti || '').toLowerCase()}`
+  return !uzantiGoster.value && son.length > 1 && String(d.ad).toLowerCase().endsWith(son) ? String(d.ad).slice(0, -son.length) : d.ad
+}
+const BOLUM_ADLARI = { dosyalarim: 'Dosyalarım', paylasilan: 'Paylaşılan', ortak: 'Ortak Alan' }
 const fileInput = ref(null)
 const yukleniyor = ref(false)
 
@@ -105,6 +116,11 @@ const menuVar = (nesne, tur) => {
 
 const klasorAc = (id) => { aktifKlasor.value = id; arama.value = ''; yukle() }
 const yoldanAc = (id) => klasorAc(id)
+const ustKlasorAdi = computed(() => (yol.value.length > 1 ? yol.value[yol.value.length - 2].ad : BOLUM_ADLARI[bolum.value]))
+const ustKlasoreCik = () => {
+  if (!yol.value.length) return
+  klasorAc(yol.value.length > 1 ? yol.value[yol.value.length - 2].id : null)
+}
 const geri = () => {
   if (yol.value.length > 1) klasorAc(yol.value[yol.value.length - 2].id)
   else if (yol.value.length === 1) klasorAc(null)
@@ -161,8 +177,18 @@ function adlandir() {
 async function sil() {
   const { tur, nesne } = sheet.value
   sheet.value = null
-  const mesaj = tur === 'klasor' ? `"${nesne.ad}" klasörü, alt klasörleri ve dosyalarıyla silinsin mi?` : `"${nesne.ad}" silinsin mi?`
-  if (!window.confirm(mesaj)) return
+  const sonuc = await Swal.fire({
+    title: tur === 'klasor' ? 'Klasör silinsin mi?' : 'Dosya silinsin mi?',
+    text: tur === 'klasor' ? `"${nesne.ad}" klasörü, alt klasörleri ve içindeki tüm dosyalarla birlikte silinecek.` : `"${nesne.ad}" silinecek.`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#ef4444',
+    cancelButtonColor: '#64748b',
+    confirmButtonText: 'Evet, Sil',
+    cancelButtonText: 'Vazgeç',
+    reverseButtons: true,
+  })
+  if (!sonuc.isConfirmed) return
   await calistir(() => (tur === 'klasor' ? dosyaApi.klasorSil(nesne.id) : dosyaApi.dosyaSil(nesne.id)), 'Silindi')
 }
 
@@ -287,11 +313,18 @@ onMounted(() => { yukle(); ozetYukle() })
         <input v-model="arama" type="search" placeholder="Dosya veya klasör ara" aria-label="Dosya ara" @input="aramaDegisti">
         <button v-if="arama" type="button" aria-label="Aramayı temizle" @click="arama = ''; yukle()"><X :size="16" /></button>
       </div>
+      <button type="button" class="clay-filter-pill dosya-uzanti" :class="{ 'is-active': uzantiGoster }" :aria-pressed="uzantiGoster" aria-label="Dosya uzantılarını göster veya gizle" @click="uzantiDegistir">.ext</button>
       <div class="clay-tabs-wrap dosya-gorunum">
         <button type="button" class="clay-filter-pill" :class="{ 'is-active': gorunum === 'liste' }" aria-label="Liste" @click="gorunumSec('liste')"><List :size="16" /></button>
         <button type="button" class="clay-filter-pill" :class="{ 'is-active': gorunum === 'izgara' }" aria-label="Izgara" @click="gorunumSec('izgara')"><LayoutGrid :size="16" /></button>
       </div>
     </div>
+
+    <button v-if="yol.length && !aranan" type="button" class="dosya-ust" @click="ustKlasoreCik">
+      <span class="dosya-ust-ikon"><CornerLeftUp :size="18" /></span>
+      <span class="dosya-ust-metin"><strong>Üst klasöre çık</strong><small>{{ ustKlasorAdi }}</small></span>
+      <ChevronRight :size="16" />
+    </button>
 
     <nav v-if="yol.length && !aranan" class="dosya-yol" aria-label="Konum">
       <button type="button" @click="yoldanAc(null)">{{ BOLUM_ADLARI[bolum] }}</button>
@@ -321,9 +354,9 @@ onMounted(() => { yukle(); ozetYukle() })
         <div v-for="d in dosyalar" :key="d.id" class="bento-card bento-card--white dosya-oge" :class="{ 'dosya-oge--kare': gorunum === 'izgara' }" role="button" tabindex="0" @click="dosyaAc(d)" @keydown.enter="dosyaAc(d)">
           <span class="dosya-ikon" :class="`dosya-ikon--${renk(d.uzanti)}`"><component :is="ikon(d.uzanti)" :size="22" /></span>
           <span class="dosya-ad">
-            {{ d.ad }}
+            {{ gorunenAd(d) }}
             <small>
-              <b class="dosya-tur">{{ d.uzanti.toUpperCase() }}</b>
+              <b v-if="uzantiGoster" class="dosya-tur">{{ d.uzanti.toUpperCase() }}</b>
               {{ boyutYaz(d.boyut) }} · {{ tarihYaz(d.tarih) }}<template v-if="bolum !== 'dosyalarim' && d.yukleyen"> · {{ d.yukleyen }}</template>
             </small>
           </span>
@@ -353,7 +386,7 @@ onMounted(() => { yukle(); ozetYukle() })
           <span class="dosya-ikon" :class="sheet.tur === 'klasor' ? 'dosya-ikon--amber' : `dosya-ikon--${renk(sheet.nesne.uzanti)}`">
             <Folder v-if="sheet.tur === 'klasor'" :size="22" /><component :is="ikon(sheet.nesne.uzanti)" v-else :size="22" />
           </span>
-          <div><h3>{{ sheet.nesne.ad }}</h3><small>{{ sheet.tur === 'klasor' ? `${sheet.nesne.dosya_sayisi} dosya` : `${boyutYaz(sheet.nesne.boyut)} · ${tarihYaz(sheet.nesne.tarih)}` }}</small></div>
+          <div><h3>{{ sheet.tur === 'dosya' ? gorunenAd(sheet.nesne) : sheet.nesne.ad }}</h3><small>{{ sheet.tur === 'klasor' ? `${sheet.nesne.dosya_sayisi} dosya` : `${boyutYaz(sheet.nesne.boyut)} · ${tarihYaz(sheet.nesne.tarih)}` }}</small></div>
         </div>
         <button v-if="sheet.tur === 'dosya' && sheet.nesne.onizlenebilir" type="button" @click="dosyaAc(sheet.nesne); sheet = null"><Eye :size="18" /> Önizle</button>
         <a v-if="sheet.tur === 'dosya'" :href="dosyaApi.indirUrl(sheet.nesne.id)" @click="sheet = null"><Download :size="18" /> İndir</a>
@@ -448,6 +481,7 @@ onMounted(() => { yukle(); ozetYukle() })
 .dosya-hero-grid strong { display: block; font-size: 18px; color: var(--ds-ink-light); }
 .dosya-hero-grid span { font-size: 11px; color: var(--ds-muted-light); text-transform: uppercase; letter-spacing: .05em; }
 
+.dosya-uzanti { flex: 0 0 auto; min-width: 52px; justify-content: center; padding: 0 12px; }
 .dosya-bolumler { overflow-x: auto; scrollbar-width: none; }
 .dosya-bolumler::-webkit-scrollbar { display: none; }
 .dosya-bolumler { padding: 4px; gap: 4px; }
@@ -463,6 +497,12 @@ onMounted(() => { yukle(); ozetYukle() })
 .dosya-gorunum .clay-filter-pill { min-width: 42px; min-height: 42px; padding: 0; justify-content: center; box-shadow: none; border-color: transparent; background: transparent; }
 .dosya-gorunum .clay-filter-pill.is-active { background: var(--ds-primary); }
 
+.dosya-ust { width: 100%; display: flex; align-items: center; gap: 12px; min-height: 52px; margin-bottom: 6px; padding: 6px 14px 6px 8px; border: 1px solid var(--ds-border); border-radius: var(--ds-radius-pill); background: var(--ds-surface); box-shadow: var(--ds-shadow-pill); color: var(--ds-muted); text-align: left; font-family: var(--ds-font-main); }
+.dosya-ust:active { transform: scale(.98); }
+.dosya-ust-ikon { width: 38px; height: 38px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; background: var(--ds-primary); color: #fff; }
+.dosya-ust-metin { flex: 1; min-width: 0; display: grid; }
+.dosya-ust-metin strong { font-size: 14px; color: var(--ds-ink); }
+.dosya-ust-metin small { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dosya-yol { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; margin-bottom: 6px; color: var(--ds-muted); }
 .dosya-yol button { min-height: 44px; padding: 0 6px; border: 0; background: transparent; font: 600 13px var(--ds-font-main); color: var(--ds-ink); }
 

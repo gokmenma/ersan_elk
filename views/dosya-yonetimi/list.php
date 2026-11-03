@@ -103,6 +103,9 @@ $gunOptions = ['1' => '1 gün', '3' => '3 gün', '7' => '7 gün', '14' => '14 g�
 .dosya-arama-kutu:focus-within { border-color: var(--bs-primary); box-shadow: 0 0 0 3px var(--bs-primary-bg-subtle); }
 .dosya-arama-kutu i { font-size: 18px; }
 .dosya-arama-kutu input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 13px; color: var(--bs-body-color); }
+.dosya-anahtar { display: inline-flex; align-items: center; gap: 8px; height: 38px; margin: 0; padding: 0 12px; border: 1px solid var(--bs-border-color); border-radius: 12px; background: var(--bs-body-bg); font-size: 12px; font-weight: 600; color: var(--bs-secondary-color); cursor: pointer; user-select: none; }
+.dosya-anahtar .form-check-input { margin: 0; cursor: pointer; }
+.uzanti-gizli .tur-etiket { display: none; }
 .dosya-segment { display: inline-flex; gap: 2px; padding: 3px; border-radius: 12px; background: var(--bs-tertiary-bg); border: 1px solid var(--bs-border-color); }
 .dosya-segment .dosya-gorunum { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border: 0; border-radius: 9px; background: transparent; color: var(--bs-secondary-color); font-size: 12px; font-weight: 600; transition: background .15s ease, color .15s ease; }
 .dosya-segment .dosya-gorunum i { font-size: 16px; }
@@ -210,6 +213,10 @@ $gunOptions = ['1' => '1 gün', '3' => '3 gün', '7' => '7 gün', '14' => '14 g�
                 <label class="dosya-arama-kutu">
                     <i class="bx bx-search"></i>
                     <input type="search" id="dosyaArama" placeholder="Dosya ara..." autocomplete="off" aria-label="Dosya ara">
+                </label>
+                <label class="dosya-anahtar" title="Dosya adlarında uzantıyı göster veya gizle">
+                    <input class="form-check-input" type="checkbox" role="switch" id="dosyaUzantiAnahtar" checked>
+                    <span>Uzantılar</span>
                 </label>
                 <div class="dosya-segment" role="group" aria-label="Görünüm">
                     <button type="button" class="dosya-gorunum" data-gorunum="liste" title="Liste görünümü"><i class="bx bx-list-ul"></i><span>Liste</span></button>

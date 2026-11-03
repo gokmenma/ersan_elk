@@ -89,7 +89,6 @@ class DosyaKlasorModel extends Model
         $rolHaritasi = $this->rolHaritasi($firmaId);
         $yetkiler = $baglam['klasor_yetkileri'] ?? [];
         $kullanici = (int) ($baglam['user'] ?? 0);
-        $super = !empty($baglam['super']);
 
         $sonuc = [];
         foreach ($klasorler as $id => $k) {
@@ -110,7 +109,7 @@ class DosyaKlasorModel extends Model
                 $suan = $klasorler[$suan]->parent_id !== null ? (int) $klasorler[$suan]->parent_id : null;
             }
 
-            if ($super || $sahip) {
+            if ($sahip) {
                 $seviye = self::SEVIYE_SAHIP;
             } elseif ($yetki > 0) {
                 $seviye = $yetki;
@@ -137,8 +136,6 @@ class DosyaKlasorModel extends Model
                 $satir['bolum'] = 'ortak';
             } elseif ($satir['sahip_zincir']) {
                 $satir['bolum'] = 'dosyalarim';
-            } elseif ($super) {
-                $satir['bolum'] = 'diger';
             } else {
                 $satir['bolum'] = 'paylasilan';
             }

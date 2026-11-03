@@ -51,7 +51,7 @@ class DosyaYonetimiService
             $roller = (new UserRoleAssignmentModel())->activeRoleIdsForUser($this->kullaniciId);
             $yetkiler = $this->erisimler->kullaniciHaritasi($this->firmaId, $this->kullaniciId);
             $this->baglam = [
-                'super' => Gate::isSuperAdmin(),
+                'super' => false,
                 'user' => $this->kullaniciId,
                 'roles' => array_map('intval', $roller),
                 'klasor_yetkileri' => $yetkiler['klasor'],
@@ -97,7 +97,7 @@ class DosyaYonetimiService
 
     private function dosyaSeviyesi(object $dosya): int
     {
-        if ($this->baglam()['super'] || (int) $dosya->yukleyen_id === $this->kullaniciId) {
+        if ((int) $dosya->yukleyen_id === $this->kullaniciId) {
             return DosyaKlasorModel::SEVIYE_SAHIP;
         }
         $seviye = $dosya->klasor_id !== null ? $this->klasorSeviyesi((int) $dosya->klasor_id) : 0;
@@ -171,10 +171,21 @@ class DosyaYonetimiService
         return mb_substr($ad, 0, $azami);
     }
 
+    private function anahtar(int $id): string
+    {
+        $anahtar = (string) ($_ENV['ENCRYPTION_KEY'] ?? '');
+        if ($anahtar === '') {
+            throw new \RuntimeException('ENCRYPTION_KEY .env dosyasında tanımlı değil.');
+        }
+        return substr(hash_hmac('sha256', 'dosya-klasor|' . $id, $anahtar), 0, 24);
+    }
+
     private function klasorSatiri(int $id, array $satir): array
     {
         return [
             'id' => Security::encrypt($id),
+            'anahtar' => $this->anahtar($id),
+            'ust_anahtar' => $satir['parent_id'] !== null ? $this->anahtar($satir['parent_id']) : null,
             'parent_id' => $satir['parent_id'] !== null ? Security::encrypt($satir['parent_id']) : null,
             'ad' => $satir['ad'],
             'alan' => $satir['alan'],
@@ -206,7 +217,7 @@ class DosyaYonetimiService
 
     private function ortakAlanYetkisi(): bool
     {
-        return $this->baglam()['super'] || Gate::allows('dosya_yonetimi_ortak_alan');
+        return Gate::isSuperAdmin() || Gate::allows('dosya_yonetimi_ortak_alan');
     }
 
     public function agac(): array
@@ -228,9 +239,6 @@ class DosyaYonetimiService
         if ($this->ortakAlanYetkisi()) {
             $bolumler['ortak'] = true;
         }
-        if ($this->baglam()['super']) {
-            $bolumler['diger'] = true;
-        }
         return ['klasorler' => $liste, 'bolumler' => array_keys($bolumler), 'ortak_alan_yetkisi' => $this->ortakAlanYetkisi()];
     }
 
@@ -246,12 +254,12 @@ class DosyaYonetimiService
         ];
     }
 
-    private const BOLUMLER = ['dosyalarim', 'paylasilan', 'ortak', 'diger'];
+    private const BOLUMLER = ['dosyalarim', 'paylasilan', 'ortak'];
 
     private function bolumGerekli(?string $bolum): string
     {
         $bolum = $bolum ?: 'dosyalarim';
-        if (!in_array($bolum, self::BOLUMLER, true) || ($bolum === 'diger' && !$this->baglam()['super'])) {
+        if (!in_array($bolum, self::BOLUMLER, true)) {
             throw new \DomainException('Geçersiz bölüm.');
         }
         return $bolum;
@@ -287,7 +295,7 @@ class DosyaYonetimiService
         $yol = [];
         $altKlasorler = [];
         if ($arama === '') {
-            $yol = array_map(fn($k) => ['id' => Security::encrypt($k->id), 'ad' => $k->ad], $this->klasorler->yol((int) $klasorId, $this->firmaId));
+            $yol = array_map(fn($k) => ['id' => Security::encrypt($k->id), 'anahtar' => $this->anahtar((int) $k->id), 'ad' => $k->ad], $this->klasorler->yol((int) $klasorId, $this->firmaId));
             foreach ($this->harita() as $id => $satir) {
                 if ($satir['seviye'] < DosyaKlasorModel::SEVIYE_GORUNTULE) {
                     continue;
@@ -503,7 +511,7 @@ class DosyaYonetimiService
     {
         $dosya = $this->dosyaGerekli($sifreliId, DosyaKlasorModel::SEVIYE_DUZENLE);
         $hedef = $this->hedefKlasorId($sifreliHedefId, DosyaKlasorModel::SEVIYE_DUZENLE);
-        if ($hedef === null && (int) $dosya->yukleyen_id !== $this->kullaniciId && !$this->baglam()['super']) {
+        if ($hedef === null && (int) $dosya->yukleyen_id !== $this->kullaniciId) {
             throw new \DomainException('Dosya yalnızca yükleyen kişinin kök dizinine taşınabilir.');
         }
         $this->dosyalar->tasi((int) $dosya->id, $this->firmaId, $hedef);
