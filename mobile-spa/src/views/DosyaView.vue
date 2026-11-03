@@ -273,7 +273,7 @@ async function sil() {
   sheet.value = null
   const sonuc = await Swal.fire({
     title: tur === 'klasor' ? 'Klasör silinsin mi?' : 'Dosya silinsin mi?',
-    text: tur === 'klasor' ? `"${nesne.ad}" klasörü, alt klasörleri ve içindeki tüm dosyalarla birlikte silinecek.` : `"${nesne.ad}" silinecek.`,
+    text: tur === 'klasor' ? `"${nesne.ad}" klasörü, alt klasörleri ve içindeki tüm dosyalarla birlikte sunucudan kalıcı olarak silinecek. Bu işlem geri alınamaz.` : `"${nesne.ad}" sunucudan kalıcı olarak silinecek. Bu işlem geri alınamaz.`,
     icon: 'warning',
     showCancelButton: true,
     confirmButtonColor: '#ef4444',

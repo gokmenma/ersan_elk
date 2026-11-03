@@ -265,35 +265,51 @@ class DosyaKlasorModel extends Model
     }
 
     /**
-     * Klasörü, alt klasörlerini ve içindeki dosyaları soft delete ile siler.
+     * Klasörü, alt klasörlerini ve içindeki dosyaları (disk dosyaları dahil) kalıcı siler.
      *
-     * @return int[] Silinen klasör ID'leri
+     * @return array{klasorler: int[], dosyalar: object[]}
      */
     public function sil(int $id, int $firmaId): array
     {
         $idler = array_merge([$id], $this->altKlasorIdleri($id, $firmaId));
         $yer = implode(',', array_fill(0, count($idler), '?'));
 
+        $stmt = $this->db->prepare("SELECT id, firma_id, dosya_adi FROM dosyalar WHERE firma_id = ? AND klasor_id IN ($yer)");
+        $stmt->execute(array_merge([$firmaId], $idler));
+        $dosyalar = $stmt->fetchAll(PDO::FETCH_OBJ);
+
         $this->db->beginTransaction();
         try {
-            $stmt = $this->db->prepare(
-                "UPDATE dosyalar SET deleted_at = NOW(), is_active = 0
-                 WHERE firma_id = ? AND klasor_id IN ($yer) AND deleted_at IS NULL"
-            );
-            $stmt->execute(array_merge([$firmaId], $idler));
+            $dosyaIdleri = array_map(static fn($d) => (int) $d->id, $dosyalar);
+            if ($dosyaIdleri) {
+                $dyer = implode(',', array_fill(0, count($dosyaIdleri), '?'));
+                foreach ([
+                    "DELETE FROM dosya_paylasimlari WHERE firma_id = ? AND dosya_id IN ($dyer)",
+                    "DELETE FROM dosya_erisimleri WHERE firma_id = ? AND nesne_tur = 'dosya' AND nesne_id IN ($dyer)",
+                    "DELETE FROM dosyalar WHERE firma_id = ? AND id IN ($dyer)",
+                ] as $sql) {
+                    $stmt = $this->db->prepare($sql);
+                    $stmt->execute(array_merge([$firmaId], $dosyaIdleri));
+                }
+            }
 
-            $stmt = $this->db->prepare(
-                "UPDATE dosya_klasorleri SET deleted_at = NOW(), is_active = 0
-                 WHERE firma_id = ? AND id IN ($yer) AND deleted_at IS NULL"
-            );
-            $stmt->execute(array_merge([$firmaId], $idler));
+            foreach ([
+                "DELETE FROM dosya_erisimleri WHERE firma_id = ? AND nesne_tur = 'klasor' AND nesne_id IN ($yer)",
+                "DELETE FROM dosya_klasor_rolleri WHERE klasor_id IN ($yer)",
+                "DELETE FROM dosya_klasorleri WHERE firma_id = ? AND id IN ($yer)",
+            ] as $sql) {
+                $stmt = $this->db->prepare($sql);
+                $stmt->execute(str_contains($sql, 'firma_id') ? array_merge([$firmaId], $idler) : $idler);
+            }
 
             $this->db->commit();
         } catch (\Throwable $e) {
             $this->db->rollBack();
             throw $e;
         }
-        return $idler;
+
+        (new DosyaModel())->diskDosyalariniSil($dosyalar);
+        return ['klasorler' => $idler, 'dosyalar' => $dosyalar];
     }
 
     public function roller(int $klasorId): array

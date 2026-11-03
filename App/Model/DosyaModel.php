@@ -77,29 +77,70 @@ class DosyaModel extends Model
         return $stmt->rowCount() > 0;
     }
 
-    public function sil(int $id, int $firmaId): bool
+    /**
+     * Dosya kaydını, paylaşımlarını ve erişim yetkilerini kalıcı siler; diskteki dosyayı da kaldırır.
+     */
+    public function sil(int $id, int $firmaId): ?object
     {
+        $stmt = $this->db->prepare("SELECT * FROM dosyalar WHERE id = ? AND firma_id = ? LIMIT 1");
+        $stmt->execute([$id, $firmaId]);
+        $dosya = $stmt->fetch(PDO::FETCH_OBJ);
+        if (!$dosya) {
+            return null;
+        }
+
         $this->db->beginTransaction();
         try {
-            $stmt = $this->db->prepare(
-                "UPDATE dosyalar SET deleted_at = NOW(), is_active = 0
-                 WHERE id = ? AND firma_id = ? AND deleted_at IS NULL"
-            );
-            $stmt->execute([$id, $firmaId]);
-            $silindi = $stmt->rowCount() > 0;
-
-            $stmt = $this->db->prepare(
-                "UPDATE dosya_paylasimlari SET iptal_tarihi = NOW()
-                 WHERE dosya_id = ? AND firma_id = ? AND iptal_tarihi IS NULL"
-            );
-            $stmt->execute([$id, $firmaId]);
-
+            $this->dosyaKayitlariniSil([$id], $firmaId);
             $this->db->commit();
-            return $silindi;
         } catch (\Throwable $e) {
             $this->db->rollBack();
             throw $e;
         }
+
+        $this->diskDosyalariniSil([$dosya]);
+        return $dosya;
+    }
+
+    /**
+     * Transaction içinde çağrılır; dosya satırlarını ve bağlı paylaşım/erişim kayıtlarını siler.
+     *
+     * @param int[] $idler
+     */
+    public function dosyaKayitlariniSil(array $idler, int $firmaId): void
+    {
+        $idler = array_values(array_unique(array_map('intval', $idler)));
+        if (!$idler) {
+            return;
+        }
+        $yer = implode(',', array_fill(0, count($idler), '?'));
+        foreach ([
+            "DELETE FROM dosya_paylasimlari WHERE firma_id = ? AND dosya_id IN ($yer)",
+            "DELETE FROM dosya_erisimleri WHERE firma_id = ? AND nesne_tur = 'dosya' AND nesne_id IN ($yer)",
+            "DELETE FROM dosyalar WHERE firma_id = ? AND id IN ($yer)",
+        ] as $sql) {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute(array_merge([$firmaId], $idler));
+        }
+    }
+
+    /**
+     * @param object[] $dosyalar dosya_adi ve firma_id alanlı satırlar
+     */
+    public function diskDosyalariniSil(array $dosyalar): int
+    {
+        $silinen = 0;
+        foreach ($dosyalar as $dosya) {
+            $yol = self::depoDizini((int) $dosya->firma_id) . '/' . basename((string) $dosya->dosya_adi);
+            if (is_file($yol)) {
+                if (@unlink($yol)) {
+                    $silinen++;
+                } else {
+                    error_log('Dosya yönetimi: disk dosyası silinemedi: ' . $yol);
+                }
+            }
+        }
+        return $silinen;
     }
 
     /**

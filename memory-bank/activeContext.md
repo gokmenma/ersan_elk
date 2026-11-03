@@ -1,5 +1,10 @@
 # Active Context
 
+## Dosya Yönetimi — Kalıcı Silme (2026-11-03)
+- Kullanıcı kararı: Dosya Yönetimi'nde silinen dosya/klasör anında kalıcı silinir (AGENTS.md soft delete kuralından bu modül için bilinçli sapma). `DosyaModel::sil` / `DosyaKlasorModel::sil` kayıtları, paylaşım/erişim/rol satırlarını siler ve `storage/dosya-yonetimi/` altındaki disk dosyasını `unlink` eder; yalnız bu modülün dizinine dokunur.
+- Silme işlemi `system_logs` (ad, id, boyut) ve erişim loguna yazılır; onay metinleri "geri alınamaz" der.
+- Eski soft delete kalıntıları için tek seferlik `cron/dosya_yonetimi_silinenleri_temizle.php` (yalnız CLI).
+
 ## Dosya Yönetimi — Excel Biçimli Önizleme (2026-11-03)
 - `.xlsx` önizlemesi artık hücre biçimlerini korur: dolgu/yazı rengi (tema+tint dahil), kalın/italik, birleşik hücreler, kenarlıklar, sütun/satır boyutları, hizalama, sayı biçimi (`₺` vb.). Metni SheetJS (`cell.w`), stili ExcelJS verir; çizici `assets/libs/dosya-onizleme/xlsx-cizici.js` (mobilde `src/services/xlsx-cizici.js`, aynı kod).
 - `.xls`/`.csv` sade tablo olarak kalır (SheetJS topluluk sürümü stil okumaz). Masaüstü 2000, mobil 1500 satır sınırı.

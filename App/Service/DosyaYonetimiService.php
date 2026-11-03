@@ -415,10 +415,9 @@ class DosyaYonetimiService
     public function klasorSil($sifreliId): void
     {
         $klasor = $this->klasorGerekli($sifreliId, DosyaKlasorModel::SEVIYE_SAHIP);
-        $idler = $this->klasorler->sil((int) $klasor->id, $this->firmaId);
-        $this->erisimler->nesneErisimleriniTemizle($this->firmaId, 'klasor', $idler);
+        $sonuc = $this->klasorler->sil((int) $klasor->id, $this->firmaId);
         $this->sifirla();
-        $this->log("Klasör silindi: {$klasor->ad} (#{$klasor->id}, alt klasör dahil " . count($idler) . ' klasör)', SystemLogModel::LEVEL_IMPORTANT);
+        $this->log("Klasör kalıcı silindi: {$klasor->ad} (#{$klasor->id}, alt klasör dahil " . count($sonuc['klasorler']) . ' klasör, ' . count($sonuc['dosyalar']) . ' dosya)', SystemLogModel::LEVEL_IMPORTANT);
     }
 
     public function klasorRolleri($sifreliId): array
@@ -536,9 +535,8 @@ class DosyaYonetimiService
     {
         $dosya = $this->dosyaGerekli($sifreliId, DosyaKlasorModel::SEVIYE_SAHIP);
         $this->dosyalar->sil((int) $dosya->id, $this->firmaId);
-        $this->erisimler->nesneErisimleriniTemizle($this->firmaId, 'dosya', [(int) $dosya->id]);
         $this->dosyalar->erisimLogla($this->firmaId, (int) $dosya->id, null, 'sil', $this->kullaniciId);
-        $this->log("Dosya silindi: {$dosya->orijinal_ad} (#{$dosya->id})", SystemLogModel::LEVEL_IMPORTANT);
+        $this->log("Dosya kalıcı silindi: {$dosya->orijinal_ad} (#{$dosya->id}, {$dosya->boyut} bayt)", SystemLogModel::LEVEL_IMPORTANT);
     }
 
     public function paylasimOlustur($sifreliDosyaId, int $gun, ?string $sifre, ?int $limit): array

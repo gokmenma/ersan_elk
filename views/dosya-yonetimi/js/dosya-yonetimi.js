@@ -576,7 +576,7 @@ $(function () {
         Swal.fire({
             icon: 'warning',
             title: klasor ? 'Klasör silinsin mi?' : 'Dosya silinsin mi?',
-            text: klasor ? 'Klasör, alt klasörleri ve içindeki tüm dosyalar silinecek.' : String(g.data('ad')),
+            text: (klasor ? 'Klasör, alt klasörleri ve içindeki tüm dosyalar' : '"' + String(g.data('ad')) + '"') + ' sunucudan kalıcı olarak silinecek. Bu işlem geri alınamaz.',
             showCancelButton: true, confirmButtonText: 'Sil', cancelButtonText: 'Vazgeç', confirmButtonColor: '#dc3545'
         }).then((s) => {
             if (!s.isConfirmed) return;
