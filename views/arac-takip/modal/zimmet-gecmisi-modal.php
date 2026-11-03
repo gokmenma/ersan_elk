@@ -1,3 +1,17 @@
+<div class="modal fade" id="zimmetGaleriModal" tabindex="-1" aria-hidden="true" style="z-index: 1065;">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title mb-0"><i class="bx bx-images me-2"></i><span id="zimmetGaleriBaslik">Zimmet Resimleri</span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-2" id="zimmetGaleriGrid"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="zimmetGecmisiModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content">

@@ -863,38 +863,39 @@ const AracTakip = {
     return `<div class="d-inline-flex flex-column gap-1">${dugmeler.join("")}</div>`;
   },
 
-  zimmetGaleriAc: function (zimmetId, grup) {
+  zimmetGaleriAc: function (zimmetId, grup, baslik) {
     if (typeof GLightbox === "undefined") {
       Swal.fire("Hata", "Galeri bileşeni yüklenemedi.", "error");
       return;
     }
-    if (this._zimmetGaleri) {
-      this._zimmetGaleri.destroy();
-      this._zimmetGaleri = null;
-    }
+    const modalEl = document.getElementById("zimmetGaleriModal");
+    const grid = $("#zimmetGaleriGrid");
+    $("#zimmetGaleriBaslik").text(baslik || "Zimmet Resimleri");
+    grid.html('<div class="text-center text-muted p-4 w-100"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Yükleniyor...</div>');
+    if (document.activeElement) document.activeElement.blur();
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+
     $.post(this.apiUrl, { action: "zimmet-foto-listele", zimmet_id: zimmetId }, (response) => {
-      if (response.status !== "success" || !response.data || response.data.length === 0) {
-        Swal.fire("Bilgi", "Bu zimmet için resim bulunmuyor.", "info");
+      const liste = response.status === "success" ? (response.data || []).filter((f) => !grup || f.grup === grup) : [];
+      if (liste.length === 0) {
+        grid.html('<div class="text-center text-muted p-4 w-100">Bu kayıt için resim bulunmuyor.</div>');
         return;
       }
       const url = (f) => "views/arac-takip/zimmet-foto-goruntule.php?id=" + encodeURIComponent(f.id);
-      const turFiltreli = response.data.filter((f) => !grup || f.grup === grup);
-      const resimler = turFiltreli.filter((f) => !f.is_pdf);
-      const pdfler = turFiltreli.filter((f) => f.is_pdf);
-      if (resimler.length === 0) {
-        window.open(url(pdfler[0]), "_blank");
-        return;
-      }
-      const elements = resimler.map((f) => ({
-        href: url(f),
-        type: "image",
-        title: f.foto_turu === "iade" ? "İade" : "Teslim",
-        description: f.orijinal_ad || "",
-      }));
-      this._zimmetGaleri = GLightbox({ elements: elements, loop: true, touchNavigation: true, preload: false, zoomable: true });
-      this._zimmetGaleri.open();
+      const esc = (v) => $("<div>").text(v || "").html();
+      let html = "";
+      liste.forEach((f) => {
+        if (f.is_pdf) {
+          html += `<div class="col-4 col-md-3 col-lg-2"><a href="${url(f)}" target="_blank" class="d-flex flex-column align-items-center justify-content-center border rounded bg-light text-danger text-decoration-none ratio ratio-1x1" title="${esc(f.orijinal_ad)}"><span class="d-flex flex-column align-items-center justify-content-center"><i class="bx bxs-file-pdf fs-1"></i><small>PDF</small></span></a></div>`;
+        } else {
+          html += `<div class="col-4 col-md-3 col-lg-2"><a href="${url(f)}" class="zimmet-galeri-item d-block ratio ratio-1x1 border rounded overflow-hidden bg-light" data-type="image" data-gallery="zimmet-galeri" data-title="${f.foto_turu === "iade" ? "İade" : "Teslim"}" data-description="${esc(f.orijinal_ad)}"><img src="${url(f)}&thumb=1" loading="lazy" decoding="async" alt="" class="w-100 h-100" style="object-fit:cover;" onerror="this.style.visibility='hidden'"></a></div>`;
+        }
+      });
+      grid.html(html);
+      if (this._zimmetGaleri) this._zimmetGaleri.destroy();
+      this._zimmetGaleri = GLightbox({ selector: ".zimmet-galeri-item", loop: true, touchNavigation: true, preload: false, zoomable: true });
     }, "json").fail(() => {
-      Swal.fire("Hata", "Resimler alınamadı.", "error");
+      grid.html('<div class="text-center text-danger p-4 w-100">Resimler alınamadı.</div>');
     });
   },
 
@@ -3996,7 +3997,7 @@ $(document).ready(function () {
   $(document).on("click", ".zimmet-galeri-ac", function (e) {
     e.preventDefault();
     e.stopPropagation();
-    AracTakip.zimmetGaleriAc($(this).data("id"), $(this).attr("data-grup"));
+    AracTakip.zimmetGaleriAc($(this).data("id"), $(this).attr("data-grup"), $(this).attr("title"));
   });
   $(document).on("click", ".zimmet-foto-goster", function (e) {
     e.preventDefault();

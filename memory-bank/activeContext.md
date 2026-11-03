@@ -3538,3 +3538,5 @@
 - Zimmet resim galerisi teslim/iade olarak ayrıldı: her zimmette ayrı "Teslim n" ve "İade n" butonları, her biri yalnızca kendi türünü GLightbox ile açar.
 
 - Zimmetler tablosundaki "Resimler" kolonu kaldırıldı; teslim/iade galeri butonları yalnızca Zimmet Geçmişi modalında.
+
+- Zimmet resim galerisi: butona basınca önce küçük resim (thumbnail) ızgarası modalı (#zimmetGaleriModal) açılır; küçük resim tıklanınca GLightbox. Küçük resimler `zimmet-foto-goruntule.php?...&thumb=1` ile GD ile 320px JPEG üretilir (EXIF yönü uygulanır, görüntüleme logu yalnızca tam boy için).
