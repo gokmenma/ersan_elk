@@ -177,7 +177,7 @@ const definitions = {
 }
 
 const section = computed(() => definitions[route.params.section] || null)
-const legacyUrl = computed(() => `/mobile/index.php?p=personel-duzenle&id=${encodeURIComponent(route.params.id)}&tab=${route.params.section}`)
+const legacyUrl = computed(() => `#/personel/${encodeURIComponent(route.params.id)}/duzenle`)
 
 const general = computed(() => person.value?.general || {})
 const work = computed(() => person.value?.work || {})

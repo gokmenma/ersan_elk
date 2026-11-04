@@ -113,6 +113,29 @@ class SystemLogModel extends Model
         ]);
     }
 
+    public function logPersonelTalep(int $personelId, string $actionType, string $description, int $kayitId = 0): void
+    {
+        try {
+            $stmt = $this->db->prepare("SELECT firma_id, adi_soyadi FROM personel WHERE id = ? LIMIT 1");
+            $stmt->execute([$personelId]);
+            $personel = $stmt->fetch(\PDO::FETCH_OBJ);
+            if (!$personel) {
+                return;
+            }
+
+            $mesaj = sprintf(
+                '%s (Personel ID: %d)%s - %s',
+                (string) $personel->adi_soyadi,
+                $personelId,
+                $kayitId > 0 ? ' [Kayıt ID: ' . $kayitId . ']' : '',
+                $description
+            );
+            $this->logActionForFirm((int) $personel->firma_id, 0, $actionType, $mesaj, self::LEVEL_IMPORTANT);
+        } catch (\Throwable $e) {
+            error_log('Personel talep log hatası: ' . $e->getMessage());
+        }
+    }
+
     /**
      * Mobil SPA, aynı API ve oturum altyapısını masaüstüyle paylaştığı için
      * istemci kaynağını log açıklamasında merkezi ve tutarlı biçimde işaretler.

@@ -609,7 +609,7 @@
                     <input type="radio" name="layout-position" id="layout-position-fixed" value="fixed" checked>
                     <input type="radio" name="layout-position" id="layout-position-scrollable" value="scrollable">
                     <input type="radio" name="device-view" id="device-view-desktop" value="desktop" checked>
-                    <input type="radio" name="device-view" id="device-view-mobile" value="mobile">
+                    <input type="radio" name="device-view" id="device-view-mobile" value="mobile" data-url="<?= htmlspecialchars(\App\Helper\MobileSpa::url('/'), ENT_QUOTES, 'UTF-8') ?>">
                     <input type="radio" name="layout-direction" id="layout-direction-ltr" value="ltr" checked>
                     <input type="radio" name="layout-direction" id="layout-direction-rtl" value="rtl">
                 </div>

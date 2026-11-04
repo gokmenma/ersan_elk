@@ -11,7 +11,6 @@ import {
   Eye,
   EyeOff,
   Globe,
-  Headset,
   Inbox,
   KeyRound,
   LayoutGrid,
@@ -115,7 +114,6 @@ const faqs = [
 ]
 
 const canLiveSupport = computed(() => Boolean(auth.state.permissions.live_support))
-const canSupport = computed(() => Boolean(auth.state.permissions.support))
 
 onMounted(() => {
   checkPushStatus()
@@ -799,17 +797,12 @@ function goLiveSupport() {
           </div>
 
           <div v-else-if="activeSheet === 'help'" class="profile-sheet__content">
-            <div v-if="canLiveSupport || canSupport" class="bento-card bento-card--white settings-bento-card">
+            <div v-if="canLiveSupport" class="bento-card bento-card--white settings-bento-card">
               <button v-if="canLiveSupport" type="button" class="settings-row" @click="goLiveSupport">
                 <span class="settings-icon"><MessageCircle :size="18" /></span>
                 <strong>Canlı Destek</strong>
                 <ChevronRight :size="16" class="settings-arrow" />
               </button>
-              <a v-if="canSupport" href="/mobile/index.php?p=yardim" class="settings-row">
-                <span class="settings-icon"><Headset :size="18" /></span>
-                <strong>Destek talebi ve kullanım kılavuzu</strong>
-                <ExternalLink :size="15" class="settings-arrow" />
-              </a>
             </div>
 
             <div class="bento-card bento-card--white faq-list">

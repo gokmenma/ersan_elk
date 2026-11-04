@@ -922,11 +922,7 @@ File: Main Js File
       : updateRadio("layout-direction-ltr");
 
     // device view initialization
-    if (window.location.pathname.includes("/mobile/")) {
-      updateRadio("device-view-mobile");
-    } else {
-      updateRadio("device-view-desktop");
-    }
+    updateRadio("device-view-desktop");
 
     // on theme mode change
     $("input[name='theme-mode']").on("change", function () {
@@ -995,10 +991,9 @@ File: Main Js File
     $("input[name='device-view']").on("change", function () {
         var val = $(this).val();
         if (val === "mobile") {
-            window.location.href = window.location.pathname.includes("/mobile/") ? "index.php?p=home" : "mobile/index.php?p=home";
+            window.location.href = $(this).data("url") || "index.php?mobile=1&p=home";
         } else {
-            // If in mobile subfolder, go back one level, otherwise go to index.php
-            window.location.href = window.location.pathname.includes("/mobile/") ? "../index.php?force_desktop=1&p=home" : "index.php?force_desktop=1&p=home";
+            window.location.href = "index.php?force_desktop=1&p=home";
         }
     });
 

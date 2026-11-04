@@ -3621,3 +3621,4 @@
 ## 2026-11-04
 - Personel PWA avans: tutar alanı limite kelepçelendi (clampAvansTutar), "yeni" butonu FAB (+) yapıldı.
 - Mobil SPA TaleplerView değişikliği yanlış yön olduğu için geri alındı. Personel PWA merkezi .card ve .card-premium sınıfları bento stiline (24px köşe, beyaz kenar, yumuşak gölge) geçirildi (pwa-style.css).
+- Eski `mobile/` arayüzüyle bağ kesildi: `App\Helper\MobileSpa` (url/fromLegacy; canlı adres `.env` `MOBILE_SPA_URL`, yoksa `mobile-spa/dist`). Masaüstü index.php telefon/<=1024px yönlendirmesi, cihaz görünümü seçicisi, push (talepler) ve evrak onay maili SPA'ya çevrildi. `mobile/` altında yalnız SPA'ya 302 atan `index.php` köprüsü kaldı; SPA'daki eski yardim/personel-duzenle linkleri kaldırıldı/SPA rotasına bağlandı.

@@ -48,33 +48,20 @@ RequestPerformanceProfiler::start('index.php', [
     'route' => $_GET['p'] ?? 'home'
 ]);
 
-// Kullanıcı masaüstü kilidini kaldırmak isterse (?mobile=1) tekrar mobil yönlendirmeyi aç
 if (isset($_GET['mobile']) && $_GET['mobile'] === '1') {
     unset($_SESSION['force_desktop']);
 }
 
-// Kullanıcı süper admin ise ve desktop modunu zorlamışsa buna artık karışmıyoruz (eskiden her girişte siliyordu)
-if (Gate::isSuperAdmin() && isset($_GET['mobile']) && $_GET['mobile'] === '1') {
-    unset($_SESSION['force_desktop']);
-}
-
-// Mobil cihaz yönlendirmesi
 if (!isset($_SESSION['force_desktop'])) {
     $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
     $chMobile = $_SERVER['HTTP_SEC_CH_UA_MOBILE'] ?? '';
-
-    // Sunucu tarafında sadece telefon benzeri cihazları yakalayalım.
-    // Tablet/desktop cihazlar ilk yükte masaüstünü açar; <=1024 ise JS tarafı mobile yönlendirir.
     $isPhoneUa = preg_match('/iPhone|iPod|IEMobile|Opera Mini|Windows Phone|BlackBerry/i', $ua)
         || (stripos($ua, 'Android') !== false && stripos($ua, 'Mobile') !== false);
-    $isMobileCh = ($chMobile === '?1');
     $isTabletUa = preg_match('/iPad|Tablet/i', $ua)
         || (stripos($ua, 'Android') !== false && stripos($ua, 'Mobile') === false);
 
-    // Sec-CH-UA-Mobile değeri tek başına yeterli değil; tabletleri hariç tutup sadece telefonlar için kullan.
-    if ($isPhoneUa || ($isMobileCh && !$isTabletUa && stripos($ua, 'Windows NT') === false)) {
-        $p = urlencode($_GET['p'] ?? 'home');
-        header("Location: mobile/index.php?p=$p");
+    if ($isPhoneUa || (($chMobile === '?1') && !$isTabletUa && stripos($ua, 'Windows NT') === false)) {
+        header('Location: ' . \App\Helper\MobileSpa::fromLegacy((string) ($_GET['p'] ?? 'home'), $_GET));
         exit();
     }
 }
@@ -155,9 +142,7 @@ try {
             function checkMobileRedirect() {
                 var isMobileView = window.matchMedia('(max-width: 1024px)').matches;
                 if (isMobileView) {
-                    var qs = new URLSearchParams(window.location.search);
-                    var p = qs.get('p') || 'home';
-                    window.location.replace('mobile/index.php?p=' + encodeURIComponent(p));
+                    window.location.replace(<?= json_encode(\App\Helper\MobileSpa::fromLegacy((string) ($_GET['p'] ?? 'home'), $_GET), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?>);
                 }
             }
             

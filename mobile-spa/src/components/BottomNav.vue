@@ -23,7 +23,6 @@ import {
   Fuel,
   Gauge,
   GripVertical,
-  Headset,
   Home,
   Inbox,
   Landmark,
@@ -501,18 +500,6 @@ const MODULE_CATALOG = {
     theme: 'emerald',
     to: '/canli-destek',
   },
-  support: {
-    key: 'support',
-    group: 'sistem',
-    permission: 'support',
-    label: 'Destek & Yardım',
-    navLabel: 'Yardım',
-    eyebrow: 'YARDIM MERKEZİ',
-    subtitle: 'Kullanım kılavuzu ve teknik destek',
-    icon: Headset,
-    theme: 'slate',
-    href: '/mobile/index.php?p=yardim',
-  },
 }
 
 const DEFAULT_NAVBAR_KEYS = ['personnel', 'reports', 'requests']
@@ -521,7 +508,7 @@ const DEFAULT_GROUP_ITEMS = {
   finans: ['invoices', 'cash', 'current_accounts', 'payroll', 'contracts'],
   operasyon: ['vehicles', 'km_approvals', 'documents', 'files', 'notices', 'illegal', 'reports'],
   planlama: ['personnel', 'personnel_tracking', 'requests', 'tasks', 'shifts', 'puantaj'],
-  sistem: ['logs', 'live_support', 'support'],
+  sistem: ['logs', 'live_support'],
 }
 
 function isModulePermitted(key) {

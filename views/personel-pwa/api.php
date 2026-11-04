@@ -1313,6 +1313,7 @@ try {
                 'talep_tarihi' => date('Y-m-d H:i:s')
             ]);
             $newId = $AvansModel->getDb()->lastInsertId();
+            (new \App\Model\SystemLogModel())->logPersonelTalep((int) $personel_id, 'Avans Talebi Oluşturma', number_format($tutar, 2, ',', '.') . ' TL avans talebi oluşturuldu (PWA)', (int) $newId);
 
             $erkenYanitGonderildi = responseEarly(true, null, 'Avans talebiniz başarıyla oluşturuldu');
 
@@ -1350,7 +1351,7 @@ try {
                             $pushService->sendToUser($kullanici->id, [
                                 'title' => '💰 Yeni Avans Talebi',
                                 'body' => ($talep_eden->adi_soyadi ?? 'Personel') . ' ' . number_format($tutar, 2, ',', '.') . ' TL avans talep etti.',
-                                'url' => 'mobile/index.php?p=talepler'
+                                'url' => \App\Helper\MobileSpa::url('/talepler')
                             ], false, \App\Model\UserNotificationPreferenceModel::TYPE_ADVANCE_REQUEST);
                         } catch (Exception $e) {
                             file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Push bildirim hatası: " . $e->getMessage() . "\n", FILE_APPEND);
@@ -1420,6 +1421,7 @@ try {
                     'odeme_sekli' => $odeme_sekli,
                     'aciklama' => $aciklama
                 ]);
+                (new \App\Model\SystemLogModel())->logPersonelTalep((int) $personel_id, 'Avans Talebi Güncelleme', number_format($tutar, 2, ',', '.') . ' TL olarak güncellendi (PWA)', (int) $id);
                 response(true, null, 'Avans talebiniz güncellendi');
             } else {
                 response(false, null, 'İşlem yapılamaz');
@@ -1438,6 +1440,7 @@ try {
                     'durum' => 'iptal edildi',
                     'aciklama' => trim($yeni_aciklama)
                 ]);
+                (new \App\Model\SystemLogModel())->logPersonelTalep((int) $personel_id, 'Avans Talebi İptal', 'Avans talebi personel tarafından iptal edildi (PWA)', (int) $id);
                 response(true, null, 'Avans talebi iptal edildi');
             } else {
                 response(false, null, 'İşlem yapılamaz');
@@ -1820,6 +1823,7 @@ try {
             }
             $IzinModel->saveWithAttr($izinKaydi);
             $newId = $IzinModel->getDb()->lastInsertId();
+            (new \App\Model\SystemLogModel())->logPersonelTalep((int) $personel_id, 'İzin Talebi Oluşturma', 'İzin talebi oluşturuldu (PWA)', (int) $newId);
 
             $erkenYanitGonderildi = responseEarly(true, null, 'İzin talebiniz başarıyla oluşturuldu');
 
@@ -1890,7 +1894,7 @@ try {
                             $pushService->sendToUser($kullanici->id, [
                                 'title' => '📅 Yeni İzin Talebi',
                                 'body' => ($talep_eden->adi_soyadi ?? 'Personel') . ' ' . $izin_tipi_text . ' talep etti.',
-                                'url' => 'mobile/index.php?p=talepler'
+                                'url' => \App\Helper\MobileSpa::url('/talepler')
                             ], true, \App\Model\UserNotificationPreferenceModel::TYPE_LEAVE_REQUEST);
                         } catch (Exception $e) {
                             file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Push bildirim hatası: " . $e->getMessage() . "\n", FILE_APPEND);
@@ -1980,6 +1984,7 @@ try {
                     INSERT INTO izin_onaylari (izin_id, onaylayan_id, onay_durumu, onay_tarihi, aciklama, seviye_no)
                     VALUES (?, ?, 'İptal Edildi', NOW(), 'Personel tarafından iptal edildi', 1)
                 ")->execute([$id, $personel_id]);
+                (new \App\Model\SystemLogModel())->logPersonelTalep((int) $personel_id, 'İzin Talebi İptal', 'İzin talebi personel tarafından iptal edildi (PWA)', (int) $id);
 
                 response(true, null, 'İzin talebi iptal edildi');
             } else {
@@ -2109,6 +2114,7 @@ try {
             ]);
 
             $newId = (int) $TalepModel->getDb()->lastInsertId();
+            (new \App\Model\SystemLogModel())->logPersonelTalep((int) $personel_id, 'Genel Talep Oluşturma', $baslik . ' talebi oluşturuldu (PWA)', $newId);
 
             $erkenYanitGonderildi = responseEarly(true, ['id' => $newId, 'ref_no' => $ref_no], 'Talebiniz başarıyla oluşturuldu. Referans No: ' . $ref_no);
 
@@ -2151,7 +2157,7 @@ try {
                             $pushService->sendToUser($kullanici->id, [
                                 'title' => "📣 Yeni {$baslik}",
                                 'body' => ($talep_eden->adi_soyadi ?? 'Personel') . " yeni bir talep oluşturdu.",
-                                'url' => 'mobile/index.php?p=talepler'
+                                'url' => \App\Helper\MobileSpa::url('/talepler')
                             ], false, $notificationPreferenceType);
                         } catch (Exception $e) {
                             file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Push bildirim hatası: " . $e->getMessage() . "\n", FILE_APPEND);
@@ -2324,6 +2330,7 @@ try {
             ");
             $update->execute([$konum, $latitude, $longitude, $kategori, $oncelik, $baslik, $aciklama, $foto_path, $id, $personel_id]);
 
+            (new \App\Model\SystemLogModel())->logPersonelTalep((int) $personel_id, 'Genel Talep Güncelleme', $baslik . ' talebi güncellendi (PWA)', $id);
             response(true, ['id' => $id, 'ref_no' => $existing->ref_no], 'Talebiniz güncellendi. Referans No: ' . $existing->ref_no);
             break;
 
@@ -2356,6 +2363,7 @@ try {
                 response(false, null, 'Talep iptal edilemedi (sadece beklemede olan talepler iptal edilebilir).');
             }
 
+            (new \App\Model\SystemLogModel())->logPersonelTalep((int) $personel_id, 'Genel Talep İptal', 'Talep personel tarafından iptal edildi (PWA)', $id);
             response(true, ['id' => $id], 'Talep başarıyla iptal edildi.');
             break;
 

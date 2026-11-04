@@ -2141,3 +2141,4 @@
 
 - [x] Avans tutar limiti + FAB (personel PWA)
 - [x] TaleplerView kart tasarımı bento standardına hizalandı
+- [2026-11-04] Eski mobil arayüz kaldırıldı, tüm yönlendirmeler yönetici mobil SPA'ya taşındı (canlıda MOBILE_SPA_URL=https://mobile.ersantr.com gerekir).

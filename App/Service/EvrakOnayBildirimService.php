@@ -109,8 +109,7 @@ final class EvrakOnayBildirimService
             . $satir('MUHATAP', $escape($evrak->kurum_adi ?? '-'))
             . '</table></div>';
 
-        $host = (string) ($_SERVER['HTTP_HOST'] ?? '');
-        $butonUrl = $host !== '' ? 'https://' . $host . '/mobile-spa/#/giden-evrak?id=' . rawurlencode(Security::encrypt((int) $evrak->id)) : null;
+        $butonUrl = \App\Helper\MobileSpa::url('/giden-evrak?id=' . rawurlencode(Security::encrypt((int) $evrak->id)));
 
         try {
             $html = EmailTemplateHelper::getTemplate($baslik, $icerik, $butonUrl ? $butonMetni : null, $butonUrl);
