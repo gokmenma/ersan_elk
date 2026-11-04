@@ -420,8 +420,7 @@ $(document).ready(function () {
   });
   $(document).on("change", 'input[name="evrak_tipi"]', function () {
     const tip = $(this).val();
-    if (tip === "gelen") getNextEvrakNo("gelen");
-    else $("#evrak_no").val("");
+    if ($("#evrak_id").val() === "") $("#evrak_no").val("Kayıtta Alacak");
     checkSectionVisibility();
   });
 
@@ -482,7 +481,7 @@ $(document).ready(function () {
     validator.resetForm();
     $(".is-invalid").removeClass("is-invalid");
     
-    getNextEvrakNo("gelen");
+    $("#evrak_no").val("Kayıtta Alacak");
     loadKonular();
     ensureModalInBody();
     $("#evrakModal").modal("show");

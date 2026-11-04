@@ -192,7 +192,7 @@ try {
         $evrak = (object) [
             'evrak_tipi' => ($_POST['evrak_tipi'] ?? 'gelen') === 'giden' ? 'giden' : 'gelen',
             'tarih' => !empty($_POST['tarih']) ? Date::Ymd($_POST['tarih']) : date('Y-m-d'),
-            'evrak_no' => trim((string) ($_POST['evrak_no'] ?? '')),
+            'evrak_no' => trim((string) ($_POST['evrak_no'] ?? '')) ?: '…',
             'konu' => trim((string) ($_POST['konu'] ?? '')),
             'kurum_adi' => trim((string) ($_POST['kurum_adi'] ?? '')),
             'muhatap_alt_birim' => trim((string) ($_POST['muhatap_alt_birim'] ?? '')),

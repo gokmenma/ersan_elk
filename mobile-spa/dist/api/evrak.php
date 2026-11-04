@@ -533,10 +533,6 @@ try {
                 'icra_personeller' => $icraPersoneller,
                 'kep_mobil_imza' => $kepMobilYetkisi,
                 'mobil_imza_aktif' => MobilImzaPadesService::isEnabled($firmaId),
-                'next_evrak_no' => [
-                    'gelen' => $EvrakModel->getMaxEvrakNo('gelen'),
-                    'giden' => $EvrakModel->getMaxEvrakNo('giden'),
-                ],
             ],
         ]);
     }
@@ -576,6 +572,9 @@ try {
         }
 
         // Attachments
+        if (($evrak->kaynak_tipi ?? '') === 'uets' || !empty($evrak->uets_mesaj_id)) {
+            (new \App\Service\UetsSyncService())->healAttachments((int) $_SESSION['firma_id'], $id);
+        }
         $attachments = $EvrakModel->getAttachments($id);
         if ($attachments === [] && !empty($evrak->dosya_yolu)) {
             $attachments[] = (object) [
@@ -1051,10 +1050,6 @@ try {
         }
 
         $tarih = !empty($_POST['tarih']) ? Date::Ymd((string) $_POST['tarih']) : date('Y-m-d');
-        $evrakNo = trim((string) ($_POST['evrak_no'] ?? ''));
-        if ($evrakNo === '') {
-            $evrakNo = (string) $EvrakModel->getMaxEvrakNo($evrakTipi);
-        }
 
         $personelId = $decryptId($_POST['personel_id'] ?? '');
         $ilgiliPersonelId = $decryptId($_POST['ilgili_personel_id'] ?? '');
@@ -1106,7 +1101,6 @@ try {
             'firma_id' => $firmaId,
             'evrak_tipi' => $evrakTipi,
             'tarih' => $tarih,
-            'evrak_no' => $evrakNo,
             'konu' => mb_substr($konu, 0, 500, 'UTF-8'),
             'kurum_adi' => mb_substr($kurumAdi, 0, 500, 'UTF-8'),
             'muhatap_alt_birim' => trim((string) ($_POST['muhatap_alt_birim'] ?? '')) ?: null,
@@ -1132,7 +1126,7 @@ try {
         if (!$isEdit) {
             $payload['olusturan_kullanici_id'] = $currentUserId;
             $payload['onay_durumu'] = 'taslak';
-            $savedId = (int) $EvrakModel->saveWithAttr($payload);
+            $savedId = (int) $EvrakModel->createWithSequentialNo($payload);
         } else {
             $EvrakModel->saveWithAttr($payload);
             $savedId = $rawId;
@@ -1217,6 +1211,8 @@ try {
         if ($evrakTipi === 'giden' && !empty($validSigners)) {
             $EvrakModel->resetApprovalWorkflow($savedId, array_map(fn($u) => (int) $u->id, $validSigners));
         }
+
+        $evrakNo = (string) ($EvrakModel->getById($savedId)->evrak_no ?? '');
 
         // System Log
         (new SystemLogModel())->logAction(

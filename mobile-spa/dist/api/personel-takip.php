@@ -68,7 +68,7 @@ function takipPersonelId(string $token): int
 function takipFoto(array $p): ?string
 {
     return trim((string) ($p['resim_yolu'] ?? '')) !== ''
-        ? '/api/personnel-photo.php?id=' . urlencode(Security::encrypt((string) $p['id']))
+        ? '/api/personnel-photo.php?id=' . urlencode(Security::encryptStable((string) $p['id'])) . '&w=96'
         : null;
 }
 

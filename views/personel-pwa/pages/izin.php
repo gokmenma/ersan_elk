@@ -321,6 +321,7 @@
 <style>
     .izn-fab { position: fixed; right: 1rem; bottom: 6rem; z-index: 45; width: 3.5rem; height: 3.5rem; border-radius: 9999px; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; border: none; box-shadow: 0 10px 24px rgba(0, 0, 0, .28); }
     .izn-fab .material-symbols-outlined { font-size: 30px; }
+    body:has(.izn-range-bar.is-on) .izn-fab { display: none; }
     .izn-fab:active { transform: scale(.94); }
     .hk-list { display: flex; flex-direction: column; gap: 10px; }
     .hk-card { background: #fff; border-radius: 24px; border: 1px solid rgba(255, 255, 255, .9); box-shadow: 0 6px 16px -10px rgba(15, 23, 42, .18); overflow: hidden; }
@@ -373,22 +374,25 @@
     .izn-card__foot span { display: inline-flex; align-items: center; gap: 4px; }
     .izn-card__foot .material-symbols-outlined { font-size: 14px; }
 
-    .izn-day--sel { background: var(--primary) !important; }
+    .izn-day--sel { background: #2563eb !important; box-shadow: 0 6px 14px -6px rgba(37, 99, 235, .55); }
     .izn-day--sel span { color: #fff !important; font-weight: 800; }
-    .izn-day--range { background: rgba(var(--primary-rgb, 19, 91, 236), .16) !important; border-radius: 0 !important; }
-    .izn-day--range span { color: var(--primary) !important; font-weight: 800; }
+    .izn-day--range { background: rgba(37, 99, 235, .14) !important; border-radius: 0 !important; }
+    .izn-day--range span { color: #1d4ed8 !important; font-weight: 800; }
     .izn-day--start { border-radius: 12px 0 0 12px !important; }
     .izn-day--end { border-radius: 0 12px 12px 0 !important; }
     .izn-day--start.izn-day--end { border-radius: 12px !important; }
 
-    .izn-range-bar { position: fixed; left: 50%; bottom: calc(92px + env(safe-area-inset-bottom)); z-index: 60; width: min(calc(100% - 24px), 456px); display: flex; align-items: center; gap: 8px; padding: 10px 10px 10px 18px; border-radius: 999px; background: #191d24; color: #fff; box-shadow: 0 18px 32px -14px rgba(22, 25, 32, .6); transform: translate(-50%, 140%); opacity: 0; pointer-events: none; transition: transform .28s ease, opacity .28s ease; }
+    .izn-range-bar { position: fixed; left: 50%; bottom: calc(92px + env(safe-area-inset-bottom)); z-index: 60; width: min(calc(100% - 24px), 456px); display: flex; align-items: center; gap: 8px; padding: 10px 10px 10px 18px; border-radius: 999px; background: #fff; color: #161920; border: 1px solid rgba(37, 99, 235, .18); box-shadow: 0 16px 30px -14px rgba(37, 99, 235, .45); transform: translate(-50%, 140%); opacity: 0; pointer-events: none; transition: transform .28s ease, opacity .28s ease; }
     .izn-range-bar.is-on { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
     .izn-range-bar__text { flex: 1; min-width: 0; line-height: 1.2; }
     .izn-range-bar__text b { display: block; font-size: 13px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .izn-range-bar__text span { display: block; font-size: 11px; font-weight: 600; color: rgba(255, 255, 255, .62); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .izn-range-bar__clear { flex: none; width: 36px; height: 36px; border: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, .12); color: #fff; }
+    .izn-range-bar__text span { display: block; font-size: 11px; font-weight: 600; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .izn-range-bar__clear { flex: none; width: 36px; height: 36px; border: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #eef2f7; color: #475569; }
     .izn-range-bar__clear .material-symbols-outlined { font-size: 18px; }
-    .izn-range-bar__go { flex: none; height: 44px; padding: 0 18px; border: 0; border-radius: 999px; background: var(--primary); color: #fff; font-size: 13px; font-weight: 800; }
+    .dark .izn-range-bar { background: #1d222a; color: #e8ecf2; border-color: rgba(255, 255, 255, .1); }
+    .dark .izn-range-bar__text span { color: #94a3b8; }
+    .dark .izn-range-bar__clear { background: rgba(255, 255, 255, .1); color: #e8ecf2; }
+    .izn-range-bar__go { flex: none; height: 44px; padding: 0 18px; border: 0; border-radius: 999px; background: #2563eb; color: #fff; font-size: 13px; font-weight: 800; box-shadow: 0 8px 16px -8px rgba(37, 99, 235, .6); }
 
 </style>
 

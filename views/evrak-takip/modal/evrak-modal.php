@@ -49,7 +49,7 @@ $araclar_list = $Evrak->getActiveVehicles();
                             </div>
 
                             <div class="mb-3">
-                                <?php echo Form::FormFloatInput('text', 'evrak_no', '', 'Evrak Numarası', 'Evrak No / Kayıt No', 'hash'); ?>
+                                <?php echo Form::FormFloatInput('text', 'evrak_no', 'Kayıtta Alacak', 'Evrak Numarası', 'Evrak No / Kayıt No', 'hash', 'form-control', false, null, 'off', true); ?>
                             </div>
 
                             <div class="mb-3">

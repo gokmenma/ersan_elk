@@ -114,7 +114,7 @@ try {
                 $item->son_30_gun_aksam_eksik = $aksamEksikSayilari[$pid] ?? 0;
                 $item->hedef_tur = 'sabah';
                 $item->personel_resim_url = $pid > 0
-                    ? '/api/personnel-photo.php?id=' . urlencode(Security::encrypt((string) $pid))
+                    ? '/api/personnel-photo.php?id=' . urlencode(Security::encryptStable((string) $pid)) . '&w=96'
                     : null;
             }
 
@@ -256,7 +256,7 @@ try {
                 : null;
             $pid = (int) ($r->personel_id ?? 0);
             $r->personel_resim_url = $pid > 0 && trim((string) ($r->personel_resim ?? '')) !== '' && is_file(dirname(__DIR__, 3) . '/' . ltrim(str_replace('\\', '/', trim((string) ($r->personel_resim))), '/'))
-                ? '/api/personnel-photo.php?id=' . Security::encrypt((string) $pid)
+                ? '/api/personnel-photo.php?id=' . Security::encryptStable((string) $pid) . '&w=96'
                 : null;
         }
 

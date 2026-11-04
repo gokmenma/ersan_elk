@@ -327,9 +327,6 @@ onMounted(async () => {
     if (icraParam) {
       await applyIcraTaslak(icraParam)
     }
-    if (!form.evrak_no && meta.value.next_evrak_no?.giden) {
-      form.evrak_no = String(meta.value.next_evrak_no.giden)
-    }
   }
 })
 
@@ -613,7 +610,6 @@ async function submitForm(silent = false) {
     if (form.id) fd.append('id', form.id)
     fd.append('evrak_tipi', 'giden')
     fd.append('tarih', form.tarih)
-    fd.append('evrak_no', form.evrak_no)
     fd.append('konu', form.konu)
     fd.append('kurum_adi', form.kurum_adi)
     fd.append('muhatap_alt_birim', form.muhatap_alt_birim)
@@ -900,14 +896,12 @@ async function imzaGeriAl() {
               />
             </div>
             <div class="evrak-form-group">
-              <label class="evrak-form-label">SAYI / EVRAK NO *</label>
+              <label class="evrak-form-label">SAYI / EVRAK NO</label>
               <input
                 type="text"
-                v-model="form.evrak_no"
-                placeholder="Örn: 2026-0042"
-                :disabled="isLocked"
+                :value="form.evrak_no || 'Kayıtta Alacak'"
+                disabled
                 class="evrak-input"
-                required
               />
             </div>
           </div>

@@ -1168,7 +1168,6 @@ class KepService
                 $evrakId = $this->evrakModel->createFromKepGelen($firmId, [
                     'kep_id' => $kepId,
                     'tarih' => $tarih,
-                    'evrak_no' => (string) $this->evrakModel->getMaxEvrakNo('gelen'),
                     'konu' => $konu,
                     'kurum_adi' => $kurumAdi,
                     'aciklama' => "KEP Mesaj ID: {$kepId}\nGönderen KEP: {$fromAddress}\nAlıcı KEP: {$ownKep}",

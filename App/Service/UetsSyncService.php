@@ -195,7 +195,6 @@ class UetsSyncService
                         $this->mesajModel->updateLocalFiles($localMesajId, $pdfPathToStore, 'uploads/evrak-takip/uets/' . $eypFilename);
 
                         // 3. evrak_takip tablosuna Gelen Evrak olarak kaydet
-                        $evrakNo = $this->evrakModel->getMaxEvrakNo('gelen');
                         $tarih = !empty($msg['inserttime']) ? date('Y-m-d', (int) $msg['inserttime']) : date('Y-m-d');
                         $konu = mb_substr(trim((string) ($msg['subject'] ?? 'UETS Elektronik Tebligat')), 0, 250);
                         $kurumAdi = mb_substr(trim((string) ($msg['sender_name'] ?? $msg['sender'] ?? 'UETS Gönderici')), 0, 250);
@@ -203,7 +202,6 @@ class UetsSyncService
                         $newEvrakId = $this->evrakModel->createFromUets($firmId, [
                             'uets_mesaj_id' => $uetsMsgId,
                             'tarih' => $tarih,
-                            'evrak_no' => $evrakNo,
                             'konu' => $konu,
                             'kurum_adi' => $kurumAdi,
                             'aciklama' => "UETS Tebligat No: {$uetsMsgId}\nGönderen UETS: " . ($msg['sender'] ?? '') . "\nAlıcı: " . ($msg['recipient'] ?? ''),

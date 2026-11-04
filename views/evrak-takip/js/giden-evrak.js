@@ -628,7 +628,7 @@ $(document).ready(function () {
       confirmButtonColor: "#d33",
     }).then((result) => {
       if (result.isConfirmed) {
-        $("#evrak_no, #konu, #kurum_adi, #muhatap_alt_birim, #muhatap_adres, #ilgiler, #ekler").val("").trigger("input").trigger("change");
+        $("#konu, #kurum_adi, #muhatap_alt_birim, #muhatap_adres, #ilgiler, #ekler").val("").trigger("input").trigger("change");
         $("#ilgili_evrak_id, #personel_id, #ilgili_personel_id").val(null).trigger("change");
         $("#giden_evrak_icerik").summernote("code", "<p><br></p>");
         attachments = [];
@@ -829,7 +829,7 @@ $(document).ready(function () {
       const data = template.veri || {};
       const today = new Date(); const todayText = String(today.getDate()).padStart(2, "0") + "." + String(today.getMonth() + 1).padStart(2, "0") + "." + today.getFullYear();
       $("#tarih").val(data.tarih || todayText).trigger("input").trigger("change");
-      ["evrak_no", "konu", "kurum_adi", "muhatap_alt_birim", "muhatap_adres", "ilgiler", "ekler"].forEach(field => $("#" + field).val(data[field] || "").trigger("input").trigger("change"));
+      ["konu", "kurum_adi", "muhatap_alt_birim", "muhatap_adres", "ilgiler", "ekler"].forEach(field => $("#" + field).val(data[field] || "").trigger("input").trigger("change"));
       ["ilgili_evrak_id", "personel_id", "ilgili_personel_id"].forEach(field => $("#" + field).val(data[field] || null).trigger("change"));
       $("#giden_evrak_icerik").summernote("code", data.aciklama || "<p><br></p>");
       $("#ust_yazi_gerekli_degil").prop("checked", Number(data.ust_yazi_gerekli_degil) === 1).trigger("change");
@@ -856,7 +856,7 @@ $(document).ready(function () {
     const name = $("#evrakSablonAdi").val().trim(); if (!name) return Swal.fire("Eksik Bilgi", "Şablon adını giriniz.", "warning");
     const templateId = $("#evrakSablonId").val();
     syncContent();
-    const payload = { tarih: $("#tarih").val(), evrak_no: $("#evrak_no").val(), konu: $("#konu").val(), kurum_adi: $("#kurum_adi").val(), muhatap_alt_birim: $("#muhatap_alt_birim").val(), muhatap_adres: $("#muhatap_adres").val(), ilgiler: $("#ilgiler").val(), ekler: $("#ekler").val(), aciklama: $("#giden_evrak_icerik").summernote("code"), ust_yazi_gerekli_degil: $("#ust_yazi_gerekli_degil").is(":checked") ? 1 : 0, ilgili_evrak_id: $("#ilgili_evrak_id").val(), personel_id: $("#personel_id").val(), ilgili_personel_id: $("#ilgili_personel_id").val(), imza_kullanici_ids: selectedSigners.map(item => item.raw_id), imza_kimin_adina: selectedSigners.map(item => item.kimin_adina || "") };
+    const payload = { tarih: $("#tarih").val(), konu: $("#konu").val(), kurum_adi: $("#kurum_adi").val(), muhatap_alt_birim: $("#muhatap_alt_birim").val(), muhatap_adres: $("#muhatap_adres").val(), ilgiler: $("#ilgiler").val(), ekler: $("#ekler").val(), aciklama: $("#giden_evrak_icerik").summernote("code"), ust_yazi_gerekli_degil: $("#ust_yazi_gerekli_degil").is(":checked") ? 1 : 0, ilgili_evrak_id: $("#ilgili_evrak_id").val(), personel_id: $("#personel_id").val(), ilgili_personel_id: $("#ilgili_personel_id").val(), imza_kullanici_ids: selectedSigners.map(item => item.raw_id), imza_kimin_adina: selectedSigners.map(item => item.kimin_adina || "") };
     const data = new FormData(); data.append("action", "evrak-sablon-kaydet"); data.append("kayit_modu", templateId ? "update" : "create"); data.append("sablon_id", templateId); data.append("sablon_adi", name); data.append("sablon_verisi", JSON.stringify(payload));
     data.append("sablon_mevcut_ekler", JSON.stringify(attachments.filter(item => item.type !== "new" && item.id).map(item => ({ type: item.type, id: item.id }))));
     attachments.filter(item => item.type === "new").forEach((item, index) => data.append("sablon_yeni_ekler[" + index + "]", item.file, item.name));
@@ -951,8 +951,8 @@ $(document).ready(function () {
   });
 
   function validateForm() {
-    if (!$("#evrak_no").val().trim() || !$("#konu").val().trim() || !$("#kurum_adi").val().trim()) {
-      Swal.fire("Eksik Bilgi", "Sayı, konu ve muhatap alanları zorunludur.", "warning");
+    if (!$("#konu").val().trim() || !$("#kurum_adi").val().trim()) {
+      Swal.fire("Eksik Bilgi", "Konu ve muhatap alanları zorunludur.", "warning");
       return false;
     }
     const ustYaziGerekliDegil = $("#ust_yazi_gerekli_degil").is(":checked");

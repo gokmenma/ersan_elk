@@ -431,11 +431,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 if ($id > 0) {
+                    unset($data['evrak_no']);
                     $Model->saveWithAttr($data);
                     $message = "Evrak başarıyla güncellendi.";
                 } else {
                     $data['olusturan_kullanici_id'] = $_SESSION['user_id'] ?? null;
-                    $id = $Model->saveWithAttr($data);
+                    $id = $Model->createWithSequentialNo($data);
                     $message = "Evrak başarıyla kaydedildi.";
                 }
 
@@ -1384,8 +1385,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 break;
 
             case 'get-next-evrak-no':
-                $tip = $_POST['tip'] ?? 'gelen';
-                $next_no = $Model->getMaxEvrakNo($tip);
+                $next_no = $Model->getMaxEvrakNo();
                 echo json_encode(['status' => 'success', 'next_no' => $next_no]);
                 break;
 

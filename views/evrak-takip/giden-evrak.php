@@ -60,7 +60,7 @@ if ($icraParam !== '' && !$record) {
 }
 
 $value = static fn(string $field, mixed $default = '') => $record->$field ?? ($prefill[$field] ?? $default);
-$defaultEvrakNo = $record ? ($record->evrak_no ?? '') : $Evrak->getMaxEvrakNo('giden');
+$defaultEvrakNo = $record ? ($record->evrak_no ?? '') : 'Kayıtta Alacak';
 $dateValue = $record && !empty($record->tarih) ? date('d.m.Y', strtotime($record->tarih)) : date('d.m.Y');
 
 $personelOptions = ['' => 'Seçiniz...'];
@@ -327,7 +327,7 @@ if ($canSendKep || $gonderimKanali === 'kep') {
                                 <div class="small fw-bold text-uppercase text-muted mb-2">Evrak Bilgileri</div>
                                 <div class="d-grid gap-2">
                                     <?php echo Form::FormFloatInput('text', 'tarih', $dateValue, 'Evrak Tarihi', 'Evrak Tarihi', 'calendar', 'form-control flatpickr', true); ?>
-                                    <?php echo Form::FormFloatInput('text', 'evrak_no', $defaultEvrakNo, 'Sayı', 'Sayı / Evrak No', 'hash', 'form-control', true); ?>
+                                    <?php echo Form::FormFloatInput('text', 'evrak_no', $defaultEvrakNo, 'Sayı', 'Sayı / Evrak No', 'hash', 'form-control', false, null, 'off', true); ?>
                                     <?php echo Form::FormFloatInput('text', 'konu', $value('konu'), 'Konu', 'Konu', 'type', 'form-control', true); ?>
                                     <?php echo Form::FormFloatInput('text', 'kurum_adi', $value('kurum_adi'), 'Muhatap', 'Muhatap Kurum / Kişi', 'home', 'form-control', true); ?>
                                     <?php echo Form::FormSelect2('gonderim_turu_secimi', $gonderimTuruOptions, $gonderimKanali, 'Evrak Gönderim Türü', 'send', 'key', '', 'form-select giden-select2'); ?>

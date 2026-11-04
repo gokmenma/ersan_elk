@@ -187,7 +187,7 @@ if ($method === 'GET') {
                         'personel_token' => $encPersonelId,
                         'name' => $name ?: 'İsimsiz Personel',
                         'initials' => $personnelInitials($name ?: 'İP'),
-                        'avatar' => $hasPhoto ? '/api/personnel-photo.php?id=' . rawurlencode($encPersonelId) : null,
+                        'avatar' => $hasPhoto ? '/api/personnel-photo.php?id=' . rawurlencode(Security::encryptStable((string) $personel->personel_id)) . '&w=96' : null,
                         'department' => trim((string) ($personel->departman ?? '')) ?: 'Genel',
                         'job' => trim((string) ($personel->gorev ?? '')) ?: 'Personel',
                         'is_calculated' => $isCalculated,

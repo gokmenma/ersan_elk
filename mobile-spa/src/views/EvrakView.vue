@@ -420,13 +420,11 @@ async function openCreateForm(type = 'gelen') {
   formError.value = ''
   selectedFiles.value = []
 
-  const nextNo = meta.value.next_evrak_no.gelen
-
   formData.value = {
     id: '',
     evrak_tipi: 'gelen',
     tarih: new Date().toISOString().slice(0, 10),
-    evrak_no: String(nextNo || ''),
+    evrak_no: '',
     konu: '',
     kurum_adi: '',
     muhatap_alt_birim: '',
@@ -578,7 +576,6 @@ async function saveForm() {
     fd.append('id', formData.value.id || '')
     fd.append('evrak_tipi', formData.value.evrak_tipi)
     fd.append('tarih', formData.value.tarih)
-    fd.append('evrak_no', formData.value.evrak_no)
     fd.append('konu', formData.value.konu)
     fd.append('kurum_adi', formData.value.kurum_adi)
     fd.append('muhatap_alt_birim', formData.value.muhatap_alt_birim)
@@ -2249,9 +2246,9 @@ onBeforeUnmount(stopMobileSignTimer)
                 <label class="evrak-form-label">EVRAK NO</label>
                 <input
                   type="text"
-                  v-model="formData.evrak_no"
+                  :value="formData.evrak_no || 'Kayıtta Alacak'"
+                  disabled
                   class="evrak-input"
-                  placeholder="Otomatik veya No"
                 />
               </div>
             </div>

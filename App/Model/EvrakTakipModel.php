@@ -1038,6 +1038,11 @@ class EvrakTakipModel extends Model
 
     public function createFromUets(int $firmaId, array $data): int
     {
+        return $this->withEvrakNoLock($firmaId, fn(string $evrakNo) => $this->insertFromUets($firmaId, $data, $evrakNo));
+    }
+
+    private function insertFromUets(int $firmaId, array $data, string $evrakNo): int
+    {
         $sql = $this->db->prepare("
             INSERT INTO evrak_takip
                 (firma_id, evrak_tipi, kaynak_tipi, uets_mesaj_id, tarih, evrak_no, konu, kurum_adi,
@@ -1050,7 +1055,7 @@ class EvrakTakipModel extends Model
             'firma_id' => $firmaId,
             'uets_mesaj_id' => (string) $data['uets_mesaj_id'],
             'tarih' => (string) $data['tarih'],
-            'evrak_no' => (string) $data['evrak_no'],
+            'evrak_no' => $evrakNo,
             'konu' => (string) $data['konu'],
             'kurum_adi' => (string) $data['kurum_adi'],
             'aciklama' => (string) $data['aciklama'],
@@ -1061,6 +1066,11 @@ class EvrakTakipModel extends Model
     }
 
     public function createFromKepGelen(int $firmaId, array $data): int
+    {
+        return $this->withEvrakNoLock($firmaId, fn(string $evrakNo) => $this->insertFromKepGelen($firmaId, $data, $evrakNo));
+    }
+
+    private function insertFromKepGelen(int $firmaId, array $data, string $evrakNo): int
     {
         $stmt = $this->db->prepare("
             INSERT INTO evrak_takip
@@ -1074,7 +1084,7 @@ class EvrakTakipModel extends Model
             'firma_id' => $firmaId,
             'kep_mesaj_id' => (string) $data['kep_id'],
             'tarih' => (string) $data['tarih'],
-            'evrak_no' => mb_substr((string) $data['evrak_no'], 0, 100),
+            'evrak_no' => $evrakNo,
             'konu' => mb_substr((string) $data['konu'], 0, 250),
             'kurum_adi' => mb_substr((string) $data['kurum_adi'], 0, 255),
             'aciklama' => (string) $data['aciklama'],
@@ -1087,7 +1097,11 @@ class EvrakTakipModel extends Model
 
     public function createStandaloneKep(int $firmaId, int $userId, array $data): int
     {
-        $evrakNo = !empty($data['evrak_no']) ? (string) $data['evrak_no'] : (string) $this->getMaxEvrakNo('giden');
+        return $this->withEvrakNoLock($firmaId, fn(string $evrakNo) => $this->insertStandaloneKep($firmaId, $userId, $data, $evrakNo));
+    }
+
+    private function insertStandaloneKep(int $firmaId, int $userId, array $data, string $evrakNo): int
+    {
 
         $stmt = $this->db->prepare("
             INSERT INTO evrak_takip
@@ -1199,7 +1213,7 @@ class EvrakTakipModel extends Model
     /**
      * En yüksek evrak numarasını getirir
      */
-    public function getMaxEvrakNo($tip)
+    public function getMaxEvrakNo($tip = null, ?int $firmaId = null)
     {
         $sql = $this->db->prepare("
             SELECT MAX(
@@ -1210,15 +1224,36 @@ class EvrakTakipModel extends Model
             ) as max_no
             FROM {$this->table} 
             WHERE firma_id = :firma_id 
-            AND evrak_tipi = :evrak_tipi
-            AND silinme_tarihi IS NULL
         ");
         $sql->execute([
-            'firma_id' => $_SESSION['firma_id'],
-            'evrak_tipi' => $tip
+            'firma_id' => $firmaId ?? (int) $_SESSION['firma_id']
         ]);
         $row = $sql->fetch(PDO::FETCH_OBJ);
         return ((int) ($row->max_no ?? 0)) + 1;
+    }
+
+    private function withEvrakNoLock(int $firmaId, callable $callback)
+    {
+        $lockName = 'evrak_no_' . $firmaId;
+        $lock = $this->db->prepare('SELECT GET_LOCK(:name, 10)');
+        $lock->execute(['name' => $lockName]);
+        if ((int) $lock->fetchColumn() !== 1) {
+            throw new \Exception('Evrak numarası üretilemedi, lütfen tekrar deneyiniz.');
+        }
+        try {
+            return $callback((string) $this->getMaxEvrakNo(null, $firmaId));
+        } finally {
+            $release = $this->db->prepare('SELECT RELEASE_LOCK(:name)');
+            $release->execute(['name' => $lockName]);
+        }
+    }
+
+    public function createWithSequentialNo(array $data)
+    {
+        return $this->withEvrakNoLock((int) $_SESSION['firma_id'], function (string $evrakNo) use ($data) {
+            $data['evrak_no'] = $evrakNo;
+            return $this->saveWithAttr($data);
+        });
     }
 
     /**
