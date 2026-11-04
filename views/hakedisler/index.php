@@ -1,8 +1,8 @@
 <?php
 use App\Helper\Form;
-use App\Model\CariModel;
+use App\Model\EFaturaCariModel;
 
-$cariOptions = (new CariModel())->getFaturaAliciListesi();
+$cariOptions = (new EFaturaCariModel())->getFaturaAliciListesi((int) $_SESSION['firma_id']);
 
 $maintitle = 'Ana Sayfa';
 $title = 'Sözleşme & Hakediş';

@@ -3604,4 +3604,4 @@
 
 ## Hakediş Fatura Taslağı Alıcı Carisi
 - Kök neden: `saveHakedis` taslakta VKN'yi sabit `1111111111` yazıyor, adresi yüklenici adresinden alıyor, cariyi `LIKE` ile tahmin ediyordu.
-- Çözüm: `hakedis_sozlesmeler.cari_id` (sql/2026_11_04_hakedis_sozlesme_cari_id.sql). Sözleşme formu ve hakediş modalında `Form::FormSelect2` ile cari seçimi; fatura oluşturulurken cari zorunlu, VKN/TCKN 10-11 hane doğrulanır, seçim sözleşmeye yazılır. Alıcı bilgileri `CariModel::getFaturaAlici()` ile cari kartından alınır.
+- Çözüm: `hakedis_sozlesmeler.cari_id` (sql/2026_11_04_hakedis_sozlesme_cari_id.sql). Sözleşme formu ve hakediş modalında `Form::FormSelect2` ile cari seçimi; fatura oluşturulurken cari zorunlu, VKN/TCKN 10-11 hane doğrulanır, seçim sözleşmeye yazılır. Alıcı bilgileri `EFaturaCariModel::getFaturaAlici()` ile e-Fatura Cari Listesi (`efatura_cariler`) kaydından alınır; `cari_id` bu tablonun id değeridir.

@@ -2,7 +2,7 @@
 use App\Model\HakedisSozlesmeModel;
 use App\Model\HakedisKalemModel;
 use App\Helper\Form;
-use App\Model\CariModel;
+use App\Model\EFaturaCariModel;
 
 $sozlesmeId = $_GET['id'] ?? 0;
 if (!$sozlesmeId) {
@@ -19,7 +19,7 @@ if (!$sozlesme || $sozlesme->firma_id != $_SESSION['firma_id'] || $sozlesme->sil
 }
 
 $db = $model->getDb();
-$cariOptions = (new CariModel())->getFaturaAliciListesi();
+$cariOptions = (new EFaturaCariModel())->getFaturaAliciListesi((int) $_SESSION['firma_id']);
 $isRevizyonlari = [];
 $sureUzatimlari = [];
 try {

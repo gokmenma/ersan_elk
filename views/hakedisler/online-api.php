@@ -12,7 +12,7 @@ use App\Model\HakedisMiktarModel;
 use App\Helper\Helper;
 use App\Service\EInvoiceService;
 use App\Model\EInvoiceModel;
-use App\Model\CariModel;
+use App\Model\EFaturaCariModel;
 use App\Helper\Security;
 use App\Service\Gate;
 
@@ -747,14 +747,14 @@ try {
                     echo json_encode(['status' => 'error', 'message' => 'Fatura taslağı için alıcı cari seçilmelidir.']);
                     exit;
                 }
-                $faturaCari = (new CariModel())->getFaturaAlici($secilenCariId);
+                $faturaCari = (new EFaturaCariModel())->getFaturaAlici($secilenCariId, (int) $firma_id);
                 if (!$faturaCari) {
-                    echo json_encode(['status' => 'error', 'message' => 'Seçilen cari bulunamadı veya pasif.']);
+                    echo json_encode(['status' => 'error', 'message' => 'Seçilen e-Fatura carisi bulunamadı veya pasif.']);
                     exit;
                 }
                 $faturaVkn = preg_replace('/[^0-9]/', '', (string) $faturaCari['vkn_tckn']);
                 if (!in_array(strlen($faturaVkn), [10, 11], true)) {
-                    echo json_encode(['status' => 'error', 'message' => 'Seçilen carinin VKN/TCKN bilgisi eksik veya hatalı. Önce cari kartını düzeltin.']);
+                    echo json_encode(['status' => 'error', 'message' => 'Seçilen carinin VKN/TCKN bilgisi eksik veya hatalı. Önce e-Fatura cari kartını düzeltin.']);
                     exit;
                 }
                 $faturaCari['vkn_tckn'] = $faturaVkn;
@@ -958,10 +958,10 @@ try {
                         }
 
                         $cariId = (int) $faturaCari['id'];
-                        $aliciUnvan = trim((string) ($faturaCari['CariAdi'] ?: $faturaCari['firma']));
+                        $aliciUnvan = trim((string) $faturaCari['unvan']);
                         $aliciVkn = $faturaCari['vkn_tckn'];
                         $adresParcalari = array_filter([
-                            trim((string) $faturaCari['Adres']),
+                            trim((string) $faturaCari['adres']),
                             trim((string) $faturaCari['ilce']) !== '' || trim((string) $faturaCari['il']) !== ''
                                 ? trim($faturaCari['ilce'] . '/' . $faturaCari['il'], '/') : ''
                         ], static fn($v) => $v !== '');

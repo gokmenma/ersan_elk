@@ -348,6 +348,25 @@ class EFaturaCariModel extends Model
         return $stmt->execute(['id' => $id, 'firm_id' => $firmId]);
     }
 
+    public function getFaturaAliciListesi(int $firmId): array
+    {
+        $options = [['id' => '', 'text' => 'Cari seçiniz']];
+        foreach ($this->getAllActive($firmId) as $row) {
+            $vkn = trim((string) $row['vkn_tckn']);
+            $options[] = [
+                'id' => (int) $row['id'],
+                'text' => trim((string) $row['unvan']) . ($vkn !== '' ? ' — ' . $vkn : ' — VKN eksik'),
+            ];
+        }
+        return $options;
+    }
+
+    public function getFaturaAlici(int $id, int $firmId): ?array
+    {
+        $row = $this->getById($id, $firmId);
+        return ($row && (int) $row['is_active'] === 1) ? $row : null;
+    }
+
     /**
      * Tüm aktif cariler (Select / Autocomplete için)
      */
