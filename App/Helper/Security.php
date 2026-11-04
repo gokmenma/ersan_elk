@@ -72,6 +72,23 @@ class Security
         return rawurlencode($base64);
     }
 
+    public static function encryptStable($data)
+    {
+        if ($data === null || $data === '') {
+            return '';
+        }
+
+        $key = self::getKey();
+        $iv = substr(hash_hmac('sha256', 'stable-iv|' . (string) $data, $key, true), 0, 16);
+        $encrypted = openssl_encrypt((string) $data, 'AES-256-CBC', $key, OPENSSL_RAW_DATA, $iv);
+
+        if ($encrypted === false) {
+            return '';
+        }
+
+        return rawurlencode(base64_encode($iv . $encrypted));
+    }
+
     public static function decrypt($data)
     {
         if ($data === '0' || $data === 0 || empty($data)) {

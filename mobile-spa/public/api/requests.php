@@ -103,8 +103,8 @@ function resolvePersonelAvatar(int $personelId, ?string $personelResimYolu = nul
         return '';
     }
 
-    $encId = Security::encrypt((string) $personelId);
-    return '/api/personnel-photo.php?id=' . rawurlencode($encId);
+    $encId = Security::encryptStable((string) $personelId);
+    return '/api/personnel-photo.php?id=' . rawurlencode($encId) . '&w=96';
 }
 
 function formatTaleplerDate(?string $dt, bool $onlyDate = false): string

@@ -670,3 +670,7 @@ edilen kısımdır. `elden_tutardan` kesintisi ana kesinti kartından gizlenemez
 - Arife (`tur = 'yarim'`) günlerinde kesim saatinden sonra çalışan personele `personel_fazla_mesaileri` üzerinden fazla mesai (`kaynak = 'otomatik'`, `otomatik_kural = 'arife_fm_v1'`, varsayılan 4 saat) yazar. Bordro bunu puantaj fazla mesaisiyle aynı yoldan alır.
 - Resmi tatil Pazar'a denk gelirse otomatik HTÇ kaldırılır ve RTÇ uygulanır. Manuel girilmiş kodlar ve fazla mesailer değiştirilmez.
 - Otomasyon yalnız açık dönemin puantaj kaynağını üretir. Hesaplanmış veya kapanmış bordro snapshot'ları (Bölüm 5.1) bu kayıtlardan etkilenmez; değişikliğin yansıması için yetkili yeniden hesaplama gerekir.
+
+### Saatlik izin (2026-11-04)
+- `personel_izinleri.izin_saati` dolu kayıtlar (Saatlik İzin) ücretli kabul edilir ve bordroda ücretten düşülmez.
+- Saatlik izin gün bazlı hesaplara (ücretli/ücretsiz izin günü, rapor/genel tatil günü, fiili çalışma günü) dahil edilmez; aynı gün normal çalışma günü olarak sayılmaya devam eder. Böylece gün çift sayılmaz ve yemek/fiili gün düşmez.

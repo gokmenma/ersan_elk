@@ -31,8 +31,47 @@ if ($projectRoot) {
 if (!$file || !$projectRoot || !is_file($file)) { http_response_code(404); exit; }
 $mime = (new finfo(FILEINFO_MIME_TYPE))->file($file) ?: 'application/octet-stream';
 if (!str_starts_with($mime, 'image/')) { http_response_code(415); exit; }
-header('Content-Type: ' . $mime);
-header('Content-Length: ' . (string) filesize($file));
-header('Cache-Control: private, max-age=3600');
+
+$width = (int) ($_GET['w'] ?? 0);
+$width = $width > 0 ? min(512, max(48, $width)) : 0;
+$serve = $file;
+$serveMime = $mime;
+$version = (string) filemtime($file) . '-' . (string) filesize($file);
+
+if ($width > 0 && in_array($mime, ['image/jpeg', 'image/png'], true) && function_exists('imagecreatetruecolor')) {
+    $cacheDir = $projectRoot . '/uploads/personel-thumb';
+    if (!is_dir($cacheDir)) {
+        @mkdir($cacheDir, 0777, true);
+        @file_put_contents($cacheDir . '/.htaccess', "Require all denied\n");
+    }
+    $thumb = $cacheDir . '/' . sha1($file . '|' . $version . '|' . $width) . '.jpg';
+    if (!is_file($thumb) && is_dir($cacheDir) && is_writable($cacheDir)) {
+        $src = $mime === 'image/png' ? @imagecreatefrompng($file) : @imagecreatefromjpeg($file);
+        if ($src) {
+            $sw = imagesx($src);
+            $sh = imagesy($src);
+            $side = min($sw, $sh);
+            $dst = imagecreatetruecolor($width, $width);
+            imagefill($dst, 0, 0, imagecolorallocate($dst, 255, 255, 255));
+            imagecopyresampled($dst, $src, 0, 0, (int) (($sw - $side) / 2), (int) (($sh - $side) / 4), $width, $width, $side, $side);
+            $tmp = $thumb . '.' . bin2hex(random_bytes(4)) . '.tmp';
+            if (@imagejpeg($dst, $tmp, 80)) { @rename($tmp, $thumb); }
+            imagedestroy($src);
+            imagedestroy($dst);
+        }
+    }
+    if (is_file($thumb)) {
+        $serve = $thumb;
+        $serveMime = 'image/jpeg';
+        $version .= '-w' . $width;
+    }
+}
+
+$etag = '"' . sha1($version) . '"';
+header('ETag: ' . $etag);
+header('Cache-Control: private, max-age=604800');
 header('X-Content-Type-Options: nosniff');
-readfile($file);
+if (($_SERVER['HTTP_IF_NONE_MATCH'] ?? '') === $etag) { http_response_code(304); exit; }
+header('Content-Type: ' . $serveMime);
+header('Content-Length: ' . (string) filesize($serve));
+readfile($serve);

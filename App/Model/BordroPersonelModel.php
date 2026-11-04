@@ -520,6 +520,7 @@ class BordroPersonelModel extends Model
                 FROM personel_izinleri pi
                 INNER JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
                 WHERE pi.silinme_tarihi IS NULL
+                  AND pi.izin_saati IS NULL
                   AND t.silinme_tarihi IS NULL
                   AND pi.baslangic_tarihi <= ?
                   AND pi.bitis_tarihi >= ?
@@ -5107,6 +5108,7 @@ class BordroPersonelModel extends Model
             WHERE pi.personel_id = ? 
             AND pi.onay_durumu = 'Onaylandı'
             AND pi.silinme_tarihi IS NULL
+            AND pi.izin_saati IS NULL
             AND (
                 (pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ?)
             )
@@ -5542,6 +5544,7 @@ class BordroPersonelModel extends Model
             AND baslangic_tarihi <= ?
             AND bitis_tarihi >= ?
             AND silinme_tarihi IS NULL
+            AND izin_saati IS NULL
         ");
 
         $params = array_merge([$personel_id], $ucretliIzinTurIds, [$aktifBitis, $aktifBaslangic]);
@@ -5693,6 +5696,7 @@ class BordroPersonelModel extends Model
             AND pi.onay_durumu = 'Onaylandı'
             AND pi.silinme_tarihi IS NULL
             AND LOWER(t.kisa_kod) = LOWER(?)
+            AND pi.izin_saati IS NULL
             AND pi.baslangic_tarihi <= ?
             AND pi.bitis_tarihi >= ?
         ");

@@ -621,7 +621,7 @@ async function submitSil() {
                 v-if="item.avatar"
                 :src="item.avatar"
                 :alt="item.name"
-                loading="lazy"
+                decoding="async"
                 @error="item.avatar = null"
               />
               <span v-else>{{ getInitials(item.name) }}</span>
