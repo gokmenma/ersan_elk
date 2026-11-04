@@ -3617,3 +3617,7 @@
 - Bilinen sınır: önceden verilmiş `remember_token` çerezli zayıf şifreli kullanıcı, çerez süresince zorunlu ekranı atlar (düz şifre bilinmediği için kontrol edilemez).
 
 - Giden evrak değişmezliği: `EvrakPdfService::freezePdf()/readFrozenPdf()`, `EvrakTakipModel::saveFrozenPdf()`; `pdf.php` ve `generateTempPdf()` önce PAdES, sonra donmuş sürümü, en son canlı render kullanır. Eski (migration öncesi) ıslak imzalı evraklara geriye dönük dondurma yapılmadı.
+
+## 2026-11-04
+- Personel PWA avans: tutar alanı limite kelepçelendi (clampAvansTutar), "yeni" butonu FAB (+) yapıldı.
+- Mobil SPA TaleplerView değişikliği yanlış yön olduğu için geri alındı. Personel PWA merkezi .card ve .card-premium sınıfları bento stiline (24px köşe, beyaz kenar, yumuşak gölge) geçirildi (pwa-style.css).

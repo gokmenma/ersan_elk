@@ -13,7 +13,6 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') { http_response_code(403
         'eyebrow' => 'KAZANÇLARIM',
         'title' => 'Avans İşlemleri',
         'subtitle' => 'Avans taleplerinizi yönetin',
-        'actions' => '<button type="button" onclick="openNewAvansModal()" id="avans-yeni-btn" class="pwa-circle-btn pwa-circle-btn--primary" aria-label="Avans Talebi" title="Avans Talebi"><span class="material-symbols-outlined">add_card</span></button>',
     ]); ?>
 
 
@@ -96,7 +95,7 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') { http_response_code(403
                         <label>Talep Edilen Tutar</label>
                         <div class="relative">
                             <span class="absolute left-4 top-1/2 -translate-y-1/2 font-extrabold text-primary">₺</span>
-                            <input type="number" name="tutar" id="avans-tutar" class="pwa-input" style="padding-left:40px" placeholder="0.00" inputmode="decimal" required>
+                            <input type="number" name="tutar" id="avans-tutar" class="pwa-input" style="padding-left:40px" placeholder="0.00" inputmode="decimal" min="0.01" step="0.01" required oninput="clampAvansTutar(this)">
                         </div>
                     </div>
 
@@ -146,12 +145,6 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') { http_response_code(403
             <!-- Content will be loaded dynamically -->
         </div>
 
-        <div class="flex gap-3 mt-6">
-            <button onclick="Modal.close('avans-detay-modal')"
-                class="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold rounded-xl w-full">
-                Kapat
-            </button>
-        </div>
     </div>
 </div>
 
@@ -260,29 +253,26 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') { http_response_code(403
         }
 
         container.innerHTML = liste.map(avans => `
-                <div class="card p-4 cursor-pointer" onclick='showAvansDetay(${JSON.stringify(avans).replace(/'/g, "&#39;")})'>
-                    <div class="flex items-center gap-4 mb-3">
-                        <div class="w-12 h-12 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
-                            <span class="material-symbols-outlined text-orange-600">request_quote</span>
+                <div class="avc" onclick='showAvansDetay(${JSON.stringify(avans).replace(/'/g, "&#39;")})'>
+                    <div class="avc__head">
+                        <div class="avc__icon">
+                            <span class="material-symbols-outlined">request_quote</span>
                         </div>
-                        <div class="flex-1">
-                            <p class="font-bold text-sm text-slate-900 dark:text-white">${Format.currency(avans.tutar)}</p>
-                            <p class="text-xs text-slate-500">Talep: ${avans.tarih}</p>
+                        <div class="avc__main">
+                            <strong>${Format.currency(avans.tutar)}</strong>
+                            <span>Talep: ${avans.tarih}</span>
                         </div>
-                        <div class="text-right">
-                            <span class="badge ${getStatusBadge(avans.durum)}">${avans.durum_text}</span>
-                        </div>
+                        <span class="badge ${getStatusBadge(avans.durum)}">${avans.durum_text}</span>
                     </div>
-
+                    ${avans.aciklama ? `<p class="avc__note">${String(avans.aciklama).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</p>` : ''}
                     ${avans.durum === 'beklemede' ? `
-                    <div class="flex gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-                        <button onclick='event.stopPropagation(); editAvans(${JSON.stringify(avans).replace(/'/g, "&#39;")})' class="flex-1 py-2 text-xs font-semibold text-blue-600 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center gap-1">
-                            <span class="material-symbols-outlined text-sm">edit</span>
+                    <div class="avc__actions">
+                        <button type="button" onclick='event.stopPropagation(); editAvans(${JSON.stringify(avans).replace(/'/g, "&#39;")})' class="avc__btn avc__btn--edit">
+                            <span class="material-symbols-outlined">edit</span>
                             Düzenle
                         </button>
-                        <button onclick="event.stopPropagation(); deleteAvans(${avans.id}, this)" class="flex-1 py-2 text-xs font-semibold text-red-600 bg-red-50 dark:bg-red-900/20 rounded-lg flex items-center justify-center gap-1">
-                            <span class="material-symbols-outlined text-sm">delete</span>
-                            Sil
+                        <button type="button" onclick="event.stopPropagation(); deleteAvans(${avans.id}, this)" class="avc__btn avc__btn--del" aria-label="Sil" title="Sil">
+                            <span class="material-symbols-outlined">delete</span>
                         </button>
                     </div>
                     ` : ''}
@@ -300,41 +290,55 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') { http_response_code(403
     }
 
     function showAvansDetay(avans) {
+        const odeme = avans.odeme_sekli === 'tek' ? 'Tek Seferde' : avans.odeme_sekli + ' Taksit';
+        const bekliyor = avans.durum === 'beklemede';
         document.getElementById('avans-detay-content').innerHTML = `
-            <div class="flex flex-col gap-4">
-                <div class="flex items-center justify-center py-4 bg-orange-50 dark:bg-orange-900/20 rounded-xl mb-2">
-                    <div class="text-center">
-                        <p class="text-xs text-orange-600 dark:text-orange-400 font-medium mb-1 uppercase tracking-wider">Talep Edilen Tutar</p>
-                        <h2 class="text-3xl font-bold text-slate-900 dark:text-white">${Format.currency(avans.tutar)}</h2>
+            <div class="avd">
+                <div class="avd__hero">
+                    <span>Talep Edilen Tutar</span>
+                    <strong>${Format.currency(avans.tutar)}</strong>
+                    <span class="badge ${getStatusBadge(avans.durum)}">${avans.durum_text}</span>
+                </div>
+
+                <div class="avd__grid">
+                    <div class="avd__box">
+                        <small>TALEP TARİHİ</small>
+                        <strong>${avans.tarih}</strong>
+                    </div>
+                    <div class="avd__box">
+                        <small>ÖDEME ŞEKLİ</small>
+                        <strong>${odeme}</strong>
                     </div>
                 </div>
 
-                <div class="flex justify-between items-center py-3 border-b border-slate-100 dark:border-slate-800">
-                    <span class="text-slate-500 text-sm">Talep Tarihi</span>
-                    <span class="font-bold text-slate-800 dark:text-slate-200">${avans.tarih}</span>
+                <div class="avd__note">
+                    <small>AÇIKLAMA / SEBEP</small>
+                    <p>${avans.aciklama ? escapeHtml(avans.aciklama) : '<em>Belirtilmemiş</em>'}</p>
                 </div>
-                
-                <div class="flex justify-between items-center py-3 border-b border-slate-100 dark:border-slate-800">
-                    <span class="text-slate-500 text-sm">Durum</span>
-                    <span class="badge ${getStatusBadge(avans.durum)}">${avans.durum_text}</span>
-                </div>
-                
-                <div class="flex justify-between items-center py-3 border-b border-slate-100 dark:border-slate-800">
-                    <span class="text-slate-500 text-sm">Ödeme Şekli</span>
-                    <span class="font-medium text-slate-800 dark:text-slate-200">
-                        ${avans.odeme_sekli === 'tek' ? 'Tek Seferde' : avans.odeme_sekli + ' Taksit'}
-                    </span>
-                </div>
-                
-                <div class="flex flex-col gap-2 py-3">
-                    <span class="text-slate-500 text-sm">Açıklama / Sebep</span>
-                    <div class="bg-slate-50 dark:bg-background-dark p-3 rounded-lg text-sm text-slate-700 dark:text-slate-300 min-h-[60px]">
-                        ${avans.aciklama ? escapeHtml(avans.aciklama) : '<em class="text-slate-400">Belirtilmemiş</em>'}
-                    </div>
+
+                <div class="avc__actions">
+                    <button type="button" onclick="Modal.close('avans-detay-modal')" class="avc__btn avd__close">Kapat</button>
+                    ${bekliyor ? `<button type="button" class="avc__btn avc__btn--edit" onclick='Modal.close("avans-detay-modal"); editAvans(${JSON.stringify(avans).replace(/'/g, "&#39;")})'><span class="material-symbols-outlined">edit</span>Düzenle</button>` : ''}
                 </div>
             </div>
         `;
         Modal.open('avans-detay-modal');
+    }
+
+    function getAvansMaxLimit() {
+        let limit = currentAdvanceLimit;
+        if (currentEditingAvans) limit += parseFloat(currentEditingAvans.tutar || 0);
+        return Math.max(0, Math.round(limit * 100) / 100);
+    }
+
+    function clampAvansTutar(input) {
+        const max = getAvansMaxLimit();
+        const val = parseFloat(input.value);
+        if (!isNaN(val) && val > max) {
+            input.value = max;
+            Toast.show(`Talep edilen tutar avans limitinizi (${Format.currency(max)}) aşamaz.`, 'error');
+        }
+        if (!isNaN(val) && val < 0) input.value = '';
     }
 
     function updateAvansKisitDurumu() {
@@ -366,6 +370,7 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') { http_response_code(403
         
         // Modal açıldığında limit bilgisini gösterelim
         document.getElementById('max-limit').textContent = Format.currency(currentAdvanceLimit);
+        document.getElementById('avans-tutar').max = getAvansMaxLimit();
         
         Modal.open('avans-modal');
     }
@@ -389,6 +394,7 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') { http_response_code(403
         // Düzenlerken limit: (kalan limit + bu avansın eski tutarı)
         const limitForEdit = currentAdvanceLimit + parseFloat(avans.tutar || 0);
         document.getElementById('max-limit').textContent = Format.currency(limitForEdit);
+        document.getElementById('avans-tutar').max = getAvansMaxLimit();
 
         document.getElementById('avans-submit-btn').textContent = 'Güncelle';
         Modal.open('avans-modal');
@@ -474,3 +480,47 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') { http_response_code(403
     }
 
 </script>
+
+<button type="button" onclick="openNewAvansModal()" id="avans-yeni-btn" class="avans-fab" aria-label="Avans Talebi" title="Avans Talebi">
+    <span class="material-symbols-outlined">add</span>
+</button>
+
+<style>
+    .avans-fab { position: fixed; right: 1rem; bottom: 6rem; z-index: 45; width: 3.5rem; height: 3.5rem; border-radius: 9999px; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; border: none; box-shadow: 0 10px 24px rgba(0, 0, 0, .28); }
+    .avc { background: #fff; border: 1px solid rgba(255,255,255,.9); border-radius: 24px; padding: 14px; box-shadow: 0 4px 14px -6px rgba(15,23,42,.07), 0 2px 4px rgba(15,23,42,.02); cursor: pointer; transition: transform .15s ease; }
+    .avc:active { transform: scale(.985); }
+    .dark .avc { background: #1d222a; border-color: rgba(255,255,255,.07); }
+    .avc__head { display: flex; align-items: center; gap: 12px; }
+    .avc__icon { width: 44px; height: 44px; border-radius: 14px; background: #ffedd5; color: #ea580c; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .dark .avc__icon { background: rgba(234,88,12,.18); }
+    .avc__main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .avc__main strong { font-size: 16px; font-weight: 800; color: #0f172a; }
+    .dark .avc__main strong { color: #fff; }
+    .avc__main span { font-size: 11px; font-weight: 600; color: #64748b; }
+    .avc__note { margin: 12px 0 0; padding: 8px 10px; border-radius: 12px; background: #f8fafc; font-size: 11px; font-weight: 600; color: #475569; }
+    .dark .avc__note { background: rgba(255,255,255,.05); color: #cbd5e1; }
+    .avc__actions { display: flex; gap: 8px; margin-top: 12px; }
+    .avc__btn { height: 44px; border: 0; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; font-weight: 800; cursor: pointer; transition: transform .1s ease; }
+    .avc__btn:active { transform: scale(.96); }
+    .avc__btn .material-symbols-outlined { font-size: 18px; }
+    .avc__btn--edit { flex: 1; background: #191d24; color: #fff; box-shadow: 0 4px 12px rgba(25,29,36,.22); }
+    .avd { display: flex; flex-direction: column; gap: 12px; }
+    .avd__hero { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px 14px; border-radius: 24px; background: #191d24; color: #fff; box-shadow: 0 6px 16px -8px rgba(0,0,0,.3); }
+    .avd__hero > span:first-child { font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.6); }
+    .avd__hero strong { font-size: 30px; font-weight: 800; line-height: 1.1; }
+    .avd__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .avd__box { display: flex; flex-direction: column; gap: 3px; padding: 12px; border-radius: 16px; background: #fff; border: 1px solid rgba(255,255,255,.9); box-shadow: 0 4px 14px -6px rgba(15,23,42,.07); }
+    .avd__box small, .avd__note small { font-size: 9px; font-weight: 800; letter-spacing: .06em; color: #94a3b8; }
+    .avd__box strong { font-size: 13px; font-weight: 800; color: #0f172a; }
+    .avd__note { padding: 12px; border-radius: 16px; background: #fff; border: 1px solid rgba(255,255,255,.9); box-shadow: 0 4px 14px -6px rgba(15,23,42,.07); }
+    .avd__note p { margin: 4px 0 0; min-height: 36px; font-size: 12px; font-weight: 600; color: #334155; }
+    .avd__note em { color: #94a3b8; }
+    .avd__close { flex: 1; background: #fff; color: #475569; box-shadow: 0 4px 14px -6px rgba(15,23,42,.1); }
+    .dark .avd__box, .dark .avd__note, .dark .avd__close { background: #1d222a; border-color: rgba(255,255,255,.07); }
+    .dark .avd__box strong, .dark .avd__note p { color: #e2e8f0; }
+    .avc__btn--del { width: 44px; background: #fee2e2; color: #dc2626; }
+    .avans-fab.hidden { display: none; }
+    .avans-fab .material-symbols-outlined { font-size: 30px; }
+    .avans-fab:active { transform: scale(.94); }
+    body.modal-open .avans-fab { display: none; }
+</style>
