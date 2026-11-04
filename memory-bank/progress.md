@@ -2130,3 +2130,5 @@
 - [x] Bordro onay kilidi, tekli onay geri alma ve önizlemeli toplu revizyon (yayın takibi), dönem kapatmada onaylı döküm mutabakatı.
 
 - [x] UETS gelen evraklarda EYP içindeki ek belgeler (Ekler/) kaydedilip gösteriliyor; eski kayıtlar detay açılınca ham paketten tamamlanıyor.
+
+- [x] Hakediş e-fatura taslağında alıcı bilgileri seçilen cariden alınıyor (sabit VKN ve LIKE eşleşmesi kaldırıldı). SQL scripti uygulanmalı.

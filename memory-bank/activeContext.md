@@ -3601,3 +3601,7 @@
 - Kök neden: `UetsSyncService` ekleri `EvrakTakipModel::saveAttachment()` ile kaydediyordu; bu metot oturumdaki `firma_id` ve `getById` görünürlük kontrolüne bağlıdır. Cron'da oturum yok, kısıtlı UETS evrakında yetki yok → exception yutuluyor, üst yazı kayıtlı olduğundan yeniden denenmiyordu.
 - `saveAttachmentForFirm()` / `countAttachmentsForFirm()` oturumsuz çalışır. `EypPackageService::extractPackage` yalnız `Ekler/` altındaki belgeleri ek sayar (dosyaBilgileri/NihaiOzet/Ustveri vb. meta dışlanır), aynı adlı dosyalar ezilmez.
 - `UetsSyncService::healAttachments()` evrak detayı açılınca (masaüstü `evrak-detay`, mobil evrak detayı) eski kayıtların eklerini şifreli ham EYP'den (`ham_eyp_yolu`) tamamlar.
+
+## Hakediş Fatura Taslağı Alıcı Carisi
+- Kök neden: `saveHakedis` taslakta VKN'yi sabit `1111111111` yazıyor, adresi yüklenici adresinden alıyor, cariyi `LIKE` ile tahmin ediyordu.
+- Çözüm: `hakedis_sozlesmeler.cari_id` (sql/2026_11_04_hakedis_sozlesme_cari_id.sql). Sözleşme formu ve hakediş modalında `Form::FormSelect2` ile cari seçimi; fatura oluşturulurken cari zorunlu, VKN/TCKN 10-11 hane doğrulanır, seçim sözleşmeye yazılır. Alıcı bilgileri `CariModel::getFaturaAlici()` ile cari kartından alınır.

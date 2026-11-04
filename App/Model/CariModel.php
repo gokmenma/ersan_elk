@@ -277,6 +277,40 @@ class CariModel extends Model
         }
     }
 
+    public function getFaturaAliciListesi(): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT id, CariAdi, firma, vkn_tckn
+            FROM cari
+            WHERE silinme_tarihi IS NULL AND Aktif = 1
+            ORDER BY CariAdi ASC
+        ");
+        $stmt->execute();
+        $options = [['id' => '', 'text' => 'Cari seçiniz']];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $ad = trim((string) ($row['CariAdi'] ?: $row['firma']));
+            $vkn = trim((string) $row['vkn_tckn']);
+            $options[] = [
+                'id' => (int) $row['id'],
+                'text' => $ad . ($vkn !== '' ? ' — ' . $vkn : ' — VKN eksik'),
+            ];
+        }
+        return $options;
+    }
+
+    public function getFaturaAlici(int $cariId): ?array
+    {
+        $stmt = $this->db->prepare("
+            SELECT id, CariAdi, firma, vkn_tckn, vergi_dairesi, Adres, il, ilce, Telefon, Email
+            FROM cari
+            WHERE id = ? AND silinme_tarihi IS NULL AND Aktif = 1
+            LIMIT 1
+        ");
+        $stmt->execute([$cariId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
+    }
+
     /**
      * Faturadaki VKN/TCKN veya Ünvan bilgisine göre cari tablosunda eşleşen kaydı bulur.
      */

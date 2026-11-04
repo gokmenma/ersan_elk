@@ -1,5 +1,8 @@
 <?php
 use App\Helper\Form;
+use App\Model\CariModel;
+
+$cariOptions = (new CariModel())->getFaturaAliciListesi();
 
 $maintitle = 'Ana Sayfa';
 $title = 'Sözleşme & Hakediş';
@@ -462,6 +465,10 @@ html[data-theme-preset="macos-dark"] #sozlesmeModalTabs .nav-link.active {
                                         </div>
                                         <div class="col-md-6 mb-3">
                                             <?= Form::FormFloatInput('text', 'idare_baskanlik_adi', '', 'ABONE İŞLERİ DAİRE BAŞKANLIĞI', 'İdare Başkanlık Adı', icon: 'layers') ?>
+                                        </div>
+                                        <div class="col-md-12 mb-3">
+                                            <?= Form::FormSelect2('cari_id', $cariOptions, '', 'Fatura Alıcısı (İdare Carisi)', icon: 'users', valueField: 'id', textField: 'text') ?>
+                                            <small class="text-muted d-block mt-1 font-size-11">E-fatura taslağı bu carinin VKN, unvan ve adres bilgileriyle oluşturulur.</small>
                                         </div>
                                         <div class="col-md-6 mb-3">
                                             <?= Form::FormFloatInput('text', 'isin_yuklenicisi', 'ER-SAN ELEKTRİK İNŞ. TAAH.TİC.LTD.ŞTİ.', 'Yüklenici Firma', 'İşin Yüklenicisi', icon: 'briefcase', required: true) ?>

@@ -16,6 +16,12 @@ class HakedisSozlesmeModel extends Model
         parent::__construct($this->table);
     }
 
+    public function updateCari(int $sozlesmeId, int $firmaId, int $cariId): bool
+    {
+        $stmt = $this->db->prepare("UPDATE hakedis_sozlesmeler SET cari_id = ? WHERE id = ? AND firma_id = ? AND silinme_tarihi IS NULL");
+        return $stmt->execute([$cariId, $sozlesmeId, $firmaId]);
+    }
+
     public function ajaxList(array $params, int $firma_id): array
     {
         $draw = $params['draw'] ?? 0;

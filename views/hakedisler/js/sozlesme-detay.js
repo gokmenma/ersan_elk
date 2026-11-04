@@ -247,6 +247,10 @@ function handleHakedisSubmit(actionType) {
       allowOutsideClick: false,
     }).then((result) => {
       if (result.isConfirmed) {
+        if (!$form.find('[name="cari_id"]').val()) {
+          Swal.fire("Cari Seçilmedi", "Fatura taslağı için lütfen 'Fatura Alıcısı (İdare Carisi)' alanından cari seçin.", "warning");
+          return;
+        }
         executeSaveHakedis(form, actionType, 1);
       } else if (result.isDenied) {
         executeSaveHakedis(form, actionType, 0);
@@ -452,6 +456,7 @@ $(document).on("click", '[data-bs-target="#yeniHakedisModal"]', function () {
 
   // Reset durum to taslak and enable it
   $form.find('[name="durum"]').prop("disabled", false).val("taslak").trigger("change");
+  $form.find('[name="cari_id"]').trigger("change");
 
   // Reset date to current month's last day
   const now = new Date();

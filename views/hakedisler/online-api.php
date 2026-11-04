@@ -12,6 +12,7 @@ use App\Model\HakedisMiktarModel;
 use App\Helper\Helper;
 use App\Service\EInvoiceService;
 use App\Model\EInvoiceModel;
+use App\Model\CariModel;
 use App\Helper\Security;
 use App\Service\Gate;
 
@@ -77,6 +78,7 @@ try {
                 'firma_id' => $firma_id,
                 'idare_adi' => $_POST['idare_adi'] ?? '',
                 'idare_baskanlik_adi' => $_POST['idare_baskanlik_adi'] ?? '',
+                'cari_id' => !empty($_POST['cari_id']) ? (int) $_POST['cari_id'] : null,
                 'isin_adi' => $_POST['isin_adi'] ?? '',
                 'isin_yuklenicisi' => $_POST['isin_yuklenicisi'] ?? '',
                 'ihale_kayit_no' => $_POST['ihale_kayit_no'] ?? '',
@@ -738,6 +740,26 @@ try {
                 exit;
             }
 
+            $faturaCari = null;
+            if (!empty($_POST['create_invoice_draft']) && ($_POST['durum'] ?? '') === 'tamamlandi') {
+                $secilenCariId = (int) ($_POST['cari_id'] ?? 0);
+                if ($secilenCariId <= 0) {
+                    echo json_encode(['status' => 'error', 'message' => 'Fatura taslağı için alıcı cari seçilmelidir.']);
+                    exit;
+                }
+                $faturaCari = (new CariModel())->getFaturaAlici($secilenCariId);
+                if (!$faturaCari) {
+                    echo json_encode(['status' => 'error', 'message' => 'Seçilen cari bulunamadı veya pasif.']);
+                    exit;
+                }
+                $faturaVkn = preg_replace('/[^0-9]/', '', (string) $faturaCari['vkn_tckn']);
+                if (!in_array(strlen($faturaVkn), [10, 11], true)) {
+                    echo json_encode(['status' => 'error', 'message' => 'Seçilen carinin VKN/TCKN bilgisi eksik veya hatalı. Önce cari kartını düzeltin.']);
+                    exit;
+                }
+                $faturaCari['vkn_tckn'] = $faturaVkn;
+            }
+
             $data = [
                 'sozlesme_id' => $sozlesme_id,
                 'hakedis_no' => intval($_POST['hakedis_no'] ?? 1),
@@ -935,20 +957,20 @@ try {
                             $donemToplami = 0;
                         }
 
-                        // Cari eşleştirmesi (İdare adına göre)
-                        $cariId = null;
-                        $aliciUnvan = trim($sozlesme['idare_adi'] ?? 'İdare');
-                        $aliciAdres = trim($sozlesme['yuklenici_adres'] ?? $aliciUnvan);
-                        $aliciVkn = '1111111111'; // Standart E-Arşiv VKN
+                        $cariId = (int) $faturaCari['id'];
+                        $aliciUnvan = trim((string) ($faturaCari['CariAdi'] ?: $faturaCari['firma']));
+                        $aliciVkn = $faturaCari['vkn_tckn'];
+                        $adresParcalari = array_filter([
+                            trim((string) $faturaCari['Adres']),
+                            trim((string) $faturaCari['ilce']) !== '' || trim((string) $faturaCari['il']) !== ''
+                                ? trim($faturaCari['ilce'] . '/' . $faturaCari['il'], '/') : ''
+                        ], static fn($v) => $v !== '');
+                        $aliciAdres = implode(' ', $adresParcalari);
 
-                        $stmtCari = $db->prepare("SELECT id, CariAdi, Adres, Telefon, Email FROM cari WHERE Aktif = 1 AND (CariAdi = ? OR firma = ? OR CariAdi LIKE ?) LIMIT 1");
-                        $stmtCari->execute([$aliciUnvan, $aliciUnvan, '%' . $aliciUnvan . '%']);
-                        if ($cariRow = $stmtCari->fetch(PDO::FETCH_ASSOC)) {
-                            $cariId = (int)$cariRow['id'];
-                            $aliciUnvan = $cariRow['CariAdi'];
-                            if (!empty($cariRow['Adres'])) {
-                                $aliciAdres = $cariRow['Adres'];
-                            }
+                        if ((int) ($sozlesme['cari_id'] ?? 0) !== $cariId) {
+                            $model2 = new HakedisSozlesmeModel();
+                            $model2->updateCari((int) $sozlesme_id, (int) $firma_id, $cariId);
+                            error_log("Hakedis sozlesme cari guncellendi: sozlesme={$sozlesme_id}, cari={$cariId}, kullanici=" . $_SESSION['id']);
                         }
 
                         $faturaTarihi = date('Y-m-d');
@@ -967,7 +989,7 @@ try {
                             'duzenleme_saati'       => date('H:i:s'),
                             'alici_vkn_tckn'        => $aliciVkn,
                             'alici_unvan'           => $aliciUnvan,
-                            'alici_adres'           => $aliciAdres ?: 'Türkiye',
+                            'alici_adres'           => $aliciAdres !== '' ? $aliciAdres : 'Türkiye',
                             'alici_ulke'            => 'Türkiye',
                             'para_birimi'           => 'TRY',
                             'doviz_kuru'            => 1.0000,

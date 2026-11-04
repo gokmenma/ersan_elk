@@ -2,6 +2,7 @@
 use App\Model\HakedisSozlesmeModel;
 use App\Model\HakedisKalemModel;
 use App\Helper\Form;
+use App\Model\CariModel;
 
 $sozlesmeId = $_GET['id'] ?? 0;
 if (!$sozlesmeId) {
@@ -18,6 +19,7 @@ if (!$sozlesme || $sozlesme->firma_id != $_SESSION['firma_id'] || $sozlesme->sil
 }
 
 $db = $model->getDb();
+$cariOptions = (new CariModel())->getFaturaAliciListesi();
 $isRevizyonlari = [];
 $sureUzatimlari = [];
 try {
@@ -429,6 +431,12 @@ $aylar = [
                         </div>
                     </div>
 
+                    <div class="col-md-12 mb-3">
+                        <?= Form::FormSelect2('cari_id', $cariOptions, $sozlesme->cari_id ?? '', 'Fatura Alıcısı (İdare Carisi)', icon: 'users', valueField: 'id', textField: 'text', id: 'hakedis_cari_id') ?>
+                        <small class="text-muted d-block mt-1" style="font-size: 11px;">
+                            Hakediş <b>'Tamamlandı'</b> yapılıp fatura taslağı oluşturulurken alıcı bilgileri bu carinin kartından alınır; seçim sözleşmeye kaydedilir.
+                        </small>
+                    </div>
                     <div class="col-md-6 mb-3">
                         <?= Form::FormFloatInput('text', 'is_yapilan_ayin_son_gunu', '', '', 'İş Yapılan Ayın Son Günü', icon: 'calendar', class: 'form-control flatpickr') ?>
                     </div>
