@@ -235,27 +235,18 @@ class CariHareketleriModel extends Model
                 return null;
             }
 
-            $cariId = !empty($fatura->cari_id) ? (int)$fatura->cari_id : 0;
+            $cariId = 0;
             $cariModel = new \App\Model\CariModel();
 
-            // Cari ID yoksa VKN veya Ünvana göre eşleştir
-            if ($cariId <= 0) {
-                $matchedCari = $cariModel->findMatchingCari($fatura->alici_vkn_tckn, $fatura->alici_unvan);
-                if ($matchedCari) {
-                    $cariId = (int)$matchedCari->id;
-                }
+            $matchedCari = $cariModel->findMatchingCari($fatura->alici_vkn_tckn, $fatura->alici_unvan);
+            if ($matchedCari) {
+                $cariId = (int)$matchedCari->id;
             }
 
             // Eşleşen cari hala yoksa ve $autoCreateCari true ise (yalnızca kullanıcı arayüzden onayladığında) yeni cari kart oluştur
             // Cron veya otomatik içe aktarımlarda asla otomatik cari oluşturulmaz.
             if ($cariId <= 0 && $autoCreateCari) {
                 $cariId = $cariModel->createFromFatura($fatura, $userId);
-            }
-
-            // Faturadaki cari_id alanını da güncelle
-            if ($cariId > 0) {
-                $updateFat = $this->db->prepare("UPDATE faturalar SET cari_id = :cari_id WHERE id = :id");
-                $updateFat->execute(['cari_id' => $cariId, 'id' => $faturaId]);
             }
 
             if ($cariId <= 0) {
@@ -384,13 +375,10 @@ class CariHareketleriModel extends Model
                 return null;
             }
 
-            $cariId = !empty($fatura->cari_id) ? (int)$fatura->cari_id : 0;
-            if ($cariId <= 0) {
-                $cariModel = new \App\Model\CariModel();
-                $matchedCari = $cariModel->findMatchingCari($fatura->alici_vkn_tckn, $fatura->alici_unvan);
-                if ($matchedCari) {
-                    $cariId = (int)$matchedCari->id;
-                }
+            $cariId = 0;
+            $matchedCari = (new \App\Model\CariModel())->findMatchingCari($fatura->alici_vkn_tckn, $fatura->alici_unvan);
+            if ($matchedCari) {
+                $cariId = (int)$matchedCari->id;
             }
 
             if ($cariId <= 0) {

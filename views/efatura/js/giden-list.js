@@ -1399,6 +1399,10 @@ $(document).ready(function() {
                                     <strong class="text-primary">"${escapeHtmlTextGiden(info.cari_name)}"</strong> isimli cari hesabına 
                                     <strong>(Borç)</strong> olarak işlenecektir.
                                 </p>
+                                ${info.cari_firma ? `<div class="d-flex align-items-center justify-content-between gap-3 p-2 bg-light rounded border font-size-12 mb-2">
+                                    <span class="text-muted text-nowrap">Firma Ünvanı:</span>
+                                    <strong class="text-dark text-end">${escapeHtmlTextGiden(info.cari_firma)}</strong>
+                                </div>` : ''}
                                 <div class="d-flex align-items-center justify-content-between p-2 bg-light rounded border font-size-12">
                                     <span class="text-muted">Fatura Tutarı:</span>
                                     <strong class="text-dark font-monospace">${escapeHtmlTextGiden(info.odenecek_tutar)}</strong>

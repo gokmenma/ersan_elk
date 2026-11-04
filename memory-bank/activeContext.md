@@ -3605,3 +3605,7 @@
 ## Hakediş Fatura Taslağı Alıcı Carisi
 - Kök neden: `saveHakedis` taslakta VKN'yi sabit `1111111111` yazıyor, adresi yüklenici adresinden alıyor, cariyi `LIKE` ile tahmin ediyordu.
 - Çözüm: `hakedis_sozlesmeler.cari_id` (sql/2026_11_04_hakedis_sozlesme_cari_id.sql). Sözleşme formu ve hakediş modalında `Form::FormSelect2` ile cari seçimi; fatura oluşturulurken cari zorunlu, VKN/TCKN 10-11 hane doğrulanır, seçim sözleşmeye yazılır. Alıcı bilgileri `EFaturaCariModel::getFaturaAlici()` ile e-Fatura Cari Listesi (`efatura_cariler`) kaydından alınır; `cari_id` bu tablonun id değeridir.
+
+## Giden Fatura "Cariye İşle" Pasif Butonu
+- Kök neden: `faturalar.cari_id` e-fatura alıcı kaydının (`efatura_cariler.id`) id'sini tutuyor; `syncFaturaHareketi` bunu `cari.id` sanıp hareketi yanlış cariye yazıyor, `createInvoice` de kayıt anında otomatik çağırdığı için fatura "işlenmiş" görünüp buton pasif geliyordu.
+- Çözüm: `cari` (firma sahibinin cari takibi) ile `efatura_cariler` ayrı kalır. `syncFaturaHareketi`, `checkSameDateAmount` ve `check_invoice_cari` cariyi yalnız `CariModel::findMatchingCari(vkn, ünvan)` ile bulur; `faturalar.cari_id` artık güncellenmez. `createInvoice` otomatik cariye işlemeyi yapmaz (yalnız `sync_to_cari` ile). Eski faturalara cari_id ataması yapılmadı; şema değişikliği yok.

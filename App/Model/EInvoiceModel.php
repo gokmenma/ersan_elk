@@ -149,12 +149,6 @@ class EInvoiceModel extends Model
 
             $this->db->commit();
 
-            try {
-                (new \App\Model\CariHareketleriModel())->syncFaturaHareketi($faturaId, $userId);
-            } catch (\Throwable $th) {
-                error_log("EInvoiceModel::createInvoice syncFaturaHareketi warning: " . $th->getMessage());
-            }
-
             return $faturaId;
         } catch (\Exception $e) {
             $this->db->rollBack();

@@ -763,9 +763,8 @@ try {
             $invoiceId = EInvoiceSecurity::invoiceId($rawId);
 
             $stmt = (new \App\Model\CariHareketleriModel())->db->prepare("
-                SELECT f.*, c.CariAdi AS cari_adi, c.firma AS cari_firma
+                SELECT f.*
                 FROM faturalar f
-                LEFT JOIN cari c ON c.id = f.cari_id AND c.silinme_tarihi IS NULL
                 WHERE f.id = :id AND f.firm_id = :firm_id
                 LIMIT 1
             ");
@@ -780,17 +779,14 @@ try {
 
             $cariModel = new \App\Model\CariModel();
             $cariName = null;
+            $cariFirma = '';
             $cariExists = false;
 
-            if (!empty($fatura->cari_id) && (!empty($fatura->cari_adi) || !empty($fatura->cari_firma))) {
-                $cariName = !empty($fatura->cari_adi) ? $fatura->cari_adi : $fatura->cari_firma;
+            $matchedCari = $cariModel->findMatchingCari($fatura->alici_vkn_tckn, $fatura->alici_unvan);
+            if ($matchedCari) {
+                $cariName = !empty($matchedCari->CariAdi) ? $matchedCari->CariAdi : $matchedCari->firma;
+                $cariFirma = trim((string)($matchedCari->firma ?? ''));
                 $cariExists = true;
-            } else {
-                $matchedCari = $cariModel->findMatchingCari($fatura->alici_vkn_tckn, $fatura->alici_unvan);
-                if ($matchedCari) {
-                    $cariName = !empty($matchedCari->CariAdi) ? $matchedCari->CariAdi : $matchedCari->firma;
-                    $cariExists = true;
-                }
             }
 
             $unvan = trim((string)($fatura->alici_unvan ?: ($fatura->alici_vkn_tckn ?: 'İsimsiz Müşteri/Tedarikçi')));
@@ -802,6 +798,7 @@ try {
                 'status'            => 'success',
                 'cari_exists'       => $cariExists,
                 'cari_name'         => $cariName ?: $unvan,
+                'cari_firma'        => $cariFirma,
                 'counterparty_name' => $unvan,
                 'invoice_no'        => trim((string)($fatura->fatura_no ?: ($fatura->ettn ?: 'Fatura'))),
                 'fatura_tarihi'     => date('d.m.Y', strtotime($fatura->fatura_tarihi ?: date('Y-m-d'))),
