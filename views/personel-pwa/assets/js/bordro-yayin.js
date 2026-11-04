@@ -17,6 +17,7 @@
       m.classList.add('active');
       m.setAttribute('aria-hidden', 'false');
       document.body.style.overflow = 'hidden';
+      document.body.classList.add('modal-open');
     }
   }
 
@@ -26,6 +27,7 @@
       m.classList.remove('active');
       m.setAttribute('aria-hidden', 'true');
       document.body.style.overflow = '';
+      document.body.classList.remove('modal-open');
     }
   }
 
@@ -195,6 +197,19 @@
     if (tamamBaslik) tamamBaslik.textContent = 'Ücret pusulanız onaylandı';
     const itirazForm = root.querySelector('#resmi-talep-form');
     itirazForm?.querySelector('textarea')?.insertAdjacentHTML('afterend', '<label for="resmi-talep-dosya" class="form-label mt-3">Belge / fotoğraf (isteğe bağlı)</label><input id="resmi-talep-dosya" class="form-input w-full" type="file" name="dosya" accept="application/pdf,image/jpeg,image/png,image/webp"><p class="text-[10px] text-slate-400 mt-1">PDF, JPG, PNG veya WebP · en fazla 10 MB</p>');
+    const beyanKart = root.querySelector('#resmi-beyan-form')?.parentElement;
+    if (beyanKart) beyanKart.classList.add('sticky', 'bottom-0', 'z-10', 'bg-white', 'dark:bg-slate-900');
+    if (beyanKart) beyanKart.style.boxShadow = '0 -8px 20px rgba(15,23,42,0.08)';
+    const talepButon = root.querySelector('#resmi-talep-form button[type="submit"]');
+    if (talepButon) {
+      const sarmal = document.createElement('div');
+      sarmal.className = 'sticky bottom-0 z-10 pt-3 pb-3 mt-3 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800';
+      sarmal.style.marginInline = '-1.25rem';
+      sarmal.style.paddingInline = '1.25rem';
+      talepButon.classList.remove('mt-3');
+      talepButon.replaceWith(sarmal);
+      sarmal.appendChild(talepButon);
+    }
     root.querySelector('#resmi-beyan-form')?.addEventListener('submit', e => { e.preventDefault(); if (e.target.elements.okudum.checked) kaydet('bordro-yayin-beyan', {okudum:'1', beyan_metin_surumu:secili.beyan_metin_surumu}); });
     root.querySelector('#resmi-talep-form')?.addEventListener('submit', e => { e.preventDefault(); const veri = {konu:e.target.elements.konu.value, mesaj:e.target.elements.mesaj.value}; if (e.target.elements.dosya?.files?.[0]) veri.dosya = e.target.elements.dosya.files[0]; kaydet('bordro-yayin-talep', veri); });
   }

@@ -28,7 +28,7 @@ if (!isset($personel_id) || !$personel_id) { http_response_code(403); exit; }
             <div><p class="text-[11px] uppercase tracking-wider font-bold text-primary">Resmî alacak dökümü</p><h3 id="resmi-bordro-modal-baslik" class="text-lg font-bold text-slate-900 dark:text-white">Bordro detayı</h3></div>
             <button type="button" id="resmi-bordro-kapat" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500" aria-label="Kapat"><span class="material-symbols-outlined">close</span></button>
         </div>
-        <div id="resmi-bordro-detay" class="overflow-y-auto px-5 py-4 pb-8"></div>
+        <div id="resmi-bordro-detay" class="overflow-y-auto px-5 pt-4" style="padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));"></div>
     </div>
 </div>
 <script>window.bordroYayinCsrf = <?= json_encode(\App\Helper\Security::csrf(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
