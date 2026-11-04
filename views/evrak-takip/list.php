@@ -743,6 +743,22 @@ html:not([data-theme-preset="macos-dark"]):not([data-bs-theme="dark"]) body:not(
     border-top: 1px solid var(--bs-border-color);
 }
 
+#evrakTable .action-btn-group .btn.bg-white:hover,
+#evrakTable .action-btn-group .btn.bg-white:focus,
+#evrakTable .action-btn-group .btn.bg-white.show {
+    background-color: #f3f4f6 !important;
+    color: #343a40 !important;
+    border-color: #adb5bd !important;
+}
+
+.evrak-body-menu.dropdown-menu.show[style] {
+    top: 0 !important;
+    right: 0 !important;
+    left: auto !important;
+    bottom: auto !important;
+    animation: none !important;
+}
+
 .evrak-dosya-menu {
     min-width: 260px;
     max-width: min(360px, calc(100vw - 2rem));

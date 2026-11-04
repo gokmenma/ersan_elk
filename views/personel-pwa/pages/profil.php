@@ -163,6 +163,85 @@ use App\Helper\Date;
         </div>
     </section>
 
+<?php
+    $ekipGecmisiListe = [];
+    try {
+        $ekipGecmisiListe = (new \App\Model\PersonelModel())->getEkipGecmisi((int) ($personel->id ?? 0));
+    } catch (\Throwable $e) {
+        error_log('PWA profil ekip geçmişi hatası: ' . $e->getMessage());
+    }
+    $ekipBugun = date('Y-m-d');
+    usort($ekipGecmisiListe, static function ($x, $y) use ($ekipBugun) {
+        $xa = (empty($x->bitis_tarihi) || $x->bitis_tarihi >= $ekipBugun) ? 1 : 0;
+        $ya = (empty($y->bitis_tarihi) || $y->bitis_tarihi >= $ekipBugun) ? 1 : 0;
+        return [$ya, (string) $y->baslangic_tarihi, (int) $y->id] <=> [$xa, (string) $x->baslangic_tarihi, (int) $x->id];
+    });
+    ?>
+    <style>
+        .ekip-acc summary { list-style: none; cursor: pointer; }
+        .ekip-acc summary::-webkit-details-marker { display: none; }
+        .ekip-acc .ekip-acc-chevron { transition: transform .2s ease; }
+        .ekip-acc[open] .ekip-acc-chevron { transform: rotate(180deg); }
+    </style>
+    <!-- Team History -->
+    <section class="px-4 mt-6">
+        <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">Ekip Çalışma Geçmişi</h3>
+        <div class="card overflow-hidden">
+            <?php if (empty($ekipGecmisiListe)): ?>
+                <div class="p-4 text-sm text-slate-500 text-center">Ekip geçmişi kaydı bulunmuyor.</div>
+            <?php else: ?>
+                <?php foreach ($ekipGecmisiListe as $i => $eg):
+                    $egBas = !empty($eg->baslangic_tarihi) ? date('d.m.Y', strtotime($eg->baslangic_tarihi)) : '-';
+                    $egAktif = empty($eg->bitis_tarihi) || $eg->bitis_tarihi >= $ekipBugun;
+                    $egBit = !empty($eg->bitis_tarihi) ? date('d.m.Y', strtotime($eg->bitis_tarihi)) : 'Devam ediyor';
+                    $egGun = max(0, (int) floor((strtotime($egAktif ? $ekipBugun : $eg->bitis_tarihi) - strtotime($eg->baslangic_tarihi)) / 86400) + 1);
+                    $egSef = (int) ($eg->ekip_sefi_mi ?? 0) === 1;
+                    $egAd = htmlspecialchars($eg->ekip_adi ?? 'Ekip', ENT_QUOTES, 'UTF-8');
+                    ?>
+                    <details class="ekip-acc<?php echo $i < count($ekipGecmisiListe) - 1 ? ' border-b border-slate-100 dark:border-slate-800' : ''; ?>"<?php echo $i === 0 ? ' open' : ''; ?>>
+                        <summary class="flex items-center gap-4 p-4">
+                            <div class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                                <span class="material-symbols-outlined text-slate-600 dark:text-slate-400">groups</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-semibold text-slate-900 dark:text-white truncate"><?php echo $egAd; ?></p>
+                                <p class="text-xs text-slate-500"><?php echo htmlspecialchars($egBas . ' - ' . $egBit, ENT_QUOTES, 'UTF-8'); ?></p>
+                            </div>
+                            <?php if ($egAktif): ?>
+                                <span class="badge badge-success">Aktif</span>
+                            <?php endif; ?>
+                            <span class="material-symbols-outlined text-slate-400 ekip-acc-chevron">expand_more</span>
+                        </summary>
+                        <div class="px-4 pb-4">
+                            <div class="rounded-xl bg-slate-100 dark:bg-slate-800 p-3 space-y-2">
+                                <div class="flex justify-between gap-3">
+                                    <span class="text-xs text-slate-500">Ekip</span>
+                                    <span class="text-xs font-semibold text-slate-900 dark:text-white text-right"><?php echo $egAd; ?></span>
+                                </div>
+                                <div class="flex justify-between gap-3">
+                                    <span class="text-xs text-slate-500">Başlangıç</span>
+                                    <span class="text-xs font-semibold text-slate-900 dark:text-white"><?php echo htmlspecialchars($egBas, ENT_QUOTES, 'UTF-8'); ?></span>
+                                </div>
+                                <div class="flex justify-between gap-3">
+                                    <span class="text-xs text-slate-500">Bitiş</span>
+                                    <span class="text-xs font-semibold text-slate-900 dark:text-white"><?php echo htmlspecialchars($egBit, ENT_QUOTES, 'UTF-8'); ?></span>
+                                </div>
+                                <div class="flex justify-between gap-3">
+                                    <span class="text-xs text-slate-500">Süre</span>
+                                    <span class="text-xs font-semibold text-slate-900 dark:text-white"><?php echo (int) $egGun; ?> gün</span>
+                                </div>
+                                <div class="flex justify-between gap-3">
+                                    <span class="text-xs text-slate-500">Görev</span>
+                                    <span class="text-xs font-semibold text-slate-900 dark:text-white"><?php echo $egSef ? 'Ekip Şefi' : 'Ekip Üyesi'; ?></span>
+                                </div>
+                            </div>
+                        </div>
+                    </details>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+    </section>
+
     <!-- Quick Settings -->
     <section class="px-4 mt-6">
         <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">Hızlı Ayarlar</h3>

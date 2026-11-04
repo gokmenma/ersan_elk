@@ -455,22 +455,22 @@ $pageStatusDark = '#121212';
     <?php
     $navMaxSlots = 3;
     $navCatalog = [
-        'puantaj' => ['label' => 'İş Takibi', 'eyebrow' => 'SAHA', 'icon' => 'checklist', 'tone' => 'blue', 'show' => !$isBuro],
-        'ekip-takibi' => ['label' => 'Ekip Takibi', 'eyebrow' => 'EKİP', 'icon' => 'groups', 'tone' => 'blue', 'show' => (bool) ($isEndeksOkuma && $isEkipSefi)],
-        'nobet' => ['label' => 'Nöbet Takibi', 'eyebrow' => 'VARDİYA', 'icon' => 'nights_stay', 'tone' => 'purple', 'show' => (bool) $isKesmeAcma],
-        'zimmetler' => ['label' => 'Zimmetler', 'eyebrow' => 'ENVANTER', 'icon' => 'inventory_2', 'tone' => 'amber', 'show' => true],
-        'talep' => ['label' => 'Talepler', 'eyebrow' => 'TALEP YÖNETİMİ', 'icon' => 'assignment', 'tone' => 'emerald', 'show' => true],
-        'izin' => ['label' => 'İzinler', 'eyebrow' => 'İNSAN KAYNAKLARI', 'icon' => 'calendar_today', 'tone' => 'amber', 'show' => true],
-        'avans' => ['label' => 'Avans İşlemleri', 'navLabel' => 'Avans', 'eyebrow' => 'FİNANS', 'icon' => 'add_card', 'tone' => 'amber', 'show' => true],
-        'bordro' => ['label' => 'Bordrolar', 'navLabel' => 'Bordro', 'eyebrow' => 'FİNANS', 'icon' => 'payments', 'tone' => 'emerald', 'show' => true],
-        'profil' => ['label' => 'Profil', 'eyebrow' => 'HESABIM', 'icon' => 'person', 'tone' => 'blue', 'show' => true],
-        'yardim' => ['label' => 'Yardım & Destek', 'navLabel' => 'Destek', 'eyebrow' => 'DESTEK', 'icon' => 'support_agent', 'tone' => 'purple', 'show' => true],
-        'ihbar' => ['label' => 'İhbar Yönetimi', 'navLabel' => 'İhbar', 'eyebrow' => 'KAÇAK KONTROL', 'icon' => 'campaign', 'tone' => 'coral', 'show' => true],
-        'kacak' => ['label' => 'Kaçak İşlemleri', 'navLabel' => 'Kaçak', 'eyebrow' => 'KAÇAK KONTROL', 'icon' => 'gpp_maybe', 'tone' => 'amber', 'show' => (bool) $isKacakKontrol],
-        'aparat' => ['label' => 'Aparat Takip', 'navLabel' => 'Aparat', 'eyebrow' => 'SAHA', 'icon' => 'build', 'tone' => 'purple', 'show' => (bool) $isKesmeAcma],
-        'km-bildirimleri' => ['label' => 'KM Bildirimleri', 'navLabel' => 'KM', 'eyebrow' => 'ARAÇ', 'icon' => 'speed', 'tone' => 'purple', 'show' => true],
-        'etkinlikler' => ['label' => 'Etkinlikler', 'eyebrow' => 'KURUM', 'icon' => 'event', 'tone' => 'emerald', 'show' => true],
-        'icralar' => ['label' => 'İcralarım', 'navLabel' => 'İcra', 'eyebrow' => 'DOSYALARIM', 'icon' => 'gavel', 'tone' => 'coral', 'show' => (bool) $hasIcra],
+        'puantaj' => ['desc' => 'Günlük iş ve puantaj kayıtlarınız', 'label' => 'İş Takibi', 'eyebrow' => 'SAHA', 'icon' => 'checklist', 'tone' => 'blue', 'show' => !$isBuro],
+        'ekip-takibi' => ['desc' => 'Ekibinizin durumu ve çalışma takibi', 'label' => 'Ekip Takibi', 'eyebrow' => 'EKİP', 'icon' => 'groups', 'tone' => 'blue', 'show' => (bool) ($isEndeksOkuma && $isEkipSefi)],
+        'nobet' => ['desc' => 'Nöbet çizelgesi ve nöbet kayıtları', 'label' => 'Nöbet Takibi', 'eyebrow' => 'VARDİYA', 'icon' => 'nights_stay', 'tone' => 'purple', 'show' => (bool) $isKesmeAcma],
+        'zimmetler' => ['desc' => 'Üzerinizdeki zimmetli eşyalar', 'label' => 'Zimmetler', 'eyebrow' => 'ENVANTER', 'icon' => 'inventory_2', 'tone' => 'amber', 'show' => true],
+        'talep' => ['desc' => 'Talep oluşturun ve durumunu izleyin', 'label' => 'Talepler', 'eyebrow' => 'TALEP YÖNETİMİ', 'icon' => 'assignment', 'tone' => 'emerald', 'show' => true],
+        'izin' => ['desc' => 'İzin hakkınız, talepleriniz ve geçmişiniz', 'label' => 'İzinler', 'eyebrow' => 'İNSAN KAYNAKLARI', 'icon' => 'calendar_today', 'tone' => 'amber', 'show' => true],
+        'avans' => ['desc' => 'Avans talepleri ve geçmiş avanslarınız', 'label' => 'Avans İşlemleri', 'navLabel' => 'Avans', 'eyebrow' => 'FİNANS', 'icon' => 'add_card', 'tone' => 'amber', 'show' => true],
+        'bordro' => ['desc' => 'Aylık maaş, hakediş ve ödeme dökümü', 'label' => 'Bordrolar', 'navLabel' => 'Bordro', 'eyebrow' => 'FİNANS', 'icon' => 'payments', 'tone' => 'emerald', 'show' => true],
+        'profil' => ['desc' => 'Kişisel bilgileriniz ve hesap ayarları', 'label' => 'Profil', 'eyebrow' => 'HESABIM', 'icon' => 'person', 'tone' => 'blue', 'show' => true],
+        'yardim' => ['desc' => 'Sorularınız için destek ve yardım', 'label' => 'Yardım & Destek', 'navLabel' => 'Destek', 'eyebrow' => 'DESTEK', 'icon' => 'support_agent', 'tone' => 'purple', 'show' => true],
+        'ihbar' => ['desc' => 'Kaçak ihbarlarını bildirin ve takip edin', 'label' => 'İhbar Yönetimi', 'navLabel' => 'İhbar', 'eyebrow' => 'KAÇAK KONTROL', 'icon' => 'campaign', 'tone' => 'coral', 'show' => true],
+        'kacak' => ['desc' => 'Kaçak tespit ve işlem kayıtları', 'label' => 'Kaçak İşlemleri', 'navLabel' => 'Kaçak', 'eyebrow' => 'KAÇAK KONTROL', 'icon' => 'gpp_maybe', 'tone' => 'amber', 'show' => (bool) $isKacakKontrol],
+        'aparat' => ['desc' => 'Aparat envanteri ve hareketleri', 'label' => 'Aparat Takip', 'navLabel' => 'Aparat', 'eyebrow' => 'SAHA', 'icon' => 'build', 'tone' => 'purple', 'show' => (bool) $isKesmeAcma],
+        'km-bildirimleri' => ['desc' => 'Araç kilometre bildirimleriniz', 'label' => 'KM Bildirimleri', 'navLabel' => 'KM', 'eyebrow' => 'ARAÇ', 'icon' => 'speed', 'tone' => 'purple', 'show' => true],
+        'etkinlikler' => ['desc' => 'Kurum etkinlikleri ve duyurular', 'label' => 'Etkinlikler', 'eyebrow' => 'KURUM', 'icon' => 'event', 'tone' => 'emerald', 'show' => true],
+        'icralar' => ['desc' => 'İcra dosyalarınız ve kesinti durumu', 'label' => 'İcralarım', 'navLabel' => 'İcra', 'eyebrow' => 'DOSYALARIM', 'icon' => 'gavel', 'tone' => 'coral', 'show' => (bool) $hasIcra],
     ];
     $navCatalog = array_filter($navCatalog, static fn(array $m): bool => $m['show']);
 
@@ -479,24 +479,32 @@ $pageStatusDark = '#121212';
         ($isEndeksOkuma && $isEkipSefi) ? 'ekip-takibi' : ($isKesmeAcma ? 'nobet' : 'zimmetler'),
         'talep',
     ];
-    $navKeys = $navVarsayilan;
-    if (isset($_COOKIE['pwa_nav']) && is_string($_COOKIE['pwa_nav'])) {
-        $cerezAnahtarlar = $_COOKIE['pwa_nav'] === '-' ? [] : explode(',', $_COOKIE['pwa_nav']);
-        $gecerli = [];
-        foreach ($cerezAnahtarlar as $anahtar) {
-            if (isset($navCatalog[$anahtar]) && !in_array($anahtar, $gecerli, true)) {
-                $gecerli[] = $anahtar;
+    $navVarsayilan = array_values(array_filter($navVarsayilan, static fn(string $k): bool => isset($navCatalog[$k])));
+    $navSira = $navVarsayilan;
+    if (isset($_COOKIE['pwa_menu_order']) && is_string($_COOKIE['pwa_menu_order'])) {
+        $cerezSira = [];
+        foreach (explode(',', $_COOKIE['pwa_menu_order']) as $anahtar) {
+            if (isset($navCatalog[$anahtar]) && !in_array($anahtar, $cerezSira, true)) {
+                $cerezSira[] = $anahtar;
             }
         }
-        $navKeys = array_slice($gecerli, 0, $navMaxSlots);
+        if ($cerezSira) {
+            $navSira = $cerezSira;
+        }
     }
-    $navKeys = array_values(array_filter($navKeys, static fn(string $k): bool => isset($navCatalog[$k])));
+    foreach (array_keys($navCatalog) as $anahtar) {
+        if (!in_array($anahtar, $navSira, true)) {
+            $navSira[] = $anahtar;
+        }
+    }
+    $navCatalog = array_replace(array_flip($navSira), $navCatalog);
+    $navKeys = array_slice($navSira, 0, $navMaxSlots);
     $moreActive = isset($navCatalog[$page]) && !in_array($page, $navKeys, true);
 
     $menuPayload = [
         'items' => [],
         'nav' => $navKeys,
-        'default' => array_values(array_filter($navVarsayilan, static fn(string $k): bool => isset($navCatalog[$k]))),
+        'default' => $navVarsayilan,
         'max' => $navMaxSlots,
         'page' => $page,
         'cookiePath' => rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/') . '/',
@@ -507,6 +515,7 @@ $pageStatusDark = '#121212';
             'label' => $m['label'],
             'navLabel' => $m['navLabel'] ?? $m['label'],
             'eyebrow' => $m['eyebrow'],
+            'desc' => $m['desc'] ?? '',
             'icon' => $m['icon'],
             'tone' => $m['tone'],
         ];
@@ -803,6 +812,7 @@ $pageStatusDark = '#121212';
             draft: [],
             query: '',
             feedback: '',
+            dragging: false,
 
             norm(t) { return String(t || '').toLocaleLowerCase('tr-TR').trim(); },
             item(key) { return this.data.items.find((m) => m.key === key); },
@@ -848,25 +858,11 @@ $pageStatusDark = '#121212';
 
             toggleEdit() {
                 this.editMode = !this.editMode;
-                this.draft = this.data.nav.slice();
+                this.draft = this.data.items.map((m) => m.key);
                 this.feedback = '';
                 this.query = '';
                 const input = document.getElementById('more-menu-search');
                 if (input) input.value = '';
-                this.render();
-            },
-
-            togglePin(key) {
-                const i = this.draft.indexOf(key);
-                if (i >= 0) {
-                    this.draft.splice(i, 1);
-                    this.feedback = '';
-                } else if (this.draft.length >= this.data.max) {
-                    this.feedback = 'Alt bar dolu. Önce bir kısayolu çıkarın.';
-                } else {
-                    this.draft.push(key);
-                    this.feedback = '';
-                }
                 this.render();
             },
 
@@ -879,38 +875,102 @@ $pageStatusDark = '#121212';
             },
 
             resetDefault() {
-                this.draft = this.data.default.slice();
+                const rest = this.draft.filter((k) => !this.data.default.includes(k));
+                this.draft = this.data.default.concat(rest);
                 this.feedback = '';
                 this.render();
             },
 
             save() {
-                const value = this.draft.length ? this.draft.join(',') : '-';
+                const value = this.draft.join(',');
                 const secure = location.protocol === 'https:' ? '; Secure' : '';
-                document.cookie = 'pwa_nav=' + encodeURIComponent(value) + '; path=' + this.data.cookiePath + '; max-age=31536000; SameSite=Lax' + secure;
+                document.cookie = 'pwa_menu_order=' + encodeURIComponent(value) + '; path=' + this.data.cookiePath + '; max-age=31536000; SameSite=Lax' + secure;
                 location.reload();
             },
 
+            dragStart(e, rowEl, key) {
+                if (e.button !== undefined && e.button !== 0) return;
+                e.preventDefault();
+                const grip = e.currentTarget;
+                const list = rowEl.parentNode;
+                const scroller = document.getElementById('more-menu-content');
+                let lastY = e.clientY;
+                let raf = 0;
+                this.dragging = true;
+                rowEl.classList.add('is-dragging');
+                try { grip.setPointerCapture(e.pointerId); } catch (err) {}
+
+                const place = () => {
+                    const rows = Array.from(list.children).filter((n) => n !== rowEl);
+                    let before = null;
+                    for (const n of rows) {
+                        const r = n.getBoundingClientRect();
+                        if (lastY < r.top + r.height / 2) { before = n; break; }
+                    }
+                    if (before !== rowEl.nextSibling) list.insertBefore(rowEl, before);
+                };
+                const tick = () => {
+                    const r = scroller.getBoundingClientRect();
+                    const zone = 48;
+                    if (lastY < r.top + zone) scroller.scrollTop -= 10;
+                    else if (lastY > r.bottom - zone) scroller.scrollTop += 10;
+                    place();
+                    raf = requestAnimationFrame(tick);
+                };
+                raf = requestAnimationFrame(tick);
+
+                const move = (ev) => { lastY = ev.clientY; ev.preventDefault(); };
+                const end = () => {
+                    cancelAnimationFrame(raf);
+                    grip.removeEventListener('pointermove', move);
+                    grip.removeEventListener('pointerup', end);
+                    grip.removeEventListener('pointercancel', end);
+                    const order = Array.from(list.children).map((n) => n.dataset.key).filter(Boolean);
+                    if (order.length === this.draft.length) this.draft = order;
+                    setTimeout(() => { this.dragging = false; }, 50);
+                    this.render();
+                };
+                grip.addEventListener('pointermove', move);
+                grip.addEventListener('pointerup', end);
+                grip.addEventListener('pointercancel', end);
+            },
+
             row(m, opts) {
-                const tag = opts.edit ? 'button' : 'a';
+                const tag = opts.edit ? 'div' : 'a';
                 const a = this.el(tag, 'pwa-nav-sheet-item pwa-nav-sheet-item--' + m.tone + (opts.active ? ' is-active' : '') + (opts.pinned ? ' is-pinned' : ''));
                 if (opts.edit) {
-                    a.type = 'button';
-                    a.addEventListener('click', () => this.togglePin(m.key));
                 } else if (opts.onclick) {
                     a.href = 'javascript:void(0)';
                     a.addEventListener('click', opts.onclick);
                 } else {
                     a.href = '?page=' + encodeURIComponent(m.key);
                 }
+                a.dataset.key = m.key;
                 const ic = this.el('span', 'pwa-nav-sheet-item__icon');
                 ic.appendChild(this.icon(m.icon));
                 const body = this.el('span', 'pwa-nav-sheet-item__body');
                 body.appendChild(this.el('span', 'pwa-nav-sheet-item__eyebrow', m.eyebrow));
                 body.appendChild(this.el('span', 'pwa-nav-sheet-item__label', m.label));
+                if (m.desc) body.appendChild(this.el('span', 'pwa-nav-sheet-item__desc', m.desc));
                 a.append(ic, body);
                 if (opts.edit) {
-                    a.appendChild(this.el('span', 'pwa-nav-sheet-item__pin' + (opts.pinned ? ' is-on' : ''), opts.pinned ? 'ALT BARDA' : 'SABİTLE'));
+                    a.appendChild(this.el('span', 'pwa-nav-sheet-item__pin' + (opts.pinned ? ' is-on' : ''), opts.pinned ? 'ALT BARDA' : 'DİĞER'));
+                    const grip = this.el('span', 'pwa-nav-sheet-item__grip');
+                    grip.setAttribute('aria-label', m.label + ' sürükle');
+                    grip.appendChild(this.icon('drag_indicator'));
+                    grip.addEventListener('pointerdown', (e) => this.dragStart(e, a, m.key));
+                    a.insertBefore(grip, a.firstChild);
+                    const ctrl = this.el('span', 'pwa-nav-sheet-item__order');
+                    [['expand_less', -1, 'Yukarı taşı', opts.index === 0], ['expand_more', 1, 'Aşağı taşı', opts.index === this.draft.length - 1]].forEach(([ic2, dir, label, off]) => {
+                        const b = this.el('button');
+                        b.type = 'button';
+                        b.disabled = off;
+                        b.setAttribute('aria-label', m.label + ' ' + label.toLowerCase());
+                        b.appendChild(this.icon(ic2));
+                        b.addEventListener('click', () => this.move(m.key, dir));
+                        ctrl.appendChild(b);
+                    });
+                    a.appendChild(ctrl);
                 } else {
                     a.appendChild(this.icon('chevron_right', 'pwa-nav-sheet-item__arrow'));
                 }
@@ -924,7 +984,7 @@ $pageStatusDark = '#121212';
 
                 document.getElementById('more-menu-eyebrow').textContent = this.editMode ? 'KİŞİSELLEŞTİRME' : 'HIZLI ERİŞİM & MENÜ';
                 document.getElementById('more-menu-title').textContent = this.editMode ? 'Alt Bar Düzeni' : 'Daha Fazla';
-                document.getElementById('more-menu-subtitle').textContent = this.editMode ? 'Alt bardaki kısayolları seçin ve sıralayın' : 'Modüller ve araçlar';
+                document.getElementById('more-menu-subtitle').textContent = this.editMode ? 'Menüleri sıralayın, ilk 3 tanesi alt barda görünür' : 'Modüller ve araçlar';
                 document.getElementById('more-menu-edit-btn').classList.toggle('pwa-circle-btn--primary', this.editMode);
                 document.getElementById('more-menu-search-wrap').hidden = this.editMode;
                 document.getElementById('more-menu-footer').hidden = !this.editMode;
@@ -951,7 +1011,7 @@ $pageStatusDark = '#121212';
                 if (this.feedback) content.appendChild(this.el('div', 'pwa-nav-sheet-feedback', this.feedback));
 
                 const dock = this.el('div', 'pwa-nav-dock');
-                dock.appendChild(this.el('span', 'pwa-nav-dock__title', 'ALT BAR KISAYOLLARI (' + this.draft.length + '/' + this.data.max + ')'));
+                dock.appendChild(this.el('span', 'pwa-nav-dock__title', 'ALT BAR KISAYOLLARI (ilk ' + this.data.max + ')'));
                 const slots = this.el('div', 'pwa-nav-dock__slots');
                 const fixed = (iconName, label) => {
                     const s = this.el('div', 'pwa-nav-slot is-fixed');
@@ -959,44 +1019,21 @@ $pageStatusDark = '#121212';
                     return s;
                 };
                 slots.appendChild(fixed('home', 'Ana Sayfa'));
-                this.draft.forEach((key, i) => {
+                this.draft.slice(0, this.data.max).forEach((key) => {
                     const m = this.item(key);
                     if (!m) return;
                     const s = this.el('div', 'pwa-nav-slot');
-                    const rm = this.el('button', 'pwa-nav-slot__remove');
-                    rm.type = 'button';
-                    rm.setAttribute('aria-label', m.label + ' kısayolunu çıkar');
-                    rm.appendChild(this.icon('close'));
-                    rm.addEventListener('click', () => this.togglePin(key));
-                    const ctrl = this.el('div', 'pwa-nav-slot__move');
-                    const left = this.el('button', '', '');
-                    left.type = 'button';
-                    left.disabled = i === 0;
-                    left.setAttribute('aria-label', 'Sola taşı');
-                    left.appendChild(this.icon('chevron_left'));
-                    left.addEventListener('click', () => this.move(key, -1));
-                    const right = this.el('button', '', '');
-                    right.type = 'button';
-                    right.disabled = i === this.draft.length - 1;
-                    right.setAttribute('aria-label', 'Sağa taşı');
-                    right.appendChild(this.icon('chevron_right'));
-                    right.addEventListener('click', () => this.move(key, 1));
-                    ctrl.append(left, right);
-                    s.append(rm, this.icon(m.icon), this.el('span', 'pwa-nav-slot__label', m.navLabel), ctrl);
+                    s.append(this.icon(m.icon), this.el('span', 'pwa-nav-slot__label', m.navLabel));
                     slots.appendChild(s);
                 });
-                for (let i = this.draft.length; i < this.data.max; i++) {
-                    const s = this.el('div', 'pwa-nav-slot is-empty');
-                    s.append(this.el('span', 'pwa-nav-slot__plus', '+'), this.el('span', 'pwa-nav-slot__label', 'Boş Slot'));
-                    slots.appendChild(s);
-                }
                 slots.appendChild(fixed('more_horiz', 'Diğer'));
                 dock.appendChild(slots);
                 content.appendChild(dock);
 
                 const list = this.el('div', 'pwa-nav-sheet__list');
-                this.data.items.forEach((m) => {
-                    list.appendChild(this.row(m, { edit: true, pinned: this.draft.includes(m.key) }));
+                this.draft.forEach((key, i) => {
+                    const m = this.item(key);
+                    if (m) list.appendChild(this.row(m, { edit: true, index: i, pinned: i < this.data.max }));
                 });
                 content.appendChild(list);
             },
@@ -1038,6 +1075,7 @@ $pageStatusDark = '#121212';
             });
 
             moreSheet.addEventListener('touchmove', (e) => {
+                if (MoreMenu.dragging) return;
                 const currentY = e.touches[0].clientY;
                 const diff = currentY - startY;
 

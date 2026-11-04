@@ -1472,16 +1472,28 @@ try {
 
         case 'getIzinStats':
             $IzinModel = new PersonelIzinleriModel();
-            file_put_contents(dirname(dirname(__DIR__)) . '/debug_pwa.log', "getIzinStats for personel_id: " . $personel_id . "\n", FILE_APPEND);
             $entitlement = $IzinModel->calculateLeaveEntitlement($personel_id);
-            file_put_contents(dirname(dirname(__DIR__)) . '/debug_pwa.log', "Entitlement: " . json_encode($entitlement) . "\n", FILE_APPEND);
             $izinler = $IzinModel->getPersonelIzinleri($personel_id);
 
             $bekleyen = 0;
+            $kullanimlar = [];
             foreach ($izinler as $izin) {
                 $durum = mb_strtolower($izin->onay_durumu ?? '', 'UTF-8');
                 if ($durum == 'beklemede') {
                     $bekleyen++;
+                }
+
+                $etkiler = isset($izin->yillik_izne_etki) && ($izin->yillik_izne_etki == 'Dus' || $izin->yillik_izne_etki == 1);
+                $yillik = stripos($izin->izin_tipi_adi ?? '', 'Yıllık') !== false || stripos($izin->izin_tipi_adi ?? '', 'Yillik') !== false;
+                $onayli = ($durum == 'onaylandi' || $durum == 'onaylandı' || $durum == 'kabuledildi');
+                if ($onayli && $etkiler && $yillik && !empty($izin->baslangic_tarihi)) {
+                    $kullanimlar[] = [
+                        'id' => $izin->id,
+                        'izin_tipi_adi' => $izin->izin_tipi_adi ?? 'Yıllık İzin',
+                        'baslangic' => date('d.m.Y', strtotime($izin->baslangic_tarihi)),
+                        'bitis' => date('d.m.Y', strtotime($izin->bitis_tarihi)),
+                        'toplam_gun' => $izin->toplam_gun
+                    ];
                 }
             }
 
@@ -1490,6 +1502,7 @@ try {
                 'toplam_hakedis' => $entitlement['toplam_hakedis'],
                 'kullanilan_izin' => $entitlement['kullanilan_izin'],
                 'detay' => $entitlement['detay'],
+                'kullanimlar' => $kullanimlar,
                 'hastalik_izni' => 0,
                 'bekleyen' => $bekleyen
             ]);
@@ -4745,7 +4758,11 @@ try {
             $data = [];
 
             // Demirbaş Zimmetleri
+            $gecmisSayac = 0;
             foreach ($zimmetler as $item) {
+                if ($item->durum !== 'teslim' && ++$gecmisSayac > 50) {
+                    continue;
+                }
                 $durum_map = [
                     'teslim' => ['text' => 'Zimmetli', 'color' => 'amber'],
                     'iade' => ['text' => 'İade Edildi', 'color' => 'emerald'],

@@ -495,6 +495,7 @@
 <script>
     let allZimmetler = [];
     let currentZimmetFilter = 'all';
+    let zimmetGorunenSayi = 40;
 
     document.addEventListener('DOMContentLoaded', function () {
         loadZimmetler();
@@ -790,6 +791,7 @@
 
     function toggleZimmetCategory(category) {
         currentZimmetFilter = category;
+        zimmetGorunenSayi = 40;
         
         // UI Reset
         const cards = ['arac', 'tech', 'sayac', 'aparat'];
@@ -912,7 +914,9 @@
             return;
         }
 
-        container.innerHTML = filtered.map(z => {
+        const gorunen = filtered.slice(0, zimmetGorunenSayi);
+        const kalan = filtered.length - gorunen.length;
+        container.innerHTML = gorunen.map(z => {
             const arac = z.type === 'arac';
             const km = z.teslim_km ? Number(z.teslim_km).toLocaleString('tr-TR') + ' km' : '-';
             const baslik = arac
@@ -935,7 +939,12 @@
                 </div>
                 ${arac && z.durum === 'teslim' ? zkGeciciSatiri(z) : ''}
             </article>`;
-        }).join('');
+        }).join('') + (kalan > 0 ? `<button type="button" onclick="zimmetDahaFazla()" class="pwa-btn pwa-btn--ghost w-full">Daha fazla göster (${kalan})</button>` : '');
+    }
+
+    function zimmetDahaFazla() {
+        zimmetGorunenSayi += 40;
+        renderZimmetler();
     }
 
     async function showZimmetHareketleri(zimmetId, demirbasAdi, type = 'demirbas') {

@@ -1127,13 +1127,23 @@ $(document).ready(function () {
     });
   }
 
-  document.addEventListener("click", function (event) {
-    const toggle = event.target.closest ? event.target.closest(".dropdown-toggle") : null;
-    if (!toggle || !toggle.nextElementSibling || !toggle.nextElementSibling.classList.contains("evrak-dosya-menu")) return;
-    bootstrap.Dropdown.getOrCreateInstance(toggle, {
-      popperConfig: function (defaultConfig) { return Object.assign({}, defaultConfig, { strategy: "fixed" }); }
-    });
-  }, true);
+  const fileMenuHome = new WeakMap();
+  document.addEventListener("show.bs.dropdown", function (event) {
+    const toggle = event.target;
+    const menu = toggle.nextElementSibling;
+    if (!menu || !menu.classList || !menu.classList.contains("dropdown-menu") || !toggle.closest("#evrakTable")) return;
+    menu.classList.add("evrak-body-menu");
+    const dropdown = bootstrap.Dropdown.getInstance(toggle);
+    if (dropdown) dropdown._config.popperConfig = function (defaultConfig) { return Object.assign({}, defaultConfig, { strategy: "fixed" }); };
+    fileMenuHome.set(toggle, { parent: menu.parentNode, menu: menu });
+    document.body.appendChild(menu);
+  });
+  document.addEventListener("hidden.bs.dropdown", function (event) {
+    const home = fileMenuHome.get(event.target);
+    if (!home) return;
+    home.parent.appendChild(home.menu);
+    fileMenuHome.delete(event.target);
+  });
 
   $(document).on("click", ".evrak-pdf-goruntule", function () {
     showPdfFromRequest({ type: "GET", data: { id: $(this).data("id") } }, false);

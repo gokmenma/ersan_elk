@@ -471,7 +471,7 @@
       order.forEach(function (orig, cur) {
         const cell = entry.cells[orig];
         if (!cell) return;
-        entry.row.appendChild(cell);
+        if (entry.row.children[cur] !== cell) entry.row.appendChild(cell);
         cell.classList.toggle("dt-colman-col-hidden", ctx.settings.aoColumns[cur].bVisible === false);
       });
     });

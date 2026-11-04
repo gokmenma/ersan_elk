@@ -11,39 +11,43 @@
         'eyebrow' => 'İZİN YÖNETİMİ',
         'title' => 'İzin İşlemleri',
         'subtitle' => 'İzinlerinizi yönetin',
-        'actions' => '<button type="button" onclick="openNewIzinModal()" class="pwa-circle-btn pwa-circle-btn--primary" aria-label="Yeni İzin" title="Yeni İzin"><span class="material-symbols-outlined">add</span></button>',
     ]); ?>
 
     <!-- Stats Summary -->
-    <section class="px-4 pt-1 pb-4">
-        <div class="grid grid-cols-3 gap-3 pwa-stat-strip">
-            <div class="card p-3 text-center relative overflow-hidden cursor-pointer" onclick="showHakedisDetay()">
-                <div class="absolute top-0 right-0 w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-full -mr-4 -mt-4">
+    <section class="px-4 pt-1 pb-3">
+        <div class="grid grid-cols-3 gap-2 pwa-stat-strip izn-strip">
+            <div class="izn-mini cursor-pointer" onclick="showHakedisDetay()">
+                <span class="material-symbols-outlined text-blue-600 izn-mini-icon">event_available</span>
+                <div>
+                    <p class="izn-mini-val text-slate-900 dark:text-white" id="kalan-izin">0</p>
+                    <p class="izn-mini-lbl text-slate-500">Kalan İzin</p>
                 </div>
-                <div
-                    class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mx-auto mb-2">
-                    <span class="material-symbols-outlined text-blue-600 text-lg">event_available</span>
-                </div>
-                <p class="text-xl font-bold text-slate-900 dark:text-white" id="kalan-izin">0</p>
-                <p class="text-[10px] text-slate-500">Kalan İzin</p>
             </div>
-
-            <div class="card p-3 text-center relative overflow-hidden">
-                <div
-                    class="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-2">
-                    <span class="material-symbols-outlined text-red-600 text-lg">medical_services</span>
+            <div class="izn-mini">
+                <span class="material-symbols-outlined text-red-600 izn-mini-icon">medical_services</span>
+                <div>
+                    <p class="izn-mini-val text-slate-900 dark:text-white" id="hastalik-izni">0</p>
+                    <p class="izn-mini-lbl text-slate-500">Hastalık</p>
                 </div>
-                <p class="text-xl font-bold text-slate-900 dark:text-white" id="hastalik-izni">0</p>
-                <p class="text-[10px] text-slate-500">Hastalık İzni</p>
             </div>
-
-            <div class="card p-3 text-center relative overflow-hidden">
-                <div
-                    class="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mx-auto mb-2">
-                    <span class="material-symbols-outlined text-amber-600 text-lg">pending_actions</span>
+            <div class="izn-mini">
+                <span class="material-symbols-outlined text-amber-600 izn-mini-icon">pending_actions</span>
+                <div>
+                    <p class="izn-mini-val text-slate-900 dark:text-white" id="bekleyen-izin">0</p>
+                    <p class="izn-mini-lbl text-slate-500">Bekleyen</p>
                 </div>
-                <p class="text-xl font-bold text-slate-900 dark:text-white" id="bekleyen-izin">0</p>
-                <p class="text-[10px] text-slate-500">Bekleyen</p>
+            </div>
+            <div class="izn-stat izn-stat--blue izn-cal-only" style="display: none;">
+                <span>Çalışılan</span>
+                <b id="stat-calisilan">-</b>
+            </div>
+            <div class="izn-stat izn-stat--amber izn-cal-only" style="display: none;">
+                <span>Ücretsiz</span>
+                <b id="stat-ucretsiz">-</b>
+            </div>
+            <div class="izn-stat izn-stat--green izn-cal-only" style="display: none;">
+                <span>Ücretli</span>
+                <b id="stat-ucretli">-</b>
             </div>
         </div>
     </section>
@@ -51,7 +55,7 @@
     <!-- View Toggle & Month Selector -->
     <div
         class="px-4 pwa-toolbar izn-toolbar">
-        <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-3">
             <div class="flex items-center justify-between gap-3">
                 <!-- Month/Week Selector -->
                 <div id="month-selector" class="flex items-center gap-2" style="display: none;">
@@ -106,22 +110,6 @@
                     data-filter="reddedildi">
                     Reddedilen
                 </button>
-            </div>
-
-            <!-- Calendar Stats (Visible in Calendar View) -->
-            <div id="calendar-stats" class="izn-stats" style="display: none;">
-                <div class="izn-stat izn-stat--blue">
-                    <span>Çalışılan</span>
-                    <b id="stat-calisilan">-</b>
-                </div>
-                <div class="izn-stat izn-stat--amber">
-                    <span>Ücretsiz</span>
-                    <b id="stat-ucretsiz">-</b>
-                </div>
-                <div class="izn-stat izn-stat--green">
-                    <span>Ücretli</span>
-                    <b id="stat-ucretli">-</b>
-                </div>
             </div>
         </div>
     </div>
@@ -303,51 +291,75 @@
 
 <!-- Hakediş Detay Bottom Sheet -->
 <div id="hakedis-detay-modal" class="modal-overlay">
-    <div class="modal-content pwa-sheet p-6 pt-0 h-[60vh] flex flex-col">
+    <div class="modal-content pwa-sheet p-6 pt-0 flex flex-col" style="max-height: 82vh;">
         <div class="pwa-sheet__handle"></div>
 
         <div class="pwa-sheet__head flex-shrink-0" style="padding-left:0;padding-right:0">
             <span class="pwa-sheet__icon"><span class="material-symbols-outlined">event_available</span></span>
-            <div class="flex-1 min-w-0"><h3>İzin Hakediş Detayları</h3></div>
+            <div class="flex-1 min-w-0"><h3>İzin Hakediş Detayları</h3><p>Hak ve kullanım özeti</p></div>
             <button type="button" onclick="Modal.close('hakedis-detay-modal')" class="pwa-sheet__close" aria-label="Kapat">
                 <span class="material-symbols-outlined">close</span>
             </button>
         </div>
 
-        <div class="grid grid-cols-3 gap-3 mb-4 flex-shrink-0">
-            <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl text-center">
-                <p class="text-xs text-blue-600 dark:text-blue-400 mb-1">Toplam</p>
-                <p class="text-lg font-bold text-blue-700 dark:text-blue-300" id="sheet-toplam">0</p>
-            </div>
-            <div class="bg-red-50 dark:bg-red-900/20 p-3 rounded-xl text-center">
-                <p class="text-xs text-red-600 dark:text-red-400 mb-1">Kullanılan</p>
-                <p class="text-lg font-bold text-red-700 dark:text-red-300" id="sheet-kullanilan">0</p>
-            </div>
-            <div class="bg-green-50 dark:bg-green-900/20 p-3 rounded-xl text-center">
-                <p class="text-xs text-green-600 dark:text-green-400 mb-1">Kalan</p>
-                <p class="text-lg font-bold text-green-700 dark:text-green-300" id="sheet-kalan">0</p>
-            </div>
+        <div class="grid grid-cols-3 gap-2 pwa-stat-strip izn-strip flex-shrink-0" style="margin-bottom: 14px;">
+            <div class="izn-stat izn-stat--blue"><span>Toplam</span><b id="sheet-toplam">0</b></div>
+            <div class="izn-stat izn-stat--amber"><span>Kullanılan</span><b id="sheet-kullanilan">0</b></div>
+            <div class="izn-stat izn-stat--green"><span>Kalan</span><b id="sheet-kalan">0</b></div>
         </div>
 
-        <div class="flex-1 overflow-y-auto">
-            <div id="hakedis-list" class="space-y-2">
-                <!-- Dynamic Content -->
-            </div>
+        <div class="flex-1 overflow-y-auto" style="padding-bottom: 8px;">
+            <div id="hakedis-list" class="hk-list"></div>
         </div>
     </div>
 </div>
 
+<button type="button" class="izn-fab" onclick="openNewIzinModal()" aria-label="Yeni İzin" title="Yeni İzin">
+    <span class="material-symbols-outlined">add</span>
+</button>
+
 <style>
-    .izn-toolbar { padding-bottom: 16px !important; }
+    .izn-fab { position: fixed; right: 1rem; bottom: 6rem; z-index: 45; width: 3.5rem; height: 3.5rem; border-radius: 9999px; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; border: none; box-shadow: 0 10px 24px rgba(0, 0, 0, .28); }
+    .izn-fab .material-symbols-outlined { font-size: 30px; }
+    .izn-fab:active { transform: scale(.94); }
+    .hk-list { display: flex; flex-direction: column; gap: 10px; }
+    .hk-card { background: #fff; border-radius: 24px; border: 1px solid rgba(255, 255, 255, .9); box-shadow: 0 6px 16px -10px rgba(15, 23, 42, .18); overflow: hidden; }
+    .dark .hk-card { background: #1d222a; border-color: rgba(255, 255, 255, .07); }
+    .hk-head { width: 100%; display: flex; align-items: center; gap: 12px; padding: 14px 16px; text-align: left; }
+    .hk-ico { flex: none; width: 40px; height: 40px; border-radius: 14px; display: flex; align-items: center; justify-content: center; background: rgba(var(--primary-rgb, 19, 91, 236), .1); color: var(--primary); }
+    .hk-title { font-size: 14px; font-weight: 800; color: #161920; line-height: 1.2; }
+    .dark .hk-title { color: #e8ecf2; }
+    .hk-sub { font-size: 11px; font-weight: 600; color: #64748b; margin-top: 2px; }
+    .hk-meta { font-size: 11px; font-weight: 700; color: #475569; text-align: right; white-space: nowrap; }
+    .dark .hk-meta { color: #cbd5e1; }
+    .hk-bar { height: 5px; border-radius: 9999px; background: rgba(148, 163, 184, .3); margin-top: 6px; overflow: hidden; }
+    .hk-bar > div { height: 100%; border-radius: 9999px; background: var(--primary); }
+    .hk-body { padding: 0 16px 14px; }
+    .hk-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 16px; background: #f1f4f8; margin-top: 8px; }
+    .dark .hk-row { background: rgba(255, 255, 255, .06); }
+    .hk-row-t { font-size: 12px; font-weight: 800; color: #161920; }
+    .dark .hk-row-t { color: #e8ecf2; }
+    .hk-row-d { font-size: 11px; font-weight: 600; color: #64748b; margin-top: 2px; }
+    .hk-row-g { font-size: 13px; font-weight: 800; color: var(--primary); white-space: nowrap; }
+    .hk-empty { padding: 10px 0 2px; text-align: center; font-size: 12px; font-weight: 600; color: #64748b; }
+    .hk-chev { transition: transform .2s ease; color: #94a3b8; }
+    .hk-card.open .hk-chev { transform: rotate(180deg); }
+    .hk-skel { height: 66px; border-radius: 24px; background: linear-gradient(90deg, rgba(148,163,184,.18), rgba(148,163,184,.3), rgba(148,163,184,.18)); background-size: 200% 100%; animation: hkskel 1.2s linear infinite; }
+    @keyframes hkskel { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+    .izn-toolbar { padding-bottom: 10px !important; }
     .izn-list { display: flex; flex-direction: column; gap: 14px; }
-    .izn-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-    .izn-stat { background: #fff; border-radius: 20px; padding: 12px 8px; text-align: center; border: 1px solid rgba(255, 255, 255, .9); box-shadow: 0 6px 16px -10px rgba(15, 23, 42, .18); }
-    .dark .izn-stat { background: #1a2130; border-color: #334155; }
-    .izn-stat span { display: block; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #64748b; }
-    .izn-stat b { display: block; font-size: 22px; font-weight: 800; line-height: 1; margin-top: 6px; }
-    .izn-stat--blue b { color: #2563eb; }
-    .izn-stat--amber b { color: #d97706; }
-    .izn-stat--green b { color: #059669; }
+    .izn-strip { padding: 10px !important; border-radius: 24px; }
+    .izn-strip > * { border-radius: 14px !important; }
+    .izn-mini { display: flex; align-items: center; gap: 6px; padding: 8px 8px; min-width: 0; }
+    .izn-mini-icon { font-size: 18px; flex-shrink: 0; }
+    .izn-mini-val { font-size: 15px; font-weight: 800; line-height: 1.1; }
+    .izn-mini-lbl { font-size: 9px; line-height: 1.2; white-space: nowrap; }
+    .izn-stat { padding: 6px 4px; text-align: center; }
+    .izn-stat span { display: block; font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: rgba(255, 255, 255, .62); }
+    .izn-stat b { display: block; font-size: 17px; font-weight: 800; line-height: 1; margin-top: 3px; }
+    .izn-stat--blue b { color: #60a5fa; }
+    .izn-stat--amber b { color: #fbbf24; }
+    .izn-stat--green b { color: #34d399; }
     .izn-card { background: #fff; border-radius: 24px; padding: 16px; display: flex; flex-direction: column; gap: 12px; cursor: pointer; box-shadow: 0 6px 16px -10px rgba(15, 23, 42, .18); border: 1px solid rgba(255, 255, 255, .9); transition: transform .15s ease; }
     .izn-card:active { transform: scale(.985); }
     .dark .izn-card { background: #1a2130; border-color: #334155; }
@@ -436,12 +448,12 @@
             document.getElementById('month-selector-spacer').style.display = 'none';
             document.getElementById('calendar-view').style.display = 'block';
             document.getElementById('month-selector').style.display = 'flex';
-            document.getElementById('calendar-stats').style.display = 'flex';
+            document.querySelectorAll('.izn-cal-only').forEach(function (el) { el.style.display = 'block'; });
             renderCalendar();
         } else {
             document.getElementById('calendar-view').style.display = 'none';
             document.getElementById('month-selector').style.display = 'none';
-            document.getElementById('calendar-stats').style.display = 'none';
+            document.querySelectorAll('.izn-cal-only').forEach(function (el) { el.style.display = 'none'; });
             document.getElementById('month-selector-spacer').style.display = 'block';
             document.getElementById('filter-tabs').style.display = 'flex';
             document.getElementById('list-view').style.display = 'block';
@@ -954,7 +966,67 @@
         updateIzinTuruUyarilari(select.value, false);
     }
 
-    async function showHakedisDetay() {
+    function hakedisEsc(v) {
+        return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function hakedisTrTarih(v) {
+        const q = String(v).split('.');
+        return new Date(q[2], q[1] - 1, q[0]).getTime();
+    }
+
+    function hakedisYillariniHesapla() {
+        const allLeaves = (hakedisData.kullanimlar || []).slice().sort((x, y) => hakedisTrTarih(x.baslangic) - hakedisTrTarih(y.baslangic));
+        const yearUsage = hakedisData.detay.map(d => ({
+            year: d.yil, tarih: d.hakedis_tarihi, entitlement: parseFloat(d.hakedis_gun) || 0, used: 0, remaining: parseFloat(d.hakedis_gun) || 0, leaves: []
+        }));
+        let yi = 0;
+        allLeaves.forEach(izin => {
+            let left = parseFloat(izin.toplam_gun || 0);
+            while (left > 0 && yi < yearUsage.length) {
+                const y = yearUsage[yi];
+                if (y.remaining <= 0) { yi++; continue; }
+                const take = Math.min(left, y.remaining);
+                y.used += take;
+                y.remaining -= take;
+                y.leaves.push({ izin: izin, gun: take });
+                left -= take;
+            }
+        });
+        return yearUsage;
+    }
+
+    function hakedisListeCiz(yearUsage) {
+        return yearUsage.map((u, index) => {
+            const pct = u.entitlement > 0 ? Math.min(100, Math.round(u.used / u.entitlement * 100)) : 0;
+            const rows = u.leaves.length > 0 ? u.leaves.map(l => `
+                <div class="hk-row">
+                    <div class="min-w-0">
+                        <p class="hk-row-t">${hakedisEsc(l.izin.izin_tipi_adi || 'Yıllık İzin')}</p>
+                        <p class="hk-row-d">${hakedisEsc(l.izin.baslangic)} - ${hakedisEsc(l.izin.bitis)}</p>
+                    </div>
+                    <span class="hk-row-g">${hakedisEsc(l.gun)} gün</span>
+                </div>`).join('') : '<p class="hk-empty">Bu yıl için kullanılan izin bulunmuyor</p>';
+            return `
+                <div class="hk-card" id="hk-card-${index}">
+                    <button type="button" class="hk-head" onclick="toggleYearAccordion(${index})">
+                        <span class="hk-ico"><span class="material-symbols-outlined">calendar_today</span></span>
+                        <div class="flex-1 min-w-0">
+                            <p class="hk-title">${hakedisEsc(u.year)}. Yıl</p>
+                            <p class="hk-sub">${new Date(u.tarih).toLocaleDateString('tr-TR')}</p>
+                        </div>
+                        <div style="min-width: 108px;">
+                            <p class="hk-meta">Hak ${u.entitlement} · Kul. ${u.used} · Kalan ${u.remaining}</p>
+                            <div class="hk-bar"><div style="width:${pct}%"></div></div>
+                        </div>
+                        <span class="material-symbols-outlined hk-chev">expand_more</span>
+                    </button>
+                    <div class="hk-body hidden" id="accordion-${index}">${rows}</div>
+                </div>`;
+        }).join('');
+    }
+
+    function showHakedisDetay() {
         if (!hakedisData) return;
 
         document.getElementById('sheet-toplam').textContent = hakedisData.toplam_hakedis + ' Gün';
@@ -963,127 +1035,20 @@
 
         const container = document.getElementById('hakedis-list');
 
-        // Kullanılan izinleri yıllara göre gruplamak için izinleri çek
-        try {
-            const response = await API.request('getIzinlerByYear');
-            const izinlerByYear = response.success ? response.data : {};
-
-            if (hakedisData.detay && hakedisData.detay.length > 0) {
-                // FIFO Logic: Calculate how much leave was used from each year
-                const allLeaves = izinlerByYear['all'] || [];
-                const totalUsed = allLeaves.reduce((sum, izin) => sum + parseFloat(izin.toplam_gun || 0), 0);
-
-                // Distribute used leaves across years using FIFO
-                let remainingUsed = totalUsed;
-                const yearUsage = [];
-
-                for (let i = 0; i < hakedisData.detay.length; i++) {
-                    const yearDetail = hakedisData.detay[i];
-                    const yearEntitlement = yearDetail.hakedis_gun;
-
-                    if (remainingUsed > 0) {
-                        const usedFromThisYear = Math.min(remainingUsed, yearEntitlement);
-                        const remaining = yearEntitlement - usedFromThisYear;
-                        yearUsage.push({
-                            year: yearDetail.yil,
-                            entitlement: yearEntitlement,
-                            used: usedFromThisYear,
-                            remaining: remaining
-                        });
-                        remainingUsed -= usedFromThisYear;
-                    } else {
-                        yearUsage.push({
-                            year: yearDetail.yil,
-                            entitlement: yearEntitlement,
-                            used: 0,
-                            remaining: yearEntitlement
-                        });
-                    }
-                }
-
-                container.innerHTML = hakedisData.detay.map((item, index) => {
-                    const usage = yearUsage[index];
-
-                    return `
-                        <div class="card overflow-hidden">
-                            <button onclick="toggleYearAccordion(${index})" 
-                                class="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                                        <span class="material-symbols-outlined text-primary">calendar_today</span>
-                                    </div>
-                                    <div class="text-left">
-                                        <p class="font-bold text-slate-900 dark:text-white">${item.yil}. Yıl</p>
-                                        <p class="text-xs text-slate-500">${new Date(item.hakedis_tarihi).toLocaleDateString('tr-TR')}</p>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-4">
-                                    <div class="text-right">
-                                        <p class="text-xs text-slate-500">Hak: ${usage.entitlement} | Kullanılan: ${usage.used} | Kalan: ${usage.remaining}</p>
-                                    </div>
-                                    <span class="material-symbols-outlined text-slate-400 accordion-icon" id="accordion-icon-${index}">expand_more</span>
-                                </div>
-                            </button>
-                            <div id="accordion-${index}" class="accordion-content hidden">
-                                <div class="px-4 pb-3 border-t border-slate-100 dark:border-slate-800">
-                                    ${usage.used > 0 && allLeaves.length > 0 ? `
-                                        <div class="mt-3 overflow-x-auto">
-                                            <table class="w-full text-sm">
-                                                <thead>
-                                                    <tr class="text-xs text-slate-500 border-b border-slate-200 dark:border-slate-700">
-                                                        <th class="text-left py-2 px-2 font-semibold">İzin Türü</th>
-                                                        <th class="text-left py-2 px-2 font-semibold">Tarih</th>
-                                                        <th class="text-center py-2 px-2 font-semibold">Süre (Gün)</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    ${allLeaves.map(izin => `
-                                                        <tr class="border-b border-slate-100 dark:border-slate-800 last:border-0">
-                                                            <td class="py-2.5 px-2 text-slate-900 dark:text-white font-medium">${izin.izin_tipi_adi || 'Yıllık İzin'}</td>
-                                                            <td class="py-2.5 px-2 text-slate-600 dark:text-slate-400">
-                                                                <div class="flex flex-col">
-                                                                    <span class="text-xs">Başlangıç: ${izin.baslangic}</span>
-                                                                    <span class="text-xs">Bitiş: ${izin.bitis}</span>
-                                                                </div>
-                                                            </td>
-                                                            <td class="py-2.5 px-2 text-center font-bold text-primary">${izin.toplam_gun}</td>
-                                                        </tr>
-                                                    `).join('')}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    ` : `
-                                        <div class="mt-2 py-3 text-center">
-                                            <p class="text-xs text-slate-500">Bu yıl için kullanılan izin bulunmuyor</p>
-                                        </div>
-                                    `}
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            } else {
-                container.innerHTML = '<div class="text-center py-8 text-slate-500">Hakediş detayı bulunamadı.</div>';
-            }
-        } catch (error) {
-            console.error('Hakediş detay yükleme hatası:', error);
-            container.innerHTML = '<div class="text-center py-8 text-red-500">Veriler yüklenirken hata oluştu.</div>';
+        if (!hakedisData.detay || hakedisData.detay.length === 0) {
+            container.innerHTML = '<p class="hk-empty">Hakediş detayı bulunamadı.</p>';
+        } else {
+            container.innerHTML = hakedisListeCiz(hakedisYillariniHesapla());
         }
-
         Modal.open('hakedis-detay-modal');
     }
 
     function toggleYearAccordion(index) {
         const content = document.getElementById(`accordion-${index}`);
-        const icon = document.getElementById(`accordion-icon-${index}`);
-
-        if (content.classList.contains('hidden')) {
-            content.classList.remove('hidden');
-            icon.textContent = 'expand_less';
-        } else {
-            content.classList.add('hidden');
-            icon.textContent = 'expand_more';
-        }
+        const card = document.getElementById(`hk-card-${index}`);
+        if (!content || !card) return;
+        content.classList.toggle('hidden');
+        card.classList.toggle('open', !content.classList.contains('hidden'));
     }
 
     async function loadIzinler(showLoading = true) {

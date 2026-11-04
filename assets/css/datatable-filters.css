@@ -61,11 +61,11 @@
 .dt-filter-control {
   display: block;
   width: 100%;
-  height: 28px;
-  min-height: 28px;
+  height: 32px;
+  min-height: 32px;
   margin: 0px !important;
   padding: 3px 6px !important;
-  font-size: 11.5px;
+  font-size: 12.5px;
   line-height: 1.4;
   color: #495057;
   background-color: #fff;
@@ -859,14 +859,14 @@ table.dataTable thead tr.search-input-row > th,
 .datatable-premium-shell .dt-filter-control,
 .table-responsive .dt-filter-control,
 .dataTables_wrapper .dt-filter-control {
-  min-height: 28px;
-  height: 28px;
+  min-height: 32px;
+  height: 32px;
   border: 1px solid #e2e8f0 !important;
   border-radius: 6px !important;
   background: #fff !important;
-  font-size: 11px !important;
+  font-size: 12.5px !important;
   color: #475569;
-  padding: 2px 6px !important;
+  padding: 3px 8px !important;
 }
 
 /* =============================================================
