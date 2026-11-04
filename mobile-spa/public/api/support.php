@@ -42,7 +42,7 @@ function supportAvatar(object $conversation): ?string
     if ((int) ($conversation->personel_id ?? 0) <= 0) return null;
     $photoPath = trim((string) ($conversation->resim_yolu ?? ''));
     if ($photoPath === '' || !is_file(dirname(__DIR__, 3) . '/' . ltrim(str_replace('\\', '/', $photoPath), '/'))) return null;
-    return '/api/personnel-photo.php?id=' . rawurlencode(Security::encrypt((string) $conversation->personel_id));
+    return '/api/personnel-photo.php?id=' . rawurlencode(Security::encryptStable((string) $conversation->personel_id)) . '&w=96';
 }
 
 function supportConversation(object $item): array

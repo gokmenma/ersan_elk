@@ -97,8 +97,8 @@ function getAvatarUrl(int $personelId, ?string $resimYolu = null, ?string $perso
         }
     }
     if (!$hasPhoto) return null;
-    $encId = Security::encrypt((string) $personelId);
-    return '/api/personnel-photo.php?id=' . rawurlencode($encId);
+    $encId = Security::encryptStable((string) $personelId);
+    return '/api/personnel-photo.php?id=' . rawurlencode($encId) . '&w=96';
 }
 
 $nobetModel = new NobetModel();

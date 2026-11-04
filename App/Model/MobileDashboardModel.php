@@ -145,7 +145,7 @@ class MobileDashboardModel
                     'total_days' => (float) ($row['toplam_gun'] ?? 0),
                     'leave_bg' => $colors[0],
                     'leave_color' => $colors[1],
-                    'photo' => $hasPhoto ? '/api/personnel-photo.php?id=' . rawurlencode($encryptedId) : null,
+                    'photo' => $hasPhoto ? '/api/personnel-photo.php?id=' . rawurlencode(Security::encryptStable((string) (int) $row['personel_id'])) . '&w=96' : null,
                 ];
             }, $stmt->fetchAll(PDO::FETCH_ASSOC) ?: []);
         }, []);
@@ -220,7 +220,7 @@ class MobileDashboardModel
                     'start_time' => !empty($row['baslangic_saati']) ? date('H:i', strtotime($row['baslangic_saati'])) : '',
                     'end_time' => !empty($row['bitis_saati']) ? date('H:i', strtotime($row['bitis_saati'])) : '',
                     'shift_type' => (string) ($row['nobet_tipi'] ?? ''),
-                    'photo' => $hasPhoto ? '/api/personnel-photo.php?id=' . $encryptedId : null,
+                    'photo' => $hasPhoto ? '/api/personnel-photo.php?id=' . rawurlencode(Security::encryptStable((string) $personelId)) . '&w=96' : null,
                 ];
             }, $rows);
         }, []);

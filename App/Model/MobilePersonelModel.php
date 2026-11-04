@@ -1385,7 +1385,7 @@ class MobilePersonelModel extends Model
                 'job' => trim((string) ($r['gorev'] ?? '')),
                 'department' => trim((string) ($r['departman'] ?? '')),
                 'active' => (bool) $r['active'],
-                'avatar' => $hasPhoto ? '/api/personnel-photo.php?id=' . rawurlencode($encId) : null,
+                'avatar' => $hasPhoto ? '/api/personnel-photo.php?id=' . rawurlencode(\App\Helper\Security::encryptStable((string) $r['id'])) . '&w=96' : null,
             ];
         }
         return $result;
@@ -1775,9 +1775,9 @@ class MobilePersonelModel extends Model
             $logMsg = sprintf("%s personeline ait icra dosyası güncellendi (%s - %s).", $personel['adi_soyadi'], $icraDairesi, $dosyaNo);
         } else {
             $sql = "INSERT INTO personel_icralari
-                    (personel_id, sira, dosya_no, icra_dairesi, alacakli, toplam_borc, aylik_kesinti_tutari, kesinti_tipi, kesinti_orani, durum, baslangic_tarihi, bitis_tarihi, iban, hesap_bilgileri, aciklama, created_at)
+                    (personel_id, sira, dosya_no, icra_dairesi, alacakli, toplam_borc, aylik_kesinti_tutari, kesinti_tipi, kesinti_orani, durum, baslangic_tarihi, bitis_tarihi, iban, hesap_bilgileri, aciklama, kayit_yapan, created_at)
                     VALUES
-                    (:personel_id, :sira, :dosya_no, :icra_dairesi, :alacakli, :toplam_borc, :aylik_kesinti_tutari, :kesinti_tipi, :kesinti_orani, :durum, :baslangic_tarihi, :bitis_tarihi, :iban, :hesap_bilgileri, :aciklama, NOW())";
+                    (:personel_id, :sira, :dosya_no, :icra_dairesi, :alacakli, :toplam_borc, :aylik_kesinti_tutari, :kesinti_tipi, :kesinti_orani, :durum, :baslangic_tarihi, :bitis_tarihi, :iban, :hesap_bilgileri, :aciklama, :kayit_yapan, NOW())";
             $stmt = $this->db->prepare($sql);
             $stmt->execute([
                 ':personel_id' => $personelId,
@@ -1795,6 +1795,7 @@ class MobilePersonelModel extends Model
                 ':iban' => $iban,
                 ':hesap_bilgileri' => $hesapBilgileri,
                 ':aciklama' => $aciklama,
+                ':kayit_yapan' => $userId > 0 ? $userId : null,
             ]);
             $id = (int) $this->db->lastInsertId();
 

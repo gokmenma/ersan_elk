@@ -258,7 +258,8 @@ try {
                 'baslangic_tarihi' => !empty($_POST['icra_baslangic']) ? \App\Helper\Date::dttoeng($_POST['icra_baslangic']) : null,
                 'bitis_tarihi' => !empty($_POST['icra_bitis']) ? \App\Helper\Date::dttoeng($_POST['icra_bitis']) : null,
                 'durum' => $_POST['icra_durum'] ?? 'bekliyor',
-                'aciklama' => $_POST['icra_aciklama'] ?? ''
+                'aciklama' => $_POST['icra_aciklama'] ?? '',
+                'kayit_yapan' => $userId > 0 ? $userId : null
             ];
             $icraModel->saveWithAttr($data);
             $systemLog->logAction($userId, 'İcra Dosyası Ekleme', "Personel ID: $personel_id, İcra Dairesi: {$data['icra_dairesi']}, Dosya No: {$data['dosya_no']}, Toplam Borç: {$data['toplam_borc']}", SystemLogModel::LEVEL_IMPORTANT);

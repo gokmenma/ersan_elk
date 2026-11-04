@@ -4920,7 +4920,7 @@ class BordroPersonelModel extends Model
         // Onaylanmış tüm avansları alıp hedef döneme kod tarafında eşliyoruz.
         // Bu sayede hem "ayın 14'ü" kuralı hem de taksitli avanslar doğru dönemlere dağıtılır.
         $sql = $this->db->prepare("
-            SELECT id, tutar, talep_tarihi, aciklama, odeme_sekli
+            SELECT id, tutar, talep_tarihi, aciklama, odeme_sekli, onaylayan_id
             FROM personel_avanslari
             WHERE personel_id = ?
               AND durum = 'onaylandi'
@@ -4996,7 +4996,7 @@ class BordroPersonelModel extends Model
                     continue;
                 }
 
-                $this->addKesinti($personel_id, $donem_id, $aciklama, $tutar, 'avans', 'onaylandi');
+                $this->addKesinti($personel_id, $donem_id, $aciklama, $tutar, 'avans', 'onaylandi', null, null, !empty($avans->onaylayan_id) ? (int) $avans->onaylayan_id : null);
                 $toplamAvans += $tutar;
             }
         }
@@ -5166,7 +5166,7 @@ class BordroPersonelModel extends Model
         $oran = $param ? floatval($param->oran ?? 0) : 0;
 
         $sql = $this->db->prepare("
-            SELECT id, icra_dairesi, dosya_no, aylik_kesinti_tutari, baslangic_tarihi, toplam_borc, sira, kesinti_tipi, kesinti_orani
+            SELECT id, icra_dairesi, dosya_no, aylik_kesinti_tutari, baslangic_tarihi, toplam_borc, sira, kesinti_tipi, kesinti_orani, kayit_yapan
             FROM personel_icralari
             WHERE personel_id = ?
             AND durum = 'devam_ediyor'
@@ -5254,10 +5254,10 @@ class BordroPersonelModel extends Model
                     ->execute([$tutar, $aciklama, $paramId, $finalHTip, $finalOran, $mevcut->id]);
             } else {
                 $sqlAdd = $this->db->prepare("
-                    INSERT INTO personel_kesintileri (personel_id, donem_id, aciklama, tutar, tur, durum, icra_id, parametre_id, hesaplama_tipi, oran, olusturma_tarihi)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                    INSERT INTO personel_kesintileri (personel_id, donem_id, aciklama, tutar, tur, durum, icra_id, parametre_id, hesaplama_tipi, oran, kayit_yapan, olusturma_tarihi)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
                 ");
-                $sqlAdd->execute([$personel_id, $donem_id, $aciklama, $tutar, 'icra', 'onaylandi', $icra->id, $paramId, $finalHTip, $finalOran]);
+                $sqlAdd->execute([$personel_id, $donem_id, $aciklama, $tutar, 'icra', 'onaylandi', $icra->id, $paramId, $finalHTip, $finalOran, !empty($icra->kayit_yapan) ? (int) $icra->kayit_yapan : null]);
                 $olusturulanSayisi++;
             }
 

@@ -117,7 +117,7 @@ class MobileGlobalSearchModel extends Model
                 $active ? 'Aktif' : 'Ayrıldı',
                 $active ? 'success' : 'danger',
                 '/personel/' . rawurlencode($encId),
-                '/api/personnel-photo.php?id=' . rawurlencode($encId)
+                '/api/personnel-photo.php?id=' . rawurlencode(Security::encryptStable((string) $row['id'])) . '&w=96'
             );
         }
         return $items;

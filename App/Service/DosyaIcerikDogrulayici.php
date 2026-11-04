@@ -34,7 +34,8 @@ class DosyaIcerikDogrulayici
         if (!preg_match('/^.{0,1024}%PDF-/s', $icerik)) {
             throw new \DomainException('Geçerli bir PDF dosyası değil.');
         }
-        if (preg_match('#/(JavaScript|JS|Launch)\b#', $icerik)) {
+        $yapi = preg_replace('/stream\r?\n.*?endstream/s', 'stream endstream', $icerik) ?? $icerik;
+        if (preg_match('#/(JavaScript|JS|Launch)(?![A-Za-z0-9])#', $yapi)) {
             throw new \DomainException('Betik veya program başlatma içeren PDF dosyaları yüklenemez.');
         }
     }
