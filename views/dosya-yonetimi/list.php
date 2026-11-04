@@ -113,6 +113,18 @@ $gunOptions = ['1' => '1 gün', '3' => '3 gün', '7' => '7 gün', '14' => '14 g�
 .dosya-segment .dosya-gorunum.active { background: var(--bs-primary); color: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, .18); }
 @media (max-width: 575px) { .dosya-segment .dosya-gorunum span { display: none; } }
 #dosyaTable tbody tr { cursor: pointer; }
+.ad-sar { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-width: 0; }
+.ad-sar .ad-metin { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ad-duzenle { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; flex: 0 0 24px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--bs-secondary-color); font-size: 15px; opacity: 0; transition: opacity .12s ease, background .12s ease; }
+tr:hover .ad-duzenle, .dosya-row:hover .ad-duzenle, .dosya-tile:hover .ad-duzenle, .ad-duzenle:focus-visible { opacity: 1; }
+.ad-duzenle:hover { background: var(--bs-warning-bg-subtle); color: var(--bs-warning); }
+@media (hover: none) { .ad-duzenle { opacity: .7; } }
+.ad-girdi { height: 30px; min-width: 220px; font-size: 13px; font-weight: 600; }
+.ad-sar.duzenleniyor { flex: 1; }
+.dosya-tree .ad-girdi { min-width: 0; width: 100%; height: 26px; font-size: 12px; }
+.dosya-tree .ad-sar { width: 100%; }
+.dosya-tree .node:hover .ad-duzenle { opacity: 1; }
+.dosya-tree .ad-duzenle { width: 20px; height: 20px; flex-basis: 20px; font-size: 13px; }
 .onizleme-docx { padding: 16px; background: var(--bs-tertiary-bg); overflow: auto; max-height: 78vh; }
 .onizleme-docx .docx-wrapper { background: transparent !important; padding: 0 !important; }
 .onizleme-docx .docx-wrapper > section.docx { box-shadow: 0 2px 12px rgba(0, 0, 0, .15); margin-bottom: 16px !important; }

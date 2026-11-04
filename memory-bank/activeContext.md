@@ -3583,3 +3583,6 @@
 
 ## Avans Taksit Görünürlüğü
 - Talepler (masaüstü list.php: tablo, kart, onay modalı, detay) ve yönetici mobil (TaleplerView.vue, requests.php) avans taksit bilgisini gösteriyor; kaynak AvansModel::taksitBilgisi().
+
+## Saatlik İzin (Personel PWA)
+- `personel_izinleri.baslangic_saati` ve `izin_saati` eklendi (sql/add_saatlik_izin_alanlari.sql). Saatlik izin: toplam_gun=0, yillik_izne_etki=0, bitiş=başlangıç; çakışma saat bazlı (PersonelIzinleriModel::countLeaveConflicts).

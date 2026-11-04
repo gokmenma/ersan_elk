@@ -174,8 +174,8 @@ document.addEventListener("DOMContentLoaded", function () {
         "</td></tr>";
       html +=
         '<tr><td class="text-muted bg-light">Gün Sayısı</td><td><span class="badge bg-info">' +
-        (data.gun_sayisi || "-") +
-        " Gün</span></td></tr>";
+        (data.sure_metni || (data.gun_sayisi || "-") + " Gün") +
+        "</span></td></tr>";
       html +=
         '<tr><td class="text-muted bg-light">Durum</td><td><span class="badge bg-warning">' +
         ucfirst(data.onay_durumu) +

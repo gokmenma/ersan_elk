@@ -219,6 +219,11 @@ if ($method === 'GET') {
             'avatar' => resolvePersonelAvatar($pId, $i->personel_resim_yolu ?? null, $i->resim_yolu ?? null),
             'leave_type' => $i->izin_tipi_adi ?? $i->izin_tipi ?? 'İzin',
             'days' => $days,
+            'duration_label' => $izinModel->izinSureMetni($i),
+            'is_hourly' => isset($i->izin_saati) && $i->izin_saati !== null,
+            'start_time' => !empty($i->baslangic_saati) ? substr((string) $i->baslangic_saati, 0, 5) : '',
+            'hours' => isset($i->izin_saati) && $i->izin_saati !== null ? (float) $i->izin_saati : null,
+            'requested_hours' => isset($i->talep_izin_saati) && $i->talep_izin_saati !== null ? (float) $i->talep_izin_saati : (isset($i->izin_saati) && $i->izin_saati !== null ? (float) $i->izin_saati : null),
             'date' => formatTaleplerDate($i->talep_tarihi),
             'timestamp' => strtotime($i->talep_tarihi ?? '') ?: 0,
             'start_date' => formatTaleplerDate($i->baslangic_tarihi, true),
@@ -346,13 +351,26 @@ if ($method === 'POST') {
                 $onayTipi = (string) ($input['onay_tipi'] ?? 'ayni');
                 $farkliBas = !empty($input['farkli_baslangic']) ? (string) $input['farkli_baslangic'] : null;
                 $farkliBit = !empty($input['farkli_bitis']) ? (string) $input['farkli_bitis'] : null;
+                $farkliSaatBas = null;
+                $farkliSaat = null;
+                if ($onayTipi === 'farkli' && isset($input['farkli_izin_saati']) && $input['farkli_izin_saati'] !== '') {
+                    $farkliSaatBas = trim((string) ($input['farkli_baslangic_saati'] ?? ''));
+                    $farkliSaat = trim((string) $input['farkli_izin_saati']);
+                    $saatHata = $izinModel->validateSaatlikKismiOnay($id, $farkliSaatBas, $farkliSaat);
+                    if ($saatHata !== null) taleplerResponse(['success' => false, 'message' => $saatHata], 422);
+                    $farkliBas = null;
+                    $farkliBit = null;
+                    if (empty($aciklama)) {
+                        $aciklama = "İzin talebiniz $farkliSaatBas başlangıçlı " . str_replace('.', ',', $farkliSaat) . " saat olarak uygun görülmüştür.";
+                    }
+                }
                 if ($onayTipi === 'farkli' && $farkliBas && $farkliBit) {
                     $gun = $izinModel->hesaplaIzinGunu($farkliBas, $farkliBit);
                     if (empty($aciklama)) {
                         $aciklama = "İzin talebiniz $farkliBas - $farkliBit arasında $gun gün olarak uygun görülmüştür.";
                     }
                 }
-                if ($izinModel->updateDurum($id, 'Onaylandı', $aciklama, $farkliBas, $farkliBit)) {
+                if ($izinModel->updateDurum($id, 'Onaylandı', $aciklama, $farkliBas, $farkliBit, $farkliSaatBas, $farkliSaat)) {
                     $bildirimModel->markRequestNotificationAsRead($currentUserId, 'izin', $id);
                     $systemLogModel->logAction($currentUserId, 'İzin Onaylama', "İzin talebi onaylandı. ID: $id", SystemLogModel::LEVEL_IMPORTANT);
                     taleplerErkenYanit(['success' => true, 'message' => 'İzin talebi onaylandı.']);

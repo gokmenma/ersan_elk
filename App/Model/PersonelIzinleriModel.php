@@ -274,7 +274,30 @@ class PersonelIzinleriModel extends Model
     /**
      * İzin durumunu günceller (onay/ret)
      */
-    public function updateDurum($id, $durum, $aciklama = null, $baslangic = null, $bitis = null)
+    public function validateSaatlikKismiOnay($id, $baslangicSaati, $izinSaati): ?string
+    {
+        $stmt = $this->db->prepare("SELECT izin_saati, talep_izin_saati FROM {$this->table} WHERE id = ? AND silinme_tarihi IS NULL");
+        $stmt->execute([$id]);
+        $row = $stmt->fetch(PDO::FETCH_OBJ);
+        if (!$row || $row->izin_saati === null) {
+            return null;
+        }
+        if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string) $baslangicSaati)) {
+            return 'Lütfen geçerli bir başlangıç saati giriniz.';
+        }
+        $saat = (float) str_replace(',', '.', (string) $izinSaati);
+        $talep = (float) ($row->talep_izin_saati ?? $row->izin_saati);
+        if ($saat < 0.5 || $saat > $talep) {
+            return 'Onaylanan süre 0,5 saat ile talep edilen ' . rtrim(rtrim(number_format($talep, 2, ',', ''), '0'), ',') . ' saat arasında olmalıdır.';
+        }
+        [$sa, $dk] = array_map('intval', explode(':', $baslangicSaati));
+        if ($sa * 60 + $dk + $saat * 60 > 24 * 60) {
+            return 'Saatlik izin gün sonunu aşamaz.';
+        }
+        return null;
+    }
+
+    public function updateDurum($id, $durum, $aciklama = null, $baslangic = null, $bitis = null, $baslangicSaati = null, $izinSaati = null)
     {
         $onay_tarihi = in_array($durum, ['Onaylandı', 'Reddedildi']) ? date('Y-m-d H:i:s') : null;
         $onaylayan_id = $_SESSION['user_id'] ?? null;
@@ -286,7 +309,19 @@ class PersonelIzinleriModel extends Model
         $sql_parts = ["onay_durumu = ?"];
         $params = [$durum];
 
-        if ($baslangic && $bitis && ($durum === 'Onaylandı' || $durum === 'onaylandi')) {
+        $onaylaniyor = ($durum === 'Onaylandı' || $durum === 'onaylandi');
+        $saatlikKayit = false;
+        if ($onaylaniyor && $baslangicSaati !== null && $izinSaati !== null) {
+            $mevcut = $this->db->prepare("SELECT izin_saati FROM {$this->table} WHERE id = ? AND izin_saati IS NOT NULL");
+            $mevcut->execute([$id]);
+            $saatlikKayit = (bool) $mevcut->fetch(PDO::FETCH_OBJ);
+        }
+        if ($saatlikKayit) {
+            $sql_parts[] = "baslangic_saati = ?";
+            $sql_parts[] = "izin_saati = ?";
+            $params[] = $baslangicSaati . ':00';
+            $params[] = round(((float) str_replace(',', '.', (string) $izinSaati)) * 2) / 2;
+        } elseif ($baslangic && $bitis && $onaylaniyor) {
             $toplam_gun = $this->hesaplaIzinGunu($baslangic, $bitis);
             $sql_parts[] = "baslangic_tarihi = ?";
             $sql_parts[] = "bitis_tarihi = ?";
@@ -349,6 +384,19 @@ class PersonelIzinleriModel extends Model
     /**
      * İzin gün sayısını hesaplar
      */
+    public function izinSureMetni($izin): string
+    {
+        if (isset($izin->izin_saati) && $izin->izin_saati !== null && !empty($izin->baslangic_saati)) {
+            $bas = substr((string) $izin->baslangic_saati, 0, 5);
+            $dk = $this->timeToMinutes($bas) + (int) round(((float) $izin->izin_saati) * 60);
+            $bit = sprintf('%02d:%02d', intdiv($dk, 60) % 24, $dk % 60);
+            $saat = rtrim(rtrim(number_format((float) $izin->izin_saati, 2, ',', ''), '0'), ',');
+            return $bas . ' - ' . $bit . ' · ' . $saat . ' Saat';
+        }
+        $gun = $this->hesaplaIzinGunu($izin->baslangic_tarihi, $izin->bitis_tarihi);
+        return $gun . ' Gün';
+    }
+
     public function hesaplaIzinGunu($baslangic, $bitis)
     {
         $start = new \DateTime($baslangic);
@@ -577,8 +625,8 @@ class PersonelIzinleriModel extends Model
             return false;
         }
 
-        // Personel yıllık izin talebini hakediş bakiyesi olmasa da onaya sunabilir.
         if ($this->isAnnualLeaveType($izinTuru)
+            || $this->isHourlyLeaveType($izinTuru)
             || $this->isMarriageLeaveType($izinTuru)
             || $this->isPaternityLeaveType($izinTuru)) {
             return false;
@@ -589,6 +637,60 @@ class PersonelIzinleriModel extends Model
         $mazeretMi = mb_strpos($ad, 'mazeret') !== false || $kod === 'mazeret';
 
         return !$mazeretMi && (int) ($izinTuru->ucretli_mi ?? 0) === 1;
+    }
+
+    public function isHourlyLeaveType($izinTuru): bool
+    {
+        if (!$izinTuru) {
+            return false;
+        }
+
+        $ad = mb_strtolower((string) ($izinTuru->tur_adi ?? ''), 'UTF-8');
+        $kod = mb_strtolower((string) ($izinTuru->kisa_kod ?? ''), 'UTF-8');
+
+        return mb_strpos($ad, 'saatlik') !== false || $kod === 'sİ' || $kod === 'si' || $kod === 'si̇';
+    }
+
+    public function countLeaveConflicts(int $personelId, string $baslangic, string $bitis, ?string $baslangicSaati = null, ?float $izinSaati = null): int
+    {
+        $sql = "SELECT baslangic_saati, izin_saati FROM personel_izinleri
+                WHERE personel_id = :personel_id
+                AND silinme_tarihi IS NULL
+                AND onay_durumu IN ('beklemede', 'onaylandi', 'onaylandı')
+                AND baslangic_tarihi <= :bitis AND bitis_tarihi >= :baslangic";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            ':personel_id' => $personelId,
+            ':baslangic' => $baslangic,
+            ':bitis' => $bitis
+        ]);
+        $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        if ($baslangicSaati === null || $izinSaati === null) {
+            return count($rows);
+        }
+
+        $yeniBas = $this->timeToMinutes($baslangicSaati);
+        $yeniBit = $yeniBas + (int) round($izinSaati * 60);
+        $sayi = 0;
+        foreach ($rows as $row) {
+            if ($row->baslangic_saati === null || $row->izin_saati === null) {
+                $sayi++;
+                continue;
+            }
+            $mevcutBas = $this->timeToMinutes($row->baslangic_saati);
+            $mevcutBit = $mevcutBas + (int) round(((float) $row->izin_saati) * 60);
+            if ($yeniBas < $mevcutBit && $yeniBit > $mevcutBas) {
+                $sayi++;
+            }
+        }
+        return $sayi;
+    }
+
+    private function timeToMinutes(string $time): int
+    {
+        $parts = explode(':', $time);
+        return ((int) $parts[0]) * 60 + (int) ($parts[1] ?? 0);
     }
 
     public function isExcuseLeaveType($izinTuru)

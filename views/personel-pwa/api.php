@@ -1452,7 +1452,8 @@ try {
                     'is_yillik' => $IzinModel->isAnnualLeaveType($item),
                     'is_hastalik' => $IzinModel->isSickLeaveType($item),
                     'is_babalik' => $IzinModel->isPaternityLeaveType($item),
-                    'is_evlilik' => $IzinModel->isMarriageLeaveType($item)
+                    'is_evlilik' => $IzinModel->isMarriageLeaveType($item),
+                    'is_saatlik' => $IzinModel->isHourlyLeaveType($item)
                 ];
             }, $izinTurleri);
 
@@ -1583,6 +1584,8 @@ try {
                     'baslangic' => date('d.m.Y', strtotime($item->baslangic_tarihi)),
                     'bitis' => date('d.m.Y', strtotime($item->bitis_tarihi)),
                     'toplam_gun' => $item->toplam_gun,
+                    'baslangic_saati' => !empty($item->baslangic_saati) ? substr($item->baslangic_saati, 0, 5) : null,
+                    'izin_saati' => $item->izin_saati !== null ? (float) $item->izin_saati : null,
                     'talep_baslangic' => !empty($item->talep_baslangic_tarihi) ? date('d.m.Y', strtotime($item->talep_baslangic_tarihi)) : null,
                     'talep_bitis' => !empty($item->talep_bitis_tarihi) ? date('d.m.Y', strtotime($item->talep_bitis_tarihi)) : null,
                     'talep_gun' => isset($item->talep_gun) ? $item->talep_gun : null,
@@ -1691,6 +1694,8 @@ try {
             $izin_tipi = $_POST['izin_tipi'] ?? '';
             $baslangic = $_POST['baslangic_tarihi'] ?? '';
             $bitis = $_POST['bitis_tarihi'] ?? '';
+            $baslangic_saati = trim((string) ($_POST['baslangic_saati'] ?? ''));
+            $izin_saati = str_replace(',', '.', trim((string) ($_POST['izin_saati'] ?? '')));
 
             // Güvenlik: Açıklama alanını temizle (XSS/Script koruması)
             $aciklama = $_POST['aciklama'] ?? '';
@@ -1701,7 +1706,7 @@ try {
                 response(false, null, 'Lütfen izin türünü seçiniz.');
             }
 
-            if (empty($baslangic) || empty($bitis)) {
+            if (empty($baslangic) || (empty($bitis) && $baslangic_saati === '')) {
                 response(false, null, 'Lütfen tarihleri seçiniz.');
             }
 
@@ -1710,6 +1715,24 @@ try {
             $izinTuru = $IzinModel->getPersonnelVisibleLeaveType($izin_tipi, (int) $_SESSION['firma_id']);
             if (!$izinTuru) {
                 response(false, null, 'Geçerli bir izin türü seçiniz.');
+            }
+
+            $saatlikMi = $IzinModel->isHourlyLeaveType($izinTuru);
+            if ($saatlikMi) {
+                if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $baslangic_saati)) {
+                    response(false, null, 'Lütfen izin başlangıç saatini seçiniz.');
+                }
+                if (!is_numeric($izin_saati) || (float) $izin_saati < 0.5 || (float) $izin_saati > 8) {
+                    response(false, null, 'İzin süresi 0,5 ile 8 saat arasında olmalıdır.');
+                }
+                $izin_saati = round(((float) $izin_saati) * 2) / 2;
+                [$sa, $dk] = array_map('intval', explode(':', $baslangic_saati));
+                if ($sa * 60 + $dk + $izin_saati * 60 > 24 * 60) {
+                    response(false, null, 'Saatlik izin gün sonunu aşamaz.');
+                }
+                $bitis = $baslangic;
+            } elseif (empty($bitis)) {
+                response(false, null, 'Lütfen tarihleri seçiniz.');
             }
 
             $entitlement = $IzinModel->calculateLeaveEntitlement($personel_id);
@@ -1732,29 +1755,19 @@ try {
             // Çakışma Kontrolü
             // Seçilen tarih aralığında (başlangıç ve bitiş dahil) başka bir izin var mı?
             // Durumu 'beklemede', 'onaylandi' veya 'onaylandı' olanları kontrol et.
-            $sql = "SELECT COUNT(*) as sayi FROM personel_izinleri 
-                    WHERE personel_id = :personel_id 
-                    AND silinme_tarihi IS NULL 
-                    AND (onay_durumu = 'beklemede' OR onay_durumu = 'onaylandi' OR onay_durumu = 'onaylandı')
-                    AND (
-                        (baslangic_tarihi <= :bitis AND bitis_tarihi >= :baslangic)
-                    )";
+            $cakismaSayisi = $saatlikMi
+                ? $IzinModel->countLeaveConflicts((int) $personel_id, $baslangic, $bitis, $baslangic_saati, (float) $izin_saati)
+                : $IzinModel->countLeaveConflicts((int) $personel_id, $baslangic, $bitis);
 
-            $stmt = $IzinModel->getDb()->prepare($sql);
-            $stmt->execute([
-                ':personel_id' => $personel_id,
-                ':baslangic' => $baslangic,
-                ':bitis' => $bitis
-            ]);
-            $cakisma = $stmt->fetch(PDO::FETCH_OBJ);
-
-            if ($cakisma && $cakisma->sayi > 0) {
-                response(false, null, 'Seçilen tarih aralığında bekleyen veya onaylanmış başka bir izin talebiniz bulunmaktadır. Lütfen tarihleri kontrol ediniz.');
+            if ($cakismaSayisi > 0) {
+                response(false, null, $saatlikMi
+                    ? 'Seçilen gün ve saat aralığında bekleyen veya onaylanmış başka bir izin talebiniz bulunmaktadır. Lütfen saatleri kontrol ediniz.'
+                    : 'Seçilen tarih aralığında bekleyen veya onaylanmış başka bir izin talebiniz bulunmaktadır. Lütfen tarihleri kontrol ediniz.');
             }
 
             // Gün sayısını hesapla
             $diff = strtotime($bitis) - strtotime($baslangic);
-            $toplam_gun = round($diff / (60 * 60 * 24)) + 1;
+            $toplam_gun = $saatlikMi ? 0 : round($diff / (60 * 60 * 24)) + 1;
 
             // Tek yıllık izin talebi en fazla 20 gün olabilir.
             if ($IzinModel->isAnnualLeaveType($izinTuru) && $toplam_gun > 20) {
@@ -1763,7 +1776,7 @@ try {
 
             // $IzinModel zaten yukarıda tanımlandı
 
-            $IzinModel->saveWithAttr([
+            $izinKaydi = [
                 'personel_id' => $personel_id,
                 'izin_tipi_id' => $izin_tipi,
                 'baslangic_tarihi' => $baslangic,
@@ -1774,7 +1787,15 @@ try {
                 'talep_gun' => $toplam_gun,
                 'aciklama' => $aciklama,
                 'olusturma_tarihi' => date('Y-m-d H:i:s')
-            ]);
+            ];
+            if ($saatlikMi) {
+                $izinKaydi['baslangic_saati'] = $baslangic_saati . ':00';
+                $izinKaydi['izin_saati'] = $izin_saati;
+                $izinKaydi['talep_baslangic_saati'] = $baslangic_saati . ':00';
+                $izinKaydi['talep_izin_saati'] = $izin_saati;
+                $izinKaydi['yillik_izne_etki'] = 0;
+            }
+            $IzinModel->saveWithAttr($izinKaydi);
             $newId = $IzinModel->getDb()->lastInsertId();
 
             $erkenYanitGonderildi = responseEarly(true, null, 'İzin talebiniz başarıyla oluşturuldu');
@@ -1807,6 +1828,9 @@ try {
                     if ($tur) {
                         $izin_tipi_text = $tur->tur_adi;
                     }
+                }
+                if ($saatlikMi) {
+                    $izin_tipi_text .= ' (' . $baslangic_saati . ' - ' . rtrim(rtrim(number_format((float) $izin_saati, 1, ',', ''), '0'), ',') . ' saat)';
                 }
 
                 // 1. Uygulama İçi Bildirimler

@@ -662,7 +662,7 @@ $title = "Talep Yönetimi";
                             </thead>
                             <tbody>
                                 <?php foreach ($izinler as $izin):
-                                    $gunSayisi = $izinModel->hesaplaIzinGunu($izin->baslangic_tarihi, $izin->bitis_tarihi);
+                                    $gunSayisi = $izinModel->izinSureMetni($izin);
                                     $izinTuruLabel = $izin->izin_tipi_adi ?? $izin->izin_tipi ?? 'Belirtilmemiş';
                                     ?>
                                     <tr data-id="<?= $izin->id ?>" data-tip="izin">
@@ -697,7 +697,7 @@ $title = "Talep Yönetimi";
                                         </td>
                                         <td class="text-center">
                                             <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">
-                                                <?= $gunSayisi ?> Gün
+                                                <?= htmlspecialchars($gunSayisi, ENT_QUOTES, 'UTF-8') ?>
                                             </span>
                                         </td>
                                         <td class="text-center">
@@ -743,7 +743,7 @@ $title = "Talep Yönetimi";
                                                     <button class="table-action-btn btn-subtle-success btn-izin-onayla" type="button"
                                                         data-id="<?= $izin->id ?>"
                                                         data-personel="<?= htmlspecialchars($izin->requester_name ?? '') ?>"
-                                                        data-tur="<?= htmlspecialchars($izinTuruLabel) ?>" data-gun="<?= $gunSayisi ?>"
+                                                        data-tur="<?= htmlspecialchars($izinTuruLabel) ?>" data-gun="<?= $izinModel->hesaplaIzinGunu($izin->baslangic_tarihi, $izin->bitis_tarihi) ?>" data-saatlik="<?= $izin->izin_saati !== null ? 1 : 0 ?>" data-saat-bas="<?= htmlspecialchars(substr((string) ($izin->baslangic_saati ?? ''), 0, 5), ENT_QUOTES, 'UTF-8') ?>" data-saat="<?= htmlspecialchars((string) ($izin->izin_saati ?? ''), ENT_QUOTES, 'UTF-8') ?>" data-talep-saat="<?= htmlspecialchars((string) ($izin->talep_izin_saati ?? $izin->izin_saati ?? ''), ENT_QUOTES, 'UTF-8') ?>" data-sure="<?= htmlspecialchars($gunSayisi, ENT_QUOTES, 'UTF-8') ?>"
                                                         data-baslangic="<?= $izin->baslangic_tarihi ?>"
                                                         data-bitis="<?= $izin->bitis_tarihi ?>"
                                                         title="İzni Onayla">
@@ -784,7 +784,7 @@ $title = "Talep Yönetimi";
                     <div class="d-block d-lg-none mt-2">
                         <div class="row g-3">
                             <?php foreach ($izinler as $izin): 
-                                $gunSayisi = $izinModel->hesaplaIzinGunu($izin->baslangic_tarihi, $izin->bitis_tarihi);
+                                $gunSayisi = $izinModel->izinSureMetni($izin);
                                 $izinTuruLabel = $izin->izin_tipi_adi ?? $izin->izin_tipi ?? 'Belirtilmemiş';
                             ?>
                                 <div class="col-12" data-id="<?= $izin->id ?>" data-tip="izin">
@@ -798,7 +798,7 @@ $title = "Talep Yönetimi";
                                                         <small class="text-muted"><span class="badge bg-info-subtle text-info rounded-pill font-size-10"><?= htmlspecialchars($izinTuruLabel) ?></span></small>
                                                     </div>
                                                 </div>
-                                                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill font-size-11 px-2 py-1"><?= $gunSayisi ?> Gün</span>
+                                                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill font-size-11 px-2 py-1"><?= htmlspecialchars($gunSayisi, ENT_QUOTES, 'UTF-8') ?></span>
                                             </div>
                                             <div class="mb-2 text-muted small py-1 border-top border-bottom border-light">
                                                 <i class="bx bx-calendar me-1"></i> <?= date('d.m.Y', strtotime($izin->baslangic_tarihi)) ?> - <?= date('d.m.Y', strtotime($izin->bitis_tarihi)) ?>
@@ -832,7 +832,7 @@ $title = "Talep Yönetimi";
                                                         data-id="<?= $izin->id ?>" 
                                                         data-personel="<?= htmlspecialchars($izin->requester_name ?? '') ?>" 
                                                         data-tur="<?= htmlspecialchars($izinTuruLabel) ?>" 
-                                                        data-gun="<?= $gunSayisi ?>"
+                                                        data-gun="<?= $izinModel->hesaplaIzinGunu($izin->baslangic_tarihi, $izin->bitis_tarihi) ?>" data-saatlik="<?= $izin->izin_saati !== null ? 1 : 0 ?>" data-saat-bas="<?= htmlspecialchars(substr((string) ($izin->baslangic_saati ?? ''), 0, 5), ENT_QUOTES, 'UTF-8') ?>" data-saat="<?= htmlspecialchars((string) ($izin->izin_saati ?? ''), ENT_QUOTES, 'UTF-8') ?>" data-talep-saat="<?= htmlspecialchars((string) ($izin->talep_izin_saati ?? $izin->izin_saati ?? ''), ENT_QUOTES, 'UTF-8') ?>" data-sure="<?= htmlspecialchars($gunSayisi, ENT_QUOTES, 'UTF-8') ?>"
                                                         data-baslangic="<?= $izin->baslangic_tarihi ?>"
                                                         data-bitis="<?= $izin->bitis_tarihi ?>"><i class="bx bx-check"></i> Onayla</button>
                                                     <button class="btn btn-sm btn-subtle-danger flex-fill btn-izin-reddet py-1" type="button" data-id="<?= $izin->id ?>" data-personel="<?= htmlspecialchars($izin->requester_name ?? '') ?>"><i class="bx bx-x"></i> Red</button>
@@ -1232,7 +1232,7 @@ $title = "Talep Yönetimi";
                 <div class="modal-body px-4 pt-3 pb-2">
                     <div class="alert alert-success-subtle text-success border border-success-subtle rounded-3 p-3 mb-3">
                         <strong id="izin_onay_personel"></strong> personelinin
-                        <strong id="izin_onay_gun"></strong> günlük <strong id="izin_onay_tur"></strong> talebi onaylanacaktır.
+                        <strong id="izin_onay_gun"></strong> süreli <strong id="izin_onay_tur"></strong> talebi onaylanacaktır.
                     </div>
 
                     <div class="mb-3">
@@ -1244,8 +1244,24 @@ $title = "Talep Yönetimi";
                             </div>
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="onay_tipi" id="izinOnayFarkli" value="farkli">
-                                <label class="form-check-label font-size-13 fw-medium" for="izinOnayFarkli">Farklı Tarihler Belirle</label>
+                                <label class="form-check-label font-size-13 fw-medium" for="izinOnayFarkli"><span class="izin-farkli-etiket">Farklı Tarihler Belirle</span></label>
                             </div>
+                        </div>
+                    </div>
+
+                    <div id="farkliIzinSaatAlani" class="mb-3 d-none">
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <label class="form-label font-size-11 fw-bold text-muted mb-1">Başlangıç Saati</label>
+                                <input type="time" class="form-control font-size-13" name="farkli_baslangic_saati" id="farkli_baslangic_saati">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label font-size-11 fw-bold text-muted mb-1">Onaylanan Süre (Saat)</label>
+                                <select class="form-select font-size-13" name="farkli_izin_saati" id="farkli_izin_saati"></select>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-primary font-size-12 fw-semibold">
+                            <i class="bx bx-info-circle me-1"></i>Talep edilen: <span id="farkli_talep_saat_metni" class="fw-bold">-</span> saat
                         </div>
                     </div>
 
@@ -1744,6 +1760,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    let izinSaatlikAktif = false;
     // 6. İzin Modal ve Onay İşlemleri
     document.querySelectorAll('.btn-izin-onayla').forEach(btn => {
         btn.addEventListener('click', function () {
@@ -1753,11 +1770,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const gun = this.dataset.gun;
             const start = this.dataset.baslangic;
             const end = this.dataset.bitis;
+            const saatlik = this.dataset.saatlik === '1';
+            izinSaatlikAktif = saatlik;
 
             document.getElementById('izin_onay_id').value = id;
             document.getElementById('izin_onay_personel').textContent = personel;
             document.getElementById('izin_onay_tur').textContent = tur;
-            document.getElementById('izin_onay_gun').textContent = gun;
+            document.getElementById('izin_onay_gun').textContent = saatlik ? this.dataset.sure : gun + ' Gün';
             
             const form = document.getElementById('formIzinOnay');
             form?.reset();
@@ -1765,6 +1784,23 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('farkliIzinTarihAlani').classList.add('d-none');
             document.getElementById('farkli_baslangic').value = start || '';
             document.getElementById('farkli_bitis').value = end || '';
+
+            document.getElementById('farkliIzinSaatAlani').classList.add('d-none');
+            document.querySelector('.izin-farkli-etiket').textContent = saatlik ? 'Farklı Süre Belirle' : 'Farklı Tarihler Belirle';
+            if (saatlik) {
+                const talepSaat = parseFloat(this.dataset.talepSaat) || parseFloat(this.dataset.saat) || 8;
+                const secim = document.getElementById('farkli_izin_saati');
+                secim.innerHTML = '';
+                for (let h = 0.5; h <= talepSaat + 0.001; h += 0.5) {
+                    const opt = document.createElement('option');
+                    opt.value = h;
+                    opt.textContent = String(h).replace('.', ',') + ' saat';
+                    secim.appendChild(opt);
+                }
+                secim.value = String(parseFloat(this.dataset.saat) || talepSaat);
+                document.getElementById('farkli_baslangic_saati').value = this.dataset.saatBas || '';
+                document.getElementById('farkli_talep_saat_metni').textContent = String(talepSaat).replace('.', ',');
+            }
             
             new bootstrap.Modal(document.getElementById('modalIzinOnay')).show();
         });
@@ -1773,7 +1809,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('input[name="onay_tipi"]').forEach(radio => {
         if (radio.id.startsWith('izinOnay')) {
             radio.addEventListener('change', function() {
-                const alan = document.getElementById('farkliIzinTarihAlani');
+                const alan = document.getElementById(izinSaatlikAktif ? 'farkliIzinSaatAlani' : 'farkliIzinTarihAlani');
                 const aciklamaField = document.getElementById('izin_onay_aciklama');
                 if (this.value === 'farkli') {
                     alan?.classList.remove('d-none');
@@ -1787,6 +1823,15 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     function updateIzinOtoMesaj() {
+        if (izinSaatlikAktif) {
+            const bas = document.getElementById('farkli_baslangic_saati').value;
+            const saat = document.getElementById('farkli_izin_saati').value;
+            const alan = document.getElementById('izin_onay_aciklama');
+            if (bas && saat && alan) {
+                alan.value = 'İzin talebiniz ' + bas + ' başlangıçlı ' + String(saat).replace('.', ',') + ' saat olarak uygun görülmüştür.';
+            }
+            return;
+        }
         const startStr = document.getElementById('farkli_baslangic').value;
         const endStr = document.getElementById('farkli_bitis').value;
         const aciklamaField = document.getElementById('izin_onay_aciklama');
@@ -1808,6 +1853,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    document.getElementById('farkli_baslangic_saati')?.addEventListener('change', updateIzinOtoMesaj);
+    document.getElementById('farkli_izin_saati')?.addEventListener('change', updateIzinOtoMesaj);
     document.getElementById('farkli_baslangic')?.addEventListener('change', updateIzinOtoMesaj);
     document.getElementById('farkli_bitis')?.addEventListener('change', updateIzinOtoMesaj);
 
@@ -2311,7 +2358,7 @@ document.addEventListener('DOMContentLoaded', function () {
             html += '<div class="col-sm-3 col-6"><div class="detay-kpi-box"><span class="detay-kpi-label">Durum</span><span class="detay-kpi-val text-' + durumClass + ' font-size-13">' + durumText + '</span></div></div>';
         } else if (tip === 'izin') {
             html += '<div class="col-sm-3 col-6"><div class="detay-kpi-box"><span class="detay-kpi-label">İzin Türü</span><span class="detay-kpi-val text-primary font-size-13">' + ucfirst(data.izin_tipi || '-') + '</span></div></div>';
-            html += '<div class="col-sm-3 col-6"><div class="detay-kpi-box"><span class="detay-kpi-label">Süre</span><span class="detay-kpi-val text-dark font-size-15">' + (data.gun_sayisi ? data.gun_sayisi + ' Gün' : '-') + '</span></div></div>';
+            html += '<div class="col-sm-3 col-6"><div class="detay-kpi-box"><span class="detay-kpi-label">Süre</span><span class="detay-kpi-val text-dark font-size-15">' + (data.sure_metni || (data.gun_sayisi ? data.gun_sayisi + ' Gün' : '-')) + '</span></div></div>';
             html += '<div class="col-sm-3 col-6"><div class="detay-kpi-box"><span class="detay-kpi-label">Tarih Aralığı</span><span class="detay-kpi-val font-size-12">' + formatDateOnly(data.baslangic_tarihi) + ' - ' + formatDateOnly(data.bitis_tarihi) + '</span></div></div>';
             html += '<div class="col-sm-3 col-6"><div class="detay-kpi-box"><span class="detay-kpi-label">Talep Tarihi</span><span class="detay-kpi-val font-size-12">' + formatDate(data.talep_tarihi) + '</span></div></div>';
         } else if (tip === 'talep') {

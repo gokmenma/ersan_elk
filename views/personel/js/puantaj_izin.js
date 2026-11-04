@@ -553,6 +553,14 @@ $(document).ready(function () {
                       overtimeBadgeHtml = `<span class="overtime-badge ${unsavedOtClass}" data-key="${key}" data-hours="${otSaat}" data-manual-hours="${manuelOtSaat}" data-shift-hours="${nobetOtSaat}" title="${otTitle}">+${otSaat % 1 === 0 ? otSaat.toFixed(0) : otSaat.toFixed(1)}S</span>`;
                     }
 
+                    let saatlikBadgeHtml = "";
+                    (p.saatlik?.[dateStr] || []).forEach((sz) => {
+                      const saatMetni = String(Number(sz.saat)).replace(".", ",");
+                      const bitisDk = Math.round((parseInt(sz.baslangic_saati) * 60 + parseInt(sz.baslangic_saati.split(":")[1]) + sz.saat * 60));
+                      const bitisSaati = String(Math.floor(bitisDk / 60) % 24).padStart(2, "0") + ":" + String(bitisDk % 60).padStart(2, "0");
+                      saatlikBadgeHtml += `<span class="saatlik-izin-badge" title="${sz.name}: ${sz.baslangic_saati} - ${bitisSaati} (${saatMetni} saat)">${sz.kisa_kod}${saatMetni}</span>`;
+                    });
+
                     // Excel'den yüklenen personel için mevcut kayıtları gizle, sadece unsaved göster
                     const isExcelReplaced = excelReplacedPersonnel.has(
                       p.id.toString(),
@@ -618,6 +626,7 @@ $(document).ready(function () {
                                          data-date="${dateStr}">
                                         ${cellContent}
                                         ${overtimeBadgeHtml}
+                                        ${saatlikBadgeHtml}
                                     </td>`;
                   }
                   bodyHtml += `<td class="sticky-col-right-1 toplam-calisma-gunu">${Math.max(0, paidCount)}</td>`;

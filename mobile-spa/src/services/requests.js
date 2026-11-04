@@ -82,7 +82,7 @@ export const requestsApi = {
     })
   },
 
-  async izinOnayla({ id, onay_tipi, farkli_baslangic, farkli_bitis, aciklama }) {
+  async izinOnayla({ id, onay_tipi, farkli_baslangic, farkli_bitis, farkli_baslangic_saati, farkli_izin_saati, aciklama }) {
     return await request('post', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -92,6 +92,8 @@ export const requestsApi = {
         onay_tipi,
         farkli_baslangic,
         farkli_bitis,
+        farkli_baslangic_saati,
+        farkli_izin_saati,
         aciklama,
       }),
     })

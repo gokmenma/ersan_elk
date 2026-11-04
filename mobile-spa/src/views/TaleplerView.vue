@@ -246,7 +246,25 @@ function getTypeMeta(item) {
   }
 }
 
+function hourText(value) {
+  return String(Number(value)).replace('.', ',')
+}
+
+function hourOptions(max) {
+  const limit = Number(max) || 8
+  const list = []
+  for (let h = 0.5; h <= limit + 0.001; h += 0.5) list.push(h)
+  return list
+}
+
 function updateIzinOtoMesaj() {
+  if (activeItem.value?.is_hourly) {
+    const f = formIzinOnay.value
+    if (f.farkli_baslangic_saati && f.farkli_izin_saati) {
+      f.aciklama = `İzin talebiniz ${f.farkli_baslangic_saati} başlangıçlı ${hourText(f.farkli_izin_saati)} saat olarak uygun görülmüştür.`
+    }
+    return
+  }
   const start = formIzinOnay.value.farkli_baslangic
   const end = formIzinOnay.value.farkli_bitis
   const days = calculateDays(start, end)
@@ -311,6 +329,8 @@ function openIzinOnayModal(item, mode = 'ayni') {
     farkli_baslangic: item.start_date_raw || '',
     farkli_bitis: item.end_date_raw || '',
     calculated_days: item.days || 0,
+    farkli_baslangic_saati: item.start_time || '',
+    farkli_izin_saati: item.hours ?? '',
     aciklama: '',
   }
   if (mode === 'farkli') {
@@ -626,7 +646,7 @@ async function submitSil() {
               {{ item.installment_text }}
             </span>
             <span v-else-if="item.type === 'izin'" class="badge-days">
-              {{ item.days }} Gün
+              {{ item.duration_label || item.days + ' Gün' }}
             </span>
 
             <!-- Durum Rozeti (Her zaman görünür) -->
@@ -881,7 +901,7 @@ async function submitSil() {
         <header class="modal-card__head head-primary">
           <div class="modal-icon-circle"><CalendarCheck :size="22" /></div>
           <h3>İzin Talebini Onayla</h3>
-          <p>{{ activeItem?.name }} · {{ activeItem?.days }} Gün ({{ activeItem?.leave_type }})</p>
+          <p>{{ activeItem?.name }} · {{ activeItem?.duration_label || activeItem?.days + ' Gün' }} ({{ activeItem?.leave_type }})</p>
         </header>
 
         <form class="modal-card__form" @submit.prevent="submitIzinOnay">
@@ -891,18 +911,37 @@ async function submitSil() {
               :class="{ active: formIzinOnay.onay_tipi === 'ayni' }"
               @click="setIzinOnayTipi('ayni')"
             >
-              Aynı Tarih ({{ activeItem?.start_date }} - {{ activeItem?.end_date }})
+              <template v-if="activeItem?.is_hourly">Aynı Süre ({{ activeItem?.duration_label }})</template>
+              <template v-else>Aynı Tarih ({{ activeItem?.start_date }} - {{ activeItem?.end_date }})</template>
             </button>
             <button
               type="button"
               :class="{ active: formIzinOnay.onay_tipi === 'farkli' }"
               @click="setIzinOnayTipi('farkli')"
             >
-              Farklı Tarihler
+              {{ activeItem?.is_hourly ? 'Farklı Süre' : 'Farklı Tarihler' }}
             </button>
           </div>
 
-          <div v-if="formIzinOnay.onay_tipi === 'farkli'" class="date-pickers-row">
+          <div v-if="formIzinOnay.onay_tipi === 'farkli' && activeItem?.is_hourly" class="date-pickers-row">
+            <div class="form-group-field">
+              <label>BAŞLANGIÇ SAATİ</label>
+              <input v-model="formIzinOnay.farkli_baslangic_saati" type="time" required class="form-input" @change="updateIzinOtoMesaj" />
+            </div>
+            <div class="form-group-field">
+              <label>ONAYLANAN SÜRE</label>
+              <select v-model="formIzinOnay.farkli_izin_saati" required class="form-input" @change="updateIzinOtoMesaj">
+                <option v-for="h in hourOptions(activeItem?.requested_hours)" :key="h" :value="h">{{ hourText(h) }} saat</option>
+              </select>
+            </div>
+          </div>
+
+          <div v-if="formIzinOnay.onay_tipi === 'farkli' && activeItem?.is_hourly" class="duration-live-badge">
+            <CalendarClock :size="14" />
+            <span>Talep edilen: <strong>{{ hourText(activeItem?.requested_hours) }} saat</strong> · Onaylanan: <strong>{{ hourText(formIzinOnay.farkli_izin_saati || 0) }} saat</strong></span>
+          </div>
+
+          <div v-if="formIzinOnay.onay_tipi === 'farkli' && !activeItem?.is_hourly" class="date-pickers-row">
             <div class="form-group-field">
               <label>BAŞLANGIÇ</label>
               <input v-model="formIzinOnay.farkli_baslangic" type="date" required class="form-input" @change="updateIzinOtoMesaj" />
@@ -913,7 +952,7 @@ async function submitSil() {
             </div>
           </div>
 
-          <div v-if="formIzinOnay.onay_tipi === 'farkli' && formIzinOnay.calculated_days > 0" class="duration-live-badge">
+          <div v-if="formIzinOnay.onay_tipi === 'farkli' && !activeItem?.is_hourly && formIzinOnay.calculated_days > 0" class="duration-live-badge">
             <CalendarClock :size="14" />
             <span>Yeni Onaylanan Süre: <strong>{{ formIzinOnay.calculated_days }} Gün</strong></span>
           </div>
@@ -1060,7 +1099,7 @@ async function submitSil() {
               </div>
               <div v-else-if="activeItem?.type === 'izin'" class="info-tile">
                 <span>İZİN SÜRESİ</span>
-                <strong>{{ activeItem?.days }} Gün</strong>
+                <strong>{{ activeItem?.duration_label || activeItem?.days + ' Gün' }}</strong>
               </div>
               <div v-else class="info-tile">
                 <span>ÖNCELİK</span>

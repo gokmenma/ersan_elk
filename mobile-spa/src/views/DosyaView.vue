@@ -55,6 +55,25 @@ const gorunenAd = (d) => {
   const son = `.${String(d.uzanti || '').toLowerCase()}`
   return !uzantiGoster.value && son.length > 1 && String(d.ad).toLowerCase().endsWith(son) ? String(d.ad).slice(0, -son.length) : d.ad
 }
+const satirDuzen = ref(null)
+const duzenlenebilir = (nesne) => Boolean(perms.value.files_edit) && (nesne.seviye || 0) >= 2
+const girdiOdakla = (el) => { if (el && document.activeElement !== el) { el.focus(); el.select() } }
+
+function duzenlemeBaslat(tur, nesne) {
+  sheet.value = null
+  const ad = tur === 'dosya' ? gorunenAd(nesne) : nesne.ad
+  satirDuzen.value = { tur, id: nesne.id, deger: ad, orijinal: ad }
+}
+
+async function duzenlemeKaydet() {
+  const s = satirDuzen.value
+  if (!s) return
+  satirDuzen.value = null
+  const ad = s.deger.trim()
+  if (!ad || ad === s.orijinal) return
+  await calistir(() => (s.tur === 'klasor' ? dosyaApi.klasorAdlandir(s.id, ad) : dosyaApi.dosyaAdlandir(s.id, ad)), 'Ad güncellendi')
+}
+
 const BOLUM_ADLARI = { dosyalarim: 'Dosyalarım', paylasilan: 'Paylaşılan', ortak: 'Ortak Alan' }
 const fileInput = ref(null)
 const yukleniyor = ref(false)
@@ -264,8 +283,7 @@ const yeniKlasor = () => adSor(baglam.value.alan === 'ortak' ? 'Yeni Ortak Klas�
 
 function adlandir() {
   const { tur, nesne } = sheet.value
-  adSor(tur === 'klasor' ? 'Klasörü Yeniden Adlandır' : 'Dosyayı Yeniden Adlandır', nesne.ad, (ad) =>
-    tur === 'klasor' ? dosyaApi.klasorAdlandir(nesne.id, ad) : dosyaApi.dosyaAdlandir(nesne.id, ad))
+  duzenlemeBaslat(tur, nesne)
 }
 
 async function sil() {
@@ -438,7 +456,12 @@ onMounted(() => { yukle(); ozetYukle() })
       <div v-if="klasorler.length" :class="gorunum === 'izgara' ? 'dosya-izgara' : 'dosya-liste'">
         <div v-for="k in klasorler" :key="k.id" class="bento-card bento-card--white dosya-klasor" :class="{ 'dosya-oge--kare': gorunum === 'izgara' }" role="button" tabindex="0" @click="klasorAc(k.id)" @keydown.enter="klasorAc(k.id)">
           <span class="dosya-ikon dosya-ikon--amber"><Folder :size="22" /></span>
-          <span class="dosya-ad">{{ k.ad }}<small>{{ k.dosya_sayisi }} dosya</small></span>
+          <span class="dosya-ad">
+            <input v-if="satirDuzen && satirDuzen.id === k.id" v-model="satirDuzen.deger" :ref="girdiOdakla" type="text" class="dosya-satir-girdi" maxlength="190" aria-label="Klasör adı" enterkeyhint="done" @click.stop @keydown.stop @keyup.enter="duzenlemeKaydet" @keyup.esc="satirDuzen = null" @blur="duzenlemeKaydet">
+            <template v-else>{{ k.ad }}</template>
+            <small>{{ k.dosya_sayisi }} dosya</small>
+          </span>
+          <button v-if="duzenlenebilir(k) && !(satirDuzen && satirDuzen.id === k.id)" type="button" class="dosya-kalem" aria-label="Klasör adını düzenle" @click.stop="duzenlemeBaslat('klasor', k)"><Pencil :size="16" /></button>
           <button v-if="menuVar(k, 'klasor')" type="button" class="dosya-menu" aria-label="Klasör işlemleri" @click.stop="menuAc('klasor', k)"><EllipsisVertical :size="18" /></button>
         </div>
       </div>
@@ -448,12 +471,14 @@ onMounted(() => { yukle(); ozetYukle() })
         <div v-for="d in dosyalar" :key="d.id" class="bento-card bento-card--white dosya-oge" :class="{ 'dosya-oge--kare': gorunum === 'izgara' }" role="button" tabindex="0" @click="dosyaAc(d)" @keydown.enter="dosyaAc(d)">
           <span class="dosya-ikon" :class="`dosya-ikon--${renk(d.uzanti)}`"><component :is="ikon(d.uzanti)" :size="22" /></span>
           <span class="dosya-ad">
-            {{ gorunenAd(d) }}
+            <input v-if="satirDuzen && satirDuzen.id === d.id" v-model="satirDuzen.deger" :ref="girdiOdakla" type="text" class="dosya-satir-girdi" maxlength="200" aria-label="Dosya adı" enterkeyhint="done" @click.stop @keydown.stop @keyup.enter="duzenlemeKaydet" @keyup.esc="satirDuzen = null" @blur="duzenlemeKaydet">
+            <template v-else>{{ gorunenAd(d) }}</template>
             <small>
               <b v-if="uzantiGoster" class="dosya-tur">{{ d.uzanti.toUpperCase() }}</b>
               {{ boyutYaz(d.boyut) }} · {{ tarihYaz(d.tarih) }}<template v-if="bolum !== 'dosyalarim' && d.yukleyen"> · {{ d.yukleyen }}</template>
             </small>
           </span>
+          <button v-if="duzenlenebilir(d) && !(satirDuzen && satirDuzen.id === d.id)" type="button" class="dosya-kalem" aria-label="Dosya adını düzenle" @click.stop="duzenlemeBaslat('dosya', d)"><Pencil :size="16" /></button>
           <button type="button" class="dosya-menu" aria-label="Dosya işlemleri" @click.stop="menuAc('dosya', d)"><EllipsisVertical :size="18" /></button>
         </div>
       </div>
@@ -632,6 +657,10 @@ onMounted(() => { yukle(); ozetYukle() })
 .dosya-ad small { display: block; margin-top: 3px; font-weight: 500; font-size: 12px; color: var(--ds-muted); }
 .dosya-tur { display: inline-block; margin-right: 6px; padding: 0 6px; border-radius: 6px; background: var(--ds-surface-subtle); font-size: 10px; letter-spacing: .04em; color: var(--ds-ink); }
 .dosya-menu { min-width: 44px; min-height: 44px; border: 0; background: transparent; color: var(--ds-muted); }
+.dosya-kalem { flex: 0 0 auto; width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--ds-surface-subtle); color: var(--ds-muted); }
+.dosya-kalem:active { background: var(--ds-line); }
+.dosya-oge--kare .dosya-kalem { position: absolute; top: 6px; right: 46px; width: 36px; height: 36px; }
+.dosya-satir-girdi { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--ds-primary); border-radius: 14px; background: var(--ds-surface-subtle); font: 600 16px var(--ds-font-main); color: var(--ds-ink); box-sizing: border-box; outline: 0; }
 
 .dosya-iskelet { height: 68px; border-radius: 28px; background: linear-gradient(90deg, #f1f5f9, #fff, #f1f5f9); background-size: 200% 100%; animation: dosya-kay 1.2s linear infinite; }
 @keyframes dosya-kay { to { background-position: -200% 0; } }

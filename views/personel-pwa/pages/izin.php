@@ -230,9 +230,34 @@
                             <label>Başlangıç Tarihi</label>
                             <input type="date" name="baslangic_tarihi" class="pwa-input" required>
                         </div>
-                        <div class="pwa-field">
+                        <div class="pwa-field" id="izin-bitis-alani">
                             <label>Bitiş Tarihi</label>
                             <input type="date" name="bitis_tarihi" class="pwa-input" required>
+                        </div>
+                    </div>
+
+                    <div id="saatlik-izin-alani" class="grid grid-cols-2 gap-3" style="display: none;">
+                        <div class="pwa-field">
+                            <label>Başlangıç Saati</label>
+                            <input type="time" name="baslangic_saati" class="pwa-input">
+                        </div>
+                        <div class="pwa-field">
+                            <label>Kaç Saat</label>
+                            <select name="izin_saati" class="pwa-input">
+                                <option value="">Seçiniz...</option>
+                                <option value="0.5">0,5 saat</option>
+                                <option value="1">1 saat</option>
+                                <option value="1.5">1,5 saat</option>
+                                <option value="2">2 saat</option>
+                                <option value="2.5">2,5 saat</option>
+                                <option value="3">3 saat</option>
+                                <option value="3.5">3,5 saat</option>
+                                <option value="4">4 saat</option>
+                                <option value="5">5 saat</option>
+                                <option value="6">6 saat</option>
+                                <option value="7">7 saat</option>
+                                <option value="8">8 saat</option>
+                            </select>
                         </div>
                     </div>
 
@@ -821,10 +846,33 @@
         return ad.includes('evlilik') || kod === 'ei';
     }
 
+    function isSaatlikIzinTuru(tur) {
+        if (!tur) return false;
+        if (tur.is_saatlik !== undefined) return Boolean(tur.is_saatlik);
+        return normalizeIzinMetni(tur.tur_adi).includes('saatlik');
+    }
+
+    function formatIzinSaati(saat) {
+        return String(Number(saat)).replace('.', ',');
+    }
+
+    function izinBitisSaati(baslangicSaati, saat) {
+        const [h, m] = String(baslangicSaati).split(':').map(Number);
+        const toplam = h * 60 + m + Math.round(Number(saat) * 60);
+        return String(Math.floor(toplam / 60) % 24).padStart(2, '0') + ':' + String(toplam % 60).padStart(2, '0');
+    }
+
+    function izinSureMetni(izin) {
+        if (izin.izin_saati !== null && izin.izin_saati !== undefined && izin.baslangic_saati) {
+            return `${izin.baslangic_saati} - ${izinBitisSaati(izin.baslangic_saati, izin.izin_saati)} · ${formatIzinSaati(izin.izin_saati)} Saat`;
+        }
+        return `${izin.toplam_gun} Gün`;
+    }
+
     function isHakEdisGerektirenIzinTuru(tur) {
         if (!tur) return false;
         // Yıllık izin talebi bakiye olmasa da onaya sunulabilir.
-        if (isYillikIzinTuru(tur) || isEvlilikIzinTuru(tur) || isBabalikIzinTuru(tur)) {
+        if (isYillikIzinTuru(tur) || isEvlilikIzinTuru(tur) || isBabalikIzinTuru(tur) || isSaatlikIzinTuru(tur)) {
             return false;
         }
         return !isMazeretIzinTuru(tur) && Number(tur.ucretli_mi) === 1;
@@ -834,6 +882,24 @@
         const hastalikUyariEl = document.getElementById('hastalik-izni-uyari');
 
         const secilenTur = izinTurleri.find(tur => String(tur.id) === String(selectedId));
+
+        const saatlikMi = isSaatlikIzinTuru(secilenTur);
+        const saatlikAlan = document.getElementById('saatlik-izin-alani');
+        const bitisAlan = document.getElementById('izin-bitis-alani');
+        const bitisInput = document.querySelector('#izin-form input[name="bitis_tarihi"]');
+        const saatInput = document.querySelector('#izin-form input[name="baslangic_saati"]');
+        const sureInput = document.querySelector('#izin-form select[name="izin_saati"]');
+        if (saatlikAlan && bitisAlan && bitisInput && saatInput && sureInput) {
+            saatlikAlan.style.display = saatlikMi ? 'grid' : 'none';
+            bitisAlan.style.display = saatlikMi ? 'none' : '';
+            bitisInput.required = !saatlikMi;
+            saatInput.required = saatlikMi;
+            sureInput.required = saatlikMi;
+            if (!saatlikMi) {
+                saatInput.value = '';
+                sureInput.value = '';
+            }
+        }
 
         // Hastalık izni bilgilendirmesi
         if (hastalikUyariEl) {
@@ -1081,7 +1147,7 @@
                 <span class="badge ${getStatusBadge(izin.durum)} flex-shrink-0">${izin.durum_text}</span>
             </div>
             <div class="izn-card__foot">
-                <span><span class="material-symbols-outlined">schedule</span>${izin.toplam_gun} Gün</span>
+                <span><span class="material-symbols-outlined">schedule</span>${izinSureMetni(izin)}</span>
                 <span><span class="material-symbols-outlined">calendar_today</span>${izin.talep_tarihi}</span>
             </div>
         </div>
@@ -1099,7 +1165,8 @@
         const gruplar = [];
 
         sirali.forEach(izin => {
-            const onceki = gruplar.find(g =>
+            const onceki = izin.izin_saati !== null && izin.izin_saati !== undefined ? null : gruplar.find(g =>
+                g.izin_saati == null &&
                 g.izin_tipi === izin.izin_tipi &&
                 g.durum === izin.durum &&
                 izinTarihiParse(izin.baslangic) - izinTarihiParse(g.bitis) <= GUN &&
@@ -1196,7 +1263,7 @@
                 </div>` : ''}
                 <div class="izd-total">
                     <span class="material-symbols-outlined">schedule</span>${talepFarkli ? 'Onaylanan Süre' : 'Toplam Süre'}
-                    <b>${esc(izin.toplam_gun)} Gün</b>
+                    <b>${esc(izinSureMetni(izin))}</b>
                 </div>
                 ${izin.aciklama ? `
                 <div>
@@ -1242,6 +1309,18 @@
 
         // Kalan izin kontrolü
         const baslangic = formData.baslangic_tarihi;
+        const secilenSaatlikTur = izinTurleri.find(tur => String(tur.id) === String(formData.izin_tipi));
+        const saatlikIzin = isSaatlikIzinTuru(secilenSaatlikTur);
+        if (saatlikIzin) {
+            formData.bitis_tarihi = baslangic;
+            if (!formData.baslangic_saati || !formData.izin_saati) {
+                Toast.show('Lütfen başlangıç saatini ve kaç saat izin alacağınızı seçiniz', 'error');
+                return;
+            }
+        } else {
+            delete formData.baslangic_saati;
+            delete formData.izin_saati;
+        }
         const bitis = formData.bitis_tarihi;
 
         if (!baslangic || !bitis) {

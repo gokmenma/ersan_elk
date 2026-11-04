@@ -94,7 +94,6 @@ $(function () {
             h += '<button type="button" class="btn btn-subtle-success table-action-btn act-rol" title="Rol Erişimi"><i class="bx bx-shield-quarter"></i></button>';
         }
         if (Y.paylas && sv >= 2) h += '<button type="button" class="btn btn-subtle-info table-action-btn act-erisim" title="Kullanıcılarla Paylaş"><i class="bx bx-user-plus"></i></button>';
-        if (Y.duzenle && sv >= 2) h += '<button type="button" class="btn btn-subtle-warning table-action-btn act-ad" title="Yeniden Adlandır"><i class="bx bx-edit"></i></button>';
         if (Y.duzenle && sv >= (tur === 'klasor' ? 3 : 2)) h += '<button type="button" class="btn btn-subtle-secondary table-action-btn act-tasi" title="Taşı"><i class="bx bx-move"></i></button>';
         if (Y.sil && sv >= 3) h += '<button type="button" class="btn btn-subtle-danger table-action-btn act-sil" title="Sil"><i class="bx bx-trash"></i></button>';
         return h + '</div>';
@@ -125,7 +124,7 @@ $(function () {
             animation: 150,
             draggable: secici,
             handle: tutamac || undefined,
-            filter: '.tg, .action-btn-group',
+            filter: '.tg, .action-btn-group, .ad-duzenle, .ad-girdi',
             preventOnFilter: false,
             ghostClass: 'surukleniyor',
             onEnd: (e) => { if (e.oldIndex !== e.newIndex) siraKaydet(kap, secici); }
@@ -158,7 +157,7 @@ $(function () {
                 const a = acik.has(k.anahtar);
                 return '<li' + (Y.duzenle && k.seviye >= 2 ? ' data-fid="' + esc(k.id) + '"' : '') + '><div class="node' + (secili === k.anahtar ? ' active' : '') + '" data-id="' + esc(k.anahtar) + '">' +
                     (alt.length ? '<span class="tg" data-tg="' + esc(k.anahtar) + '"><i class="bx bx-chevron-' + (a ? 'down' : 'right') + '"></i></span>' : '<span class="tg"></span>') +
-                    '<i class="bx ' + (secili === k.anahtar || a ? 'bxs-folder-open' : 'bxs-folder') + ' text-warning"></i><span class="ad">' + esc(k.ad) + '</span><span class="cnt">' + k.dosya_sayisi + '</span></div>' +
+                    '<i class="bx ' + (secili === k.anahtar || a ? 'bxs-folder-open' : 'bxs-folder') + ' text-warning"></i><span class="ad">' + adSar(k, 'klasor') + '</span><span class="cnt">' + k.dosya_sayisi + '</span></div>' +
                     (a ? dal(alt) : '') + '</li>';
             }).join('') + '</ul>';
         };
@@ -205,7 +204,8 @@ $(function () {
         agacCiz();
     });
 
-    $('#dosyaAgac').on('click', '.node', function () {
+    $('#dosyaAgac').on('click', '.node', function (e) {
+        if ($(e.target).closest('.ad-duzenle, .ad-girdi').length) return;
         secili = String($(this).data('id'));
         acik.add(secili);
         ustleriAc(secili);
@@ -227,11 +227,20 @@ $(function () {
         $('#dosyaKonumBilgi').text(ad);
     };
 
+    const adSar = (d, tur) => {
+        tur = tur || 'dosya';
+        const kalem = (Y.duzenle && Number(d.seviye) >= 2)
+            ? '<button type="button" class="ad-duzenle" title="Adı düzenle" aria-label="Adı düzenle" data-tur="' + tur + '" data-id="' + esc(d.id) + '" data-ad="' + esc(d.ad) + '"><i class="bx bx-pencil"></i></button>'
+            : '';
+        const gorunen = tur === 'dosya' ? gorunenAd(d.ad, d.uzanti) : d.ad;
+        return '<span class="ad-sar"><span class="ad-metin">' + esc(gorunen) + '</span>' + kalem + '</span>';
+    };
+
     const dosyaAttr = (d) => 'data-act="ac" data-id="' + esc(d.id) + '" data-ad="' + esc(d.ad) + '" data-onizle="' + esc(d.onizleme || '') + '"';
 
     const dosyaSatirHtml = (d) =>
         '<div class="dosya-row" ' + dosyaAttr(d) + '>' + ikonKutu(d.uzanti) +
-        '<span class="ad" title="' + esc(d.ad) + '">' + esc(gorunenAd(d.ad, d.uzanti)) + '<small class="tur-etiket">' + esc(String(d.uzanti).toUpperCase()) + '</small></span>' +
+        '<span class="ad" title="' + esc(d.ad) + '">' + adSar(d) + '<small class="tur-etiket">' + esc(String(d.uzanti).toUpperCase()) + '</small></span>' +
         '<span class="kol kol-boyut">' + boyutYaz(d.boyut) + '</span><span class="kol kol-kim">' + esc(d.yukleyen || '-') + '</span>' +
         '<span class="kol kol-tarih">' + tarihYaz(d.tarih) + '</span><span class="kol-act">' + aksiyonlar('dosya', d.id, d.ad, d) + '</span></div>';
 
@@ -240,18 +249,18 @@ $(function () {
 
     const klasorSatirHtml = (k) =>
         '<div class="dosya-row" data-act="klasor-ac" data-key="' + esc(k.anahtar) + '"' + fidAttr(k) + '>' + grip(k) + klasorKutu +
-        '<span class="ad">' + esc(k.ad) + '<small>Klasör</small></span><span class="kol kol-boyut">' + k.dosya_sayisi + ' dosya</span>' +
+        '<span class="ad">' + adSar(k, 'klasor') + '<small>Klasör</small></span><span class="kol kol-boyut">' + k.dosya_sayisi + ' dosya</span>' +
         '<span class="kol kol-kim"></span><span class="kol kol-tarih"></span><span class="kol-act">' + aksiyonlar('klasor', k.id, k.ad, k) + '</span></div>';
 
     const dosyaKartHtml = (d) =>
         '<div class="col-6 col-md-4 col-xl-3"><div class="dosya-tile" ' + dosyaAttr(d) + '>' +
         '<div class="d-flex justify-content-between align-items-start">' + ikonKutu(d.uzanti) + '<span class="tur-etiket badge bg-' + ikonTon(d.uzanti) + '-subtle text-' + ikonTon(d.uzanti) + ' border border-' + ikonTon(d.uzanti) + '-subtle rounded-pill font-size-11">' + esc(String(d.uzanti).toUpperCase()) + '</span></div>' +
-        '<span class="ad">' + esc(gorunenAd(d.ad, d.uzanti)) + '</span>' +
+        '<span class="ad">' + adSar(d) + '</span>' +
         '<span class="text-muted font-size-12">' + boyutYaz(d.boyut) + ' · ' + tarihYaz(d.tarih).split(' ')[0] + '</span>' + aksiyonlar('dosya', d.id, d.ad, d) + '</div></div>';
 
     const klasorKartHtml = (k) =>
         '<div class="col-6 col-md-4 col-xl-3"' + fidAttr(k) + '><div class="dosya-tile" data-act="klasor-ac" data-key="' + esc(k.anahtar) + '"><div class="d-flex justify-content-between align-items-start">' + klasorKutu + grip(k) + '</div>' +
-        '<span class="ad">' + esc(k.ad) + '</span><span class="text-muted font-size-12">' + k.dosya_sayisi + ' dosya</span>' + aksiyonlar('klasor', k.id, k.ad, k) + '</div></div>';
+        '<span class="ad">' + adSar(k, 'klasor') + '</span><span class="text-muted font-size-12">' + k.dosya_sayisi + ' dosya</span>' + aksiyonlar('klasor', k.id, k.ad, k) + '</div></div>';
 
     const BOS_MESAJ = {
         dosyalarim: 'Kişisel alanınız boş. Dosya sürükleyip bırakın ya da “Dosya Yükle” ile ekleyin.',
@@ -303,7 +312,7 @@ $(function () {
             error: function (xhr) { hata((xhr.responseJSON && xhr.responseJSON.message) || 'Liste yüklenemedi.'); }
         },
         columns: [
-            { data: 'ad', render: (v, t, r) => '<span class="d-inline-flex align-items-center gap-2">' + ikonKutu(r.uzanti) + '<span class="fw-semibold">' + esc(gorunenAd(v, r.uzanti)) + '</span></span>' },
+            { data: 'ad', render: (v, t, r) => '<span class="d-inline-flex align-items-center gap-2">' + ikonKutu(r.uzanti) + '<span class="fw-semibold">' + adSar(r) + '</span></span>' },
             { data: 'klasor_adi', render: (v) => esc(v || 'Ana Dizin') },
             { data: 'uzanti', render: (v) => '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">' + esc(String(v).toUpperCase()) + '</span>' },
             { data: 'boyut', className: 'text-end', render: (v, t) => t === 'display' ? boyutYaz(v) : v },
@@ -494,12 +503,12 @@ $(function () {
     };
 
     $(document).on('click', '#dosyaListCard [data-act="ac"] td:not(:last-child), #gorunumIcerik [data-act="ac"]', function (e) {
-        if ($(e.target).closest('.action-btn-group').length) return;
+        if ($(e.target).closest('.action-btn-group, .ad-duzenle, .ad-girdi').length) return;
         const el = $(this).closest('[data-act="ac"]');
         ac(el.data('id'), String(el.data('ad')), el.data('onizle'));
     });
     $(document).on('click', '#gorunumIcerik [data-act="klasor-ac"]', function (e) {
-        if ($(e.target).closest('.action-btn-group').length) return;
+        if ($(e.target).closest('.action-btn-group, .ad-duzenle, .ad-girdi').length) return;
         secili = String($(this).data('key'));
         acik.add(secili);
         ustleriAc(secili);
@@ -512,6 +521,41 @@ $(function () {
 
     $(document).on('click', '.act-indir', function () {
         window.location.href = INDIR + '?id=' + encodeURIComponent(aksiyon(this).data('id'));
+    });
+
+    $(document).on('click', '.ad-duzenle', function (e) {
+        e.stopPropagation();
+        const dugme = $(this);
+        const sar = dugme.closest('.ad-sar');
+        const metin = sar.find('.ad-metin');
+        if (sar.find('.ad-girdi').length) return;
+        const id = String(dugme.data('id'));
+        const tur = String(dugme.data('tur') || 'dosya');
+        const orijinal = metin.text();
+        const girdi = $('<input type="text" class="ad-girdi form-control form-control-sm" maxlength="200" autocomplete="off">').val(orijinal);
+        let bitti = false;
+        const kapat = () => { bitti = true; sar.removeClass('duzenleniyor'); girdi.remove(); metin.show(); };
+        const kaydet = () => {
+            if (bitti) return;
+            const yeni = girdi.val().trim();
+            if (!yeni || yeni === orijinal) { kapat(); return; }
+            bitti = true;
+            girdi.prop('disabled', true);
+            api(tur === 'klasor' ? 'klasor-yeniden-adlandir' : 'dosya-yeniden-adlandir', { id, ad: yeni }).then(() => { basari('Ad güncellendi'); hepsiniYenile(); }, (m) => { hata(m); kapat(); });
+        };
+        girdi.on('click', (ev) => ev.stopPropagation())
+            .on('keydown', (ev) => {
+                ev.stopPropagation();
+                if (ev.key === 'Enter') { ev.preventDefault(); kaydet(); }
+                else if (ev.key === 'Escape') { ev.preventDefault(); kapat(); }
+            })
+            .on('blur', kaydet);
+        sar.addClass('duzenleniyor');
+        metin.hide().after(girdi);
+        girdi.trigger('focus');
+        const ham = girdi[0];
+        const nokta = orijinal.lastIndexOf('.');
+        ham.setSelectionRange(0, (tur === 'dosya' && nokta > 0) ? nokta : orijinal.length);
     });
 
     $(document).on('click', '.act-ad', function () {

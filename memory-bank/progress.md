@@ -2119,3 +2119,6 @@
 - [x] Araç Takip Zimmetler sekmesi: Resimler kolonu + GLightbox galeri, geçmiş modalı genişletildi ve lazy galeriye geçirildi.
 
 - [x] Avans taleplerinde taksit bilgisi gösterimi (masaüstü + yönetici mobil)
+
+## Saatlik İzin (Personel PWA)
+- `personel_izinleri.baslangic_saati` ve `izin_saati` eklendi (sql/add_saatlik_izin_alanlari.sql). Saatlik izin: toplam_gun=0, yillik_izne_etki=0, bitiş=başlangıç; çakışma saat bazlı (PersonelIzinleriModel::countLeaveConflicts).

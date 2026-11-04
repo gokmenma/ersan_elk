@@ -300,7 +300,7 @@ try {
         // 1. Tüm personellerin izinlerini tek seferde çek
         $izin_stmt = $PersonelIzinleri->db->prepare("
             SELECT pi.personel_id, pi.id, pi.baslangic_tarihi, pi.bitis_tarihi, pi.izin_tipi_id,
-                   pi.kaynak, pi.otomatik_kural, t.tur_adi, t.kisa_kod, t.renk
+                   pi.kaynak, pi.otomatik_kural, pi.baslangic_saati, pi.izin_saati, t.tur_adi, t.kisa_kod, t.renk
             FROM personel_izinleri pi
             JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             WHERE pi.silinme_tarihi IS NULL
@@ -362,6 +362,19 @@ try {
             $mevcut_gunler = [];
 
             foreach ($izinler as $izin) {
+                if ($izin->izin_saati !== null) {
+                    $saatTarih = $izin->baslangic_tarihi;
+                    if ($saatTarih >= $startDate && $saatTarih <= $endDate) {
+                        $p_info['saatlik'][$saatTarih][] = [
+                            'id' => $izin->id,
+                            'kisa_kod' => $izin->kisa_kod,
+                            'name' => $izin->tur_adi,
+                            'baslangic_saati' => substr((string) $izin->baslangic_saati, 0, 5),
+                            'saat' => (float) $izin->izin_saati
+                        ];
+                    }
+                    continue;
+                }
                 $cur = strtotime($izin->baslangic_tarihi);
                 $end = strtotime($izin->bitis_tarihi);
                 while ($cur <= $end) {

@@ -1674,6 +1674,22 @@ use App\Service\Gate;
             align-items: center;
             gap: 1px;
         }
+        .saatlik-izin-badge {
+            position: absolute;
+            bottom: 2px;
+            left: 2px;
+            font-size: 9.5px;
+            font-weight: 750;
+            line-height: 1.1;
+            padding: 1px 4px;
+            border-radius: 4px;
+            background: #0891b2;
+            color: #ffffff;
+            box-shadow: 0 1px 3px rgba(8, 145, 178, 0.4);
+            pointer-events: none;
+            z-index: 6;
+            letter-spacing: -0.02em;
+        }
         .overtime-badge.unsaved-ot {
             background: #ea580c !important;
             box-shadow: 0 1px 4px rgba(234, 88, 12, 0.5) !important;

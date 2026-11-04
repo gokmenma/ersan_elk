@@ -195,6 +195,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 // İzin gün sayısını hesapla
                 $izin->gun_sayisi = $izinModel->hesaplaIzinGunu($izin->baslangic_tarihi, $izin->bitis_tarihi);
+                $izin->sure_metni = $izinModel->izinSureMetni($izin);
 
                 echo json_encode([
                     'status' => 'success',
@@ -394,6 +395,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $onay_tipi = $_POST['onay_tipi'] ?? 'ayni'; // 'ayni' or 'farkli'
                 $farkli_baslangic = $_POST['farkli_baslangic'] ?? null;
                 $farkli_bitis = $_POST['farkli_bitis'] ?? null;
+                $farkli_saat_bas = null;
+                $farkli_saat = null;
+
+                if ($onay_tipi === 'farkli' && isset($_POST['farkli_izin_saati']) && $_POST['farkli_izin_saati'] !== '') {
+                    $farkli_saat_bas = trim((string) ($_POST['farkli_baslangic_saati'] ?? ''));
+                    $farkli_saat = trim((string) $_POST['farkli_izin_saati']);
+                    $saatHata = $izinModel->validateSaatlikKismiOnay(intval($id), $farkli_saat_bas, $farkli_saat);
+                    if ($saatHata !== null) {
+                        throw new Exception($saatHata);
+                    }
+                    $farkli_baslangic = null;
+                    $farkli_bitis = null;
+                    if (empty($aciklama)) {
+                        $aciklama = "İzin talebiniz $farkli_saat_bas başlangıçlı " . str_replace('.', ',', $farkli_saat) . " saat olarak uygun görülmüştür.";
+                    }
+                }
 
                 if ($onay_tipi === 'farkli' && $farkli_baslangic && $farkli_bitis) {
                     // Otomatik açıklama ekle
@@ -411,7 +428,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     throw new Exception('Geçersiz izin ID.');
                 }
 
-                if ($izinModel->updateDurum($id, 'Onaylandı', $aciklama, $farkli_baslangic, $farkli_bitis)) {
+                if ($izinModel->updateDurum($id, 'Onaylandı', $aciklama, $farkli_baslangic, $farkli_bitis, $farkli_saat_bas, $farkli_saat)) {
                     if ($currentUserId > 0) {
                         $bildirimModel->markRequestNotificationAsRead($currentUserId, 'izin', $id);
                     }
