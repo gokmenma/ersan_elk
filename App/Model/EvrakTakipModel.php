@@ -544,6 +544,15 @@ class EvrakTakipModel extends Model
         }
     }
 
+    public function saveFrozenPdf(int $evrakId, string $path, string $sha256): bool
+    {
+        $stmt = $this->db->prepare("UPDATE {$this->table} SET donmus_pdf_yolu = :yol, donmus_pdf_sha256 = :sha, donmus_pdf_tarihi = NOW()
+            WHERE id = :id AND firma_id = :firma_id AND donmus_pdf_yolu IS NULL AND pades_pdf_yolu IS NULL
+              AND onay_durumu IN ('onay_bekliyor', 'onaylandi')");
+        $stmt->execute(['yol' => $path, 'sha' => $sha256, 'id' => $evrakId, 'firma_id' => $_SESSION['firma_id']]);
+        return $stmt->rowCount() === 1;
+    }
+
     public function ensureApprovalRowsForDrafts(): void
     {
         $sql = $this->db->prepare("SELECT et.id, et.imza_kullanici_ids

@@ -916,6 +916,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $id = $decryptId($_POST['id'] ?? '');
                 if ($id <= 0) throw new Exception('Geçersiz evrak ID.');
                 $approval = $Model->approveWithWetSignature($id, $currentUserId, (string) ($_SERVER['REMOTE_ADDR'] ?? ''));
+                try {
+                    (new \App\Service\EvrakPdfService())->freezePdf($id);
+                } catch (\Throwable $freezeError) {
+                    error_log('Evrak değişmez PDF sürümü oluşturulamadı (ID ' . $id . '): ' . $freezeError->getMessage());
+                }
                 $evrak = $Model->getById($id);
                 $bildirim = new EvrakOnayBildirimService();
                 if ($approval['completed']) $bildirim->onayTamamlandi($evrak);

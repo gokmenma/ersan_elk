@@ -428,6 +428,8 @@ try {
         if (!empty($evrak->pades_pdf_sha256) && !hash_equals((string) $evrak->pades_pdf_sha256, hash('sha256', $pdf))) {
             throw new RuntimeException('İmzalı PAdES PDF bütünlük kontrolünden geçemedi.');
         }
+    } elseif (($frozenPdf = (new EvrakPdfService())->readFrozenPdf($evrak)) !== null) {
+        $pdf = $frozenPdf;
     } else {
         $pdf = (new EvrakPdfService())->render($evrak);
     }

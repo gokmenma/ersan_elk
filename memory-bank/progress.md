@@ -2136,3 +2136,5 @@
 - [x] Giden faturada "Cariye İşle" butonu: fatura kaydında otomatik cariye işleme kaldırıldı, cari eşleşmesi VKN/ünvanla yapılıyor (efatura_cariler id'si cari.id sanılmıyor).
 
 - [x] Personel PWA: kolay tahmin edilir şifrede girişte zorunlu şifre değiştirme (6 haneli, ardışık olmayan, doğum tarihi içermeyen). SQL değişikliği yok.
+
+- [x] Giden evrak: ıslak imzayla onaylanan evrakın PDF'i ilk onayda şifreli/SHA-256'lı değişmez sürüm olarak saklanıyor (`donmus_pdf_*`); ayarlar/firma bilgisi değişse de PDF değişmez. PAdES/mobil imzalı evraklar zaten `pades_pdf_yolu` ile sabitti. SQL: `database/evrak_donmus_pdf.sql` uygulanmalı.

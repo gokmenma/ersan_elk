@@ -542,6 +542,50 @@ final class EvrakPdfService
      * @return string Geçici PDF dosyasının tam dosya yolu
      * @throws \Exception
      */
+    public function readFrozenPdf(object $evrak): ?string
+    {
+        if (empty($evrak->donmus_pdf_yolu)) {
+            return null;
+        }
+        $path = dirname(__DIR__, 2) . '/' . ltrim((string) $evrak->donmus_pdf_yolu, '/');
+        if (!is_file($path)) {
+            throw new \RuntimeException('Onaylanmış evrakın değişmez PDF sürümü bulunamadı.');
+        }
+        $pdf = \App\Helper\Security::decryptFile((string) file_get_contents($path));
+        if (!empty($evrak->donmus_pdf_sha256) && !hash_equals((string) $evrak->donmus_pdf_sha256, hash('sha256', $pdf))) {
+            throw new \RuntimeException('Onaylanmış evrakın PDF sürümü bütünlük kontrolünden geçemedi.');
+        }
+        return $pdf;
+    }
+
+    public function freezePdf(int $evrakId): bool
+    {
+        $model = new \App\Model\EvrakTakipModel();
+        $evrak = $model->getById($evrakId);
+        if (!$evrak || !empty($evrak->pades_pdf_yolu) || !empty($evrak->donmus_pdf_yolu)) {
+            return false;
+        }
+        $tmp = $this->generateTempPdf($evrakId, true);
+        try {
+            $pdf = (string) file_get_contents($tmp);
+        } finally {
+            @unlink($tmp);
+        }
+        if ($pdf === '') {
+            throw new \RuntimeException('Değişmez evrak PDF sürümü üretilemedi.');
+        }
+        $sha256 = hash('sha256', $pdf);
+        $relativePath = 'uploads/evrak-donmus/' . (int) $evrak->firma_id . '/evrak_' . $evrakId . '_' . $sha256 . '.pdf.enc';
+        $absolutePath = dirname(__DIR__, 2) . '/' . $relativePath;
+        if (!is_dir(dirname($absolutePath)) && !mkdir(dirname($absolutePath), 0770, true) && !is_dir(dirname($absolutePath))) {
+            throw new \RuntimeException('Değişmez evrak klasörü oluşturulamadı.');
+        }
+        if (file_put_contents($absolutePath, \App\Helper\Security::encryptFile($pdf), LOCK_EX) === false) {
+            throw new \RuntimeException('Değişmez evrak PDF sürümü yazılamadı.');
+        }
+        return $model->saveFrozenPdf($evrakId, $relativePath, $sha256);
+    }
+
     public function generateTempPdf(int $evrakId, bool $padesSigningCopy = false): string
     {
         $evrakModel = new \App\Model\EvrakTakipModel();
@@ -561,6 +605,12 @@ final class EvrakPdfService
             $tmpSigned = sys_get_temp_dir() . '/evrak_pades_' . $evrakId . '_' . bin2hex(random_bytes(6)) . '.pdf';
             file_put_contents($tmpSigned, $signedPdf, LOCK_EX);
             return $tmpSigned;
+        }
+
+        if (!$padesSigningCopy && ($frozenPdf = $this->readFrozenPdf($evrak)) !== null) {
+            $tmpFrozen = sys_get_temp_dir() . '/evrak_donmus_' . $evrakId . '_' . bin2hex(random_bytes(6)) . '.pdf';
+            file_put_contents($tmpFrozen, $frozenPdf, LOCK_EX);
+            return $tmpFrozen;
         }
 
         $firmId = (int) ($evrak->firma_id ?? ($_SESSION['firma_id'] ?? 1));

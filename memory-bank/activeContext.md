@@ -3615,3 +3615,5 @@
 - `login.php`: giriş başarılıysa şifre zayıfsa `$_SESSION['pwa_sifre_degistir_zorunlu']` set edilir, `sifre-degistir.php`'ye yönlenir, "Beni Hatırla" çerezi verilmez. `index.php` ve `api.php` bayrak varken `changePassword`/`logout` dışında her şeyi engeller. `changePassword` politikayı sunucuda doğrular, başarıda bayrağı ve remember çerezini siler.
 - SMS ile sıfırlama ve yeni personel şifresi artık politikaya uygun üretilir.
 - Bilinen sınır: önceden verilmiş `remember_token` çerezli zayıf şifreli kullanıcı, çerez süresince zorunlu ekranı atlar (düz şifre bilinmediği için kontrol edilemez).
+
+- Giden evrak değişmezliği: `EvrakPdfService::freezePdf()/readFrozenPdf()`, `EvrakTakipModel::saveFrozenPdf()`; `pdf.php` ve `generateTempPdf()` önce PAdES, sonra donmuş sürümü, en son canlı render kullanır. Eski (migration öncesi) ıslak imzalı evraklara geriye dönük dondurma yapılmadı.
