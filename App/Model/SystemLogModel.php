@@ -392,15 +392,24 @@ class SystemLogModel extends Model
     /**
      * Aktivite denetim ekranında kullanılan firma bazlı KPI ve trend verileri.
      */
-    public function getActivityDashboardData(): array
+    public function getActivityDashboardData(bool $forceRefresh = false): array
     {
         $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
+        $cacheDir = dirname(__DIR__, 2) . '/cache/activity_dashboard';
+        $cacheFile = $cacheDir . "/data_{$firmaId}_activity_dashboard.json";
+
+        if (!$forceRefresh && file_exists($cacheFile) && (time() - filemtime($cacheFile)) < 300) {
+            $cached = json_decode((string) file_get_contents($cacheFile), true);
+            if (is_array($cached) && !empty($cached)) {
+                return $cached;
+            }
+        }
 
         $summarySql = "SELECT
-                SUM(CASE WHEN DATE(created_at) = CURDATE() AND COALESCE(level, 0) <> :page_level_1 THEN 1 ELSE 0 END) AS today_operations,
-                SUM(CASE WHEN DATE(created_at) = CURDATE() AND action_type = 'Başarılı Giriş' THEN 1 ELSE 0 END) AS today_logins,
-                SUM(CASE WHEN DATE(created_at) = CURDATE() AND COALESCE(level, 0) = :critical_level THEN 1 ELSE 0 END) AS today_critical,
-                SUM(CASE WHEN DATE(created_at) = CURDATE() AND COALESCE(level, 0) = :page_level_2 THEN 1 ELSE 0 END) AS today_views,
+                SUM(CASE WHEN created_at >= CURDATE() AND COALESCE(level, 0) <> :page_level_1 THEN 1 ELSE 0 END) AS today_operations,
+                SUM(CASE WHEN created_at >= CURDATE() AND action_type = 'Başarılı Giriş' THEN 1 ELSE 0 END) AS today_logins,
+                SUM(CASE WHEN created_at >= CURDATE() AND COALESCE(level, 0) = :critical_level THEN 1 ELSE 0 END) AS today_critical,
+                SUM(CASE WHEN created_at >= CURDATE() AND COALESCE(level, 0) = :page_level_2 THEN 1 ELSE 0 END) AS today_views,
                 SUM(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND COALESCE(level, 0) = :page_level_3 THEN 1 ELSE 0 END) AS month_views,
                 SUM(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND COALESCE(level, 0) = :page_level_4 AND description LIKE '[Personel PWA]%' THEN 1 ELSE 0 END) AS month_pwa_views
             FROM {$this->table}
@@ -454,7 +463,9 @@ class SystemLogModel extends Model
         $actorNameSql = $this->systemLogActorNameSql('l', 'u');
         $pageNameSql = $this->systemLogPageNameSql('l');
         $platformSql = $this->systemLogPlatformSql('l');
-        $pageActivitySql = "SELECT
+
+        // Tek sorguda son 7 günün sayfa görüntüleme aktivitelerini çekip PHP tarafında grupluyoruz
+        $pageStmt = $this->db->prepare("SELECT
                 COALESCE(NULLIF(u.adi_soyadi, ''), {$actorNameSql}, 'Sistem') AS actor_name,
                 {$pageNameSql} AS page_name,
                 {$platformSql} AS platform_name,
@@ -463,63 +474,96 @@ class SystemLogModel extends Model
             LEFT JOIN users u ON u.id = l.user_id
             WHERE l.firma_id = :firma_id
               AND l.level = :page_level
-              AND l.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
+              AND l.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)");
+        $pageStmt->execute([':firma_id' => $firmaId, ':page_level' => self::LEVEL_PAGE_VIEW]);
+        $activities = $pageStmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $topVisitorsStmt = $this->db->prepare("SELECT actor_name, COUNT(*) AS visit_count,
-                COUNT(DISTINCT page_name) AS page_count, MAX(created_at) AS last_visit
-            FROM ({$pageActivitySql}) page_activity
-            GROUP BY actor_name
-            ORDER BY visit_count DESC, last_visit DESC
-            LIMIT 8");
-        $topVisitorsStmt->execute([':firma_id' => $firmaId, ':page_level' => self::LEVEL_PAGE_VIEW]);
-        $topVisitors = $topVisitorsStmt->fetchAll(PDO::FETCH_ASSOC);
+        $visitors = [];
+        $pages = [];
+        $platforms = [];
+        $visitorPageVisits = [];
 
-        $visitorPages = [];
-        $visitorNames = array_values(array_filter(array_column($topVisitors, 'actor_name'), 'strlen'));
-        if ($visitorNames) {
-            $placeholders = [];
-            $visitorParams = [':firma_id' => $firmaId, ':page_level' => self::LEVEL_PAGE_VIEW];
-            foreach ($visitorNames as $index => $visitorName) {
-                $key = ':actor_' . $index;
-                $placeholders[] = $key;
-                $visitorParams[$key] = $visitorName;
+        foreach ($activities as $row) {
+            $actor = (string) $row['actor_name'];
+            $page = (string) $row['page_name'];
+            $plat = (string) $row['platform_name'];
+            $date = $row['created_at'];
+
+            if (!isset($visitors[$actor])) {
+                $visitors[$actor] = ['actor_name' => $actor, 'visit_count' => 0, 'pages_set' => [], 'last_visit' => $date];
             }
-            $visitorPagesStmt = $this->db->prepare("SELECT actor_name, page_name, COUNT(*) AS visit_count
-                FROM ({$pageActivitySql}) page_activity
-                WHERE actor_name IN (" . implode(', ', $placeholders) . ")
-                GROUP BY actor_name, page_name
-                ORDER BY actor_name, visit_count DESC, page_name
-            ");
-            $visitorPagesStmt->execute($visitorParams);
-            foreach ($visitorPagesStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-                $visitorPages[(string) $row['actor_name']][] = [
-                    'name' => (string) $row['page_name'],
-                    'visits' => (int) $row['visit_count'],
-                ];
+            $visitors[$actor]['visit_count']++;
+            $visitors[$actor]['pages_set'][$page] = true;
+            if ($date > $visitors[$actor]['last_visit']) {
+                $visitors[$actor]['last_visit'] = $date;
             }
-        }
-        foreach ($topVisitors as &$visitor) {
-            $visitor['visit_count'] = (int) $visitor['visit_count'];
-            $visitor['page_count'] = (int) $visitor['page_count'];
-            $visitor['pages'] = array_slice($visitorPages[(string) $visitor['actor_name']] ?? [], 0, 5);
-        }
-        unset($visitor);
 
-        $topPagesStmt = $this->db->prepare("SELECT page_name, COUNT(*) AS visit_count,
-                COUNT(DISTINCT actor_name) AS visitor_count, MAX(created_at) AS last_visit
-            FROM ({$pageActivitySql}) page_activity
-            GROUP BY page_name
-            ORDER BY visit_count DESC, last_visit DESC
-            LIMIT 8");
-        $topPagesStmt->execute([':firma_id' => $firmaId, ':page_level' => self::LEVEL_PAGE_VIEW]);
-        $topPages = $topPagesStmt->fetchAll(PDO::FETCH_ASSOC);
+            $visitorPageVisits[$actor][$page] = ($visitorPageVisits[$actor][$page] ?? 0) + 1;
 
-        $platformStmt = $this->db->prepare("SELECT platform_name, COUNT(*) AS visit_count
-            FROM ({$pageActivitySql}) page_activity
-            GROUP BY platform_name
-            ORDER BY visit_count DESC");
-        $platformStmt->execute([':firma_id' => $firmaId, ':page_level' => self::LEVEL_PAGE_VIEW]);
-        $platforms = $platformStmt->fetchAll(PDO::FETCH_ASSOC);
+            if (!isset($pages[$page])) {
+                $pages[$page] = ['page_name' => $page, 'visit_count' => 0, 'actors_set' => [], 'last_visit' => $date];
+            }
+            $pages[$page]['visit_count']++;
+            $pages[$page]['actors_set'][$actor] = true;
+            if ($date > $pages[$page]['last_visit']) {
+                $pages[$page]['last_visit'] = $date;
+            }
+
+            $platforms[$plat] = ($platforms[$plat] ?? 0) + 1;
+        }
+
+        uasort($visitors, function ($a, $b) {
+            if ($a['visit_count'] === $b['visit_count']) {
+                return strcmp($b['last_visit'], $a['last_visit']);
+            }
+            return $b['visit_count'] <=> $a['visit_count'];
+        });
+
+        $topVisitors = [];
+        $i = 0;
+        foreach ($visitors as $actor => $v) {
+            if ($i++ >= 8) break;
+            $pList = $visitorPageVisits[$actor] ?? [];
+            arsort($pList);
+            $formattedPages = [];
+            $pCount = 0;
+            foreach ($pList as $pName => $cnt) {
+                if ($pCount++ >= 5) break;
+                $formattedPages[] = ['name' => $pName, 'visits' => (int) $cnt];
+            }
+            $topVisitors[] = [
+                'actor_name' => $v['actor_name'],
+                'visit_count' => (int) $v['visit_count'],
+                'page_count' => (int) count($v['pages_set']),
+                'last_visit' => $v['last_visit'],
+                'pages' => $formattedPages
+            ];
+        }
+
+        uasort($pages, function ($a, $b) {
+            if ($a['visit_count'] === $b['visit_count']) {
+                return strcmp($b['last_visit'], $a['last_visit']);
+            }
+            return $b['visit_count'] <=> $a['visit_count'];
+        });
+
+        $topPages = [];
+        $i = 0;
+        foreach ($pages as $page => $p) {
+            if ($i++ >= 8) break;
+            $topPages[] = [
+                'page_name' => $p['page_name'],
+                'visit_count' => (int) $p['visit_count'],
+                'visitor_count' => (int) count($p['actors_set']),
+                'last_visit' => $p['last_visit']
+            ];
+        }
+
+        arsort($platforms);
+        $platformList = [];
+        foreach ($platforms as $pName => $cnt) {
+            $platformList[] = ['platform_name' => $pName, 'visit_count' => (int) $cnt];
+        }
 
         $criticalStmt = $this->db->prepare("SELECT l.created_at,
                 COALESCE(NULLIF(u.adi_soyadi, ''), {$actorNameSql}, 'Sistem') AS actor_name,
@@ -533,15 +577,7 @@ class SystemLogModel extends Model
         $criticalStmt->execute([':firma_id' => $firmaId, ':critical_level' => self::LEVEL_CRITICAL]);
         $recentCritical = $criticalStmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $activeVisitorsStmt = $this->db->prepare("SELECT COUNT(DISTINCT actor_name) FROM ({$pageActivitySql}) page_activity");
-        $activeVisitorsStmt->execute([':firma_id' => $firmaId, ':page_level' => self::LEVEL_PAGE_VIEW]);
-        $activeVisitors = (int) $activeVisitorsStmt->fetchColumn();
-
-        $uniquePagesStmt = $this->db->prepare("SELECT COUNT(DISTINCT page_name) FROM ({$pageActivitySql}) page_activity");
-        $uniquePagesStmt->execute([':firma_id' => $firmaId, ':page_level' => self::LEVEL_PAGE_VIEW]);
-        $uniquePages = (int) $uniquePagesStmt->fetchColumn();
-
-        return [
+        $result = [
             'total' => (int) ($summary['total'] ?? 0),
             'today_operations' => (int) ($summary['today_operations'] ?? 0),
             'today_logins' => (int) ($summary['today_logins'] ?? 0),
@@ -549,14 +585,21 @@ class SystemLogModel extends Model
             'today_views' => (int) ($summary['today_views'] ?? 0),
             'month_views' => (int) ($summary['month_views'] ?? 0),
             'month_pwa_views' => (int) ($summary['month_pwa_views'] ?? 0),
-            'active_visitors' => $activeVisitors,
-            'unique_pages' => $uniquePages,
+            'active_visitors' => count($visitors),
+            'unique_pages' => count($pages),
             'top_visitors' => $topVisitors,
             'top_pages' => $topPages,
-            'platforms' => $platforms,
+            'platforms' => $platformList,
             'recent_critical' => $recentCritical,
             'trend' => $trend,
         ];
+
+        if (!is_dir($cacheDir)) {
+            @mkdir($cacheDir, 0777, true);
+        }
+        @file_put_contents($cacheFile, json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
+        return $result;
     }
 
     /**

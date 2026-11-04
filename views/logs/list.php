@@ -463,58 +463,26 @@ if (Gate::allows("log_kayitlari")) {
             const dashboardArea = document.querySelector('.audit-dashboard-area');
             const logArea = document.querySelector('.audit-log-area');
 
-            function setAuditView(view) {
-                document.querySelectorAll('[data-audit-view]').forEach(function (button) {
-                    button.classList.toggle('active', button.dataset.auditView === view);
-                });
-                dashboardArea.classList.toggle('active', view === 'dashboard');
-                logArea.classList.toggle('active', view === 'logs');
-                if (view === 'logs' && $.fn.DataTable) {
-                    setTimeout(function () { $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust(); }, 50);
+            let unifiedTable = null;
+
+            function ensureUnifiedTable() {
+                if (unifiedTable) {
+                    return unifiedTable;
                 }
-            }
+                if (!$.fn.DataTable) {
+                    return null;
+                }
 
-            document.querySelectorAll('[data-audit-view]').forEach(function (button) {
-                button.addEventListener('click', function () { setAuditView(button.dataset.auditView); });
-            });
+                const dtOptions = {
+                    language: $.extend(true, {}, DT_LANG_TR),
+                    pageLength: 25,
+                    ordering: true,
+                    searchDelay: 400
+                };
 
-            document.querySelectorAll('.audit-filter').forEach(function (button) {
-                button.addEventListener('click', function () {
-                    document.querySelectorAll('.audit-filter').forEach(function (item) { item.classList.remove('active'); });
-                    button.classList.add('active');
-                    setAuditView('logs');
-                    if ($.fn.DataTable.isDataTable('#unifiedLogsTable')) {
-                        $('#unifiedLogsTable').DataTable().ajax.reload();
-                    }
-                });
-            });
-
-            if (typeof ApexCharts !== 'undefined') {
-                new ApexCharts(document.querySelector('#activityTrendChart'), {
-                    chart: { type: 'area', height: 330, toolbar: { show: false }, fontFamily: 'inherit' },
-                    series: [
-                        { name: 'Kullanıcı İşlemleri', data: dashboardData.operations },
-                        { name: 'Sayfa Görüntülemeleri', data: dashboardData.views },
-                        { name: 'Girişler', data: dashboardData.logins }
-                    ],
-                    colors: ['#3b82f6', '#94a3b8', '#10b981'],
-                    dataLabels: { enabled: false }, stroke: { curve: 'smooth', width: 2 },
-                    fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: .22, opacityTo: .02, stops: [0, 95] } },
-                    xaxis: { categories: dashboardData.labels, axisBorder: { show: false }, axisTicks: { show: false } },
-                    yaxis: { min: 0, forceNiceScale: true }, grid: { borderColor: '#e9eef5', strokeDashArray: 4 },
-                    legend: { position: 'top', horizontalAlign: 'right' }, tooltip: { shared: true, intersect: false }
-                }).render();
-            }
-
-            // Setup DataTables parameters
-            const dtOptions = {
-                language: $.extend(true, {}, DT_LANG_TR),
-                pageLength: 25,
-                ordering: true
-            };
-
-            if ($.fn.DataTable) {
-                const unifiedTable = $('#unifiedLogsTable').DataTable(applyLengthStateSave({ ...getDatatableOptions(), ...dtOptions,
+                unifiedTable = $('#unifiedLogsTable').DataTable(applyLengthStateSave({
+                    ...getDatatableOptions(),
+                    ...dtOptions,
                     processing: true,
                     serverSide: true,
                     autoWidth: false,
@@ -538,23 +506,77 @@ if (Gate::allows("log_kayitlari")) {
                     order: [[0, 'desc']]
                 }));
 
-                $('.log-scope').on('click', function () {
-                    $('.log-scope').removeClass('btn-primary').addClass('btn-outline-secondary').attr('aria-pressed', 'false');
-                    $(this).removeClass('btn-outline-secondary').addClass('btn-primary').attr('aria-pressed', 'true');
-                    const descriptions = { '7': 'Arşivlenmemiş son 7 günlük kayıtlar gösterilir.', '30': 'Arşivlenmemiş son 30 günlük kayıtlar gösterilir.', '90': 'Arşivlenmemiş son 90 günlük kayıtlar gösterilir.', all: 'Aktif ve arşivlenmiş tüm kayıtlar gösterilir.', archive: 'Yalnızca arşivlenmiş kayıtlar gösterilir.' };
-                    $('#logScopeDescription').text(descriptions[this.dataset.scope]);
-                    setAuditView('logs');
-                    unifiedTable.ajax.reload();
-                });
+                return unifiedTable;
+            }
 
-                $('#resetActivityFilters').on('click', function () {
-                    localStorage.removeItem('dt_adv_filters_unifiedLogsTable');
+            function setAuditView(view) {
+                document.querySelectorAll('[data-audit-view]').forEach(function (button) {
+                    button.classList.toggle('active', button.dataset.auditView === view);
+                });
+                dashboardArea.classList.toggle('active', view === 'dashboard');
+                logArea.classList.toggle('active', view === 'logs');
+                if (view === 'logs') {
+                    ensureUnifiedTable();
+                    if ($.fn.DataTable) {
+                        setTimeout(function () { $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust(); }, 50);
+                    }
+                }
+            }
+
+            document.querySelectorAll('[data-audit-view]').forEach(function (button) {
+                button.addEventListener('click', function () { setAuditView(button.dataset.auditView); });
+            });
+
+            document.querySelectorAll('.audit-filter').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    document.querySelectorAll('.audit-filter').forEach(function (item) { item.classList.remove('active'); });
+                    button.classList.add('active');
+                    ensureUnifiedTable();
+                    setAuditView('logs');
+                    if (unifiedTable) {
+                        unifiedTable.ajax.reload();
+                    }
+                });
+            });
+
+            if (typeof ApexCharts !== 'undefined') {
+                new ApexCharts(document.querySelector('#activityTrendChart'), {
+                    chart: { type: 'area', height: 330, toolbar: { show: false }, fontFamily: 'inherit' },
+                    series: [
+                        { name: 'Kullanıcı İşlemleri', data: dashboardData.operations },
+                        { name: 'Sayfa Görüntülemeleri', data: dashboardData.views },
+                        { name: 'Girişler', data: dashboardData.logins }
+                    ],
+                    colors: ['#3b82f6', '#94a3b8', '#10b981'],
+                    dataLabels: { enabled: false }, stroke: { curve: 'smooth', width: 2 },
+                    fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: .22, opacityTo: .02, stops: [0, 95] } },
+                    xaxis: { categories: dashboardData.labels, axisBorder: { show: false }, axisTicks: { show: false } },
+                    yaxis: { min: 0, forceNiceScale: true }, grid: { borderColor: '#e9eef5', strokeDashArray: 4 },
+                    legend: { position: 'top', horizontalAlign: 'right' }, tooltip: { shared: true, intersect: false }
+                }).render();
+            }
+
+            $('.log-scope').on('click', function () {
+                $('.log-scope').removeClass('btn-primary').addClass('btn-outline-secondary').attr('aria-pressed', 'false');
+                $(this).removeClass('btn-outline-secondary').addClass('btn-primary').attr('aria-pressed', 'true');
+                const descriptions = { '7': 'Arşivlenmemiş son 7 günlük kayıtlar gösterilir.', '30': 'Arşivlenmemiş son 30 günlük kayıtlar gösterilir.', '90': 'Arşivlenmemiş son 90 günlük kayıtlar gösterilir.', all: 'Aktif ve arşivlenmiş tüm kayıtlar gösterilir.', archive: 'Yalnızca arşivlenmiş kayıtlar gösterilir.' };
+                $('#logScopeDescription').text(descriptions[this.dataset.scope]);
+                ensureUnifiedTable();
+                setAuditView('logs');
+                if (unifiedTable) {
+                    unifiedTable.ajax.reload();
+                }
+            });
+
+            $('#resetActivityFilters').on('click', function () {
+                localStorage.removeItem('dt_adv_filters_unifiedLogsTable');
+                if (unifiedTable) {
                     unifiedTable.search('');
                     unifiedTable.columns().search('');
                     unifiedTable.ajax.reload();
-                    window.location.reload();
-                });
-            }
+                }
+                window.location.reload();
+            });
 
             // Log Detay Modal JS logic
             $('body').on('click', '.btn-log-detay', function () {

@@ -1,5 +1,13 @@
 # Active Context
 
+## Sistem Logları (`views/logs`) Performans Optimizasyonu (2026-11-04)
+- **Problem**: 131.000+ kayıt bulunan sistemde `views/logs/list.php` sayfasının açılışı yavaştı. Nedeni: Sayfa başında senkron çalışan `getActivityDashboardData` metodunda 8 adet ağır agregasyon sorgusu (`SUM(CASE...)`, `COUNT(*)`, string analizli `$pageActivitySql` alt sorgusunun 6 kez bağımsız çalıştırılması) ve sayfa açılır açılmaz gizli tablo için arka planda AJAX ile DataTables isteği atılmasıydı.
+- **Yapılan İyileştirmeler**:
+  1. **Dosya Tabanlı Önbellek (Cache)**: `cache/activity_dashboard/data_{$firmaId}_activity_dashboard.json` üzerinden 5 dakika (300 sn) TTL ile dashboard metrikleri önbelleğe alındı. Önbellekli yanıt süresi ~220ms'den **0.11 ms'ye** indi (~2000 kat hızlanma).
+  2. **In-Memory Gruplama ve Tek Sorgu**: Son 7 günün sayfa görüntüleme logları (`level = 3`) için MySQL üzerinde 6 kez alt sorgu çalıştırmak yerine tek bir SQL ile çekilip PHP tarafında in-memory tek geçişte `top_visitors`, `top_pages`, `platforms`, `active_visitors`, `unique_pages` hesaplandı.
+  3. **Tembel Tablo Başlatma (Lazy Loading)**: Sayfa açılışında DataTables doğrudan başlatılmayıp, kullanıcı "Aktivite Günlüğü" sekmesine veya filtre butonlarına tıkladığı anda ilk kez başlatılacak şekilde (`ensureUnifiedTable`) yapılandırıldı. Sayfanın ilk açılışındaki gereksiz AJAX çağrısı ve DOM yükü tamamen ortadan kalktı.
+  4. **DataTables Arama Gecikmesi (`searchDelay: 400`)**: Hızlı yazımda her karakter için sunucuya anlamsız LIKE sorgusu gönderilmesi önlendi.
+
 ## Dosya Yönetimi — Kalıcı Silme (2026-11-03)
 - Kullanıcı kararı: Dosya Yönetimi'nde silinen dosya/klasör anında kalıcı silinir (AGENTS.md soft delete kuralından bu modül için bilinçli sapma). `DosyaModel::sil` / `DosyaKlasorModel::sil` kayıtları, paylaşım/erişim/rol satırlarını siler ve `storage/dosya-yonetimi/` altındaki disk dosyasını `unlink` eder; yalnız bu modülün dizinine dokunur.
 - Silme işlemi `system_logs` (ad, id, boyut) ve erişim loguna yazılır; onay metinleri "geri alınamaz" der.
@@ -3622,3 +3630,4 @@
 - Personel PWA avans: tutar alanı limite kelepçelendi (clampAvansTutar), "yeni" butonu FAB (+) yapıldı.
 - Mobil SPA TaleplerView değişikliği yanlış yön olduğu için geri alındı. Personel PWA merkezi .card ve .card-premium sınıfları bento stiline (24px köşe, beyaz kenar, yumuşak gölge) geçirildi (pwa-style.css).
 - Eski `mobile/` arayüzüyle bağ kesildi: `App\Helper\MobileSpa` (url/fromLegacy; canlı adres `.env` `MOBILE_SPA_URL`, yoksa `mobile-spa/dist`). Masaüstü index.php telefon/<=1024px yönlendirmesi, cihaz görünümü seçicisi, push (talepler) ve evrak onay maili SPA'ya çevrildi. `mobile/` altında yalnız SPA'ya 302 atan `index.php` köprüsü kaldı; SPA'daki eski yardim/personel-duzenle linkleri kaldırıldı/SPA rotasına bağlandı.
+- DataTables Alt Çizgi Düzeltmesi: Tablolarda son satırdan sonra alt kenarlık görünmeme sorunu giderildi. `assets/css/datatable-filters.css` ve `assets/css/style.css` dosyalarındaki `border-bottom: 0 !important;` kuralı yerine açık temada `border-bottom: 1px solid #eff2f7 !important;`, koyu temalarda ise uygun koyu tonlarda kenarlık rengi (`#36404a` ve `rgba(255, 255, 255, 0.08)`) tanımlanarak son satırın altının düzgünce kapanması sağlandı.

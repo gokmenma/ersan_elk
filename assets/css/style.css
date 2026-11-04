@@ -4939,8 +4939,9 @@ table.dataTable,
   border-right: 0 !important;
 }
 
-.table-bordered > tbody > tr:last-child > * {
-  border-bottom: 0 !important;
+.table-bordered > tbody > tr:last-child > *,
+table.dataTable > tbody > tr:last-child > * {
+  border-bottom: 1px solid #eff2f7 !important;
 }
 
 /* First row - top corners */

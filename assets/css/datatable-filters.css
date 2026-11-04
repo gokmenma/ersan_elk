@@ -456,11 +456,13 @@ html[data-theme-preset="macos-dark"]
   border-right: 0 !important;
 }
 
-/* En alt satırdaki hücrelerin alt kenarlığını kaldır (dış kabuk sınır çizer) */
+/* Tablo son satır alt kenarlık standardı (tabloyu alttan düzgünce kapatır) */
 .datatable-premium-shell table.dataTable > tbody > tr:last-child > *,
 .table-responsive:has(> table.dataTable) table.dataTable > tbody > tr:last-child > *,
-.dataTables_wrapper > .table-responsive table.dataTable > tbody > tr:last-child > * {
-  border-bottom: 0 !important;
+.dataTables_wrapper > .table-responsive table.dataTable > tbody > tr:last-child > *,
+table.dataTable > tbody > tr:last-child > *,
+.table-bordered > tbody > tr:last-child > * {
+  border-bottom: 1px solid #eff2f7 !important;
 }
 
 .datatable-premium-shell .dataTables_scroll,
@@ -1023,6 +1025,17 @@ html[data-theme-preset="macos-dark"] .dataTables_wrapper > .table-responsive tab
   color: rgba(232, 233, 236, 0.85) !important;
   --bs-table-bg: var(--datatable-dark-surface, var(--bs-sidebar-bg, #1c2228)) !important;
   --bs-table-color: rgba(232, 233, 236, 0.85) !important;
+}
+
+[data-bs-theme="dark"] table.dataTable > tbody > tr:last-child > *,
+[data-bs-theme="dark"] .table-bordered > tbody > tr:last-child > *,
+[data-bs-theme="dark"] .datatable-premium-shell table.dataTable > tbody > tr:last-child > *,
+[data-theme-mode="dark"] table.dataTable > tbody > tr:last-child > *,
+body[data-layout-mode="dark"] table.dataTable > tbody > tr:last-child > *,
+html[data-theme-preset="macos-dark"] table.dataTable > tbody > tr:last-child > *,
+html[data-theme-preset="macos-dark"] .table-bordered > tbody > tr:last-child > *,
+[data-theme-preset="macos-dark"] table.dataTable > tbody > tr:last-child > * {
+  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 [data-bs-theme="dark"] table.dataTable tbody tr:hover td,

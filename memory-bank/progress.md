@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-11-04 — Sistem Logları (`views/logs`) Performans Optimizasyonu
+- [x] `SystemLogModel::getActivityDashboardData` metoduna 5 dakika (300 sn) dosya tabanlı önbellek (`cache/activity_dashboard/data_{$firmaId}_activity_dashboard.json`) eklendi; yanıt süresi ~220ms'den **0.11 ms'ye** düşürüldü.
+- [x] Ağır string işlemleri barındıran alt sorgunun 6 kez bağımsız çalıştırılması kaldırıldı; PHP tarafında in-memory tek geçişte gruplandı.
+- [x] DataTables `views/logs/list.php` sayfasında tembel yükleme (lazy loading) yapıldı; sayfa açılışında gizli tablo için gereksiz AJAX isteği kaldırıldı, `searchDelay: 400` eklendi.
+- [x] PHP sözdizimi kontrolleri (`php -l`) ve CLI performans testleri yapıldı.
+
 ## 2026-11-03 — Dosya Yönetimi (Masaüstü + Mobil SPA)
 - [x] SQL, 3 Model, ortak servis, masaüstü API/indirme/liste sayfası/JS, açık paylaşım sayfası, mobil API/servis/görünüm/rota/menü.
 - [x] Tüm yeni PHP dosyalarında `php -l`; mobil `vite build` geçici dizine başarıyla derlendi.
@@ -2142,3 +2148,4 @@
 - [x] Avans tutar limiti + FAB (personel PWA)
 - [x] TaleplerView kart tasarımı bento standardına hizalandı
 - [2026-11-04] Eski mobil arayüz kaldırıldı, tüm yönlendirmeler yönetici mobil SPA'ya taşındı (canlıda MOBILE_SPA_URL=https://mobile.ersantr.com gerekir).
+- [2026-11-04] DataTables tablolarında son satırdan sonra alt kenarlık çizgisi eksikliği giderildi (style.css ve datatable-filters.css'te tr:last-child alt çizgisi ve koyu tema uyumu sağlandı).

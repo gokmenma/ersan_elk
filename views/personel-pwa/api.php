@@ -2562,16 +2562,6 @@ try {
                 UNIQUE KEY unique_personel_mesaj (personel_id, mesaj_log_id)
             )");
 
-            // İlişkili user hesabı varsa bul
-            $associatedUserId = (int) ($_SESSION['user_id'] ?? 0);
-            if ($associatedUserId <= 0 && (!empty($personelAdi) || !empty($personelEmail))) {
-                $userStmt = $db->prepare("SELECT id FROM users WHERE (adi_soyadi = :adi AND adi_soyadi != '') OR (email_adresi = :email AND email_adresi != '') LIMIT 1");
-                $userStmt->execute([':adi' => $personelAdi, ':email' => $personelEmail]);
-                $uRow = $userStmt->fetch(PDO::FETCH_OBJ);
-                if ($uRow) {
-                    $associatedUserId = (int) $uRow->id;
-                }
-            }
 
             // Helper function for time ago
             $getTimeAgo = function($datetime) {
@@ -2610,7 +2600,6 @@ try {
                     WHERE m.type = 'push' 
                     AND (
                         m.recipients LIKE :rec_personel_id
-                        OR (:rec_user_id != '' AND m.recipients LIKE :rec_user_id)
                         OR (:personel_adi != '' AND m.recipients LIKE :rec_personel_adi)
                         OR m.recipients LIKE '%Tüm Aboneler%'
                         OR m.recipients LIKE '%Tüm Personel%'
@@ -2627,10 +2616,9 @@ try {
             $stmt = $db->prepare($sql);
             $stmt->execute([
                 ':personel_id' => $personel_id,
-                ':rec_personel_id' => '%personel:' . $personel_id . '%',
-                ':rec_user_id' => $associatedUserId > 0 ? ('%user:' . $associatedUserId . '%') : '',
+                ':rec_personel_id' => '%"personel:' . $personel_id . '"%',
                 ':personel_adi' => !empty($personelAdi) ? $personelAdi : '',
-                ':rec_personel_adi' => !empty($personelAdi) ? ('%' . $personelAdi . '%') : ''
+                ':rec_personel_adi' => !empty($personelAdi) ? ('%"' . addcslashes(trim(json_encode($personelAdi, JSON_UNESCAPED_UNICODE), '"'), '%_\\') . '"%') : ''
             ]);
             $notifications = $stmt->fetchAll(PDO::FETCH_OBJ);
 
@@ -2770,22 +2758,12 @@ try {
             $personelEmail = trim($personelData->email_adresi ?? '');
             $db = $PersonelModel->getDb();
 
-            $associatedUserId = (int) ($_SESSION['user_id'] ?? 0);
-            if ($associatedUserId <= 0 && (!empty($personelAdi) || !empty($personelEmail))) {
-                $userStmt = $db->prepare("SELECT id FROM users WHERE (adi_soyadi = :adi AND adi_soyadi != '') OR (email_adresi = :email AND email_adresi != '') LIMIT 1");
-                $userStmt->execute([':adi' => $personelAdi, ':email' => $personelEmail]);
-                $uRow = $userStmt->fetch(PDO::FETCH_OBJ);
-                if ($uRow) {
-                    $associatedUserId = (int) $uRow->id;
-                }
-            }
 
             // Personele ait tüm bildirimleri bul
             $sql = "SELECT id FROM mesaj_log 
                     WHERE type = 'push' 
                     AND (
                         recipients LIKE :rec_personel_id
-                        OR (:rec_user_id != '' AND recipients LIKE :rec_user_id)
                         OR (:personel_adi != '' AND recipients LIKE :rec_personel_adi)
                         OR recipients LIKE '%Tüm Aboneler%'
                         OR recipients LIKE '%Tüm Personel%'
@@ -2798,10 +2776,9 @@ try {
 
             $stmt = $db->prepare($sql);
             $stmt->execute([
-                ':rec_personel_id' => '%personel:' . $personel_id . '%',
-                ':rec_user_id' => $associatedUserId > 0 ? ('%user:' . $associatedUserId . '%') : '',
+                ':rec_personel_id' => '%"personel:' . $personel_id . '"%',
                 ':personel_adi' => !empty($personelAdi) ? $personelAdi : '',
-                ':rec_personel_adi' => !empty($personelAdi) ? ('%' . $personelAdi . '%') : ''
+                ':rec_personel_adi' => !empty($personelAdi) ? ('%"' . addcslashes(trim(json_encode($personelAdi, JSON_UNESCAPED_UNICODE), '"'), '%_\\') . '"%') : ''
             ]);
             $notifications = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
@@ -2870,21 +2847,11 @@ try {
             $personelEmail = trim($personelData->email_adresi ?? '');
             $db = $PersonelModel->getDb();
 
-            $associatedUserId = (int) ($_SESSION['user_id'] ?? 0);
-            if ($associatedUserId <= 0 && (!empty($personelAdi) || !empty($personelEmail))) {
-                $userStmt = $db->prepare("SELECT id FROM users WHERE (adi_soyadi = :adi AND adi_soyadi != '') OR (email_adresi = :email AND email_adresi != '') LIMIT 1");
-                $userStmt->execute([':adi' => $personelAdi, ':email' => $personelEmail]);
-                $uRow = $userStmt->fetch(PDO::FETCH_OBJ);
-                if ($uRow) {
-                    $associatedUserId = (int) $uRow->id;
-                }
-            }
 
             $sql = "SELECT id FROM mesaj_log 
                     WHERE type = 'push' 
                     AND (
                         recipients LIKE :rec_personel_id
-                        OR (:rec_user_id != '' AND recipients LIKE :rec_user_id)
                         OR (:personel_adi != '' AND recipients LIKE :rec_personel_adi)
                         OR recipients LIKE '%Tüm Aboneler%'
                         OR recipients LIKE '%Tüm Personel%'
@@ -2897,10 +2864,9 @@ try {
 
             $stmt = $db->prepare($sql);
             $stmt->execute([
-                ':rec_personel_id' => '%personel:' . $personel_id . '%',
-                ':rec_user_id' => $associatedUserId > 0 ? ('%user:' . $associatedUserId . '%') : '',
+                ':rec_personel_id' => '%"personel:' . $personel_id . '"%',
                 ':personel_adi' => !empty($personelAdi) ? $personelAdi : '',
-                ':rec_personel_adi' => !empty($personelAdi) ? ('%' . $personelAdi . '%') : ''
+                ':rec_personel_adi' => !empty($personelAdi) ? ('%"' . addcslashes(trim(json_encode($personelAdi, JSON_UNESCAPED_UNICODE), '"'), '%_\\') . '"%') : ''
             ]);
             $notifications = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
