@@ -3609,3 +3609,9 @@
 ## Giden Fatura "Cariye İşle" Pasif Butonu
 - Kök neden: `faturalar.cari_id` e-fatura alıcı kaydının (`efatura_cariler.id`) id'sini tutuyor; `syncFaturaHareketi` bunu `cari.id` sanıp hareketi yanlış cariye yazıyor, `createInvoice` de kayıt anında otomatik çağırdığı için fatura "işlenmiş" görünüp buton pasif geliyordu.
 - Çözüm: `cari` (firma sahibinin cari takibi) ile `efatura_cariler` ayrı kalır. `syncFaturaHareketi`, `checkSameDateAmount` ve `check_invoice_cari` cariyi yalnız `CariModel::findMatchingCari(vkn, ünvan)` ile bulur; `faturalar.cari_id` artık güncellenmez. `createInvoice` otomatik cariye işlemeyi yapmaz (yalnız `sync_to_cari` ile). Eski faturalara cari_id ataması yapılmadı; şema değişikliği yok.
+
+## Personel PWA Zayıf Şifre Zorunlu Değiştirme
+- `App\Helper\PwaSifrePolitikasi`: 6 haneli rakam, ardışık (123/321), aynı rakam, tekrar kalıbı ve doğum tarihi türevleri zayıf sayılır; `uret()` güçlü rastgele şifre üretir.
+- `login.php`: giriş başarılıysa şifre zayıfsa `$_SESSION['pwa_sifre_degistir_zorunlu']` set edilir, `sifre-degistir.php`'ye yönlenir, "Beni Hatırla" çerezi verilmez. `index.php` ve `api.php` bayrak varken `changePassword`/`logout` dışında her şeyi engeller. `changePassword` politikayı sunucuda doğrular, başarıda bayrağı ve remember çerezini siler.
+- SMS ile sıfırlama ve yeni personel şifresi artık politikaya uygun üretilir.
+- Bilinen sınır: önceden verilmiş `remember_token` çerezli zayıf şifreli kullanıcı, çerez süresince zorunlu ekranı atlar (düz şifre bilinmediği için kontrol edilemez).

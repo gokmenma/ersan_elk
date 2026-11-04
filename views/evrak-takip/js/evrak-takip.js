@@ -1127,6 +1127,14 @@ $(document).ready(function () {
     });
   }
 
+  document.addEventListener("click", function (event) {
+    const toggle = event.target.closest ? event.target.closest(".dropdown-toggle") : null;
+    if (!toggle || !toggle.nextElementSibling || !toggle.nextElementSibling.classList.contains("evrak-dosya-menu")) return;
+    bootstrap.Dropdown.getOrCreateInstance(toggle, {
+      popperConfig: function (defaultConfig) { return Object.assign({}, defaultConfig, { strategy: "fixed" }); }
+    });
+  }, true);
+
   $(document).on("click", ".evrak-pdf-goruntule", function () {
     showPdfFromRequest({ type: "GET", data: { id: $(this).data("id") } }, false);
   });

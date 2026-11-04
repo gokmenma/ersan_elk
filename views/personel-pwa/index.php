@@ -103,6 +103,11 @@ if (!$personel || $isPassive) {
     exit();
 }
 
+if (!empty($_SESSION['pwa_sifre_degistir_zorunlu'])) {
+    header('Location: sifre-degistir.php');
+    exit();
+}
+
 // Uzun süreli oturumlarda periyodik loglama (4 saatte bir)
 // Kullanıcı aktif olduğu sürece "Giriş" logu atarak takip edilebilirliği artırıyoruz.
 $lastLogTime = $_SESSION['last_pwa_login_log_time'] ?? 0;

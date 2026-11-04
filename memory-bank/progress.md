@@ -2134,3 +2134,5 @@
 - [x] Hakediş e-fatura taslağında alıcı bilgileri seçilen cariden alınıyor (sabit VKN ve LIKE eşleşmesi kaldırıldı). SQL scripti uygulanmalı.
 
 - [x] Giden faturada "Cariye İşle" butonu: fatura kaydında otomatik cariye işleme kaldırıldı, cari eşleşmesi VKN/ünvanla yapılıyor (efatura_cariler id'si cari.id sanılmıyor).
+
+- [x] Personel PWA: kolay tahmin edilir şifrede girişte zorunlu şifre değiştirme (6 haneli, ardışık olmayan, doğum tarihi içermeyen). SQL değişikliği yok.

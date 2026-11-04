@@ -275,6 +275,20 @@ body[data-sidebar-size="sm"] #sidebar-menu .star-btn {
     box-sizing: border-box !important;
 }
 
+@keyframes pageContentEnter {
+    from { opacity: 0; transform: scale(.97); }
+    to { opacity: 1; transform: none; }
+}
+
+.main-content .page-content {
+    transform-origin: center center;
+    animation: pageContentEnter .4s cubic-bezier(.22, .61, .36, 1) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .main-content .page-content { animation: none; }
+}
+
 body:has(#quick-favorites-bar) .main-content .page-content {
     padding-top: 116px !important;
 }

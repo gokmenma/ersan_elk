@@ -35,6 +35,7 @@ use App\Model\EkipTakibiModel;
 use App\Service\PushNotificationService;
 use App\Service\Gate;
 use App\Helper\Security;
+use App\Helper\PwaSifrePolitikasi;
 use App\Service\ImageUploadService;
 
 // Oturum kontrolü (logout hariç)
@@ -71,6 +72,10 @@ if ($personel_id > 0) {
         session_destroy();
         $msg = $isPassive ? 'Hesabınız pasif durumdadır.' : 'Oturum süresi doldu';
         echo json_encode(['success' => false, 'error' => $msg, 'redirect' => 'login.php']);
+        exit;
+    }
+    if (!empty($_SESSION['pwa_sifre_degistir_zorunlu']) && !in_array($action, ['changePassword', 'logout', 'login'], true)) {
+        echo json_encode(['success' => false, 'message' => 'Devam etmeden önce şifrenizi değiştirmelisiniz.', 'redirect' => 'sifre-degistir.php'], JSON_UNESCAPED_UNICODE);
         exit;
     }
     // Firma ID'yi oturuma ekleyelim (Model'ler için gerekli)
@@ -2351,14 +2356,19 @@ try {
                 response(false, null, 'Lütfen tüm alanları doldurun.');
             }
 
-            if (strlen($new) < 6) {
-                response(false, null, 'Yeni şifre en az 6 karakter olmalıdır.');
+            $ihlal = PwaSifrePolitikasi::ihlalNedeni((string) $new, $personel->dogum_tarihi ?? null);
+            if ($ihlal !== null) {
+                response(false, null, $ihlal);
+            }
+
+            if ($new === $current) {
+                response(false, null, 'Yeni şifre mevcut şifrenizle aynı olamaz.');
             }
 
             // Personeli bul
             $PersonelModel = new PersonelModel();
             $db = $PersonelModel->getDb();
-            $stmt = $db->prepare("SELECT id, sifre FROM personel WHERE id = :id LIMIT 1");
+            $stmt = $db->prepare("SELECT id, sifre, dogum_tarihi FROM personel WHERE id = :id LIMIT 1");
             $stmt->execute(['id' => $personel_id]);
             $personel = $stmt->fetch(PDO::FETCH_OBJ);
 
@@ -2384,6 +2394,8 @@ try {
             ]);
 
             if ($result) {
+                unset($_SESSION['pwa_sifre_degistir_zorunlu']);
+                setcookie('remember_token', '', ['expires' => time() - 3600, 'path' => '/', 'secure' => true, 'httponly' => true, 'samesite' => 'Lax']);
                 response(true, null, 'Şifreniz başarıyla değiştirildi.');
             } else {
                 response(false, null, 'Şifre değiştirilirken bir hata oluştu.');

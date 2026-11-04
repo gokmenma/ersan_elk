@@ -19,11 +19,15 @@ use App\Model\PersonelModel;
 use App\Model\SettingsModel;
 use App\Model\MesajLogModel;
 use App\Model\PersonelGirisLogModel;
+use App\Helper\PwaSifrePolitikasi;
 
 function pwaGirisSonrasiAdres(): string
 {
     $token = $_SESSION['bordro_yayin_donus'] ?? null;
     unset($_SESSION['bordro_yayin_donus']);
+    if (!empty($_SESSION['pwa_sifre_degistir_zorunlu'])) {
+        return 'sifre-degistir.php';
+    }
     return is_string($token) && strlen($token) <= 2048
         ? 'index.php?page=bordro&dokum=' . rawurlencode($token) : 'index.php';
 }
@@ -78,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         if ($personel) {
             // Yeni şifre oluştur
-            $newPass = rand(100000, 999999);
+            $newPass = PwaSifrePolitikasi::uret();
             $newHash = password_hash($newPass, PASSWORD_DEFAULT);
 
             // DB güncelle
@@ -209,6 +213,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $error = 'Bu hesap için henüz şifre belirlenmemiş. Lütfen yöneticinizle iletişime geçin.';
                 } elseif (password_verify($password, $dbPassword)) {
                     unset($_SESSION[$pwaAttemptsKey], $_SESSION[$pwaLockKey]);
+                    session_regenerate_id(true);
+                    $sifreZayif = PwaSifrePolitikasi::zayifMi((string) $password, $personel->dogum_tarihi ?? null);
+                    if ($sifreZayif) {
+                        $_SESSION['pwa_sifre_degistir_zorunlu'] = true;
+                    } else {
+                        unset($_SESSION['pwa_sifre_degistir_zorunlu']);
+                    }
                     $_SESSION['personel_id'] = $personel->id;
                     $_SESSION['personel_tc'] = $personel->tc_kimlik_no;
                     $_SESSION['personel_adi'] = $personel->adi_soyadi;
@@ -224,7 +235,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
 
                     // Beni Hatırla
-                    if (isset($_POST['remember'])) {
+                    if (isset($_POST['remember']) && !$sifreZayif) {
                         $pwaSecret = $_ENV['PWA_HMAC_SECRET'] ?? '';
                         if (empty($pwaSecret)) {
                             error_log('PWA_HMAC_SECRET .env dosyasında tanımlı değil, Beni Hatırla devre dışı.');

@@ -2640,7 +2640,7 @@ class PersonelModel extends Model
 
         if ($id === 0 && empty($sifre)) {
             // Varsayılan rastgele 6 haneli şifre
-            $sifre = (string) rand(100000, 999999);
+            $sifre = \App\Helper\PwaSifrePolitikasi::uret();
         }
 
         $now = date('Y-m-d H:i:s');

@@ -94,6 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $attachmentRows = (new EvrakSablonModel())->getAttachments((int) $row->id);
                     return [
                         'id' => Security::encrypt((int) $row->id),
+                        'kimlik' => Security::encryptStable((int) $row->id),
                         'adi' => (string) $row->adi,
                         'veri' => json_decode((string) $row->sablon_verisi, true) ?: [],
                         'ek_dosyalar' => array_map(static fn($file) => [

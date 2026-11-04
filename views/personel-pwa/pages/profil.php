@@ -300,7 +300,7 @@ use App\Helper\Date;
                 <label class="form-label">Yeni Şifre</label>
                 <div class="relative">
                     <input type="password" name="new_password" id="new_password" class="form-input pr-12" required
-                        minlength="6">
+                        minlength="6" maxlength="6" inputmode="numeric" pattern="[0-9]{6}">
                     <button type="button" onclick="togglePasswordVisibility(this)"
                         class="absolute right-3 top-1/2 -translate-y-1/2">
                         <span class="material-symbols-outlined text-slate-400">visibility</span>
@@ -325,7 +325,7 @@ use App\Helper\Date;
                 <ul class="text-xs text-slate-500 space-y-1">
                     <li class="flex items-center gap-2">
                         <span class="material-symbols-outlined text-sm" id="req-length">close</span>
-                        En az 6 karakter
+                        6 haneli rakam (ardışık olmayan)
                     </li>
                     <li class="flex items-center gap-2">
                         <span class="material-symbols-outlined text-sm" id="req-match">close</span>
@@ -440,8 +440,8 @@ use App\Helper\Date;
             return;
         }
 
-        if (formData.new_password.length < 6) {
-            Toast.show('Şifre en az 6 karakter olmalı', 'error');
+        if (!/^\d{6}$/.test(formData.new_password)) {
+            Toast.show('Şifre 6 haneli rakamlardan oluşmalı', 'error');
             return;
         }
 
