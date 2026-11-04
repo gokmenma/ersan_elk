@@ -8,6 +8,7 @@ require_once dirname(__DIR__, 2) . '/bootstrap.php';
 use App\Model\BordroDonemModel;
 use App\Model\BordroPersonelModel;
 use App\Model\BordroKapanisArsivModel;
+use App\Model\BordroOnayKilidiModel;
 use App\Model\PersonelModel;
 use App\Model\BordroParametreModel;
 use App\Model\SystemLogModel;
@@ -59,6 +60,25 @@ function cleanMoneyInput($val) {
 /**
  * Boş veya Sınırsız durumunda null dönebilen temizleme fonksiyonu
  */
+function bordroKilitliPersonelHaritasi(int $donemId): array
+{
+    $harita = [];
+    foreach ((new BordroOnayKilidiModel())->donemKilitleri($donemId) as $kilit) {
+        $harita[(int) $kilit['personel_id']] = (string) $kilit['adi_soyadi'];
+    }
+    return $harita;
+}
+
+function bordroKilitAtlamaMesaji(array $adlar): string
+{
+    if (!$adlar) {
+        return '';
+    }
+    $adlar = array_values(array_unique($adlar));
+    $liste = implode(', ', array_slice($adlar, 0, 5)) . (count($adlar) > 5 ? ' ve ' . (count($adlar) - 5) . ' kişi daha' : '');
+    return ' ' . count($adlar) . ' personel bordrosunu onayladığı için kilitli olduğundan atlandı: ' . $liste . '.';
+}
+
 function cleanMoneyInputNullable($val) {
     if ($val === null || trim($val) === '' || mb_strtolower(trim($val), 'UTF-8') === 'sınırsız') {
         return null;
@@ -436,6 +456,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $kesintiBak = $BordroPersonel->getDb()->prepare("SELECT k.*, p.adi_soyadi FROM personel_kesintileri k JOIN personel p ON k.personel_id = p.id WHERE k.id = ?");
                 $kesintiBak->execute([$id]);
                 $kesintiInfo = $kesintiBak->fetch(PDO::FETCH_OBJ);
+                if ($kesintiInfo) {
+                    (new BordroOnayKilidiModel())->dogrulaPersonel((int) $kesintiInfo->personel_id, (int) ($kesintiInfo->donem_id ?: $donem_id));
+                }
 
                 $sql = $BordroPersonel->getDb()->prepare("UPDATE personel_kesintileri SET silinme_tarihi = NOW() WHERE id = ?");
                 if ($sql->execute([$id])) {
@@ -477,6 +500,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $odemeBak = $BordroPersonel->getDb()->prepare("SELECT eo.*, p.adi_soyadi FROM personel_ek_odemeler eo JOIN personel p ON eo.personel_id = p.id WHERE eo.id = ?");
                 $odemeBak->execute([$id]);
                 $odemeInfo = $odemeBak->fetch(PDO::FETCH_OBJ);
+                if ($odemeInfo) {
+                    (new BordroOnayKilidiModel())->dogrulaPersonel((int) $odemeInfo->personel_id, (int) (($odemeInfo->donem_id ?? 0) ?: $donem_id));
+                }
 
                 $sql = $BordroPersonel->getDb()->prepare("UPDATE personel_ek_odemeler SET silinme_tarihi = NOW() WHERE id = ?");
                 if ($sql->execute([$id])) {
@@ -542,6 +568,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $personelBak->execute([$id]);
                 $personelInfo = $personelBak->fetch(PDO::FETCH_OBJ);
 
+                (new BordroOnayKilidiModel())->dogrula($id);
                 $BordroPersonel->removeFromDonem($id);
 
                 if ($personelInfo) {
@@ -592,6 +619,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if (!empty($newlyAddedBpIds)) {
                         $personel_ids = array_unique(array_merge(array_map('intval', $personel_ids), $newlyAddedBpIds));
                     }
+                }
+
+                $onayKilitleri = (new BordroOnayKilidiModel())->donemKilitleri($donem_id);
+                $kilitAtlananlar = [];
+                $personel_ids = array_values(array_filter(array_map('intval', $personel_ids), static function (int $bpId) use ($onayKilitleri, &$kilitAtlananlar): bool {
+                    if (!isset($onayKilitleri[$bpId])) {
+                        return true;
+                    }
+                    $kilitAtlananlar[] = (string) $onayKilitleri[$bpId]['adi_soyadi'];
+                    return false;
+                }));
+                if (empty($personel_ids)) {
+                    echo json_encode([
+                        'status' => 'success',
+                        'message' => 'Hesaplanacak personel kalmadı.' . bordroKilitAtlamaMesaji($kilitAtlananlar),
+                        'kilit_atlanan' => count($kilitAtlananlar),
+                    ], JSON_UNESCAPED_UNICODE);
+                    $SystemLog->logAction($userId, 'Maaş Hesaplama', 'Seçilen personellerin tamamı onay kilidi nedeniyle atlandı (' . count($kilitAtlananlar) . ' kişi).', SystemLogModel::LEVEL_IMPORTANT);
+                    break;
                 }
 
                 $hesaplananSayisi = 0;
@@ -647,7 +693,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
 
-                $message = "$hesaplananSayisi personelin maaşı hesaplandı.";
+                $message = "$hesaplananSayisi personelin maaşı hesaplandı." . bordroKilitAtlamaMesaji($kilitAtlananlar);
                 $warning = null;
                 $warningDetails = null;
 
@@ -737,10 +783,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'onay_bekleyen_tutar' => $toplamOnayBekleyenTutar,
                     'onay_bekleyen_personeller' => $onayBekleyenPersoneller,
                     'icra_uyarilari' => $BordroPersonel->icra_uyarilari,
-                    'gorev_gecmisi_eksik' => $BordroPersonel->gorev_gecmisi_eksik
+                    'gorev_gecmisi_eksik' => $BordroPersonel->gorev_gecmisi_eksik,
+                    'kilit_atlanan' => count($kilitAtlananlar)
                 ]);
 
-                $SystemLog->logAction($userId, 'Maaş Hesaplama', "$hesaplananSayisi personelin maaşı hesaplandı.", SystemLogModel::LEVEL_IMPORTANT);
+                $SystemLog->logAction($userId, 'Maaş Hesaplama', "$hesaplananSayisi personelin maaşı hesaplandı." . (count($kilitAtlananlar) ? ' Onay kilidi nedeniyle atlanan: ' . count($kilitAtlananlar) . '.' : ''), SystemLogModel::LEVEL_IMPORTANT);
                 break;
 
             // İcra Kesinti Detayı
@@ -3471,9 +3518,15 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
 
                 // Mali/snapshot tutarsızlıkları hukuki kayıt bütünlüğü nedeniyle
                 // bloklayıcıdır ve force_close ile geçilemez.
-                $kapanisHatalari = $BordroPersonel->validateDonemKapanis(
-                    $donem_id,
-                    (int) ($_SESSION['firma_id'] ?? 0)
+                $kapanisHatalari = array_merge(
+                    $BordroPersonel->validateDonemKapanis(
+                        $donem_id,
+                        (int) ($_SESSION['firma_id'] ?? 0)
+                    ),
+                    (new \App\Model\BordroYayinModel())->onayliDokumMutabakatHatalari(
+                        (int) ($_SESSION['firma_id'] ?? 0),
+                        $donem_id
+                    )
                 );
                 if (!empty($kapanisHatalari)) {
                     $hataSatirlari = array_map(static function (string $hata): array {
@@ -3599,14 +3652,22 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
 
                 \App\Helper\BordroYayinGuvenlik::csrfDogrula();
                 if (!$MenuModel->userCanAccessMenuLink($userId, 'bordro/list')) throw new Exception('Bordro yönetim yetkisi bulunamadı.');
-                (new \App\Model\BordroYayinModel())->yenidenAc((int) ($_SESSION['firma_id'] ?? 0), $donem_id, (int) $userId);
+                $acilisSonucu = (new \App\Model\BordroYayinModel())->yenidenAc((int) ($_SESSION['firma_id'] ?? 0), $donem_id, (int) $userId);
+                $acilisMesaji = 'Dönem açıldı. Artık bu dönemde değişiklik yapılabilir.';
+                if ($acilisSonucu['korunan'] > 0) {
+                    $acilisMesaji .= ' ' . $acilisSonucu['korunan'] . ' personelin onaylı bordrosu kilitli tutuldu; yeniden hesaplamada atlanacak.';
+                }
+                if ($acilisSonucu['revize'] > 0) {
+                    $acilisMesaji .= ' ' . $acilisSonucu['revize'] . ' onaylanmamış/itirazlı döküm revizyona alındı.';
+                }
 
                 echo json_encode([
                     'status' => 'success',
-                    'message' => 'Dönem açıldı. Artık bu dönemde değişiklik yapılabilir.'
-                ]);
+                    'message' => $acilisMesaji,
+                    'onay_kilidi' => $acilisSonucu,
+                ], JSON_UNESCAPED_UNICODE);
 
-                $SystemLog->logAction($userId, 'Maaş Dönem Açma', "Dönem tekrar açıldı (ID: $donem_id).", SystemLogModel::LEVEL_IMPORTANT);
+                $SystemLog->logAction($userId, 'Maaş Dönem Açma', "Dönem tekrar açıldı (ID: $donem_id). Onay kilidiyle korunan: {$acilisSonucu['korunan']}, revizyona alınan döküm: {$acilisSonucu['revize']}.", SystemLogModel::LEVEL_IMPORTANT);
                 break;
 
             // Ödeme Dağıt
@@ -3619,6 +3680,7 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                 if ($id <= 0) {
                     throw new Exception('Geçersiz personel.');
                 }
+                (new BordroOnayKilidiModel())->dogrula($id);
 
                 // Bordro kaydını detaylı al (hesaplama için)
                 $stmt = $BordroPersonel->getDb()->prepare("
@@ -3676,6 +3738,7 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                 if ($id <= 0) {
                     throw new Exception('Geçersiz personel.');
                 }
+                (new BordroOnayKilidiModel())->dogrula($id);
 
                 // Manuel dağıtım bayraklarını kaldır ve değerleri sıfırla
                 $sql = $BordroPersonel->getDb()->prepare("
@@ -3742,30 +3805,38 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                     throw new Exception('Kapalı dönemlerde bu işlem yapılamaz.');
                 }
 
-                // Tüm personeller için manuel dağıtımları sıfırla
-                $sql = $BordroPersonel->getDb()->prepare("
-                    UPDATE bordro_personel 
-                    SET dagitim_manuel = 0, sodexo_manuel = 0, banka_odemesi = 0, sodexo_odemesi = 0, diger_odeme = 0, elden_odeme = 0
-                    WHERE donem_id = ? AND silinme_tarihi IS NULL
-                ");
-                $sql->execute([$donem_id]);
-
-                // Tüm personellerin maaşını tekrar hesapla (Varsayılan dağılım mantığı çalışacak)
                 $sqlIds = $BordroPersonel->getDb()->prepare("SELECT id FROM bordro_personel WHERE donem_id = ? AND silinme_tarihi IS NULL");
                 $sqlIds->execute([$donem_id]);
-                $ids = $sqlIds->fetchAll(PDO::FETCH_COLUMN);
+                $onayKilitleri = (new BordroOnayKilidiModel())->donemKilitleri($donem_id);
+                $ids = [];
+                $kilitAtlananlar = [];
+                foreach (array_map('intval', $sqlIds->fetchAll(PDO::FETCH_COLUMN)) as $bpId) {
+                    if (isset($onayKilitleri[$bpId])) {
+                        $kilitAtlananlar[] = (string) $onayKilitleri[$bpId]['adi_soyadi'];
+                    } else {
+                        $ids[] = $bpId;
+                    }
+                }
 
                 $hesaplayanId = $_SESSION['user_id'] ?? 0;
                 $hesaplayanAdSoyad = $_SESSION['user_full_name'] ?? 'Sistem';
 
-                foreach ($ids as $id) {
-                    $BordroPersonel->hesaplaMaas($id, $hesaplayanId, $hesaplayanAdSoyad);
+                if ($ids) {
+                    $resetSql = $BordroPersonel->getDb()->prepare("
+                        UPDATE bordro_personel 
+                        SET dagitim_manuel = 0, sodexo_manuel = 0, banka_odemesi = 0, sodexo_odemesi = 0, diger_odeme = 0, elden_odeme = 0
+                        WHERE id = ? AND donem_id = ? AND silinme_tarihi IS NULL
+                    ");
+                    foreach ($ids as $id) {
+                        $resetSql->execute([$id, $donem_id]);
+                        $BordroPersonel->hesaplaMaas($id, $hesaplayanId, $hesaplayanAdSoyad);
+                    }
                 }
 
                 echo json_encode([
                     'status' => 'success',
-                    'message' => 'Tüm personellerin ödeme dağılımları varsayılana döndürüldü ve maaşlar tekrar hesaplandı.'
-                ]);
+                    'message' => count($ids) . ' personelin ödeme dağılımı varsayılana döndürüldü ve maaşı tekrar hesaplandı.' . bordroKilitAtlamaMesaji($kilitAtlananlar)
+                ], JSON_UNESCAPED_UNICODE);
                 $SystemLog->logAction($userId, 'Bordro Toplu Ödeme Reset', "$donem->donem_adi dönemi için tüm ödeme dağılımları sıfırlandı.", SystemLogModel::LEVEL_IMPORTANT);
                 break;
 
@@ -3788,6 +3859,7 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                 if ($donem && $donem->kapali_mi == 1) {
                     throw new Exception('Bu dönem kapatılmış. Kapalı dönemlere ek ödeme eklenemez.');
                 }
+                (new BordroOnayKilidiModel())->dogrulaPersonel($personel_id, $donem_id);
 
                 if ($tutar <= 0) {
                     throw new Exception('Tutar 0\'dan büyük olmalıdır.');
@@ -3847,6 +3919,7 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                 if ($donem && $donem->kapali_mi == 1) {
                     throw new Exception('Bu dönem kapatılmış. Kapalı dönemlere kesinti eklenemez.');
                 }
+                (new BordroOnayKilidiModel())->dogrulaPersonel($personel_id, $donem_id);
 
                 // Eğer tutar 0 ise ve gün girilmişse maaştan hesapla
                 $gun = floatval($_POST['kesinti_gun'] ?? 0);
@@ -4371,6 +4444,11 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                         if (empty($personelData))
                             continue;
                         $personel_id = $personelData[0]->id;
+                        $excelKilitleri ??= bordroKilitliPersonelHaritasi((int) $donem_id);
+                        if (isset($excelKilitleri[(int) $personel_id])) {
+                            $excelKilitAtlanan[] = $excelKilitleri[(int) $personel_id];
+                            continue;
+                        }
 
                         $rowHasData = false;
                         foreach ($colIndices as $kod => $index) {
@@ -4399,7 +4477,7 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
 
                     echo json_encode([
                         'status' => 'success',
-                        'message' => "$eklenenSayisi personelin gelir kayıtları yüklendi ve maaşları hesaplandı."
+                        'message' => "$eklenenSayisi personelin gelir kayıtları yüklendi ve maaşları hesaplandı." . bordroKilitAtlamaMesaji($excelKilitAtlanan ?? [])
                     ]);
 
                 } catch (Exception $e) {
@@ -4469,6 +4547,11 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                         if (empty($personelData))
                             continue;
                         $personel_id = $personelData[0]->id;
+                        $excelKilitleri ??= bordroKilitliPersonelHaritasi((int) $donem_id);
+                        if (isset($excelKilitleri[(int) $personel_id])) {
+                            $excelKilitAtlanan[] = $excelKilitleri[(int) $personel_id];
+                            continue;
+                        }
 
                         $rowHasData = false;
                         foreach ($colIndices as $kod => $index) {
@@ -4497,7 +4580,7 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
 
                     echo json_encode([
                         'status' => 'success',
-                        'message' => "$eklenenSayisi personelin kesinti kayıtları yüklendi ve maaşları hesaplandı."
+                        'message' => "$eklenenSayisi personelin kesinti kayıtları yüklendi ve maaşları hesaplandı." . bordroKilitAtlamaMesaji($excelKilitAtlanan ?? [])
                     ]);
 
                 } catch (Exception $e) {
@@ -4555,6 +4638,11 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                         if (empty($personelData))
                             continue;
                         $personel_id = $personelData[0]->id;
+                        $excelKilitleri ??= bordroKilitliPersonelHaritasi((int) $donem_id);
+                        if (isset($excelKilitleri[(int) $personel_id])) {
+                            $excelKilitAtlanan[] = $excelKilitleri[(int) $personel_id];
+                            continue;
+                        }
 
                         // Bordro kaydını bul
                         $stmt = $BordroPersonel->getDb()->prepare("SELECT * FROM bordro_personel WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL");
@@ -4582,7 +4670,7 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
 
                     echo json_encode([
                         'status' => 'success',
-                        'message' => "$guncellenenSayisi personelin ödeme dağıtımları güncellendi."
+                        'message' => "$guncellenenSayisi personelin ödeme dağıtımları güncellendi." . bordroKilitAtlamaMesaji($excelKilitAtlanan ?? [])
                     ]);
 
                 } catch (Exception $e) {

@@ -576,6 +576,9 @@ try {
         }
 
         // Attachments
+        if (($evrak->kaynak_tipi ?? '') === 'uets' || !empty($evrak->uets_mesaj_id)) {
+            (new \App\Service\UetsSyncService())->healAttachments((int) $_SESSION['firma_id'], $id);
+        }
         $attachments = $EvrakModel->getAttachments($id);
         if ($attachments === [] && !empty($evrak->dosya_yolu)) {
             $attachments[] = (object) [

@@ -46,6 +46,7 @@ class BordroPersonelModel extends Model
     private ?TanimlamalarModel $tanimlamalarModelCache = null;
     /** @var bool Toplu hesaplama modu aktif mi? */
     public bool $batchMode = false;
+    public bool $onayKilidiDenetimi = true;
 
 
 
@@ -2926,6 +2927,7 @@ class BordroPersonelModel extends Model
     /** Kapalı döneme doğrudan manuel dağılım yazılması yayın bütünlüğünü bozamaz. */
     public function saveAcikDonemManuelDagilim(int $firmaId, int $id, array $tutarlar): void
     {
+        (new BordroOnayKilidiModel($this->db))->dogrula($id);
         $this->db->beginTransaction();
         try {
             $stmt = $this->db->prepare('SELECT donem_id, net_maas, hesaplama_detay FROM bordro_personel WHERE id = ? AND silinme_tarihi IS NULL FOR UPDATE');
@@ -2984,6 +2986,7 @@ class BordroPersonelModel extends Model
     /** Personeli dönemden çıkarır (soft delete ve açıklama 'cikarildi'). */
     public function removeFromDonem($id)
     {
+        (new BordroOnayKilidiModel($this->db))->dogrula((int) $id);
         $sql = $this->db->prepare("UPDATE {$this->table} SET silinme_tarihi = NOW(), aciklama = 'cikarildi' WHERE id = ?");
         return $sql->execute([$id]);
     }
@@ -6066,6 +6069,9 @@ class BordroPersonelModel extends Model
     public function hesaplaMaas($bordro_personel_id, $hesaplayan_id = null, $hesaplayan_ad_soyad = null)
 
     {
+        if ($this->onayKilidiDenetimi) {
+            (new BordroOnayKilidiModel($this->db))->dogrula((int) $bordro_personel_id);
+        }
         // Yazma akışında listeye ait kaynak görüntüsünü kullanma.
         $this->sgkGecmisiCache = $this->kumulatifMatrahCache = [];
 

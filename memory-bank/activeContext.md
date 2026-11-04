@@ -3592,3 +3592,12 @@
 
 ## UETS Liste Önbelleği
 - `UetsSyncService::LIST_INTERVAL` 7200 → 6900 sn. Cron tam saatte tetiklenip önbellek sorgu bitiminden sonra damgalandığından (örn. 12:00:07) 14:00:03 çalışması önbellekten dönüyor, fiilen 4 saatte bir sorgu yapılıyordu.
+
+## Bordro Onay Kilidi ve Toplu Revizyon
+- Onaylı (beyanlı, itirazsız) döküm personelin bordrosunu kilitler: `BordroOnayKilidiModel`; `hesaplaMaas`/manuel dağılım/dönemden çıkarma model katmanında reddeder, toplu işlemler atlar. Dönem açma yalnız onaysız/itirazlı dökümleri döküm düzeyinde revizyona alır (`bordro_yayin_dokum.revizyon_tarihi`).
+- Tekli onay geri alma (`bordro_onay_geri_al`) ve önizlemeli toplu revizyon (`bordro_toplu_revizyon`; savepoint ile değişmeyenler geri alınır, yalnız resmî döküm parmak izi değişenin onayı kalkar). Yeniden yayın yalnız yeni/revize personele sürüm üretir. SQL: sql/2026_11_04_bordro_onay_kilidi_revizyon.sql.
+
+## UETS Ek Belgeleri
+- Kök neden: `UetsSyncService` ekleri `EvrakTakipModel::saveAttachment()` ile kaydediyordu; bu metot oturumdaki `firma_id` ve `getById` görünürlük kontrolüne bağlıdır. Cron'da oturum yok, kısıtlı UETS evrakında yetki yok → exception yutuluyor, üst yazı kayıtlı olduğundan yeniden denenmiyordu.
+- `saveAttachmentForFirm()` / `countAttachmentsForFirm()` oturumsuz çalışır. `EypPackageService::extractPackage` yalnız `Ekler/` altındaki belgeleri ek sayar (dosyaBilgileri/NihaiOzet/Ustveri vb. meta dışlanır), aynı adlı dosyalar ezilmez.
+- `UetsSyncService::healAttachments()` evrak detayı açılınca (masaüstü `evrak-detay`, mobil evrak detayı) eski kayıtların eklerini şifreli ham EYP'den (`ham_eyp_yolu`) tamamlar.

@@ -2126,3 +2126,7 @@
 - [x] İhbar sonuçlandırmada (personel PWA) foto/video/açıklama kanıtı eklendi.
 
 - [x] UETS cron: liste önbellek aralığı 6900 sn yapıldı (2 saatlik cron her seferinde UETS sorgular).
+
+- [x] Bordro onay kilidi, tekli onay geri alma ve önizlemeli toplu revizyon (yayın takibi), dönem kapatmada onaylı döküm mutabakatı.
+
+- [x] UETS gelen evraklarda EYP içindeki ek belgeler (Ekler/) kaydedilip gösteriliyor; eski kayıtlar detay açılınca ham paketten tamamlanıyor.

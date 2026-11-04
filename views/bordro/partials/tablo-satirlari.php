@@ -1,6 +1,8 @@
 <?php use App\Helper\Helper; ?>
 <?php if (!empty($personeller)): ?>
 <?php $idx = 1;
+$bordroIlkSatir = reset($personeller);
+$bordroOnayKilitleri = $bordroIlkSatir ? (new \App\Model\BordroOnayKilidiModel())->donemKilitleri((int) $bordroIlkSatir->donem_id) : [];
 foreach ($personeller as $personel):
     $pc = $preCalc[$personel->id];
     $hesaplanmis = !empty($pc['hesaplanmis']);
@@ -116,6 +118,9 @@ foreach ($personeller as $personel):
             <div>
                 <div class="fw-medium">
                     <a target="_blank" href="index?p=personel/manage&id=<?= $enc_id ?>"><?= htmlspecialchars($personel->adi_soyadi) ?></a>
+                    <?php if (isset($bordroOnayKilitleri[(int) $personel->id])): ?>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold ms-1" title="Personel bordrosunu onayladı; yeniden hesaplamada atlanır. Değişiklik için Bordro Yayını ekranından onayı geri alın veya toplu revizyon kullanın."><i class="bx bx-lock-alt"></i> Onaylı</span>
+                    <?php endif; ?>
                 </div>
                 <small class="text-muted" style="font-size: 10px; letter-spacing: 0.5px;">TC: <?= htmlspecialchars($personel->tc_kimlik_no ?? '-') ?></small>
             </div>

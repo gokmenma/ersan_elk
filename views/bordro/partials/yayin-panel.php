@@ -2,6 +2,8 @@
 if (!isset($selectedDonem) || !$selectedDonem) return;
 $yayinUser = (int) ($_SESSION['user_id'] ?? 0);
 if (!$yayinUser || !(new \App\Model\MenuModel())->userCanAccessMenuLink($yayinUser, 'bordro/list')) return;
+$yayinYetkiOnayGeriAl = \App\Service\Gate::allows('bordro_onay_geri_al');
+$yayinYetkiTopluRevizyon = \App\Service\Gate::allows('bordro_toplu_revizyon');
 ?>
 <style>
 /* Resmî Bordro Yayını Modal Özel UI Standartları (Image 1 Referansı) */
@@ -565,6 +567,11 @@ if (!$yayinUser || !(new \App\Model\MenuModel())->userCanAccessMenuLink($yayinUs
                 <span class="badge bg-light text-muted border fs-11" id="bordroYayinTabloSayisi">0 Kayıt</span>
               </div>
               <div class="d-flex gap-2">
+                <?php if ($yayinYetkiTopluRevizyon): ?>
+                <button type="button" class="btn btn-sm btn-outline-warning d-inline-flex align-items-center gap-1 bg-white" id="btnTopluRevizyon" style="border-radius: 6px; font-weight: 600;" title="Onaylı bordroları önizlemeli olarak toplu yeniden hesapla">
+                  <i class="bx bx-revision"></i> Toplu Revizyon
+                </button>
+                <?php endif; ?>
                 <button type="button" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1.5 bg-white" id="btnTakipYenile" style="border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600;" title="Personel okuma beyanları ve inceleme taleplerini canlı yenile">
                   <i class="bx bx-refresh fs-5"></i> Yenile
                 </button>
@@ -817,12 +824,94 @@ if (!$yayinUser || !(new \App\Model\MenuModel())->userCanAccessMenuLink($yayinUs
   </div>
 </div>
 
+<?php if ($yayinYetkiTopluRevizyon): ?>
+<div class="modal fade no-upgrade" id="bordroRevizyonModal" tabindex="-1" aria-labelledby="bordroRevizyonBaslik" aria-hidden="true" data-modal-icon="bx bx-revision" data-modal-subtitle="Onaylı bordroların önizlemeli toplu yeniden hesaplaması">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" style="max-width: 1080px;">
+    <div class="modal-content shadow-lg" style="border: 1px solid #cbd5e1; border-radius: 12px;">
+      <div class="modal-header bg-light border-bottom px-4 py-3">
+        <div class="d-flex align-items-center gap-3">
+          <div class="avatar-sm flex-shrink-0" style="width: 38px; height: 38px;">
+            <span class="avatar-title bg-warning-subtle text-warning rounded-3 fs-4 p-2 d-flex align-items-center justify-center"><i class="bx bx-revision"></i></span>
+          </div>
+          <div>
+            <h5 class="modal-title fw-bold text-dark mb-0 fs-16" id="bordroRevizyonBaslik">Toplu Revizyon</h5>
+            <p class="text-muted fs-12 mb-0">Onaylı bordrolar kayıt yapılmadan yeniden hesaplanır; yalnız resmî dökümü değişen personelin onayı kaldırılır.</p>
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+      </div>
+      <div class="modal-body p-4 bg-light-subtle">
+        <div class="alert alert-danger py-2 px-3 mb-3 d-none" id="revizyonMesaj"></div>
+
+        <div id="revizyonSecimAdimi">
+          <div class="alert alert-warning py-2 px-3 fs-12 mb-3">
+            <i class="bx bx-info-circle me-1"></i>Önizleme hiçbir kaydı değiştirmez. Uygulama adımında gerekçe ve onaylanacak kişi sayısı istenir.
+          </div>
+          <div class="card border rounded-3 bg-white shadow-none mb-0">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-2">
+              <div class="form-check mb-0">
+                <input class="form-check-input" type="checkbox" id="revizyonTumunuSec" checked>
+                <label class="form-check-label fw-semibold fs-13" for="revizyonTumunuSec">Tüm onaylı personeller</label>
+              </div>
+              <span class="badge bg-light text-muted border fs-11" id="revizyonSecimSayisi">0 seçili</span>
+            </div>
+            <div class="card-body p-0" style="max-height: 360px; overflow-y: auto;">
+              <div class="list-group list-group-flush" id="revizyonPersonelListe"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="revizyonSonucAdimi" class="d-none">
+          <div class="d-flex flex-wrap gap-2 mb-3" id="revizyonOzet"></div>
+          <div class="card border rounded-3 bg-white shadow-none mb-3">
+            <div class="card-body p-0" style="max-height: 340px; overflow-y: auto;">
+              <table class="table table-sm table-bordered align-middle mb-0 fs-12">
+                <thead class="table-light sticky-top">
+                  <tr>
+                    <th>Personel</th>
+                    <th class="text-end">Onaylanan Banka Net</th>
+                    <th class="text-end">Yeni Banka Net</th>
+                    <th class="text-end">Fark</th>
+                    <th class="text-end">Elden Fark</th>
+                    <th>Sonuç</th>
+                  </tr>
+                </thead>
+                <tbody id="revizyonSonucGovde"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="row g-3" id="revizyonUygulamaAlani">
+            <div class="col-12 col-lg-8">
+              <?= \App\Helper\Form::FormFloatTextarea('revizyonGerekce', '', 'Örn: Yemek yardımı günlük yuvarlama hatası düzeltildi', 'Revizyon gerekçesi (personele ve kayıtlara yansır)', 'bx bx-edit', 'form-control', true, '90px', 3, 'maxlength="1000"') ?>
+            </div>
+            <div class="col-12 col-lg-4">
+              <?= \App\Helper\Form::FormFloatInput('number', 'revizyonOnaySayisi', '', '0', 'Onayı kaldırılacak kişi sayısını yazın', 'bx bx-check-shield', 'form-control', true, null, 'off', false, 'min="0" inputmode="numeric"') ?>
+              <div class="form-text fs-11" id="revizyonOnaySayisiIpucu"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer bg-light border-top px-4 py-2.5">
+        <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal" style="border-radius: 6px;">Kapat</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm px-3 d-none" id="btnRevizyonGeri" style="border-radius: 6px;"><i class="bx bx-arrow-back me-1"></i>Seçime Dön</button>
+        <button type="button" class="btn btn-primary btn-sm px-3" id="btnRevizyonOnizle" style="border-radius: 6px;"><i class="bx bx-show me-1"></i>Önizle (kayıt yapılmaz)</button>
+        <button type="button" class="btn btn-danger btn-sm px-3 d-none" id="btnRevizyonUygula" style="border-radius: 6px;" disabled><i class="bx bx-revision me-1"></i>Revizyonu Uygula</button>
+      </div>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
+
 <script>
 window.bordroYayinConfig = <?= json_encode([
     'donem_token' => \App\Helper\Security::encrypt((int) $selectedDonemId),
     'donem_adi' => (string) ($selectedDonem->donem_adi ?? ''),
     'donem_kapali' => (int) ($selectedDonem->kapali_mi ?? 0),
     'csrf_token' => \App\Helper\Security::csrf(),
+], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+window.bordroYayinYetki = <?= json_encode([
+    'onay_geri_al' => $yayinYetkiOnayGeriAl,
+    'toplu_revizyon' => $yayinYetkiTopluRevizyon,
 ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 </script>
 <script src="views/bordro/js/bordro-yayin.js?v=<?= filemtime(dirname(__DIR__) . '/js/bordro-yayin.js') ?>"></script>

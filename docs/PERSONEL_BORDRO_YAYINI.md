@@ -26,8 +26,23 @@ Mevcut `personel_gorsun` alanı yeni yayın akışını başlatmaz. Eski finansa
 - Banka kesinti kalemlerinin toplamı gerçekleşen banka kesintisine eşitse ayrı gösterilir. Tavan/dağılım nedeniyle yalnız bir kısmı bankadan düşmüşse ortak model satır payı üretmediği için gerçekleşen banka kesintisi toplam olarak gösterilir; elden kesinti bilgisi yayınlanmaz.
 - Yayın içeriği personel adı, dönem/görev bilgileri, günler ve resmî kalemleri içerir. Sürüm, SHA-256, yayınlayan, yayın zamanı ve olay geçmişi saklanır. Hash içerik bütünlüğü kontrolüdür.
 - Onay metni v2: **Ücret hesap pusulasını okudum ve onaylıyorum.** Sunucu zamanı, personel, döküm/sürüm, metin sürümü, içerik hash'i ve teknik işlem kanıtları kaydedilir. OTP/e-imza eklenmemiştir.
-- Yeniden açma aynı dönem satırını kilitleyip mevcut yayını `revizyon` durumuna geçirir. Önceki içerik/beyan korunur. Tekrar kapatıp yayınlama eski sürümü arşivler ve yeni sürümde yeniden beyan ister. Yayın, yeniden açma, beyan ve bildirim işlemleri aynı dönem kilidini kullanır.
+- Yeniden açma aynı dönem satırını kilitler; revizyon **döküm düzeyinde** uygulanır (`bordro_yayin_dokum.revizyon_tarihi`). Onaylı personelin dökümleri korunur; yalnız onaylanmamış veya açık itirazlı dökümler revizyona alınır. Önceki içerik/beyan korunur. Tekrar kapatıp yayınlama yalnız güncel sürümü yayında olmayan (yeni veya revize) personele yeni sürüm üretir; tüm dökümleri revize olmuş eski yayın ve test yayınları arşivlenir. Yayın, yeniden açma, beyan ve bildirim işlemleri aynı dönem kilidini kullanır.
 - Döküm/PDF ağdan alınır. Service worker güncellemesi eski sayfa önbelleğini temizler; bordro navigasyonları ve önceden önbellekleme hariç tutulur. Beyan/talep çevrimdışı kuyruğa alınmaz.
+
+## Onay kilidi ve revizyon (2026-11-04)
+
+- **Kilit kuralı:** Personelin okuma beyanı verdiği (onayladığı), revizyona alınmamış ve açık itirazı bulunmayan dökümü (`yayinda` veya `test`) o personelin dönem bordrosunu kilitler. Kaynak tek yerdedir: `BordroOnayKilidiModel`.
+- **Sunucu tarafı koruma:** Kilitli personel için `hesaplaMaas`, manuel ödeme dağılımı ve dönemden çıkarma model katmanında reddedilir. Toplu işlemler (Maaş Hesapla, tüm dağılımları sıfırla, Excel gelir/kesinti/dağıtım yükleme) kilitli personeli atlar ve yanıtta adlarıyla bildirir. Tekil işlemler (ödeme dağıt/sıfırla, gelir/kesinti ekle/sil, dönemden çıkar) açık hata mesajıyla durur. Masaüstü, yönetici mobil ve eski mobil API aynı `views/bordro/api.php` yolunu kullandığından hepsi korunur.
+- **Tekli onay geri alma** (`bordro_onay_geri_al` yetkisi): Yayın takibinde onaylı satırdaki kilit butonu. Dönem açık olmalıdır; en az 10 karakter gerekçe zorunludur. Personelin dönemdeki açık dökümleri revizyona alınır, `onay_geri_alindi` olayı ve sistem logu yazılır. Sonra normal Hesapla ile yeniden hesaplanabilir.
+- **Toplu revizyon** (`bordro_toplu_revizyon` yetkisi): Yayın takibinde **Toplu Revizyon**. Seçilen (varsayılan: tüm) onaylı personeller önce transaction içinde yeniden hesaplanıp geri alınarak önizlenir. Sonuçlar:
+  - `degisti`: Resmî dökümün parasal parmak izi değişti → onay kaldırılır, yeni hesap kaydedilir, yeniden yayın gerekir.
+  - `ic_degisti`: Resmî döküm aynı, yalnız elden/iç snapshot değişti → yeni hesap kaydedilir, onay korunur (`ic_hesap_guncellendi` olayı).
+  - `degismedi`: Hiçbir şey kaydedilmez, onay korunur.
+  - `hata`: Yeni hesap geçerli döküm üretemedi → savepoint ile geri alınır, kilitli kalır.
+  Uygulama; gerekçe, onayı kaldırılacak kişi sayısının elle yazılması ve önizleme hash'inin uygulama anındaki hesapla eşleşmesini ister. Tüm işlem tek transaction'dır ve `bordro_yayin_revizyon` kaydıyla gruplanır.
+- **Parasal parmak izi:** `BordroYayinModel::parasalParmakIzi()` yalnız kalemleri, banka netini, kesinti toplamlarını, yasal kesintileri, matrahları, gün sayılarını ve vergi istisnalarını karşılaştırır; firma adresi gibi sunum bilgileri onayı bozmaz.
+- **Dönem kapatma:** Her kilitli personelin güncel bordrosundan üretilen dökümün parmak izi, onayladığı dökümle eşleşmelidir; fark bloklayıcıdır ve `force_close` ile geçilemez. Yayın önizlemesi de aynı kontrolü yapar ve onaylı/yayında olan personeli “korunur” olarak işaretler.
+- Kurulum: `sql/2026_11_04_bordro_onay_kilidi_revizyon.sql` (kolonlar, `bordro_yayin_revizyon` tablosu, iki yetki, API politikaları ve Süper Admin/Firma Sahibi atamaları; tekrar çalıştırılabilir). Bu script uygulamadan yeni kod dağıtılmamalıdır.
 
 ## Kurulum
 

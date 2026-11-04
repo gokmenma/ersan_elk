@@ -632,6 +632,7 @@ edilen kısımdır. `elden_tutardan` kesintisi ana kesinti kartından gizlenemez
 - Resmî döküm, ortak gösterim hesabı ve muhasebe ödeme özetinin resmî banka verilerini kullanır; hesap kuralları değişmez.
 - Kayıtlı banka neti ile ortak hesap ve döküm kalem toplamı kuruş bazında uyuşmadan yayın yapılamaz. Günlük yemek yuvarlama farkı ayrı gösterilir.
 - Yayınlanan içerik sabit sürüm olarak saklanır; personel ekranı ve PDF bu sürümü okur. Dönem revizyonu eski içeriği/beyanı değiştirmez.
+- Onaylanmış (okuma beyanı verilmiş, açık itirazı olmayan) döküm personelin dönem bordrosunu kilitler. Kilitli bordro dönem açılsa bile yeniden hesaplanamaz, ödeme dağılımı değiştirilemez; toplu hesaplamalar kilitli personeli atlar. Değişiklik yalnız yetkili tekli onay geri alma veya önizlemeli toplu revizyon ile yapılır. Toplu revizyonda resmî dökümü değişmeyen personelin onayı korunur. Ayrıntı: `docs/PERSONEL_BORDRO_YAYINI.md` → Onay kilidi ve revizyon.
 - Elden dağılım personel resmî dökümüne aktarılmaz. Uygulama/kurulum ayrıntıları: `docs/PERSONEL_BORDRO_YAYINI.md`.
 
 ### Hafta içi nöbet — resmî taban mutabakatı (2026-10-14)

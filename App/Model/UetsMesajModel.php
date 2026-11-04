@@ -45,6 +45,19 @@ class UetsMesajModel extends Model
         }
     }
 
+    public function getByEvrakId(int $evrakId, int $firmId): ?array
+    {
+        try {
+            $stmt = $this->db->prepare("SELECT * FROM uets_mesajlar WHERE evrak_id = :evrak_id AND firm_id = :firm_id AND yon = 'gelen' AND deleted_at IS NULL ORDER BY id DESC LIMIT 1");
+            $stmt->execute(['evrak_id' => $evrakId, 'firm_id' => $firmId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $row ?: null;
+        } catch (\PDOException $e) {
+            error_log("UetsMesajModel::getByEvrakId Error: " . $e->getMessage());
+            return null;
+        }
+    }
+
     /**
      * Gelen tebligatı kaydeder veya durumunu günceller
      */

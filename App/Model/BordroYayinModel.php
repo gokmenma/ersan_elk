@@ -39,9 +39,82 @@ final class BordroYayinModel extends Model
         return $row;
     }
 
+    private const PARASAL_ALANLAR = [
+        'banka_net_kurus', 'kalemler', 'calisma_gun', 'fiili_gun', 'kazanc_toplami_kurus',
+        'yasal_kesinti_toplami_kurus', 'ozel_kesinti_toplami_kurus', 'toplam_kesinti_kurus',
+        'yasal_kesintiler', 'resmi_matrahlar', 'calisma_ve_izin_gunleri', 'vergi_indirimleri',
+    ];
+
+    private const IC_SNAPSHOT_ALANLARI = [
+        'brut_maas', 'net_maas', 'sgk_isci', 'issizlik_isci', 'gelir_vergisi', 'damga_vergisi',
+        'kesinti_tutar', 'prim_tutar', 'fazla_mesai_tutar',
+        'banka_odemesi', 'elden_odeme', 'sodexo_odemesi', 'diger_odeme',
+    ];
+
+    private function kilitModel(): BordroOnayKilidiModel
+    {
+        return new BordroOnayKilidiModel($this->db);
+    }
+
+    public static function parasalParmakIzi(array $icerik): string
+    {
+        $secim = [];
+        foreach (self::PARASAL_ALANLAR as $alan) {
+            $secim[$alan] = $icerik[$alan] ?? null;
+        }
+        return hash('sha256', json_encode($secim, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+    }
+
+    private function onayliIcerik(array $kilit): array
+    {
+        if (!hash_equals((string) $kilit['icerik_hash'], hash('sha256', (string) $kilit['icerik']))) {
+            throw new DomainException('Onaylı döküm bütünlüğü doğrulanamadı.');
+        }
+        return json_decode((string) $kilit['icerik'], true, 512, JSON_THROW_ON_ERROR);
+    }
+
+    private function guncelDokumPersonelleri(int $firma, int $donem): array
+    {
+        $ids = $this->sorgu(
+            "SELECT DISTINCT d.personel_id FROM bordro_yayin_dokum d JOIN bordro_yayin y ON y.id = d.yayin_id
+             WHERE y.firma_id = ? AND y.donem_id = ? AND y.is_active = 1 AND y.durum = 'yayinda'
+               AND d.is_active = 1 AND d.revizyon_tarihi IS NULL",
+            [$firma, $donem]
+        )->fetchAll(PDO::FETCH_COLUMN);
+        return array_fill_keys(array_map('intval', $ids), true);
+    }
+
     public function onizle(int $firma, int $donem): array
     {
         return $this->atomik(fn() => $this->hazirla($firma, $donem));
+    }
+
+    public function onayliDokumMutabakatHatalari(int $firma, int $donem): array
+    {
+        $d = $this->donem($firma, $donem);
+        $kilitler = $this->kilitModel()->donemKilitleri($donem);
+        if (!$kilitler) return [];
+        $firmaKaydi = $this->sorgu('SELECT * FROM firmalar WHERE id = ? AND silinme_tarihi IS NULL', [$firma])->fetch(PDO::FETCH_OBJ);
+        if (!$firmaKaydi) throw new DomainException('Firma bilgileri bulunamadı.');
+        $bordro = new BordroPersonelModel();
+        $satirlar = [];
+        foreach ($bordro->getPersonellerByDonem($donem, array_keys($kilitler)) as $satir) {
+            $satirlar[(int) $satir->id] = $satir;
+        }
+        $hatalar = [];
+        foreach ($kilitler as $bpId => $kilit) {
+            $ad = (string) $kilit['adi_soyadi'];
+            try {
+                if (!isset($satirlar[$bpId])) throw new DomainException('Bordro kaydı bulunamadı.');
+                $guncel = BordroPusulaService::yayinIcerigi($satirlar[$bpId], $d, $firmaKaydi, $bordro);
+                if (!hash_equals(self::parasalParmakIzi($this->onayliIcerik($kilit)), self::parasalParmakIzi($guncel))) {
+                    $hatalar[] = $ad . ': Personelin onayladığı döküm ile kayıtlı bordro uyuşmuyor. Onayı geri alıp yeniden hesaplayın.';
+                }
+            } catch (DomainException $e) {
+                $hatalar[] = $ad . ': Onaylı döküm doğrulanamadı (' . $e->getMessage() . ')';
+            }
+        }
+        return $hatalar;
     }
 
     private function hazirla(int $firma, int $donem): array
@@ -52,6 +125,8 @@ final class BordroYayinModel extends Model
         $firmaKaydi = $this->sorgu('SELECT * FROM firmalar WHERE id = ? AND silinme_tarihi IS NULL', [$firma])->fetch(PDO::FETCH_OBJ);
         if (!$firmaKaydi) throw new DomainException('Firma bilgileri bulunamadı.');
         $liste = $bordro->getPersonellerByDonem($donem);
+        $kilitler = $this->kilitModel()->donemKilitleri($donem);
+        $guncel = $this->guncelDokumPersonelleri($firma, $donem);
         $hazir = []; $hatalar = []; $dislananlar = [];
         foreach ($liste as $p) {
             try {
@@ -74,7 +149,12 @@ final class BordroYayinModel extends Model
                 }
                 // Yönetim raporu ve dijital onay aynı kayıtlı resmî pusula üreticisini kullanır.
                 $icerik = BordroPusulaService::yayinIcerigi($p, $d, $firmaKaydi, $bordro);
-                $hazir[] = ['personel_id' => (int) $p->personel_id, 'bordro_id' => (int) $p->id, 'icerik' => $icerik];
+                $kilit = $kilitler[(int) $p->id] ?? null;
+                if ($kilit !== null && !hash_equals(self::parasalParmakIzi($this->onayliIcerik($kilit)), self::parasalParmakIzi($icerik))) {
+                    throw new DomainException('Personelin onayladığı döküm ile kayıtlı bordro uyuşmuyor. Onayı geri alıp yeniden hesaplayın.');
+                }
+                $yayinDurumu = isset($guncel[(int) $p->personel_id]) ? ($kilit !== null ? 'onayli' : 'yayinda') : 'yeni';
+                $hazir[] = ['personel_id' => (int) $p->personel_id, 'bordro_id' => (int) $p->id, 'yayin_durumu' => $yayinDurumu, 'icerik' => $icerik];
             } catch (DomainException $e) {
                 $hatalar[] = ['personel' => (string) $p->adi_soyadi, 'mesaj' => $e->getMessage()];
             }
@@ -82,11 +162,14 @@ final class BordroYayinModel extends Model
         if (!$liste) $hatalar[] = ['personel' => '', 'mesaj' => 'Dönemde bordro bulunamadı.'];
         // Önizleme ile yayın arasındaki değişikliklerin yeniden inceleme gerektirmesi için.
         $hash = hash('sha256', json_encode($hazir, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+        $yeniAdet = count(array_filter($hazir, static fn($k) => $k['yayin_durumu'] === 'yeni'));
         return [
             'kayitlar' => $hazir,
             'hatalar' => $hatalar,
             'dislananlar' => $dislananlar,
             'onizleme_hash' => $hash,
+            'yeni_adet' => $yeniAdet,
+            'korunan_adet' => count($hazir) - $yeniAdet,
         ];
     }
 
@@ -138,13 +221,23 @@ final class BordroYayinModel extends Model
         if (!$this->db->inTransaction()) throw new \LogicException('Yayın kaydı transaction gerektirir.');
         if ($data['hatalar']) throw new DomainException('Hatalı bordrolar düzeltilmeden yayın yapılamaz.');
         if (!hash_equals($data['onizleme_hash'], $hash)) throw new DomainException('Döküm değişti. Önizlemeyi yeniden kontrol edin.');
-        $aktif = $this->sorgu("SELECT id FROM bordro_yayin WHERE firma_id = ? AND donem_id = ? AND durum = 'yayinda' AND is_active = 1", [$firma, $donem])->fetchColumn();
-        if ($aktif) return ['yayin_token' => Security::encrypt((int) $aktif), 'mevcut' => true];
+        $guncel = $this->guncelDokumPersonelleri($firma, $donem);
+        $yeniKayitlar = array_values(array_filter($data['kayitlar'], static fn($k) => !isset($guncel[(int) $k['personel_id']])));
+        if (!$yeniKayitlar) {
+            $aktif = $this->sorgu("SELECT id FROM bordro_yayin WHERE firma_id = ? AND donem_id = ? AND durum = 'yayinda' AND is_active = 1 ORDER BY surum DESC LIMIT 1", [$firma, $donem])->fetchColumn();
+            return ['yayin_token' => $aktif ? Security::encrypt((int) $aktif) : null, 'mevcut' => true, 'adet' => 0, 'korunan' => count($guncel)];
+        }
         $surum = (int) $this->sorgu("SELECT COALESCE(MAX(CASE WHEN durum <> 'test' THEN surum END), 0) + 1 FROM bordro_yayin WHERE firma_id = ? AND donem_id = ?", [$firma, $donem])->fetchColumn();
-        $this->sorgu("UPDATE bordro_yayin SET durum = 'arsiv' WHERE firma_id = ? AND donem_id = ? AND is_active = 1", [$firma, $donem]);
+        $this->sorgu(
+            "UPDATE bordro_yayin SET durum = 'arsiv' WHERE firma_id = ? AND donem_id = ? AND is_active = 1
+             AND (durum IN ('test','revizyon') OR NOT EXISTS (
+                 SELECT 1 FROM bordro_yayin_dokum d WHERE d.yayin_id = bordro_yayin.id AND d.is_active = 1 AND d.revizyon_tarihi IS NULL
+             ))",
+            [$firma, $donem]
+        );
         $this->sorgu('INSERT INTO bordro_yayin (firma_id, donem_id, surum, yayinlayan_id) VALUES (?, ?, ?, ?)', [$firma, $donem, $surum, $user]);
         $id = (int) $this->db->lastInsertId();
-        foreach ($data['kayitlar'] as $kayit) {
+        foreach ($yeniKayitlar as $kayit) {
             $json = json_encode($kayit['icerik'], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
             $this->sorgu('INSERT INTO bordro_yayin_dokum (yayin_id, personel_id, bordro_personel_id, icerik, icerik_hash) VALUES (?, ?, ?, ?, ?)', [$id, $kayit['personel_id'], $kayit['bordro_id'], $json, hash('sha256', $json)]);
             $dokum = (int) $this->db->lastInsertId();
@@ -154,7 +247,7 @@ final class BordroYayinModel extends Model
                 $this->sorgu('INSERT INTO bordro_yayin_kuyruk (dokum_id, gun, planlanan) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ? DAY))', [$dokum, $gun, $gun]);
             }
         }
-        return ['yayin_token' => Security::encrypt($id), 'surum' => $surum, 'adet' => count($data['kayitlar'])];
+        return ['yayin_token' => Security::encrypt($id), 'surum' => $surum, 'adet' => count($yeniKayitlar), 'korunan' => count($guncel)];
     }
 
     private function pusulaNo(array $icerik, int $dokumId): string
@@ -163,15 +256,214 @@ final class BordroYayinModel extends Model
         return date('Y/m', $ts) . '/' . str_pad((string) $dokumId, 6, '0', STR_PAD_LEFT);
     }
 
-    /** Yayınla/beyan/yeniden aç aynı dönem kilidini kullanır. */
-    public function yenidenAc(int $firma, int $donem, int $user): void
+    private function revizyonKaydi(int $firma, int $donem, string $tur, int $user, ?string $gerekce, array $sayilar = [], ?string $hash = null): int
     {
-        $this->atomik(function () use ($firma, $donem, $user) {
+        $this->sorgu(
+            'INSERT INTO bordro_yayin_revizyon (firma_id, donem_id, tur, gerekce, yapan_id, incelenen_sayisi, revize_sayisi, ic_guncellenen_sayisi, korunan_sayisi, onizleme_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [$firma, $donem, $tur, $gerekce, $user, (int) ($sayilar['incelenen'] ?? 0), (int) ($sayilar['revize'] ?? 0), (int) ($sayilar['ic_guncellenen'] ?? 0), (int) ($sayilar['korunan'] ?? 0), $hash]
+        );
+        return (int) $this->db->lastInsertId();
+    }
+
+    private function revizyonaAl(array $dokumIds, int $revizyonId, int $user, string $olayTuru, ?string $detay): void
+    {
+        foreach ($dokumIds as $dokumId) {
+            $this->sorgu('UPDATE bordro_yayin_dokum SET revizyon_tarihi = NOW(), revizyon_id = ? WHERE id = ? AND revizyon_tarihi IS NULL', [$revizyonId, (int) $dokumId]);
+            $this->olay((int) $dokumId, $olayTuru, 'user', $user, $detay);
+        }
+    }
+
+    private function acikDokumlar(int $firma, int $donem, ?int $personel = null): array
+    {
+        $sql = "SELECT d.id, d.personel_id FROM bordro_yayin_dokum d JOIN bordro_yayin y ON y.id = d.yayin_id
+                WHERE y.firma_id = ? AND y.donem_id = ? AND y.is_active = 1 AND y.durum IN ('yayinda','test')
+                  AND d.is_active = 1 AND d.revizyon_tarihi IS NULL";
+        $args = [$firma, $donem];
+        if ($personel !== null) { $sql .= ' AND d.personel_id = ?'; $args[] = $personel; }
+        return $this->sorgu($sql . ' ORDER BY d.id', $args)->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /** Onaylı personelin dökümleri korunur; yalnız onaysız veya itirazlı dökümler revizyona alınır. */
+    public function yenidenAc(int $firma, int $donem, int $user): array
+    {
+        return $this->atomik(function () use ($firma, $donem, $user) {
             $this->donem($firma, $donem, true);
             $this->sorgu('UPDATE bordro_donemi SET kapali_mi = 0 WHERE id = ? AND firma_id = ?', [$donem, $firma]);
-            $ids = $this->sorgu("SELECT d.id FROM bordro_yayin_dokum d JOIN bordro_yayin y ON y.id = d.yayin_id WHERE y.firma_id = ? AND y.donem_id = ? AND y.durum = 'yayinda'", [$firma, $donem])->fetchAll(PDO::FETCH_COLUMN);
-            foreach ($ids as $id) $this->olay((int) $id, 'revizyon', 'user', $user);
-            $this->sorgu("UPDATE bordro_yayin SET durum = 'revizyon' WHERE firma_id = ? AND donem_id = ? AND durum = 'yayinda'", [$firma, $donem]);
+            $kilitliPersoneller = [];
+            foreach ($this->kilitModel()->donemKilitleri($donem) as $kilit) {
+                $kilitliPersoneller[(int) $kilit['personel_id']] = true;
+            }
+            $revize = [];
+            foreach ($this->acikDokumlar($firma, $donem) as $dokum) {
+                if (!isset($kilitliPersoneller[(int) $dokum['personel_id']])) $revize[] = (int) $dokum['id'];
+            }
+            if ($revize) {
+                $revizyonId = $this->revizyonKaydi($firma, $donem, 'donem_acilis', $user, 'Dönem yeniden açıldı', [
+                    'incelenen' => count($revize) + count($kilitliPersoneller),
+                    'revize' => count($revize),
+                    'korunan' => count($kilitliPersoneller),
+                ]);
+                $this->revizyonaAl($revize, $revizyonId, $user, 'revizyon', 'Dönem yeniden açıldı; onaylanmamış döküm revizyona alındı');
+            }
+            return ['revize' => count($revize), 'korunan' => count($kilitliPersoneller)];
+        });
+    }
+
+    public function onayGeriAl(int $firma, int $dokumId, int $user, string $gerekce): array
+    {
+        $gerekce = trim($gerekce);
+        if (mb_strlen($gerekce) < 10 || mb_strlen($gerekce) > 1000) throw new DomainException('Gerekçe 10–1000 karakter olmalıdır.');
+        return $this->atomik(function () use ($firma, $dokumId, $user, $gerekce) {
+            $ilk = $this->dokum($firma, $dokumId);
+            $d = $this->donem($firma, (int) $ilk['donem_id'], true);
+            if ((int) $d->kapali_mi) throw new DomainException('Onayı geri almak için önce dönemi açın.');
+            $r = $this->dokum($firma, $dokumId, null, true);
+            if (!empty($r['revizyon_tarihi']) || !in_array($r['durum'], ['yayinda', 'test'], true)) throw new DomainException('Bu döküm zaten revizyonda veya arşivde.');
+            if (empty($r['beyan_tarihi'])) throw new DomainException('Yalnız personelin onayladığı döküm için onay geri alınabilir.');
+            $ids = array_map(static fn($x) => (int) $x['id'], $this->acikDokumlar($firma, (int) $r['donem_id'], (int) $r['personel_id']));
+            $revizyonId = $this->revizyonKaydi($firma, (int) $r['donem_id'], 'tekli', $user, $gerekce, ['incelenen' => 1, 'revize' => 1]);
+            $this->revizyonaAl($ids, $revizyonId, $user, 'onay_geri_alindi', $gerekce);
+            $icerik = $this->icerik($r);
+            return ['personel' => (string) ($icerik['personel'] ?? ''), 'pusula_no' => (string) $r['pusula_no'], 'donem_id' => (int) $r['donem_id']];
+        });
+    }
+
+    private function snapshotOzeti(int $bordroPersonelId): array
+    {
+        $row = $this->sorgu('SELECT ' . implode(', ', self::IC_SNAPSHOT_ALANLARI) . ' FROM bordro_personel WHERE id = ?', [$bordroPersonelId])->fetch(PDO::FETCH_ASSOC) ?: [];
+        $ozet = [];
+        foreach (self::IC_SNAPSHOT_ALANLARI as $alan) {
+            $ozet[$alan] = BordroYayinIcerikService::kurus((float) ($row[$alan] ?? 0));
+        }
+        return $ozet;
+    }
+
+    private static function kalemFarklari(array $eski, array $yeni): array
+    {
+        $topla = static function (array $icerik): array {
+            $harita = [];
+            foreach ($icerik['kalemler'] ?? [] as $k) {
+                $etiket = (string) ($k['etiket'] ?? '');
+                $harita[$etiket] = ($harita[$etiket] ?? 0) + (int) ($k['kurus'] ?? 0);
+            }
+            return $harita;
+        };
+        $e = $topla($eski); $y = $topla($yeni);
+        $farklar = [];
+        foreach (array_unique(array_merge(array_keys($e), array_keys($y))) as $etiket) {
+            if (($e[$etiket] ?? 0) !== ($y[$etiket] ?? 0)) {
+                $farklar[] = ['etiket' => $etiket, 'eski_kurus' => $e[$etiket] ?? 0, 'yeni_kurus' => $y[$etiket] ?? 0];
+            }
+        }
+        return $farklar;
+    }
+
+    /** Çağıran transaction açar; değişmeyen veya hatalı personelin hesabı savepoint ile geri alınır. */
+    private function revizyonDegerlendir(int $firma, int $donem, array $dokumIds, bool $uygula, int $user, string $userAd): array
+    {
+        if (!$this->db->inTransaction()) throw new \LogicException('Revizyon değerlendirmesi transaction gerektirir.');
+        $d = $this->donem($firma, $donem, true);
+        if ((int) $d->kapali_mi) throw new DomainException('Toplu revizyon için önce dönemi açın.');
+        $kilitler = $this->kilitModel()->donemKilitleri($donem);
+        if ($dokumIds) {
+            $yer = implode(',', array_fill(0, count($dokumIds), '?'));
+            $secili = $this->sorgu(
+                "SELECT DISTINCT d.personel_id FROM bordro_yayin_dokum d JOIN bordro_yayin y ON y.id = d.yayin_id WHERE d.id IN ($yer) AND y.firma_id = ? AND y.donem_id = ?",
+                array_merge(array_map('intval', $dokumIds), [$firma, $donem])
+            )->fetchAll(PDO::FETCH_COLUMN);
+            $secili = array_fill_keys(array_map('intval', $secili), true);
+            $kilitler = array_filter($kilitler, static fn($k) => isset($secili[(int) $k['personel_id']]));
+        }
+        if (!$kilitler) throw new DomainException('Seçimde onaylı (kilitli) bordro bulunamadı.');
+        $firmaKaydi = $this->sorgu('SELECT * FROM firmalar WHERE id = ? AND silinme_tarihi IS NULL', [$firma])->fetch(PDO::FETCH_OBJ);
+        if (!$firmaKaydi) throw new DomainException('Firma bilgileri bulunamadı.');
+
+        $hesap = new BordroPersonelModel();
+        $hesap->batchMode = true;
+        $hesap->onayKilidiDenetimi = false;
+        $satirlar = [];
+        $ozet = ['incelenen' => 0, 'revize' => 0, 'ic_guncellenen' => 0, 'korunan' => 0, 'hata' => 0];
+        foreach ($kilitler as $bpId => $kilit) {
+            $ozet['incelenen']++;
+            $savepoint = 'bordro_rev_' . (int) $bpId;
+            $this->db->exec('SAVEPOINT ' . $savepoint);
+            $eski = $this->onayliIcerik($kilit);
+            $eskiIc = $this->snapshotOzeti((int) $bpId);
+            $yeni = null; $hata = null;
+            try {
+                $hesap->bulkDeleteAutoGeneratedRecords([(int) $bpId], $donem);
+                if (!$hesap->hesaplaMaas((int) $bpId, $user, $userAd)) throw new DomainException('Bordro kaydı hesaplanamadı.');
+                $satir = (new BordroPersonelModel())->getPersonellerByDonem($donem, [(int) $bpId])[0] ?? null;
+                if (!$satir) throw new DomainException('Bordro kaydı bulunamadı.');
+                $yeni = BordroPusulaService::yayinIcerigi($satir, $d, $firmaKaydi, $hesap);
+            } catch (DomainException $e) {
+                $hata = $e->getMessage();
+            }
+            $yeniIc = $this->snapshotOzeti((int) $bpId);
+            if ($hata !== null) {
+                $sonuc = 'hata';
+            } elseif (!hash_equals(self::parasalParmakIzi($eski), self::parasalParmakIzi($yeni))) {
+                $sonuc = 'degisti';
+            } elseif ($eskiIc !== $yeniIc) {
+                $sonuc = 'ic_degisti';
+            } else {
+                $sonuc = 'degismedi';
+            }
+            if (!$uygula || in_array($sonuc, ['hata', 'degismedi'], true)) {
+                $this->db->exec('ROLLBACK TO SAVEPOINT ' . $savepoint);
+            }
+            $this->db->exec('RELEASE SAVEPOINT ' . $savepoint);
+            $ozet[match ($sonuc) { 'degisti' => 'revize', 'ic_degisti' => 'ic_guncellenen', 'degismedi' => 'korunan', default => 'hata' }]++;
+            $satirlar[] = [
+                'bordro_personel_id' => (int) $bpId,
+                'personel_id' => (int) $kilit['personel_id'],
+                'dokum_id' => (int) $kilit['dokum_id'],
+                'personel' => (string) $kilit['adi_soyadi'],
+                'sonuc' => $sonuc,
+                'hata' => $hata,
+                'eski_banka_kurus' => (int) ($eski['banka_net_kurus'] ?? 0),
+                'yeni_banka_kurus' => $yeni !== null ? (int) ($yeni['banka_net_kurus'] ?? 0) : null,
+                'eski_elden_kurus' => $eskiIc['elden_odeme'],
+                'yeni_elden_kurus' => $hata === null ? $yeniIc['elden_odeme'] : null,
+                'kalem_farklari' => $yeni !== null ? self::kalemFarklari($eski, $yeni) : [],
+                'parmak_izi' => $yeni !== null ? self::parasalParmakIzi($yeni) : null,
+                'ic_ozet' => $hata === null ? $yeniIc : null,
+            ];
+        }
+        $hash = hash('sha256', json_encode(array_map(static fn($s) => [$s['bordro_personel_id'], $s['sonuc'], $s['parmak_izi'], $s['ic_ozet']], $satirlar), JSON_THROW_ON_ERROR));
+        return ['satirlar' => $satirlar, 'ozet' => $ozet, 'onizleme_hash' => $hash];
+    }
+
+    public function revizyonOnizle(int $firma, int $donem, array $dokumIds, int $user, string $userAd): array
+    {
+        $this->db->beginTransaction();
+        try {
+            return $this->revizyonDegerlendir($firma, $donem, $dokumIds, false, $user, $userAd);
+        } finally {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+        }
+    }
+
+    public function revizyonUygula(int $firma, int $donem, array $dokumIds, int $user, string $userAd, string $gerekce, string $hash, int $onaySayisi): array
+    {
+        $gerekce = trim($gerekce);
+        if (mb_strlen($gerekce) < 10 || mb_strlen($gerekce) > 1000) throw new DomainException('Gerekçe 10–1000 karakter olmalıdır.');
+        return $this->atomik(function () use ($firma, $donem, $dokumIds, $user, $userAd, $gerekce, $hash, $onaySayisi) {
+            $sonuc = $this->revizyonDegerlendir($firma, $donem, $dokumIds, true, $user, $userAd);
+            if (!hash_equals($sonuc['onizleme_hash'], $hash)) throw new DomainException('Hesap sonucu önizlemeden sonra değişti. Önizlemeyi yeniden alın.');
+            $ozet = $sonuc['ozet'];
+            if ($ozet['revize'] + $ozet['ic_guncellenen'] === 0) throw new DomainException('Seçilen onaylı bordrolarda değişiklik bulunmadı; uygulanacak revizyon yok.');
+            if ($onaySayisi !== $ozet['revize']) throw new DomainException('Onay için yazılan sayı, onayı kaldırılacak personel sayısıyla uyuşmuyor.');
+            $revizyonId = $this->revizyonKaydi($firma, $donem, 'toplu', $user, $gerekce, $ozet, $hash);
+            foreach ($sonuc['satirlar'] as $s) {
+                if ($s['sonuc'] === 'degisti') {
+                    $ids = array_map(static fn($x) => (int) $x['id'], $this->acikDokumlar($firma, $donem, $s['personel_id']));
+                    $this->revizyonaAl($ids, $revizyonId, $user, 'toplu_revizyon', $gerekce);
+                } elseif ($s['sonuc'] === 'ic_degisti') {
+                    $this->olay($s['dokum_id'], 'ic_hesap_guncellendi', 'user', $user, 'Toplu revizyon: resmî döküm değişmedi, onay korundu. ' . $gerekce);
+                }
+            }
+            return $sonuc + ['revizyon_id' => $revizyonId];
         });
     }
 
@@ -197,9 +489,14 @@ final class BordroYayinModel extends Model
         $this->sorgu('INSERT INTO bordro_yayin_olay (dokum_id, tur, aktor_tipi, aktor_id, detay) VALUES (?, ?, ?, ?, ?)', [$dokum, $tur, $aktor, $id, $detay]);
     }
 
+    private static function gorunenDurum(array $row): string
+    {
+        return !empty($row['revizyon_tarihi']) && in_array($row['durum'] ?? '', ['yayinda', 'test'], true) ? 'revizyon' : (string) ($row['durum'] ?? '');
+    }
+
     private function islemDurumu(array $row): string
     {
-        if (in_array($row['durum'] ?? '', ['revizyon', 'arsiv'], true)) return 'revize_edildi';
+        if (in_array($row['durum'] ?? '', ['revizyon', 'arsiv'], true) || !empty($row['revizyon_tarihi'])) return 'revize_edildi';
         if ((int) ($row['acik_talep'] ?? 0) > 0) return 'itiraz_edildi';
         if (!empty($row['beyan_tarihi'])) return 'onaylandi';
         if (!empty($row['goruntuleme_tarihi'])) return 'goruntulendi';
@@ -216,7 +513,7 @@ final class BordroYayinModel extends Model
         return array_map(function ($row) {
             $i = $this->icerik($row);
             $surum = $row['durum'] === 'test' ? 'T' . abs((int) $row['surum']) : (int) $row['surum'];
-            return ['token' => Security::encrypt((int) $row['id']), 'pusula_no' => $row['pusula_no'], 'donem' => $i['donem'], 'baslangic' => $i['baslangic'], 'surum' => $surum, 'durum' => $row['durum'], 'islem_durumu' => $this->islemDurumu($row), 'yayin_tarihi' => $row['yayin_tarihi'], 'gonderim_tarihi' => $row['gonderim_tarihi'] ?: $row['yayin_tarihi'], 'beyan_tarihi' => $row['beyan_tarihi'], 'goruntuleme_tarihi' => $row['goruntuleme_tarihi'], 'banka_net_kurus' => $i['banka_net_kurus']];
+            return ['token' => Security::encrypt((int) $row['id']), 'pusula_no' => $row['pusula_no'], 'donem' => $i['donem'], 'baslangic' => $i['baslangic'], 'surum' => $surum, 'durum' => self::gorunenDurum($row), 'islem_durumu' => $this->islemDurumu($row), 'yayin_tarihi' => $row['yayin_tarihi'], 'gonderim_tarihi' => $row['gonderim_tarihi'] ?: $row['yayin_tarihi'], 'beyan_tarihi' => $row['beyan_tarihi'], 'goruntuleme_tarihi' => $row['goruntuleme_tarihi'], 'banka_net_kurus' => $i['banka_net_kurus']];
         }, $rows);
     }
 
@@ -258,7 +555,7 @@ final class BordroYayinModel extends Model
         $surum = $r['durum'] === 'test' ? 'T' . abs((int) $r['surum']) : (int) $r['surum'];
         $r['acik_talep'] = count(array_filter($talepler, static fn($t) => in_array($t['durum'], ['acik','alindi','inceleniyor','ek_bilgi_bekleniyor'], true)));
         $onayKaniti = $personel === null ? ['onay_ip' => $r['onay_ip'] ?: null, 'onay_cihaz' => $r['onay_user_agent'] ?: null] : [];
-        return $onayKaniti + ['olaylar' => $olaylar, 'token' => Security::encrypt($id), 'pusula_no' => $r['pusula_no'], 'icerik' => $this->icerik($r), 'icerik_hash' => $r['icerik_hash'], 'surum' => $surum, 'durum' => $r['durum'], 'islem_durumu' => $this->islemDurumu($r), 'yayin_tarihi' => $r['yayin_tarihi'], 'gonderim_tarihi' => $r['gonderim_tarihi'] ?: $r['yayin_tarihi'], 'goruntuleme_tarihi' => $r['goruntuleme_tarihi'], 'beyan_tarihi' => $r['beyan_tarihi'], 'beyan_metni' => $r['beyan_metni'] ?: BordroYayinIcerikService::BEYAN, 'beyan_metin_surumu' => (int) ($r['beyan_metin_surumu'] ?: BordroYayinIcerikService::METIN_SURUMU), 'talepler' => $talepler];
+        return $onayKaniti + ['olaylar' => $olaylar, 'token' => Security::encrypt($id), 'pusula_no' => $r['pusula_no'], 'icerik' => $this->icerik($r), 'icerik_hash' => $r['icerik_hash'], 'surum' => $surum, 'durum' => self::gorunenDurum($r), 'islem_durumu' => $this->islemDurumu($r), 'yayin_tarihi' => $r['yayin_tarihi'], 'gonderim_tarihi' => $r['gonderim_tarihi'] ?: $r['yayin_tarihi'], 'goruntuleme_tarihi' => $r['goruntuleme_tarihi'], 'beyan_tarihi' => $r['beyan_tarihi'], 'beyan_metni' => $r['beyan_metni'] ?: BordroYayinIcerikService::BEYAN, 'beyan_metin_surumu' => (int) ($r['beyan_metin_surumu'] ?: BordroYayinIcerikService::METIN_SURUMU), 'talepler' => $talepler];
     }
 
     public function personelIslem(int $firma, int $id, int $personel, string $islem, string $mesaj = '', array $kanit = []): ?int
@@ -276,7 +573,7 @@ final class BordroYayinModel extends Model
                 return null;
             }
             if ($islem === 'beyan') {
-                if (!in_array($r['durum'], ['yayinda', 'test'], true) || !(int) $d->kapali_mi) throw new DomainException('Bu sürüm için yeni beyan alınamıyor.');
+                if (!in_array($r['durum'], ['yayinda', 'test'], true) || !empty($r['revizyon_tarihi']) || !(int) $d->kapali_mi) throw new DomainException('Bu sürüm için yeni beyan alınamıyor.');
                 if ($r['beyan_tarihi']) return null;
                 if (!$r['goruntuleme_tarihi']) throw new DomainException('Önce dökümü görüntüleyin.');
                 $this->sorgu('UPDATE bordro_yayin_dokum SET beyan_tarihi = NOW(), beyan_metni = ?, beyan_metin_surumu = ?, onay_ip = ?, onay_user_agent = ?, onay_session_hash = ?, onay_icerik_hash = ? WHERE id = ?', [BordroYayinIcerikService::BEYAN, BordroYayinIcerikService::METIN_SURUMU, $kanit['ip'] ?? null, mb_substr((string) ($kanit['user_agent'] ?? ''), 0, 500), $kanit['session_hash'] ?? null, $r['icerik_hash'], $id]);
@@ -328,7 +625,7 @@ final class BordroYayinModel extends Model
         return array_map(function ($r) {
             $i = $this->icerik($r);
             $surum = $r['durum'] === 'test' ? 'T' . abs((int) $r['surum']) : (int) $r['surum'];
-            return ['token' => Security::encrypt((int) $r['id']), 'pusula_no' => $r['pusula_no'], 'personel' => $i['personel'], 'donem' => $i['donem'], 'surum' => $surum, 'durum' => $r['durum'], 'islem_durumu' => $this->islemDurumu($r), 'yayin_tarihi' => $r['yayin_tarihi'], 'gonderim_tarihi' => $r['gonderim_tarihi'] ?: $r['yayin_tarihi'], 'goruntuleme_tarihi' => $r['goruntuleme_tarihi'], 'beyan_tarihi' => $r['beyan_tarihi'], 'banka_net_kurus' => $i['banka_net_kurus'], 'talep_sayisi' => (int) $r['talep_sayisi'], 'acik_talep' => (int) $r['acik_talep'], 'ilk_bildirim_durumu' => $r['ilk_bildirim_durumu'], 'basarisiz_bildirim' => (int) $r['basarisiz_bildirim']];
+            return ['token' => Security::encrypt((int) $r['id']), 'pusula_no' => $r['pusula_no'], 'personel' => $i['personel'], 'donem' => $i['donem'], 'surum' => $surum, 'durum' => self::gorunenDurum($r), 'islem_durumu' => $this->islemDurumu($r), 'yayin_tarihi' => $r['yayin_tarihi'], 'gonderim_tarihi' => $r['gonderim_tarihi'] ?: $r['yayin_tarihi'], 'goruntuleme_tarihi' => $r['goruntuleme_tarihi'], 'beyan_tarihi' => $r['beyan_tarihi'], 'banka_net_kurus' => $i['banka_net_kurus'], 'talep_sayisi' => (int) $r['talep_sayisi'], 'acik_talep' => (int) $r['acik_talep'], 'ilk_bildirim_durumu' => $r['ilk_bildirim_durumu'], 'basarisiz_bildirim' => (int) $r['basarisiz_bildirim']];
         }, $rows);
     }
 
@@ -365,10 +662,10 @@ final class BordroYayinModel extends Model
             $donem = $this->sorgu('SELECT y.firma_id, y.donem_id FROM bordro_yayin_kuyruk q JOIN bordro_yayin_dokum d ON d.id = q.dokum_id JOIN bordro_yayin y ON y.id = d.yayin_id WHERE q.id = ?', [$q['id']])->fetch(PDO::FETCH_ASSOC);
             if (!$donem) return 'atlandi';
             $this->donem((int) $donem['firma_id'], (int) $donem['donem_id'], true);
-            $r = $this->sorgu('SELECT q.*, d.personel_id, d.beyan_tarihi, d.is_active dokum_aktif, y.is_active yayin_aktif, y.firma_id, y.surum, y.durum yayin_durumu, bd.kapali_mi, p.firma_id personel_firma, p.aktif_mi, p.isten_cikis_tarihi, p.silinme_tarihi FROM bordro_yayin_kuyruk q JOIN bordro_yayin_dokum d ON d.id = q.dokum_id JOIN bordro_yayin y ON y.id = d.yayin_id JOIN bordro_donemi bd ON bd.id = y.donem_id JOIN personel p ON p.id = d.personel_id WHERE q.id = ? AND q.kilit_token = ? FOR UPDATE', [$q['id'], $q['kilit_token']])->fetch(PDO::FETCH_ASSOC);
+            $r = $this->sorgu('SELECT q.*, d.personel_id, d.beyan_tarihi, d.revizyon_tarihi, d.is_active dokum_aktif, y.is_active yayin_aktif, y.firma_id, y.surum, y.durum yayin_durumu, bd.kapali_mi, p.firma_id personel_firma, p.aktif_mi, p.isten_cikis_tarihi, p.silinme_tarihi FROM bordro_yayin_kuyruk q JOIN bordro_yayin_dokum d ON d.id = q.dokum_id JOIN bordro_yayin y ON y.id = d.yayin_id JOIN bordro_donemi bd ON bd.id = y.donem_id JOIN personel p ON p.id = d.personel_id WHERE q.id = ? AND q.kilit_token = ? FOR UPDATE', [$q['id'], $q['kilit_token']])->fetch(PDO::FETCH_ASSOC);
             if (!$r) return 'atlandi';
             $uygun = $r['yayin_durumu'] === 'yayinda' && (int) $r['kapali_mi'] === 1
-                && $r['dokum_aktif'] && $r['yayin_aktif'] && $r['aktif_mi']
+                && $r['dokum_aktif'] && $r['yayin_aktif'] && $r['aktif_mi'] && empty($r['revizyon_tarihi'])
                 && !$r['silinme_tarihi'] && (!$r['isten_cikis_tarihi'] || $r['isten_cikis_tarihi'] === '0000-00-00')
                 && (int) $r['firma_id'] === (int) $r['personel_firma'] && !$r['beyan_tarihi'];
             $durum = $uygun ? $gonder($r) : 'atlandi';

@@ -1158,6 +1158,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $evrak->tarihce_gorebilir = $sevkModel->hasFullAccess();
                 }
 
+                if (($evrak->kaynak_tipi ?? '') === 'uets' || !empty($evrak->uets_mesaj_id)) {
+                    (new \App\Service\UetsSyncService())->healAttachments((int) $_SESSION['firma_id'], $id);
+                }
+
                 $imzaAkisi = $Model->getApprovalDetailMap([$id])[$id] ?? [];
                 $imzaOzeti = $Model->getApprovalSummaryMap($currentUserId, [$id])[$id] ?? [];
                 $evrak->imza_sirasi_bende = ($evrak->onay_durumu ?? '') === 'onay_bekliyor'

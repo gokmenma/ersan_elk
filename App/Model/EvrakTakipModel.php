@@ -1004,6 +1004,38 @@ class EvrakTakipModel extends Model
         return (int) $this->db->lastInsertId();
     }
 
+    public function saveAttachmentForFirm(int $firmaId, int $evrakId, array $attachment, int $userId = 0): int
+    {
+        $sql = $this->db->prepare("
+            INSERT INTO evrak_takip_ekleri
+                (evrak_id, firma_id, dosya_adi, dosya_yolu, mime_tipi, dosya_boyutu, sira, yukleyen_kullanici_id)
+            SELECT et.id, et.firma_id, :dosya_adi, :dosya_yolu, :mime_tipi, :dosya_boyutu, :sira, :yukleyen_kullanici_id
+            FROM {$this->table} et
+            WHERE et.id = :evrak_id AND et.firma_id = :firma_id AND et.silinme_tarihi IS NULL
+        ");
+        $sql->execute([
+            'evrak_id' => $evrakId,
+            'firma_id' => $firmaId,
+            'dosya_adi' => (string) $attachment['dosya_adi'],
+            'dosya_yolu' => (string) $attachment['dosya_yolu'],
+            'mime_tipi' => $attachment['mime_tipi'] ?? null,
+            'dosya_boyutu' => (int) ($attachment['dosya_boyutu'] ?? 0),
+            'sira' => (int) ($attachment['sira'] ?? 0),
+            'yukleyen_kullanici_id' => $userId > 0 ? $userId : null,
+        ]);
+        return $sql->rowCount() > 0 ? (int) $this->db->lastInsertId() : 0;
+    }
+
+    public function countAttachmentsForFirm(int $firmaId, int $evrakId): int
+    {
+        $sql = $this->db->prepare("
+            SELECT COUNT(*) FROM evrak_takip_ekleri
+            WHERE evrak_id = :evrak_id AND firma_id = :firma_id AND silinme_tarihi IS NULL
+        ");
+        $sql->execute(['evrak_id' => $evrakId, 'firma_id' => $firmaId]);
+        return (int) $sql->fetchColumn();
+    }
+
     public function createFromUets(int $firmaId, array $data): int
     {
         $sql = $this->db->prepare("

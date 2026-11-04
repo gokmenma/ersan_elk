@@ -1,5 +1,6 @@
 <?php
 
+use App\Model\BordroOnayKilidiModel;
 use App\Model\BordroYayinModel;
 use App\Helper\BordroYayinGuvenlik;
 use App\Helper\Security;
@@ -36,17 +37,20 @@ final class BordroYayinWorkflowTest extends TestCase
         $this->db->sqliteCreateFunction('NOW', fn() => '2026-10-01 12:00:00');
         $this->db->sqliteCreateFunction('IF', fn($c, $yes, $no) => $c ? $yes : $no);
         $this->db->exec(<<<'SQL'
-CREATE TABLE personel(id INTEGER PRIMARY KEY, firma_id INT, aktif_mi INT DEFAULT 1, isten_cikis_tarihi TEXT, silinme_tarihi TEXT);
+CREATE TABLE personel(id INTEGER PRIMARY KEY, firma_id INT, adi_soyadi TEXT, aktif_mi INT DEFAULT 1, isten_cikis_tarihi TEXT, silinme_tarihi TEXT);
+CREATE TABLE bordro_personel(id INTEGER PRIMARY KEY, donem_id INT, personel_id INT, silinme_tarihi TEXT);
+CREATE TABLE bordro_yayin_revizyon(id INTEGER PRIMARY KEY, firma_id INT, donem_id INT, tur TEXT, gerekce TEXT, yapan_id INT, tarih TEXT DEFAULT CURRENT_TIMESTAMP, incelenen_sayisi INT DEFAULT 0, revize_sayisi INT DEFAULT 0, ic_guncellenen_sayisi INT DEFAULT 0, korunan_sayisi INT DEFAULT 0, onizleme_hash TEXT, is_active INT DEFAULT 1);
 CREATE TABLE bordro_donemi(id INTEGER PRIMARY KEY, firma_id INT, kapali_mi INT, silinme_tarihi TEXT);
 CREATE TABLE bordro_yayin(id INTEGER PRIMARY KEY, firma_id INT, donem_id INT, surum INT, durum TEXT DEFAULT 'yayinda', yayinlayan_id INT, yayin_tarihi TEXT DEFAULT CURRENT_TIMESTAMP, is_active INT DEFAULT 1);
-CREATE TABLE bordro_yayin_dokum(id INTEGER PRIMARY KEY, yayin_id INT, personel_id INT, bordro_personel_id INT, pusula_no TEXT, icerik TEXT, icerik_hash TEXT, olusturma_tarihi TEXT DEFAULT CURRENT_TIMESTAMP, gonderim_tarihi TEXT, goruntuleme_tarihi TEXT, beyan_tarihi TEXT, beyan_metni TEXT, beyan_metin_surumu INT, onay_ip TEXT, onay_user_agent TEXT, onay_session_hash TEXT, onay_icerik_hash TEXT, deleted_at TEXT, is_active INT DEFAULT 1, UNIQUE(yayin_id, personel_id));
+CREATE TABLE bordro_yayin_dokum(id INTEGER PRIMARY KEY, yayin_id INT, personel_id INT, bordro_personel_id INT, pusula_no TEXT, icerik TEXT, icerik_hash TEXT, olusturma_tarihi TEXT DEFAULT CURRENT_TIMESTAMP, gonderim_tarihi TEXT, goruntuleme_tarihi TEXT, beyan_tarihi TEXT, beyan_metni TEXT, beyan_metin_surumu INT, onay_ip TEXT, onay_user_agent TEXT, onay_session_hash TEXT, onay_icerik_hash TEXT, revizyon_tarihi TEXT, revizyon_id INT, deleted_at TEXT, is_active INT DEFAULT 1, UNIQUE(yayin_id, personel_id));
 CREATE TABLE bordro_yayin_olay(id INTEGER PRIMARY KEY, dokum_id INT, tur TEXT, aktor_tipi TEXT, aktor_id INT, detay TEXT, tarih TEXT DEFAULT CURRENT_TIMESTAMP, is_active INT DEFAULT 1);
 CREATE TABLE bordro_yayin_talep(id INTEGER PRIMARY KEY, dokum_id INT, konu TEXT DEFAULT 'diger', mesaj TEXT, durum TEXT DEFAULT 'acik', atanan_kullanici_id INT, tarih TEXT DEFAULT CURRENT_TIMESTAMP, sonuc_tarihi TEXT, is_active INT DEFAULT 1);
 CREATE TABLE bordro_yayin_yanit(id INTEGER PRIMARY KEY, talep_id INT, kullanici_id INT, mesaj TEXT, tarih TEXT DEFAULT CURRENT_TIMESTAMP, is_active INT DEFAULT 1);
 CREATE TABLE bordro_yayin_talep_ek(id INTEGER PRIMARY KEY, talep_id INT, dosya_adi TEXT, dosya_yolu TEXT, mime_tipi TEXT, dosya_boyutu INT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, is_active INT DEFAULT 1);
 CREATE TABLE bordro_yayin_kuyruk(id INTEGER PRIMARY KEY, dokum_id INT, gun INT, planlanan TEXT, durum TEXT DEFAULT 'bekliyor', deneme INT DEFAULT 0, kilit_token TEXT, son_hata TEXT, gonderim_tarihi TEXT, is_active INT DEFAULT 1);
 CREATE TABLE users(id INTEGER PRIMARY KEY, adi_soyadi TEXT, user_name TEXT);
-INSERT INTO personel(id, firma_id) VALUES (1,1),(2,1),(3,2);
+INSERT INTO personel(id, firma_id, adi_soyadi) VALUES (1,1,'Ayşe Onaylı'),(2,1,'Berk İtirazlı'),(3,2,'Diğer Firma');
+INSERT INTO bordro_personel(id, donem_id, personel_id) VALUES (10,1,1),(11,1,2),(12,2,3);
 INSERT INTO bordro_donemi(id,firma_id,kapali_mi) VALUES (1,1,1),(2,2,1);
 INSERT INTO bordro_yayin(id,firma_id,donem_id,surum,durum,yayin_tarihi) VALUES (1,1,1,1,'yayinda','2026-09-30'),(2,2,2,1,'yayinda','2026-09-30');
 SQL);
@@ -101,24 +105,129 @@ SQL);
         self::assertSame(1, (int) $this->db->query("SELECT COUNT(*) FROM bordro_yayin_dokum d JOIN bordro_yayin y ON y.id=d.yayin_id WHERE y.durum='test' AND d.personel_id=2 AND d.is_active=1")->fetchColumn());
     }
 
-    public function testYenidenYayinYeniSurumVeUcBildirimOlustururEskiBeyaniKorur(): void
+    private function ikinciPersonelDokumu(): void
     {
+        $i = json_encode(['personel' => 'Berk İtirazlı', 'donem' => '2026/09', 'baslangic' => '2026-09-01', 'banka_net_kurus' => 90000, 'kalemler' => [['etiket' => 'Ücret', 'kurus' => 90000]]]);
+        $stmt = $this->db->prepare('INSERT INTO bordro_yayin_dokum(id,yayin_id,personel_id,bordro_personel_id,icerik,icerik_hash) VALUES (3,1,2,11,?,?)');
+        $stmt->execute([$i, hash('sha256', $i)]);
+    }
+
+    private function kilit(): BordroOnayKilidiModel
+    {
+        return new BordroOnayKilidiModel($this->db);
+    }
+
+    public function testOnayliDokumKilitlenirAcikItirazKilidiKaldirir(): void
+    {
+        self::assertSame([], $this->kilit()->donemKilitleri(1));
+        $this->goruntule(); $this->model->personelIslem(1,1,1,'beyan');
+        self::assertSame([10], array_keys($this->kilit()->donemKilitleri(1)));
+        try { $this->kilit()->dogrula(10); self::fail('Onaylı bordro kilitli olmalı.'); }
+        catch (DomainException $e) { self::assertStringContainsString('Ayşe Onaylı', $e->getMessage()); }
+        $this->kilit()->dogrula(11);
+        $this->model->personelIslem(1,1,1,'talep','Onayladım ama prim tutarını kontrol etmenizi istiyorum.', ['konu'=>'prim']);
+        self::assertSame([], $this->kilit()->donemKilitleri(1));
+    }
+
+    public function testDonemAcilincaOnayliKorunurOnaysizRevizyonaAlinir(): void
+    {
+        $this->ikinciPersonelDokumu();
+        $this->goruntule(); $this->model->personelIslem(1,1,1,'beyan');
+        $once = $this->model->detay(1,1,1);
+        $sonuc = $this->model->yenidenAc(1,1,10);
+        self::assertSame(['revize' => 1, 'korunan' => 1], $sonuc);
+        self::assertSame(0,(int)$this->db->query('SELECT kapali_mi FROM bordro_donemi WHERE id=1')->fetchColumn());
+        $onayli = $this->model->detay(1,1,1);
+        self::assertSame('yayinda', $onayli['durum']);
+        self::assertSame('onaylandi', $onayli['islem_durumu']);
+        self::assertSame($once['icerik'], $onayli['icerik']);
+        $revize = $this->model->detay(1,3,2);
+        self::assertSame('revizyon', $revize['durum']);
+        self::assertSame('revize_edildi', $revize['islem_durumu']);
+        self::assertSame(1, $this->kayitAdedi('bordro_yayin_revizyon'));
+        self::assertSame([10], array_keys($this->kilit()->donemKilitleri(1)));
+    }
+
+    public function testRevizyondakiDokumeBeyanAlinmazVeBildirimGonderilmez(): void
+    {
+        $this->ikinciPersonelDokumu();
+        $this->model->yenidenAc(1,1,10);
+        $this->db->exec('UPDATE bordro_donemi SET kapali_mi=1 WHERE id=1');
+        $this->model->personelIslem(1,1,1,'goruntule');
+        try { $this->model->personelIslem(1,1,1,'beyan'); self::fail('Revizyondaki dökümde beyan alınmamalı.'); }
+        catch (DomainException $e) { self::assertFalse($this->db->inTransaction()); }
+        $this->db->exec("INSERT INTO bordro_yayin_kuyruk(id,dokum_id,gun,durum,deneme,kilit_token) VALUES(1,1,3,'isleniyor',1,'test')");
+        $durum = $this->model->bildirimUygula(['id'=>1,'kilit_token'=>'test','deneme'=>1], function () { self::fail('Gönderim çalışmamalıydı.'); });
+        self::assertSame('atlandi', $durum);
+    }
+
+    public function testYenidenYayindaOnayliKorunurYalnizRevizeOlanYeniSurumAlir(): void
+    {
+        $this->ikinciPersonelDokumu();
         $this->goruntule(); $this->model->personelIslem(1,1,1,'beyan');
         $eski = $this->model->detay(1,1,1);
         $this->model->yenidenAc(1,1,10);
         $this->db->exec('UPDATE bordro_donemi SET kapali_mi=1 WHERE id=1');
-        $r = $this->yayinKaydet([$this->hazirDokum()]);
-        self::assertSame(2,$r['surum']);
-        $liste = $this->model->personelListe(1,1);
-        self::assertCount(2,$liste);
-        self::assertNull($liste[0]['beyan_tarihi']);
-        self::assertSame('arsiv',$this->model->detay(1,1,1)['durum']);
-        self::assertSame($eski['beyan_tarihi'],$this->model->detay(1,1,1)['beyan_tarihi']);
+        $ikinci = $this->hazirDokum(); $ikinci['personel_id'] = 2; $ikinci['bordro_id'] = 11; $ikinci['icerik']['personel'] = 'Berk İtirazlı';
+        $r = $this->yayinKaydet([$this->hazirDokum(), $ikinci]);
+        self::assertSame(2, $r['surum']);
+        self::assertSame(1, $r['adet']);
+        self::assertSame(1, $r['korunan']);
+        self::assertSame('yayinda', $this->model->detay(1,1,1)['durum']);
+        self::assertSame($eski['beyan_tarihi'], $this->model->detay(1,1,1)['beyan_tarihi']);
+        self::assertCount(1, $this->model->personelListe(1,1));
+        self::assertCount(2, $this->model->personelListe(1,2));
         self::assertSame([0,3,7],$this->db->query('SELECT gun FROM bordro_yayin_kuyruk ORDER BY gun')->fetchAll(PDO::FETCH_COLUMN));
         self::assertSame(['2026-10-01 12:00:00','2026-10-04 12:00:00','2026-10-08 12:00:00'],$this->db->query('SELECT planlanan FROM bordro_yayin_kuyruk ORDER BY gun')->fetchAll(PDO::FETCH_COLUMN));
-        $this->yayinKaydet([$this->hazirDokum()]);
-        self::assertSame(3,$this->kayitAdedi('bordro_yayin_dokum'));
-        self::assertSame(3,$this->kayitAdedi('bordro_yayin_kuyruk'));
+        $tekrar = $this->yayinKaydet([$this->hazirDokum(), $ikinci]);
+        self::assertTrue($tekrar['mevcut']);
+        self::assertSame(4, $this->kayitAdedi('bordro_yayin_dokum'));
+        self::assertSame(3, $this->kayitAdedi('bordro_yayin_kuyruk'));
+    }
+
+    public function testTumDokumleriRevizeOlanEskiYayinArsivlenir(): void
+    {
+        $this->model->yenidenAc(1,1,10);
+        $this->db->exec('UPDATE bordro_donemi SET kapali_mi=1 WHERE id=1');
+        $r = $this->yayinKaydet([$this->hazirDokum()]);
+        self::assertSame(2, $r['surum']);
+        self::assertSame('arsiv', $this->model->detay(1,1,1)['durum']);
+        self::assertCount(2, $this->model->personelListe(1,1));
+    }
+
+    public function testOnayGeriAlmaAcikDonemVeGerekceIsterKilidiKaldirir(): void
+    {
+        $this->goruntule(); $this->model->personelIslem(1,1,1,'beyan');
+        try { $this->model->onayGeriAl(1,1,10,'Fazla mesai saatleri eksik girilmiş.'); self::fail('Kapalı dönemde reddedilmeli.'); }
+        catch (DomainException $e) { self::assertStringContainsString('dönemi açın', $e->getMessage()); }
+        $this->model->yenidenAc(1,1,10);
+        try { $this->model->onayGeriAl(1,1,10,'kısa'); self::fail('Kısa gerekçe reddedilmeli.'); }
+        catch (DomainException $e) { self::assertSame([10], array_keys($this->kilit()->donemKilitleri(1))); }
+        $sonuc = $this->model->onayGeriAl(1,1,10,'Fazla mesai saatleri eksik girilmiş.');
+        self::assertSame('Test', $sonuc['personel']);
+        self::assertSame([], $this->kilit()->donemKilitleri(1));
+        $d = $this->model->detay(1,1);
+        self::assertSame('revize_edildi', $d['islem_durumu']);
+        self::assertSame('onay_geri_alindi', end($d['olaylar'])['tur']);
+        self::assertSame('tekli', $this->db->query('SELECT tur FROM bordro_yayin_revizyon')->fetchColumn());
+        $this->expectException(DomainException::class);
+        $this->model->onayGeriAl(1,1,10,'Fazla mesai saatleri eksik girilmiş.');
+    }
+
+    public function testOnaylanmamisDokumdeOnayGeriAlinamaz(): void
+    {
+        $this->db->exec('UPDATE bordro_donemi SET kapali_mi=0 WHERE id=1');
+        $this->expectException(DomainException::class);
+        $this->model->onayGeriAl(1,1,10,'Fazla mesai saatleri eksik girilmiş.');
+    }
+
+    public function testParasalParmakIziFirmaBilgisindenEtkilenmez(): void
+    {
+        $a = ['banka_net_kurus' => 100, 'kalemler' => [['etiket' => 'Ücret', 'kurus' => 100]], 'resmi_pusula' => ['firma' => ['adres' => 'Eski']]];
+        $b = $a; $b['resmi_pusula']['firma']['adres'] = 'Yeni';
+        self::assertSame(BordroYayinModel::parasalParmakIzi($a), BordroYayinModel::parasalParmakIzi($b));
+        $b['kalemler'][0]['kurus'] = 101;
+        self::assertNotSame(BordroYayinModel::parasalParmakIzi($a), BordroYayinModel::parasalParmakIzi($b));
     }
 
     public function testYayinSirasindakiHataTumYayiniVeKuyruguGeriAlir(): void
@@ -236,15 +345,16 @@ SQL);
         catch (DomainException $e) { self::assertFalse($this->db->inTransaction()); self::assertSame(0,$this->kayitAdedi('bordro_yayin_olay')); }
     }
 
-    public function testYenidenAcEskiBeyaniVeIcerigiKorurYeniBeyaniEngeller(): void
+    public function testYenidenAcOnaysizDokumunIceriginiKorurYeniBeyaniEngeller(): void
     {
-        $this->goruntule(); $this->model->personelIslem(1,1,1,'beyan');
+        $this->goruntule();
         $once = $this->model->detay(1,1,1);
         $this->model->yenidenAc(1,1,10);
         $sonra = $this->model->detay(1,1,1);
         self::assertSame('revizyon',$sonra['durum']);
-        self::assertSame($once['icerik'],$sonra['icerik']); self::assertSame($once['beyan_tarihi'],$sonra['beyan_tarihi']);
+        self::assertSame($once['icerik'],$sonra['icerik']);
         self::assertSame(0,(int)$this->db->query('SELECT kapali_mi FROM bordro_donemi WHERE id=1')->fetchColumn());
+        $this->db->exec('UPDATE bordro_donemi SET kapali_mi=1 WHERE id=1');
         $this->expectException(DomainException::class); $this->model->personelIslem(1,1,1,'beyan');
     }
 

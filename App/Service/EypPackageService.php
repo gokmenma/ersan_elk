@@ -101,25 +101,51 @@ class EypPackageService
                 continue;
             }
 
-            $extractedPath = $targetDir . '/' . basename($filename);
+            $normalized = ltrim(str_replace('\\', '/', $filename), '/');
+            if (str_contains($normalized, '../')) {
+                continue;
+            }
+            $baseName = basename($normalized);
+            $extractedPath = $targetDir . '/' . sprintf('%03d_', $i) . $baseName;
+            $topFolder = strtolower((string) strtok($normalized, '/'));
+            $isTopLevel = !str_contains($normalized, '/');
 
-            if (stripos($filename, 'ustyazi') !== false && stripos($filename, '.pdf') !== false) {
-                copy("zip://" . $eypFilePath . "#" . $filename, $extractedPath);
+            $content = $zip->getFromIndex($i);
+            if ($content === false) {
+                continue;
+            }
+
+            if ($topFolder === 'ekler' && !$isTopLevel) {
+                if (preg_match('/^\(\d+\)dosyaBilgileri[^\/]*\.xml$/i', $baseName) || preg_match('/^dosyaBilgileri[^\/]*\.xml$/i', $baseName)) {
+                    file_put_contents($extractedPath, $content);
+                    $result['imzalar'][] = $extractedPath;
+                    continue;
+                }
+                file_put_contents($extractedPath, $content);
+                $result['ekler'][] = [
+                    'name' => $baseName,
+                    'path' => $extractedPath,
+                    'size' => strlen($content),
+                ];
+            } elseif ($topFolder === 'ustyazi' && !$isTopLevel && strtolower(pathinfo($baseName, PATHINFO_EXTENSION)) === 'pdf') {
+                file_put_contents($extractedPath, $content);
                 $result['ustyazi_pdf'] = $extractedPath;
-            } elseif (stripos($filename, 'paketOzeti') !== false) {
-                $result['xml_metadata'] = $zip->getFromIndex($i);
-            } elseif (stripos($filename, 'Imzalar') !== false) {
-                copy("zip://" . $eypFilePath . "#" . $filename, $extractedPath);
-                $result['imzalar'][] = $extractedPath;
-            } elseif (preg_match('/(^|\/)(\.rels|\[Content_Types\]\.xml|BelgeHedef\.xml|core\.xml|dosyaBilgileri[^\/]*\.xml)$|\.imz$|Muhur/i', $filename)) {
-                copy("zip://" . $eypFilePath . "#" . $filename, $extractedPath);
+            } elseif (stripos($baseName, 'ustyazi') !== false && strtolower(pathinfo($baseName, PATHINFO_EXTENSION)) === 'pdf') {
+                file_put_contents($extractedPath, $content);
+                $result['ustyazi_pdf'] = $result['ustyazi_pdf'] ?? $extractedPath;
+            } elseif (stripos($baseName, 'paketOzeti') !== false) {
+                $result['xml_metadata'] = $content;
+            } elseif (in_array($topFolder, ['_rels', 'belgehedef', 'docprops', 'imzalar', 'muhurler', 'nihaiozet', 'paketozeti', 'ustveri', 'ustyazi'], true)
+                || ($isTopLevel && preg_match('/^(\[Content_Types\]\.xml)$/i', $baseName))
+                || preg_match('/\.imz$/i', $baseName)) {
+                file_put_contents($extractedPath, $content);
                 $result['imzalar'][] = $extractedPath;
             } else {
-                copy("zip://" . $eypFilePath . "#" . $filename, $extractedPath);
+                file_put_contents($extractedPath, $content);
                 $result['ekler'][] = [
-                    'name' => basename($filename),
+                    'name' => $baseName,
                     'path' => $extractedPath,
-                    'size' => filesize($extractedPath),
+                    'size' => strlen($content),
                 ];
             }
         }

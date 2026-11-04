@@ -33,6 +33,9 @@
     }
   };
 
+  const yetki = window.bordroYayinYetki || {};
+  const donemAcik = () => Number(window.bordroYayinConfig?.donem_kapali || 0) === 0;
+
   let tablo, kayitlar = [], onizleme = null, filtre = '', isleniyor = false;
   let seciliOnizlemeIndex = 0;
   let detayModal = null;
@@ -53,7 +56,10 @@
 
   async function api(action, data = {}) {
     const body = new FormData();
-    Object.entries({action, ...window.bordroYayinConfig, ...data}).forEach(([k,v]) => body.append(k,v));
+    Object.entries({action, ...window.bordroYayinConfig, ...data}).forEach(([k,v]) => {
+      if (Array.isArray(v)) v.forEach(x => body.append(`${k}[]`, x));
+      else body.append(k, v);
+    });
     let j;
     try {
       const r = await fetch('views/bordro/api.php', {method:'POST', body, credentials:'same-origin', cache:'no-store'});
@@ -258,7 +264,11 @@
           </div>
           <div class="text-end flex-shrink-0 ps-2">
             <span class="personel-net d-block">${esc(para(k.banka_net_kurus))}</span>
-            <span class="badge bg-light text-secondary border fs-11 px-1.5 py-0.5">${k.fiili_gun || 0} gün</span>
+            ${k.yayin_durumu === 'onayli'
+              ? '<span class="badge bg-success-subtle text-success border border-success-subtle fs-11 px-1.5 py-0.5" title="Personel onayladı; yeniden yayınlanmaz"><i class="bx bx-lock-alt me-1"></i>Onaylı · korunur</span>'
+              : k.yayin_durumu === 'yayinda'
+                ? '<span class="badge bg-info-subtle text-info border border-info-subtle fs-11 px-1.5 py-0.5" title="Güncel sürüm yayında; yeniden yayınlanmaz">Yayında · korunur</span>'
+                : `<span class="badge bg-light text-secondary border fs-11 px-1.5 py-0.5">${k.fiili_gun || 0} gün</span>`}
           </div>
         </div>`;
     }).join('');
@@ -458,7 +468,8 @@
       const hatalarHtml = (onizleme.hatalar || []).map(h => `<div class="alert alert-danger py-2 px-3 mb-2 fs-12 d-flex align-items-center gap-2" style="border-radius: 8px;"><i class="bx bx-error fs-5"></i><div><strong>${esc(h.personel)}:</strong> ${esc(h.mesaj)}</div></div>`).join('');
       el('bordroYayinHatalar').innerHTML = hatalarHtml;
 
-      el('bordroYayinYayinla').disabled = !!hataAdet || !adet;
+      const yeniAdet = onizleme.yeni_adet ?? adet;
+      el('bordroYayinYayinla').disabled = !!hataAdet || !yeniAdet;
       el('bordroYayinTestYayinla').disabled = !adet;
 
       seciliOnizlemeIndex = 0;
@@ -693,6 +704,185 @@
     detayModal.show();
   }
 
+  /* ================= TOPLU REVİZYON ================= */
+
+  let revizyonModal = null, revizyonSonuc = null, revizyonTokenlar = [], revizyonMesgul = false;
+
+  const revizyonMesaj = t => {
+    const box = el('revizyonMesaj');
+    if (!box) return;
+    box.textContent = t || '';
+    box.classList.toggle('d-none', !t);
+  };
+
+  const revizyonSonucBadge = (sonuc, hata) => {
+    switch (sonuc) {
+      case 'degisti': return '<span class="badge bg-danger-subtle text-danger border border-danger-subtle">Değişti · onay kaldırılacak</span>';
+      case 'ic_degisti': return '<span class="badge bg-info-subtle text-info border border-info-subtle" title="Personelin gördüğü resmî döküm aynı; yalnız elden/iç dağılım değişiyor">İç hesap güncellenir · onay korunur</span>';
+      case 'degismedi': return '<span class="badge bg-success-subtle text-success border border-success-subtle">Değişmedi · onay korunur</span>';
+      default: return `<span class="badge bg-secondary-subtle text-secondary border" title="${esc(hata || '')}">Hata · kilitli kalır</span>`;
+    }
+  };
+
+  const farkHtml = (eski, yeni) => {
+    if (yeni === null || yeni === undefined) return '<span class="text-muted">—</span>';
+    const fark = Number(yeni) - Number(eski);
+    if (!fark) return '<span class="text-muted">0</span>';
+    return `<span class="fw-semibold ${fark > 0 ? 'text-success' : 'text-danger'}">${fark > 0 ? '+' : ''}${esc(para(fark))}</span>`;
+  };
+
+  function revizyonSecimCiz() {
+    const liste = el('revizyonPersonelListe');
+    if (!liste) return;
+    const onaylilar = kayitlar.filter(r => r.islem_durumu === 'onaylandi');
+    if (!onaylilar.length) {
+      liste.innerHTML = '<div class="p-4 text-center text-muted fs-13"><i class="bx bx-lock-open-alt fs-3 d-block mb-1 opacity-50"></i>Bu dönemde onaylı (kilitli) bordro bulunmuyor.</div>';
+    } else {
+      liste.innerHTML = onaylilar.map((r, i) => `
+        <label class="list-group-item d-flex align-items-center gap-2 py-2" for="revizyonSecim${i}">
+          <input class="form-check-input revizyon-secim mt-0" type="checkbox" id="revizyonSecim${i}" value="${esc(r.token)}" checked>
+          <span class="fw-semibold text-dark flex-grow-1">${esc(r.personel)}</span>
+          <span class="badge bg-light text-secondary border">${esc(r.surum)}</span>
+          <span class="text-muted fs-11">Onay: ${esc(r.beyan_tarihi || '—')}</span>
+        </label>`).join('');
+    }
+    el('revizyonTumunuSec').checked = true;
+    revizyonSecimSay();
+  }
+
+  function revizyonSecimSay() {
+    const hepsi = [...document.querySelectorAll('.revizyon-secim')];
+    const secili = hepsi.filter(x => x.checked).length;
+    if (el('revizyonSecimSayisi')) el('revizyonSecimSayisi').textContent = `${secili} / ${hepsi.length} seçili`;
+    if (el('revizyonTumunuSec')) el('revizyonTumunuSec').checked = hepsi.length > 0 && secili === hepsi.length;
+    if (el('btnRevizyonOnizle')) el('btnRevizyonOnizle').disabled = secili === 0;
+  }
+
+  function revizyonAdim(sonucAdimi) {
+    el('revizyonSecimAdimi').classList.toggle('d-none', sonucAdimi);
+    el('revizyonSonucAdimi').classList.toggle('d-none', !sonucAdimi);
+    el('btnRevizyonOnizle').classList.toggle('d-none', sonucAdimi);
+    el('btnRevizyonGeri').classList.toggle('d-none', !sonucAdimi);
+    el('btnRevizyonUygula').classList.toggle('d-none', !sonucAdimi);
+  }
+
+  function revizyonUygulanabilir() {
+    const btn = el('btnRevizyonUygula');
+    if (!btn || !revizyonSonuc) return;
+    const o = revizyonSonuc.ozet;
+    const gerekce = String(el('revizyonGerekce')?.value || '').trim();
+    const sayi = String(el('revizyonOnaySayisi')?.value ?? '').trim();
+    btn.disabled = revizyonMesgul || (o.revize + o.ic_guncellenen) === 0 || gerekce.length < 10 || sayi === '' || Number(sayi) !== o.revize;
+  }
+
+  function revizyonSonucCiz() {
+    const o = revizyonSonuc.ozet;
+    const kutu = (renk, ikon, sayi, metin) => `<span class="badge bg-${renk}-subtle text-${renk} border border-${renk}-subtle fs-12 px-2 py-2"><i class="bx ${ikon} me-1"></i><strong>${sayi}</strong> ${metin}</span>`;
+    el('revizyonOzet').innerHTML = [
+      kutu('secondary', 'bx-user-check', o.incelenen, 'incelendi'),
+      kutu('danger', 'bx-lock-open-alt', o.revize, 'onayı kaldırılacak'),
+      kutu('info', 'bx-calculator', o.ic_guncellenen, 'iç hesabı güncellenecek (onay korunur)'),
+      kutu('success', 'bx-lock-alt', o.korunan, 'değişmedi'),
+      o.hata ? kutu('warning', 'bx-error', o.hata, 'hatalı (kilitli kalır)') : '',
+    ].join('');
+    el('revizyonSonucGovde').innerHTML = revizyonSonuc.satirlar.map(s => {
+      const kalemler = (s.kalem_farklari || []).map(k => `<div class="text-muted fs-11">${esc(k.etiket)}: ${esc(para(k.eski_kurus))} → ${esc(para(k.yeni_kurus))}</div>`).join('');
+      const hata = s.hata ? `<div class="text-danger fs-11">${esc(s.hata)}</div>` : '';
+      return `<tr>
+        <td><div class="fw-semibold text-dark">${esc(s.personel)}</div>${kalemler}${hata}</td>
+        <td class="text-end">${esc(para(s.eski_banka_kurus))}</td>
+        <td class="text-end">${s.yeni_banka_kurus === null ? '<span class="text-muted">—</span>' : esc(para(s.yeni_banka_kurus))}</td>
+        <td class="text-end">${farkHtml(s.eski_banka_kurus, s.yeni_banka_kurus)}</td>
+        <td class="text-end">${farkHtml(s.eski_elden_kurus, s.yeni_elden_kurus)}</td>
+        <td>${revizyonSonucBadge(s.sonuc, s.hata)}</td>
+      </tr>`;
+    }).join('');
+    const uygulanabilir = (o.revize + o.ic_guncellenen) > 0;
+    el('revizyonUygulamaAlani').classList.toggle('d-none', !uygulanabilir);
+    if (el('revizyonOnaySayisiIpucu')) {
+      el('revizyonOnaySayisiIpucu').textContent = `Onaylamak için ${o.revize} yazın. Bu sayı, yeniden onaya gönderilecek personel sayısıdır.`;
+    }
+    if (!uygulanabilir) revizyonMesaj('Seçilen onaylı bordrolarda değişiklik çıkmadı; uygulanacak revizyon yok. Onaylar korunuyor.');
+    revizyonUygulanabilir();
+  }
+
+  async function revizyonCalistir(fn) {
+    if (revizyonMesgul) return;
+    revizyonMesgul = true;
+    revizyonMesaj('');
+    ['btnRevizyonOnizle', 'btnRevizyonUygula', 'btnRevizyonGeri'].forEach(id => { if (el(id)) el(id).disabled = true; });
+    try {
+      await fn();
+    } catch (e) {
+      revizyonMesaj(e.message);
+    } finally {
+      revizyonMesgul = false;
+      if (el('btnRevizyonOnizle')) el('btnRevizyonOnizle').disabled = false;
+      if (el('btnRevizyonGeri')) el('btnRevizyonGeri').disabled = false;
+      revizyonSecimSay();
+      revizyonUygulanabilir();
+    }
+  }
+
+  function revizyonKur() {
+    if (!el('bordroRevizyonModal')) return;
+    revizyonModal = new bootstrap.Modal(el('bordroRevizyonModal'));
+
+    el('btnTopluRevizyon')?.addEventListener('click', async () => {
+      if (!donemAcik()) {
+        await Swal.fire('Önce Dönemi Açın', 'Toplu revizyon yeniden hesaplama yaptığı için dönemin açık olması gerekir. Dönem açıldığında onaylı bordrolar kilitli kalır.', 'info');
+        return;
+      }
+      revizyonSonuc = null;
+      revizyonMesaj('');
+      if (el('revizyonGerekce')) el('revizyonGerekce').value = '';
+      if (el('revizyonOnaySayisi')) el('revizyonOnaySayisi').value = '';
+      revizyonAdim(false);
+      revizyonSecimCiz();
+      revizyonModal.show();
+    });
+
+    el('revizyonTumunuSec')?.addEventListener('change', e => {
+      document.querySelectorAll('.revizyon-secim').forEach(x => { x.checked = e.target.checked; });
+      revizyonSecimSay();
+    });
+    el('revizyonPersonelListe')?.addEventListener('change', e => {
+      if (e.target.classList.contains('revizyon-secim')) revizyonSecimSay();
+    });
+    el('revizyonGerekce')?.addEventListener('input', revizyonUygulanabilir);
+    el('revizyonOnaySayisi')?.addEventListener('input', revizyonUygulanabilir);
+    el('btnRevizyonGeri')?.addEventListener('click', () => { revizyonMesaj(''); revizyonAdim(false); });
+
+    el('btnRevizyonOnizle')?.addEventListener('click', () => revizyonCalistir(async () => {
+      const hepsi = [...document.querySelectorAll('.revizyon-secim')];
+      const secili = hepsi.filter(x => x.checked).map(x => x.value);
+      if (!secili.length) throw new Error('En az bir personel seçin.');
+      revizyonTokenlar = secili.length === hepsi.length ? [] : secili;
+      revizyonSonuc = await api('yayin-revizyon-onizle', {dokum_tokens: revizyonTokenlar});
+      revizyonAdim(true);
+      revizyonSonucCiz();
+    }));
+
+    el('btnRevizyonUygula')?.addEventListener('click', () => revizyonCalistir(async () => {
+      if (!revizyonSonuc) return;
+      const o = revizyonSonuc.ozet;
+      const sonuc = await api('yayin-revizyon-uygula', {
+        dokum_tokens: revizyonTokenlar,
+        gerekce: String(el('revizyonGerekce')?.value || '').trim(),
+        onizleme_hash: revizyonSonuc.onizleme_hash,
+        onay_sayisi: String(el('revizyonOnaySayisi')?.value ?? '').trim()
+      });
+      revizyonModal.hide();
+      const so = sonuc.ozet || o;
+      await Swal.fire({
+        icon: 'success',
+        title: 'Revizyon Uygulandı',
+        html: `<div class="text-start fs-13"><div><strong>${so.revize}</strong> personelin onayı kaldırıldı ve bordrosu yeniden hesaplandı.</div><div><strong>${so.ic_guncellenen}</strong> personelin iç hesabı güncellendi, onayı korundu.</div><div><strong>${so.korunan}</strong> personelin bordrosu değişmedi.</div>${so.hata ? `<div class="text-danger"><strong>${so.hata}</strong> personel hata nedeniyle kilitli bırakıldı.</div>` : ''}<hr class="my-2"><div class="text-muted">Sonraki adım: dönemi kapatın ve Yeni Yayın sekmesinden yalnız revize dökümleri yayınlayın.</div></div>`
+      });
+      await calistir(yukle);
+    }));
+  }
+
   /* ================= INIT ================= */
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -761,7 +951,7 @@
           data: null,
           orderable: false,
           searchable: false,
-          render: r => `<div class="d-inline-flex gap-1"><button type="button" class="btn btn-sm btn-outline-primary yayin-detay d-inline-flex align-items-center gap-1" data-token="${esc(r?.token || '')}"><i class="bx bx-search-alt"></i> İncele</button>${(!r?.beyan_tarihi && !r?.talep_sayisi && r?.durum !== 'arsiv') ? `<button type="button" class="btn btn-sm btn-outline-danger yayin-sil d-inline-flex align-items-center" title="Sil" data-token="${esc(r?.token || '')}"><i class="bx bx-trash"></i></button>` : ''}</div>`
+          render: r => `<div class="d-inline-flex gap-1"><button type="button" class="btn btn-sm btn-outline-primary yayin-detay d-inline-flex align-items-center gap-1" data-token="${esc(r?.token || '')}"><i class="bx bx-search-alt"></i> İncele</button>${(yetki.onay_geri_al && r?.islem_durumu === 'onaylandi') ? `<button type="button" class="btn btn-sm btn-outline-warning yayin-onay-geri-al d-inline-flex align-items-center" title="Onayı geri al (revizyona al)" data-token="${esc(r?.token || '')}"><i class="bx bx-lock-open-alt"></i></button>` : ''}${(!r?.beyan_tarihi && !r?.talep_sayisi && r?.durum !== 'arsiv' && r?.durum !== 'revizyon') ? `<button type="button" class="btn btn-sm btn-outline-danger yayin-sil d-inline-flex align-items-center" title="Sil" data-token="${esc(r?.token || '')}"><i class="bx bx-trash"></i></button>` : ''}</div>`
         }
       ]
     }));
@@ -796,6 +986,38 @@
         await api('yayin-sil', {token});
         await yukle();
         mesaj('Yayın silindi.', false);
+      });
+    });
+
+    $('#bordroYayinTable').on('click', '.yayin-onay-geri-al', async function () {
+      let tr = $(this).closest('tr');
+      if (tr.hasClass('child')) tr = tr.prev();
+      const r = tablo.row(tr).data();
+      const token = $(this).data('token') || r?.token;
+      if (!token) return;
+      if (!donemAcik()) {
+        await Swal.fire('Önce Dönemi Açın', 'Onayı geri almak ve bordroyu yeniden hesaplamak için dönemi açmanız gerekir. Diğer onaylı personellerin bordroları kilitli kalır.', 'info');
+        return;
+      }
+      const sonuc = await Swal.fire({
+        icon: 'warning',
+        title: 'Onay Geri Alınsın mı?',
+        html: `<div class="text-start fs-13"><strong>${esc(r?.personel || 'Personel')}</strong> onayladığı döküm revizyona alınacak. Bordrosu yeniden hesaplanabilir hale gelir ve yeni sürümü tekrar onaylaması gerekir.</div>`,
+        input: 'textarea',
+        inputLabel: 'Gerekçe (en az 10 karakter)',
+        inputPlaceholder: 'Örn: Fazla mesai saatleri eksik girilmiş, düzeltilecek.',
+        inputAttributes: {maxlength: '1000'},
+        showCancelButton: true,
+        confirmButtonText: 'Onayı Geri Al',
+        cancelButtonText: 'Vazgeç',
+        confirmButtonColor: '#d97706',
+        inputValidator: v => (String(v || '').trim().length < 10 ? 'Gerekçe en az 10 karakter olmalıdır.' : undefined)
+      });
+      if (!sonuc.isConfirmed) return;
+      calistir(async () => {
+        await api('yayin-onay-geri-al', {token, gerekce: String(sonuc.value || '').trim()});
+        await yukle();
+        mesaj(`${r?.personel || 'Personel'} için onay geri alındı. Bordro artık yeniden hesaplanabilir.`, false);
       });
     });
 
@@ -859,9 +1081,11 @@
 
     el('bordroYayinYayinla')?.addEventListener('click', () => calistir(async () => {
       if (!onizleme || onizleme.hatalar.length) return;
+      const yeniAdet = onizleme.yeni_adet ?? onizleme.kayitlar.length;
+      const korunanAdet = onizleme.korunan_adet ?? 0;
       const r = await Swal.fire({
         title: 'Resmî Dökümleri Yayınla',
-        text: `${onizleme.kayitlar.length} personele ait kontrol edilen dökümler yayınlanacak ve bildirim kuyruğuna alınacak.`,
+        text: `${yeniAdet} personele ait yeni/revize döküm yayınlanacak ve bildirim kuyruğuna alınacak.` + (korunanAdet ? ` Güncel sürümü yayında veya onaylı olan ${korunanAdet} personele yeniden gönderim yapılmaz.` : ''),
         showCancelButton: true,
         confirmButtonText: 'Evet, Yayınla',
         cancelButtonText: 'Vazgeç',
@@ -873,7 +1097,7 @@
       
       await Swal.fire(
         data.mevcut ? 'Zaten Yayında' : 'Yayınlandı',
-        data.mevcut ? 'Bu dönemin güncel sürümü zaten yayınlanmış.' : 'Dökümler personele yayınlandı ve bildirimler kuyruğa alındı.',
+        data.mevcut ? 'Yayınlanacak yeni veya revize döküm yok; güncel sürümler zaten yayında.' : `${data.adet} döküm yayınlandı ve bildirimler kuyruğa alındı.` + (data.korunan ? ` ${data.korunan} personelin mevcut sürümü korundu.` : ''),
         'success'
       );
       
@@ -898,5 +1122,7 @@
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     });
+
+    revizyonKur();
   });
 })();

@@ -223,26 +223,7 @@ class UetsSyncService
                         );
 
                         // Ekleri evrak_takip_ekleri tablosuna ekle
-                        if (!empty($extracted['ekler'])) {
-                            foreach ($extracted['ekler'] as $ekIdx => $ek) {
-                                if (file_exists($ek['path'])) {
-                                    $ekBinary = file_get_contents($ek['path']);
-                                    $encEk = Security::encryptFile($ekBinary);
-                                    $ekFilename = 'uets_ek_' . uniqid() . '_' . preg_replace('/[^a-zA-Z0-9_.-]/', '', $ek['name']);
-                                    $ekFullPath = $uploadBaseDir . '/' . $ekFilename;
-                                    file_put_contents($ekFullPath, $encEk);
-
-                                    $this->evrakModel->saveAttachment($newEvrakId, [
-                                        'firma_id' => $firmId,
-                                        'dosya_adi' => $ek['name'],
-                                        'dosya_yolu' => 'uploads/evrak-takip/' . $ekFilename,
-                                        'mime_tipi' => 'application/octet-stream',
-                                        'dosya_boyutu' => (int) $ek['size'],
-                                        'sira' => $ekIdx + 1,
-                                    ]);
-                                }
-                            }
-                        }
+                        $this->storeAttachments($firmId, $newEvrakId, $extracted['ekler'] ?? [], $uploadBaseDir);
 
                         // Geçici ayıklama dizinini temizle
                         self::deleteDir($tmpExtractDir);
@@ -591,6 +572,87 @@ class UetsSyncService
             'barcode' => $barcode,
             'message' => 'Tebligat UETS üzerinden başarıyla gönderildi.',
         ];
+    }
+
+    private function storeAttachments(int $firmId, int $evrakId, array $ekler, string $uploadBaseDir): int
+    {
+        $saved = 0;
+        foreach (array_values($ekler) as $ekIdx => $ek) {
+            if (empty($ek['path']) || !is_file($ek['path'])) {
+                continue;
+            }
+            $ekFilename = 'uets_ek_' . uniqid() . '_' . preg_replace('/[^a-zA-Z0-9_.-]/', '', (string) $ek['name']);
+            $ekFullPath = $uploadBaseDir . '/' . $ekFilename;
+            try {
+                file_put_contents($ekFullPath, Security::encryptFile((string) file_get_contents($ek['path'])));
+                $attachmentId = $this->evrakModel->saveAttachmentForFirm($firmId, $evrakId, [
+                    'dosya_adi' => (string) $ek['name'],
+                    'dosya_yolu' => 'uploads/evrak-takip/' . $ekFilename,
+                    'mime_tipi' => self::guessMime((string) $ek['name']),
+                    'dosya_boyutu' => (int) $ek['size'],
+                    'sira' => $ekIdx + 1,
+                ], (int) ($_SESSION['user_id'] ?? 0));
+                if ($attachmentId > 0) {
+                    $saved++;
+                } else {
+                    @unlink($ekFullPath);
+                }
+            } catch (\Throwable $e) {
+                @unlink($ekFullPath);
+                error_log("UetsSyncService Ek Kaydetme Hatası [evrak {$evrakId}]: " . $e->getMessage());
+            }
+        }
+        return $saved;
+    }
+
+    public function healAttachments(int $firmId, int $evrakId): int
+    {
+        if ($this->evrakModel->countAttachmentsForFirm($firmId, $evrakId) > 0) {
+            return 0;
+        }
+        $mesaj = $this->mesajModel->getByEvrakId($evrakId, $firmId);
+        if (!$mesaj || empty($mesaj['ham_eyp_yolu'])) {
+            return 0;
+        }
+        $encPath = dirname(__DIR__, 2) . '/' . ltrim((string) $mesaj['ham_eyp_yolu'], '/');
+        if (!is_file($encPath)) {
+            return 0;
+        }
+
+        $tmpExtractDir = sys_get_temp_dir() . '/uets_heal_' . uniqid();
+        $tmpEypPath = sys_get_temp_dir() . '/tmp_heal_' . uniqid() . '.eyp';
+        try {
+            $raw = Security::decryptFile((string) file_get_contents($encPath));
+            if (!is_string($raw) || $raw === '') {
+                return 0;
+            }
+            file_put_contents($tmpEypPath, $raw);
+            $extracted = $this->eypService->extractPackage($tmpEypPath, $tmpExtractDir);
+            return $this->storeAttachments($firmId, $evrakId, $extracted['ekler'] ?? [], dirname(__DIR__, 2) . '/uploads/evrak-takip');
+        } catch (\Throwable $e) {
+            error_log("UetsSyncService Ek Onarma Hatası [evrak {$evrakId}]: " . $e->getMessage());
+            return 0;
+        } finally {
+            @unlink($tmpEypPath);
+            self::deleteDir($tmpExtractDir);
+        }
+    }
+
+    private static function guessMime(string $name): string
+    {
+        return match (strtolower(pathinfo($name, PATHINFO_EXTENSION))) {
+            'pdf' => 'application/pdf',
+            'xml' => 'application/xml',
+            'jpg', 'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'tif', 'tiff' => 'image/tiff',
+            'doc' => 'application/msword',
+            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'xls' => 'application/vnd.ms-excel',
+            'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'txt' => 'text/plain',
+            default => 'application/octet-stream',
+        };
     }
 
     private static function deleteDir(string $dirPath): void
