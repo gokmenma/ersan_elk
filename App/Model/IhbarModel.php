@@ -229,9 +229,9 @@ class IhbarModel extends Model
     /**
      * Yüklenen ihbar videosunu doğrulayıp diske yazar ve kapak karesini kaydeder.
      */
-    public function storeUploadedVideo(array $file, int $ihbarId, ?int $sureSaniye, ?string $kapakVerisi): array
+    public function storeUploadedVideo(array $file, int $ihbarId, ?int $sureSaniye, ?string $kapakVerisi, string $kaynak = 'bildirim'): array
     {
-        return $this->storeVideo($file, $ihbarId, $sureSaniye, $kapakVerisi, false);
+        return $this->storeVideo($file, $ihbarId, $sureSaniye, $kapakVerisi, false, $kaynak);
     }
 
     public function storeAssembledVideo(array $file, int $ihbarId, ?int $sureSaniye, ?string $kapakVerisi): array
@@ -239,9 +239,9 @@ class IhbarModel extends Model
         return $this->storeVideo($file, $ihbarId, $sureSaniye, $kapakVerisi, true);
     }
 
-    private function storeVideo(array $file, int $ihbarId, ?int $sureSaniye, ?string $kapakVerisi, bool $assembled): array
+    private function storeVideo(array $file, int $ihbarId, ?int $sureSaniye, ?string $kapakVerisi, bool $assembled, string $kaynak = 'bildirim'): array
     {
-        if ($this->countVideolar($ihbarId) >= self::MAX_VIDEO) {
+        if ($this->countVideolar($ihbarId, $kaynak) >= self::MAX_VIDEO) {
             throw new \Exception('Bir ihbara en fazla ' . self::MAX_VIDEO . ' video eklenebilir.');
         }
 
@@ -269,41 +269,41 @@ class IhbarModel extends Model
         ];
     }
 
-    public function addFotograf(int $ihbarId, string $dosyaYolu, ?string $kucukYol = null): void
+    public function addFotograf(int $ihbarId, string $dosyaYolu, ?string $kucukYol = null, string $kaynak = 'bildirim', ?int $ekleyenPersonelId = null): void
     {
-        $stmt = $this->db->prepare("INSERT INTO ihbar_fotograflari (ihbar_id, medya_tipi, dosya_yolu, kucuk_yol, created_at)
-                                    VALUES (?, 'foto', ?, ?, NOW())");
-        $stmt->execute([$ihbarId, $dosyaYolu, $kucukYol]);
+        $stmt = $this->db->prepare("INSERT INTO ihbar_fotograflari (ihbar_id, medya_tipi, kaynak, ekleyen_personel_id, dosya_yolu, kucuk_yol, created_at)
+                                    VALUES (?, 'foto', ?, ?, ?, ?, NOW())");
+        $stmt->execute([$ihbarId, $kaynak, $ekleyenPersonelId, $dosyaYolu, $kucukYol]);
     }
 
-    public function addVideo(int $ihbarId, string $dosyaYolu, ?string $kapakYolu, ?int $sureSaniye): void
+    public function addVideo(int $ihbarId, string $dosyaYolu, ?string $kapakYolu, ?int $sureSaniye, string $kaynak = 'bildirim', ?int $ekleyenPersonelId = null): void
     {
-        $stmt = $this->db->prepare("INSERT INTO ihbar_fotograflari (ihbar_id, medya_tipi, dosya_yolu, kucuk_yol, sure_saniye, created_at)
-                                    VALUES (?, 'video', ?, ?, ?, NOW())");
-        $stmt->execute([$ihbarId, $dosyaYolu, $kapakYolu, $sureSaniye]);
+        $stmt = $this->db->prepare("INSERT INTO ihbar_fotograflari (ihbar_id, medya_tipi, kaynak, ekleyen_personel_id, dosya_yolu, kucuk_yol, sure_saniye, created_at)
+                                    VALUES (?, 'video', ?, ?, ?, ?, ?, NOW())");
+        $stmt->execute([$ihbarId, $kaynak, $ekleyenPersonelId, $dosyaYolu, $kapakYolu, $sureSaniye]);
     }
 
-    public function countFotograflar(int $ihbarId): int
+    public function countFotograflar(int $ihbarId, string $kaynak = 'bildirim'): int
     {
-        $stmt = $this->db->prepare("SELECT COUNT(*) FROM ihbar_fotograflari WHERE ihbar_id = ? AND medya_tipi = 'foto'");
-        $stmt->execute([$ihbarId]);
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM ihbar_fotograflari WHERE ihbar_id = ? AND medya_tipi = 'foto' AND kaynak = ?");
+        $stmt->execute([$ihbarId, $kaynak]);
         return (int) $stmt->fetchColumn();
     }
 
-    public function countVideolar(int $ihbarId): int
+    public function countVideolar(int $ihbarId, string $kaynak = 'bildirim'): int
     {
-        $stmt = $this->db->prepare("SELECT COUNT(*) FROM ihbar_fotograflari WHERE ihbar_id = ? AND medya_tipi = 'video'");
-        $stmt->execute([$ihbarId]);
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM ihbar_fotograflari WHERE ihbar_id = ? AND medya_tipi = 'video' AND kaynak = ?");
+        $stmt->execute([$ihbarId, $kaynak]);
         return (int) $stmt->fetchColumn();
     }
 
     public function getFotograflar(int $ihbarId): array
     {
-        $stmt = $this->db->prepare("SELECT id, ihbar_id, medya_tipi, dosya_yolu, sure_saniye, created_at,
+        $stmt = $this->db->prepare("SELECT id, ihbar_id, medya_tipi, kaynak, dosya_yolu, sure_saniye, created_at,
                                            (kucuk_yol IS NOT NULL) AS kucuk_var
                                     FROM ihbar_fotograflari
                                     WHERE ihbar_id = ?
-                                    ORDER BY medya_tipi ASC, id ASC");
+                                    ORDER BY kaynak ASC, medya_tipi ASC, id ASC");
         $stmt->execute([$ihbarId]);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }

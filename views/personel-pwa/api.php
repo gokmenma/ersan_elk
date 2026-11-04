@@ -223,10 +223,11 @@ function pwaIniBytes(string $value): int
  * PWA ihbar formundan gelen videoları kaydeder.
  * Video kaybı kaydın tamamını geçersiz kılmaz; hata loglanıp devam edilir.
  */
-function pwaIhbarVideoYukle(App\Model\IhbarModel $model, int $ihbarId): void
+function pwaIhbarVideoYukle(App\Model\IhbarModel $model, int $ihbarId, string $kaynak = 'bildirim', ?int $ekleyenPersonelId = null): int
 {
+    $yuklenen = 0;
     if (empty($_FILES['videolar']) || empty($_FILES['videolar']['name'][0])) {
-        return;
+        return $yuklenen;
     }
 
     $sureler = $_POST['video_sureleri'] ?? [];
@@ -248,14 +249,18 @@ function pwaIhbarVideoYukle(App\Model\IhbarModel $model, int $ihbarId): void
                 ],
                 $ihbarId,
                 isset($sureler[$i]) && is_numeric($sureler[$i]) ? (int) ceil((float) $sureler[$i]) : null,
-                isset($kapaklar[$i]) ? (string) $kapaklar[$i] : null
+                isset($kapaklar[$i]) ? (string) $kapaklar[$i] : null,
+                $kaynak
             );
 
-            $model->addVideo($ihbarId, $sonuc['yol'], $sonuc['kapak'], $sonuc['sure_saniye']);
+            $model->addVideo($ihbarId, $sonuc['yol'], $sonuc['kapak'], $sonuc['sure_saniye'], $kaynak, $ekleyenPersonelId);
+            $yuklenen++;
         } catch (Throwable $e) {
             error_log('PWA ihbar videosu yüklenemedi (ihbar ' . $ihbarId . '): ' . $e->getMessage());
         }
     }
+
+    return $yuklenen;
 }
 
 function pwaIhbarLog(string $event, array $context = []): void
@@ -6435,6 +6440,7 @@ try {
                 return [
                     'id' => (int) $f->id,
                     'medya_tipi' => $f->medya_tipi ?? 'foto',
+                    'kaynak' => $f->kaynak ?? 'bildirim',
                     'sure_saniye' => $f->sure_saniye !== null ? (int) $f->sure_saniye : null,
                     'kucuk_var' => (bool) ($f->kucuk_var ?? false),
                     'url' => 'api.php?action=ihbarFoto&foto_id=' . (int) $f->id,
@@ -6500,7 +6506,56 @@ try {
             }
 
             $IhbarModel->closeSonuc($id, $durum, $tutanakNo, $sebep, 'personel', (int) $personel_id);
-            response(true, null, 'İhbar sonuçlandırıldı.');
+
+            $yuklenenFoto = 0;
+            $yuklenenVideo = 0;
+            $secilenMedya = 0;
+            if (!empty($_FILES['fotograflar']) && !empty($_FILES['fotograflar']['name'][0])) {
+                $kalanKota = max(0, App\Model\IhbarModel::MAX_FOTO - $IhbarModel->countFotograflar($id, 'sonuc'));
+                $maxFiles = min(count($_FILES['fotograflar']['name']), $kalanKota);
+                $secilenMedya += count($_FILES['fotograflar']['name']);
+
+                for ($i = 0; $i < $maxFiles; $i++) {
+                    if (($_FILES['fotograflar']['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                        continue;
+                    }
+
+                    try {
+                        $fotoSonuc = App\Model\IhbarModel::storeUploadedFoto([
+                            'name' => $_FILES['fotograflar']['name'][$i],
+                            'tmp_name' => $_FILES['fotograflar']['tmp_name'][$i],
+                            'error' => $_FILES['fotograflar']['error'][$i],
+                            'size' => $_FILES['fotograflar']['size'][$i],
+                        ], $id);
+
+                        $IhbarModel->addFotograf($id, $fotoSonuc['yol'], $fotoSonuc['kucuk'], 'sonuc', (int) $personel_id);
+                        $yuklenenFoto++;
+                    } catch (Throwable $e) {
+                        error_log('PWA ihbar sonuç fotoğrafı yüklenemedi (ihbar ' . $id . '): ' . $e->getMessage());
+                    }
+                }
+            }
+
+            if (!empty($_FILES['videolar']['name'][0])) {
+                $secilenMedya += count($_FILES['videolar']['name']);
+            }
+            $yuklenenVideo = pwaIhbarVideoYukle($IhbarModel, $id, 'sonuc', (int) $personel_id);
+
+            if ($yuklenenFoto + $yuklenenVideo > 0) {
+                $IhbarModel->addTarihce(
+                    $id,
+                    'not',
+                    "Sonuç kanıtı eklendi: {$yuklenenFoto} fotoğraf, {$yuklenenVideo} video.",
+                    'personel',
+                    (int) $personel_id
+                );
+            }
+
+            $mesaj = 'İhbar sonuçlandırıldı.';
+            if ($secilenMedya > $yuklenenFoto + $yuklenenVideo) {
+                $mesaj .= ' Bazı dosyalar yüklenemedi; ihbar detayından kontrol ediniz.';
+            }
+            response(true, null, $mesaj);
             break;
 
         // =====================================================

@@ -1489,10 +1489,12 @@
             }
 
             const d = response.data;
+            ihbarSonucFotolar = [];
+            ihbarSonucVideolar = [];
             const kapaliMi = (d.durum === 'olumlu' || d.durum === 'olumsuz');
             const buAtandiMi = tip === 'gelen';
 
-            const fotoHtml = (d.fotograflar || []).map(f =>
+            const medyaKarti = f =>
                 f.medya_tipi === 'video'
                     ? `<div class="relative inline-block cursor-pointer" onclick="window.open('${f.url}', '_blank')">
                            ${f.kucuk_var
@@ -1501,8 +1503,10 @@
                            <span class="material-symbols-outlined absolute inset-0 m-auto w-fit h-fit text-white" style="text-shadow:0 0 6px rgba(0,0,0,.8)">play_circle</span>
                            ${f.sure_saniye ? `<span class="absolute bottom-1 right-1 text-white text-xs rounded px-1" style="background:rgba(0,0,0,.7)">${OfflineQueue.sureBicimle(f.sure_saniye)}</span>` : ''}
                        </div>`
-                    : `<img src="${f.kucuk_url || f.url}" loading="lazy" onclick="window.open('${f.url}', '_blank')" class="w-20 h-20 object-cover rounded-xl cursor-pointer">`
-            ).join('') || '<p class="text-xs text-slate-400">Fotoğraf yok</p>';
+                    : `<img src="${f.kucuk_url || f.url}" loading="lazy" onclick="window.open('${f.url}', '_blank')" class="w-20 h-20 object-cover rounded-xl cursor-pointer">`;
+
+            const fotoHtml = (d.fotograflar || []).filter(f => f.kaynak !== 'sonuc').map(medyaKarti).join('') || '<p class="text-xs text-slate-400">Fotoğraf yok</p>';
+            const sonucMedyaHtml = (d.fotograflar || []).filter(f => f.kaynak === 'sonuc').map(medyaKarti).join('');
 
             const tarihceHtml = (d.tarihce || []).map(t => `
                 <div class="flex items-start gap-3 mb-3">
@@ -1537,6 +1541,10 @@
                         <div class="flex flex-wrap gap-2">${fotoHtml}</div>
                     </div>
                     ${d.durum === 'olumlu' ? `<div class="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl text-sm text-green-700 dark:text-green-300"><strong>Tutanak No:</strong> ${d.tutanak_no || '-'}</div>` : ''}
+                    ${sonucMedyaHtml ? `<div>
+                        <p class="text-xs text-slate-500 mb-2">Sonuç Kanıtları (Fotoğraf / Video)</p>
+                        <div class="flex flex-wrap gap-2">${sonucMedyaHtml}</div>
+                    </div>` : ''}
                     ${d.durum === 'olumsuz' ? `<div class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-700 dark:text-red-300"><strong>Olumsuz Sebep:</strong> ${d.olumsuz_sebep || '-'}</div>` : ''}
 
                     ${buAtandiMi ? `
@@ -1556,7 +1564,21 @@
                         </div>
                         <input type="hidden" id="ihbar-sonuc-durum" value="${d.durum === 'olumlu' || d.durum === 'olumsuz' ? d.durum : ''}">
                         <input type="text" id="ihbar-tutanak-no" class="form-input ${d.durum === 'olumlu' ? '' : 'hidden'} mb-2" placeholder="Tutanak No" value="${d.tutanak_no || ''}">
-                        <textarea id="ihbar-olumsuz-sebep" class="form-input ${d.durum === 'olumsuz' ? '' : 'hidden'} mb-2" placeholder="Olumsuz sebebi">${d.olumsuz_sebep || ''}</textarea>
+                        <textarea id="ihbar-olumsuz-sebep" class="form-input ${d.durum === 'olumsuz' ? '' : 'hidden'} mb-2" placeholder="Olumsuz sebebi / açıklama">${d.olumsuz_sebep || ''}</textarea>
+                        <div class="mb-3">
+                            <p class="text-xs text-slate-500 mb-2">Kanıt Ekle <small>(isteğe bağlı, en fazla ${IHBAR_MAX_FOTO} fotoğraf, ${IHBAR_MAX_VIDEO} video)</small></p>
+                            <input type="file" id="ihbar-sonuc-foto-input" accept="image/*" multiple class="hidden">
+                            <input type="file" id="ihbar-sonuc-foto-camera" accept="image/*" capture="environment" class="hidden">
+                            <input type="file" id="ihbar-sonuc-video-input" accept="video/*" class="hidden">
+                            <input type="file" id="ihbar-sonuc-video-camera" accept="video/*" capture="environment" class="hidden">
+                            <div class="grid grid-cols-2 gap-2">
+                                <button type="button" onclick="document.getElementById('ihbar-sonuc-foto-camera').click()" class="py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium flex items-center justify-center gap-1"><span class="material-symbols-outlined text-base">photo_camera</span>Fotoğraf Çek</button>
+                                <button type="button" onclick="document.getElementById('ihbar-sonuc-foto-input').click()" class="py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium flex items-center justify-center gap-1"><span class="material-symbols-outlined text-base">photo_library</span>Galeriden Fotoğraf</button>
+                                <button type="button" onclick="document.getElementById('ihbar-sonuc-video-camera').click()" class="py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium flex items-center justify-center gap-1"><span class="material-symbols-outlined text-base">videocam</span>Video Çek</button>
+                                <button type="button" onclick="document.getElementById('ihbar-sonuc-video-input').click()" class="py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium flex items-center justify-center gap-1"><span class="material-symbols-outlined text-base">video_library</span>Galeriden Video</button>
+                            </div>
+                            <div id="ihbar-sonuc-medya-onizleme" class="flex flex-wrap gap-2 mt-2"></div>
+                        </div>
                         <button type="button" onclick="ihbarSonuclandir(${d.id}, '${tip}')" class="w-full btn-primary py-3">${kapaliMi ? 'Sonucu Güncelle' : 'Sonuçlandır'}</button>
                     </div>` : ''}
 
@@ -1565,10 +1587,81 @@
                         ${tarihceHtml || '<p class="text-xs text-slate-400">Kayıt yok</p>'}
                     </div>
                 </div>`;
+            ihbarSonucMedyaBagla();
         } catch (error) {
             console.error('İhbar detay hatası:', error);
             content.innerHTML = '<p class="text-center text-red-500 py-4">Bir hata oluştu.</p>';
         }
+    }
+
+    let ihbarSonucFotolar = [];
+    let ihbarSonucVideolar = [];
+
+    function ihbarSonucMedyaBagla() {
+        ['ihbar-sonuc-foto-input', 'ihbar-sonuc-foto-camera'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('change', function () {
+                Array.from(this.files).forEach(file => {
+                    if (ihbarSonucFotolar.length >= IHBAR_MAX_FOTO) {
+                        Alert.warning('Sınır Aşıldı', `En fazla ${IHBAR_MAX_FOTO} fotoğraf eklenebilir.`);
+                        return;
+                    }
+                    if (file.type && !file.type.startsWith('image/')) {
+                        Alert.error('Hata', 'Sadece görsel dosyası yükleyebilirsiniz.');
+                        return;
+                    }
+                    ihbarSonucFotolar.push(file);
+                });
+                this.value = '';
+                ihbarSonucMedyaOnizle();
+            });
+        });
+
+        ['ihbar-sonuc-video-input', 'ihbar-sonuc-video-camera'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('change', async function () {
+                const dosya = this.files[0];
+                this.value = '';
+                if (!dosya) return;
+                if (ihbarSonucVideolar.length >= IHBAR_MAX_VIDEO) {
+                    return Alert.warning('Sınır Aşıldı', `En fazla ${IHBAR_MAX_VIDEO} video eklenebilir.`);
+                }
+                Loading.show();
+                try {
+                    const vSonuc = await OfflineQueue.videoIncele(dosya, IHBAR_VIDEO_MAX_SURE, IHBAR_VIDEO_MAX_BYTE);
+                    ihbarSonucVideolar.push(vSonuc);
+                    ihbarSonucMedyaOnizle();
+                } catch (hata) {
+                    Alert.warning('Video Eklenemedi', hata.message);
+                } finally {
+                    Loading.hide();
+                }
+            });
+        });
+    }
+
+    function ihbarSonucMedyaOnizle() {
+        const kutu = document.getElementById('ihbar-sonuc-medya-onizleme');
+        if (!kutu) return;
+        const fotoHtml = ihbarSonucFotolar.map((f, i) => `
+            <div class="relative inline-block">
+                <img src="${URL.createObjectURL(f)}" class="w-20 h-20 object-cover rounded-xl">
+                <button type="button" onclick="ihbarSonucMedyaSil('foto', ${i})" class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center"><span class="material-symbols-outlined text-sm">close</span></button>
+            </div>`).join('');
+        const videoHtml = ihbarSonucVideolar.map((v, i) => `
+            <div class="relative inline-block">
+                ${v.kapak ? `<img src="${v.kapak}" class="w-20 h-20 object-cover rounded-xl">` : `<div class="w-20 h-20 rounded-xl bg-slate-100 flex items-center justify-center"><span class="material-symbols-outlined text-slate-400">movie</span></div>`}
+                <span class="absolute bottom-1 right-1 text-white text-xs rounded px-1" style="background:rgba(0,0,0,.7)">${OfflineQueue.sureBicimle(v.sure)}</span>
+                <button type="button" onclick="ihbarSonucMedyaSil('video', ${i})" class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center"><span class="material-symbols-outlined text-sm">close</span></button>
+            </div>`).join('');
+        kutu.innerHTML = fotoHtml + videoHtml;
+    }
+
+    function ihbarSonucMedyaSil(tur, idx) {
+        (tur === 'video' ? ihbarSonucVideolar : ihbarSonucFotolar).splice(idx, 1);
+        ihbarSonucMedyaOnizle();
     }
 
     function ihbarSonucSec(btn, durum) {
@@ -1615,8 +1708,37 @@
             return;
         }
 
-        const response = await API.request('ihbarSonuclandir', { id: id, durum: durum, tutanak_no: tutanakNo, sebep: sebep });
+        const formData = new FormData();
+        formData.append('action', 'ihbarSonuclandir');
+        formData.append('id', id);
+        formData.append('durum', durum);
+        formData.append('tutanak_no', tutanakNo);
+        formData.append('sebep', sebep);
+
+        Loading.show();
+        let response;
+        try {
+            for (const file of ihbarSonucFotolar) {
+                const foto = await OfflineQueue.fotografKucult(file, 1600, 0.75);
+                formData.append('fotograflar[]', foto.blob, foto.ad);
+            }
+            ihbarSonucVideolar.forEach(v => {
+                formData.append('videolar[]', v.dosya, v.dosya.name);
+                formData.append('video_sureleri[]', v.sure || '');
+                formData.append('video_kapaklari[]', v.kapak || '');
+            });
+            const yanit = await fetch(API.baseUrl, { method: 'POST', body: formData });
+            response = await yanit.json();
+        } catch (hata) {
+            console.error('İhbar sonuç gönderim hatası:', hata);
+            response = { success: false, message: 'Bağlantı hatası. Lütfen tekrar deneyin.' };
+        } finally {
+            Loading.hide();
+        }
+
         if (response.success) {
+            ihbarSonucFotolar = [];
+            ihbarSonucVideolar = [];
             Modal.close('ihbar-detay-modal');
             await Alert.success('Başarılı', response.message || 'İhbar sonuçlandırıldı.');
             loadIhbarlar();

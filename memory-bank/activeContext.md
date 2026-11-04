@@ -3586,3 +3586,6 @@
 
 ## Saatlik İzin (Personel PWA)
 - `personel_izinleri.baslangic_saati` ve `izin_saati` eklendi (sql/add_saatlik_izin_alanlari.sql). Saatlik izin: toplam_gun=0, yillik_izne_etki=0, bitiş=başlangıç; çakışma saat bazlı (PersonelIzinleriModel::countLeaveConflicts).
+
+## İhbar Sonuç Kanıtı (Personel PWA)
+- Kaçak ekibi ihbarı sonuçlandırırken (özellikle olumsuz) açıklama + fotoğraf + video ekleyebilir. `ihbar_fotograflari.kaynak` ('bildirim'|'sonuc') ve `ekleyen_personel_id` eklendi (database/migrations/2026_11_04_add_sonuc_kaynagi_to_ihbar_medya.sql). `ihbarSonuclandir` aksiyonu multipart kabul eder; sonuç medyası kendi kotasında (15 foto/2 video) sayılır, tarihçeye 'not' kaydı düşer. Detayda "Sonuç Kanıtları" ayrı bölüm.
