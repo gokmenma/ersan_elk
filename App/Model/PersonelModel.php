@@ -2371,7 +2371,7 @@ class PersonelModel extends Model
      * Kullanılabilir tüm PWA hızlı işlem anahtarları
      */
     public const ALL_PWA_HIZLI_ISLEMLER = [
-        'izin', 'yardim', 'bordro', 'zimmetler', 'ihbar',
+        'izin', 'yardim', 'bordro', 'avans', 'zimmetler', 'ihbar',
         'puantaj', 'talep', 'km-bildirimleri', 'etkinlikler', 'icralar',
         'ekip-takibi', 'nobet', 'aparat'
     ];

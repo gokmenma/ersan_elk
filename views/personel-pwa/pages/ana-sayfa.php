@@ -392,10 +392,20 @@ $kartSirasi = static fn(string $anahtar): int => (int) array_search($anahtar, $a
             'neon' => 'neon-emerald',
             'text_color' => 'text-emerald-100/80',
         ],
-        'bordro' => [
-            'key' => 'bordro',
+        'avans' => [
+            'key' => 'avans',
             'title' => 'Avanslar',
             'desc' => 'Avans Talebi Yap',
+            'url' => '?page=avans',
+            'icon' => 'add_card',
+            'gradient' => 'from-orange-500 to-orange-700',
+            'neon' => 'neon-orange',
+            'text_color' => 'text-orange-100/80',
+        ],
+        'bordro' => [
+            'key' => 'bordro',
+            'title' => 'Bordrolar',
+            'desc' => 'Resmî Bordrolarım',
             'url' => '?page=bordro',
             'icon' => 'receipt_long',
             'gradient' => 'from-orange-500 to-orange-700',

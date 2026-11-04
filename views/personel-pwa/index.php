@@ -163,7 +163,7 @@ if ($isKaskiKacak) {
 } else {
     // Sayfa yönlendirmesi
     $page = $_GET['page'] ?? 'ana-sayfa';
-    $allowed_pages = ['ana-sayfa', 'bordro', 'izin', 'talep', 'profil', 'puantaj', 'etkinlikler', 'zimmetler', 'icralar', 'yardim', 'yardim-detay', 'km-bildirimleri', 'ihbar'];
+    $allowed_pages = ['ana-sayfa', 'bordro', 'avans', 'izin', 'talep', 'profil', 'puantaj', 'etkinlikler', 'zimmetler', 'icralar', 'yardim', 'yardim-detay', 'km-bildirimleri', 'ihbar'];
 
     if ($isEndeksOkuma && $isEkipSefi) {
         $allowed_pages[] = 'ekip-takibi';
@@ -207,6 +207,7 @@ if ($isKaskiKacak) {
 
     $pwaNavigationPages[] = 'km-bildirimleri';
     $pwaNavigationPages[] = 'etkinlikler';
+    $pwaNavigationPages[] = 'avans';
     $pwaNavigationPages[] = 'bordro';
 
     // Büro dışındaki personelde İzinler alt menüde değil, Diğer menüsündedir.
@@ -455,7 +456,8 @@ $pageStatusDark = '#121212';
         'zimmetler' => ['label' => 'Zimmetler', 'eyebrow' => 'ENVANTER', 'icon' => 'inventory_2', 'tone' => 'amber', 'show' => true],
         'talep' => ['label' => 'Talepler', 'eyebrow' => 'TALEP YÖNETİMİ', 'icon' => 'assignment', 'tone' => 'emerald', 'show' => true],
         'izin' => ['label' => 'İzinler', 'eyebrow' => 'İNSAN KAYNAKLARI', 'icon' => 'calendar_today', 'tone' => 'amber', 'show' => true],
-        'bordro' => ['label' => 'Avans ve Bordrolar', 'navLabel' => 'Bordro', 'eyebrow' => 'FİNANS', 'icon' => 'payments', 'tone' => 'emerald', 'show' => true],
+        'avans' => ['label' => 'Avans İşlemleri', 'navLabel' => 'Avans', 'eyebrow' => 'FİNANS', 'icon' => 'add_card', 'tone' => 'amber', 'show' => true],
+        'bordro' => ['label' => 'Bordrolar', 'navLabel' => 'Bordro', 'eyebrow' => 'FİNANS', 'icon' => 'payments', 'tone' => 'emerald', 'show' => true],
         'profil' => ['label' => 'Profil', 'eyebrow' => 'HESABIM', 'icon' => 'person', 'tone' => 'blue', 'show' => true],
         'yardim' => ['label' => 'Yardım & Destek', 'navLabel' => 'Destek', 'eyebrow' => 'DESTEK', 'icon' => 'support_agent', 'tone' => 'purple', 'show' => true],
         'ihbar' => ['label' => 'İhbar Yönetimi', 'navLabel' => 'İhbar', 'eyebrow' => 'KAÇAK KONTROL', 'icon' => 'campaign', 'tone' => 'coral', 'show' => true],
