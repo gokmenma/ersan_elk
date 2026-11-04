@@ -15,7 +15,7 @@ use Exception;
 
 class UetsSyncService
 {
-    private const LIST_INTERVAL = 7200;
+    private const LIST_INTERVAL = 6900;
     private const PAGE_SIZE = 250;
     private const MAX_PAGES = 2;
 

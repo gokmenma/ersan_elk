@@ -3589,3 +3589,6 @@
 
 ## İhbar Sonuç Kanıtı (Personel PWA)
 - Kaçak ekibi ihbarı sonuçlandırırken (özellikle olumsuz) açıklama + fotoğraf + video ekleyebilir. `ihbar_fotograflari.kaynak` ('bildirim'|'sonuc') ve `ekleyen_personel_id` eklendi (database/migrations/2026_11_04_add_sonuc_kaynagi_to_ihbar_medya.sql). `ihbarSonuclandir` aksiyonu multipart kabul eder; sonuç medyası kendi kotasında (15 foto/2 video) sayılır, tarihçeye 'not' kaydı düşer. Detayda "Sonuç Kanıtları" ayrı bölüm.
+
+## UETS Liste Önbelleği
+- `UetsSyncService::LIST_INTERVAL` 7200 → 6900 sn. Cron tam saatte tetiklenip önbellek sorgu bitiminden sonra damgalandığından (örn. 12:00:07) 14:00:03 çalışması önbellekten dönüyor, fiilen 4 saatte bir sorgu yapılıyordu.

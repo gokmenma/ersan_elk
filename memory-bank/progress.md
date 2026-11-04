@@ -2124,3 +2124,5 @@
 - `personel_izinleri.baslangic_saati` ve `izin_saati` eklendi (sql/add_saatlik_izin_alanlari.sql). Saatlik izin: toplam_gun=0, yillik_izne_etki=0, bitiş=başlangıç; çakışma saat bazlı (PersonelIzinleriModel::countLeaveConflicts).
 
 - [x] İhbar sonuçlandırmada (personel PWA) foto/video/açıklama kanıtı eklendi.
+
+- [x] UETS cron: liste önbellek aralığı 6900 sn yapıldı (2 saatlik cron her seferinde UETS sorgular).
