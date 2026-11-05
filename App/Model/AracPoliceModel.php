@@ -9,7 +9,9 @@ class AracPoliceModel extends Model
 {
     protected $table = 'arac_police_dosyalari';
 
-    public const TURLER = ['sigorta', 'kasko'];
+    public const TURLER = ['sigorta', 'kasko', 'muayene'];
+
+    public const TUR_ADLARI = ['sigorta' => 'Sigorta', 'kasko' => 'Kasko', 'muayene' => 'Muayene'];
 
     public function __construct()
     {

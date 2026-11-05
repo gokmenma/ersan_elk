@@ -2826,7 +2826,7 @@ const AracTakip = {
   },
 
   // =============================================
-  // SİGORTA & KASKO POLİÇELERİ (Şifreli Saklama)
+  // SİGORTA, KASKO & MUAYENE BELGELERİ (Şifreli Saklama)
   // =============================================
   policeAlaniniGuncelle: function (aracId) {
     $("#pol_baslangic_tarihi, #pol_bitis_tarihi").each(function () {
@@ -2836,7 +2836,7 @@ const AracTakip = {
     });
     $("#policeForm").addClass("d-none");
     if (!aracId) {
-      $("#sigorta_bitis_tarihi, #kasko_bitis_tarihi").prop("readonly", false).attr("title", "").each(function () {
+      $("#sigorta_bitis_tarihi, #kasko_bitis_tarihi, #muayene_bitis_tarihi").prop("readonly", false).attr("title", "").each(function () {
         if (this._flatpickr) this._flatpickr.set("clickOpens", true);
       });
       $("#policeYeniAracUyari").removeClass("d-none");
@@ -2853,9 +2853,9 @@ const AracTakip = {
     $.post(this.apiUrl, { action: "arac-police-listele", arac_id: aracId }, function (response) {
       const liste = $("#policeListe").empty();
       const policeVarMi = response.status === "success" ? response.data : [];
-      ["sigorta", "kasko"].forEach(function (tur) {
+      ["sigorta", "kasko", "muayene"].forEach(function (tur) {
         const varMi = policeVarMi.some(function (p) { return p.police_turu === tur; });
-        const input = $(tur === "kasko" ? "#kasko_bitis_tarihi" : "#sigorta_bitis_tarihi");
+        const input = $("#" + tur + "_bitis_tarihi");
         input.prop("readonly", varMi).attr("title", varMi ? "Bu tarih poliçe kayıtlarından otomatik güncellenir." : "");
         if (input[0] && input[0]._flatpickr) {
           input[0]._flatpickr.set("clickOpens", !varMi);
@@ -2865,10 +2865,10 @@ const AracTakip = {
         liste.addClass("d-none");
         return;
       }
-      const turAdi = { sigorta: "Trafik Sigortası", kasko: "Kasko" };
+      const turAdi = { sigorta: "Trafik Sigortası", kasko: "Kasko", muayene: "Araç Muayenesi" };
       const tablo = $('<table class="table table-sm table-bordered align-middle mb-0 font-size-12"></table>');
       tablo.append(
-        "<thead><tr><th>Tür</th><th>Şirket / Poliçe No</th><th>Dönem</th><th class=\"text-end\">Prim</th><th class=\"text-center\" style=\"width:100px\">İşlem</th></tr></thead>"
+        "<thead><tr><th>Tür</th><th>Şirket / Belge No</th><th>Dönem</th><th class=\"text-end\">Prim</th><th class=\"text-center\" style=\"width:100px\">İşlem</th></tr></thead>"
       );
       const tbody = $("<tbody></tbody>");
       response.data.forEach(function (p) {
@@ -2912,7 +2912,7 @@ const AracTakip = {
 
   policeEvrakTarihiniYansit: function (tur, tarih) {
     if (!tarih) return;
-    const input = $(tur === "kasko" ? "#kasko_bitis_tarihi" : "#sigorta_bitis_tarihi");
+    const input = $("#" + tur + "_bitis_tarihi");
     input.val(tarih);
     if (input[0] && input[0]._flatpickr) {
       input[0]._flatpickr.setDate(tarih, false);
@@ -2923,7 +2923,7 @@ const AracTakip = {
     const aracId = $("#aracForm input[name='id']").val();
     if (!aracId) return;
     if (!$("#pol_bitis_tarihi").val()) {
-      Swal.fire("Uyarı", "Poliçe bitiş tarihi zorunludur.", "warning");
+      Swal.fire("Uyarı", "Belge bitiş tarihi zorunludur.", "warning");
       return;
     }
 
@@ -2980,7 +2980,7 @@ const AracTakip = {
     const aracId = $("#aracForm input[name='id']").val();
     Swal.fire({
       title: "Emin misiniz?",
-      text: "Poliçe kaydı silinecek.",
+      text: "Belge kaydı silinecek.",
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "Evet, sil",

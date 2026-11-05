@@ -229,27 +229,27 @@
                                             <div class="p-3 border rounded bg-light bg-opacity-50" id="policeAlani">
                                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                                     <div class="text-muted small fw-semibold">
-                                                        <i class="bx bx-shield-alt-2 me-1"></i>Sigorta &amp; Kasko Poliçeleri
+                                                        <i class="bx bx-shield-alt-2 me-1"></i>Sigorta, Kasko &amp; Muayene Belgeleri
                                                         <span class="badge bg-success bg-opacity-10 text-success border border-success ms-1">
                                                             <i class="bx bx-lock-alt"></i> Şifreli Saklanır
                                                         </span>
                                                     </div>
                                                     <button type="button" class="btn btn-sm btn-outline-primary d-none" id="btnPoliceFormAc">
-                                                        <i class="bx bx-plus me-1"></i>Poliçe Ekle
+                                                        <i class="bx bx-plus me-1"></i>Belge Ekle
                                                     </button>
                                                 </div>
 
                                                 <div id="policeYeniAracUyari" class="text-muted small">
-                                                    <i class="bx bx-info-circle me-1"></i>Poliçe ekleyebilmek için önce aracı kaydedin.
+                                                    <i class="bx bx-info-circle me-1"></i>Belge ekleyebilmek için önce aracı kaydedin.
                                                 </div>
 
                                                 <div id="policeForm" class="d-none border rounded bg-white p-3 mb-3">
                                                     <div class="row g-2">
                                                         <div class="col-md-4">
-                                                            <?php echo Form::FormSelect2('pol_turu', ['sigorta' => 'Trafik Sigortası', 'kasko' => 'Kasko'], 'sigorta', 'Poliçe Türü', 'shield'); ?>
+                                                            <?php echo Form::FormSelect2('pol_turu', ['sigorta' => 'Trafik Sigortası', 'kasko' => 'Kasko', 'muayene' => 'Araç Muayenesi'], 'sigorta', 'Belge Türü', 'shield'); ?>
                                                         </div>
                                                         <div class="col-md-4">
-                                                            <?php echo Form::FormFloatInput('text', 'pol_sirket_adi', null, 'Sigorta Şirketi', 'Sigorta Şirketi', 'briefcase', 'form-control', false, 150); ?>
+                                                            <?php echo Form::FormFloatInput('text', 'pol_sirket_adi', null, 'Sigorta Şirketi / Muayene İstasyonu', 'Şirket / İstasyon', 'briefcase', 'form-control', false, 150); ?>
                                                         </div>
                                                         <div class="col-md-4">
                                                             <?php echo Form::FormFloatInput('text', 'pol_police_no', null, 'Poliçe No', 'Poliçe No', 'hash', 'form-control', false, 100); ?>
@@ -265,12 +265,12 @@
                                                         </div>
                                                         <div class="col-12">
                                                             <input type="file" class="form-control form-control-sm" id="polDosyaInput" accept="image/jpeg,image/png,image/webp,application/pdf">
-                                                            <small class="text-muted d-block mt-1">Poliçe dosyası (isteğe bağlı): JPG, PNG, WEBP veya PDF - Maks. 8MB.</small>
+                                                            <small class="text-muted d-block mt-1">Belge dosyası (isteğe bağlı): JPG, PNG, WEBP veya PDF - Maks. 8MB.</small>
                                                         </div>
                                                         <div class="col-12 text-end">
                                                             <button type="button" class="btn btn-sm btn-outline-secondary me-1" id="btnPoliceVazgec">Vazgeç</button>
                                                             <button type="button" class="btn btn-sm btn-primary" id="btnPoliceKaydet">
-                                                                <i class="bx bx-save me-1"></i>Poliçeyi Kaydet
+                                                                <i class="bx bx-save me-1"></i>Belgeyi Kaydet
                                                             </button>
                                                         </div>
                                                     </div>

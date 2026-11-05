@@ -503,7 +503,7 @@ class AracModel extends Model
 
     public function updateEvrakBitis($aracId, string $tur, string $tarih)
     {
-        $kolonlar = ['sigorta' => 'sigorta_bitis_tarihi', 'kasko' => 'kasko_bitis_tarihi'];
+        $kolonlar = ['sigorta' => 'sigorta_bitis_tarihi', 'kasko' => 'kasko_bitis_tarihi', 'muayene' => 'muayene_bitis_tarihi'];
         if (!isset($kolonlar[$tur])) {
             return false;
         }

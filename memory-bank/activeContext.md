@@ -3688,3 +3688,7 @@
 
 ## KASKİ Giriş Ekranı
 - kaski/login.php arayüzü ana login.php ile aynı tasarıma (altın tema, premium form, sağ vitrin paneli) getirildi; giriş/CSRF/deneme sınırı mantığı değişmedi.
+
+## Araç Muayene Belgesi
+- Araç kartındaki "Sigorta & Kasko Poliçeleri" bölümü Muayene belgesini de kapsar (şifreli dosya, `arac-police-*` aksiyonları, `AracPoliceModel::TURLER/TUR_ADLARI`). En geç bitiş tarihi `araclar.muayene_bitis_tarihi`ne yansır.
+- SQL: sql/2026_11_05_arac_police_muayene_turu.sql uygulanmalı (ENUM genişletme).

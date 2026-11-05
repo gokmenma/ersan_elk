@@ -2165,3 +2165,5 @@
 - Mobil SPA Görevler sayfası gerçek veriye bağlandı (liste/tamamla/geri al, yetki sunucuda doğrulanır).
 
 - [x] KASKİ login ekranı ana giriş tasarımına uyarlandı.
+
+- [x] Araç muayene belgesi yükleme/görüntüleme (poliçe altyapısına muayene türü eklendi)

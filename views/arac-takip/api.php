@@ -623,7 +623,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 $baslangic = $tarihCoz($_POST['baslangic_tarihi'] ?? '');
                 $bitis = $tarihCoz($_POST['bitis_tarihi'] ?? '');
                 if (!$bitis) {
-                    throw new Exception("Poliçe bitiş tarihi zorunludur.");
+                    throw new Exception("Belge bitiş tarihi zorunludur.");
                 }
                 if ($baslangic && $baslangic > $bitis) {
                     throw new Exception("Başlangıç tarihi bitiş tarihinden sonra olamaz.");
@@ -705,7 +705,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     $guncelTarih = Date::dmY($enGec);
                 }
 
-                $turAdi = $tur === 'kasko' ? 'Kasko' : 'Sigorta';
+                $turAdi = AracPoliceModel::TUR_ADLARI[$tur];
                 $SystemLog = new SystemLogModel();
                 $SystemLog->logAction($yukleyenId ?? 0, "Araç $turAdi Poliçesi Ekleme", "{$mevcutArac->plaka} plakalı araca $turAdi poliçesi eklendi (Bitiş: " . Date::dmY($bitis) . ").", SystemLogModel::LEVEL_IMPORTANT);
                 $AracLog->ekle($aracId, "$turAdi Poliçesi Ekleme", "$turAdi poliçesi eklendi. Bitiş: " . Date::dmY($bitis));
@@ -734,7 +734,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     $Arac->updateEvrakBitis((int) $police->arac_id, $police->police_turu, $yeniBitis);
                 }
 
-                $turAdi = $police->police_turu === 'kasko' ? 'Kasko' : 'Sigorta';
+                $turAdi = AracPoliceModel::TUR_ADLARI[$police->police_turu] ?? 'Sigorta';
                 $kullaniciId = $_SESSION['user_id'] ?? 0;
                 $SystemLog = new SystemLogModel();
                 $SystemLog->logAction($kullaniciId, "Araç $turAdi Poliçesi Silme", "Araç (#{$police->arac_id}) $turAdi poliçesi silindi.", SystemLogModel::LEVEL_IMPORTANT);
