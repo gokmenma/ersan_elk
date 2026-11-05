@@ -143,49 +143,6 @@ usort($yakitAraclar, static function ($a, $b) {
         color: #f3f4f8;
     }
 
-    .badge-filter {
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-
-    .badge-filter:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    }
-
-    .badge-filter.active {
-        box-shadow: 0 0 0 2px currentColor;
-    }
-
-    .evrak-stat-card {
-        cursor: pointer;
-        transition: all 0.3s ease;
-        border-left: 4px solid transparent;
-    }
-
-    .evrak-stat-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-    }
-
-    .evrak-stat-card.bg-danger-subtle {
-        border-left-color: #f46a6a;
-    }
-
-    .evrak-stat-card.bg-warning-subtle {
-        border-left-color: #f6c23e;
-    }
-
-    .evrak-stat-card.bg-info-subtle {
-        border-left-color: #50a5f1;
-    }
-
-    .evrak-stat-card.active {
-        border: 2px solid var(--card-color) !important;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
-        transform: translateY(-2px);
-    }
-
     .arac-info-box .plaka-label {
         font-size: 14px;
         font-weight: 700;
@@ -384,118 +341,140 @@ usort($yakitAraclar, static function ($a, $b) {
     }
 </style>
 
+<?php
+$maintitle = "Araç Takip";
+$viewTitle = $title ?? "Araç Takip & Yakıt Yönetimi";
+$title = $viewTitle;
+$esc = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+$evrakBitenToplam = (int) ($evrakStats->muayene_biten ?? 0) + (int) ($evrakStats->sigorta_biten ?? 0) + (int) ($evrakStats->kasko_biten ?? 0);
+$evrakYaklasanToplam = (int) ($evrakStats->muayene_yaklasan ?? 0) + (int) ($evrakStats->sigorta_yaklasan ?? 0) + (int) ($evrakStats->kasko_yaklasan ?? 0);
+$zimmetliServistekiSayi = $Arac->getZimmetliServistekiAracSayisi();
+?>
+<script>try { document.documentElement.classList.toggle('arac-summary-hidden', localStorage.getItem('arac_summary_cards_state') === 'hidden'); } catch (e) {}</script>
+<style>
+#summaryCardsContainer { overflow: hidden; max-height: 1100px; opacity: 1; transition: max-height .3s ease, opacity .3s ease, margin .3s ease; }
+.arac-summary-hidden #summaryCardsContainer { max-height: 0 !important; opacity: 0; margin-top: 0 !important; margin-bottom: 0 !important; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { #summaryCardsContainer { transition: none; } }
+#aracTabContent .dataTables_wrapper > .dt-buttons { display: none; }
+#aracTab #geciciBekleyenSayi { background-color: #ffe8a3 !important; color: #6b4a00 !important; min-width: 22px; font-weight: 700; }
+#aracTab .nav-link.active #geciciBekleyenSayi { background-color: #ffffff !important; color: #1f2937 !important; }
+#zimmetContent, #geciciContent { padding-top: .75rem; }
+#aracContent .status-filter-group + .table-responsive, #aracContent #aracTable_wrapper { margin-top: 0; }
+#summaryCardsContainer .summary-kpi-card, .arac-kpi-row .summary-kpi-card { background-color: #f3f5f8; border: 1px solid #e4e8ee; box-shadow: none; }
+html[data-theme-preset="macos-dark"] #summaryCardsContainer .summary-kpi-card, [data-bs-theme="dark"] #summaryCardsContainer .summary-kpi-card, .arac-kpi-row .summary-kpi-card { background-color: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.08); }
+</style>
+
+<?php include 'layouts/breadcrumb.php'; ?>
+
 <div class="container-fluid">
 
-    <!-- start page title -->
-    <?php
-    $maintitle = "Araç Takip";
-    $viewTitle = $title ?? "Araç Takip & Yakıt Yönetimi"; // Değişken adını değiştirdik ki breadcrumb ile çakışmasın
-    $title = $viewTitle;
-    ?>
-    <?php include 'layouts/breadcrumb.php'; ?>
-    <!-- end page title -->
+    <div class="row align-items-center mb-3">
+        <div class="col-md-6 col-12 d-flex align-items-center gap-3">
+            <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 44px; height: 44px;">
+                <i class="bx bx-car fs-4 text-primary"></i>
+            </div>
+            <div>
+                <h4 class="mb-0 fw-bold text-dark font-size-16">Araç Takip</h4>
+                <p class="text-muted mb-0 font-size-12">Araç, zimmet, yakıt, KM ve servis kayıtlarının yönetimi ve takibi</p>
+            </div>
+        </div>
 
-    <!-- Yapay Zeka İş Ajanı Widget -->
+        <div class="personel-action-toolbar col-md-6 col-12 d-flex align-items-center justify-content-md-end gap-2 mt-2 mt-md-0">
+            <button class="btn btn-primary top-action-btn shadow-sm text-white" type="button" id="btnYeniEkle">
+                <i class="bx bx-plus font-size-16"></i> Yeni Ekle
+            </button>
+
+            <div class="dropdown d-inline-block">
+                <button type="button" class="btn btn-outline-secondary bg-white top-action-btn dropdown-toggle shadow-sm" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <i class="bx bx-cog font-size-16 text-primary"></i> İşlemler
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0">
+                    <li><a class="dropdown-item" href="#" id="btnExceleAktar">
+                            <i class="bx bx-export me-2 text-success"></i> Excele Aktar
+                        </a></li>
+                    <li id="liExcelYakitYukle" style="display: none;"><a class="dropdown-item" href="#"
+                            data-bs-toggle="modal" data-bs-target="#excelModal">
+                            <i class="bx bx-upload me-2"></i> Excel'den Yakıt Yükle
+                        </a></li>
+                    <li id="liExcelAracYukle" <?php echo $activeTab === 'arac' ? '' : 'style="display: none;"'; ?>><a class="dropdown-item" href="#" data-bs-toggle="modal"
+                            data-bs-target="#aracExcelModal">
+                            <i class="bx bx-upload me-2"></i> Excel'den Araç Yükle
+                        </a></li>
+                    <li id="liExcelKmYukle" <?php echo $activeTab === 'km' ? '' : 'style="display: none;"'; ?>><a class="dropdown-item" href="#" data-bs-toggle="modal"
+                            data-bs-target="#kmExcelYukleModal">
+                            <i class="bx bx-upload me-2"></i> Excel'den KM Yükle
+                        </a></li>
+                </ul>
+            </div>
+
+            <?php foreach (['arac' => 'aracTable', 'zimmet' => 'zimmetTable', 'gecici' => 'geciciTable', 'yakit' => 'yakitTable', 'km' => 'kmTable', 'servis' => 'servisTable'] as $colmanTab => $colmanTable): ?>
+                <span class="d-inline-block aracColmanSlot <?php echo $activeTab === $colmanTab ? '' : 'd-none'; ?>" data-colman-tab="<?php echo $colmanTab; ?>" data-dt-colman-for="<?php echo $colmanTable; ?>" data-dt-colman-style="outline"></span>
+            <?php endforeach; ?>
+
+            <button type="button" class="btn btn-outline-secondary bg-white top-icon-btn shadow-sm" id="btnToggleSummaryCards" title="Özet Kartları Gizle" aria-label="Özet Kartları Göster/Gizle" aria-expanded="true">
+                <i class="bx bx-chevron-up"></i>
+            </button>
+        </div>
+    </div>
+
     <?php if (\App\Service\Gate::allows('ai_is_ajani_arac_takip')): ?>
         <?php include dirname(__DIR__, 2) . '/views/layouts/components/ai_agent_widget.php'; ?>
     <?php endif; ?>
 
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <div class="d-flex flex-wrap align-items-center gap-2">
-                        <!-- Tab Navigation -->
-                        <ul class="nav nav-pills" id="aracTab" role="tablist">
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link <?php echo $activeTab === 'arac' ? 'active' : ''; ?>"
-                                    id="arac-tab" data-bs-toggle="tab" data-bs-target="#aracContent" type="button"
-                                    role="tab">
-                                    <i class="bx bx-car me-1"></i> Araçlar
-                                </button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link <?php echo $activeTab === 'zimmet' ? 'active' : ''; ?>"
-                                    id="zimmet-tab" data-bs-toggle="tab" data-bs-target="#zimmetContent" type="button"
-                                    role="tab">
-                                    <i class="bx bx-transfer me-1"></i> Zimmetler
-                                </button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link <?php echo $activeTab === 'gecici' ? 'active' : ''; ?>"
-                                    id="gecici-tab" data-bs-toggle="tab" data-bs-target="#geciciContent" type="button"
-                                    role="tab">
-                                    <i class="bx bx-transfer-alt me-1"></i> Geçici Teslimler
-                                    <span class="badge bg-warning-subtle text-warning rounded-pill ms-1 d-none" id="geciciBekleyenSayi"></span>
-                                </button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link <?php echo $activeTab === 'yakit' ? 'active' : ''; ?>"
-                                    id="yakit-tab" data-bs-toggle="tab" data-bs-target="#yakitContent" type="button"
-                                    role="tab">
-                                    <i class="bx bx-gas-pump me-1"></i> Yakıt Kayıtları
-                                </button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link <?php echo $activeTab === 'km' ? 'active' : ''; ?>" id="km-tab"
-                                    data-bs-toggle="tab" data-bs-target="#kmContent" type="button" role="tab">
-                                    <i class="bx bx-tachometer me-1"></i> KM Kayıtları
-                                </button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link <?php echo $activeTab === 'servis' ? 'active' : ''; ?>"
-                                    id="servis-tab" data-bs-toggle="tab" data-bs-target="#servisContent" type="button"
-                                    role="tab">
-                                    <i class="bx bx-wrench me-1"></i> Servis Kayıtları
-                                </button>
-                            </li>
-                        </ul>
+    <div class="card summary-kpi-card mb-3" id="aracListCard">
+        <div class="card-header bg-transparent border-0 px-3 py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <ul class="nav nav-pills" id="aracTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link <?php echo $activeTab === 'arac' ? 'active' : ''; ?>"
+                        id="arac-tab" data-bs-toggle="tab" data-bs-target="#aracContent" type="button" role="tab">
+                        <i class="bx bx-car me-1"></i> Araçlar
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link <?php echo $activeTab === 'zimmet' ? 'active' : ''; ?>"
+                        id="zimmet-tab" data-bs-toggle="tab" data-bs-target="#zimmetContent" type="button" role="tab">
+                        <i class="bx bx-transfer me-1"></i> Zimmetler
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link <?php echo $activeTab === 'gecici' ? 'active' : ''; ?>"
+                        id="gecici-tab" data-bs-toggle="tab" data-bs-target="#geciciContent" type="button" role="tab">
+                        <i class="bx bx-transfer-alt me-1"></i> Geçici Teslimler
+                        <span class="badge rounded-pill ms-1" id="geciciBekleyenSayi">0</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link <?php echo $activeTab === 'yakit' ? 'active' : ''; ?>"
+                        id="yakit-tab" data-bs-toggle="tab" data-bs-target="#yakitContent" type="button" role="tab">
+                        <i class="bx bx-gas-pump me-1"></i> Yakıt Kayıtları
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link <?php echo $activeTab === 'km' ? 'active' : ''; ?>" id="km-tab"
+                        data-bs-toggle="tab" data-bs-target="#kmContent" type="button" role="tab">
+                        <i class="bx bx-tachometer me-1"></i> KM Kayıtları
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link <?php echo $activeTab === 'servis' ? 'active' : ''; ?>"
+                        id="servis-tab" data-bs-toggle="tab" data-bs-target="#servisContent" type="button" role="tab">
+                        <i class="bx bx-wrench me-1"></i> Servis Kayıtları
+                    </button>
+                </li>
+            </ul>
+        </div>
 
-
-                        <!-- Butonlar -->
-                        <div class="d-flex flex-wrap gap-2 ms-auto">
-                            <button class="btn btn-primary" type="button" id="btnYeniEkle">
-                                <i class="bx bx-plus me-1"></i> Yeni Ekle
-                            </button>
-
-                            <div class="dropdown">
-                                <button type="button" class="btn btn-secondary dropdown-toggle waves-effect waves-light"
-                                    data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="bx bx-menu me-1"></i> İşlemler
-                                </button>
-                                <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="#" id="btnExceleAktar">
-                                            <i class="bx bx-export me-2"></i> Excele Aktar
-                                        </a></li>
-                                    <li id="liExcelYakitYukle" style="display: none;"><a class="dropdown-item" href="#"
-                                            data-bs-toggle="modal" data-bs-target="#excelModal">
-                                            <i class="bx bx-upload me-2"></i> Excel'den Yakıt Yükle
-                                        </a></li>
-                                    <li id="liExcelAracYukle" <?php echo $activeTab === 'arac' ? '' : 'style="display: none;"'; ?>><a class="dropdown-item" href="#" data-bs-toggle="modal"
-                                            data-bs-target="#aracExcelModal">
-                                            <i class="bx bx-upload me-2"></i> Excel'den Araç Yükle
-                                        </a></li>
-                                    <li id="liExcelKmYukle" <?php echo $activeTab === 'km' ? '' : 'style="display: none;"'; ?>><a class="dropdown-item" href="#" data-bs-toggle="modal"
-                                            data-bs-target="#kmExcelYukleModal">
-                                            <i class="bx bx-upload me-2"></i> Excel'den KM Yükle
-                                        </a></li>
-                                </ul>
-                            </div>
-                        </div>
+        <div class="card-body p-3 pt-0 position-relative">
+            <div class="arac-list-preloader show" id="arac-list-loader">
+                <div class="loader-content">
+                    <div class="spinner-border text-primary m-1" role="status" style="width: 2.2rem; height: 2.2rem; border-width: 0.22em;">
+                        <span class="visually-hidden">Yükleniyor...</span>
                     </div>
+                    <h5 class="mt-2 mb-1 font-size-14 fw-bold">Araçlar Yükleniyor...</h5>
+                    <p class="text-muted font-size-11 mb-0">Araç listesi hazırlanıyor...</p>
                 </div>
-
-                <div class="card-body position-relative">
-                    <div class="arac-list-preloader show" id="arac-list-loader">
-                        <div class="loader-content">
-                            <div class="spinner-border text-primary m-1" role="status" style="width: 2.2rem; height: 2.2rem; border-width: 0.22em;">
-                                <span class="visually-hidden">Yükleniyor...</span>
-                            </div>
-                            <h5 class="mt-2 mb-1 font-size-14 fw-bold">Araçlar Yükleniyor...</h5>
-                            <p class="text-muted font-size-11 mb-0">Araç listesi hazırlanıyor...</p>
-                        </div>
-                    </div>
-                    <div class="tab-content" id="aracTabContent">
+            </div>
+            <div class="tab-content" id="aracTabContent">
 
                         <!-- =============================================
                              ARAÇLAR TAB
@@ -503,193 +482,117 @@ usort($yakitAraclar, static function ($a, $b) {
                         <div class="tab-pane fade <?php echo $activeTab === 'arac' ? 'show active' : ''; ?>"
                             id="aracContent" role="tabpanel">
 
-                            <div class="row g-3 mb-4">
-                                <div class="col-md-3">
-                                    <div class="card border-0 shadow-sm h-100 bordro-summary-card evrak-stat-card <?php echo (!$filter) ? 'active' : ''; ?>"
-                                        style="--card-color: #556ee6; border-bottom: 3px solid var(--card-color) !important;"
-                                        onclick="location.href='index.php?p=arac-takip/list'">
-                                        <div class="card-body p-3">
-                                            <div class="icon-label-container">
-                                                <div class="icon-box" style="background: rgba(85, 110, 230, 0.1);">
-                                                    <i class="bx bx-list-check fs-4" style="color: #556ee6;"></i>
-                                                </div>
-                                                <span class="text-muted small fw-bold"
-                                                    style="font-size: 0.65rem;">TÜMÜ</span>
-                                            </div>
-                                            <p class="text-muted mb-2 small fw-bold"
-                                                style="letter-spacing: 0.5px; opacity: 0.7;">ARAÇ DURUMU</p>
-                                            <div class="d-flex justify-content-between align-items-center mt-3">
-                                                <span class="text-primary fw-bold">Toplam Araç</span>
-                                                <h4 class="mb-0 fw-bold text-primary">
-                                                    <?php echo $aracStats->toplam_arac ?? 0; ?>
-                                                </h4>
-                                            </div>
-                                            <div class="d-flex justify-content-between align-items-center mt-1 border-top pt-1" onclick="event.stopPropagation(); location.href='index.php?p=arac-takip/list&filter=ikame'" style="cursor: pointer;">
-                                                <span class="text-warning fw-bold small">İkame Araç</span>
-                                                <h5 class="mb-0 fw-bold text-warning">
-                                                    <?php echo $aracStats->ikame_arac ?? 0; ?>
-                                                </h5>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="card border-0 shadow-sm h-100 bordro-summary-card evrak-stat-card <?php echo (strpos($filter, 'muayene') !== false) ? 'active' : ''; ?>"
-                                        style="--card-color: #f46a6a; border-bottom: 3px solid var(--card-color) !important;">
-                                        <div class="card-body p-3">
-                                            <div class="icon-label-container">
-                                                <div class="icon-box" style="background: rgba(244, 106, 106, 0.1);">
-                                                    <i class="bx bx-shield-quarter fs-4" style="color: #f46a6a;"></i>
-                                                </div>
-                                                <span class="text-muted small fw-bold"
-                                                    style="font-size: 0.65rem;">MUAYENE</span>
-                                            </div>
-                                            <p class="text-muted mb-2 small fw-bold"
-                                                style="letter-spacing: 0.5px; opacity: 0.7;">MUAYENE DURUMU</p>
-                                            <div class="d-flex flex-column gap-1">
-                                                <a href="index.php?p=arac-takip/list&filter=muayene"
-                                                    class="d-flex justify-content-between align-items-center text-decoration-none">
-                                                    <span class="text-danger fw-bold"><i
-                                                            class="bx bx-error-circle me-1"></i>Süresi Geçen</span>
-                                                    <h5 class="mb-0 fw-bold text-danger">
-                                                        <?php echo $evrakStats->muayene_biten ?? 0; ?>
-                                                    </h5>
-                                                </a>
-                                                <a href="index.php?p=arac-takip/list&filter=muayene_yaklasan"
-                                                    class="d-flex justify-content-between align-items-center text-decoration-none border-top pt-1">
-                                                    <span class="text-warning fw-bold"><i
-                                                            class="bx bx-time-five me-1"></i>Yaklaşan (30 G)</span>
-                                                    <h5 class="mb-0 fw-bold text-warning">
-                                                        <?php echo $evrakStats->muayene_yaklasan ?? 0; ?>
-                                                    </h5>
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="card border-0 shadow-sm h-100 bordro-summary-card evrak-stat-card <?php echo (strpos($filter, 'sigorta') !== false) ? 'active' : ''; ?>"
-                                        style="--card-color: #f6c23e; border-bottom: 3px solid var(--card-color) !important;">
-                                        <div class="card-body p-3">
-                                            <div class="icon-label-container">
-                                                <div class="icon-box" style="background: rgba(246, 194, 62, 0.1);">
-                                                    <i class="bx bx-check-shield fs-4" style="color: #f6c23e;"></i>
-                                                </div>
-                                                <span class="text-muted small fw-bold"
-                                                    style="font-size: 0.65rem;">SİGORTA</span>
-                                            </div>
-                                            <p class="text-muted mb-2 small fw-bold"
-                                                style="letter-spacing: 0.5px; opacity: 0.7;">SİGORTA DURUMU</p>
-                                            <div class="d-flex flex-column gap-1">
-                                                <a href="index.php?p=arac-takip/list&filter=sigorta"
-                                                    class="d-flex justify-content-between align-items-center text-decoration-none">
-                                                    <span class="text-danger fw-bold"><i
-                                                            class="bx bx-error-circle me-1"></i>Süresi Geçen</span>
-                                                    <h5 class="mb-0 fw-bold text-danger">
-                                                        <?php echo $evrakStats->sigorta_biten ?? 0; ?>
-                                                    </h5>
-                                                </a>
-                                                <a href="index.php?p=arac-takip/list&filter=sigorta_yaklasan"
-                                                    class="d-flex justify-content-between align-items-center text-decoration-none border-top pt-1">
-                                                    <span class="text-primary fw-bold"><i
-                                                            class="bx bx-time-five me-1"></i>Yaklaşan (30 G)</span>
-                                                    <h5 class="mb-0 fw-bold text-primary">
-                                                        <?php echo $evrakStats->sigorta_yaklasan ?? 0; ?>
-                                                    </h5>
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="card border-0 shadow-sm h-100 bordro-summary-card evrak-stat-card <?php echo (strpos($filter, 'kasko') !== false) ? 'active' : ''; ?>"
-                                        style="--card-color: #50a5f1; border-bottom: 3px solid var(--card-color) !important;">
-                                        <div class="card-body p-3">
-                                            <div class="icon-label-container">
-                                                <div class="icon-box" style="background: rgba(80, 165, 241, 0.1);">
-                                                    <i class="bx bx-lock-shield fs-4" style="color: #50a5f1;"></i>
-                                                </div>
-                                                <span class="text-muted small fw-bold"
-                                                    style="font-size: 0.65rem;">KASKO</span>
-                                            </div>
-                                            <p class="text-muted mb-2 small fw-bold"
-                                                style="letter-spacing: 0.5px; opacity: 0.7;">KASKO DURUMU</p>
-                                            <div class="d-flex flex-column gap-1">
-                                                <a href="index.php?p=arac-takip/list&filter=kasko"
-                                                    class="d-flex justify-content-between align-items-center text-decoration-none">
-                                                    <span class="text-danger fw-bold"><i
-                                                            class="bx bx-error-circle me-1"></i>Süresi Geçen</span>
-                                                    <h5 class="mb-0 fw-bold text-danger">
-                                                        <?php echo $evrakStats->kasko_biten ?? 0; ?>
-                                                    </h5>
-                                                </a>
-                                                <a href="index.php?p=arac-takip/list&filter=kasko_yaklasan"
-                                                    class="d-flex justify-content-between align-items-center text-decoration-none border-top pt-1">
-                                                    <span class="text-dark fw-bold"><i
-                                                            class="bx bx-time-five me-1"></i>Yaklaşan (30 G)</span>
-                                                    <h5 class="mb-0 fw-bold text-dark">
-                                                        <?php echo $evrakStats->kasko_yaklasan ?? 0; ?>
-                                                    </h5>
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </div>
+            <div class="row g-3 mt-1 mb-3 summary-cards-group" id="summaryCardsContainer">
+                <div class="col-12 col-sm-6 col-xl-3">
+                    <div class="card summary-kpi-card h-100 mb-0">
+                        <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="summary-kpi-label">TOPLAM ARAÇ</span>
+                                <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
+                                    <i class="bx bx-car"></i>
                                 </div>
                             </div>
+                            <h3 class="summary-kpi-value my-1"><?php echo (int) ($aracStats->toplam_arac ?? 0); ?> Adet</h3>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="summary-kpi-subtext">Pasif: <?php echo (int) ($aracStats->pasif_arac ?? 0); ?> | İkame: <?php echo (int) ($aracStats->ikame_arac ?? 0); ?></span>
+                                <a href="index.php?p=arac-takip/list&filter=tumu" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 d-flex align-items-center gap-1 summary-pill-btn <?php echo $filter === 'tumu' ? 'active' : ''; ?>">
+                                    <i class="bx bx-layer"></i> Tümü
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-                            <?php
-                            $zimmetliServistekiSayi = $Arac->getZimmetliServistekiAracSayisi();
-                            ?>
-                            <!-- İstatistik Badge'leri -->
-                            <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
-                                <span
-                                    class="badge bg-primary-subtle text-primary fs-6 badge-filter <?php echo $filter === 'tumu' ? 'active' : ''; ?>"
-                                    onclick="location.href='index.php?p=arac-takip/list&filter=tumu'">
-                                    <i class="bx bx-car me-1"></i> Araç:
-                                    <?php echo $aracStats->toplam_arac ?? 0; ?>
+                <div class="col-12 col-sm-6 col-xl-3">
+                    <div class="card summary-kpi-card h-100 mb-0">
+                        <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="summary-kpi-label">AKTİF ARAÇ</span>
+                                <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                                    <i class="bx bx-check-circle"></i>
+                                </div>
+                            </div>
+                            <h3 class="summary-kpi-value my-1 text-success"><?php echo (int) ($aracStats->aktif_arac ?? 0); ?> Adet</h3>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="summary-kpi-subtext text-success fw-semibold">Zimmetli: <?php echo (int) $zimmetliSayi; ?> | Boşta: <?php echo (int) ($aracStats->bosta_arac ?? 0); ?></span>
+                                <a href="index.php?p=arac-takip/list" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 d-flex align-items-center gap-1 summary-pill-btn <?php echo empty($filter) ? 'active' : ''; ?>">
+                                    <i class="bx bx-check"></i> Aktif
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-sm-6 col-xl-3">
+                    <div class="card summary-kpi-card h-100 mb-0">
+                        <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="summary-kpi-label">SÜRESİ GEÇEN EVRAK</span>
+                                <div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
+                                    <i class="bx bx-error-circle"></i>
+                                </div>
+                            </div>
+                            <h3 class="summary-kpi-value my-1 text-danger"><?php echo $evrakBitenToplam; ?> Adet</h3>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="summary-kpi-subtext">
+                                    <a href="index.php?p=arac-takip/list&filter=muayene" class="text-danger text-decoration-none">Muayene: <?php echo (int) ($evrakStats->muayene_biten ?? 0); ?></a> |
+                                    <a href="index.php?p=arac-takip/list&filter=sigorta" class="text-danger text-decoration-none">Sigorta: <?php echo (int) ($evrakStats->sigorta_biten ?? 0); ?></a> |
+                                    <a href="index.php?p=arac-takip/list&filter=kasko" class="text-danger text-decoration-none">Kasko: <?php echo (int) ($evrakStats->kasko_biten ?? 0); ?></a>
                                 </span>
-                                <span class="badge bg-success-subtle text-success fs-6 badge-filter <?php echo empty($filter) ? 'active' : ''; ?>"
-                                    onclick="location.href='index.php?p=arac-takip/list'">
-                                    <i class="bx bx-check-circle me-1"></i> Aktif:
-                                    <?php echo $aracStats->aktif_arac ?? 0; ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-sm-6 col-xl-3">
+                    <div class="card summary-kpi-card h-100 mb-0">
+                        <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="summary-kpi-label">YAKLAŞAN EVRAK (30 GÜN)</span>
+                                <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                                    <i class="bx bx-time-five"></i>
+                                </div>
+                            </div>
+                            <h3 class="summary-kpi-value my-1 text-warning"><?php echo $evrakYaklasanToplam; ?> Adet</h3>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="summary-kpi-subtext">
+                                    <a href="index.php?p=arac-takip/list&filter=muayene_yaklasan" class="text-warning text-decoration-none">Muayene: <?php echo (int) ($evrakStats->muayene_yaklasan ?? 0); ?></a> |
+                                    <a href="index.php?p=arac-takip/list&filter=sigorta_yaklasan" class="text-warning text-decoration-none">Sigorta: <?php echo (int) ($evrakStats->sigorta_yaklasan ?? 0); ?></a> |
+                                    <a href="index.php?p=arac-takip/list&filter=kasko_yaklasan" class="text-warning text-decoration-none">Kasko: <?php echo (int) ($evrakStats->kasko_yaklasan ?? 0); ?></a>
                                 </span>
-                                <span class="badge bg-danger-subtle text-danger fs-6 badge-filter <?php echo $filter === 'pasif' ? 'active' : ''; ?>"
-                                    onclick="location.href='index.php?p=arac-takip/list&filter=pasif'">
-                                    <i class="bx bx-x-circle me-1"></i> Pasif:
-                                    <?php echo $aracStats->pasif_arac ?? 0; ?>
-                                </span>
-                                <span
-                                    class="badge bg-warning-subtle text-warning fs-6 badge-filter <?php echo $filter === 'zimmetli' ? 'active' : ''; ?>"
-                                    onclick="location.href='index.php?p=arac-takip/list&filter=zimmetli'">
-                                    <i class="bx bx-transfer me-1"></i> Zimmetli:
-                                    <?php echo $zimmetliSayi; ?>
-                                </span>
-                                <span
-                                    class="badge bg-info-subtle text-info fs-6 badge-filter <?php echo $filter === 'bosta' ? 'active' : ''; ?>"
-                                    onclick="location.href='index.php?p=arac-takip/list&filter=bosta'">
-                                    <i class="bx bx-user-x me-1"></i> Boşta:
-                                    <?php echo $aracStats->bosta_arac ?? 0; ?>
-                                </span>
-                                <span
-                                    class="badge bg-danger-subtle text-danger fs-6 badge-filter <?php echo $filter === 'serviste' ? 'active' : ''; ?>"
-                                    id="badge-servisteki-arac"
-                                    onclick="location.href='index.php?p=arac-takip/list&filter=serviste'">
-                                    <i class="bx bx-wrench me-1"></i> Servisteki:
-                                    <?php echo $Arac->getServistekiAracSayisi(); ?>
-                                    <?php if ($zimmetliServistekiSayi > 0)
-                                        echo "<small>({$zimmetliServistekiSayi}'i Zimmetli)</small>"; ?>
-                                </span>
-                                <span
-                                    class="badge bg-warning-subtle text-warning fs-6 badge-filter <?php echo $filter === 'ikame' ? 'active' : ''; ?>"
-                                    onclick="location.href='index.php?p=arac-takip/list&filter=ikame'">
-                                    <i class="bx bx-repost me-1"></i> İkame:
-                                    <?php echo $aracStats->ikame_arac ?? 0; ?>
-                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+                            <div class="d-flex flex-wrap gap-2 align-items-center mb-2 status-filter-group">
+                                <a href="index.php?p=arac-takip/list&filter=tumu" class="btn btn-sm btn-soft-primary <?php echo $filter === 'tumu' ? 'active' : ''; ?>">
+                                    <i class="bx bx-car me-1"></i> Araç <span class="badge bg-primary ms-1"><?php echo (int) ($aracStats->toplam_arac ?? 0); ?></span>
+                                </a>
+                                <a href="index.php?p=arac-takip/list" class="btn btn-sm btn-soft-success <?php echo empty($filter) ? 'active' : ''; ?>">
+                                    <i class="bx bx-check-circle me-1"></i> Aktif <span class="badge bg-success ms-1"><?php echo (int) ($aracStats->aktif_arac ?? 0); ?></span>
+                                </a>
+                                <a href="index.php?p=arac-takip/list&filter=pasif" class="btn btn-sm btn-soft-danger <?php echo $filter === 'pasif' ? 'active' : ''; ?>">
+                                    <i class="bx bx-x-circle me-1"></i> Pasif <span class="badge bg-danger ms-1"><?php echo (int) ($aracStats->pasif_arac ?? 0); ?></span>
+                                </a>
+                                <a href="index.php?p=arac-takip/list&filter=zimmetli" class="btn btn-sm btn-soft-warning <?php echo $filter === 'zimmetli' ? 'active' : ''; ?>">
+                                    <i class="bx bx-transfer me-1"></i> Zimmetli <span class="badge bg-warning ms-1"><?php echo (int) $zimmetliSayi; ?></span>
+                                </a>
+                                <a href="index.php?p=arac-takip/list&filter=bosta" class="btn btn-sm btn-soft-info <?php echo $filter === 'bosta' ? 'active' : ''; ?>">
+                                    <i class="bx bx-user-x me-1"></i> Boşta <span class="badge bg-info ms-1"><?php echo (int) ($aracStats->bosta_arac ?? 0); ?></span>
+                                </a>
+                                <a href="index.php?p=arac-takip/list&filter=serviste" id="badge-servisteki-arac" class="btn btn-sm btn-soft-danger <?php echo $filter === 'serviste' ? 'active' : ''; ?>">
+                                    <i class="bx bx-wrench me-1"></i> Servisteki <span class="badge bg-danger ms-1"><?php echo (int) $Arac->getServistekiAracSayisi(); ?></span><?php if ($zimmetliServistekiSayi > 0): ?> <small>(<?php echo (int) $zimmetliServistekiSayi; ?>'i Zimmetli)</small><?php endif; ?>
+                                </a>
+                                <a href="index.php?p=arac-takip/list&filter=ikame" class="btn btn-sm btn-soft-warning <?php echo $filter === 'ikame' ? 'active' : ''; ?>">
+                                    <i class="bx bx-repost me-1"></i> İkame <span class="badge bg-warning ms-1"><?php echo (int) ($aracStats->ikame_arac ?? 0); ?></span>
+                                </a>
                             </div>
 
                             <div class="table-responsive">
-                                <table id="aracTable" class="table table-hover table-bordered nowrap w-100">
-                                    <thead class="table-light">
+                                <table id="aracTable" class="table table-bordered table-hover nowrap align-middle w-100 mb-0">
+                                    <thead>
                                         <tr>
                                             <th class="text-center" style="width:3%">Sıra</th>
                                             <th style="width:6%" class="text-center" data-filter="string">Tip</th>
@@ -718,8 +621,8 @@ usort($yakitAraclar, static function ($a, $b) {
                         <div class="tab-pane fade <?php echo $activeTab === 'zimmet' ? 'show active' : ''; ?>"
                             id="zimmetContent" role="tabpanel">
                             <div class="table-responsive">
-                                <table id="zimmetTable" class="table table-hover table-bordered nowrap w-100">
-                                    <thead class="table-light">
+                                <table id="zimmetTable" class="table table-bordered table-hover nowrap align-middle w-100 mb-0">
+                                    <thead>
                                         <tr>
                                             <th class="text-center" style="width:5%">Sıra</th>
                                             <th style="width:18%" data-filter="string">Araç</th>
@@ -752,8 +655,8 @@ usort($yakitAraclar, static function ($a, $b) {
                                 <small class="text-muted ms-auto">Asıl zimmet kayıtları değişmez; burada yalnızca personeller arası geçici teslimler listelenir.</small>
                             </div>
                             <div class="table-responsive">
-                                <table id="geciciTable" class="table table-hover table-bordered nowrap w-100">
-                                    <thead class="table-light">
+                                <table id="geciciTable" class="table table-bordered table-hover nowrap align-middle w-100 mb-0">
+                                    <thead>
                                         <tr>
                                             <th class="text-center" style="width:5%">Sıra</th>
                                             <th data-filter="string">Araç</th>
@@ -783,90 +686,68 @@ usort($yakitAraclar, static function ($a, $b) {
                         <div class="tab-pane fade <?php echo $activeTab === 'yakit' ? 'show active' : ''; ?>"
                             id="yakitContent" role="tabpanel">
                             <!-- Aylık Özet Kartları -->
-                            <div class="row g-3 mb-4">
-                                <div class="col-xl col-md-3">
-                                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                                        style="--card-color: #2a9d8f; border-bottom: 3px solid var(--card-color) !important;">
-                                        <div class="card-body p-3">
-                                            <div class="icon-label-container">
-                                                <div class="icon-box" style="background: rgba(42, 157, 143, 0.1);">
-                                                    <i class="bx bx-gas-pump fs-4" style="color: #2a9d8f;"></i>
+                            <div class="row g-3 mt-1 mb-3 arac-kpi-row">
+                                <div class="col-12 col-sm-6 col-xl-3">
+                                    <div class="card summary-kpi-card h-100 mb-0">
+                                        <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="summary-kpi-label">TOPLAM YAKIT</span>
+                                                <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                                                    <i class="bx bx-gas-pump"></i>
                                                 </div>
-                                                <span class="text-muted small fw-bold"
-                                                    style="font-size: 0.65rem;">LİTRE</span>
                                             </div>
-                                            <p class="text-muted mb-1 small fw-bold"
-                                                style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM YAKIT</p>
-                                            <h4 class="mb-0 fw-bold bordro-text-heading" id="yakit-toplam-litre">
-                                                <?php echo number_format($yakitStats->toplam_litre ?? 0, 0, ',', '.'); ?>
-                                                <span style="font-size: 0.85rem; font-weight: 600;">L</span>
-                                            </h4>
+                                            <h3 class="summary-kpi-value my-1" id="yakit-toplam-litre"><?php echo number_format($yakitStats->toplam_litre ?? 0, 0, ',', '.'); ?> <span style="font-size: 0.85rem; font-weight: 600;">L</span></h3>
+                                            <span class="summary-kpi-subtext">Seçili dönem toplam litre</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="col-xl col-md-3">
-                                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                                        style="--card-color: #E76F51; border-bottom: 3px solid var(--card-color) !important;">
-                                        <div class="card-body p-3">
-                                            <div class="icon-label-container">
-                                                <div class="icon-box" style="background: rgba(231, 111, 81, 0.1);">
-                                                    <i class="bx bx-money fs-4" style="color: #E76F51;"></i>
+                                <div class="col-12 col-sm-6 col-xl-3">
+                                    <div class="card summary-kpi-card h-100 mb-0">
+                                        <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="summary-kpi-label">TOPLAM NET MALİYET</span>
+                                                <div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
+                                                    <i class="bx bx-money"></i>
                                                 </div>
-                                                <span class="text-muted small fw-bold"
-                                                    style="font-size: 0.65rem;">MALİYET</span>
                                             </div>
-                                            <p class="text-muted mb-1 small fw-bold"
-                                                style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM NET MALİYET</p>
-                                            <h4 class="mb-0 fw-bold bordro-text-heading text-primary" id="yakit-toplam-maliyet">
-                                                <?php echo number_format($yakitStats->toplam_tutar ?? 0, 2, ',', '.'); ?>
-                                                <span style="font-size: 0.85rem; font-weight: 600;">₺</span>
-                                            </h4>
+                                            <h3 class="summary-kpi-value my-1 text-primary" id="yakit-toplam-maliyet"><?php echo number_format($yakitStats->toplam_tutar ?? 0, 2, ',', '.'); ?> <span style="font-size: 0.85rem; font-weight: 600;">₺</span></h3>
+                                            <span class="summary-kpi-subtext">İskonto sonrası toplam tutar</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="col-xl col-md-3">
-                                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                                        style="--card-color: #0ea5e9; border-bottom: 3px solid var(--card-color) !important;">
-                                        <div class="card-body p-3">
-                                            <div class="icon-label-container">
-                                                <div class="icon-box" style="background: rgba(14, 165, 233, 0.1);">
-                                                    <i class="bx bx-purchase-tag fs-4" style="color: #0ea5e9;"></i>
+                                <div class="col-12 col-sm-6 col-xl-3">
+                                    <div class="card summary-kpi-card h-100 mb-0">
+                                        <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="summary-kpi-label">ORT. BİRİM FİYAT</span>
+                                                <div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
+                                                    <i class="bx bx-purchase-tag"></i>
                                                 </div>
-                                                <span class="text-muted small fw-bold"
-                                                    style="font-size: 0.65rem;">BİRİM</span>
                                             </div>
-                                            <p class="text-muted mb-1 small fw-bold"
-                                                style="letter-spacing: 0.5px; opacity: 0.7;">ORT. BİRİM FİYAT</p>
-                                            <h4 class="mb-0 fw-bold bordro-text-heading" id="yakit-ortalama-fiyat">
-                                                <?php echo number_format($yakitStats->ortalama_birim_fiyat ?? 0, 2, ',', '.'); ?>
-                                                <span style="font-size: 0.85rem; font-weight: 600;">₺</span>
-                                            </h4>
+                                            <h3 class="summary-kpi-value my-1" id="yakit-ortalama-fiyat"><?php echo number_format($yakitStats->ortalama_birim_fiyat ?? 0, 2, ',', '.'); ?> <span style="font-size: 0.85rem; font-weight: 600;">₺</span></h3>
+                                            <span class="summary-kpi-subtext">Litre başına ortalama</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="col-xl col-md-3">
-                                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                                        style="--card-color: #8b5cf6; border-bottom: 3px solid var(--card-color) !important;">
-                                        <div class="card-body p-3">
-                                            <div class="icon-label-container">
-                                                <div class="icon-box" style="background: rgba(139, 92, 246, 0.1);">
-                                                    <i class="bx bx-list-ul fs-4" style="color: #8b5cf6;"></i>
+                                <div class="col-12 col-sm-6 col-xl-3">
+                                    <div class="card summary-kpi-card h-100 mb-0">
+                                        <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="summary-kpi-label">TOPLAM KAYIT</span>
+                                                <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                                                    <i class="bx bx-list-ul"></i>
                                                 </div>
-                                                <span class="text-muted small fw-bold"
-                                                    style="font-size: 0.65rem;">KAYIT</span>
                                             </div>
-                                            <p class="text-muted mb-1 small fw-bold"
-                                                style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM KAYIT</p>
-                                            <h4 class="mb-0 fw-bold bordro-text-heading" id="yakit-kayit-sayisi">
-                                                <?php echo $yakitStats->toplam_kayit ?? 0; ?>
-                                            </h4>
+                                            <h3 class="summary-kpi-value my-1 text-warning" id="yakit-kayit-sayisi"><?php echo (int) ($yakitStats->toplam_kayit ?? 0); ?></h3>
+                                            <span class="summary-kpi-subtext">Yakıt kayıt sayısı</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
+
                             <!-- Filtreler -->
-                            <div class="card border shadow-none mb-4">
+                            <div class="card border shadow-none mb-3 arac-filter-card">
                                 <div class="card-body p-3">
                                     <div class="row g-3">
                                         <div class="col-xl-2 col-md-4">
@@ -940,8 +821,8 @@ usort($yakitAraclar, static function ($a, $b) {
                             </div>
 
                             <div class="table-responsive">
-                                <table id="yakitTable" class="table table-hover table-bordered nowrap w-100">
-                                    <thead class="table-light">
+                                <table id="yakitTable" class="table table-bordered table-hover nowrap align-middle w-100 mb-0">
+                                    <thead>
                                         <tr>
                                             <th class="text-center" style="width:30px">
                                                 <input type="checkbox" class="form-check-input" id="checkAllYakit" title="Tümünü Seç">
@@ -978,70 +859,54 @@ usort($yakitAraclar, static function ($a, $b) {
                         <div class="tab-pane fade <?php echo $activeTab === 'km' ? 'show active' : ''; ?>"
                             id="kmContent" role="tabpanel">
                             <!-- Aylık Özet Kartları -->
-                            <div class="row g-3 mb-4">
-                                <div class="col-xl col-md-4">
-                                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                                        style="--card-color: #0ea5e9; border-bottom: 3px solid var(--card-color) !important;">
-                                        <div class="card-body p-3">
-                                            <div class="icon-label-container">
-                                                <div class="icon-box" style="background: rgba(14, 165, 233, 0.1);">
-                                                    <i class="bx bx-trending-up fs-4" style="color: #0ea5e9;"></i>
+                            <div class="row g-3 mt-1 mb-3 arac-kpi-row">
+                                <div class="col-12 col-sm-6 col-xl-4">
+                                    <div class="card summary-kpi-card h-100 mb-0">
+                                        <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="summary-kpi-label">TOPLAM YOL</span>
+                                                <div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
+                                                    <i class="bx bx-trending-up"></i>
                                                 </div>
-                                                <span class="text-muted small fw-bold"
-                                                    style="font-size: 0.65rem;">YOL</span>
                                             </div>
-                                            <p class="text-muted mb-1 small fw-bold"
-                                                style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM YOL</p>
-                                            <h4 class="mb-0 fw-bold bordro-text-heading" id="km-toplam-yol">
-                                                <?php echo number_format($kmStats->toplam_km ?? 0, 0, ',', '.'); ?>
-                                                <span style="font-size: 0.85rem; font-weight: 600;">km</span>
-                                            </h4>
+                                            <h3 class="summary-kpi-value my-1" id="km-toplam-yol"><?php echo number_format($kmStats->toplam_km ?? 0, 0, ',', '.'); ?> <span style="font-size: 0.85rem; font-weight: 600;">km</span></h3>
+                                            <span class="summary-kpi-subtext">Seçili dönem toplam yol</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="col-xl col-md-4">
-                                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                                        style="--card-color: #2a9d8f; border-bottom: 3px solid var(--card-color) !important;">
-                                        <div class="card-body p-3">
-                                            <div class="icon-label-container">
-                                                <div class="icon-box" style="background: rgba(42, 157, 143, 0.1);">
-                                                    <i class="bx bx-stats fs-4" style="color: #2a9d8f;"></i>
+                                <div class="col-12 col-sm-6 col-xl-4">
+                                    <div class="card summary-kpi-card h-100 mb-0">
+                                        <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="summary-kpi-label">GÜNLÜK ORT. YOL</span>
+                                                <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                                                    <i class="bx bx-stats"></i>
                                                 </div>
-                                                <span class="text-muted small fw-bold"
-                                                    style="font-size: 0.65rem;">ORTALAMA</span>
                                             </div>
-                                            <p class="text-muted mb-1 small fw-bold"
-                                                style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK ORT. YOL</p>
-                                            <h4 class="mb-0 fw-bold bordro-text-heading" id="km-ortalama-yol">
-                                                <?php echo number_format($kmStats->ortalama_gunluk_km ?? 0, 1, ',', '.'); ?>
-                                                <span style="font-size: 0.85rem; font-weight: 600;">km</span>
-                                            </h4>
+                                            <h3 class="summary-kpi-value my-1 text-success" id="km-ortalama-yol"><?php echo number_format($kmStats->ortalama_gunluk_km ?? 0, 1, ',', '.'); ?> <span style="font-size: 0.85rem; font-weight: 600;">km</span></h3>
+                                            <span class="summary-kpi-subtext">Günlük ortalama</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="col-xl col-md-4">
-                                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                                        style="--card-color: #8b5cf6; border-bottom: 3px solid var(--card-color) !important;">
-                                        <div class="card-body p-3">
-                                            <div class="icon-label-container">
-                                                <div class="icon-box" style="background: rgba(139, 92, 246, 0.1);">
-                                                    <i class="bx bx-list-check fs-4" style="color: #8b5cf6;"></i>
+                                <div class="col-12 col-sm-6 col-xl-4">
+                                    <div class="card summary-kpi-card h-100 mb-0">
+                                        <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="summary-kpi-label">TOPLAM KAYIT</span>
+                                                <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                                                    <i class="bx bx-list-check"></i>
                                                 </div>
-                                                <span class="text-muted small fw-bold"
-                                                    style="font-size: 0.65rem;">KAYIT</span>
                                             </div>
-                                            <p class="text-muted mb-1 small fw-bold"
-                                                style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM KAYIT</p>
-                                            <h4 class="mb-0 fw-bold bordro-text-heading" id="km-kayit-sayisi">
-                                                <?php echo $kmStats->toplam_kayit ?? 0; ?>
-                                            </h4>
+                                            <h3 class="summary-kpi-value my-1 text-warning" id="km-kayit-sayisi"><?php echo (int) ($kmStats->toplam_kayit ?? 0); ?></h3>
+                                            <span class="summary-kpi-subtext">KM kayıt sayısı</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
+
                             <!-- Filtreler -->
-                            <div class="card border shadow-none mb-4">
+                            <div class="card border shadow-none mb-3 arac-filter-card">
                                 <div class="card-body p-3">
                                     <div class="row g-3">
                                         <div class="col-xl-2 col-md-4">
@@ -1101,8 +966,8 @@ usort($yakitAraclar, static function ($a, $b) {
                             </div>
 
                             <div class="table-responsive">
-                                <table id="kmTable" class="table table-hover table-bordered nowrap w-100">
-                                    <thead class="table-light">
+                                <table id="kmTable" class="table table-bordered table-hover nowrap align-middle w-100 mb-0">
+                                    <thead>
                                         <tr>
                                             <th class="text-center" style="width:5%">Sıra</th>
                                             <th style="width:12%" data-filter="string">Plaka</th>
@@ -1133,67 +998,53 @@ usort($yakitAraclar, static function ($a, $b) {
                         <div class="tab-pane fade <?php echo $activeTab === 'servis' ? 'show active' : ''; ?>"
                             id="servisContent" role="tabpanel">
                             <!-- Servis Özet Kartları -->
-                            <div class="row g-3 mb-4">
-                                <div class="col-xl col-md-4">
-                                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                                        style="--card-color: #0ea5e9; border-bottom: 3px solid var(--card-color) !important;">
-                                        <div class="card-body p-3">
-                                            <div class="icon-label-container">
-                                                <div class="icon-box" style="background: rgba(14, 165, 233, 0.1);">
-                                                    <i class="bx bx-wrench fs-4" style="color: #0ea5e9;"></i>
+                            <div class="row g-3 mt-1 mb-3 arac-kpi-row">
+                                <div class="col-12 col-sm-6 col-xl-4">
+                                    <div class="card summary-kpi-card h-100 mb-0">
+                                        <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="summary-kpi-label">TOPLAM SERVİS KAYDI</span>
+                                                <div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
+                                                    <i class="bx bx-wrench"></i>
                                                 </div>
-                                                <span class="text-muted small fw-bold"
-                                                    style="font-size: 0.65rem;">SERVİS</span>
                                             </div>
-                                            <p class="text-muted mb-1 small fw-bold"
-                                                style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM SERVİS KAYDI</p>
-                                            <h4 class="mb-0 fw-bold bordro-text-heading" id="servis-toplam-kayit">0
-                                            </h4>
+                                            <h3 class="summary-kpi-value my-1" id="servis-toplam-kayit">0</h3>
+                                            <span class="summary-kpi-subtext">Seçili dönem servis kaydı</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="col-xl col-md-4">
-                                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                                        style="--card-color: #f59e0b; border-bottom: 3px solid var(--card-color) !important;">
-                                        <div class="card-body p-3">
-                                            <div class="icon-label-container">
-                                                <div class="icon-box" style="background: rgba(245, 158, 11, 0.1);">
-                                                    <i class="bx bx-time fs-4" style="color: #f59e0b;"></i>
+                                <div class="col-12 col-sm-6 col-xl-4">
+                                    <div class="card summary-kpi-card h-100 mb-0">
+                                        <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="summary-kpi-label">SERVİSTEKİ ARAÇLAR</span>
+                                                <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                                                    <i class="bx bx-time"></i>
                                                 </div>
-                                                <span class="text-muted small fw-bold"
-                                                    style="font-size: 0.65rem;">GÜNCEL</span>
                                             </div>
-                                            <p class="text-muted mb-1 small fw-bold"
-                                                style="letter-spacing: 0.5px; opacity: 0.7;">SERVİSTEKİ ARAÇLAR</p>
-                                            <h4 class="mb-0 fw-bold bordro-text-heading" id="servis-servisteki-arac">0
-                                            </h4>
+                                            <h3 class="summary-kpi-value my-1 text-warning" id="servis-servisteki-arac">0</h3>
+                                            <span class="summary-kpi-subtext">Güncel durum</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="col-xl col-md-4">
-                                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                                        style="--card-color: #f43f5e; border-bottom: 3px solid var(--card-color) !important;">
-                                        <div class="card-body p-3">
-                                            <div class="icon-label-container">
-                                                <div class="icon-box" style="background: rgba(244, 63, 94, 0.1);">
-                                                    <i class="bx bx-wallet fs-4" style="color: #f43f5e;"></i>
+                                <div class="col-12 col-sm-6 col-xl-4">
+                                    <div class="card summary-kpi-card h-100 mb-0">
+                                        <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="summary-kpi-label">TOPLAM SERVİS MALİYETİ</span>
+                                                <div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
+                                                    <i class="bx bx-wallet"></i>
                                                 </div>
-                                                <span class="text-muted small fw-bold"
-                                                    style="font-size: 0.65rem;">MALİYET</span>
                                             </div>
-                                            <p class="text-muted mb-1 small fw-bold"
-                                                style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM SERVİS MALİYETİ
-                                            </p>
-                                            <h4 class="mb-0 fw-bold bordro-text-heading" id="servis-toplam-maliyet">
-                                                0.00
-                                                <span style="font-size: 0.85rem; font-weight: 600;">₺</span>
-                                            </h4>
+                                            <h3 class="summary-kpi-value my-1 text-danger" id="servis-toplam-maliyet">0.00 <span style="font-size: 0.85rem; font-weight: 600;">₺</span></h3>
+                                            <span class="summary-kpi-subtext">Toplam servis tutarı</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
+
                             <!-- Filtreler -->
-                            <div class="card border shadow-none mb-4">
+                            <div class="card border shadow-none mb-3 arac-filter-card">
                                 <div class="card-body p-3">
                                     <div class="row g-3">
 
@@ -1241,8 +1092,8 @@ usort($yakitAraclar, static function ($a, $b) {
                             </div>
 
                             <div class="table-responsive">
-                                <table id="servisTable" class="table table-hover table-bordered nowrap w-100">
-                                    <thead class="table-light">
+                                <table id="servisTable" class="table table-bordered table-hover nowrap align-middle w-100 mb-0">
+                                    <thead>
                                         <tr>
                                             <th class="text-center" style="width:5%">Sıra</th>
                                             <th style="width:12%" data-filter="string">Plaka</th>
@@ -1280,8 +1131,6 @@ usort($yakitAraclar, static function ($a, $b) {
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
 </div>
 
 <style>
@@ -1507,5 +1356,44 @@ usort($yakitAraclar, static function ($a, $b) {
     </div>
 </div>
 
+<script>
+(function () {
+    var KEY = 'arac_summary_cards_state';
+    var root = document.documentElement;
+    var btn = document.getElementById('btnToggleSummaryCards');
+    var cards = document.getElementById('summaryCardsContainer');
+    function sync() {
+        var hidden = root.classList.contains('arac-summary-hidden');
+        if (!btn) return;
+        btn.setAttribute('aria-expanded', hidden ? 'false' : 'true');
+        btn.setAttribute('title', hidden ? 'Özet Kartları Göster' : 'Özet Kartları Gizle');
+        var i = btn.querySelector('i');
+        if (i) i.className = hidden ? 'bx bx-chevron-down' : 'bx bx-chevron-up';
+    }
+    if (btn) {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            root.classList.toggle('arac-summary-hidden');
+            try { localStorage.setItem(KEY, root.classList.contains('arac-summary-hidden') ? 'hidden' : 'visible'); } catch (err) {}
+            sync();
+        });
+    }
+    sync();
+    document.addEventListener('shown.bs.tab', function (e) {
+        if (!e.target || e.target.closest('#aracTab') === null) return;
+        var isArac = e.target.getAttribute('data-bs-target') === '#aracContent';
+        if (btn) btn.classList.toggle('d-none', !isArac);
+        var tabKey = (e.target.getAttribute('data-bs-target') || '').replace('#', '').replace('Content', '');
+        document.querySelectorAll('.aracColmanSlot').forEach(function (slot) {
+            slot.classList.toggle('d-none', slot.getAttribute('data-colman-tab') !== tabKey);
+        });
+    });
+    if (btn && '<?php echo $activeTab; ?>' !== 'arac') btn.classList.add('d-none');
+})();
+</script>
+<script src="assets/libs/pdfjs/pdf.min.js"></script>
+<script src="assets/libs/tesseract.js/tesseract.min.js"></script>
+<script src="<?php echo \App\Helper\Helper::assetVersion('views/arac-takip/js/ruhsat-ocr.js'); ?>"></script>
+<script src="<?php echo \App\Helper\Helper::assetVersion('views/arac-takip/js/ruhsat-ayristirici.js'); ?>"></script>
 <script src="<?php echo \App\Helper\Helper::assetVersion('views/arac-takip/js/arac-takip.js'); ?>"></script>
 <script src="<?php echo \App\Helper\Helper::assetVersion('views/arac-takip/js/ai-agent.js'); ?>"></script>

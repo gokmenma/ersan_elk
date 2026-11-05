@@ -491,11 +491,14 @@ const AracTakip = {
 
   aiRuhsatDosyasi: null,
 
-  ruhsatAiAnaliz: function () {
+  ruhsatAiAnaliz: async function () {
     const input = $("#aracRuhsatAiDosya")[0];
     const sonuc = $("#aracRuhsatAiSonuc");
     const goster = function (html, cls) {
       sonuc.removeClass("d-none text-muted text-danger text-success text-warning").addClass(cls).html(html);
+    };
+    const kacir = function (metin) {
+      return $("<div>").text(metin).html();
     };
     const file = input && input.files[0];
     if (!file) {
@@ -506,79 +509,75 @@ const AracTakip = {
       goster("Dosya en fazla 8 MB olabilir.", "text-danger");
       return;
     }
+    if (!window.AracRuhsatOcr || !window.AracRuhsatAyristirici) {
+      goster("Yerel OCR bileşenleri yüklenemedi. Sayfayı yenileyip tekrar deneyiniz.", "text-danger");
+      return;
+    }
 
     const btn = $("#btnAracRuhsatAi");
     const original = btn.html();
     btn.prop("disabled", true).html('<span class="spinner-border spinner-border-sm me-2"></span>Okunuyor...');
-    goster('<span class="spinner-border spinner-border-sm me-2"></span>Ruhsat yapay zekâ ile inceleniyor...', "text-muted");
+    const ilerleme = function (yuzde, mesaj) {
+      goster(
+        '<div class="d-flex align-items-center gap-2"><span class="spinner-border spinner-border-sm"></span><span>' +
+          kacir(mesaj) + " (%" + Math.round(yuzde) + ')</span></div><div class="progress mt-1" style="height:4px"><div class="progress-bar" style="width:' +
+          Math.round(yuzde) + '%"></div></div>',
+        "text-muted"
+      );
+    };
+    ilerleme(2, "Hazırlanıyor");
 
-    const fd = new FormData();
-    fd.append("action", "arac-ruhsat-ai-analiz");
-    fd.append("ruhsat_ai_belgesi", file, file.name);
-
-    $.ajax({
-      url: this.apiUrl,
-      type: "POST",
-      data: fd,
-      processData: false,
-      contentType: false,
-      dataType: "json",
-      success: function (response) {
-        if (response.status !== "success" || !response.data) {
-          goster(response.message || "Ruhsat okunamadı.", "text-danger");
-          return;
+    try {
+      const parcalar = await window.AracRuhsatOcr.hamMetinler(file, ilerleme);
+      const analiz = window.AracRuhsatAyristirici.analiz(parcalar);
+      const etiketler = analiz.etiketler;
+      const dolan = [];
+      const kontrol = [];
+      Object.keys(etiketler).forEach(function (alan) {
+        const bilgi = analiz.alanlar[alan];
+        if (!bilgi || !bilgi.deger) return;
+        const el = $("#aracForm").find('[name="' + alan + '"]');
+        if (!el.length) return;
+        if (alan === "muayene_bitis_tarihi" && el[0]._flatpickr) {
+          el[0]._flatpickr.setDate(bilgi.deger, true, "d.m.Y");
+        } else {
+          el.val(bilgi.deger).trigger("change");
         }
-        const d = response.data;
-        const etiketler = {
-          plaka: "Plaka", marka: "Marka", model: "Model", model_yili: "Model Yılı", renk: "Renk",
-          arac_tipi: "Araç Tipi", yakit_tipi: "Yakıt Tipi", sase_no: "Şase No", motor_no: "Motor No",
-          ruhsat_sahibi: "Ruhsat Sahibi", muayene_bitis_tarihi: "Muayene Bitiş",
-        };
-        const dolan = [];
-        Object.keys(etiketler).forEach(function (alan) {
-          const deger = d[alan];
-          if (!deger) return;
-          const el = $("#aracForm").find('[name="' + alan + '"]');
-          if (!el.length) return;
-          if (alan === "muayene_bitis_tarihi" && el[0]._flatpickr) {
-            el[0]._flatpickr.setDate(deger, true, "d.m.Y");
-          } else {
-            el.val(deger).trigger("change");
-          }
-          const kutu = el.closest(".form-floating");
-          kutu.addClass("arac-ai-doldu");
-          setTimeout(function () { kutu.removeClass("arac-ai-doldu"); }, 1800);
-          dolan.push(etiketler[alan]);
-        });
+        const kutu = el.closest(".form-floating");
+        kutu.addClass("arac-ai-doldu");
+        setTimeout(function () { kutu.removeClass("arac-ai-doldu"); }, 1800);
+        dolan.push(etiketler[alan]);
+        if (alan === "sase_no" && !bilgi.dogrulandi) kontrol.push(etiketler[alan]);
+        if (bilgi.aday_sayisi > 1) kontrol.push(etiketler[alan]);
+      });
 
-        if (!dolan.length) {
-          goster("Ruhsattan okunabilen bilgi bulunamadı. Daha net bir fotoğraf deneyiniz.", "text-warning");
-          return;
-        }
-        AracTakip.aiRuhsatDosyasi = file;
-        $("#aracAiPanel").addClass("arac-ai-dolu");
-        $("#ruhsatYeniAracUyari")
-          .removeClass("d-none text-muted")
-          .addClass("text-success")
-          .empty()
-          .append('<i class="bx bx-check-circle me-1"></i>')
-          .append($("<span></span>").text("Ruhsat görseli (" + file.name + ") araç kaydedilirken otomatik eklenecek."));
-        const kalan = Object.keys(etiketler).length - dolan.length;
-        goster(
-          '<i class="bx bx-check-circle me-1"></i><b>' + dolan.length + " alan dolduruldu:</b> " + $("<div>").text(dolan.join(", ")).html() +
-            (kalan > 0 ? ' <span class="text-muted">(' + kalan + " alan okunamadı, elle giriniz.)</span>" : "") +
-            '<br><span class="text-muted">Bilgileri kontrol edip Kaydet\'e basınız.</span>',
-          "text-success"
-        );
-      },
-      error: function (xhr) {
-        const msg = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : "Ruhsat okunurken bir hata oluştu.";
-        goster($("<div>").text(msg).html(), "text-danger");
-      },
-      complete: function () {
-        btn.prop("disabled", false).html(original);
-      },
-    });
+      if (!dolan.length) {
+        goster("Ruhsattan okunabilen bilgi bulunamadı. Belgenin tamamı görünecek şekilde, düz ve net bir fotoğraf deneyiniz.", "text-warning");
+        return;
+      }
+      AracTakip.aiRuhsatDosyasi = file;
+      $("#aracAiPanel").addClass("arac-ai-dolu");
+      $("#ruhsatYeniAracUyari")
+        .removeClass("d-none text-muted")
+        .addClass("text-success")
+        .empty()
+        .append('<i class="bx bx-check-circle me-1"></i>')
+        .append($("<span></span>").text("Ruhsat görseli (" + file.name + ") araç kaydedilirken otomatik eklenecek."));
+      const kalan = Object.keys(etiketler).filter(function (a) { return dolan.indexOf(etiketler[a]) === -1; }).map(function (a) { return etiketler[a]; });
+      const kontrolListesi = kontrol.filter(function (a, i) { return kontrol.indexOf(a) === i; });
+      goster(
+        '<i class="bx bx-check-circle me-1"></i><b>' + dolan.length + " alan dolduruldu:</b> " + kacir(dolan.join(", ")) +
+          (kalan.length ? '<br><span class="text-muted">Okunamayan, elle giriniz: ' + kacir(kalan.join(", ")) + ".</span>" : "") +
+          (kontrolListesi.length ? '<br><span class="text-warning"><i class="bx bx-error-circle me-1"></i>Özellikle kontrol ediniz: ' + kacir(kontrolListesi.join(", ")) + ".</span>" : "") +
+          '<br><span class="text-muted">OCR hata yapabilir; bilgileri ruhsatla karşılaştırıp Kaydet\'e basınız.</span>',
+        "text-success"
+      );
+    } catch (hata) {
+      console.error("Ruhsat OCR hatası:", hata);
+      goster("Ruhsat okunamadı. Dosyayı kontrol edip tekrar deneyiniz.", "text-danger");
+    } finally {
+      btn.prop("disabled", false).html(original);
+    }
   },
 
   aracDuzenle: function (id) {
@@ -1441,7 +1440,7 @@ const AracTakip = {
         $(this).text(ozet[$(this).data("ozet")] || 0);
       });
       const bekleyen = parseInt(ozet.beklemede || 0, 10);
-      $("#geciciBekleyenSayi").text(bekleyen).toggleClass("d-none", bekleyen === 0);
+      $("#geciciBekleyenSayi").text(bekleyen);
       self.geciciTabloCiz();
     }).fail(function () {
       tbody.html('<tr><td colspan="11" class="text-center text-danger py-4">Kayıtlar alınamadı.</td></tr>');

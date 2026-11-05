@@ -57,8 +57,8 @@
                                                         <i class="bx bx-bot fs-4"></i>
                                                     </div>
                                                     <div class="flex-grow-1">
-                                                        <div class="fw-bold text-dark">Ruhsattan Otomatik Doldur <span class="badge bg-dark-subtle text-dark ms-1 fw-normal">Yapay Zekâ</span></div>
-                                                        <div class="text-muted small mb-2">Ruhsat fotoğrafını veya PDF'ini yükleyin; plaka, marka, model, şase, motor ve muayene tarihi otomatik doldurulur. Kaydetmeden önce kontrol ediniz.</div>
+                                                        <div class="fw-bold text-dark">Ruhsattan Otomatik Doldur <span class="badge bg-success-subtle text-success ms-1 fw-normal"><i class="bx bx-lock-alt"></i> Yerel OCR</span></div>
+                                                        <div class="text-muted small mb-2">Ruhsat fotoğrafını veya PDF'ini yükleyin; plaka, marka, model, şase, motor ve muayene tarihi otomatik doldurulur. Okuma yalnızca tarayıcınızda yapılır, belge dış servise gönderilmez. Kaydetmeden önce kontrol ediniz.</div>
                                                         <div class="row g-2 align-items-center">
                                                             <div class="col-sm-8">
                                                                 <input type="file" id="aracRuhsatAiDosya" class="form-control form-control-sm shadow-none" accept=".pdf,.jpg,.jpeg,.png,.webp">
@@ -69,7 +69,7 @@
                                                                 </button>
                                                             </div>
                                                         </div>
-                                                        <div class="form-text mt-1">PDF, JPG, PNG veya WEBP, en fazla 8 MB. Yeni araçta ruhsat dosyası kayıt sonrası otomatik şifreli saklanır.</div>
+                                                        <div class="form-text mt-1">PDF, JPG, PNG veya WEBP, en fazla 8 MB. İlk okuma dil modelini yüklediği için birkaç saniye sürebilir. Yeni araçta ruhsat dosyası kayıt sonrası otomatik şifreli saklanır.</div>
                                                         <div id="aracRuhsatAiSonuc" class="small mt-2 d-none"></div>
                                                     </div>
                                                 </div>
