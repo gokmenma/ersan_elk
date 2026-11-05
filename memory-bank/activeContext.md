@@ -3685,3 +3685,6 @@
 - Görevler UX: üst araç çubuğu (arama, `/` kısayolu, Bugün/Geciken/7 gün/Tarihsiz hızlı filtreleri ve sayaçları), liste ilerleme çubuğu, modül vurgu rengi mavi, sidebar sadeleştirme. Filtre aktifken görev sürükleme kapalı.
 - Görevler iscimaas kanban esinli yeniden tasarım: sayfa başlığı + ekip filtresi (avatar), Pano/Liste/Tablo görünüm seçici (localStorage `gorevler_gorunum`), gri kolon kartları, beyaz görev kartları, alt "Görev Ekle" alanı, koyu "Liste Ekle" butonu. `get-tum-gorevler` her göreve `atananlar` ve `olusturan_adi` ekler. addGorev boş ENUM/tarih alanlarını NULL'a çevirir.
 - Görevler: sürüklerken yetkili hedef listeler vurgulanır (`gt-surukleniyor`), salt okunur listeler soluklaşır; görev ⋮ menüsüne "Listeye taşı" eklendi (update-sira). Görevler/Notlar sekmeleri ortak tasarım dilinde (segmented sekme, aynı sidebar/arama/kart stilleri, Notlarım sayfa başlığı); notlar.css gorevler.css'ten önce yüklenir.
+
+## KASKİ Giriş Ekranı
+- kaski/login.php arayüzü ana login.php ile aynı tasarıma (altın tema, premium form, sağ vitrin paneli) getirildi; giriş/CSRF/deneme sınırı mantığı değişmedi.

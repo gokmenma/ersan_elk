@@ -2163,3 +2163,5 @@
 - Kaski personeli ekle/düzenle modalı yenilendi: bölümlü, Form helper'lı, şifre üret/kopyala (2026-11-05)
 - [x] Dashboard üst kartlarında (slider/personel/araç) grid bazlı boyutlandırma — tarayıcıda görsel doğrulama bekliyor (2026-11-05)
 - Mobil SPA Görevler sayfası gerçek veriye bağlandı (liste/tamamla/geri al, yetki sunucuda doğrulanır).
+
+- [x] KASKİ login ekranı ana giriş tasarımına uyarlandı.
