@@ -329,6 +329,11 @@
         opacity: 0.5;
     }
 
+    #aracModal .modal-dialog > .select2-container--open {
+        z-index: 1080;
+        pointer-events: auto;
+    }
+
     #aracModal .arac-ai-panel {
         border: 1.5px dashed #b8c2f2;
         background: linear-gradient(135deg, rgba(85, 110, 230, 0.06), rgba(85, 110, 230, 0.02));
