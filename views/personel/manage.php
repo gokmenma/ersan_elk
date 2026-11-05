@@ -12,7 +12,9 @@ use App\Helper\Alert;
 $id = Security::decrypt($_GET['id'] ?? 0);
 
 /**Yetki kontrolü */
-if (Gate::allows('personel_duzenle')) {
+$canEditPersonel = Gate::allows('personel_duzenle');
+$canViewPersonel = $id > 0 ? ($canEditPersonel || Gate::allows('personel_detay')) : $canEditPersonel;
+if ($canViewPersonel) {
 
 
 
@@ -199,6 +201,7 @@ foreach ($tabCategories as $catKey => $cat) {
                                     <div class="vr mx-1 d-none d-xl-block" style="height: 25px; align-self: center;">
                                     </div>
 
+                                    <?php if ($canEditPersonel): ?>
                                     <a href="index?p=personel/manage"
                                         class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center"
                                         title="Yeni Personel">
@@ -212,6 +215,7 @@ foreach ($tabCategories as $catKey => $cat) {
                                         class="btn btn-primary px-3 fw-bold shadow-primary">
                                         <i class="mdi mdi-content-save-outline me-1"></i> Kaydet
                                     </button>
+                                    <?php endif; ?>
 
                                     <!-- Mobile Tabs Menu -->
                                     <div class="dropup d-md-none">

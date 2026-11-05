@@ -10,7 +10,17 @@ class MobilePersonelModel extends Model
 
     private function baseWhere(array &$params): string
     {
-        $restricted = $this->getRestrictedDeptSql('p.departman', $params);
+        $restricted = '';
+        $depts = $this->getRestrictedDeptArray();
+        if ($depts !== null) {
+            $names = [];
+            foreach (array_values($depts) as $i => $dept) {
+                $names[] = ':rdept' . $i;
+                $params['rdept' . $i] = $dept;
+            }
+            $list = implode(',', $names);
+            $restricted = " AND (TRIM(p.departman) IN ({$list}) OR TRIM(p.departman) = '' OR p.departman IS NULL) AND p.disardan_sigortali = 0";
+        }
         return "p.firma_id = :firma_id AND p.silinme_tarihi IS NULL
             AND p.personel_tipi = 'standart'
             AND (p.disardan_sigortali = 0 OR FIND_IN_SET(:modul, p.gorunum_modulleri)) {$restricted}";

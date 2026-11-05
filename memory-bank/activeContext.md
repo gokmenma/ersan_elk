@@ -3631,3 +3631,7 @@
 - Mobil SPA TaleplerView değişikliği yanlış yön olduğu için geri alındı. Personel PWA merkezi .card ve .card-premium sınıfları bento stiline (24px köşe, beyaz kenar, yumuşak gölge) geçirildi (pwa-style.css).
 - Eski `mobile/` arayüzüyle bağ kesildi: `App\Helper\MobileSpa` (url/fromLegacy; canlı adres `.env` `MOBILE_SPA_URL`, yoksa `mobile-spa/dist`). Masaüstü index.php telefon/<=1024px yönlendirmesi, cihaz görünümü seçicisi, push (talepler) ve evrak onay maili SPA'ya çevrildi. `mobile/` altında yalnız SPA'ya 302 atan `index.php` köprüsü kaldı; SPA'daki eski yardim/personel-duzenle linkleri kaldırıldı/SPA rotasına bağlandı.
 - DataTables Alt Çizgi Düzeltmesi: Tablolarda son satırdan sonra alt kenarlık görünmeme sorunu giderildi. `assets/css/datatable-filters.css` ve `assets/css/style.css` dosyalarındaki `border-bottom: 0 !important;` kuralı yerine açık temada `border-bottom: 1px solid #eff2f7 !important;`, koyu temalarda ise uygun koyu tonlarda kenarlık rengi (`#36404a` ve `rgba(255, 255, 255, 0.08)`) tanımlanarak son satırın altının düzgünce kapanması sağlandı.
+
+## 2026-11-05 — Personel Detayı yetkisi
+- `personel_detay` yetkisi eklendi (sql/2026_11_05_personel_detay_yetkisi.sql); `personel/manage` sayfa politikası bu yetkiye bağlandı.
+- views/personel/manage.php: mevcut kayıt görüntüleme `personel_detay` veya `personel_duzenle`; yeni kayıt ve Kaydet/Yeni Personel butonları yalnız `personel_duzenle`.
