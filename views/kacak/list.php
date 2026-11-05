@@ -1090,7 +1090,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                                 <button type="button" class="btn btn-outline-info btn-sm px-3" onclick="openKaskiEkipOzetModal()">
                                     <i class="bx bx-table me-1"></i> Ekip Özeti
                                 </button>
-                                <?php if (!$kaskiSaltOkunurPortal): ?>
+                                <?php if ($yetkiBildirimPersonelleri): ?>
                                     <button type="button" class="btn btn-primary btn-sm px-3" onclick="openNewBildirimPersonelModal()">
                                         <i class="bx bx-plus me-1"></i> Yeni Kaski Personeli Ekle
                                     </button>

@@ -1,5 +1,11 @@
 # Active Context
 
+## KASKİ Portalı — Kaski Personeli Yönetimi (2026-11-05)
+- `kaski/` portalında Kaski Personelleri sekmesinde ekleme, düzenleme, pasife alma/aktif etme, şifre belirleme ve silme açıldı; kaçak kayıtları salt okunur kalır.
+- `views/kacak/api.php` portal izin listesine `get_bildirim_personeli`, `save_bildirim_personel`, `toggle_bildirim_personel_status`, `reset_bildirim_personel_sifre`, `delete_bildirim_personel` eklendi; yetki `kacak_bildirim_personelleri` ile sunucuda doğrulanır.
+- `sql/2026_11_05_kaski_portal_personel_yonetimi.sql`: `KASKİ Görüntüleme` rolüne bu yetkiyi atar (eski kurulum scripti artık geri almaz).
+- Portal kayıtları yalnız `personel_tipi='kaski_kacak'` personelin bildirdiği/dahil olduğu kayıtlardır (`kaskiPersonelKosulu`); mevcut 2 kayıt `reddedildi` durumunda olduğundan listede boş görünür.
+
 ## E-Fatura — Manuel Gelen Fatura / Makbuz Ekleme (2026-11-05)
 - Entegratör dışında gelen fatura, e-arşiv/e-fatura PDF'i, serbest meslek makbuzu, gider pusulası ve tahsilat makbuzu Gelen Faturalar'a `faturalar.kaynak = 'MANUEL'` ile eklenir (`yon='GELEN'`, `entegrator_durum_kodu='MANUEL'`, `ticari_yanit='KABUL'`).
 - Akış icra kesintisindeki gibidir: belge (PDF/JPG/PNG/WEBP) `api/efatura-api.php?action=manuel_fatura_analiz` ile `ManuelFaturaAiService` → ortak `AiBelgeOkuyucuService` üzerinden okunur, form ve kalemler doldurulur, kullanıcı kontrol edip kaydeder. Orijinal belge saklanmaz.

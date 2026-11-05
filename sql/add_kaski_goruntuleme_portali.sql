@@ -59,6 +59,5 @@ WHERE ur.owner_id = '1'
       'kacak_iptal_ekle',
       'kacak_arsiv',
       'kacak_sicil_bildir',
-      'kacak_sicil_yanitla',
-      'kacak_bildirim_personelleri'
+      'kacak_sicil_yanitla'
   );

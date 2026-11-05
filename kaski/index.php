@@ -62,16 +62,13 @@ include $projectRoot . '/layouts/main.php';
                 <div>
                     <div class="d-flex align-items-center gap-2">
                         <div class="fw-semibold">KASKİ Kaçak Kontrol</div>
-                        <span class="badge bg-info-subtle text-info kaski-portal-badge d-none d-sm-inline">SADECE GÖRÜNTÜLEME</span>
+                        <span class="badge bg-info-subtle text-info kaski-portal-badge d-none d-sm-inline">KAYITLAR SALT OKUNUR</span>
                     </div>
                     <div class="text-muted small kaski-topbar-subtitle">Kaçak kayıtları ve raporlama portalı</div>
                 </div>
             </div>
             <div class="d-flex align-items-center gap-2">
                 <span class="d-none d-md-inline text-muted"><?= $safeUserName ?></span>
-                <a class="btn btn-outline-primary btn-sm" href="kaski/yonetim-paneli.php">
-                    <i class="bx bx-grid-alt me-1"></i><span class="d-none d-sm-inline">Yönetim Paneli</span>
-                </a>
                 <a class="btn btn-outline-danger btn-sm" href="kaski/logout.php"><i class="bx bx-log-out me-1"></i>Çıkış</a>
             </div>
         </div>
@@ -81,7 +78,7 @@ include $projectRoot . '/layouts/main.php';
         <div class="page-content">
             <div class="container-fluid mb-3">
                 <div class="alert alert-info kaski-readonly-note mb-0 py-2" role="status">
-                    <i class="bx bx-info-circle me-1"></i> Bu portal salt okunurdur; kayıtlar üzerinde değişiklik yapılamaz.
+                    <i class="bx bx-info-circle me-1"></i> Kaçak kayıtları salt okunurdur; yalnızca Kaski Personelleri sekmesinden personel yönetimi yapılabilir.
                 </div>
             </div>
             <?php include $projectRoot . '/views/kacak/list.php'; ?>

@@ -84,6 +84,11 @@ if (($_SESSION['portal_scope'] ?? '') === 'kaski') {
         'sicil-counts',
         'sicil-detay',
         'get_bildirim_personelleri',
+        'get_bildirim_personeli',
+        'save_bildirim_personel',
+        'toggle_bildirim_personel_status',
+        'reset_bildirim_personel_sifre',
+        'delete_bildirim_personel',
     ];
     if (!in_array($action, $kaskiSaltOkunurActionlar, true)) {
         http_response_code(403);
@@ -417,6 +422,7 @@ try {
             if (($_SESSION['portal_scope'] ?? '') !== 'kaski') {
                 kacakYetkiKontrol('kacak_bildirim_personelleri');
             }
+            $personelYonetebilir = kacakIzin('kacak_bildirim_personelleri') || kacakSuperAdmin();
             $records = $Personel->getBildirimPersonelleri();
             $data = [];
             foreach ($records as $r) {
@@ -426,7 +432,7 @@ try {
                     : '<span class="badge bg-danger font-size-12"><i class="bx bx-x-circle me-1"></i>Pasif</span>';
 
                 $actions = '<span class="text-muted">-</span>';
-                if (($_SESSION['portal_scope'] ?? '') !== 'kaski') {
+                if ($personelYonetebilir) {
                     $actions = '<div class="d-flex align-items-center gap-1">';
                     $actions .= '<button type="button" class="btn btn-sm btn-outline-primary" onclick="editBildirimPersonel(\'' . $token . '\')" title="Düzenle"><i class="bx bx-edit"></i></button>';
                     $actions .= '<button type="button" class="btn btn-sm btn-outline-warning" onclick="openSifreModal(\'' . $token . '\', \'' . htmlspecialchars($r->adi_soyadi ?? '', ENT_QUOTES, 'UTF-8') . '\')" title="Şifre Belirle"><i class="bx bx-key"></i></button>';
