@@ -361,14 +361,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .auth-visual {
             position: relative;
-            min-height: 44svh;
+            min-height: 30svh;
             background: #191d24;
             color: #f5f7fa;
             overflow: hidden;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            padding: calc(16px + env(safe-area-inset-top)) 20px 36px;
+            padding: calc(12px + env(safe-area-inset-top)) 20px 32px;
         }
 
         .auth-top-bar { display: flex; justify-content: flex-end; }
@@ -422,8 +422,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .auth-form {
             position: relative; z-index: 4; flex: 1; margin-top: -24px;
-            display: grid; align-content: start; gap: 14px;
-            padding: 12px 20px calc(24px + env(safe-area-inset-bottom));
+            display: grid; align-content: start; gap: 10px;
+            padding: 12px 20px calc(16px + env(safe-area-inset-bottom));
             border-radius: 26px 26px 0 0; background: #ffffff;
             box-shadow: 0 -12px 40px rgba(5, 22, 48, 0.12);
         }
@@ -463,6 +463,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .auth-help { display: flex; align-items: center; justify-content: center; gap: 5px; margin: 0; color: #a2a7af; font-size: 11px; }
         .auth-help .material-symbols-outlined { font-size: 14px; }
+
+        @media (max-height: 760px) {
+            .auth-splash-stage { width: 110px; height: 110px; margin-left: -6px; }
+            .splash-logo-card-3d { width: 74px; height: 74px; border-radius: 18px; }
+            .splash-orbit--inner { inset: 8px; }
+            .auth-brand-content { padding: 0 0 8px; }
+            .auth-brand-titles { margin-top: 8px; }
+            .auth-brand-name { font-size: 22px; }
+            .auth-brand-sub { font-size: 12px; }
+            .auth-brand-slogan { margin-top: 6px; font-size: 13px; }
+            .auth-form h2 { font-size: 21px; }
+            .auth-field > div, .login-button { height: 48px; }
+            .auth-options label, .auth-options a { min-height: 38px; }
+            .auth-visual { min-height: 0; padding-bottom: 28px; }
+        }
+        @media (max-height: 640px) {
+            .auth-help, .auth-form .auth-lead { display: none; }
+            .auth-splash-stage { width: 84px; height: 84px; }
+            .splash-logo-card-3d { width: 56px; height: 56px; border-radius: 14px; }
+        }
 
         @keyframes splash-orbit-spin { to { transform: rotate(360deg); } }
         @keyframes splash-orbit-spin-rev { to { transform: rotate(-360deg); } }
@@ -584,7 +604,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <span>TC Kimlik No veya Telefon</span>
                 <div>
                     <span class="material-symbols-outlined">badge</span>
-                    <input type="text" name="login_input" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="TC No veya Telefon" required>
+                    <input type="text" name="login_input" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="TC No veya Telefon" value="<?php echo htmlspecialchars($_POST['login_input'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" required>
                 </div>
             </label>
 
@@ -648,11 +668,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 Vazgeç
             </button>
         </div>
-    </div>
-
-    <!-- Footer -->
-    <div class="mt-8 text-center">
-        <p class="text-white/40 text-xs">© 2024 Ersan Elektrik. Tüm hakları saklıdır.</p>
     </div>
 
     <div id="toast-container" class="fixed top-4 left-4 right-4 z-[110] flex flex-col gap-2"></div>
