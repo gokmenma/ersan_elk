@@ -9,6 +9,13 @@
   let allData = []; // [{liste, gorevler, tamamlananlar}]
   let activeListeId = null; // sidebar seçili liste (null = tüm görevler)
   let filterYildizli = false; // yıldızlı filtresi aktif mi
+  let aramaMetni = "";
+  let hizliFiltre = "hepsi";
+  let gorunum = "pano";
+  let ekipFiltre = [];
+  try {
+    gorunum = localStorage.getItem("gorevler_gorunum") || "pano";
+  } catch (e) {}
   let lastFocusedForm = null; // Hangi formun aktif olduğunu takip et (Enter için)
 
   // =====================================================
@@ -115,14 +122,48 @@
         });
     }
 
+    updateChipSayilari();
+    renderEkip();
+    container
+      .toggleClass("gorunum-liste", gorunum === "liste")
+      .toggleClass("gorunum-tablo", gorunum === "tablo");
+    $("#gorevGorunum button")
+      .removeClass("active")
+      .filter('[data-gorunum="' + gorunum + '"]')
+      .addClass("active");
+
+    if (filtreAktif()) {
+      dataToShow = dataToShow
+        .map(function (item) {
+          return {
+            liste: item.liste,
+            gorevler: (item.gorevler || []).filter(gorevEslesir),
+            tamamlananlar:
+              hizliFiltre === "hepsi"
+                ? (item.tamamlananlar || []).filter(gorevEslesir)
+                : [],
+          };
+        })
+        .filter(function (item) {
+          return item.gorevler.length > 0 || item.tamamlananlar.length > 0;
+        });
+    }
+
     if (dataToShow.length === 0) {
+      const filtreli = filtreAktif();
       container.html(`
                 <div class="gorevler-empty">
-                    <i class="bx ${filterYildizli ? "bx-star" : "bx-task"}"></i>
-                    <h4>${filterYildizli ? "Yıldızlı görev yok" : "Henüz liste yok"}</h4>
-                    <p>${filterYildizli ? "Yıldızladığınız görevler burada görünecek" : "Sol panelden yeni bir liste oluşturarak başlayın"}</p>
+                    <i class="bx ${filtreli ? "bx-search-alt" : filterYildizli ? "bx-star" : "bx-task"}"></i>
+                    <h4>${filtreli ? "Eşleşen görev bulunamadı" : filterYildizli ? "Yıldızlı görev yok" : "Henüz liste yok"}</h4>
+                    <p>${filtreli ? "Arama veya filtreyi değiştirmeyi deneyin" : filterYildizli ? "Yıldızladığınız görevler burada görünecek" : "Sol panelden yeni bir liste oluşturarak başlayın"}</p>
                 </div>
             `);
+      return;
+    }
+
+    if (gorunum === "tablo") {
+      container.append(buildTablo(dataToShow));
+      setTimeout(() => $("#pagePreloader").addClass("fade-out"), 300);
       return;
     }
 
@@ -143,6 +184,91 @@
     }, 300);
   }
 
+  function tarihYazi(g) {
+    if (!g.tarih) return "—";
+    const p = g.tarih.split("-");
+    return p[2] + "." + p[1] + "." + p[0] + (g.saat ? " " + g.saat.substring(0, 5) : "");
+  }
+
+  function buildTablo(dataToShow) {
+    let satirlar = "";
+    const bugun = bugunStr();
+    dataToShow.forEach(function (item) {
+      const canEdit = canEditListe(item.liste);
+      const renk = item.liste.renk || "var(--gt-primary)";
+      const tum = (item.gorevler || [])
+        .map((g) => ({ g: g, t: false }))
+        .concat((item.tamamlananlar || []).map((g) => ({ g: g, t: true })));
+      tum.forEach(function (x) {
+        const g = x.g;
+        const gecikti = !x.t && g.tarih && g.tarih < bugun;
+        satirlar += `
+          <tr class="${x.t ? "tamam" : ""}">
+            <td class="gt-td-chk"><div class="gorev-checkbox ${canEdit ? "" : "readonly"}" data-gorev-id="${g.id}" data-tamamlandi="${x.t ? 1 : 0}"></div></td>
+            <td class="gt-td-baslik"><div class="gt-td-ad">${escHtml(g.baslik)}</div>${g.aciklama ? `<div class="gt-td-aciklama">${escHtml(g.aciklama)}</div>` : ""}</td>
+            <td><span class="gt-liste-etiket"><span class="liste-nokta" style="--card-color:${renk}"></span>${escHtml(item.liste.baslik)}</span></td>
+            <td class="${gecikti ? "gt-gecikti" : ""}">${tarihYazi(g)}${g.yineleme_sikligi ? ' <i class="bx bx-repeat"></i>' : ""}</td>
+            <td>${avatarYigini(gorevKisileri(g)) || '<span class="gt-atanmamis">Atanmamış</span>'}</td>
+            <td>${x.t ? '<span class="gt-durum gt-durum-tamam">Tamamlandı</span>' : gecikti ? '<span class="gt-durum gt-durum-geciken">Gecikti</span>' : '<span class="gt-durum gt-durum-acik">Açık</span>'}</td>
+          </tr>`;
+      });
+    });
+    return `<div class="gt-tablo-wrap"><table class="gt-tablo"><thead><tr><th style="width:44px"></th><th>Görev</th><th>Liste</th><th>Tarih</th><th>Kişiler</th><th>Durum</th></tr></thead><tbody>${satirlar}</tbody></table></div>`;
+  }
+
+  function bugunStr() {
+    const d = new Date();
+    return formatDate(d);
+  }
+
+  function filtreAktif() {
+    return aramaMetni !== "" || hizliFiltre !== "hepsi" || ekipFiltre.length > 0;
+  }
+
+  function tarihFiltresiUyar(g, filtre) {
+    const bugun = bugunStr();
+    if (filtre === "tarihsiz") return !g.tarih;
+    if (!g.tarih) return false;
+    if (filtre === "bugun") return g.tarih === bugun;
+    if (filtre === "geciken") return g.tarih < bugun;
+    if (filtre === "hafta") {
+      const son = new Date();
+      son.setDate(son.getDate() + 7);
+      return g.tarih >= bugun && g.tarih <= formatDate(son);
+    }
+    return true;
+  }
+
+  function gorevEslesir(g) {
+    if (ekipFiltre.length > 0) {
+      const idler = gorevKisileri(g).map((k) => k.id);
+      idler.push(parseInt(g.olusturan_id));
+      if (!ekipFiltre.some((id) => idler.indexOf(id) !== -1)) return false;
+    }
+    if (hizliFiltre !== "hepsi" && !tarihFiltresiUyar(g, hizliFiltre)) return false;
+    if (aramaMetni) {
+      const hedef = ((g.baslik || "") + " " + (g.aciklama || "")).toLocaleLowerCase("tr-TR");
+      if (hedef.indexOf(aramaMetni) === -1) return false;
+    }
+    return true;
+  }
+
+  function updateChipSayilari() {
+    const sayi = { hepsi: 0, bugun: 0, geciken: 0, hafta: 0, tarihsiz: 0 };
+    allData.forEach(function (d) {
+      (d.gorevler || []).forEach(function (g) {
+        sayi.hepsi++;
+        Object.keys(sayi).forEach(function (k) {
+          if (k !== "hepsi" && tarihFiltresiUyar(g, k)) sayi[k]++;
+        });
+      });
+    });
+    Object.keys(sayi).forEach(function (k) {
+      $('.gt-chip-sayi[data-sayi="' + k + '"]').text(sayi[k] > 0 ? sayi[k] : "");
+    });
+    $(".gt-chip-uyari").toggleClass("has-alert", sayi.geciken > 0);
+  }
+
   function buildListeKolon(item) {
     const liste = item.liste;
     const gorevler = item.gorevler || [];
@@ -160,6 +286,8 @@
     });
 
     const tamamSayi = tamamlananlar.length;
+    const toplamSayi = gorevler.length + tamamSayi;
+    const ilerleme = toplamSayi > 0 ? Math.round((tamamSayi / toplamSayi) * 100) : 0;
 
     const listeRenk = liste.renk || "var(--gt-primary)";
     const isSahip = liste.sahip !== false;
@@ -178,6 +306,7 @@
             <div class="gorev-liste-kolon ${canEdit ? "" : "salt-okunur"}" data-liste-id="${liste.id}" style="--card-color: ${listeRenk}">
                 <div class="gorev-liste-header">
                     <div class="gorev-liste-baslik-wrap">
+                        <span class="liste-nokta"></span>
                         <h3>${escHtml(liste.baslik)}</h3>
                         <span class="liste-sayac">${gorevler.length}</span>
                     </div>
@@ -187,12 +316,30 @@
                     </div>
                 </div>
                 ${rozetHtml ? `<div class="gorev-liste-rozetler">${rozetHtml}</div>` : ""}
+                ${toplamSayi > 0 ? `<div class="liste-ilerleme" title="${tamamSayi}/${toplamSayi} tamamlandı"><div class="liste-ilerleme-bar"><span style="width:${ilerleme}%"></span></div><small>%${ilerleme}</small></div>` : ""}
 
-                ${canEdit ? `<button class="gorev-ekle-btn" data-liste-id="${liste.id}">
-                    <i class="bx bx-plus"></i> Görev ekle
-                </button>` : ""}
+                <div class="gorev-liste-body ${canEdit ? "sortable-liste" : ""}" data-liste-id="${liste.id}">
+                    ${gorevlerHtml || `<div class="gorev-bos-durum"><i class="bx bx-check-circle"></i><span>${canEdit ? "Henüz görev yok" : "Bu listede görev yok"}</span></div>`}
+                </div>
 
-                ${canEdit ? `<div class="gorev-ekleme-form" data-liste-id="${liste.id}">
+                ${
+                  tamamSayi > 0
+                    ? `
+                <div class="tamamlandi-section">
+                    <button class="tamamlandi-toggle" data-liste-id="${liste.id}">
+                        <i class="bx bx-chevron-down"></i>
+                        Tamamlandı (${tamamSayi})
+                    </button>
+                    <div class="tamamlandi-list collapsed" data-liste-id="${liste.id}">
+                        ${tamamlananlarHtml}
+                    </div>
+                </div>
+                `
+                    : ""
+                }
+
+                ${canEdit ? `<div class="gorev-liste-footer">
+                    <div class="gorev-ekleme-form" data-liste-id="${liste.id}">
                     <input type="hidden" class="new-gorev-tarih" value="">
                     <input type="hidden" class="new-gorev-saat" value="">
                     <input type="hidden" class="new-gorev-yineleme" value="{}">
@@ -216,29 +363,74 @@
                             <i class="bx bx-repeat"></i>
                         </button>
                     </div>
-                </div>` : ""}
-
-                <div class="gorev-liste-body ${canEdit ? "sortable-liste" : ""}" data-liste-id="${liste.id}">
-                    ${gorevlerHtml || `<div class="gorev-bos-durum"><i class="bx bx-check-circle"></i><span>${canEdit ? "Henüz görev yok" : "Bu listede görev yok"}</span></div>`}
                 </div>
-
-                ${
-                  tamamSayi > 0
-                    ? `
-                <div class="tamamlandi-section">
-                    <button class="tamamlandi-toggle" data-liste-id="${liste.id}">
-                        <i class="bx bx-chevron-down"></i>
-                        Tamamlandı (${tamamSayi})
+                    <button class="gorev-ekle-btn" data-liste-id="${liste.id}">
+                        <i class="bx bx-plus"></i> Görev Ekle
                     </button>
-                    <div class="tamamlandi-list collapsed" data-liste-id="${liste.id}">
-                        ${tamamlananlarHtml}
-                    </div>
-                </div>
-                `
-                    : ""
-                }
+                </div>` : ""}
             </div>
         `);
+  }
+
+  const AVATAR_RENKLERI = ["#6366f1", "#10b981", "#f59e0b", "#f43f5e", "#14b8a6", "#3b82f6", "#a855f7", "#ec4899"];
+
+  function avatarRenk(ad) {
+    let h = 0;
+    for (let i = 0; i < ad.length; i++) h = (h * 31 + ad.charCodeAt(i)) >>> 0;
+    return AVATAR_RENKLERI[h % AVATAR_RENKLERI.length];
+  }
+
+  function adBasHarfleri(ad) {
+    const p = String(ad || "?").trim().split(/\s+/);
+    return ((p[0] || "?").charAt(0) + (p.length > 1 ? p[p.length - 1].charAt(0) : "")).toLocaleUpperCase("tr-TR");
+  }
+
+  function gorevKisileri(g) {
+    if (g.atananlar && g.atananlar.length) return g.atananlar;
+    return [];
+  }
+
+  function avatarYigini(kisiler, maks) {
+    maks = maks || 3;
+    if (!kisiler || kisiler.length === 0) return "";
+    let html = '<span class="gt-avatar-yigin">';
+    kisiler.slice(0, maks).forEach(function (k) {
+      html += `<span class="gt-avatar" style="background:${avatarRenk(k.ad)}" title="${escAttr(k.ad)}">${escHtml(adBasHarfleri(k.ad))}</span>`;
+    });
+    if (kisiler.length > maks) {
+      html += `<span class="gt-avatar gt-avatar-daha">+${kisiler.length - maks}</span>`;
+    }
+    return html + "</span>";
+  }
+
+  function ekipListesi() {
+    const harita = {};
+    allData.forEach(function (d) {
+      (d.gorevler || []).concat(d.tamamlananlar || []).forEach(function (g) {
+        gorevKisileri(g).forEach(function (k) {
+          harita[k.id] = k.ad;
+        });
+        if (g.olusturan_id && g.olusturan_adi) harita[g.olusturan_id] = g.olusturan_adi;
+      });
+    });
+    return Object.keys(harita)
+      .map(function (id) {
+        return { id: parseInt(id), ad: harita[id] };
+      })
+      .sort(function (a, b) {
+        return a.ad.localeCompare(b.ad, "tr");
+      });
+  }
+
+  function renderEkip() {
+    const kutu = $("#gorevEkip");
+    kutu.empty();
+    ekipListesi().forEach(function (k) {
+      kutu.append(
+        `<button type="button" class="gt-avatar gt-avatar-btn ${ekipFiltre.indexOf(k.id) !== -1 ? "active" : ""}" data-user-id="${k.id}" style="background:${avatarRenk(k.ad)}" title="${escAttr(k.ad)}">${escHtml(adBasHarfleri(k.ad))}</button>`,
+      );
+    });
+    $("#gorevEkipTemizle").toggle(ekipFiltre.length > 0);
   }
 
   function canEditListe(liste) {
@@ -344,6 +536,7 @@
       : "";
 
     const isAnaSayfa = g.ana_sayfa_goster == 1;
+    const metaIcerik = (tarihBadge + yinelemeIcon + avatarYigini(gorevKisileri(g))).trim();
 
     return `
             <div class="gorev-item" data-gorev-id="${g.id}" data-liste-id="${g.liste_id}" data-ana-sayfa="${isAnaSayfa ? 1 : 0}">
@@ -351,10 +544,7 @@
                 <div class="gorev-info">
                     <div class="gorev-baslik">${escHtml(g.baslik)}</div>
                     ${aciklamaHtml}
-                    <div class="gorev-meta">
-                        ${tarihBadge}
-                        ${yinelemeIcon}
-                    </div>
+                    ${metaIcerik ? `<div class="gorev-meta">${metaIcerik}</div>` : ""}
                 </div>
                 ${canEdit ? `<div class="gorev-actions">
                     <button class="gorev-action-btn btn-gorev-menu" data-gorev-id="${g.id}">
@@ -372,6 +562,66 @@
   // GLOBAL EVENT HANDLERS
   // =====================================================
   function initGlobalEvents() {
+    let aramaZamanlayici = null;
+    $(document).on("input", "#gorevAra", function () {
+      const v = $(this).val();
+      $("#gorevAraTemizle").toggle(v.length > 0);
+      clearTimeout(aramaZamanlayici);
+      aramaZamanlayici = setTimeout(function () {
+        aramaMetni = v.toLocaleLowerCase("tr-TR").trim();
+        renderContent();
+        initSortable();
+      }, 150);
+    });
+
+    $(document).on("click", "#gorevAraTemizle", function () {
+      $("#gorevAra").val("").trigger("input").focus();
+    });
+
+    $(document).on("click", "#gorevChips .gt-chip", function () {
+      hizliFiltre = $(this).data("filtre");
+      $("#gorevChips .gt-chip").removeClass("active");
+      $(this).addClass("active");
+      renderContent();
+      initSortable();
+    });
+
+    $(document).on("keydown", function (e) {
+      if (e.key === "/" && !$(e.target).is("input, textarea, select, [contenteditable]")) {
+        if ($("#gorevAra").is(":visible")) {
+          e.preventDefault();
+          $("#gorevAra").focus();
+        }
+      }
+      if (e.key === "Escape" && $(e.target).is("#gorevAra")) {
+        $("#gorevAraTemizle").click();
+      }
+    });
+
+    $(document).on("click", "#gorevGorunum button", function () {
+      gorunum = $(this).data("gorunum");
+      try {
+        localStorage.setItem("gorevler_gorunum", gorunum);
+      } catch (e) {}
+      renderContent();
+      initSortable();
+    });
+
+    $(document).on("click", "#gorevEkip .gt-avatar-btn", function () {
+      const id = parseInt($(this).data("user-id"));
+      const i = ekipFiltre.indexOf(id);
+      if (i === -1) ekipFiltre.push(id);
+      else ekipFiltre.splice(i, 1);
+      renderContent();
+      initSortable();
+    });
+
+    $(document).on("click", "#gorevEkipTemizle", function () {
+      ekipFiltre = [];
+      renderContent();
+      initSortable();
+    });
+
     // Sidebar navigasyon
     $(document).on("click", ".nav-tum-gorevler", function () {
       activeListeId = null;
@@ -643,7 +893,20 @@
       $(".gorev-item-dropdown").remove();
 
       const offset = $btn.offset();
-      const dropdownHeight = 180; // Yaklaşık yükseklik (yeni butonlarla arttı)
+      const mevcutListeId = $item.data("liste-id");
+      const hedefListeler = allData
+        .map((d) => d.liste)
+        .filter((l) => canEditListe(l) && l.id !== mevcutListeId);
+      const tasiHtml = hedefListeler.length
+        ? '<hr class="dropdown-divider"><div class="dropdown-baslik">Listeye taşı</div>' +
+          hedefListeler
+            .map(
+              (l) =>
+                `<button class="dropdown-item btn-gorev-tasi" data-gorev-id="${gorevId}" data-hedef-liste="${l.id}" data-mevcut-liste="${mevcutListeId}"><span class="liste-nokta" style="--card-color:${l.renk || "#1a73e8"}"></span> ${escHtml(l.baslik)}</button>`,
+            )
+            .join("")
+        : "";
+      const dropdownHeight = 180 + hedefListeler.length * 38;
       const windowHeight = $(window).height();
       const spaceBelow = windowHeight - offset.top - $btn.outerHeight();
 
@@ -665,6 +928,7 @@
                 <i class="bx ${isAnaSayfa ? 'bx-home-circle' : 'bx-home-alt'}"></i>
                 ${isAnaSayfa ? 'Ana Sayfada Gösterme' : 'Ana Sayfada Göster'}
             </button>
+            ${tasiHtml}
             <hr class="dropdown-divider">
             <button class="dropdown-item btn-gorev-sil" data-gorev-id="${gorevId}">
                 <i class="bx bx-trash"></i> Sil
@@ -673,6 +937,29 @@
       `);
 
       $("body").append(dropdown);
+    });
+
+    $(document).on("click", ".btn-gorev-tasi", function (e) {
+      e.stopPropagation();
+      const gorevId = $(this).data("gorev-id");
+      const hedef = $(this).data("hedef-liste");
+      $(".gorev-item-dropdown").remove();
+      $.post(
+        API_URL,
+        {
+          action: "update-sira",
+          gorevler: JSON.stringify([{ id: gorevId, liste_id: hedef, sira: -1000000 }]),
+        },
+        function (res) {
+          if (res.success) {
+            showToast("Görev taşındı", "success");
+            loadAll();
+          } else {
+            showToast(res.message || "Görev taşınamadı", "error");
+          }
+        },
+        "json",
+      );
     });
 
     // Görev sil (Doğrudan silme + Geri al)
@@ -1531,7 +1818,8 @@
         handle: ".gorev-liste-header",
         filter: ".liste-menu-btn, .liste-paylas-btn",
         preventOnFilter: false,
-        direction: "horizontal",
+        direction: gorunum === "liste" ? "vertical" : "horizontal",
+        disabled: gorunum === "tablo",
         onEnd: function () {
           saveListeSira();
         },
@@ -1548,14 +1836,39 @@
         ghostClass: "sortable-ghost",
         chosenClass: "sortable-chosen",
         dragClass: "sortable-drag",
+        disabled: filtreAktif(),
+        draggable: ".gorev-item",
         handle: ".gorev-item",
         filter:
           ".tamamlandi-section, .gorev-actions, .gorev-checkbox, .inline-edit-form, input, textarea",
         preventOnFilter: false,
+        onStart: function () {
+          $("#gorevlerContent").addClass("gt-surukleniyor");
+        },
         onEnd: function (evt) {
+          $("#gorevlerContent").removeClass("gt-surukleniyor");
+          guncelleBosDurum();
           saveGorevSira();
         },
       });
+    });
+  }
+
+  function guncelleBosDurum() {
+    document.querySelectorAll(".sortable-liste").forEach(function (liste) {
+      const adet = liste.querySelectorAll(".gorev-item").length;
+      const bos = liste.querySelector(".gorev-bos-durum");
+      if (adet > 0 && bos) {
+        bos.remove();
+      } else if (adet === 0 && !bos) {
+        liste.insertAdjacentHTML(
+          "beforeend",
+          '<div class="gorev-bos-durum"><i class="bx bx-check-circle"></i><span>Henüz görev yok</span></div>',
+        );
+      }
+      const kolon = liste.closest(".gorev-liste-kolon");
+      const sayac = kolon && kolon.querySelector(".liste-sayac");
+      if (sayac) sayac.textContent = adet;
     });
   }
 

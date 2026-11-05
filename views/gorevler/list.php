@@ -7,8 +7,8 @@ $maintitle = 'Ana Sayfa';
 $title = 'Görevler';
 ?>
 
-<link rel="stylesheet" href="views/gorevler/css/gorevler.css?v=<?php echo time(); ?>">
 <link rel="stylesheet" href="views/notlar/css/notlar.css?v=<?php echo time(); ?>">
+<link rel="stylesheet" href="views/gorevler/css/gorevler.css?v=<?php echo time(); ?>">
 
 <div class="container-fluid">
     <?php include 'layouts/breadcrumb.php'; ?>
@@ -67,6 +67,43 @@ $title = 'Görevler';
         </div>
 
         <!-- ═══ SAĞ İÇERİK ═══ -->
+        <div class="gorevler-main">
+        <div class="gt-sayfa-baslik">
+            <div class="gt-baslik-sol">
+                <div class="gt-baslik-ikon"><i class="bx bx-task"></i></div>
+                <div>
+                    <h4>Görev Panosu</h4>
+                    <p>Listeler oluşturun, görevleri sürükleyin ve ekibinizle paylaşın.</p>
+                </div>
+            </div>
+            <div class="gt-ekip">
+                <span class="gt-ekip-etiket">Ekip filtresi:</span>
+                <div class="gt-ekip-liste" id="gorevEkip"></div>
+                <button type="button" class="gt-ekip-temizle" id="gorevEkipTemizle" style="display:none">Temizle</button>
+            </div>
+        </div>
+        <div class="gorevler-toolbar">
+            <div class="gt-gorunum" id="gorevGorunum">
+                <button type="button" class="active" data-gorunum="pano">Pano</button>
+                <button type="button" data-gorunum="liste">Liste</button>
+                <button type="button" data-gorunum="tablo">Tablo</button>
+            </div>
+            <div class="gt-chips" id="gorevChips">
+                <button type="button" class="gt-chip active" data-filtre="hepsi">Tümü <span class="gt-chip-sayi" data-sayi="hepsi"></span></button>
+                <button type="button" class="gt-chip" data-filtre="bugun"><i class="bx bx-calendar-check"></i> Bugün <span class="gt-chip-sayi" data-sayi="bugun"></span></button>
+                <button type="button" class="gt-chip gt-chip-uyari" data-filtre="geciken"><i class="bx bx-error-circle"></i> Geciken <span class="gt-chip-sayi" data-sayi="geciken"></span></button>
+                <button type="button" class="gt-chip" data-filtre="hafta"><i class="bx bx-calendar-week"></i> 7 gün <span class="gt-chip-sayi" data-sayi="hafta"></span></button>
+                <button type="button" class="gt-chip" data-filtre="tarihsiz"><i class="bx bx-calendar-x"></i> Tarihsiz <span class="gt-chip-sayi" data-sayi="tarihsiz"></span></button>
+            </div>
+            <div class="gt-toolbar-sag">
+                <div class="gt-arama">
+                    <i class="bx bx-search"></i>
+                    <input type="text" id="gorevAra" placeholder="Ara...  ( / )" autocomplete="off">
+                    <button type="button" class="gt-arama-temizle" id="gorevAraTemizle" title="Temizle"><i class="bx bx-x"></i></button>
+                </div>
+                <button type="button" class="gt-btn-koyu" id="btnYeniListe2"><i class="bx bx-plus"></i> Liste Ekle</button>
+            </div>
+        </div>
         <div class="gorevler-content" id="gorevlerContent">
             <!-- Preloader -->
             <div class="gt-preloader" id="pagePreloader">
@@ -82,6 +119,7 @@ $title = 'Görevler';
                 <i class="bx bx-task"></i>
                 <h4>Yükleniyor...</h4>
             </div>
+        </div>
         </div>
     </div>
 </div>
@@ -113,6 +151,15 @@ $title = 'Görevler';
 
         <!-- Sağ Panel: Notlar Grid -->
         <div class="notlar-content">
+            <div class="gt-sayfa-baslik">
+                <div class="gt-baslik-sol">
+                    <div class="gt-baslik-ikon"><i class="bx bx-note"></i></div>
+                    <div>
+                        <h4>Notlarım</h4>
+                        <p>Defterlerinizde notlarınızı toplayın, sabitleyin ve renklendirin.</p>
+                    </div>
+                </div>
+            </div>
             <div class="notlar-content-header">
                 <div class="search-wrapper">
                     <i class="bx bx-search"></i>

@@ -1151,6 +1151,117 @@ if (Gate::allows("ana_sayfa")) {
                 }
             </style>
             <style>
+                /* Grid bazlı boyutlandırma (normal mod) */
+                #dashboard-widgets .widget-item .grid-resize-grip {
+                    position: absolute !important;
+                    left: auto !important;
+                    top: auto !important;
+                    right: 4px;
+                    bottom: 4px;
+                    width: 16px !important;
+                    height: 16px !important;
+                    min-height: 0 !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    border: 0;
+                    border-radius: 0 0 8px 0;
+                    background: linear-gradient(135deg, transparent 0 48%, currentColor 48% 58%, transparent 58% 72%, currentColor 72% 82%, transparent 82%);
+                    color: rgba(100, 116, 139, .55);
+                    cursor: nwse-resize;
+                    z-index: 20;
+                    display: none;
+                    touch-action: none;
+                    opacity: 0;
+                    transition: opacity .15s ease, color .15s ease;
+                }
+                [data-bs-theme="dark"] #dashboard-widgets .widget-item .grid-resize-grip { color: rgba(203, 213, 225, .6); }
+                #dashboard-widgets:not(.free-layout-active) > .widget-item { position: relative; }
+                #dashboard-widgets:not(.free-layout-active) {
+                    overflow-anchor: none;
+                    display: grid !important;
+                    grid-template-columns: repeat(12, minmax(0, 1fr));
+                    grid-auto-rows: 8px;
+                    grid-auto-flow: row dense;
+                    align-items: stretch;
+                }
+                #dashboard-widgets:not(.free-layout-active) > .widget-item {
+                    width: auto;
+                    max-width: none;
+                    flex: none;
+                    min-width: 0;
+                    grid-column: span 12;
+                }
+<?php
+$gridBreakpoints = ['' => 0, 'sm-' => 576, 'md-' => 768, 'lg-' => 992, 'xl-' => 1200, 'xxl-' => 1400];
+foreach ($gridBreakpoints as $bpName => $bpMin) {
+    if ($bpMin > 0) {
+        echo "                @media (min-width: {$bpMin}px) {\n";
+    }
+    for ($gi = 1; $gi <= 12; $gi++) {
+        echo "                #dashboard-widgets:not(.free-layout-active) > .widget-item.col-{$bpName}{$gi} { grid-column: span {$gi}; }\n";
+    }
+    if ($bpMin > 0) {
+        echo "                }\n";
+    }
+}
+$pinGroups = [768 => ['', 'sm-', 'md-'], 992 => ['lg-'], 1200 => ['xl-'], 1400 => ['xxl-']];
+foreach ($pinGroups as $pinMin => $pinNames) {
+    echo "                @media (min-width: {$pinMin}px) {\n";
+    foreach ($pinNames as $pinName) {
+        for ($gi = 1; $gi <= 12; $gi++) {
+            echo "                #dashboard-widgets:not(.free-layout-active) > .widget-item.col-{$pinName}{$gi}[data-grid-x] { grid-column: var(--gx) / span {$gi}; grid-row-start: var(--gy); }\n";
+        }
+    }
+    echo "                }\n";
+}
+?>
+                #dashboard-widgets .widget-item:hover .grid-resize-grip { opacity: 1; }
+                #dashboard-widgets .widget-item .grid-resize-grip:hover,
+                #dashboard-widgets .widget-item.grid-resizing .grid-resize-grip { opacity: 1; color: rgba(37, 99, 235, .95); }
+                @media (min-width: 768px) {
+                    #dashboard-widgets:not(.free-layout-active) .widget-item .grid-resize-grip { display: block; }
+                }
+                body.grid-dragging-active { user-select: none; cursor: grabbing; }
+                #dashboard-widgets:not(.free-layout-active) > .widget-item { -webkit-user-drag: none; }
+                #dashboard-widgets .widget-item.grid-dragging {
+                    z-index: 1050;
+                    pointer-events: none;
+                    opacity: .92;
+                    transition: none !important;
+                    filter: drop-shadow(0 18px 28px rgba(15, 23, 42, .28));
+                }
+                #dashboard-widgets .grid-drop-preview {
+                    position: absolute;
+                    z-index: 5;
+                    pointer-events: none;
+                    border: 2px dashed rgba(37, 99, 235, .75);
+                    background: rgba(37, 99, 235, .08);
+                    border-radius: 14px;
+                    transition: left .08s ease, top .08s ease, width .08s ease, height .08s ease;
+                }
+                #dashboard-widgets .widget-item.grid-resizing { user-select: none; }
+                #dashboard-widgets .widget-item.grid-resizing::after {
+                    content: attr(data-grid-label);
+                    position: absolute;
+                    left: 50%;
+                    top: 50%;
+                    transform: translate(-50%, -50%);
+                    padding: 6px 14px;
+                    border-radius: 999px;
+                    background: rgba(15, 23, 42, .85);
+                    color: #fff;
+                    font-size: 12px;
+                    font-weight: 700;
+                    z-index: 30;
+                    pointer-events: none;
+                }
+                #dashboard-widgets .widget-item.grid-sized .carousel-content { min-height: 0 !important; }
+                #dashboard-widgets .widget-item.grid-sized > .card,
+                #dashboard-widgets .widget-item.grid-sized > .carousel { height: 100% !important; max-height: none !important; }
+                #dashboard-widgets .widget-item > .card,
+                #dashboard-widgets .widget-item > .carousel { position: relative; }
+                #dashboard-widgets .widget-item.grid-sized > .card > .card-body { overflow: auto; }
+
                 /* ===================================================
                    macOS / iOS Style Widget Title Bars
                    Premium Design - Enterprise Dashboard
@@ -4264,6 +4375,89 @@ if (Gate::allows("ana_sayfa")) {
                 }
 
                 let saveConfigTimeout = null;
+                function gridColumnSpan(el) {
+                    const cs = getComputedStyle(el);
+                    const m = /span\s+(\d+)/.exec(cs.gridColumnEnd) || /span\s+(\d+)/.exec(cs.gridColumnStart);
+                    return m ? Math.min(12, parseInt(m[1], 10)) : 12;
+                }
+
+                function unpinGridWidget(el) {
+                    el.removeAttribute('data-grid-x');
+                    el.removeAttribute('data-grid-y');
+                    el.style.removeProperty('--gx');
+                    el.style.removeProperty('--gy');
+                }
+
+                let gridLayoutRaf = null;
+                function layoutDashboardGrid() {
+                    if (gridLayoutRaf) cancelAnimationFrame(gridLayoutRaf);
+                    gridLayoutRaf = requestAnimationFrame(runDashboardGridLayout);
+                }
+
+                function runDashboardGridLayout() {
+                    gridLayoutRaf = null;
+                    const container = document.getElementById('dashboard-widgets');
+                    if (!container || container.classList.contains('free-layout-active')) return;
+                    const rowUnit = 8;
+                    const prevMinHeight = container.style.minHeight;
+                    const prevScrollY = window.scrollY;
+                    container.style.minHeight = container.offsetHeight + 'px';
+                    const items = Array.from(container.children).filter(function (el) {
+                        return el.classList.contains('widget-item') && getComputedStyle(el).display !== 'none';
+                    });
+
+                    items.forEach(function (el) {
+                        if (el.hasAttribute('data-grid-x')) {
+                            const span = gridColumnSpan(el);
+                            const x = parseInt(el.getAttribute('data-grid-x'), 10);
+                            if (x + span - 1 > 12) {
+                                const fixedX = Math.max(1, 13 - span);
+                                el.setAttribute('data-grid-x', fixedX);
+                                el.style.setProperty('--gx', fixedX);
+                            }
+                        }
+                        el.style.alignSelf = 'start';
+                        el.style.gridRowEnd = 'auto';
+                    });
+                    const info = items.map(function (el) {
+                        const cs = getComputedStyle(el);
+                        const h = el.getBoundingClientRect().height + (parseFloat(cs.marginTop) || 0) + (parseFloat(cs.marginBottom) || 0);
+                        return {
+                            el: el,
+                            span: Math.max(1, Math.ceil(h / rowUnit)),
+                            fixed: el.hasAttribute('data-grid-height') || el.hasAttribute('data-grid-x') || el.classList.contains('widget-collapsed')
+                        };
+                    });
+                    info.forEach(function (i) {
+                        i.el.style.gridRowEnd = 'span ' + i.span;
+                        i.el.style.alignSelf = '';
+                    });
+
+                    const groups = {};
+                    info.forEach(function (i) {
+                        if (i.fixed) return;
+                        const key = Math.round(i.el.getBoundingClientRect().top / rowUnit);
+                        (groups[key] = groups[key] || []).push(i);
+                    });
+                    Object.keys(groups).forEach(function (key) {
+                        const list = groups[key];
+                        const max = Math.max.apply(null, list.map(function (i) { return i.span; }));
+                        list.forEach(function (i) {
+                            if (i.span !== max) i.el.style.gridRowEnd = 'span ' + max;
+                        });
+                    });
+
+                    container.style.minHeight = prevMinHeight;
+                    if (Math.abs(window.scrollY - prevScrollY) > 1) window.scrollTo(window.scrollX, prevScrollY);
+                }
+
+                window.addEventListener('resize', layoutDashboardGrid);
+                window.addEventListener('load', layoutDashboardGrid);
+
+                const gridLegacyDefaultIds = ['widget-ana-slider', 'widget-personel-ozet', 'widget-arac-ozet'];
+                const gridMinHeight = 120;
+                const gridRowStep = 20;
+                const gridMinCols = 2;
                 const defaultWidgetWidthClasses = {
                     'widget-ana-slider': 'col-md-4 col-xl-4',
                     'widget-personel-ozet': 'col-md-4 col-xl-4',
@@ -4320,6 +4514,19 @@ if (Gate::allows("ana_sayfa")) {
                             const bodyHeight = cardBody.length ? cardBody[0].style.height : '';
                             if (bodyHeight && bodyHeight !== '0px') {
                                 s.height = bodyHeight;
+                            }
+                        }
+
+                        {
+                            const gCols = parseInt($(this).attr('data-grid-cols'), 10);
+                            const gHeight = parseInt($(this).attr('data-grid-height'), 10);
+                            if (gCols >= 2 && gCols <= 12) s.gridCols = gCols;
+                            if (gHeight >= gridMinHeight) s.gridHeight = gHeight;
+                            const gX = parseInt($(this).attr('data-grid-x'), 10);
+                            const gY = parseInt($(this).attr('data-grid-y'), 10);
+                            if (gX >= 1 && gX <= 12 && gY >= 1) {
+                                s.gridX = gX;
+                                s.gridY = gY;
                             }
                         }
 
@@ -4497,6 +4704,14 @@ if (Gate::allows("ana_sayfa")) {
                     }
                     const isFreeLayout = $('#switch-free-layout').is(':checked');
 
+                    if (!isFreeLayout) {
+                        $('#dashboard-widgets > .widget-item').each(function () {
+                            if (this.hasAttribute('data-default-width')) return;
+                            const own = (this.className || '').split(' ').filter(cls => /^col(-[a-z]+)?-\d+$/.test(cls));
+                            this.setAttribute('data-default-width', own.join(' '));
+                        });
+                    }
+
                     let maxBottom = 1000;
 
                     Object.keys(settings).forEach(id => {
@@ -4524,19 +4739,6 @@ if (Gate::allows("ana_sayfa")) {
                             }
                         }
                     });
-
-                    if (!isFreeLayout) {
-                        ['widget-ana-slider', 'widget-personel-ozet', 'widget-arac-ozet'].forEach(function (id) {
-                            const widget = $('#' + id);
-                            const fallbackWidth = defaultWidgetWidthClasses[id];
-                            if (!widget.length || !fallbackWidth) return;
-
-                            const classes = (widget.attr('class') || '').split(' ').filter(Boolean);
-                            const newClasses = classes.filter(cls => !/^col(-[a-z]+)?-\d+$/.test(cls));
-                            newClasses.push(...fallbackWidth.split(' '));
-                            widget.attr('class', newClasses.join(' '));
-                        });
-                    }
 
                     if (isFreeLayout) {
                         Object.keys(settings).forEach(id => {
@@ -4605,6 +4807,53 @@ if (Gate::allows("ana_sayfa")) {
                         });
                     }
                     
+                    if (!isFreeLayout) {
+                        $('#dashboard-widgets > .widget-item').each(function () {
+                            const widget = $(this);
+                            const id = widget.attr('id');
+                            if (!id || id === 'widget-row-break') return;
+                            const s = settings[id] || {};
+                            const cols = parseInt(s.gridCols, 10);
+                            const height = parseInt(s.gridHeight, 10);
+                            const hasCols = cols >= gridMinCols && cols <= 12;
+                            const fallbackWidth = gridLegacyDefaultIds.indexOf(id) !== -1 ? defaultWidgetWidthClasses[id] : '';
+                            const widthClasses = hasCols ? ['col-md-' + cols, 'col-xl-' + cols] : (fallbackWidth ? fallbackWidth.split(' ') : []);
+
+                            if (widthClasses.length) {
+                                const classes = (widget.attr('class') || '').split(' ').filter(Boolean);
+                                const newClasses = classes.filter(cls => !/^col(-[a-z]+)?-\d+$/.test(cls));
+                                newClasses.push(...widthClasses);
+                                widget.attr('class', newClasses.join(' '));
+                            }
+                            if (hasCols) widget.attr('data-grid-cols', cols); else widget.removeAttr('data-grid-cols');
+
+                            if (height >= gridMinHeight) {
+                                widget.attr('data-grid-height', height).addClass('grid-sized').css('height', height + 'px');
+                            } else {
+                                widget.removeAttr('data-grid-height').removeClass('grid-sized').css('height', '');
+                            }
+
+                            const pinX = parseInt(s.gridX, 10);
+                            const pinY = parseInt(s.gridY, 10);
+                            const node = widget[0];
+                            if (pinX >= 1 && pinX <= 12 && pinY >= 1) {
+                                widget.attr('data-grid-x', pinX).attr('data-grid-y', pinY);
+                                node.style.setProperty('--gx', pinX);
+                                node.style.setProperty('--gy', pinY);
+                            } else {
+                                widget.removeAttr('data-grid-x').removeAttr('data-grid-y');
+                                node.style.removeProperty('--gx');
+                                node.style.removeProperty('--gy');
+                            }
+
+                            if (!widget.find('.grid-resize-grip').length) {
+                                (widget.children('.card, .carousel').first().length ? widget.children('.card, .carousel').first() : widget).append('<div class="grid-resize-grip" title="Grid\'e göre boyutlandır"></div>');
+                            }
+                        });
+                    }
+
+                    if (!isFreeLayout) layoutDashboardGrid();
+
                     // Always initialize Mac controls after applying settings
                     if (typeof initMacControls === 'function') {
                         initMacControls();
@@ -4649,26 +4898,194 @@ if (Gate::allows("ana_sayfa")) {
                     const dashboardNode = document.getElementById('dashboard-widgets');
                     if (dashboardNode) {
                         dashboardObserver.observe(dashboardNode, { childList: true, subtree: false });
+                        let gridContentTimer = null;
+                        new MutationObserver(function () {
+                            clearTimeout(gridContentTimer);
+                            gridContentTimer = setTimeout(layoutDashboardGrid, 200);
+                        }).observe(dashboardNode, { childList: true, subtree: true, characterData: true });
                     }
                 });
 
                 let gridSortable = null;
+                let gridCustomDragBound = false;
+                const gridDragIgnore = '.mac-control, .mac-controls, .btn, a, input, select, textarea, button, label, .custom-resize-handle, .dashboard-resize-grip, .grid-resize-grip, .dropdown-menu, [data-bs-toggle]';
+                const gridDragHandle = '.mac-title-bar, .drag-handle, .card-header, .stat-card, .card, .carousel';
+
+                function gridFindTarget(item, container, dx, dy, startRect, crPage) {
+                    const colWidth = container.getBoundingClientRect().width / 12;
+                    const span = gridColumnSpan(item);
+                    let col = Math.min(13 - span, Math.max(1, Math.round((startRect.left + dx - crPage.left) / colWidth) + 1));
+                    let row = Math.max(1, Math.round((startRect.top + dy - crPage.top) / 8) + 1);
+                    const height = startRect.height;
+                    const cr = container.getBoundingClientRect();
+                    const others = Array.from(container.children).filter(function (w) {
+                        return w !== item && w.classList.contains('widget-item') && w.hasAttribute('data-grid-x') && w.getBoundingClientRect().width > 0;
+                    }).map(function (w) {
+                        const r = w.getBoundingClientRect();
+                        return { left: r.left - cr.left, right: r.right - cr.left, top: r.top - cr.top, bottom: r.bottom - cr.top };
+                    });
+                    const collides = function (c, r) {
+                        const left = (c - 1) * colWidth;
+                        const right = left + span * colWidth;
+                        const top = (r - 1) * 8;
+                        const bottom = top + height;
+                        return others.some(function (o) {
+                            return left < o.right - 1 && right > o.left + 1 && top < o.bottom - 1 && bottom > o.top + 1;
+                        });
+                    };
+                    if (others.length && collides(col, row)) {
+                        let best = null;
+                        for (let dc = -(col - 1); dc <= 13 - span - col; dc++) {
+                            for (let dr = -160; dr <= 160; dr++) {
+                                const r = row + dr;
+                                if (r < 1) continue;
+                                const cost = Math.abs(dc) * colWidth + Math.abs(dr) * 8;
+                                if (best && cost >= best.cost) continue;
+                                if (!collides(col + dc, r)) best = { c: col + dc, r: r, cost: cost };
+                            }
+                        }
+                        if (best) {
+                            col = best.c;
+                            row = best.r;
+                        }
+                    }
+                    return { col: col, row: row, span: span, colWidth: colWidth, height: height };
+                }
+
+                function gridPointerDown(e) {
+                    if (e.pointerType === 'mouse' && e.button !== 0) return;
+                    if (window.innerWidth < 768) return;
+                    const container = document.getElementById('dashboard-widgets');
+                    if (!container || container.classList.contains('free-layout-active')) return;
+                    if (!e.target.closest || e.target.closest(gridDragIgnore)) return;
+                    const item = e.target.closest('.widget-item');
+                    if (!item || item.parentNode !== container) return;
+                    const hasCardShell = item.querySelector(':scope > .card, :scope > .carousel');
+                    if (hasCardShell && !e.target.closest(gridDragHandle)) return;
+
+                    const rect0 = item.getBoundingClientRect();
+                    const startRect = {
+                        left: rect0.left + window.scrollX,
+                        top: rect0.top + window.scrollY,
+                        width: rect0.width,
+                        height: rect0.height
+                    };
+                    const startX = e.clientX + window.scrollX;
+                    const startY = e.clientY + window.scrollY;
+                    let lastX = e.clientX;
+                    let lastY = e.clientY;
+                    let dragging = false;
+                    let preview = null;
+                    let rafId = null;
+                    let crPage = null;
+
+                    const update = function () {
+                        const dx = lastX + window.scrollX - startX;
+                        const dy = lastY + window.scrollY - startY;
+                        item.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+                        const target = gridFindTarget(item, container, dx, dy, startRect, crPage);
+                        preview.style.left = ((target.col - 1) * target.colWidth) + 'px';
+                        preview.style.top = ((target.row - 1) * 8) + 'px';
+                        preview.style.width = (target.span * target.colWidth) + 'px';
+                        preview.style.height = target.height + 'px';
+                        preview.dataset.col = target.col;
+                        preview.dataset.row = target.row;
+                    };
+
+                    const loop = function () {
+                        if (!dragging) return;
+                        if (lastY < 90) window.scrollBy(0, -18);
+                        else if (lastY > window.innerHeight - 90) window.scrollBy(0, 18);
+                        update();
+                        rafId = requestAnimationFrame(loop);
+                    };
+
+                    const blockNativeDrag = function (ev) { ev.preventDefault(); };
+                    document.addEventListener('dragstart', blockNativeDrag, true);
+
+                    const begin = function () {
+                        dragging = true;
+                        const cr = container.getBoundingClientRect();
+                        crPage = { left: cr.left + window.scrollX, top: cr.top + window.scrollY };
+                        preview = document.createElement('div');
+                        preview.className = 'grid-drop-preview';
+                        container.appendChild(preview);
+                        item.classList.add('grid-dragging');
+                        document.body.classList.add('grid-dragging-active');
+                        rafId = requestAnimationFrame(loop);
+                    };
+
+                    const onMove = function (ev) {
+                        lastX = ev.clientX;
+                        lastY = ev.clientY;
+                        if (!dragging) {
+                            const moved = Math.abs(ev.clientX + window.scrollX - startX) + Math.abs(ev.clientY + window.scrollY - startY);
+                            if (moved < 6) return;
+                            begin();
+                        }
+                        ev.preventDefault();
+                    };
+
+                    const finish = function (ev) {
+                        document.removeEventListener('pointermove', onMove, true);
+                        document.removeEventListener('pointerup', finish, true);
+                        document.removeEventListener('pointercancel', finish, true);
+                        document.removeEventListener('dragstart', blockNativeDrag, true);
+                        if (!dragging) return;
+                        dragging = false;
+                        if (rafId) cancelAnimationFrame(rafId);
+                        const col = parseInt(preview.dataset.col, 10);
+                        const row = parseInt(preview.dataset.row, 10);
+                        preview.remove();
+                        item.classList.remove('grid-dragging');
+                        item.style.transform = '';
+                        document.body.classList.remove('grid-dragging-active');
+                        if (ev.type === 'pointerup' && col >= 1 && row >= 1) {
+                            item.setAttribute('data-grid-x', col);
+                            item.setAttribute('data-grid-y', row);
+                            item.style.setProperty('--gx', col);
+                            item.style.setProperty('--gy', row);
+                            layoutDashboardGrid();
+                            saveDashboardConfig();
+                        }
+                        const swallow = function (clickEv) {
+                            clickEv.stopPropagation();
+                            clickEv.preventDefault();
+                        };
+                        document.addEventListener('click', swallow, { capture: true, once: true });
+                        setTimeout(function () { document.removeEventListener('click', swallow, true); }, 50);
+                    };
+
+                    document.addEventListener('pointermove', onMove, true);
+                    document.addEventListener('pointerup', finish, true);
+                    document.addEventListener('pointercancel', finish, true);
+                }
+
+                window.addEventListener('resize', function () {
+                    if (gridSortable) gridSortable.option('disabled', window.innerWidth >= 768);
+                });
 
                 function initGridSortable() {
-                    if (typeof Sortable !== 'undefined') {
-                        const container = document.getElementById('dashboard-widgets');
-                        if (container && !gridSortable) {
-                            gridSortable = new Sortable(container, {
-                                animation: 150,
-                                handle: '.mac-title-bar, .drag-handle, .card-header, .stat-card, .card',
-                                filter: '.mac-control, .btn, a, input, select, textarea, .custom-resize-handle, .dashboard-resize-grip, .mac-controls',
-                                preventOnFilter: true,
-                                ghostClass: 'bg-light',
-                                onEnd: function () {
-                                    saveDashboardConfig();
-                                }
-                            });
-                        }
+                    const container = document.getElementById('dashboard-widgets');
+                    if (!container) return;
+                    if (!gridCustomDragBound) {
+                        container.addEventListener('pointerdown', gridPointerDown);
+                        gridCustomDragBound = true;
+                    }
+                    if (typeof Sortable !== 'undefined' && !gridSortable) {
+                        gridSortable = new Sortable(container, {
+                            animation: 150,
+                            disabled: window.innerWidth >= 768,
+                            handle: '.mac-title-bar, .drag-handle, .card-header, .stat-card, .card',
+                            filter: '.mac-control, .btn, a, input, select, textarea, .custom-resize-handle, .dashboard-resize-grip, .grid-resize-grip, .mac-controls',
+                            preventOnFilter: true,
+                            ghostClass: 'bg-light',
+                            onEnd: function (evt) {
+                                unpinGridWidget(evt.item);
+                                layoutDashboardGrid();
+                                saveDashboardConfig();
+                            }
+                        });
                     }
                 }
 
@@ -4676,6 +5093,11 @@ if (Gate::allows("ana_sayfa")) {
                     if (gridSortable) {
                         gridSortable.destroy();
                         gridSortable = null;
+                    }
+                    const container = document.getElementById('dashboard-widgets');
+                    if (container && gridCustomDragBound) {
+                        container.removeEventListener('pointerdown', gridPointerDown);
+                        gridCustomDragBound = false;
                     }
                 }
 
@@ -4745,11 +5167,88 @@ if (Gate::allows("ana_sayfa")) {
                             maxHeight: ''
                         });
                         $('.dashboard-resize-edge-e, .dashboard-resize-edge-s, .dashboard-resize-grip').remove();
+                        applyWidgetSettings();
                         // Redraw standard layout
                         initMacControls();
                         saveDashboardConfig(true);
                         setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 100);
                     }
+                });
+
+                $(document).on('pointerdown.gridResize', '#dashboard-widgets .grid-resize-grip', function (e) {
+                    if ($('#switch-free-layout').is(':checked')) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const widget = $(this).closest('.widget-item');
+                    const container = $('#dashboard-widgets');
+                    const startX = e.clientX + window.scrollX;
+                    const startY = e.clientY + window.scrollY;
+                    const startWidth = widget.outerWidth();
+                    const startHeight = widget.outerHeight();
+                    const colWidth = container.width() / 12;
+                    let lastX = e.clientX;
+                    let lastY = e.clientY;
+                    let resizing = true;
+                    widget.addClass('grid-resizing');
+
+                    const applySize = function () {
+                        const cols = Math.min(12, Math.max(gridMinCols, Math.round((startWidth + (lastX + window.scrollX - startX)) / colWidth)));
+                        const height = Math.max(gridMinHeight, Math.round((startHeight + (lastY + window.scrollY - startY)) / gridRowStep) * gridRowStep);
+                        if (String(cols) === widget.attr('data-grid-cols') && String(height) === widget.attr('data-grid-height')) return;
+
+                            const classes = (widget.attr('class') || '').split(' ').filter(cls => cls && !/^col(-[a-z]+)?-\d+$/.test(cls));
+                            classes.push('col-md-' + cols, 'col-xl-' + cols);
+                            widget.attr('class', classes.join(' '))
+                                .attr('data-grid-cols', cols)
+                                .attr('data-grid-height', height)
+                                .attr('data-grid-label', cols + '/12 × ' + height + 'px')
+                                .addClass('grid-sized')
+                                .css('height', height + 'px');
+                            layoutDashboardGrid();
+                    };
+
+                    const edgeScroll = function () {
+                        if (!resizing) return;
+                        if (lastY > window.innerHeight - 70) window.scrollBy(0, 16);
+                        else if (lastY < 70) window.scrollBy(0, -16);
+                        applySize();
+                        requestAnimationFrame(edgeScroll);
+                    };
+                    requestAnimationFrame(edgeScroll);
+
+                    $(document)
+                        .off('pointermove.gridResize')
+                        .on('pointermove.gridResize', function (p) {
+                            lastX = p.clientX;
+                            lastY = p.clientY;
+                            applySize();
+                        })
+                        .off('pointerup.gridResize pointercancel.gridResize')
+                        .on('pointerup.gridResize pointercancel.gridResize', function () {
+                            resizing = false;
+                            $(document).off('pointermove.gridResize pointerup.gridResize pointercancel.gridResize');
+                            widget.removeClass('grid-resizing').removeAttr('data-grid-label');
+                            saveDashboardConfig();
+                            setTimeout(function () { window.dispatchEvent(new Event('resize')); }, 100);
+                        });
+                });
+
+                $(document).on('dblclick', '#dashboard-widgets .grid-resize-grip', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const widget = $(this).closest('.widget-item');
+                    widget.removeAttr('data-grid-cols data-grid-height').removeClass('grid-sized').css('height', '');
+                    unpinGridWidget(widget[0]);
+                    const defaults = widget.attr('data-default-width') || defaultWidgetWidthClasses[widget.attr('id')];
+                    if (defaults) {
+                        const classes = (widget.attr('class') || '').split(' ').filter(cls => cls && !/^col(-[a-z]+)?-\d+$/.test(cls));
+                        classes.push(...defaults.split(' '));
+                        widget.attr('class', classes.join(' '));
+                    }
+                    saveDashboardConfig();
+                    layoutDashboardGrid();
+                    setTimeout(function () { window.dispatchEvent(new Event('resize')); }, 100);
                 });
 
                 $(document).on('click', '#btn-random-layout', function () {

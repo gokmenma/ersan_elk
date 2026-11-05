@@ -225,6 +225,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $listeler = $Gorev->getListeler($firmaId, $userId);
                 $result = [];
 
+                $kullaniciAdlari = [];
+                foreach ((new \App\Model\UserModel())->getUsers() as $u) {
+                    $kullaniciAdlari[(int) $u->id] = (string) $u->adi_soyadi;
+                }
+                $kisileriEkle = function ($g) use ($kullaniciAdlari) {
+                    $atananlar = [];
+                    foreach (array_filter(array_map('intval', explode(',', (string) $g->gorev_kullanicilari))) as $uid) {
+                        if (isset($kullaniciAdlari[$uid])) {
+                            $atananlar[] = ['id' => $uid, 'ad' => $kullaniciAdlari[$uid]];
+                        }
+                    }
+                    $g->atananlar = $atananlar;
+                    $g->olusturan_adi = $kullaniciAdlari[(int) $g->olusturan_id] ?? null;
+                };
+
                 foreach ($listeler as $liste) {
                     $aktifGorevler = $Gorev->getGorevler($liste->id, $userId, 0);
                     $tamamlananlar = $Gorev->getTamamlananlar($liste->id, $userId);
@@ -232,13 +247,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $encListeId = Security::encrypt($liste->id);
 
                     foreach ($aktifGorevler as &$g) {
+                        $kisileriEkle($g);
                         $g->id = Security::encrypt($g->id);
                         $g->liste_id = $encListeId;
                     }
+                    unset($g);
                     foreach ($tamamlananlar as &$g) {
+                        $kisileriEkle($g);
                         $g->id = Security::encrypt($g->id);
                         $g->liste_id = $encListeId;
                     }
+                    unset($g);
 
                     $result[] = [
                         'liste' => [

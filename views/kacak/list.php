@@ -290,6 +290,9 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         }
     }
 
+    #modalBildirimPersonel .input-group > .form-floating-custom { flex: 1 1 auto; width: 1%; min-width: 0; }
+    #modalBildirimPersonel .input-group > .form-floating-custom > .form-control { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+    #modalBildirimPersonel .modal-body .form-text { margin-top: 4px; }
     .kacak-tabs .nav-link {
         border: none !important;
         border-radius: 100px !important;
@@ -1622,45 +1625,62 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
 
 <!-- ============ KASKİ PERSONELİ EKLE / DÜZENLE MODALI ============ -->
 <div class="modal fade" id="modalBildirimPersonel" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-md">
-        <form id="formBildirimPersonel" class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalBildirimPersonelTitle">Yeni Kaski Personeli</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <input type="hidden" name="token" id="bp_token" value="">
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label required">Adı Soyadı</label>
-                    <input type="text" name="adi_soyadi" id="bp_adi_soyadi" class="form-control" required placeholder="Örn: Ahmet Yılmaz">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label required">T.C. Kimlik Numarası</label>
-                    <input type="text" name="tc_kimlik_no" id="bp_tc_kimlik_no" class="form-control" maxlength="11" required placeholder="11 haneli T.C. No">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label required">Cep Telefonu</label>
-                    <input type="tel" name="cep_telefonu" id="bp_cep_telefonu" class="form-control" maxlength="11" required placeholder="05XXXXXXXXX">
-                </div>
-                <div class="mb-3" id="bp_sifre_wrapper">
-                    <label class="form-label">Giriş Şifresi <small class="text-muted" id="bp_sifre_hint">(Boş bırakılırsa otomatik üretilir)</small></label>
-                    <div class="input-group">
-                        <input type="text" name="sifre" id="bp_sifre" class="form-control" placeholder="En az 6 karakter">
-                        <button class="btn btn-outline-secondary" type="button" onclick="generateRandomPassword('bp_sifre')"><i class="bx bx-dice-5"></i> Üret</button>
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <form id="formBildirimPersonel" class="modal-content border-0 shadow" autocomplete="off">
+            <div class="modal-header border-bottom-0 pb-0 align-items-start">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="d-flex align-items-center justify-content-center bg-primary-subtle text-primary rounded-3 border border-primary-subtle" style="width:44px;height:44px;">
+                        <i class="bx bx-user-plus font-size-22" id="bpModalIcon"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="modalBildirimPersonelTitle">Yeni Kaski Personeli</h5>
+                        <p class="text-muted font-size-12 mb-0" id="bpModalSubtitle">Personel PWA üzerinden kaçak bildirimi yapabilecek yeni bir kullanıcı oluşturun.</p>
                     </div>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">Bölge / Ekip Notu</label>
-                    <input type="text" name="ekip_bolge" id="bp_ekip_bolge" class="form-control" placeholder="Örn: Onikişubat - KASKI Denetim">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <input type="hidden" name="token" id="bp_token" value="">
+            <div class="modal-body pt-3">
+                <div class="text-uppercase text-muted fw-semibold font-size-11 mb-2"><i class="bx bx-id-card me-1"></i>Kimlik Bilgileri</div>
+                <div class="row g-3 mb-4">
+                    <div class="col-12">
+                        <?= Form::FormFloatInput('text', 'adi_soyadi', '', 'Adı Soyadı', 'Adı Soyadı *', 'bx bx-user', 'form-control', true, 100, 'off') ?>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <?= Form::FormFloatInput('text', 'tc_kimlik_no', '', 'T.C. Kimlik No', 'T.C. Kimlik No *', 'bx bx-id-card', 'form-control', true, 11, 'off', false, 'inputmode="numeric" pattern="[0-9]{11}" title="11 haneli T.C. kimlik numarası"') ?>
+                        <div class="form-text font-size-11 ms-1">11 haneli olmalıdır.</div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <?= Form::FormFloatInput('tel', 'cep_telefonu', '', '05XXXXXXXXX', 'Cep Telefonu *', 'bx bx-phone', 'form-control', true, 11, 'off', false, 'inputmode="numeric" pattern="[0-9]{10,11}" title="05XXXXXXXXX biçiminde"') ?>
+                        <div class="form-text font-size-11 ms-1">05XXXXXXXXX biçiminde, PWA girişinde kullanıcı adı olur.</div>
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">E-Posta (Opsiyonel)</label>
-                    <input type="email" name="email_adresi" id="bp_email_adresi" class="form-control" placeholder="ornek@kaski.gov.tr">
+
+                <div class="text-uppercase text-muted fw-semibold font-size-11 mb-2"><i class="bx bx-map me-1"></i>Görev ve İletişim</div>
+                <div class="row g-3 mb-4">
+                    <div class="col-12 col-md-6">
+                        <?= Form::FormFloatInput('text', 'ekip_bolge', '', 'Örn: Onikişubat - KASKİ Denetim', 'Bölge / Ekip', 'bx bx-group', 'form-control', false, 150, 'off') ?>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <?= Form::FormFloatInput('email', 'email_adresi', '', 'ornek@kaski.gov.tr', 'E-Posta (Opsiyonel)', 'bx bx-envelope', 'form-control', false, 150, 'off') ?>
+                    </div>
+                </div>
+
+                <div id="bp_sifre_wrapper">
+                    <div class="text-uppercase text-muted fw-semibold font-size-11 mb-2"><i class="bx bx-lock-alt me-1"></i>Giriş Şifresi</div>
+                    <div class="p-3 rounded-3 bg-light border">
+                        <div class="input-group">
+                            <?= Form::FormFloatInput('text', 'sifre', '', 'En az 6 karakter', 'Şifre', 'bx bx-key', 'form-control', false, 50, 'new-password') ?>
+                            <button class="btn btn-outline-secondary px-3" type="button" id="btnBpSifreUret" title="Rastgele şifre üret"><i class="bx bx-dice-5 me-1"></i>Üret</button>
+                            <button class="btn btn-outline-secondary px-3" type="button" id="btnBpSifreKopyala" title="Panoya kopyala"><i class="bx bx-copy"></i></button>
+                        </div>
+                        <div class="form-text font-size-11 mt-2 mb-0" id="bp_sifre_hint"><i class="bx bx-info-circle me-1"></i>Boş bırakılırsa 6 haneli rastgele şifre üretilir.</div>
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                <button type="submit" class="btn btn-primary" id="btnSaveBildirimPersonel"><i class="bx bx-save me-1"></i> Kaydet</button>
+            <div class="modal-footer border-top-0 pt-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="submit" class="btn btn-primary px-4 shadow-sm" id="btnSaveBildirimPersonel"><i class="bx bx-save me-1"></i> Kaydet</button>
             </div>
         </form>
     </div>
@@ -4575,9 +4595,10 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             $('#formBildirimPersonel')[0].reset();
             $('#bp_token').val('');
             $('#modalBildirimPersonelTitle').text('Yeni Kaski Personeli');
-            $('#bp_sifre_wrapper').show();
-            $('#bp_sifre_hint').text('(Boş bırakılırsa 6 haneli rastgele şifre üretilir)');
-            window.generateRandomPassword('bp_sifre');
+            $('#bpModalSubtitle').text('Personel PWA üzerinden kaçak bildirimi yapabilecek yeni bir kullanıcı oluşturun.');
+            $('#bpModalIcon').attr('class', 'bx bx-user-plus font-size-22');
+            $('#bp_sifre_hint').html('<i class="bx bx-info-circle me-1"></i>Boş bırakılırsa 6 haneli rastgele şifre üretilir.');
+            window.generateRandomPassword('sifre');
             $('#modalBildirimPersonel').modal('show');
         };
 
@@ -4586,14 +4607,16 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 if (res.status === 'success') {
                     const d = res.data;
                     $('#bp_token').val(d.token);
-                    $('#bp_adi_soyadi').val(d.adi_soyadi);
-                    $('#bp_tc_kimlik_no').val(d.tc_kimlik_no);
-                    $('#bp_cep_telefonu').val(d.cep_telefonu);
-                    $('#bp_ekip_bolge').val(d.ekip_bolge || '');
-                    $('#bp_email_adresi').val(d.email_adresi || '');
-                    $('#bp_sifre').val('');
-                    $('#bp_sifre_hint').text('(Değiştirmek istemiyorsanız boş bırakın)');
+                    $('#adi_soyadi').val(d.adi_soyadi);
+                    $('#tc_kimlik_no').val(d.tc_kimlik_no);
+                    $('#cep_telefonu').val(d.cep_telefonu);
+                    $('#ekip_bolge').val(d.ekip_bolge || '');
+                    $('#email_adresi').val(d.email_adresi || '');
+                    $('#sifre').val('');
+                    $('#bp_sifre_hint').html('<i class="bx bx-info-circle me-1"></i>Değiştirmek istemiyorsanız boş bırakın.');
                     $('#modalBildirimPersonelTitle').text('Kaski Personelini Düzenle');
+                    $('#bpModalSubtitle').text(d.adi_soyadi || '');
+                    $('#bpModalIcon').attr('class', 'bx bx-edit font-size-22');
                     $('#modalBildirimPersonel').modal('show');
                 } else {
                     Swal.fire('Hata', res.message || 'Bilgiler alınamadı.', 'error');
@@ -4655,6 +4678,20 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 }
             });
         };
+
+        $('#btnBpSifreUret').on('click', function () { window.generateRandomPassword('sifre'); });
+        $('#btnBpSifreKopyala').on('click', function () {
+            const v = $('#sifre').val();
+            if (!v) { return; }
+            const $b = $(this);
+            const bitir = function () { $b.html('<i class="bx bx-check text-success"></i>'); setTimeout(function () { $b.html('<i class="bx bx-copy"></i>'); }, 1200); };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(v).then(bitir, function () {});
+            } else {
+                $('#sifre').trigger('select'); document.execCommand('copy'); bitir();
+            }
+        });
+        $('#tc_kimlik_no, #cep_telefonu').on('input', function () { this.value = this.value.replace(/\D/g, '').slice(0, 11); });
 
         window.generateRandomPassword = function (targetId) {
             const rand = Math.floor(100000 + Math.random() * 900000);

@@ -400,7 +400,7 @@ if (!is_array($firma_option)) {
                     id="page-header-support-dropdown" data-bs-toggle="dropdown" aria-haspopup="true"
                     aria-expanded="false" title="Destek Talepleri">
                     <i data-feather="help-circle" class="icon-lg"></i>
-                    <span class="badge bg-danger rounded-pill" id="support-notification-badge" style="<?= $initialSupportCount > 0 ? '' : 'display: none;' ?>"><?= (int) $initialSupportCount ?></span>
+                    <span class="badge bg-danger rounded-pill" id="support-notification-badge"<?= $initialSupportCount > 0 ? '' : ' style="display: none !important;"' ?>><?= (int) $initialSupportCount ?></span>
                 </button>
                 <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-0"
                     aria-labelledby="page-header-support-dropdown" style="max-height: 500px; overflow: hidden;">
@@ -482,7 +482,7 @@ if (!is_array($firma_option)) {
                     id="page-header-notifications-dropdown" data-bs-toggle="dropdown" aria-haspopup="true"
                     aria-expanded="false">
                     <i data-feather="bell" class="icon-lg"></i>
-                    <span class="badge bg-danger rounded-pill" id="notification-badge" style="<?= $initialNotificationCount > 0 ? '' : 'display: none;' ?>"><?= (int) $initialNotificationCount ?></span>
+                    <span class="badge bg-danger rounded-pill" id="notification-badge"<?= $initialNotificationCount > 0 ? '' : ' style="display: none !important;"' ?>><?= (int) $initialNotificationCount ?></span>
                 </button>
                 <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-0"
                     aria-labelledby="page-header-notifications-dropdown" style="max-height: 500px; overflow: hidden;">
@@ -571,17 +571,17 @@ if (!is_array($firma_option)) {
             // Normal bildirimler
             $('#notification-badge').text(count);
             if (count > 0) {
-                $('#notification-badge').show();
+                $('#notification-badge')[0].style.removeProperty('display');
             } else {
-                $('#notification-badge').hide();
+                $('#notification-badge')[0].style.setProperty('display', 'none', 'important');
             }
 
             // Destek bildirimleri
             $('#support-notification-badge').text(supportCount);
             if (supportCount > 0) {
-                $('#support-notification-badge').show();
+                $('#support-notification-badge')[0].style.removeProperty('display');
             } else {
-                $('#support-notification-badge').hide();
+                $('#support-notification-badge')[0].style.setProperty('display', 'none', 'important');
             }
         }
 

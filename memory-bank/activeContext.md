@@ -1,5 +1,23 @@
 # Active Context
 
+## Mobil SPA — Görevler Gerçek Veriye Bağlandı (2026-11-05)
+- `mobile-spa/public/api/gorevler.php`: `list` (listeler + görevler, atananlar) ve `tamamla`/`geri-al` (CSRF + `gorevYetkisi` sahip/duzenle kontrolü, sistem logu). Erişim `Gate::allows('gorevler')` ile sunucuda doğrulanır; ID'ler `Security::encrypt`.
+- `src/services/gorevler.js` ve `src/views/TasksView.vue`: sabit örnek veri kaldırıldı; Bugün (geciken dahil) / Yaklaşan / Tamamlanan sekmeleri, ilerleme çubuğu, 44px tamamla/geri al düğmesi. Salt okunur paylaşımlı listelerde düğme pasif.
+- `vite build` ile `dist/` yeniden üretildi. Ek SQL gerekmez (mevcut `gorevler` yetkisi kullanılır).
+
+## Dashboard — Üst Kartlarda Grid Bazlı Boyutlandırma (2026-11-05)
+- `views/home.php`: Normal (Bootstrap grid) modda `widget-ana-slider`, `widget-personel-ozet`, `widget-arac-ozet` kartlarının sağ alt köşesine `.grid-resize-grip` eklendi (yalnızca ≥768px, serbest yerleşim modunda gizli).
+- Sürükleme genişliği 12 sütuna (min 2) `col-md-N col-xl-N` olarak, yüksekliği 20px adımlarla (min 200px) yakalar; canlı etiket `N/12 × Hpx` gösterilir. Çift tık varsayılana döndürür.
+- Kayıt: `dashboard_widget_settings` içinde `gridCols` ve `gridHeight` (mevcut `save-dashboard-settings` API'si, ek SQL gerekmez). `applyWidgetSettings()` bu 3 kart için artık sabit `col-md-4` zorlamasını yalnızca kayıt yoksa uygular.
+- Düzeltmeler: CSS `dashboard-skeleton-critical` içinde olduğundan sayfa açılınca siliniyordu → kalıcı `<style>` bloğuna taşındı; Sortable `pointerdown`'u `preventDefault` ettiği için `mousedown` hiç gelmiyordu → tutamaç `pointerdown/move/up` kullanır; `applyWidgetSettings` normal modda sonda `removeAttr('style')` yaptığı için grid boyutu bu temizlikten sonra uygulanır.
+- Kapsam genişletildi: tüm `#dashboard-widgets > .widget-item` kartlarında tutamaç var (sadeleştirilmiş çapraz çizgili, hover'da belirgin); varsayılan genişlik `data-default-width` ile saklanır, min yükseklik 120px.
+- Normal mod artık CSS Grid (12 sütun, `grid-auto-rows: 8px`, `grid-auto-flow: row dense`): `.col-*-N` sınıfları `grid-column: span N`'e eşlenir; `layoutDashboardGrid()` her kartın doğal yüksekliğinden `grid-row: span` hesaplar, aynı satır başındaki kartları eşitler. Boşluklar sonraki kartlarla dolar.
+- `.stat-card { max-height: 260px }` (style.css) boyutlandırılan kartı kırpıyordu → `.grid-sized` kartlarda `max-height: none !important`. Tutamaç artık kabuğa değil `.card/.carousel` içine eklenir (sütun padding'i yüzünden karttan taşıyordu).
+- Sürükleme (≥768px) Sortable yerine özel pointer sürüklemesidir (`gridPointerDown`): 6px eşikten sonra kart imleci izler, `.grid-drop-preview` kesikli çerçeve bırakılacak hücreyi gösterir, bırakınca kart `gridX/gridY` ile sabitlenir (12 sütun × 8px satır; `data-grid-x/y`, `--gx/--gy`). Sabit kartlarla çakışırsa aşağı itilir; sabit olmayan kartlar etrafından akar. Kenara yaklaşınca otomatik kaydırma var. Sortable yalnızca <768px'te sıra değiştirir. Tutamaçta çift tık boyutu ve sabitlemeyi sıfırlar.
+- Kaydırma sorunu: `runDashboardGridLayout` ölçüm geçişinde kartları 1 satıra indirip sayfa yüksekliğini çökertiyordu (aşağı kaydırılmış sayfada kaydırma kırpılıyordu) → ölçüm sırasında konteyner `min-height` sabitlenir, `scrollY` geri yüklenir, `overflow-anchor: none`. Yeniden boyutlandırma ve sürükleme sayfa koordinatıyla çalışır, kenarda otomatik kaydırma vardır. Çakışmada kart en yakın boş hücreye taşınır (aşağı itme yerine).
+- Sürüklenmeme nedenleri: (1) metin/görsel/SVG üzerinden tutunca tarayıcı yerel `dragstart` ile pointer olaylarını iptal ediyordu → sürükleme armed iken `dragstart` engellenir; (2) `.card` kabuğu olmayan kartlarda gövde tutamaç sayılmıyordu → kabuk yoksa tüm kart tutamaçtır. Düğme/link/input/label/`[data-bs-toggle]` üzerinden sürükleme bilinçli olarak başlamaz; başlık çubuğu her kartta çalışır.
+- Doğrulama: yerel Chrome ile sürükleme, yeniden yükleme sonrası kalıcılık ve çift tıkla sıfırlama test edildi.
+
 ## KASKİ Portalı — Kaski Personeli Yönetimi (2026-11-05)
 - `kaski/` portalında Kaski Personelleri sekmesinde ekleme, düzenleme, pasife alma/aktif etme, şifre belirleme ve silme açıldı; kaçak kayıtları salt okunur kalır.
 - `views/kacak/api.php` portal izin listesine `get_bildirim_personeli`, `save_bildirim_personel`, `toggle_bildirim_personel_status`, `reset_bildirim_personel_sifre`, `delete_bildirim_personel` eklendi; yetki `kacak_bildirim_personelleri` ile sunucuda doğrulanır.
@@ -3664,3 +3682,6 @@
 - views/personel/icerik/finansal_islemler.php yalnız kapanmış dönem maaş ödemelerini listeler; "Resmî Alacak" (BordroPersonelModel::getResmiAlacakOzeti, kayıtlı snapshot'tan) ve "Net Ödenen" sütunları eklendi.
 - Bordro detayı artık PDF indirmeden modalda açılır: views/personel/api.php `bordro-detay` (personel_detay yetkisi, bordro-personel sahiplik kontrolü) → views/bordro/partials/detay-api.php (views/bordro/api.php `get-detail` gövdesi buraya taşındı, iki yol aynı çıktıyı üretir).
 - SQL: sql/2026_11_05_personel_bordro_detay_policy.sql uygulanmalı.
+- Görevler UX: üst araç çubuğu (arama, `/` kısayolu, Bugün/Geciken/7 gün/Tarihsiz hızlı filtreleri ve sayaçları), liste ilerleme çubuğu, modül vurgu rengi mavi, sidebar sadeleştirme. Filtre aktifken görev sürükleme kapalı.
+- Görevler iscimaas kanban esinli yeniden tasarım: sayfa başlığı + ekip filtresi (avatar), Pano/Liste/Tablo görünüm seçici (localStorage `gorevler_gorunum`), gri kolon kartları, beyaz görev kartları, alt "Görev Ekle" alanı, koyu "Liste Ekle" butonu. `get-tum-gorevler` her göreve `atananlar` ve `olusturan_adi` ekler. addGorev boş ENUM/tarih alanlarını NULL'a çevirir.
+- Görevler: sürüklerken yetkili hedef listeler vurgulanır (`gt-surukleniyor`), salt okunur listeler soluklaşır; görev ⋮ menüsüne "Listeye taşı" eklendi (update-sira). Görevler/Notlar sekmeleri ortak tasarım dilinde (segmented sekme, aynı sidebar/arama/kart stilleri, Notlarım sayfa başlığı); notlar.css gorevler.css'ten önce yüklenir.
