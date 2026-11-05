@@ -2167,3 +2167,4 @@
 - [x] KASKİ login ekranı ana giriş tasarımına uyarlandı.
 
 - [x] Araç muayene belgesi yükleme/görüntüleme (poliçe altyapısına muayene türü eklendi)
+- [x] Araç modal sadeleştirme + ruhsat AI ile araç doldurma

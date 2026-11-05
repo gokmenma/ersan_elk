@@ -415,6 +415,7 @@ const AracTakip = {
     const form = $("#aracForm");
     const formData = new FormData(form[0]);
     formData.append("action", "arac-kaydet");
+    const yeniKayitOncesiId = form.find("input[name='id']").val() || "";
 
     const btn = $("#btnAracKaydet");
     const originalText = btn.html();
@@ -430,15 +431,50 @@ const AracTakip = {
       contentType: false,
       success: function (response) {
         if (response.status === "success") {
-          Swal.fire({
-            icon: "success",
-            title: "Başarılı",
-            text: response.message,
-            timer: 1500,
-            showConfirmButton: false,
-          }).then(() => {
-            $("#aracModal").modal("hide");
-            location.reload();
+          const bitir = function () {
+            Swal.fire({
+              icon: "success",
+              title: "Başarılı",
+              text: response.message,
+              timer: 1500,
+              showConfirmButton: false,
+            }).then(() => {
+              $("#aracModal").modal("hide");
+              location.reload();
+            });
+          };
+          const yeniAracId = response.data && response.data.id ? response.data.id : 0;
+          if (!yeniAracId || !AracTakip.aiRuhsatDosyasi || yeniAracId == yeniKayitOncesiId) {
+            bitir();
+            return;
+          }
+          const ruhsatData = new FormData();
+          ruhsatData.append("action", "arac-ruhsat-yukle");
+          ruhsatData.append("arac_id", yeniAracId);
+          ruhsatData.append("ruhsat_dosyasi", AracTakip.aiRuhsatDosyasi);
+          $.ajax({
+            url: AracTakip.apiUrl,
+            type: "POST",
+            data: ruhsatData,
+            processData: false,
+            contentType: false,
+            dataType: "json",
+          }).done(function (res) {
+            AracTakip.aiRuhsatDosyasi = null;
+            if (res && res.status === "success") {
+              bitir();
+            } else {
+              Swal.fire("Uyarı", "Araç kaydedildi ancak ruhsat görseli yüklenemedi: " + ((res && res.message) || "Bilinmeyen hata") + " Araç kartından tekrar yükleyebilirsiniz.", "warning").then(function () {
+                $("#aracModal").modal("hide");
+                location.reload();
+              });
+            }
+          }).fail(function () {
+            AracTakip.aiRuhsatDosyasi = null;
+            Swal.fire("Uyarı", "Araç kaydedildi ancak ruhsat görseli yüklenemedi. Araç kartından tekrar yükleyebilirsiniz.", "warning").then(function () {
+              $("#aracModal").modal("hide");
+              location.reload();
+            });
           });
         } else {
           Swal.fire("Hata", response.message, "error");
@@ -453,6 +489,98 @@ const AracTakip = {
     });
   },
 
+  aiRuhsatDosyasi: null,
+
+  ruhsatAiAnaliz: function () {
+    const input = $("#aracRuhsatAiDosya")[0];
+    const sonuc = $("#aracRuhsatAiSonuc");
+    const goster = function (html, cls) {
+      sonuc.removeClass("d-none text-muted text-danger text-success text-warning").addClass(cls).html(html);
+    };
+    const file = input && input.files[0];
+    if (!file) {
+      goster("Önce ruhsat dosyasını seçiniz.", "text-warning");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      goster("Dosya en fazla 8 MB olabilir.", "text-danger");
+      return;
+    }
+
+    const btn = $("#btnAracRuhsatAi");
+    const original = btn.html();
+    btn.prop("disabled", true).html('<span class="spinner-border spinner-border-sm me-2"></span>Okunuyor...');
+    goster('<span class="spinner-border spinner-border-sm me-2"></span>Ruhsat yapay zekâ ile inceleniyor...', "text-muted");
+
+    const fd = new FormData();
+    fd.append("action", "arac-ruhsat-ai-analiz");
+    fd.append("ruhsat_ai_belgesi", file, file.name);
+
+    $.ajax({
+      url: this.apiUrl,
+      type: "POST",
+      data: fd,
+      processData: false,
+      contentType: false,
+      dataType: "json",
+      success: function (response) {
+        if (response.status !== "success" || !response.data) {
+          goster(response.message || "Ruhsat okunamadı.", "text-danger");
+          return;
+        }
+        const d = response.data;
+        const etiketler = {
+          plaka: "Plaka", marka: "Marka", model: "Model", model_yili: "Model Yılı", renk: "Renk",
+          arac_tipi: "Araç Tipi", yakit_tipi: "Yakıt Tipi", sase_no: "Şase No", motor_no: "Motor No",
+          ruhsat_sahibi: "Ruhsat Sahibi", muayene_bitis_tarihi: "Muayene Bitiş",
+        };
+        const dolan = [];
+        Object.keys(etiketler).forEach(function (alan) {
+          const deger = d[alan];
+          if (!deger) return;
+          const el = $("#aracForm").find('[name="' + alan + '"]');
+          if (!el.length) return;
+          if (alan === "muayene_bitis_tarihi" && el[0]._flatpickr) {
+            el[0]._flatpickr.setDate(deger, true, "d.m.Y");
+          } else {
+            el.val(deger).trigger("change");
+          }
+          const kutu = el.closest(".form-floating");
+          kutu.addClass("arac-ai-doldu");
+          setTimeout(function () { kutu.removeClass("arac-ai-doldu"); }, 1800);
+          dolan.push(etiketler[alan]);
+        });
+
+        if (!dolan.length) {
+          goster("Ruhsattan okunabilen bilgi bulunamadı. Daha net bir fotoğraf deneyiniz.", "text-warning");
+          return;
+        }
+        AracTakip.aiRuhsatDosyasi = file;
+        $("#aracAiPanel").addClass("arac-ai-dolu");
+        $("#ruhsatYeniAracUyari")
+          .removeClass("d-none text-muted")
+          .addClass("text-success")
+          .empty()
+          .append('<i class="bx bx-check-circle me-1"></i>')
+          .append($("<span></span>").text("Ruhsat görseli (" + file.name + ") araç kaydedilirken otomatik eklenecek."));
+        const kalan = Object.keys(etiketler).length - dolan.length;
+        goster(
+          '<i class="bx bx-check-circle me-1"></i><b>' + dolan.length + " alan dolduruldu:</b> " + $("<div>").text(dolan.join(", ")).html() +
+            (kalan > 0 ? ' <span class="text-muted">(' + kalan + " alan okunamadı, elle giriniz.)</span>" : "") +
+            '<br><span class="text-muted">Bilgileri kontrol edip Kaydet\'e basınız.</span>',
+          "text-success"
+        );
+      },
+      error: function (xhr) {
+        const msg = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : "Ruhsat okunurken bir hata oluştu.";
+        goster($("<div>").text(msg).html(), "text-danger");
+      },
+      complete: function () {
+        btn.prop("disabled", false).html(original);
+      },
+    });
+  },
+
   aracDuzenle: function (id) {
     const self = this;
     $.post(this.apiUrl, { action: "arac-detay", id: id }, function (response) {
@@ -461,6 +589,7 @@ const AracTakip = {
         $("#aracModal")
           .find(".modal-title")
           .html('<i class="bx bx-edit me-2"></i>Araç Düzenle');
+        $("#aracAiPanel").parent().addClass("d-none");
 
         // Form alanlarını doldur
         Object.keys(data).forEach(function (key) {
@@ -2835,6 +2964,16 @@ const AracTakip = {
       }
     });
     $("#policeForm").addClass("d-none");
+    if ($.fn.select2) {
+      const turSelect = $("#pol_turu");
+      if (turSelect.hasClass("select2-hidden-accessible")) {
+        turSelect.select2("destroy");
+      }
+      turSelect.select2({
+        dropdownParent: $("#aracModal .modal-dialog"),
+        width: "100%",
+      });
+    }
     if (!aracId) {
       $("#sigorta_bitis_tarihi, #kasko_bitis_tarihi, #muayene_bitis_tarihi").prop("readonly", false).attr("title", "").each(function () {
         if (this._flatpickr) this._flatpickr.set("clickOpens", true);
@@ -3004,6 +3143,15 @@ const AracTakip = {
   resetAracModal: function () {
     $("#aracForm")[0].reset();
     $('#aracForm input[name="id"]').val("");
+    $("#aracAiPanel").parent().removeClass("d-none");
+    AracTakip.aiRuhsatDosyasi = null;
+    $("#aracRuhsatAiDosya").val("");
+    $("#ruhsatYeniAracUyari")
+      .removeClass("text-success")
+      .addClass("text-muted")
+      .html('<i class="bx bx-info-circle me-1"></i>Ruhsat görseli yükleyebilmek için önce aracı kaydedin.');
+    $("#aracAiPanel").removeClass("arac-ai-dolu");
+    $("#aracRuhsatAiSonuc").addClass("d-none").empty();
     $("#aracModal")
       .find(".modal-title")
       .html('<i class="bx bx-car me-2"></i>Yeni Araç Ekle');
@@ -3858,6 +4006,9 @@ $(document).ready(function () {
   $("#servisModal").on("hidden.bs.modal", () => AracTakip.resetServisModal());
 
   // Kaydetme ve Silme İşlemleri
+  $(document).on("click", "#btnAracRuhsatAi", function () {
+    AracTakip.ruhsatAiAnaliz();
+  });
   $(document).on("click", "#btnAracKaydet", (e) => {
     e.preventDefault();
     AracTakip.aracKaydet();

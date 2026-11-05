@@ -197,6 +197,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
             // =============================================
             // ARAÇ İŞLEMLERİ
             // =============================================
+            case 'arac-ruhsat-ai-analiz':
+                $ruhsatAi = (new \App\Service\AracRuhsatAiService())->analiz($_FILES['ruhsat_ai_belgesi'] ?? []);
+                (new SystemLogModel())->logAction(
+                    $_SESSION['user_id'] ?? 0,
+                    'Araç Ruhsat Yapay Zekâ Analizi',
+                    'Okunan plaka: ' . ($ruhsatAi['plaka'] ?: '-'),
+                    SystemLogModel::LEVEL_INFO
+                );
+                echo json_encode(['status' => 'success', 'data' => $ruhsatAi], JSON_UNESCAPED_UNICODE);
+                break;
+
             case 'arac-kaydet':
                 $data = $_POST;
                 $arac_id = isset($data['id']) ? intval($data['id']) : 0;
@@ -297,7 +308,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                         ? "Mevcut pasif araç yeniden aktifleştirilerek güncellendi."
                         : "Mevcut pasif araç bilgileri güncellendi.")
                     : ($arac_id > 0 ? "Araç başarıyla güncellendi." : "Araç başarıyla kaydedildi.");
-                echo json_encode(['status' => 'success', 'message' => $message]);
+                echo json_encode(['status' => 'success', 'message' => $message, 'data' => ['id' => $kayitliAracId]]);
                 break;
 
             case 'arac-sil':

@@ -1,7 +1,7 @@
 <?php use App\Helper\Form; ?>
 <!-- Araç Ekleme/Düzenleme Modal -->
 <div class="modal fade" id="aracModal" tabindex="-1" aria-labelledby="aracModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg overflow-hidden" style="border-radius: 12px;">
             <!-- Üst Header - Tam Genişlik -->
             <div class="modal-header bg-white p-3 border-bottom">
@@ -18,28 +18,8 @@
             </div>
 
             <div class="row g-0 p-3 flex-grow-1 bg-light bg-opacity-50">
-                <!-- Sol Resim Alanı - Header Altında -->
-                <div class="col-md-4 d-none d-md-block">
-                    <div class="modal-image-panel h-100 rounded-3 overflow-hidden position-relative" style="min-height: 550px;">
-                        <div class="modal-image-bg" style="background-image: url('assets/images/modals/arac_modal.png'); opacity: 0.7;"></div>
-                        <div class="modal-image-overlay"></div>
-                        <div class="modal-image-content d-flex flex-column justify-content-center align-items-center h-100 position-relative p-1" style="z-index: 3;">
-                             <div class="p-4 shadow-lg text-dark text-center d-flex flex-column justify-content-center align-items-center" style="border-radius: 12px; width: 98%; height: 98%; background-color: rgba(255, 255, 255, 0.4); backdrop-filter: blur(10px);">
-                                 <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
-                                     <i data-feather="truck" class="text-primary" style="width: 40px; height: 40px;"></i>
-                                 </div>
-                                 <h3 class="fw-bold mb-3">Araç Kartı</h3>
-                                 <p class="text-muted px-3 mb-0" style="font-size: 1.1rem;">Filo araç bilgilerini, teknik detayları ve evrak takibini tek noktadan profesyonelce yönetin.</p>
-                             </div>
-                             <div class="position-absolute bottom-0 w-100 text-center pb-4">
-                                 <span class="text-white fs-6 fw-light opacity-50">Ersan Elektrik Filo</span>
-                             </div>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Sağ Form Alanı -->
-                <div class="col-md-8 ps-3">
+                <div class="col-12">
                     <div class="d-flex flex-column shadow-sm bg-white rounded-3 overflow-hidden h-100">
                         <div class="modal-body p-0 flex-grow-1">
                         <!-- Tab Navigation -->
@@ -64,13 +44,39 @@
                             </li>
                         </ul>
 
-                        <form id="aracForm" class="p-4 pe-5">
+                        <form id="aracForm" class="p-4">
                             <input type="hidden" name="id" value="">
                             <div class="tab-content mt-2">
                                 <!-- Tab 1: Genel Bilgiler -->
                                 <div class="tab-pane active" id="tab-genel" role="tabpanel">
                                     <div class="row g-3">
-                                        <div class="col-md-6 mb-2">
+                                        <div class="col-12">
+                                            <div class="arac-ai-panel p-3" id="aracAiPanel">
+                                                <div class="d-flex align-items-start gap-3">
+                                                    <div class="bg-primary bg-opacity-10 text-primary rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 42px; height: 42px;">
+                                                        <i class="bx bx-bot fs-4"></i>
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <div class="fw-bold text-dark">Ruhsattan Otomatik Doldur <span class="badge bg-dark-subtle text-dark ms-1 fw-normal">Yapay Zekâ</span></div>
+                                                        <div class="text-muted small mb-2">Ruhsat fotoğrafını veya PDF'ini yükleyin; plaka, marka, model, şase, motor ve muayene tarihi otomatik doldurulur. Kaydetmeden önce kontrol ediniz.</div>
+                                                        <div class="row g-2 align-items-center">
+                                                            <div class="col-sm-8">
+                                                                <input type="file" id="aracRuhsatAiDosya" class="form-control form-control-sm shadow-none" accept=".pdf,.jpg,.jpeg,.png,.webp">
+                                                            </div>
+                                                            <div class="col-sm-4 d-grid">
+                                                                <button type="button" class="btn btn-sm btn-dark fw-semibold rounded-pill" id="btnAracRuhsatAi">
+                                                                    <i class="bx bx-analyse me-1"></i>Oku ve Doldur
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <div class="form-text mt-1">PDF, JPG, PNG veya WEBP, en fazla 8 MB. Yeni araçta ruhsat dosyası kayıt sonrası otomatik şifreli saklanır.</div>
+                                                        <div id="aracRuhsatAiSonuc" class="small mt-2 d-none"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                                                                <div class="col-md-6 mb-2">
                                             <?php echo Form::FormFloatInput('text', 'plaka', null, '34 ABC 123', 'Plaka *', 'credit-card', 'form-control fw-bold', true, null, 'on', false, 'style="text-transform: uppercase; font-size: 1.1rem; color: #556ee6;"'); ?>
                                         </div>
                                         <div class="col-md-6 mb-2">
@@ -301,7 +307,6 @@
 </div>
 
 <style>
-    /* Premium Design System */
     .nav-tabs-custom .nav-link {
         border: none;
         border-bottom: 2px solid transparent;
@@ -324,49 +329,32 @@
         opacity: 0.5;
     }
 
-    /* Modal Image Animation Effects */
-    .modal-image-panel {
-        background-color: #1a1d21;
-        overflow: hidden;
+    #aracModal .arac-ai-panel {
+        border: 1.5px dashed #b8c2f2;
+        background: linear-gradient(135deg, rgba(85, 110, 230, 0.06), rgba(85, 110, 230, 0.02));
+        border-radius: 12px;
     }
 
-    .modal-image-bg {
-        position: absolute;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background-size: cover;
-        background-position: center;
-        transition: transform 1.2s cubic-bezier(0.25, 1, 0.5, 1), filter 1.2s ease;
-        filter: blur(8px) brightness(0.6);
-        transform: scale(1.15);
-        z-index: 1;
+    #aracModal .arac-ai-panel.arac-ai-dolu {
+        border-style: solid;
+        border-color: #34c38f;
+        background: rgba(52, 195, 143, 0.06);
     }
 
-    .modal.show .modal-image-bg {
-        filter: blur(0px) brightness(1);
-        transform: scale(1);
+    #aracModal .arac-ai-doldu {
+        animation: aracAiVurgu 1.6s ease;
     }
 
-    .modal-image-overlay {
-        position: absolute;
-        top: 0; left: 0; right: 0; bottom: 0;
-        z-index: 2;
-        opacity: 0.4;
-        transition: opacity 1s ease;
-        background: linear-gradient(180deg, rgba(85, 110, 230, 0.2) 0%, rgba(20, 20, 30, 0.8) 100%);
+    @keyframes aracAiVurgu {
+        0% { box-shadow: 0 0 0 3px rgba(52, 195, 143, 0.55); }
+        100% { box-shadow: 0 0 0 0 rgba(52, 195, 143, 0); }
     }
 
-    .modal.show .modal-image-overlay {
-        opacity: 0.25;
-    }
-
-    .modal-image-content {
-        transition: all 1s ease;
-        transform: translateY(20px);
-        opacity: 0;
-    }
-
-    .modal.show .modal-image-content {
-        transform: translateY(0);
-        opacity: 1;
+    #aracModal .arac-bolum-baslik {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        color: #74788d;
     }
 </style>

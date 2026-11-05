@@ -3692,3 +3692,5 @@
 ## Araç Muayene Belgesi
 - Araç kartındaki "Sigorta & Kasko Poliçeleri" bölümü Muayene belgesini de kapsar (şifreli dosya, `arac-police-*` aksiyonları, `AracPoliceModel::TURLER/TUR_ADLARI`). En geç bitiş tarihi `araclar.muayene_bitis_tarihi`ne yansır.
 - SQL: sql/2026_11_05_arac_police_muayene_turu.sql uygulanmalı (ENUM genişletme).
+
+- Araç modalı: sol görsel paneli kaldırıldı (modal-lg, tam genişlik). Yeni araçta "Ruhsattan Otomatik Doldur" (App/Service/AracRuhsatAiService.php, API `arac-ruhsat-ai-analiz`, icra AI altyapısı AiBelgeOkuyucuService üzerinden); ruhsat dosyası yeni araç kaydından sonra otomatik şifreli yüklenir. SQL aynı dosyada (policy).
