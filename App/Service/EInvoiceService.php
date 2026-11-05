@@ -326,11 +326,76 @@ class EInvoiceService
         return null;
     }
 
+    private function renderManualPreview(array $invoice, int $firmId): string
+    {
+        $e = static fn($v): string => htmlspecialchars((string)($v ?? ''), ENT_QUOTES, 'UTF-8');
+        $tl = static fn($v): string => number_format((float)$v, 2, ',', '.') . ' ₺';
+        $turler = \App\Service\ManuelFaturaService::BELGE_TURLERI;
+        $birimler = \App\Service\ManuelFaturaService::BIRIMLER;
+        $firma = (new FirmaModel())->getFirma($firmId);
+        $firmaAdi = !empty($firma->firma_unvan) ? $firma->firma_unvan : ($firma->firma_adi ?? '');
+        $miktar = static fn($v): string => rtrim(rtrim(number_format((float)$v, 4, ',', '.'), '0'), ',');
+
+        $satirlar = '';
+        foreach ($invoice['satirlar'] ?? [] as $i => $s) {
+            $satirlar .= '<tr><td class="c">' . ($i + 1) . '</td><td>' . $e($s['urun_hizmet_adi']) . '</td>'
+                . '<td class="r">' . $e($miktar($s['miktar'])) . ' ' . $e($birimler[$s['birim']] ?? $s['birim']) . '</td>'
+                . '<td class="r">' . $e(number_format((float)$s['birim_fiyat'], 4, ',', '.')) . '</td>'
+                . '<td class="r">%' . $e((float)$s['iskonto_orani']) . '</td>'
+                . '<td class="r">%' . $e((float)$s['kdv_orani']) . '</td>'
+                . '<td class="r">' . $tl($s['kdv_tutari']) . '</td>'
+                . '<td class="r b">' . $tl($s['satir_toplami']) . '</td></tr>';
+        }
+
+        $toplamlar = '<tr><th>Mal / Hizmet Toplamı</th><td>' . $tl($invoice['satir_toplami']) . '</td></tr>';
+        if ((float)$invoice['iskonto_toplami'] > 0) {
+            $toplamlar .= '<tr><th>Toplam İskonto</th><td>' . $tl($invoice['iskonto_toplami']) . '</td></tr>';
+        }
+        $toplamlar .= '<tr><th>Matrah</th><td>' . $tl($invoice['kdv_matrahi']) . '</td></tr>'
+            . '<tr><th>Hesaplanan KDV</th><td>' . $tl($invoice['hesaplanan_kdv']) . '</td></tr>';
+        if ((float)($invoice['stopaj_tutari'] ?? 0) > 0) {
+            $toplamlar .= '<tr><th>Stopaj (%' . $e((float)$invoice['stopaj_orani']) . ')</th><td class="neg">-' . $tl($invoice['stopaj_tutari']) . '</td></tr>';
+        }
+        $toplamlar .= '<tr class="genel"><th>Ödenecek Tutar</th><td>' . $tl($invoice['odenecek_tutar']) . '</td></tr>';
+
+        $satici = '<div class="lbl">Düzenleyen / Satıcı</div><div class="ad">' . $e($invoice['alici_unvan']) . '</div>'
+            . ($invoice['alici_vkn_tckn'] !== '' ? '<div>VKN/TCKN: ' . $e($invoice['alici_vkn_tckn']) . '</div>' : '')
+            . (!empty($invoice['alici_vergi_dairesi']) ? '<div>Vergi Dairesi: ' . $e($invoice['alici_vergi_dairesi']) . '</div>' : '')
+            . (!empty($invoice['alici_adres']) ? '<div class="mut">' . $e($invoice['alici_adres']) . '</div>' : '');
+        $belge = '<div class="lbl">Belge Bilgileri</div><div class="ad">' . $e($turler[$invoice['belge_turu']] ?? $invoice['belge_turu']) . '</div>'
+            . '<div>Belge No: ' . $e($invoice['fatura_no'] ?: '-') . '</div>'
+            . '<div>Tarih: ' . $e(date('d.m.Y', strtotime($invoice['fatura_tarihi']))) . '</div>'
+            . (!empty($invoice['siparis_no']) ? '<div>Sipariş No: ' . $e($invoice['siparis_no']) . '</div>' : '')
+            . '<div class="mut">ETTN: ' . $e($invoice['ettn']) . '</div>'
+            . '<div class="mut">Alıcı: ' . $e($firmaAdi) . '</div>';
+
+        $css = 'body{margin:0;padding:24px;background:#fff;color:#1f2937;font:13px/1.5 -apple-system,"Segoe UI",Roboto,Arial,sans-serif}'
+            . '.uyari{background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:8px;padding:8px 12px;margin-bottom:16px;font-size:12px}'
+            . '.kartlar{display:flex;gap:16px;margin-bottom:16px}.kart{flex:1;border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px}'
+            . '.lbl{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#6b7280;margin-bottom:4px}.ad{font-weight:700;font-size:14px;margin-bottom:2px}.mut{color:#6b7280}'
+            . 'table{border-collapse:collapse;width:100%}.kalem th,.kalem td{border:1px solid #e5e7eb;padding:6px 8px}.kalem th{background:#f9fafb;font-size:12px;text-align:left}'
+            . '.c{text-align:center}.r{text-align:right}.b{font-weight:700}.alt{display:flex;gap:16px;margin-top:16px;align-items:flex-start}.notlar{flex:1.4;border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px}'
+            . '.toplam{flex:1}.toplam th{text-align:left;font-weight:500;color:#4b5563;padding:5px 8px}.toplam td{text-align:right;font-weight:600;padding:5px 8px}.toplam tr+tr{border-top:1px solid #f3f4f6}'
+            . '.toplam .genel th,.toplam .genel td{font-size:15px;font-weight:700;color:#111827;background:#f3f4f6}.neg{color:#dc2626}'
+            . '@media(max-width:640px){.kartlar,.alt{flex-direction:column}}';
+
+        return '<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><title>' . $e($invoice['fatura_no'] ?: 'Manuel Belge') . '</title><style>' . $css . '</style></head><body>'
+            . '<div class="uyari">Bu kayıt yüklenen belgeden manuel olarak oluşturulmuştur; resmî e-belge görüntüsü değildir.</div>'
+            . '<div class="kartlar"><div class="kart">' . $satici . '</div><div class="kart">' . $belge . '</div></div>'
+            . '<table class="kalem"><thead><tr><th class="c">#</th><th>Mal / Hizmet</th><th class="r">Miktar</th><th class="r">Birim Fiyat</th><th class="r">İskonto</th><th class="r">KDV</th><th class="r">KDV Tutarı</th><th class="r">Tutar</th></tr></thead><tbody>' . $satirlar . '</tbody></table>'
+            . '<div class="alt"><div class="notlar"><div class="lbl">Notlar</div>' . (!empty($invoice['notlar']) ? nl2br($e($invoice['notlar'])) : '<span class="mut">-</span>') . '</div>'
+            . '<div class="toplam"><table>' . $toplamlar . '</table></div></div>'
+            . '</body></html>';
+    }
+
     public function renderHtmlPreview(int $invoiceId, int $firmId): string
     {
         $invoice = $this->invoiceModel->getInvoiceById($invoiceId, $firmId);
         if (!$invoice) {
             return '<div class="alert alert-danger p-3">Fatura kaydı bulunamadı.</div>';
+        }
+        if (($invoice['kaynak'] ?? '') === 'MANUEL') {
+            return $this->renderManualPreview($invoice, $firmId);
         }
 
         $xmlContent = null;

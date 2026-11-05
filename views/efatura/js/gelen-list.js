@@ -293,7 +293,7 @@ $(document).ready(function() {
                     const fNo = (!data || data === 'Taslak') ? '-' : data;
                     return `
                     <div class="d-flex flex-column">
-                        <a href="javascript:void(0)" class="text-primary fw-bold btn-preview text-decoration-none" data-id="${row.encrypted_id}">
+                        <a href="javascript:void(0)" class="text-primary fw-bold btn-preview text-decoration-none" data-id="${row.encrypted_id}" data-kaynak="${row.kaynak || ''}">
                             <i class="bx bx-file me-1"></i>${fNo}
                         </a>
                         <small class="text-muted font-monospace" style="font-size: 10px;">${row.ettn || ''}</small>
@@ -343,7 +343,11 @@ $(document).ready(function() {
             {
                 data: 'belge_turu',
                 className: 'align-middle text-center',
-                render: function() {
+                render: function(data, type, row) {
+                    if (row.kaynak === 'MANUEL') {
+                        const turler = { KAGIT: 'Kâğıt Fatura', EFATURA: 'E-Fatura', EARSIV: 'E-Arşiv', SMM: 'S. Meslek Mak.', GIDER_PUSULASI: 'Gider Pusulası', MAKBUZ: 'Makbuz' };
+                        return `<span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1 font-size-11 fw-semibold" title="Belge yüklenerek manuel eklendi"><i class="bx bx-edit-alt me-1"></i>Manuel · ${turler[data] || data}</span>`;
+                    }
                     return '<span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 font-size-11 fw-semibold"><i class="bx bx-buildings me-1"></i>E-Fatura</span>';
                 }
             },
@@ -384,16 +388,20 @@ $(document).ready(function() {
                     let btns = `<div class="action-btn-group justify-content-center">`;
                     
                     // 1. Önizle
-                    btns += `<button type="button" class="btn btn-sm btn-subtle-primary table-action-btn btn-preview" data-id="${row.encrypted_id}" title="Önizle / İncele"><i class="bx bx-show font-size-15"></i></button>`;
+                    btns += `<button type="button" class="btn btn-sm btn-subtle-primary table-action-btn btn-preview" data-id="${row.encrypted_id}" data-kaynak="${row.kaynak || ''}" title="Önizle / İncele"><i class="bx bx-show font-size-15"></i></button>`;
 
+                    const manuel = row.kaynak === 'MANUEL';
+
+                    if (!manuel) {
                     // 2. İade Faturası Oluştur
                     btns += `<a href="index.php?p=efatura/olustur&action=iade&source_id=${row.encrypted_id}" class="btn btn-sm btn-subtle-warning table-action-btn btn-return-invoice" title="İade Faturası Oluştur"><i class="bx bx-undo font-size-15"></i></a>`;
 
                     // 3. PDF İndir
                     btns += `<a href="api/efatura-api.php?action=download_pdf&invoice_id=${row.encrypted_id}" class="btn btn-sm btn-subtle-danger table-action-btn" title="PDF İndir" target="_blank"><i class="bx bxs-file-pdf font-size-15"></i></a>`;
+                    }
 
                     // 4. Ticari Kabul / Red Butonları
-                    if (row.fatura_profili === 'TICARIFATURA' && row.ticari_yanit === 'BEKLIYOR') {
+                    if (!manuel && row.fatura_profili === 'TICARIFATURA' && row.ticari_yanit === 'BEKLIYOR') {
                         btns += `<button type="button" class="btn btn-sm btn-subtle-success table-action-btn btn-respond" data-id="${row.encrypted_id}" data-type="KABUL" title="Kabul Et"><i class="bx bx-check font-size-15"></i></button>`;
                         btns += `<button type="button" class="btn btn-sm btn-subtle-danger table-action-btn btn-respond" data-id="${row.encrypted_id}" data-type="RED" title="Reddet"><i class="bx bx-x font-size-15"></i></button>`;
                     }
@@ -407,6 +415,13 @@ $(document).ready(function() {
                         const cariyePasif = row.cariye_islendi == 1 || row.ticari_yanit === 'RED';
                         const cariyeBaslik = row.cariye_islendi == 1 ? 'Cariye işlendi' : (row.ticari_yanit === 'RED' ? 'Reddedilen fatura cariye işlenemez' : 'Cariye İşle');
                         btns += `<button type="button" class="btn btn-sm btn-subtle-success table-action-btn btn-cariye-isle" data-id="${row.encrypted_id}" data-fatura-no="${fNo}" title="${cariyeBaslik}" ${cariyePasif ? 'disabled' : ''}><i class="bx bx-transfer-alt font-size-15"></i></button>`;
+                    }
+
+                    // 7. Manuel belge düzenle / sil
+                    if (manuel && window.efaturaManuelYetki) {
+                        const mNo = (!row.fatura_no || row.fatura_no === 'Taslak') ? '' : row.fatura_no;
+                        btns += `<button type="button" class="btn btn-sm btn-subtle-warning table-action-btn btn-manuel-duzenle" data-id="${row.encrypted_id}" title="Düzenle"><i class="bx bx-edit font-size-15"></i></button>`;
+                        btns += `<button type="button" class="btn btn-sm btn-subtle-danger table-action-btn btn-manuel-sil cm-danger" data-id="${row.encrypted_id}" data-fatura-no="${mNo}" title="Sil"><i class="bx bx-trash font-size-15"></i></button>`;
                     }
 
                     btns += `</div>`;
@@ -791,7 +806,7 @@ $(document).ready(function() {
     $(document).on('click', '.btn-preview', function() {
         const invoiceId = $(this).data('id');
         lastPreviewHtml = '';
-        $('#btnCreateReturnFromPreview').data('id', invoiceId);
+        $('#btnCreateReturnFromPreview').data('id', invoiceId).parent().toggleClass('d-none', String($(this).attr('data-kaynak')) === 'MANUEL');
 
         $('#invoicePreviewContainer').html(`
             <div class="text-center py-5">

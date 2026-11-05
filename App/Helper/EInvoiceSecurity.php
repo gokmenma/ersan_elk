@@ -45,6 +45,8 @@ final class EInvoiceSecurity
                 => ['efatura/ayarlar', 'efatura/olustur'],
             'sync_to_cari', 'check_invoice_cari'
                 => ['efatura/gelen-list', 'efatura/giden-list', 'efatura/senkronize', 'cari_takibi', 'cari_hesap_hareketleri'],
+            'manuel_fatura_analiz', 'manuel_fatura_kaydet', 'manuel_fatura_getir', 'manuel_fatura_sil'
+                => ['efatura/manuel-fatura'],
             default => null,
         };
 
@@ -74,6 +76,7 @@ final class EInvoiceSecurity
             'respond_commercial' => 'efatura/yanit',
             'cancel_invoice' => 'efatura/iptal',
             'save_settings', 'counter_info', 'list_numarators', 'save_numarator', 'sync_serials' => 'efatura/ayarlar',
+            'manuel_fatura_analiz', 'manuel_fatura_kaydet', 'manuel_fatura_getir', 'manuel_fatura_sil' => 'efatura/manuel-fatura',
             default => null,
         };
     }
@@ -83,7 +86,8 @@ final class EInvoiceSecurity
         return in_array($action, [
             'dashboard_stats', 'list_giden','list_invoices','summary_stats','preview_html','show_invoice','view_invoice','download_xml','download_pdf','export_excel','invoice_history','calculate_invoice','check_taxpayer','connection_info','list_numarators','get-unique-values','get_unique_values','get_invoice_payment_info','get_kasa_list','list_note_templates','get_note_template','get_serials','check_invoice_cari',
             'list_cariler','get_cari','search_cariler','summary_cariler',
-            'list_mal_hizmet','get_mal_hizmet','search_mal_hizmet','summary_mal_hizmet'
+            'list_mal_hizmet','get_mal_hizmet','search_mal_hizmet','summary_mal_hizmet',
+            'manuel_fatura_getir'
         ], true);
     }
 

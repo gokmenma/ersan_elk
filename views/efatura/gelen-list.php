@@ -81,6 +81,12 @@ $title = 'Gelen Faturalar';
                 <i class="bx bx-refresh font-size-16"></i> EDM'den Faturaları Çek
             </button>
 
+            <?php if (Gate::allows('efatura/manuel-fatura')): ?>
+            <button type="button" class="btn btn-primary top-action-btn shadow-sm text-white" id="btnManuelFaturaEkle">
+                <i class="bx bx-plus font-size-16"></i> Manuel Fatura / Makbuz
+            </button>
+            <?php endif; ?>
+
             <!-- 2. İşlemler Dropdown -->
             <div class="dropdown d-inline-block">
                 <button type="button" class="btn btn-outline-secondary bg-white top-action-btn dropdown-toggle shadow-sm" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -904,4 +910,6 @@ html[data-theme-preset="macos-dark"] h4.text-dark {
 }
 </style>
 
+<?php include __DIR__ . '/modal-manuel-fatura.php'; ?>
+<script>window.efaturaManuelYetki = <?= Gate::allows('efatura/manuel-fatura') ? 'true' : 'false' ?>;</script>
 <script src="views/efatura/js/gelen-list.js?v=<?= time() ?>"></script>

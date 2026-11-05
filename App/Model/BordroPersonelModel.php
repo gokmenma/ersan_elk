@@ -3530,6 +3530,36 @@ class BordroPersonelModel extends Model
         $sql->execute([$personel_id, $donem_id]);
         return $sql->fetch(PDO::FETCH_OBJ)->toplam ?? 0;
     }
+    public function getResmiAlacakOzeti(int $bordroId): ?array
+    {
+        $kayit = $this->find($bordroId);
+        if (!$kayit) {
+            return null;
+        }
+        $donemModel = new BordroDonemModel();
+        $donem = $donemModel->getDonemById($kayit->donem_id) ?: null;
+        $satirlar = $this->getPersonellerByDonem($kayit->donem_id, [$kayit->id]);
+        if (empty($satirlar)) {
+            return null;
+        }
+        $bp = $satirlar[0];
+        $parametre = new BordroParametreModel();
+        $tarih = $donem->baslangic_tarihi ?? date('Y-m-01');
+        $asgariNet = (float) ($parametre->getGenelAyar('asgari_ucret_net', $tarih) ?? 0);
+        $hesap = $this->hesaplaOrtakGosterimDegerleri($bp, $donem, $asgariNet);
+        if (empty($hesap['hesaplanmis'])) {
+            return null;
+        }
+        $fazlaMesai = $this->getMuhasebeFazlaMesaiNetOzeti($bp, $donem);
+        $dagilim = $this->getBankaOdemeDetayDagilimi($hesap, $fazlaMesai);
+        return [
+            'resmi_alacak' => (float) $dagilim['brut_banka'],
+            'banka_odemesi' => (float) $hesap['bankaOdemesi'],
+            'elden_odeme' => (float) $hesap['eldenOdeme'],
+            'net_alacak' => (float) $hesap['netAlacagi'],
+        ];
+    }
+
     /**
      * Personelin bordrolarını getirir
      */

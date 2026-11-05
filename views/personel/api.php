@@ -647,6 +647,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }
+    } elseif ($action == 'bordro-detay') {
+        header('Content-Type: application/json; charset=utf-8');
+        try {
+            if (!Gate::allows('personel_detay')) {
+                throw new Exception('Bu işlem için yetkiniz bulunmamaktadır.');
+            }
+            $bordroId = (int) Security::decrypt((string) ($_POST['bordro_id'] ?? ''));
+            $personelId = (int) ($_POST['personel_id'] ?? 0);
+            $BordroPersonel = new \App\Model\BordroPersonelModel();
+            $BordroDonem = new \App\Model\BordroDonemModel();
+            $BordroParametre = new \App\Model\BordroParametreModel();
+            $kayit = $bordroId > 0 ? $BordroPersonel->find($bordroId) : null;
+            if (!$kayit || $personelId <= 0 || (int) $kayit->personel_id !== $personelId) {
+                throw new Exception('Geçersiz kayıt.');
+            }
+            if (empty($BordroPersonel->getPersonellerByDonem($kayit->donem_id, [$kayit->id]))) {
+                throw new Exception('Kayıt bulunamadı.');
+            }
+            $_POST['id'] = $bordroId;
+            require dirname(__DIR__) . '/bordro/partials/detay-api.php';
+            $SystemLog->logAction($userId, 'Bordro Detay Görüntüleme', "Personel detayından bordro detayı görüntülendi (Personel ID: $personelId, Bordro ID: $bordroId).", SystemLogModel::LEVEL_INFO);
+        } catch (Throwable $e) {
+            error_log('Personel bordro detayı: ' . $e->getMessage());
+            echo json_encode(['status' => 'error', 'message' => 'Bordro detayı getirilemedi. Bordro hesaplanmamış olabilir.'], JSON_UNESCAPED_UNICODE);
+        }
     } elseif ($action == 'manual-gelir-ekle') {
         try {
             $data = $_POST;

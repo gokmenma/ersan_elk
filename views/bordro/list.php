@@ -645,6 +645,17 @@ if (!empty($dbGelirler)) {
             border: 1px solid rgba(255,255,255,0.2);
         }
 
+        .year-calendar-day-extra {
+            display: inline-block;
+            font-size: 0.58rem;
+            font-weight: 700;
+            line-height: 1;
+            padding: 2px 5px;
+            border-radius: 4px;
+            margin-top: 2px;
+            white-space: nowrap;
+        }
+
         .year-calendar-day-desc {
             font-size: 0.58rem;
             font-weight: 600;
@@ -2107,7 +2118,11 @@ if (!empty($dbGelirler)) {
                 dataType: 'json',
                 success: function (res) {
                     if (res.status === 'success') {
-                        renderYearlyModalCalendar(yil, parseInt(ay) - 1, res.data, iseGiris, istenCikis, res.calisma_donemleri || []);
+                        renderYearlyModalCalendar(yil, parseInt(ay) - 1, res.data, iseGiris, istenCikis, res.calisma_donemleri || [], {
+                            overtimes: res.overtimes || {},
+                            shiftOvertimes: res.shift_overtimes || {},
+                            saatlik: res.saatlik || {}
+                        });
                     } else {
                         $('#modalTakvimContainer').html('<div class="col-12 text-center p-5"><div class="alert alert-danger"><i class="bx bx-error me-2"></i>' + (res.message || 'Veriler yüklenemedi.') + '</div></div>');
                     }
@@ -2191,8 +2206,21 @@ if (!empty($dbGelirler)) {
         });
     });
 
-    function renderYearlyModalCalendar(year, month, events, iseGiris, istenCikis, calismaDonemleri = []) {
+    function renderYearlyModalCalendar(year, month, events, iseGiris, istenCikis, calismaDonemleri = [], extra = {}) {
         var summary = collectTakvimSummary(events, calismaDonemleri);
+        window.takvimExtra = extra || {};
+        var saatToplam = function(obj, pick) {
+            var t = 0;
+            Object.keys(obj || {}).forEach(function(d) {
+                var v = obj[d];
+                if (Array.isArray(v)) { v.forEach(function(x) { t += parseFloat(x.saat) || 0; }); }
+                else { t += parseFloat(pick ? v[pick] : v) || 0; }
+            });
+            return t;
+        };
+        var fmSaat = saatToplam(window.takvimExtra.overtimes, 'saat') + saatToplam(window.takvimExtra.shiftOvertimes);
+        var siSaat = saatToplam(window.takvimExtra.saatlik);
+        var fmtSaat = function(n) { return (Math.round(n * 100) / 100).toString().replace('.', ','); };
 
         var html = '';
         html += `<div class="col-12">`;
@@ -2240,6 +2268,11 @@ if (!empty($dbGelirler)) {
                     </div>
                 </div>
             </div>
+        </div>`;
+
+        html += `<div class="d-flex flex-wrap gap-2 mb-2">
+            <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2 py-1" style="font-size:11px;"><i class="bx bx-time-five me-1"></i>Fazla Mesai: ${fmtSaat(fmSaat)} saat</span>
+            <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-1" style="font-size:11px;"><i class="bx bx-timer me-1"></i>Saatlik İzin: ${fmtSaat(siSaat)} saat</span>
         </div>`;
 
         html += `<div class="year-calendar-month">
@@ -2311,6 +2344,23 @@ if (!empty($dbGelirler)) {
                             <span class="year-calendar-day-desc">${event.name}</span>
                         </div>`;
                         filledClass = 'is-filled';
+                    }
+
+                    var ex = window.takvimExtra || {};
+                    var fm = (parseFloat((ex.overtimes || {})[dateStr]) || 0) + (parseFloat((ex.shiftOvertimes || {})[dateStr]) || 0);
+                    var siList = (ex.saatlik || {})[dateStr] || [];
+                    var extraHtml = '';
+                    if (fm > 0) {
+                        extraHtml += `<span class="year-calendar-day-extra" style="background:#fef3c7;color:#b45309;">FM +${(Math.round(fm * 100) / 100).toString().replace('.', ',')}s</span>`;
+                    }
+                    siList.forEach(function(si) {
+                        extraHtml += `<span class="year-calendar-day-extra" style="background:#cffafe;color:#0e7490;" title="${si.name || ''} ${si.baslangic_saati || ''}">${si.kisa_kod || 'Sİ'} -${(parseFloat(si.saat) || 0).toString().replace('.', ',')}s</span>`;
+                    });
+                    if (extraHtml) {
+                        if (dayEvents.length === 0) {
+                            cellContent = `<div class="year-calendar-day"><span class="year-calendar-day-number">${day}</span></div>`;
+                        }
+                        cellContent = cellContent.replace(/<\/div>\s*$/, extraHtml + '</div>');
                     }
 
                     var isToday = new Date().toISOString().split('T')[0] === dateStr;

@@ -1139,7 +1139,7 @@ class EInvoiceModel extends Model
                 f.belge_turu, f.fatura_profili, f.fatura_tipi, f.odenecek_tutar, f.para_birimi,
                 f.entegrator_durum_kodu, f.gib_durum_kodu, f.gib_durum_aciklamasi, f.ticari_yanit,
                 f.pdf_path, f.ubl_xml_path, f.earsiv_rapor_durum, f.earsiv_iptal_rapor_durum, f.islem_belirsiz,
-                f.yon,
+                f.yon, f.kaynak,
                 COALESCE(t.toplam_tahsilat, 0) AS toplam_tahsilat,
                 COALESCE(t.tahsilat_adedi, 0) AS tahsilat_adedi,
                 (
@@ -1224,7 +1224,8 @@ class EInvoiceModel extends Model
                     'earsiv_iptal_rapor_durum' => $row['earsiv_iptal_rapor_durum'],
                     'islem_belirsiz'        => $row['islem_belirsiz'],
                     'pdf_path'              => !empty($row['pdf_path']),
-                    'ubl_xml_path'          => !empty($row['ubl_xml_path'])
+                    'ubl_xml_path'          => !empty($row['ubl_xml_path']),
+                    'kaynak'                => ($row['kaynak'] ?? '') === 'MANUEL' ? 'MANUEL' : 'ENTEGRATOR'
                 ];
             }
         }
@@ -1889,7 +1890,7 @@ class EInvoiceModel extends Model
     {
         $this->db->beginTransaction();
         try {
-            $stmt = $this->db->prepare('SELECT id, deleted_at, yon, entegrator_durum_kodu, ubl_xml_path, kaynak_xml, islem_belirsiz, alici_unvan, alici_vkn_tckn FROM faturalar WHERE ettn = :uuid AND firm_id = :firm FOR UPDATE');
+            $stmt = $this->db->prepare('SELECT id, deleted_at, yon, kaynak, entegrator_durum_kodu, ubl_xml_path, kaynak_xml, islem_belirsiz, alici_unvan, alici_vkn_tckn FROM faturalar WHERE ettn = :uuid AND firm_id = :firm FOR UPDATE');
             $stmt->execute(['uuid' => $header['ettn'], 'firm' => $firmId]);
             $existing = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($existing && ($existing['deleted_at'] || $existing['yon'] !== $header['yon'] || $existing['entegrator_durum_kodu'] === 'GONDERILIYOR' || !empty($existing['islem_belirsiz']))) throw new \RuntimeException('Fatura silinmiş, işlemde veya yönü uyuşmuyor.');
@@ -1902,7 +1903,13 @@ class EInvoiceModel extends Model
             $data = array_intersect_key($header, array_flip($allowed));
             if ($existing) {
                 // Imported content may refresh; confirmed local response/cancellation is preserved.
-                unset($data['entegrator_durum_kodu']);
+                if (($existing['kaynak'] ?? '') === 'MANUEL') {
+                    $data['kaynak'] = 'ENTEGRATOR';
+                    $data['stopaj_orani'] = null;
+                    $data['stopaj_tutari'] = 0;
+                } else {
+                    unset($data['entegrator_durum_kodu']);
+                }
                 $sets = implode(', ', array_map(static fn($key) => "$key = :$key", array_keys($data)));
                 $stmt = $this->db->prepare("UPDATE faturalar SET $sets, updated_at = NOW() WHERE id = :id AND firm_id = :firm");
                 $id = (int)$existing['id'];
@@ -1937,6 +1944,178 @@ class EInvoiceModel extends Model
         } catch (\Throwable $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
             throw $e;
+        }
+    }
+
+    public function findIncomingDuplicate(int $firmId, string $ettn, string $vkn, string $faturaNo, string $tarih, float $odenecek, ?int $haricId = null): ?array
+    {
+        $kosullar = [];
+        $params = ['firm' => $firmId, 'haric' => (int)($haricId ?? 0)];
+        if ($ettn !== '') {
+            $kosullar[] = 'ettn = :ettn';
+            $params['ettn'] = $ettn;
+        }
+        if ($vkn !== '' && $faturaNo !== '') {
+            $kosullar[] = '(alici_vkn_tckn = :vkn_no AND fatura_no = :fatura_no)';
+            $params['vkn_no'] = $vkn;
+            $params['fatura_no'] = $faturaNo;
+        }
+        if ($vkn !== '' && $tarih !== '' && $odenecek > 0) {
+            $kosullar[] = '(alici_vkn_tckn = :vkn_tutar AND fatura_tarihi = :tarih AND ABS(odenecek_tutar - :tutar) < 0.01)';
+            $params['vkn_tutar'] = $vkn;
+            $params['tarih'] = $tarih;
+            $params['tutar'] = $odenecek;
+        }
+        if ($kosullar === []) {
+            return null;
+        }
+        $stmt = $this->db->prepare(
+            "SELECT id, fatura_no, fatura_tarihi, alici_unvan, odenecek_tutar, kaynak
+             FROM faturalar
+             WHERE firm_id = :firm AND yon = 'GELEN' AND deleted_at IS NULL AND id <> :haric
+               AND (" . implode(' OR ', $kosullar) . ")
+             ORDER BY id DESC LIMIT 1"
+        );
+        $stmt->execute($params);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
+    }
+
+    public function saveManualIncoming(int $firmId, array $header, array $lines, array $totals, int $userId, ?int $invoiceId = null): int
+    {
+        $this->db->beginTransaction();
+        try {
+            $mevcut = null;
+            if ($invoiceId !== null) {
+                $stmt = $this->db->prepare("SELECT id, ettn, kaynak FROM faturalar WHERE id = :id AND firm_id = :firm AND yon = 'GELEN' AND deleted_at IS NULL FOR UPDATE");
+                $stmt->execute(['id' => $invoiceId, 'firm' => $firmId]);
+                $mevcut = $stmt->fetch(PDO::FETCH_ASSOC);
+                if (!$mevcut || ($mevcut['kaynak'] ?? '') !== 'MANUEL') {
+                    throw new \RuntimeException('Yalnızca manuel eklenen belgeler düzenlenebilir.');
+                }
+            }
+
+            $ettn = $header['ettn'] !== '' ? $header['ettn'] : ($mevcut['ettn'] ?? Helper::generateUuid());
+            $stmt = $this->db->prepare('SELECT id FROM faturalar WHERE firm_id = :firm AND ettn = :ettn AND id <> :id LIMIT 1');
+            $stmt->execute(['firm' => $firmId, 'ettn' => $ettn, 'id' => (int)($mevcut['id'] ?? 0)]);
+            if ($stmt->fetchColumn()) {
+                throw new \RuntimeException('Bu ETTN ile kayıtlı başka bir fatura bulunuyor.');
+            }
+
+            $data = [
+                'belge_turu' => $header['belge_turu'],
+                'fatura_profili' => $header['fatura_profili'],
+                'fatura_tipi' => 'SATIS',
+                'ettn' => $ettn,
+                'fatura_no' => $header['fatura_no'] !== '' ? $header['fatura_no'] : null,
+                'fatura_tarihi' => $header['fatura_tarihi'],
+                'alici_vkn_tckn' => $header['alici_vkn_tckn'],
+                'alici_unvan' => $header['alici_unvan'],
+                'alici_vergi_dairesi' => $header['alici_vergi_dairesi'] !== '' ? $header['alici_vergi_dairesi'] : null,
+                'alici_adres' => $header['alici_adres'] !== '' ? $header['alici_adres'] : null,
+                'alici_il' => $header['alici_il'] !== '' ? $header['alici_il'] : null,
+                'alici_ilce' => $header['alici_ilce'] !== '' ? $header['alici_ilce'] : null,
+                'para_birimi' => 'TRY',
+                'doviz_kuru' => 1,
+                'satir_toplami' => $totals['satir_toplami'],
+                'iskonto_toplami' => $totals['iskonto_toplami'],
+                'kdv_matrahi' => $totals['kdv_matrahi'],
+                'hesaplanan_kdv' => $totals['hesaplanan_kdv'],
+                'tevkifat_tutari' => 0,
+                'stopaj_orani' => $totals['stopaj_orani'],
+                'stopaj_tutari' => $totals['stopaj_tutari'],
+                'odenecek_tutar' => $totals['odenecek_tutar'],
+                'notlar' => $header['notlar'] !== '' ? $header['notlar'] : null,
+                'siparis_no' => $header['siparis_no'] !== '' ? $header['siparis_no'] : null,
+            ];
+
+            if ($mevcut) {
+                $id = (int)$mevcut['id'];
+                $sets = implode(', ', array_map(static fn($key) => "$key = :$key", array_keys($data)));
+                $stmt = $this->db->prepare("UPDATE faturalar SET $sets, updated_at = NOW() WHERE id = :id AND firm_id = :firm");
+                $stmt->execute($data + ['id' => $id, 'firm' => $firmId]);
+                $stmt = $this->db->prepare('UPDATE fatura_satirlari SET deleted_at = NOW(), is_active = 0 WHERE fatura_id = :id AND deleted_at IS NULL');
+                $stmt->execute(['id' => $id]);
+            } else {
+                $data += [
+                    'firm_id' => $firmId,
+                    'yon' => 'GELEN',
+                    'kaynak' => 'MANUEL',
+                    'duzenleme_saati' => date('H:i:s'),
+                    'alici_ulke' => 'Türkiye',
+                    'entegrator_durum_kodu' => 'MANUEL',
+                    'ticari_yanit' => 'KABUL',
+                    'olusturan_user_id' => $userId,
+                    'is_active' => 1,
+                    'created_at' => date('Y-m-d H:i:s'),
+                ];
+                $columns = implode(',', array_keys($data));
+                $values = ':' . implode(',:', array_keys($data));
+                $stmt = $this->db->prepare("INSERT INTO faturalar ($columns) VALUES ($values)");
+                $stmt->execute($data);
+                $id = (int)$this->db->lastInsertId();
+            }
+
+            $allowedLines = ['urun_hizmet_adi', 'miktar', 'birim', 'birim_fiyat', 'iskonto_orani', 'iskonto_tutari', 'kdv_orani', 'kdv_tutari', 'tevkifat_orani', 'tevkifat_tutari', 'satir_toplami'];
+            foreach (array_values($lines) as $index => $line) {
+                $row = array_intersect_key($line, array_flip($allowedLines)) + ['fatura_id' => $id, 'sira_no' => $index + 1];
+                $columns = implode(',', array_keys($row));
+                $values = ':' . implode(',:', array_keys($row));
+                $stmt = $this->db->prepare("INSERT INTO fatura_satirlari ($columns) VALUES ($values)");
+                $stmt->execute($row);
+            }
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            throw $e;
+        }
+
+        $this->recordEvent($id, $firmId, $mevcut ? 'MANUEL_GUNCELLEME' : 'MANUEL_EKLEME', 'BASARILI', ($mevcut ? 'Manuel belge güncellendi' : 'Manuel belge eklendi') . ' (' . $header['belge_turu'] . ')');
+        try {
+            (new \App\Model\CariHareketleriModel())->syncFaturaHareketi($id, $userId, false);
+        } catch (\Throwable $th) {
+            error_log('EInvoiceModel::saveManualIncoming syncFaturaHareketi warning: ' . $th->getMessage());
+        }
+        return $id;
+    }
+
+    public function hasActiveCariMovement(int $invoiceId): bool
+    {
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM cari_hareketleri WHERE fatura_id = :id AND silinme_tarihi IS NULL');
+        $stmt->execute(['id' => $invoiceId]);
+        return (int)$stmt->fetchColumn() > 0;
+    }
+
+    public function getManualIncoming(int $invoiceId, int $firmId): ?array
+    {
+        $invoice = $this->getInvoiceById($invoiceId, $firmId);
+        if (!$invoice || ($invoice['kaynak'] ?? '') !== 'MANUEL' || ($invoice['yon'] ?? '') !== 'GELEN') {
+            return null;
+        }
+        return $invoice;
+    }
+
+    public function softDeleteManualIncoming(int $invoiceId, int $firmId, int $userId): void
+    {
+        if (!$this->getManualIncoming($invoiceId, $firmId)) {
+            throw new \RuntimeException('Yalnızca manuel eklenen belgeler silinebilir.');
+        }
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM fatura_tahsilatlari WHERE fatura_id = :id AND firm_id = :firm AND deleted_at IS NULL AND is_active = 1');
+        $stmt->execute(['id' => $invoiceId, 'firm' => $firmId]);
+        if ((int)$stmt->fetchColumn() > 0) {
+            throw new \RuntimeException('Bu belgeye bağlı ödeme kaydı var. Önce ödeme kayıtlarını siliniz.');
+        }
+
+        $this->recordEvent($invoiceId, $firmId, 'MANUEL_SILME', 'BASARILI', 'Manuel belge silindi');
+        $stmt = $this->db->prepare("UPDATE faturalar SET deleted_at = NOW(), is_active = 0 WHERE id = :id AND firm_id = :firm AND kaynak = 'MANUEL' AND deleted_at IS NULL");
+        $stmt->execute(['id' => $invoiceId, 'firm' => $firmId]);
+        $stmt = $this->db->prepare('UPDATE fatura_satirlari SET deleted_at = NOW(), is_active = 0 WHERE fatura_id = :id AND deleted_at IS NULL');
+        $stmt->execute(['id' => $invoiceId]);
+
+        try {
+            (new \App\Model\CariHareketleriModel())->syncFaturaHareketi($invoiceId, $userId, false);
+        } catch (\Throwable $th) {
+            error_log('EInvoiceModel::softDeleteManualIncoming syncFaturaHareketi warning: ' . $th->getMessage());
         }
     }
 

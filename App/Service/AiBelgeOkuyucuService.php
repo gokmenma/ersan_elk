@@ -84,21 +84,25 @@ final class AiBelgeOkuyucuService
 
     public function jsonIste(string $apiKey, string $model, string $sistemMesaji, array $kullaniciIcerigi, float $temperature = 0.2): array
     {
+        $payload = [
+            'model' => $model,
+            'messages' => [
+                ['role' => 'system', 'content' => $sistemMesaji],
+                ['role' => 'user', 'content' => $kullaniciIcerigi],
+            ],
+            'response_format' => ['type' => 'json_object'],
+            'temperature' => $temperature,
+        ];
+        if (str_starts_with($model, 'gpt-5')) {
+            unset($payload['temperature']);
+        }
         $ch = curl_init('https://api.openai.com/v1/chat/completions');
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST => true,
             CURLOPT_TIMEOUT => 120,
             CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Authorization: Bearer ' . $apiKey],
-            CURLOPT_POSTFIELDS => json_encode([
-                'model' => $model,
-                'messages' => [
-                    ['role' => 'system', 'content' => $sistemMesaji],
-                    ['role' => 'user', 'content' => $kullaniciIcerigi],
-                ],
-                'response_format' => ['type' => 'json_object'],
-                'temperature' => $temperature,
-            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         ]);
         $body = curl_exec($ch);
         $curlError = curl_error($ch);

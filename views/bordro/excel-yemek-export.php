@@ -372,7 +372,7 @@ try {
         $yemekVerileri[] = array_merge(
             $muhasebeSatiri,
             $BordroPersonel->getMuhasebeOdemeOzeti($hesap),
-            ['muhasebe_fazla_mesai_net' => (float) ($fazlaMesaiOzeti['tutar'] ?? 0)]
+            ['muhasebe_fazla_mesai_net' => (float) ($fazlaMesaiOzeti['tutar'] ?? 0), 'personel_id' => (int) $p->personel_id]
         );
     }
 
@@ -720,6 +720,18 @@ try {
     $mutabakatSheet->getStyle('R' . $mutabakatToplamSatir)
         ->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('FDE68A');
     $mutabakatSheet->setAutoFilter('A2:R' . ($mutabakatToplamSatir - 1));
+    $puantajSheet = $spreadsheet->createSheet();
+    \App\Service\PuantajExcelService::sayfaOlustur(
+        $puantajSheet,
+        $firmaId,
+        date('m', strtotime($donem->baslangic_tarihi)),
+        date('Y', strtotime($donem->baslangic_tarihi)),
+        '',
+        '',
+        1,
+        array_values(array_unique(array_column($yemekVerileri, 'personel_id')))
+    );
+
     // Eski geniş bilgi sayfası muhasebede hangi alanın doldurulacağını belirsizleştiriyordu.
     // Dosyada yalnızca eyleme dönük Mutabakat sayfasını bırak.
     $spreadsheet->removeSheetByIndex(0);

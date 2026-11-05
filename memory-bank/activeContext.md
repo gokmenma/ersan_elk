@@ -1,5 +1,16 @@
 # Active Context
 
+## E-Fatura — Manuel Gelen Fatura / Makbuz Ekleme (2026-11-05)
+- Entegratör dışında gelen fatura, e-arşiv/e-fatura PDF'i, serbest meslek makbuzu, gider pusulası ve tahsilat makbuzu Gelen Faturalar'a `faturalar.kaynak = 'MANUEL'` ile eklenir (`yon='GELEN'`, `entegrator_durum_kodu='MANUEL'`, `ticari_yanit='KABUL'`).
+- Akış icra kesintisindeki gibidir: belge (PDF/JPG/PNG/WEBP) `api/efatura-api.php?action=manuel_fatura_analiz` ile `ManuelFaturaAiService` → ortak `AiBelgeOkuyucuService` üzerinden okunur, form ve kalemler doldurulur, kullanıcı kontrol edip kaydeder. Orijinal belge saklanmaz.
+- Model: varsayılan `gpt-5.4` (`settings.fatura_ai_model` veya `.env FATURA_AI_MODEL` ile değişir). `gpt-4o-mini` fotoğraflarda VKN/numara/kalemleri yanlış okuduğu için seçildi. `AiBelgeOkuyucuService::jsonIste` yalnız `gpt-5*` modellerde `temperature` göndermez (icra akışı değişmedi).
+- KDV dahil/hariç kararı modelden alınmaz; `ManuelFaturaAiService::kdvDahilFiyatlariCoz` belgedeki mal/hizmet toplamıyla tutarlı yorumu seçer. Toplam farkı > 0,05 ₺ ise uyarı döner.
+- İş kuralları `ManuelFaturaService`: SMM/gider pusulasında stopaj matrahtan hesaplanıp ödenecekten düşülür; gider pusulası ve makbuzda KDV 0'a zorlanır; VKN makbuz dışında zorunlu; fatura_no en fazla 16 karakter (kolon sınırı); yalnız TL.
+- Kayıt sonrası `CariHareketleriModel::syncFaturaHareketi($id, $userId, false)`: eşleşen cari varsa borç işlenir, cari kart otomatik açılmaz. Silme soft delete; bağlı ödeme (fatura_tahsilatlari) varsa engellenir, cari hareket aynı fonksiyonla kaldırılır.
+- EDM'den aynı ETTN gelirse `importInvoice` manuel kaydı resmî veriyle günceller ve `kaynak='ENTEGRATOR'` yapar (mükerrer oluşmaz).
+- Yetki: `efatura/manuel-fatura` (Finans & Muhasebe, işlem yetkisi, menüsüz) — `EInvoiceSecurity` eşlemesiyle korunur; `api/efatura-api.php` permission_policies yönlendirmesi kullanmadığı için API politika satırı eklenmedi.
+- Önizleme: manuel kayıtlar için `EInvoiceService::renderManualPreview` (EDM'ye istek atmaz, firmamızın logo/kaşesini basmaz).
+
 ## Sistem Logları (`views/logs`) Performans Optimizasyonu (2026-11-04)
 - **Problem**: 131.000+ kayıt bulunan sistemde `views/logs/list.php` sayfasının açılışı yavaştı. Nedeni: Sayfa başında senkron çalışan `getActivityDashboardData` metodunda 8 adet ağır agregasyon sorgusu (`SUM(CASE...)`, `COUNT(*)`, string analizli `$pageActivitySql` alt sorgusunun 6 kez bağımsız çalıştırılması) ve sayfa açılır açılmaz gizli tablo için arka planda AJAX ile DataTables isteği atılmasıydı.
 - **Yapılan İyileştirmeler**:
@@ -3642,3 +3653,8 @@
 - GorevModel: `getListeler` yalnız sahip, paylaşılan veya görev atanan listeleri döndürür (parametrik); `listeYetkisi` / `gorevYetkisi` ile views/gorevler/api.php'de sunucu tarafı yetki kontrolü ve SystemLog kaydı. Liste yeniden adlandırma/silme/paylaşım yalnız sahip.
 - views/gorevler: kolon kartları, sayaç, rozetler (paylaşan/salt okunur), Paylaş modalı, "Benimle paylaşılan" sidebar bölümü; list.php'deki bozuk renk seçici satırı düzeltildi.
 - Ana sayfa widget yetki filtresi: views/home/render_widgets.php `homeWidgetPermission/homeWidgetAllowed/homeStatsFilterByPermission`; puantaj/raporlar, kacak_islemleri, ihbar/list, personel-takip/list, nobet/list yetkisi olmayan kullanıcıya kart, istatistik ve API verisi verilmez.
+
+## 2026-11-05 — Personel Hesap Hareketleri sekmesi
+- views/personel/icerik/finansal_islemler.php yalnız kapanmış dönem maaş ödemelerini listeler; "Resmî Alacak" (BordroPersonelModel::getResmiAlacakOzeti, kayıtlı snapshot'tan) ve "Net Ödenen" sütunları eklendi.
+- Bordro detayı artık PDF indirmeden modalda açılır: views/personel/api.php `bordro-detay` (personel_detay yetkisi, bordro-personel sahiplik kontrolü) → views/bordro/partials/detay-api.php (views/bordro/api.php `get-detail` gövdesi buraya taşındı, iki yol aynı çıktıyı üretir).
+- SQL: sql/2026_11_05_personel_bordro_detay_policy.sql uygulanmalı.

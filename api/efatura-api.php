@@ -808,6 +808,98 @@ try {
             ]);
             break;
 
+        case 'manuel_fatura_analiz':
+        case 'manuel_fatura_kaydet':
+        case 'manuel_fatura_getir':
+        case 'manuel_fatura_sil':
+            $manuelServis = new \App\Service\ManuelFaturaService();
+            $logModel = new \App\Model\SystemLogModel();
+            try {
+                if ($action === 'manuel_fatura_analiz') {
+                    $sonuc = (new \App\Service\ManuelFaturaAiService())->analiz($_FILES['belge'] ?? [], $firmId);
+                    $logModel->logAction($userId, 'Manuel Fatura Yapay Zekâ Analizi', 'Belge: ' . ($sonuc['header']['fatura_no'] ?: '-') . ', Satıcı: ' . ($sonuc['header']['alici_unvan'] ?: '-'), \App\Model\SystemLogModel::LEVEL_INFO);
+                    echo json_encode(['status' => 'success', 'data' => $sonuc], JSON_UNESCAPED_UNICODE);
+                    break;
+                }
+
+                if ($action === 'manuel_fatura_getir') {
+                    $invoiceId = EInvoiceSecurity::invoiceId($_GET['invoice_id'] ?? '');
+                    $fatura = $invoiceModel->getManualIncoming($invoiceId, $firmId);
+                    if (!$fatura) {
+                        http_response_code(404);
+                        echo json_encode(['status' => 'error', 'message' => 'Manuel belge bulunamadı.']);
+                        break;
+                    }
+                    $header = [];
+                    foreach (['belge_turu', 'fatura_profili', 'fatura_no', 'ettn', 'siparis_no', 'alici_unvan', 'alici_vkn_tckn', 'alici_vergi_dairesi', 'alici_adres', 'alici_il', 'alici_ilce', 'notlar', 'stopaj_orani'] as $alan) {
+                        $header[$alan] = $fatura[$alan] ?? '';
+                    }
+                    $header['fatura_tarihi'] = date('d.m.Y', strtotime($fatura['fatura_tarihi']));
+                    $lines = array_map(static fn(array $s): array => [
+                        'urun_hizmet_adi' => $s['urun_hizmet_adi'],
+                        'miktar' => (float)$s['miktar'],
+                        'birim' => $s['birim'],
+                        'birim_fiyat' => (float)$s['birim_fiyat'],
+                        'iskonto_orani' => (float)$s['iskonto_orani'],
+                        'kdv_orani' => (float)$s['kdv_orani'],
+                    ], $fatura['satirlar']);
+                    echo json_encode(['status' => 'success', 'data' => ['header' => $header, 'lines' => $lines, 'eslesen_cari' => $manuelServis->cariOnizleme($header)]], JSON_UNESCAPED_UNICODE);
+                    break;
+                }
+
+                if ($action === 'manuel_fatura_sil') {
+                    $invoiceId = EInvoiceSecurity::invoiceId($_POST['invoice_id'] ?? '');
+                    $invoiceModel->softDeleteManualIncoming($invoiceId, $firmId, $userId);
+                    $logModel->logAction($userId, 'Manuel Fatura Silme', 'Fatura ID: ' . $invoiceId, \App\Model\SystemLogModel::LEVEL_IMPORTANT);
+                    echo json_encode(['status' => 'success', 'message' => 'Manuel belge silindi.']);
+                    break;
+                }
+
+                $girdi = json_decode((string)($_POST['payload'] ?? ''), true);
+                if (!is_array($girdi)) {
+                    throw new \InvalidArgumentException('Gönderilen belge bilgileri okunamadı.');
+                }
+                $invoiceId = !empty($_POST['invoice_id']) ? EInvoiceSecurity::invoiceId($_POST['invoice_id']) : null;
+                $force = ($_POST['force'] ?? '') === '1';
+                $normal = $manuelServis->normalize($girdi);
+                $manuelServis->dogrula($normal['header'], $normal['lines']);
+                $hesap = $manuelServis->hesapla($normal['header'], $normal['lines']);
+
+                if (!$force) {
+                    $mukerrer = $manuelServis->mukerrer($firmId, $normal['header'], $hesap['totals']['odenecek_tutar'], $invoiceId);
+                    if ($mukerrer) {
+                        echo json_encode([
+                            'status' => 'warning_duplicate',
+                            'message' => sprintf('%s tarihli, %s numaralı, %s ₺ tutarında benzer bir gelen belge zaten kayıtlı (%s). Yine de kaydetmek istiyor musunuz?', $mukerrer['fatura_tarihi'], $mukerrer['fatura_no'] ?: '-', $mukerrer['tutar'], $mukerrer['unvan']),
+                        ], JSON_UNESCAPED_UNICODE);
+                        break;
+                    }
+                }
+
+                $id = $invoiceModel->saveManualIncoming($firmId, $normal['header'], $hesap['lines'], $hesap['totals'], $userId, $invoiceId);
+                $logModel->logAction(
+                    $userId,
+                    $invoiceId ? 'Manuel Fatura Güncelleme' : 'Manuel Fatura Ekleme',
+                    sprintf('Fatura ID: %d, Tür: %s, No: %s, Satıcı: %s, Tutar: %s', $id, $normal['header']['belge_turu'], $normal['header']['fatura_no'] ?: '-', $normal['header']['alici_unvan'], number_format($hesap['totals']['odenecek_tutar'], 2, ',', '.')),
+                    \App\Model\SystemLogModel::LEVEL_IMPORTANT
+                );
+                $cariyeIslendi = $invoiceModel->hasActiveCariMovement($id);
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => ($invoiceId ? 'Manuel belge güncellendi.' : 'Manuel belge Gelen Faturalara eklendi.') . ($cariyeIslendi ? ' Cari hareketine işlendi.' : ' Eşleşen cari bulunamadığı için cariye işlenmedi.'),
+                    'data' => ['invoice_id' => Security::encrypt((string)$id), 'cariye_islendi' => $cariyeIslendi, 'totals' => $hesap['totals']],
+                ], JSON_UNESCAPED_UNICODE);
+            } catch (\PDOException $e) {
+                error_log('efatura-api manuel fatura PDO hatası: ' . $e->getMessage());
+                http_response_code(500);
+                echo json_encode(['status' => 'error', 'message' => 'Kayıt sırasında bir veritabanı hatası oluştu.']);
+            } catch (\Exception $e) {
+                error_log('efatura-api manuel fatura hatası: ' . $e->getMessage());
+                http_response_code(422);
+                echo json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+            }
+            break;
+
         default:
             http_response_code(400);
             echo json_encode(['status' => 'error', 'message' => 'Bilinmeyen veya desteklenmeyen işlem.']);

@@ -1,5 +1,12 @@
 # Progress
 
+## 2026-11-05 — E-Fatura: Manuel Gelen Fatura / Makbuz Ekleme
+- [x] `sql/2026_11_05_manuel_gelen_fatura.sql` (belge_turu ENUM, `kaynak`, `stopaj_orani/tutari`, `efatura/manuel-fatura` yetkisi + süper yetkili rollere atama) yerelde iki kez çalıştırıldı.
+- [x] `ManuelFaturaService`, `ManuelFaturaAiService`, `EInvoiceModel` manuel metotları, API aksiyonları, modal + `manuel-fatura.js`, Gelen Faturalar rozet/düzenle/sil, manuel önizleme.
+- [x] Örnek TÜVTÜRK PDF'i ve JPG'si, SMM ve makbuz örnekleriyle yapay zekâ analizi; tarayıcıda ekle → mükerrer uyarısı → düzenle (mevcut cariye otomatik işlendi) → önizleme → sil (cari hareket kaldırıldı) → yetkisiz kullanıcı (buton yok, API 403). Test kayıtları temizlendi.
+- [x] `tests/Unit/ManuelFaturaServiceTest.php` (7 test). `EInvoicePersistenceTest`'teki "outgoing summary uses table filters" hatası bu çalışmadan önce de vardı.
+- [ ] Sunucuda SQL'in çalıştırılması ve deploy.
+
 ## 2026-11-04 — Sistem Logları (`views/logs`) Performans Optimizasyonu
 - [x] `SystemLogModel::getActivityDashboardData` metoduna 5 dakika (300 sn) dosya tabanlı önbellek (`cache/activity_dashboard/data_{$firmaId}_activity_dashboard.json`) eklendi; yanıt süresi ~220ms'den **0.11 ms'ye** düşürüldü.
 - [x] Ağır string işlemleri barındıran alt sorgunun 6 kez bağımsız çalıştırılması kaldırıldı; PHP tarafında in-memory tek geçişte gruplandı.
@@ -2151,3 +2158,4 @@
 - [2026-11-04] DataTables tablolarında son satırdan sonra alt kenarlık çizgisi eksikliği giderildi (style.css ve datatable-filters.css'te tr:last-child alt çizgisi ve koyu tema uyumu sağlandı).
 - [x] Personel Detayı (personel_detay) yetkisi — SQL uygulanmalı, Yetki Kataloğu doğrulaması bekliyor.
 - [x] Görevler liste paylaşımı + tasarım iyileştirmesi — SQL (sql/2026_11_05_gorev_liste_paylasimlari.sql) canlıda uygulanmalı; tarayıcıda görsel doğrulama bekliyor.
+- [x] Hesap Hareketleri: yalnız maaş ödemeleri + resmî alacak + bordro detay modalı — SQL (sql/2026_11_05_personel_bordro_detay_policy.sql) uygulanmalı; tarayıcıda görsel doğrulama bekliyor.
