@@ -148,6 +148,7 @@
     const gorevler = item.gorevler || [];
     const tamamlananlar = item.tamamlananlar || [];
 
+    const canEdit = canEditListe(liste);
     let gorevlerHtml = "";
     gorevler.forEach(function (g) {
       gorevlerHtml += buildGorevItem(g, false, canEdit);
@@ -161,7 +162,6 @@
     const tamamSayi = tamamlananlar.length;
 
     const listeRenk = liste.renk || "var(--gt-primary)";
-    const canEdit = canEditListe(liste);
     const isSahip = liste.sahip !== false;
     const paylasimSayisi = parseInt(liste.paylasim_sayisi || 0);
     let rozetHtml = "";

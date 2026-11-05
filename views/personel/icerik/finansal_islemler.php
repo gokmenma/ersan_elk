@@ -153,7 +153,7 @@ usort($transactions, function ($a, $b) {
                                     </td>
                                     <td>
                                         <?php echo $trans['durum']; ?>
-                                        <?php if ($trans['islem_turu'] === 'Maaş Ödemesi' && \App\Service\Gate::allows('bordro/raporlar')): ?>
+                                        <?php if ($trans['islem_turu'] === 'Maaş Ödemesi' && (\App\Service\Gate::allows('bordro/raporlar') || \App\Service\Gate::allows('personel_detay'))): ?>
                                             <a href="views/bordro/bordro-yazdir.php?donem=<?= htmlspecialchars(\App\Helper\Security::encrypt($trans['donem_id']), ENT_QUOTES, 'UTF-8') ?>&amp;id=<?= htmlspecialchars(\App\Helper\Security::encrypt($trans['id']), ENT_QUOTES, 'UTF-8') ?>"
                                                 target="_blank" class="btn btn-sm btn-outline-secondary ms-2"
                                                 title="Bordro Yazdır">
