@@ -1165,7 +1165,8 @@ $(document).ready(function () {
         if (!agent || agent.status !== "success") {
           throw new Error((agent && agent.message) || "E-imza cihazı bulunamadı. Güncel Ersan E-İmza uygulamasını çalıştırınız.");
         }
-        if (!String(agent.agent_version || "").startsWith("1.2.")) {
+        const ver = (String(agent.agent_version || "").match(/^(\d+)\.(\d+)/) || []).slice(1).map(Number);
+        if (ver.length < 2 || ver[0] < 1 || (ver[0] === 1 && ver[1] < 2)) {
           const versionError = new Error("PAdES için Ersan E-İmza v1.2.0 gereklidir.");
           versionError.code = "EIMZA_AGENT_UPDATE_REQUIRED";
           throw versionError;
