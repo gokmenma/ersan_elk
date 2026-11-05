@@ -107,7 +107,7 @@ router.beforeEach(async (to, from) => {
   if (to.meta.requiresAuth && !auth.state.authenticated) return { name: 'login' }
   if (to.meta.requiresCompany && !auth.state.company) return { name: 'company-select' }
   if (to.meta.permission && !auth.state.permissions[to.meta.permission]) return { name: 'home' }
-  if (to.name === 'personnel-section' && !auth.state.permissions.personnel_edit) return { name: 'personnel-detail', params: { id: to.params.id } }
+  if (to.name === 'personnel-section' && !auth.state.permissions.personnel_detail) return { name: 'personnel-detail', params: { id: to.params.id } }
   if (to.name === 'personnel-section' && to.params.section === 'evraklar' && !auth.state.permissions.personnel_documents) return { name: 'personnel-detail', params: { id: to.params.id } }
 })
 

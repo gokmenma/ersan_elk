@@ -86,7 +86,7 @@ const modules = computed(() => [
   ...(auth.state.permissions.personnel_documents ? [{ tab: 'evraklar', label: 'Personel evrakları', meta: 'Belgeler ve dijital arşiv', icon: FileText, color: '#e11d48' }] : []),
   { tab: 'icralar', label: 'İcra dosyaları', meta: 'Borç ve kesinti takibi', icon: Gavel, color: '#f97316' },
   { tab: 'puantaj', label: 'İş ve puantaj', meta: 'Çalışma ve görev kayıtları', icon: CalendarCheck, color: '#0891b2' },
-].filter(() => auth.state.permissions.personnel_edit))
+].filter(() => auth.state.permissions.personnel_detail))
 
 function phoneHref(value) {
   return `tel:${String(value || '').replace(/[^+\d]/g, '')}`

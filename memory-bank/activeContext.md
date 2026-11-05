@@ -3635,3 +3635,4 @@
 ## 2026-11-05 — Personel Detayı yetkisi
 - `personel_detay` yetkisi eklendi (sql/2026_11_05_personel_detay_yetkisi.sql); `personel/manage` sayfa politikası bu yetkiye bağlandı.
 - views/personel/manage.php: mevcut kayıt görüntüleme `personel_detay` veya `personel_duzenle`; yeni kayıt ve Kaydet/Yeni Personel butonları yalnız `personel_duzenle`.
+- Mobil SPA: `personnel_detail` bayrağı (personel_listesi + personel_detay|personel_duzenle) bölüm okumalarını açar; yazma `personel_duzenle`'de kaldı. Departman kısıtı için MobilePersonelModel::baseWhere adlandırılmış parametreye çevrildi (HY093 düzeltmesi).

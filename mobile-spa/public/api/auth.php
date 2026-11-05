@@ -254,7 +254,8 @@ function sessionPayload(): array
     $permissions = [
         'personnel' => mobileCan(['personel_listesi']),
         'personnel_edit' => Gate::allows('personel_listesi') && Gate::allows('personel_duzenle'),
-        'personnel_documents' => Gate::allows('personel_duzenle') && Gate::allows('evrak_bilgileri_sekmesi'),
+        'personnel_detail' => Gate::allows('personel_listesi') && (Gate::allows('personel_duzenle') || Gate::allows('personel_detay')),
+        'personnel_documents' => (Gate::allows('personel_duzenle') || Gate::allows('personel_detay')) && Gate::allows('evrak_bilgileri_sekmesi'),
         'personnel_tracking' => mobileCan(['personel-takip/list']) || Gate::isSuperAdmin(),
         'tasks' => mobileCan(['gorevler']),
         'reports' => mobileCan(['puantaj/raporlar']),

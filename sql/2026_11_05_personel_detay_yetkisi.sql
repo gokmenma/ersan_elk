@@ -44,3 +44,10 @@ WHERE (roles.role_type = 'superadmin' OR roles.superadmin = 1)
       WHERE existing_grant.role_id = roles.id
         AND existing_grant.permission_id = @personel_detay_permission_id
   );
+
+UPDATE permission_policies
+SET access_mode = 'read'
+WHERE scope = 'page'
+  AND resource = 'personel/manage'
+  AND http_method = 'GET'
+  AND permission_id = @personel_detay_permission_id;

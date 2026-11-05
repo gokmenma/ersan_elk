@@ -133,13 +133,14 @@ try {
             personnelResponse(['success' => false, 'message' => 'Personel bulunamadı veya erişim yetkiniz yok.'], 404);
         }
         $canEdit = Gate::allows('personel_duzenle');
-        $canViewDocuments = $canEdit && Gate::allows('evrak_bilgileri_sekmesi');
+        $canViewDetail = $canEdit || Gate::allows('personel_detay');
+        $canViewDocuments = $canViewDetail && Gate::allows('evrak_bilgileri_sekmesi');
         $section = (string) ($_GET['section'] ?? 'profile');
         $allowedSections = ['profile', 'genel', 'calisma', 'izinler', 'ek_odemeler', 'kesintiler', 'evraklar', 'icralar', 'zimmetler', 'puantaj'];
         if (!in_array($section, $allowedSections, true)) {
             personnelResponse(['success' => false, 'message' => 'Geçersiz personel bölümü.'], 422);
         }
-        if ($section !== 'profile' && !$canEdit) {
+        if ($section !== 'profile' && !$canViewDetail) {
             personnelResponse(['success' => false, 'message' => 'Personel bölümünü görüntüleme yetkiniz bulunmuyor.'], 403);
         }
         if ($section === 'evraklar' && !$canViewDocuments) {
