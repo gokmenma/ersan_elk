@@ -280,6 +280,30 @@ $title = 'Görevler';
     </div>
 </div>
 
+<!-- ═══ LİSTE PAYLAŞ MODAL ═══ -->
+<div class="yeni-liste-modal" id="listePaylasModal">
+    <div class="yeni-liste-content paylas-content">
+        <div class="paylas-head">
+            <span class="paylas-head-ikon"><i class="bx bx-user-plus"></i></span>
+            <div>
+                <h4>Listeyi Paylaş</h4>
+                <div class="paylas-alt" id="listePaylasBaslik"></div>
+            </div>
+        </div>
+        <input type="hidden" id="listePaylasId">
+        <div class="paylas-ara">
+            <i class="bx bx-search"></i>
+            <input type="text" id="listePaylasAra" placeholder="Kullanıcı ara...">
+        </div>
+        <div class="paylas-liste" id="listePaylasKullanicilar"></div>
+        <small class="text-muted paylas-not">Düzenleyebilir: görev ekler, düzenler, tamamlar. Yalnızca görüntüler: listeyi ve görevleri sadece görür.</small>
+        <div class="yeni-liste-footer">
+            <button class="btn-iptal btn btn-light" id="listePaylasIptal">İptal</button>
+            <button class="btn-bitti btn btn-primary" id="listePaylasKaydet">Kaydet</button>
+        </div>
+    </div>
+</div>
+
 <!-- ═══ YENİ LİSTE MODAL ═══ -->
 <div class="yeni-liste-modal" id="yeniListeModal">
     <div class="yeni-liste-content">
@@ -296,7 +320,9 @@ $title = 'Görevler';
             <div class="renk-secici">
                 <div class="renk-secici-item" data-renk="#4285f4" style="background:#4285f4" title="Mavi"></div>
                 <div class="renk-secici-item" data-renk="#ea4335" style="background:#ea4335" title="Kırmızı"></div>
-                <div class="renk-secici-i                <div class="renk-secici-item" data-renk="#ff6d01" style="background:#ff6d01" title="Turuncu"></div>
+                <div class="renk-secici-item" data-renk="#fbbc04" style="background:#fbbc04" title="Sarı"></div>
+                <div class="renk-secici-item" data-renk="#34a853" style="background:#34a853" title="Yeşil"></div>
+                <div class="renk-secici-item" data-renk="#ff6d01" style="background:#ff6d01" title="Turuncu"></div>
                 <div class="renk-secici-item" data-renk="#46bdc6" style="background:#46bdc6" title="Turkuaz"></div>
                 <div class="renk-secici-item" data-renk="#7baaf7" style="background:#7baaf7" title="Açık Mavi"></div>
                 <div class="renk-secici-item" data-renk="#a142f4" style="background:#a142f4" title="Mor"></div>

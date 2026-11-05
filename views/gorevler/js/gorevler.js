@@ -51,18 +51,38 @@
     );
     nav.find(".nav-tum-gorevler .badge").text(totalAktif || "");
 
-    allData.forEach(function (item) {
-      const renk = item.liste.renk || "var(--gt-primary)";
-      const li = $(`
+    const benim = allData.filter((d) => d.liste.sahip !== false);
+    const paylasilan = allData.filter((d) => d.liste.sahip === false);
+
+    const appendItems = function (items) {
+      items.forEach(function (item) {
+        const renk = item.liste.renk || "var(--gt-primary)";
+        const paylasimIkon =
+          item.liste.sahip === false
+            ? '<i class="bx bx-group liste-nav-paylasim" title="' +
+              escAttr(item.liste.sahip_adi || "Paylaşılan liste") +
+              '"></i>'
+            : parseInt(item.liste.paylasim_sayisi || 0) > 0
+              ? '<i class="bx bx-share-alt liste-nav-paylasim" title="Paylaşılıyor"></i>'
+              : "";
+        const li = $(`
                 <div class="nav-item liste-nav-item ${activeListeId === item.liste.id ? "active" : ""}" 
                      data-liste-id="${item.liste.id}">
                     <span class="liste-nav-renk" style="background:${renk}"></span>
                     <span class="liste-nav-baslik">${escHtml(item.liste.baslik)}</span>
+                    ${paylasimIkon}
                     <span class="badge">${item.liste.aktif_gorev_sayisi || ""}</span>
                 </div>
             `);
-      listSection.append(li);
-    });
+        listSection.append(li);
+      });
+    };
+
+    appendItems(benim);
+    if (paylasilan.length > 0) {
+      listSection.append('<div class="sidebar-section-title liste-paylasilan-baslik">Benimle paylaşılan</div>');
+      appendItems(paylasilan);
+    }
   }
 
   // =====================================================
@@ -130,34 +150,49 @@
 
     let gorevlerHtml = "";
     gorevler.forEach(function (g) {
-      gorevlerHtml += buildGorevItem(g, false);
+      gorevlerHtml += buildGorevItem(g, false, canEdit);
     });
 
     let tamamlananlarHtml = "";
     tamamlananlar.forEach(function (g) {
-      tamamlananlarHtml += buildGorevItem(g, true);
+      tamamlananlarHtml += buildGorevItem(g, true, canEdit);
     });
 
     const tamamSayi = tamamlananlar.length;
 
     const listeRenk = liste.renk || "var(--gt-primary)";
+    const canEdit = canEditListe(liste);
+    const isSahip = liste.sahip !== false;
+    const paylasimSayisi = parseInt(liste.paylasim_sayisi || 0);
+    let rozetHtml = "";
+    if (!isSahip) {
+      rozetHtml = `<span class="liste-rozet liste-rozet-paylasilan" title="${escAttr(liste.sahip_adi || "")}"><i class="bx bx-user"></i> ${escHtml(liste.sahip_adi || "Paylaşılan")}</span>`;
+      if (!canEdit) {
+        rozetHtml += '<span class="liste-rozet liste-rozet-readonly"><i class="bx bx-lock-alt"></i> Salt okunur</span>';
+      }
+    } else if (paylasimSayisi > 0) {
+      rozetHtml = `<span class="liste-rozet liste-rozet-sahip btn-liste-paylas" data-liste-id="${liste.id}" title="Paylaşımı düzenle"><i class="bx bx-group"></i> ${paylasimSayisi} kişi</span>`;
+    }
 
     return $(`
-            <div class="gorev-liste-kolon" data-liste-id="${liste.id}" style="border-top: 3px solid ${listeRenk}; --card-color: ${listeRenk}">
+            <div class="gorev-liste-kolon ${canEdit ? "" : "salt-okunur"}" data-liste-id="${liste.id}" style="--card-color: ${listeRenk}">
                 <div class="gorev-liste-header">
-                    <h3>${escHtml(liste.baslik)}</h3>
-                    <div style="position: relative;">
-                        <button class="liste-menu-btn" data-liste-id="${liste.id}">
-                            <i class="bx bx-dots-vertical"></i>
-                        </button>
+                    <div class="gorev-liste-baslik-wrap">
+                        <h3>${escHtml(liste.baslik)}</h3>
+                        <span class="liste-sayac">${gorevler.length}</span>
+                    </div>
+                    <div class="gorev-liste-header-actions">
+                        ${isSahip ? `<button class="liste-paylas-btn btn-liste-paylas" data-liste-id="${liste.id}" title="Paylaş"><i class="bx bx-user-plus"></i></button>` : ""}
+                        ${isSahip ? `<button class="liste-menu-btn" data-liste-id="${liste.id}" data-sahip="1"><i class="bx bx-dots-vertical"></i></button>` : ""}
                     </div>
                 </div>
+                ${rozetHtml ? `<div class="gorev-liste-rozetler">${rozetHtml}</div>` : ""}
 
-                <button class="gorev-ekle-btn" data-liste-id="${liste.id}">
-                    <i class="bx bx-edit"></i> Görev ekle
-                </button>
+                ${canEdit ? `<button class="gorev-ekle-btn" data-liste-id="${liste.id}">
+                    <i class="bx bx-plus"></i> Görev ekle
+                </button>` : ""}
 
-                <div class="gorev-ekleme-form" data-liste-id="${liste.id}">
+                ${canEdit ? `<div class="gorev-ekleme-form" data-liste-id="${liste.id}">
                     <input type="hidden" class="new-gorev-tarih" value="">
                     <input type="hidden" class="new-gorev-saat" value="">
                     <input type="hidden" class="new-gorev-yineleme" value="{}">
@@ -181,10 +216,10 @@
                             <i class="bx bx-repeat"></i>
                         </button>
                     </div>
-                </div>
+                </div>` : ""}
 
-                <div class="gorev-liste-body sortable-liste" data-liste-id="${liste.id}">
-                    ${gorevlerHtml}
+                <div class="gorev-liste-body ${canEdit ? "sortable-liste" : ""}" data-liste-id="${liste.id}">
+                    ${gorevlerHtml || `<div class="gorev-bos-durum"><i class="bx bx-check-circle"></i><span>${canEdit ? "Henüz görev yok" : "Bu listede görev yok"}</span></div>`}
                 </div>
 
                 ${
@@ -206,7 +241,12 @@
         `);
   }
 
-  function buildGorevItem(g, tamamlandi) {
+  function canEditListe(liste) {
+    return liste.sahip !== false || liste.erisim === "duzenle";
+  }
+
+  function buildGorevItem(g, tamamlandi, canEdit) {
+    if (canEdit === undefined) canEdit = true;
     let tarihBadge = "";
     if (g.tarih) {
       const tarihObj = new Date(g.tarih + "T00:00:00");
@@ -292,7 +332,7 @@
         displayLabel += ", " + g.saat.substring(0, 5);
       }
 
-      tarihBadge = `<span class="gorev-tarih-badge ${cls}"><i class="bx bx-calendar"></i> ${displayLabel} <span class="btn-clear-date" data-gorev-id="${g.id}" title="Temizle"><i class="bx bx-x"></i></span></span>`;
+      tarihBadge = `<span class="gorev-tarih-badge ${cls}"><i class="bx bx-calendar"></i> ${displayLabel} ${canEdit ? `<span class="btn-clear-date" data-gorev-id="${g.id}" title="Temizle"><i class="bx bx-x"></i></span>` : ""}</span>`;
     }
 
     const yinelemeIcon = g.yineleme_sikligi
@@ -307,7 +347,7 @@
 
     return `
             <div class="gorev-item" data-gorev-id="${g.id}" data-liste-id="${g.liste_id}" data-ana-sayfa="${isAnaSayfa ? 1 : 0}">
-                <div class="gorev-checkbox" data-gorev-id="${g.id}" data-tamamlandi="${tamamlandi ? 1 : 0}" title="${tamamlandi ? "Geri al" : "Tamamla"}"></div>
+                <div class="gorev-checkbox ${canEdit ? "" : "readonly"}" data-gorev-id="${g.id}" data-tamamlandi="${tamamlandi ? 1 : 0}" title="${canEdit ? (tamamlandi ? "Geri al" : "Tamamla") : "Salt okunur"}"></div>
                 <div class="gorev-info">
                     <div class="gorev-baslik">${escHtml(g.baslik)}</div>
                     ${aciklamaHtml}
@@ -316,14 +356,14 @@
                         ${yinelemeIcon}
                     </div>
                 </div>
-                <div class="gorev-actions">
+                ${canEdit ? `<div class="gorev-actions">
                     <button class="gorev-action-btn btn-gorev-menu" data-gorev-id="${g.id}">
                         <i class="bx bx-dots-vertical"></i>
                     </button>
                     <button class="gorev-action-btn btn-gorev-yildiz ${g.yildizli == 1 ? "active" : ""}" data-gorev-id="${g.id}">
                         <i class="bx ${g.yildizli == 1 ? "bxs-star" : "bx-star"}" style="${g.yildizli == 1 ? "color:#f4b400" : ""}"></i>
                     </button>
-                </div>
+                </div>` : ""}
             </div>
         `;
   }
@@ -506,6 +546,7 @@
     // Görev tamamla/geri al
     $(document).on("click", ".gorev-checkbox", function (e) {
       e.stopPropagation();
+      if ($(this).hasClass("readonly")) return;
       const gorevId = $(this).data("gorev-id");
       const tamamlandi = $(this).data("tamamlandi");
       const action = tamamlandi == 1 ? "geri-al" : "tamamla";
@@ -563,7 +604,7 @@
       $(".gorev-dropdown").remove();
 
       const offset = $btn.offset();
-      const dropdownHeight = 90; // Yaklaşık yükseklik
+      const dropdownHeight = 130; // Yaklaşık yükseklik
       const windowHeight = $(window).height();
       const spaceBelow = windowHeight - offset.top - $btn.outerHeight();
 
@@ -575,6 +616,9 @@
 
       const dropdown = $(`
         <div class="gorev-dropdown liste-dropdown show" style="top: ${topPos}px; left: ${offset.left - 130}px;">
+            <button class="dropdown-item btn-liste-paylas" data-liste-id="${listeId}">
+                <i class="bx bx-user-plus"></i> Paylaş
+            </button>
             <button class="dropdown-item btn-liste-yeniden-adlandir" data-liste-id="${listeId}">
                 <i class="bx bx-edit"></i> Yeniden adlandır
             </button>
@@ -688,6 +732,32 @@
       const gorevId = $(this).data("gorev-id");
       $(".gorev-dropdown").removeClass("show");
       openGorevKullaniciSecModal(gorevId);
+    });
+
+    $(document).on("click", ".btn-liste-paylas", function (e) {
+      e.stopPropagation();
+      $(".gorev-dropdown").remove();
+      openPaylasModal($(this).data("liste-id"));
+    });
+
+    $(document).on("click", "#listePaylasIptal", function () {
+      $("#listePaylasModal").removeClass("show");
+    });
+
+    $(document).on("click", "#listePaylasKaydet", savePaylasim);
+
+    $(document).on("change", ".paylas-check", function () {
+      const $r = $(this).closest(".paylas-satir");
+      const on = $(this).prop("checked");
+      $r.toggleClass("secili", on);
+      $r.find(".paylas-yetki").prop("disabled", !on);
+    });
+
+    $(document).on("input", "#listePaylasAra", function () {
+      const q = $(this).val().toLocaleLowerCase("tr-TR").trim();
+      $("#listePaylasKullanicilar .paylas-satir").each(function () {
+        $(this).toggle(String($(this).data("ad")).indexOf(q) !== -1);
+      });
     });
 
     // Görev Kullanıcı Seç İptal
@@ -875,6 +945,7 @@
 
     // Görev kartına tıklama - Düzenle (Inline)
     $(document).on("click", ".gorev-item", function (e) {
+      if ($(this).closest(".salt-okunur").length) return;
       if (
         $(e.target).closest(
           ".gorev-checkbox, .gorev-actions, .inline-edit-form",
@@ -1458,7 +1529,7 @@
         chosenClass: "kolon-sortable-chosen",
         dragClass: "kolon-sortable-drag",
         handle: ".gorev-liste-header",
-        filter: ".liste-menu-btn",
+        filter: ".liste-menu-btn, .liste-paylas-btn",
         preventOnFilter: false,
         direction: "horizontal",
         onEnd: function () {
@@ -1564,6 +1635,10 @@
   // =====================================================
   // YARDIMCI FONKSİYONLAR
   // =====================================================
+  function escAttr(str) {
+    return escHtml(str).replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
   function escHtml(str) {
     if (!str) return "";
     const div = document.createElement("div");
@@ -1895,6 +1970,87 @@
     );
   }
 
+  function openPaylasModal(listeId) {
+    const modal = $("#listePaylasModal");
+    const liste = allData.find((d) => d.liste.id === listeId);
+    $("#listePaylasId").val(listeId);
+    $("#listePaylasBaslik").text(liste ? liste.liste.baslik : "");
+    const body = $("#listePaylasKullanicilar");
+    body.html('<div class="paylas-yukleniyor">Yükleniyor...</div>');
+    modal.addClass("show");
+
+    $.post(
+      API_URL,
+      { action: "get-liste-paylasim", liste_id: listeId },
+      function (res) {
+        if (!res.success) {
+          modal.removeClass("show");
+          showToast(res.message || "Paylaşım bilgisi alınamadı", "error");
+          return;
+        }
+        body.empty();
+        const users = res.data.kullanicilar || [];
+        if (users.length === 0) {
+          body.html('<div class="paylas-yukleniyor">Paylaşılabilecek başka kullanıcı yok.</div>');
+          return;
+        }
+        users.forEach(function (u) {
+          const secili = !!u.yetki;
+          const ad = u.text || "";
+          const bas = ad.trim().charAt(0).toLocaleUpperCase("tr-TR") || "?";
+          const row = $(`
+            <div class="paylas-satir ${secili ? "secili" : ""}" data-user-id="${u.id}" data-ad="${escAttr(ad.toLocaleLowerCase("tr-TR"))}">
+              <label class="paylas-kisi">
+                <input type="checkbox" class="paylas-check" ${secili ? "checked" : ""}>
+                <span class="paylas-avatar">${escHtml(bas)}</span>
+                <span class="paylas-ad">${escHtml(ad)}</span>
+              </label>
+              <select class="paylas-yetki" ${secili ? "" : "disabled"}>
+                <option value="duzenle" ${u.yetki !== "goruntule" ? "selected" : ""}>Düzenleyebilir</option>
+                <option value="goruntule" ${u.yetki === "goruntule" ? "selected" : ""}>Yalnızca görüntüler</option>
+              </select>
+            </div>
+          `);
+          body.append(row);
+        });
+      },
+      "json",
+    );
+  }
+
+  function savePaylasim() {
+    const listeId = $("#listePaylasId").val();
+    const paylasimlar = [];
+    $("#listePaylasKullanicilar .paylas-satir").each(function () {
+      const $r = $(this);
+      if ($r.find(".paylas-check").prop("checked")) {
+        paylasimlar.push({
+          id: $r.data("user-id"),
+          yetki: $r.find(".paylas-yetki").val(),
+        });
+      }
+    });
+
+    $.post(
+      API_URL,
+      {
+        action: "save-liste-paylasim",
+        liste_id: listeId,
+        paylasimlar: JSON.stringify(paylasimlar),
+      },
+      function (res) {
+        if (res.success) {
+          showToast("Paylaşım ayarları kaydedildi", "success");
+          $("#listePaylasModal").removeClass("show");
+          loadAll();
+        } else {
+          showToast(res.message || "Kaydedilemedi", "error");
+        }
+      },
+      "json",
+    );
+  }
+
   function saveGorevKullaniciSec() {
     const gorevId = $("#gorevKullaniciSecGorevId").val();
     const kullanicilar = $("#set_gorev_ozel_kullanicilar").val() || [];
@@ -1986,7 +2142,7 @@
     // Input, buton veya kart içindeysek scroll tetiklenmesin
     if (
       $(e.target).closest(
-        ".gorev-item, .gorev-liste-header, button, input, textarea, .gorev-checkbox, .liste-menu-btn",
+        ".gorev-item, .gorev-liste-header, button, input, textarea, .gorev-checkbox, .liste-menu-btn, .liste-paylas-btn",
       ).length
     )
       return;

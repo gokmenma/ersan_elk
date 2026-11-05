@@ -32,6 +32,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         echo json_encode(['success' => false, 'message' => 'Görev işlemleri için yetkiniz bulunmamaktadır.']);
         exit;
     }
+    $logla = function (string $tip, string $aciklama) use ($userId) {
+        try {
+            (new \App\Model\SystemLogModel())->logAction($userId, $tip, $aciklama, \App\Model\SystemLogModel::LEVEL_INFO);
+        } catch (\Throwable $t) {
+            error_log('Görev log hatası: ' . $t->getMessage());
+        }
+    };
+    $listeSahibiOl = function ($listeId) use ($Gorev, $userId, $firmaId) {
+        if ($Gorev->listeYetkisi($listeId, $userId, $firmaId) !== 'sahip') {
+            throw new Exception("Bu işlem yalnızca liste sahibi tarafından yapılabilir.");
+        }
+    };
+    $listeDuzenleyebilir = function ($listeId) use ($Gorev, $userId, $firmaId) {
+        if (!in_array($Gorev->listeYetkisi($listeId, $userId, $firmaId), ['sahip', 'duzenle'], true)) {
+            throw new Exception("Bu listede değişiklik yapma yetkiniz yok.");
+        }
+    };
+    $gorevDuzenleyebilir = function ($gorevId) use ($Gorev, $userId, $firmaId) {
+        if (!in_array($Gorev->gorevYetkisi($gorevId, $userId, $firmaId), ['sahip', 'duzenle'], true)) {
+            throw new Exception("Bu görevde değişiklik yapma yetkiniz yok.");
+        }
+    };
     try {
         switch ($action) {
 
@@ -60,6 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 ]);
 
                 if ($id) {
+                    $logla('Görev Listesi Oluşturma', "'$baslik' listesi oluşturuldu.");
                     echo json_encode(['success' => true, 'message' => 'Liste oluşturuldu.', 'id' => Security::encrypt($id)]);
                 } else {
                     throw new Exception("Liste oluşturulamadı.");
@@ -68,12 +91,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             case 'update-liste':
                 $id = Security::decrypt($_POST['liste_id']);
+                $listeSahibiOl($id);
                 $result = $Gorev->updateListe($id, [
                     'baslik' => $_POST['baslik'] ?? null,
                     'renk' => $_POST['renk'] ?? null
                 ]);
 
                 if ($result) {
+                    $logla('Görev Listesi Güncelleme', "Liste #$id güncellendi.");
                     echo json_encode(['success' => true, 'message' => 'Liste güncellendi.']);
                 } else {
                     throw new Exception("Liste güncellenemedi.");
@@ -86,9 +111,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if (!$liste) {
                     throw new Exception("Liste bulunamadı.");
                 }
+                $listeSahibiOl($id);
 
                 $result = $Gorev->deleteListe($id);
                 if ($result) {
+                    $logla('Görev Listesi Silme', "'{$liste->baslik}' listesi silindi.");
                     echo json_encode(['success' => true, 'message' => 'Liste ve tüm görevleri silindi.']);
                 } else {
                     throw new Exception("Liste silinemedi.");
@@ -98,7 +125,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             case 'update-liste-sira':
                 $siralar = json_decode($_POST['siralar'], true);
                 $decrypted = [];
-                foreach ($siralar as $s) {
+                foreach ((array) $siralar as $s) {
+                    if ($Gorev->listeYetkisi(Security::decrypt($s['id']), $userId, $firmaId) === null) {
+                        continue;
+                    }
                     $decrypted[] = [
                         'id' => Security::decrypt($s['id']),
                         'sira' => $s['sira']
@@ -108,11 +138,70 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 echo json_encode(['success' => true]);
                 break;
 
+            case 'get-liste-paylasim':
+                $liste_id = Security::decrypt($_POST['liste_id']);
+                $listeSahibiOl($liste_id);
+
+                $paylasimlar = [];
+                foreach ($Gorev->getPaylasimlar($liste_id) as $p) {
+                    $paylasimlar[(int) $p->user_id] = $p->yetki;
+                }
+
+                $kullanicilar = [];
+                foreach ((new \App\Model\UserModel())->getUsers() as $u) {
+                    if ((int) $u->id === (int) $userId) {
+                        continue;
+                    }
+                    $kullanicilar[] = [
+                        'id' => Security::encrypt($u->id),
+                        'text' => $u->adi_soyadi,
+                        'yetki' => $paylasimlar[(int) $u->id] ?? null
+                    ];
+                }
+                echo json_encode(['success' => true, 'data' => ['kullanicilar' => $kullanicilar]]);
+                break;
+
+            case 'save-liste-paylasim':
+                $liste_id = Security::decrypt($_POST['liste_id']);
+                $listeSahibiOl($liste_id);
+
+                $gelen = json_decode($_POST['paylasimlar'] ?? '[]', true);
+                if (!is_array($gelen)) {
+                    throw new Exception("Geçersiz paylaşım verisi.");
+                }
+
+                $gecerliIds = [];
+                foreach ((new \App\Model\UserModel())->getUsers() as $u) {
+                    $gecerliIds[(int) $u->id] = true;
+                }
+
+                $kayitlar = [];
+                foreach ($gelen as $k) {
+                    $hedefId = (int) Security::decrypt($k['id'] ?? '');
+                    if ($hedefId <= 0 || $hedefId === (int) $userId || !isset($gecerliIds[$hedefId])) {
+                        continue;
+                    }
+                    $kayitlar[$hedefId] = [
+                        'user_id' => $hedefId,
+                        'yetki' => ($k['yetki'] ?? '') === 'goruntule' ? 'goruntule' : 'duzenle'
+                    ];
+                }
+
+                if (!$Gorev->savePaylasimlar($liste_id, $userId, array_values($kayitlar))) {
+                    throw new Exception("Paylaşım kaydedilemedi.");
+                }
+                $logla('Görev Listesi Paylaşımı', "Liste #$liste_id " . count($kayitlar) . " kullanıcı ile paylaşıldı.");
+                echo json_encode(['success' => true, 'message' => 'Paylaşım ayarları kaydedildi.']);
+                break;
+
             // =====================================================
             // GÖREV İŞLEMLERİ
             // =====================================================
             case 'get-gorevler':
                 $liste_id = Security::decrypt($_POST['liste_id']);
+                if ($Gorev->findListe($liste_id) === false || $Gorev->findListe($liste_id)->firma_id != $firmaId) {
+                    throw new Exception("Liste bulunamadı.");
+                }
                 $aktifGorevler = $Gorev->getGorevler($liste_id, $userId, 0);
                 $tamamlananlar = $Gorev->getTamamlananlar($liste_id, $userId);
 
@@ -157,6 +246,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             'baslik' => $liste->baslik,
                             'renk' => $liste->renk,
                             'sira' => $liste->sira,
+                            'sahip' => (bool) $liste->sahip,
+                            'erisim' => $liste->erisim,
+                            'sahip_adi' => $liste->sahip_adi,
+                            'paylasim_sayisi' => (int) $liste->paylasim_sayisi,
                             'aktif_gorev_sayisi' => $liste->aktif_gorev_sayisi,
                             'tamamlanan_gorev_sayisi' => $liste->tamamlanan_gorev_sayisi
                         ],
@@ -175,6 +268,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if (empty($baslik)) {
                     throw new Exception("Görev başlığı boş olamaz.");
                 }
+                $listeDuzenleyebilir($liste_id);
 
                 $data = [
                     'liste_id' => $liste_id,
@@ -198,6 +292,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 if ($id) {
                     $gorev = $Gorev->findGorev($id);
+                    $logla('Görev Ekleme', "'$baslik' görevi eklendi.");
                     $gorev->id = Security::encrypt($gorev->id);
                     $gorev->liste_id = Security::encrypt($gorev->liste_id);
                     echo json_encode(['success' => true, 'message' => 'Görev eklendi.', 'data' => $gorev]);
@@ -208,6 +303,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             case 'update-gorev':
                 $id = Security::decrypt($_POST['gorev_id']);
+                $gorevDuzenleyebilir($id);
                 $data = [];
 
                 if (isset($_POST['baslik']))
@@ -270,9 +366,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             case 'delete-gorev':
                 $id = Security::decrypt($_POST['gorev_id']);
+                $gorevDuzenleyebilir($id);
                 $result = $Gorev->deleteGorev($id);
 
                 if ($result) {
+                    $logla('Görev Silme', "Görev #$id silindi.");
                     echo json_encode(['success' => true, 'message' => 'Görev silindi.']);
                 } else {
                     throw new Exception("Görev silinemedi.");
@@ -281,9 +379,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             case 'tamamla':
                 $id = Security::decrypt($_POST['gorev_id']);
+                $gorevDuzenleyebilir($id);
                 $result = $Gorev->tamamla($id);
 
                 if ($result) {
+                    $logla('Görev Tamamlama', "Görev #$id tamamlandı.");
                     echo json_encode(['success' => true, 'message' => 'Görev tamamlandı.']);
                 } else {
                     throw new Exception("İşlem başarısız.");
@@ -292,9 +392,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             case 'geri-al':
                 $id = Security::decrypt($_POST['gorev_id']);
+                $gorevDuzenleyebilir($id);
                 $result = $Gorev->tamamlamayiGeriAl($id);
 
                 if ($result) {
+                    $logla('Görev Geri Alma', "Görev #$id tamamlanma durumu geri alındı.");
                     echo json_encode(['success' => true, 'message' => 'Görev geri alındı.']);
                 } else {
                     throw new Exception("İşlem başarısız.");
@@ -304,11 +406,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             case 'update-sira':
                 $gorevler = json_decode($_POST['gorevler'], true);
                 $decrypted = [];
-                foreach ($gorevler as $g) {
+                foreach ((array) $gorevler as $g) {
+                    $gId = Security::decrypt($g['id']);
+                    $hedefListeId = Security::decrypt($g['liste_id']);
+                    if (!in_array($Gorev->gorevYetkisi($gId, $userId, $firmaId), ['sahip', 'duzenle'], true)
+                        || !in_array($Gorev->listeYetkisi($hedefListeId, $userId, $firmaId), ['sahip', 'duzenle'], true)) {
+                        continue;
+                    }
                     $decrypted[] = [
-                        'id' => Security::decrypt($g['id']),
+                        'id' => $gId,
                         'sira' => $g['sira'],
-                        'liste_id' => Security::decrypt($g['liste_id'])
+                        'liste_id' => $hedefListeId
                     ];
                 }
                 $Gorev->updateGorevSira($decrypted);

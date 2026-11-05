@@ -21,16 +21,110 @@ class GorevModel extends Model
 
     public function getListeler($firma_id, $user_id = null)
     {
-        $userFilter = $user_id ? " AND (g.olusturan_id = $user_id OR FIND_IN_SET($user_id, g.gorev_kullanicilari))" : "";
-        $sql = "SELECT gl.*, 
-                (SELECT COUNT(*) FROM gorevler g WHERE g.liste_id = gl.id AND g.tamamlandi = 0 $userFilter) as aktif_gorev_sayisi,
-                (SELECT COUNT(*) FROM gorevler g WHERE g.liste_id = gl.id AND g.tamamlandi = 1 $userFilter) as tamamlanan_gorev_sayisi
-                FROM gorev_listeleri gl 
-                WHERE gl.firma_id = :firma_id 
+        $user_id = (int) $user_id;
+        if ($user_id <= 0) {
+            $stmt = $this->db->prepare("SELECT gl.*, 1 AS sahip, 'sahip' AS erisim, NULL AS sahip_adi, 0 AS paylasim_sayisi,
+                (SELECT COUNT(*) FROM gorevler g WHERE g.liste_id = gl.id AND g.tamamlandi = 0) AS aktif_gorev_sayisi,
+                (SELECT COUNT(*) FROM gorevler g WHERE g.liste_id = gl.id AND g.tamamlandi = 1) AS tamamlanan_gorev_sayisi
+                FROM gorev_listeleri gl WHERE gl.firma_id = :firma_id ORDER BY gl.sira ASC, gl.id ASC");
+            $stmt->execute([':firma_id' => $firma_id]);
+            return $stmt->fetchAll(PDO::FETCH_OBJ);
+        }
+
+        $gorevKapsam = "(gl.olusturan_id = :uid OR p.id IS NOT NULL OR g.olusturan_id = :uid OR FIND_IN_SET(:uid, g.gorev_kullanicilari))";
+        $sql = "SELECT gl.*,
+                (gl.olusturan_id = :uid) AS sahip,
+                CASE WHEN gl.olusturan_id = :uid THEN 'sahip' ELSE COALESCE(p.yetki, 'atanan') END AS erisim,
+                u.adi_soyadi AS sahip_adi,
+                (SELECT COUNT(*) FROM gorev_liste_paylasimlari x WHERE x.liste_id = gl.id) AS paylasim_sayisi,
+                (SELECT COUNT(*) FROM gorevler g WHERE g.liste_id = gl.id AND g.tamamlandi = 0 AND $gorevKapsam) AS aktif_gorev_sayisi,
+                (SELECT COUNT(*) FROM gorevler g WHERE g.liste_id = gl.id AND g.tamamlandi = 1 AND $gorevKapsam) AS tamamlanan_gorev_sayisi
+                FROM gorev_listeleri gl
+                LEFT JOIN gorev_liste_paylasimlari p ON p.liste_id = gl.id AND p.user_id = :uid
+                LEFT JOIN users u ON u.id = gl.olusturan_id
+                WHERE gl.firma_id = :firma_id
+                  AND (gl.olusturan_id = :uid OR p.id IS NOT NULL OR EXISTS (
+                        SELECT 1 FROM gorevler g WHERE g.liste_id = gl.id
+                          AND (g.olusturan_id = :uid OR FIND_IN_SET(:uid, g.gorev_kullanicilari))))
                 ORDER BY gl.sira ASC, gl.id ASC";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([':firma_id' => $firma_id]);
+        $stmt->execute([':firma_id' => $firma_id, ':uid' => $user_id]);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    public function listeYetkisi($liste_id, $user_id, $firma_id = null): ?string
+    {
+        $liste = $this->findListe($liste_id);
+        if (!$liste || ($firma_id !== null && (int) $liste->firma_id !== (int) $firma_id)) {
+            return null;
+        }
+        if ((int) $liste->olusturan_id === (int) $user_id) {
+            return 'sahip';
+        }
+        $stmt = $this->db->prepare("SELECT yetki FROM gorev_liste_paylasimlari WHERE liste_id = :liste_id AND user_id = :user_id");
+        $stmt->execute([':liste_id' => $liste_id, ':user_id' => $user_id]);
+        $yetki = $stmt->fetchColumn();
+        return $yetki ?: null;
+    }
+
+    public function gorevYetkisi($gorev_id, $user_id, $firma_id = null): ?string
+    {
+        $gorev = $this->findGorev($gorev_id);
+        if (!$gorev || ($firma_id !== null && (int) $gorev->firma_id !== (int) $firma_id)) {
+            return null;
+        }
+        $yetki = $this->listeYetkisi($gorev->liste_id, $user_id, $firma_id);
+        if ($yetki !== null) {
+            return $yetki;
+        }
+        if ((int) $gorev->olusturan_id === (int) $user_id
+            || in_array((string) $user_id, array_map('trim', explode(',', (string) $gorev->gorev_kullanicilari)), true)) {
+            return 'duzenle';
+        }
+        return null;
+    }
+
+    public function getPaylasimlar($liste_id): array
+    {
+        $stmt = $this->db->prepare("SELECT p.user_id, p.yetki, u.adi_soyadi
+                FROM gorev_liste_paylasimlari p
+                INNER JOIN users u ON u.id = p.user_id
+                WHERE p.liste_id = :liste_id
+                ORDER BY u.adi_soyadi ASC");
+        $stmt->execute([':liste_id' => $liste_id]);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    public function savePaylasimlar($liste_id, $paylasan_id, array $kayitlar): bool
+    {
+        $this->db->beginTransaction();
+        try {
+            $stmt = $this->db->prepare("DELETE FROM gorev_liste_paylasimlari WHERE liste_id = :liste_id");
+            $stmt->execute([':liste_id' => $liste_id]);
+
+            $ekle = $this->db->prepare("INSERT INTO gorev_liste_paylasimlari (liste_id, user_id, yetki, paylasan_id)
+                    VALUES (:liste_id, :user_id, :yetki, :paylasan_id)");
+            foreach ($kayitlar as $kayit) {
+                $ekle->execute([
+                    ':liste_id' => $liste_id,
+                    ':user_id' => $kayit['user_id'],
+                    ':yetki' => $kayit['yetki'] === 'goruntule' ? 'goruntule' : 'duzenle',
+                    ':paylasan_id' => $paylasan_id
+                ]);
+            }
+            $this->db->commit();
+            return true;
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            error_log('Görev liste paylaşım hatası: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    private function listeErisimKosulu(): string
+    {
+        return " OR EXISTS (SELECT 1 FROM gorev_listeleri gl2 WHERE gl2.id = gorevler.liste_id AND gl2.olusturan_id = :user_id)"
+            . " OR EXISTS (SELECT 1 FROM gorev_liste_paylasimlari gp WHERE gp.liste_id = gorevler.liste_id AND gp.user_id = :user_id)";
     }
 
     public function addListe($data)
@@ -106,7 +200,7 @@ class GorevModel extends Model
 
     public function getGorevler($liste_id, $user_id = null, $tamamlandi = 0)
     {
-        $userFilter = $user_id ? " AND (olusturan_id = :user_id OR FIND_IN_SET(:user_id, gorev_kullanicilari))" : "";
+        $userFilter = $user_id ? " AND (olusturan_id = :user_id OR FIND_IN_SET(:user_id, gorev_kullanicilari)" . $this->listeErisimKosulu() . ")" : "";
         $sql = "SELECT * FROM gorevler 
                 WHERE liste_id = :liste_id AND tamamlandi = :tamamlandi $userFilter
                 ORDER BY sira ASC, id ASC";
@@ -261,7 +355,7 @@ class GorevModel extends Model
 
     public function getTamamlananlar($liste_id, $user_id = null)
     {
-        $userFilter = $user_id ? " AND (olusturan_id = :user_id OR FIND_IN_SET(:user_id, gorev_kullanicilari))" : "";
+        $userFilter = $user_id ? " AND (olusturan_id = :user_id OR FIND_IN_SET(:user_id, gorev_kullanicilari)" . $this->listeErisimKosulu() . ")" : "";
         $sql = "SELECT * FROM gorevler 
                 WHERE liste_id = :liste_id AND tamamlandi = 1 $userFilter
                 ORDER BY tamamlanma_tarihi DESC";

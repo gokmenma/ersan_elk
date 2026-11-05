@@ -2150,3 +2150,4 @@
 - [2026-11-04] Eski mobil arayüz kaldırıldı, tüm yönlendirmeler yönetici mobil SPA'ya taşındı (canlıda MOBILE_SPA_URL=https://mobile.ersantr.com gerekir).
 - [2026-11-04] DataTables tablolarında son satırdan sonra alt kenarlık çizgisi eksikliği giderildi (style.css ve datatable-filters.css'te tr:last-child alt çizgisi ve koyu tema uyumu sağlandı).
 - [x] Personel Detayı (personel_detay) yetkisi — SQL uygulanmalı, Yetki Kataloğu doğrulaması bekliyor.
+- [x] Görevler liste paylaşımı + tasarım iyileştirmesi — SQL (sql/2026_11_05_gorev_liste_paylasimlari.sql) canlıda uygulanmalı; tarayıcıda görsel doğrulama bekliyor.

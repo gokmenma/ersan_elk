@@ -76,7 +76,63 @@ if (!function_exists('getWidgetStyle')) {
     }
 }
 
+function homeWidgetPermission(string $widgetId): ?string {
+    return match ($widgetId) {
+        'widget-gunluk-muhurleme',
+        'widget-gunluk-kesme-acma',
+        'widget-gunluk-endeks-okuma',
+        'widget-gunluk-sayac-degisimi',
+        'widget-endeks-karsilastirma',
+        'widget-kesme-karsilastirma',
+        'widget-is-turu-istatistikleri',
+        'widget-is-emri-sonucu-istatistikleri' => 'puantaj/raporlar',
+        'widget-kacak-sayisi' => 'kacak_islemleri',
+        'widget-ihbar-sayisi' => 'ihbar/list',
+        'widget-gec-kalanlar' => 'personel-takip/list',
+        'widget-nobetciler' => 'nobet/list',
+        default => null,
+    };
+}
+
+function homeWidgetAllowed(string $widgetId): bool {
+    $permission = homeWidgetPermission($widgetId);
+    return $permission === null || \App\Service\Gate::allows($permission);
+}
+
+function homeStatsFilterByPermission(array $stats): array {
+    $groups = [
+        'puantaj/raporlar' => ['muhurleme', 'kesme_acma', 'endeks_okuma', 'sayac_degisimi'],
+        'kacak_islemleri' => ['kacak', 'kacak_onaylanan'],
+        'ihbar/list' => ['ihbar', 'ihbar_olumlu'],
+    ];
+    $lastUpdate = [
+        'puantaj/raporlar' => ['isler', 'isler_user', 'endeks', 'endeks_user', 'sayac', 'sayac_user'],
+    ];
+    foreach ($groups as $permission => $keys) {
+        if (\App\Service\Gate::allows($permission)) {
+            continue;
+        }
+        foreach (['daily', 'monthly'] as $period) {
+            foreach ($keys as $key) {
+                unset($stats[$period][$key]);
+            }
+        }
+    }
+    foreach ($lastUpdate as $permission => $keys) {
+        if (\App\Service\Gate::allows($permission)) {
+            continue;
+        }
+        foreach ($keys as $key) {
+            unset($stats['last_update'][$key]);
+        }
+    }
+    return $stats;
+}
+
 function renderWidget(string $widgetId, array $data = []) {
+    if (!homeWidgetAllowed($widgetId)) {
+        return '';
+    }
     $widgetDomId = htmlspecialchars($data['render_id'] ?? $widgetId, ENT_QUOTES, 'UTF-8');
     extract($data, EXTR_SKIP);
     ob_start();

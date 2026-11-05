@@ -230,7 +230,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     ];
                     $setDataCache('operational_stats', $stats);
                 }
-                $response['stats'] = $stats;
+                $response['stats'] = is_array($stats) ? homeStatsFilterByPermission($stats) : $stats;
 
                 // 2. Widgets
                 $personelModel = new \App\Model\PersonelModel();
@@ -244,6 +244,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $hareketModel = new \App\Model\PersonelHareketleriModel();
 
                 foreach ($widgetIds as $index => $widgetId) {
+                    if (!homeWidgetAllowed((string) $widgetId)) { continue; }
                     $cacheHtml = ($force || $widgetId === 'widget-bildirimler' || $widgetId === 'widget-takvim-alarmlar' || $widgetId === 'widget-gorev-evrak-takvimi') ? null : $getWidgetCache($widgetId);
                     if ($cacheHtml) { $response['results'][$widgetId] = $cacheHtml; continue; }
 
@@ -411,6 +412,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 break;
 
             case 'get-work-type-stats':
+                if (!\App\Service\Gate::allows('puantaj/raporlar')) { http_response_code(403); echo safeJsonEncode(['status' => 'error', 'message' => 'Bu veriyi görüntüleme yetkiniz bulunmamaktadır.']); exit; }
                 $year = intval($_POST['year'] ?? date('Y'));
                 $month = !empty($_POST['month']) ? intval($_POST['month']) : null;
                 $stats = $puantajModel->getWorkTypeStats($year, $month);
@@ -430,6 +432,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 break;
 
             case 'get-work-result-stats':
+                if (!\App\Service\Gate::allows('puantaj/raporlar')) { http_response_code(403); echo safeJsonEncode(['status' => 'error', 'message' => 'Bu veriyi görüntüleme yetkiniz bulunmamaktadır.']); exit; }
                 $year = intval($_POST['year'] ?? date('Y'));
                 $month = !empty($_POST['month']) ? intval($_POST['month']) : date('n');
                 $stats = $puantajModel->getWorkResultStats($year, $month);
@@ -443,17 +446,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 break;
 
             case 'get-endeks-comparison':
+                if (!\App\Service\Gate::allows('puantaj/raporlar')) { http_response_code(403); echo safeJsonEncode(['status' => 'error', 'message' => 'Bu veriyi görüntüleme yetkiniz bulunmamaktadır.']); exit; }
                 $endeksModel = new EndeksOkumaModel();
                 echo safeJsonEncode(['status' => 'success', 'data' => $endeksModel->getMonthlyComparisonByDay()]);
                 break;
 
             case 'get-kesme-comparison':
+                if (!\App\Service\Gate::allows('puantaj/raporlar')) { http_response_code(403); echo safeJsonEncode(['status' => 'error', 'message' => 'Bu veriyi görüntüleme yetkiniz bulunmamaktadır.']); exit; }
                 $type = (string) ($_POST['type'] ?? $_POST['sonuc_tipi'] ?? 'olumlu');
                 echo safeJsonEncode(['status' => 'success', 'data' => $puantajModel->getKesmeMonthlyComparisonByDay($type)]);
                 break;
 
             case 'get-dashboard-operational-stats':
                 // Legacy support (optional, can be redirected to batch-load-all)
+                if (!\App\Service\Gate::allows('puantaj/raporlar')) { http_response_code(403); echo safeJsonEncode(['status' => 'error', 'message' => 'Bu veriyi görüntüleme yetkiniz bulunmamaktadır.']); exit; }
                 $endeksModel = new EndeksOkumaModel();
                 $sayacService = new SayacDegisimService();
                 $dailyWorkStats = $puantajModel->getDailyStats();

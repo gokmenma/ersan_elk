@@ -1038,6 +1038,12 @@ if (Gate::allows("ana_sayfa")) {
         </div>
     </div> -->
         <?php //$widgets['widget-istatistikler'] = ob_get_clean();
+
+            foreach (array_keys($widgets) as $widgetKey) {
+                if (!homeWidgetAllowed((string) $widgetKey)) {
+                    unset($widgets[$widgetKey]);
+                }
+            }
         
             // Sıralamayı DB öncelikli, çerez yedekli akıştan kullan
             $render_order = !empty($render_order) ? $render_order : array_keys($widgets);
@@ -6181,7 +6187,7 @@ if (Gate::allows("ana_sayfa")) {
                     });
 
                     // Sayfa yüklendiğinde veri çek
-                    loadEndeksComparison();
+                    if (document.getElementById('widget-endeks-karsilastirma')) loadEndeksComparison();
                 })();
                 // ========== /ENDEKS KARŞILAŞTIRMA KART LOGIC ==========
 
@@ -6323,6 +6329,8 @@ if (Gate::allows("ana_sayfa")) {
                             openDistribution(currentType);
                         }
                     }
+
+                    if (!document.getElementById('widget-kesme-karsilastirma')) return;
 
                     $.post('views/home/api.php', {action:'get-kesme-comparison', type: currentType}).done(response => {
                         const result = typeof response === 'object' ? response : JSON.parse(response);

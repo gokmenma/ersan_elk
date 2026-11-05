@@ -3636,3 +3636,9 @@
 - `personel_detay` yetkisi eklendi (sql/2026_11_05_personel_detay_yetkisi.sql); `personel/manage` sayfa politikası bu yetkiye bağlandı.
 - views/personel/manage.php: mevcut kayıt görüntüleme `personel_detay` veya `personel_duzenle`; yeni kayıt ve Kaydet/Yeni Personel butonları yalnız `personel_duzenle`.
 - Mobil SPA: `personnel_detail` bayrağı (personel_listesi + personel_detay|personel_duzenle) bölüm okumalarını açar; yazma `personel_duzenle`'de kaldı. Departman kısıtı için MobilePersonelModel::baseWhere adlandırılmış parametreye çevrildi (HY093 düzeltmesi).
+
+## 2026-11-05 — Görevler: liste paylaşımı ve tasarım
+- `gorev_liste_paylasimlari` tablosu (sql/2026_11_05_gorev_liste_paylasimlari.sql): liste sahibi kullanıcılarla `duzenle` / `goruntule` yetkisiyle paylaşır; `get-liste-paylasim` ve `save-liste-paylasim` aksiyonları mevcut `gorevler` yetkisine bağlandı.
+- GorevModel: `getListeler` yalnız sahip, paylaşılan veya görev atanan listeleri döndürür (parametrik); `listeYetkisi` / `gorevYetkisi` ile views/gorevler/api.php'de sunucu tarafı yetki kontrolü ve SystemLog kaydı. Liste yeniden adlandırma/silme/paylaşım yalnız sahip.
+- views/gorevler: kolon kartları, sayaç, rozetler (paylaşan/salt okunur), Paylaş modalı, "Benimle paylaşılan" sidebar bölümü; list.php'deki bozuk renk seçici satırı düzeltildi.
+- Ana sayfa widget yetki filtresi: views/home/render_widgets.php `homeWidgetPermission/homeWidgetAllowed/homeStatsFilterByPermission`; puantaj/raporlar, kacak_islemleri, ihbar/list, personel-takip/list, nobet/list yetkisi olmayan kullanıcıya kart, istatistik ve API verisi verilmez.
