@@ -365,7 +365,8 @@
                     </div>
                 </div>
                     <button class="gorev-ekle-btn" data-liste-id="${liste.id}">
-                        <i class="bx bx-plus"></i> Görev Ekle
+                        <span class="gorev-ekle-label-ekle"><i class="bx bx-plus"></i> Görev Ekle</span>
+                        <span class="gorev-ekle-label-kaydet"><i class="bx bx-check"></i> Kaydet</span>
                     </button>
                 </div>` : ""}
             </div>
@@ -729,6 +730,15 @@
     $(document).on("click", ".gorev-ekle-btn", function () {
       const listeId = $(this).data("liste-id");
       const form = $(`.gorev-ekleme-form[data-liste-id="${listeId}"]`);
+
+      if (form.hasClass("active")) {
+        if (!form.find(".gorev-baslik-input").val().trim()) {
+          form.find(".gorev-baslik-input").focus();
+          return;
+        }
+        submitGorev(listeId);
+        return;
+      }
 
       // Diğer aktif "yeni görev" formlarını kapat (kalabalık yapmasın)
       $(".gorev-ekleme-form.active").not(form).removeClass("active");

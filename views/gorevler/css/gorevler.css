@@ -3145,3 +3145,18 @@
   border-color: rgba(255, 255, 255, 0.12);
   color: #e8eaed;
 }
+
+.gorev-ekle-btn .gorev-ekle-label-kaydet { display: none; }
+.gorev-ekleme-form.active ~ .gorev-ekle-btn .gorev-ekle-label-ekle { display: none; }
+.gorev-ekleme-form.active ~ .gorev-ekle-btn .gorev-ekle-label-kaydet { display: inline-flex; align-items: center; gap: 4px; }
+.gorev-ekleme-form.active ~ .gorev-ekle-btn {
+  background: var(--gt-primary);
+  border-color: var(--gt-primary);
+  color: #fff;
+}
+.gorev-liste-footer .gorev-ekleme-form.active ~ .gorev-ekle-btn:hover {
+  background: var(--gt-primary);
+  border-color: var(--gt-primary);
+  color: #fff;
+  filter: brightness(1.08);
+}
