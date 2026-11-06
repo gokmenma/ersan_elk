@@ -59,7 +59,7 @@ class TalepDashboardModel extends Model
                        WHERE p.firma_id = ? AND pi.talep_tarihi >= ?
                          AND pi.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL {$deptSql}
                          AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x')
-                         AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))";
+                         AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0 OR t.kisa_kod = 'Yİ')))";
             $params = array_merge($params, $partParams);
         }
 

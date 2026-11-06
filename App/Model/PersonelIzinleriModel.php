@@ -40,7 +40,7 @@ class PersonelIzinleriModel extends Model
                 LEFT JOIN users as u ON u.id = io.onaylayan_id
                 LEFT JOIN tanimlamalar as t ON t.id = pi.izin_tipi_id
                 WHERE pi.personel_id = ? AND pi.silinme_tarihi IS NULL
-                AND (pi.izin_saati IS NOT NULL OR t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
+                AND (pi.izin_saati IS NOT NULL OR t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0 OR t.kisa_kod = 'Yİ')))
                 ORDER BY pi.id DESC, io.id ASC";
 
         $query = $this->db->prepare($sql);
@@ -85,7 +85,7 @@ class PersonelIzinleriModel extends Model
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             WHERE (LOWER(pi.onay_durumu) = 'beklemede') AND pi.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ? 
             $extra_where
-            AND (pi.izin_saati IS NOT NULL OR t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
+            AND (pi.izin_saati IS NOT NULL OR t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0 OR t.kisa_kod = 'Yİ')))
         ";
         
         $query = $this->db->prepare($sql);
@@ -110,7 +110,7 @@ class PersonelIzinleriModel extends Model
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             WHERE (LOWER(pi.onay_durumu) = 'beklemede') AND pi.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ? 
             $extra_where
-            AND (pi.izin_saati IS NOT NULL OR t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
+            AND (pi.izin_saati IS NOT NULL OR t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0 OR t.kisa_kod = 'Yİ')))
             ORDER BY pi.talep_tarihi DESC
             LIMIT {$limit}
         ";
@@ -137,7 +137,7 @@ class PersonelIzinleriModel extends Model
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             WHERE pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ? AND pi.onay_durumu = 'Onaylandı' AND pi.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ?
             $extra_where
-            AND (pi.izin_saati IS NOT NULL OR t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
+            AND (pi.izin_saati IS NOT NULL OR t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0 OR t.kisa_kod = 'Yİ')))
             ORDER BY pi.bitis_tarihi ASC
             LIMIT {$limit}
         ";
@@ -162,7 +162,7 @@ class PersonelIzinleriModel extends Model
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             WHERE (LOWER(pi.onay_durumu) = 'beklemede') AND pi.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ?
             $extra_where
-            AND (pi.izin_saati IS NOT NULL OR t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
+            AND (pi.izin_saati IS NOT NULL OR t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0 OR t.kisa_kod = 'Yİ')))
             ORDER BY pi.talep_tarihi DESC, pi.id DESC
         ";
         
@@ -202,7 +202,7 @@ class PersonelIzinleriModel extends Model
                 OR aciklama LIKE 'SGK Vizite%'
                 OR aciklama LIKE 'Otomatik onaylandı%'
             )
-            AND (pi.izin_saati IS NOT NULL OR t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
+            AND (pi.izin_saati IS NOT NULL OR t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0 OR t.kisa_kod = 'Yİ')))
             ORDER BY io.onay_tarihi DESC, pi.id DESC
             LIMIT {$limit}
         ";
@@ -228,7 +228,7 @@ class PersonelIzinleriModel extends Model
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             WHERE pi.onay_durumu = 'Reddedildi' AND pi.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ?
             $extra_where
-            AND (pi.izin_saati IS NOT NULL OR t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
+            AND (pi.izin_saati IS NOT NULL OR t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0 OR t.kisa_kod = 'Yİ')))
             ORDER BY pi.baslangic_tarihi DESC
             LIMIT {$limit}
         ";
