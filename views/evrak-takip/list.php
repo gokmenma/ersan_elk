@@ -80,6 +80,20 @@ $title = "Evrak Listesi";
 ?>
 <script>try { document.documentElement.classList.toggle('evrak-summary-hidden', localStorage.getItem('evrak_summary_cards_state') === 'hidden'); } catch (e) {}</script>
 <style>
+    .uets-sevk-liste { max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 2px; }
+    .uets-sevk-kisi { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--bs-border-color, #e3e6ef); border-radius: 12px; cursor: pointer; margin: 0; transition: border-color .15s, background-color .15s; position: relative; }
+    .uets-sevk-kisi:hover { background: var(--bs-tertiary-bg, #f6f7fb); }
+    .uets-sevk-kisi input { position: absolute; opacity: 0; pointer-events: none; }
+    .uets-sevk-kisi.secili { border-color: var(--bs-warning, #f1b44c); background: var(--bs-warning-bg-subtle, #fff8e6); }
+    .uets-sevk-avatar { flex: 0 0 38px; width: 38px; height: 38px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; background: var(--bs-primary-bg-subtle, #e7ebff); color: var(--bs-primary, #556ee6); }
+    .uets-sevk-kisi.secili .uets-sevk-avatar { background: var(--bs-warning, #f1b44c); color: #fff; }
+    .uets-sevk-bilgi { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .uets-sevk-ad { font-weight: 600; font-size: 13px; }
+    .uets-sevk-unvan { font-size: 12px; color: var(--bs-secondary-color, #74788d); }
+    .uets-sevk-tik { font-size: 22px; color: var(--bs-border-color, #ced4da); }
+    .uets-sevk-kisi.secili .uets-sevk-tik { color: var(--bs-warning, #f1b44c); }
+</style>
+<style>
 #summaryCardsContainer { overflow: hidden; max-height: 1100px; opacity: 1; transition: max-height .3s ease, opacity .3s ease, margin .3s ease; }
 .evrak-summary-hidden #summaryCardsContainer { max-height: 0 !important; opacity: 0; margin-top: 0 !important; margin-bottom: 0 !important; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { #summaryCardsContainer { transition: none; } }

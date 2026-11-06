@@ -9,6 +9,8 @@ use App\Model\UserModel;
 use App\Model\UserRolesModel;
 use App\Model\UserRoleAssignmentModel;
 use App\Model\FirmaModel;
+use App\Model\UserNotificationPreferenceModel;
+use App\Service\Gate;
 
 $User = new UserModel();
 $UserRoles = new UserRolesModel();
@@ -24,6 +26,27 @@ $firmalar = $firma->getFirmaList();
 $user_firmler = array_values(array_filter(array_map('trim', explode(',', $user ? ($user->firma_ids ?? '') : '')), 'strlen'));
 
 $isEdit = !empty($user && $user->id);
+$canManageNotificationPermissions = Gate::isSuperAdmin();
+$adminLockedNotifications = $isEdit
+    ? (new UserNotificationPreferenceModel())->getAdminDisabledMap((int) $user->id)
+    : [];
+$notificationIcons = [
+    'kacak_created' => ['mdi-shield-alert-outline', 'info'],
+    'ihbar_created' => ['mdi-alert-outline', 'danger'],
+    'advance_request' => ['mdi-cash-multiple', 'success'],
+    'leave_request' => ['mdi-calendar-clock', 'warning'],
+    'general_request' => ['mdi-message-text-outline', 'primary'],
+    'fault_request' => ['mdi-tools', 'danger'],
+    'support' => ['mdi-help-circle-outline', 'info'],
+    'km' => ['mdi-truck-outline', 'primary'],
+    'task' => ['mdi-checkbox-marked-outline', 'warning'],
+    'document' => ['mdi-file-document-outline', 'secondary'],
+    'shift' => ['mdi-clock-outline', 'primary'],
+    'einvoice' => ['mdi-file-plus-outline', 'success'],
+    'kep' => ['mdi-email-outline', 'info'],
+    'payroll' => ['mdi-credit-card-outline', 'success'],
+    'kesme_acma' => ['mdi-content-cut', 'danger'],
+];
 $selectedRoleIds = $isEdit
     ? (new UserRoleAssignmentModel())->activeRoleIdsForUser((int) $user->id)
     : [];
@@ -282,6 +305,15 @@ $selectedRoleIds = $isEdit
         color: var(--bs-body-color, #495057);
         font-weight: 500;
     }
+
+    .notification-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .notification-grid-wide { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .notification-grid-wide .notif-tile-desc { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    @media (max-width: 992px) { .notification-grid-wide { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 576px) { .notification-grid, .notification-grid-wide { grid-template-columns: minmax(0, 1fr); } }
+    .user-modal-tabs { gap: .5rem; border-bottom: 1px solid #eef2f6; padding-bottom: .75rem; }
+    .user-modal-tabs .nav-link { color: #475569; font-weight: 600; font-size: .85rem; border-radius: 8px; padding: .5rem 1rem; background: #f1f5f9; }
+    .user-modal-tabs .nav-link.active { background: #5b73e8; color: #fff; }
 </style>
 
 <!-- Modal Header -->
@@ -316,6 +348,21 @@ $selectedRoleIds = $isEdit
     <form id="userForm">
         <input type="hidden" name="user_id" id="user_id" value="<?php echo $_GET["id"] ?? 0; ?>">
 
+        <ul class="nav nav-pills user-modal-tabs mb-3" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" type="button" data-bs-toggle="tab" data-bs-target="#userTabAccount" role="tab">
+                    <i class="mdi mdi-account-cog-outline me-1"></i>Hesap &amp; Yetki
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#userTabNotifications" role="tab">
+                    <i class="mdi mdi-bell-outline me-1"></i>Bildirimler
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+        <div class="tab-pane fade show active" id="userTabAccount" role="tabpanel">
         <!-- 1. BÖLÜM: TEMEL & HESAP BİLGİLERİ -->
         <div class="user-section-card">
             <div class="user-section-title">
@@ -483,6 +530,30 @@ $selectedRoleIds = $isEdit
             </div>
         </div>
 
+        <!-- 5. BÖLÜM: EK AÇIKLAMA -->
+        <div class="user-section-card mb-0">
+            <div class="user-section-title">
+                <i class="mdi mdi-notebook-edit-outline"></i>
+                <span>Açıklama & Ek Notlar</span>
+            </div>
+
+            <div class="row">
+                <div class="col-12">
+                    <?php echo Form::FormFloatTextarea(
+                        name: "aciklama",
+                        value: $user->aciklama ?? '',
+                        placeholder: "Kullanıcı hakkında ek notlar ve açıklamalar...",
+                        label: "Açıklama",
+                        icon: "file-text",
+                        minHeight: "65px",
+                        rows: 2
+                    ); ?>
+                </div>
+            </div>
+        </div>
+        </div>
+
+        <div class="tab-pane fade" id="userTabNotifications" role="tabpanel">
         <!-- 4. BÖLÜM: E-POSTA BİLDİRİM TERCİHLERİ -->
         <div class="user-section-card">
             <div class="user-section-title">
@@ -550,26 +621,46 @@ $selectedRoleIds = $isEdit
             </div>
         </div>
 
-        <!-- 5. BÖLÜM: EK AÇIKLAMA -->
-        <div class="user-section-card mb-0">
+        <!-- 4B. BÖLÜM: UYGULAMA BİLDİRİM İZİNLERİ (SÜPER ADMİN) -->
+        <?php if ($canManageNotificationPermissions): ?>
+        <div class="user-section-card">
             <div class="user-section-title">
-                <i class="mdi mdi-notebook-edit-outline"></i>
-                <span>Açıklama & Ek Notlar</span>
+                <i class="mdi mdi-bell-cog-outline"></i>
+                <span>Bildirim İzinleri</span>
+                <span class="section-hint">Kapatılan türler kullanıcının profilinde pasif görünür ve kullanıcı değiştiremez</span>
             </div>
 
-            <div class="row">
-                <div class="col-12">
-                    <?php echo Form::FormFloatTextarea(
-                        name: "aciklama",
-                        value: $user->aciklama ?? '',
-                        placeholder: "Kullanıcı hakkında ek notlar ve açıklamalar...",
-                        label: "Açıklama",
-                        icon: "file-text",
-                        minHeight: "65px",
-                        rows: 2
-                    ); ?>
+            <input type="hidden" name="notification_admin_form" value="1">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="text-muted font-size-12"><strong id="notifAllowedCount">0</strong> / <?= count(UserNotificationPreferenceModel::TYPES) ?> tür açık</span>
+                <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-outline-secondary" id="notifAllowAll">Tümünü aç</button>
+                    <button type="button" class="btn btn-outline-secondary" id="notifBlockAll">Tümünü kapat</button>
                 </div>
             </div>
+            <div class="notification-grid notification-grid-wide" id="notifPermGrid">
+                <?php foreach (UserNotificationPreferenceModel::LABELS as $notificationType => [$notifLabel, $notifDesc]): ?>
+                    <?php
+                    $notifAllowed = empty($adminLockedNotifications[$notificationType]);
+                    [$notifIcon, $notifColor] = $notificationIcons[$notificationType] ?? ['mdi-bell-outline', 'primary'];
+                    $notifInputId = 'notification_allowed_' . $notificationType;
+                    ?>
+                    <label class="notification-tile <?= $notifAllowed ? 'is-active' : '' ?>" for="<?= htmlspecialchars($notifInputId, ENT_QUOTES, 'UTF-8') ?>" title="<?= htmlspecialchars($notifDesc, ENT_QUOTES, 'UTF-8') ?>">
+                        <input class="d-none notif-checkbox" type="checkbox" id="<?= htmlspecialchars($notifInputId, ENT_QUOTES, 'UTF-8') ?>" name="notification_allowed[<?= htmlspecialchars($notificationType, ENT_QUOTES, 'UTF-8') ?>]" value="1" <?= $notifAllowed ? 'checked' : '' ?>>
+                        <div class="notif-tile-icon bg-soft-<?= htmlspecialchars($notifColor, ENT_QUOTES, 'UTF-8') ?> text-<?= htmlspecialchars($notifColor, ENT_QUOTES, 'UTF-8') ?>">
+                            <i class="mdi <?= htmlspecialchars($notifIcon, ENT_QUOTES, 'UTF-8') ?>"></i>
+                        </div>
+                        <div class="notif-tile-content">
+                            <div class="notif-tile-title"><?= htmlspecialchars($notifLabel, ENT_QUOTES, 'UTF-8') ?></div>
+                            <div class="notif-tile-desc"><?= htmlspecialchars($notifDesc, ENT_QUOTES, 'UTF-8') ?></div>
+                        </div>
+                        <div class="notif-tile-check">✓</div>
+                    </label>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+        </div>
         </div>
     </form>
 </div>

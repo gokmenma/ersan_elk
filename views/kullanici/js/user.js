@@ -149,6 +149,7 @@
       { id: id },
       function (data) {
         $(".user-modal-content").html(data);
+        updateNotifAllowedCount();
         if (typeof feather !== "undefined") feather.replace();
 
         var $selects = $(".select2");
@@ -231,6 +232,19 @@
     var isChecked = $(this).is(":checked");
     $(this).closest(".notification-tile").toggleClass("is-active", isChecked);
   });
+
+  function updateNotifAllowedCount() {
+    $("#notifAllowedCount").text($("#notifPermGrid .notif-checkbox:checked").length);
+  }
+
+  $(document).on("change", "#notifPermGrid .notif-checkbox", updateNotifAllowedCount);
+
+  $(document).on("click", "#notifAllowAll, #notifBlockAll", function () {
+    var allow = this.id === "notifAllowAll";
+    $("#notifPermGrid .notif-checkbox").prop("checked", allow).trigger("change");
+  });
+
+  $(document).on("shown.bs.modal", "#userModal", updateNotifAllowedCount);
 
   // Kaydet Butonu
   $(document).on("click", "#userSaveBtn", function () {
@@ -344,6 +358,10 @@
     });
 
     if (!form.valid()) {
+      var firstInvalid = form.find(".error:visible, .is-invalid").first();
+      if (!firstInvalid.length) {
+        bootstrap.Tab.getOrCreateInstance(document.querySelector('[data-bs-target="#userTabAccount"]')).show();
+      }
       return false;
     }
 

@@ -1738,9 +1738,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if (!$evrak) {
                     throw new Exception('Evrak bulunamadı.');
                 }
-                $toUserId = $decryptId((string) ($_POST['alan_user_id'] ?? ''));
-                (new \App\Model\EvrakSevkModel())->sevkEt($evrak, $currentUserId, $toUserId, (string) ($_POST['sevk_notu'] ?? ''), (int) ($_SESSION['owner_id'] ?? 0));
-                echo json_encode(['status' => 'success', 'message' => 'Evrak seçilen personele sevk edildi.'], JSON_UNESCAPED_UNICODE);
+                $rawIds = $_POST['alan_user_ids'] ?? [];
+                if (!is_array($rawIds) || !$rawIds) {
+                    throw new Exception('Lütfen en az bir personel seçiniz.');
+                }
+                $sevkModel = new \App\Model\EvrakSevkModel();
+                $okCount = 0;
+                $errors = [];
+                foreach (array_unique(array_map('strval', $rawIds)) as $rawId) {
+                    try {
+                        $sevkModel->sevkEt($evrak, $currentUserId, $decryptId($rawId), (string) ($_POST['sevk_notu'] ?? ''), (int) ($_SESSION['owner_id'] ?? 0));
+                        $okCount++;
+                    } catch (\Throwable $e) {
+                        error_log('uets-sevk-et Error: ' . $e->getMessage());
+                        $errors[] = $e->getMessage();
+                    }
+                }
+                if ($okCount === 0) {
+                    throw new Exception($errors[0] ?? 'Sevk işlemi yapılamadı.');
+                }
+                $msg = $okCount . ' personele sevk edildi.' . ($errors ? ' ' . count($errors) . ' personele sevk edilemedi: ' . implode(' | ', array_unique($errors)) : '');
+                echo json_encode(['status' => 'success', 'message' => $msg], JSON_UNESCAPED_UNICODE);
                 break;
 
             case 'uets-sevk-gecmisi':

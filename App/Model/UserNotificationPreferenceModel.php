@@ -66,10 +66,27 @@ class UserNotificationPreferenceModel extends Model
         parent::__construct($this->table);
     }
 
+    private static ?bool $hasAdminColumn = null;
+
+    private function hasAdminColumn(): bool
+    {
+        if (self::$hasAdminColumn === null) {
+            $stmt = $this->db->prepare(
+                "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :t AND COLUMN_NAME = 'admin_disabled'"
+            );
+            $stmt->execute(['t' => $this->table]);
+            self::$hasAdminColumn = (int) $stmt->fetchColumn() > 0;
+        }
+
+        return self::$hasAdminColumn;
+    }
+
     public function isEnabled(int $userId, string $notificationType): bool
     {
+        $adminColumn = $this->hasAdminColumn() ? 'admin_disabled' : '0';
         $stmt = $this->db->prepare(
-            "SELECT is_enabled
+            "SELECT is_enabled, {$adminColumn} AS admin_disabled
              FROM {$this->table}
              WHERE user_id = :user_id AND notification_type = :notification_type
              LIMIT 1"
@@ -79,16 +96,23 @@ class UserNotificationPreferenceModel extends Model
             'notification_type' => $notificationType,
         ]);
 
-        $value = $stmt->fetchColumn();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        // Tercihi henüz kaydedilmemiş kullanıcıların mevcut bildirim akışı değişmez.
-        return $value === false || (int) $value === 1;
+        if ($row === false) {
+            return true;
+        }
+
+        return (int) $row['admin_disabled'] === 0 && (int) $row['is_enabled'] === 1;
     }
 
     public function setPreference(int $userId, string $notificationType, bool $isEnabled): void
     {
         if (!in_array($notificationType, self::TYPES, true)) {
             throw new \InvalidArgumentException('Geçersiz bildirim türü.');
+        }
+
+        if (in_array($notificationType, $this->getAdminDisabledTypes($userId), true)) {
+            return;
         }
 
         $stmt = $this->db->prepare(
@@ -105,7 +129,8 @@ class UserNotificationPreferenceModel extends Model
     public function getDisabledTypes(int $userId): array
     {
         $stmt = $this->db->prepare(
-            "SELECT notification_type FROM {$this->table} WHERE user_id = :user_id AND is_enabled = 0"
+            "SELECT notification_type FROM {$this->table} WHERE user_id = :user_id AND (is_enabled = 0"
+            . ($this->hasAdminColumn() ? ' OR admin_disabled = 1' : '') . ')'
         );
         $stmt->execute(['user_id' => $userId]);
 
@@ -125,6 +150,55 @@ class UserNotificationPreferenceModel extends Model
             $preferences[$type] = !array_key_exists($type, $saved) || (int) $saved[$type] === 1;
         }
 
+        foreach ($this->getAdminDisabledTypes($userId) as $type) {
+            $preferences[$type] = false;
+        }
+
         return $preferences;
+    }
+
+    public function getAdminDisabledTypes(int $userId): array
+    {
+        if (!$this->hasAdminColumn()) {
+            return [];
+        }
+
+        $stmt = $this->db->prepare(
+            "SELECT notification_type FROM {$this->table} WHERE user_id = :user_id AND admin_disabled = 1"
+        );
+        $stmt->execute(['user_id' => $userId]);
+
+        return array_values(array_intersect(self::TYPES, $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []));
+    }
+
+    public function setAdminDisabledTypes(int $userId, array $disabledTypes): void
+    {
+        if (!$this->hasAdminColumn()) {
+            throw new \RuntimeException('admin_disabled kolonu bulunamadı; SQL scriptini çalıştırın.');
+        }
+
+        $stmt = $this->db->prepare(
+            "INSERT INTO {$this->table} (user_id, notification_type, is_enabled, admin_disabled, created_at, updated_at)
+             VALUES (:user_id, :notification_type, 1, :admin_disabled, NOW(), NOW())
+             ON DUPLICATE KEY UPDATE admin_disabled = VALUES(admin_disabled), updated_at = NOW()"
+        );
+
+        foreach (self::TYPES as $type) {
+            $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+            $stmt->bindValue(':notification_type', $type, PDO::PARAM_STR);
+            $stmt->bindValue(':admin_disabled', in_array($type, $disabledTypes, true) ? 1 : 0, PDO::PARAM_INT);
+            $stmt->execute();
+        }
+    }
+
+    public function getAdminDisabledMap(int $userId): array
+    {
+        $disabled = $this->getAdminDisabledTypes($userId);
+        $map = [];
+        foreach (self::TYPES as $type) {
+            $map[$type] = in_array($type, $disabled, true);
+        }
+
+        return $map;
     }
 }

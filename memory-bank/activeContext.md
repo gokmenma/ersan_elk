@@ -3694,3 +3694,8 @@
 - SQL: sql/2026_11_05_arac_police_muayene_turu.sql uygulanmalı (ENUM genişletme).
 
 - Araç modalı: sol görsel paneli kaldırıldı (modal-lg). Yeni araçta "Ruhsattan Otomatik Doldur" artık tamamen tarayıcıda yerel OCR ile çalışır (Tesseract.js: views/arac-takip/js/ruhsat-ocr.js = deskew + sayfa/bant parçalama + plaka bölgesi whitelist okuması; ruhsat-ayristirici.js = alan ayrıştırma, oy çokluğu, VIN kontrol hanesiyle şase onarımı). Sunucuya/OpenAI'a belge gönderilmez; AracRuhsatAiService ve `arac-ruhsat-ai-analiz` aksiyonu kaldırıldı. Ruhsat dosyası yeni araç kaydından sonra otomatik şifreli yüklenir. T.C./vergi no ve adres çıkarılmaz.
+
+## Yönetici Bildirim İzni Kilidi
+- Kullanıcı tanımlama modalında (user-modal.php) yalnızca Süper Admin'e "Bildirim İzinleri" bölümü görünür; kapatılan tür `user_notification_preferences.admin_disabled = 1` olur. Kullanıcının kendi tercihi (`is_enabled`) korunur, yönetici tekrar açarsa eski tercihine döner.
+- Profil ekranında kilitli türler disabled gelir; `setPreference` kilitli türü yazmaz; `isEnabled`/`getDisabledTypes` kilitli türleri kapalı sayar. Kolon yoksa model eski davranışla çalışır.
+- SQL: database/migrations/2026_11_06_add_admin_disabled_to_user_notification_preferences.sql uygulanmalı.

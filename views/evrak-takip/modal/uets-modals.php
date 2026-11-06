@@ -797,9 +797,17 @@ $(document).ready(function() {
                 <div class="bg-light p-3 rounded-3 mb-3 border font-size-13">
                     <strong>Evrak:</strong> <span id="uetsSevkKonu" class="text-primary fw-semibold"></span>
                 </div>
-                <div class="mb-3">
-                    <?php echo Form::FormSelect2(name: 'uets_sevk_alan', options: [], selectedValue: '', label: 'Sevk Edilecek Personel', icon: 'bx bx-user', valueField: 'key', textField: '', class: 'form-select select2', required: true, style: 'width:100%', attributes: '', id: 'uets_sevk_alan'); ?>
+                <div class="mb-2">
+                    <?php echo Form::FormFloatInput('text', 'uets_sevk_ara', '', 'Personel ara', 'Personel Ara', 'bx bx-search', 'form-control', false, 100, 'off'); ?>
                 </div>
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <div class="font-size-12 text-muted"><span id="uetsSevkSecilenSayi" class="fw-bold text-primary">0</span> personel seçildi</div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-light border font-size-12" id="btnUetsSevkTumunuSec">Tümünü Seç</button>
+                        <button type="button" class="btn btn-sm btn-light border font-size-12" id="btnUetsSevkTemizle">Temizle</button>
+                    </div>
+                </div>
+                <div id="uetsSevkPersonelListesi" class="uets-sevk-liste mb-3"></div>
                 <div class="mb-1">
                     <?php echo Form::FormFloatTextarea('uets_sevk_notu', '', 'Sevk notu', 'Sevk Notu (isteğe bağlı)', 'bx bx-comment-detail', 'form-control', false, '90px', 3, 'maxlength="500"'); ?>
                 </div>

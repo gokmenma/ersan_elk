@@ -2168,3 +2168,5 @@
 
 - [x] Araç muayene belgesi yükleme/görüntüleme (poliçe altyapısına muayene türü eklendi)
 - [x] Araç modal sadeleştirme + ruhsat AI ile araç doldurma
+
+- [x] Süper Admin'in kullanıcı bazlı bildirim türlerini kapatıp kilitleyebilmesi (SQL scripti uygulanmalı)

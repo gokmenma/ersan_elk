@@ -22,6 +22,7 @@ $loginLogs = $stmt->fetchAll(PDO::FETCH_OBJ);
 $showFavoritesBar = (int) ($currentUser->show_favorites_bar ?? 1);
 $notificationPreferences = new UserNotificationPreferenceModel();
 $userNotificationPreferences = $notificationPreferences->getPreferences((int) $userId);
+$adminLockedNotifications = $notificationPreferences->getAdminDisabledMap((int) $userId);
 $notificationOptions = [
     UserNotificationPreferenceModel::TYPE_KACAK_CREATED => ['Kaçak İşlemleri', 'Yeni kaçak tutanağı bildirildiğinde haber alın.', 'shield', 'text-info'],
     UserNotificationPreferenceModel::TYPE_IHBAR_CREATED => ['İhbarlar', 'Yeni bir kaçak su ihbarı oluşturulduğunda haber alın.', 'alert-triangle', 'text-danger'],
@@ -141,7 +142,7 @@ $notificationOptions = [
 
                                 <div class="row g-3 mb-3">
                                     <?php foreach ($notificationOptions as $notificationType => [$label, $description, $icon, $iconClass]): ?>
-                                        <?php $inputId = 'notification_' . $notificationType; ?>
+                                        <?php $inputId = 'notification_' . $notificationType; $isAdminLocked = !empty($adminLockedNotifications[$notificationType]); ?>
                                         <div class="col-12 col-xl-6">
                                             <div class="card border shadow-none h-100 mb-0">
                                                 <div class="card-body">
@@ -149,9 +150,12 @@ $notificationOptions = [
                                                         <div>
                                                             <h5 class="font-size-14 mb-1"><i data-feather="<?= htmlspecialchars($icon, ENT_QUOTES, 'UTF-8') ?>" class="icon-sm <?= htmlspecialchars($iconClass, ENT_QUOTES, 'UTF-8') ?> me-1"></i> <?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></h5>
                                                             <p class="text-muted font-size-13 mb-0"><?= htmlspecialchars($description, ENT_QUOTES, 'UTF-8') ?></p>
+                                                            <?php if ($isAdminLocked): ?>
+                                                                <p class="text-danger font-size-12 mb-0 mt-1"><i class="bx bx-lock-alt align-middle"></i> Yönetici tarafından kapatıldı.</p>
+                                                            <?php endif; ?>
                                                         </div>
                                                         <div class="form-check form-switch form-switch-md mb-0 flex-shrink-0">
-                                                            <input class="form-check-input" type="checkbox" name="notification_preferences[<?= htmlspecialchars($notificationType, ENT_QUOTES, 'UTF-8') ?>]" value="1" id="<?= htmlspecialchars($inputId, ENT_QUOTES, 'UTF-8') ?>" <?= ($userNotificationPreferences[$notificationType] ?? true) ? 'checked' : '' ?>>
+                                                            <input class="form-check-input" type="checkbox" name="notification_preferences[<?= htmlspecialchars($notificationType, ENT_QUOTES, 'UTF-8') ?>]" value="1" id="<?= htmlspecialchars($inputId, ENT_QUOTES, 'UTF-8') ?>" <?= ($userNotificationPreferences[$notificationType] ?? true) ? 'checked' : '' ?> <?= $isAdminLocked ? 'disabled' : '' ?>>
                                                             <label class="form-check-label" for="<?= htmlspecialchars($inputId, ENT_QUOTES, 'UTF-8') ?>"></label>
                                                         </div>
                                                     </div>

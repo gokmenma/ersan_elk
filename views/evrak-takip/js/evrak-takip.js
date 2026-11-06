@@ -2964,43 +2964,94 @@ $(function () {
     dosya_acildi: "Dosya açıldı",
   };
 
-  $("#uets_sevk_alan").select2({ dropdownParent: $("#modalUetsSevk"), width: "100%", placeholder: "Personel seçiniz" });
+  const sevkListe = $("#uetsSevkPersonelListesi");
+
+  function sevkSecimGuncelle() {
+    $("#uetsSevkSecilenSayi").text(sevkListe.find(".uets-sevk-kisi.secili").length);
+  }
+
+  function sevkBasHarf(ad) {
+    const p = String(ad || "?").trim().split(/\s+/);
+    return ((p[0] || "?").charAt(0) + (p.length > 1 ? p[p.length - 1].charAt(0) : "")).toLocaleUpperCase("tr-TR");
+  }
+
+  $(document).on("click", ".uets-sevk-kisi", function () {
+    $(this).toggleClass("secili");
+    $(this).find("input").prop("checked", $(this).hasClass("secili"));
+    sevkSecimGuncelle();
+  });
+
+  $("#uets_sevk_ara").on("input", function () {
+    const q = $(this).val().toLocaleLowerCase("tr-TR").trim();
+    let gorunen = 0;
+    sevkListe.find(".uets-sevk-kisi").each(function () {
+      const eslesme = !q || String($(this).data("arama")).indexOf(q) !== -1;
+      $(this).toggleClass("d-none", !eslesme);
+      if (eslesme) gorunen++;
+    });
+    sevkListe.find(".uets-sevk-bos").toggleClass("d-none", gorunen > 0);
+  });
+
+  $("#btnUetsSevkTumunuSec").on("click", function () {
+    sevkListe.find(".uets-sevk-kisi:not(.d-none)").addClass("secili").find("input").prop("checked", true);
+    sevkSecimGuncelle();
+  });
+
+  $("#btnUetsSevkTemizle").on("click", function () {
+    sevkListe.find(".uets-sevk-kisi").removeClass("secili").find("input").prop("checked", false);
+    sevkSecimGuncelle();
+  });
 
   $(document).on("click", ".btn-uets-sevk", function () {
     const id = $(this).data("id");
     $("#uetsSevkEvrakId").val(id);
     $("#uetsSevkKonu").text($(this).data("subject") || "-");
     $("#uets_sevk_notu").val("");
-    $("#uets_sevk_alan").empty().append(new Option("Yükleniyor...", "", false, false)).trigger("change");
+    $("#uets_sevk_ara").val("");
+    sevkListe.html('<div class="text-center text-muted py-4"><i class="bx bx-loader-alt bx-spin font-size-20"></i></div>');
+    sevkSecimGuncelle();
     $("#modalUetsSevk").modal("show");
     $.post(sevkApi, { action: "uets-sevk-personel-listesi", id: id }, null, "json")
       .done(function (res) {
-        const select = $("#uets_sevk_alan").empty().append(new Option("", "", false, false));
         if (res.status !== "success") {
+          sevkListe.empty();
           Swal.fire("Hata", res.message || "Personel listesi alınamadı.", "error");
           return;
         }
-        (res.data || []).forEach(function (u) {
-          select.append(new Option(u.adi + (u.unvan ? " - " + u.unvan : ""), u.id, false, false));
+        const rows = res.data || [];
+        if (!rows.length) {
+          sevkListe.html('<div class="text-center text-muted py-4 font-size-13">Sevk edilebilecek personel bulunamadı.</div>');
+          return;
+        }
+        let html = "";
+        rows.forEach(function (u) {
+          const arama = (u.adi + " " + (u.unvan || "")).toLocaleLowerCase("tr-TR");
+          html += '<div class="uets-sevk-kisi" data-arama="' + escapeHtml(arama) + '">' +
+            '<input type="checkbox" value="' + escapeHtml(u.id) + '">' +
+            '<span class="uets-sevk-avatar">' + escapeHtml(sevkBasHarf(u.adi)) + "</span>" +
+            '<span class="uets-sevk-bilgi"><span class="uets-sevk-ad">' + escapeHtml(u.adi) + "</span>" +
+            (u.unvan ? '<span class="uets-sevk-unvan">' + escapeHtml(u.unvan) + "</span>" : "") + "</span>" +
+            '<i class="bx bx-check-circle uets-sevk-tik"></i></div>';
         });
-        select.trigger("change");
+        sevkListe.html(html + '<div class="uets-sevk-bos d-none text-center text-muted py-3 font-size-13">Eşleşen personel yok.</div>');
       })
       .fail(function () {
+        sevkListe.empty();
         Swal.fire("Hata", "Personel listesi alınamadı.", "error");
       });
   });
 
   $("#btnUetsSevkKaydet").on("click", function () {
-    const alan = $("#uets_sevk_alan").val();
-    if (!alan) {
-      Swal.fire("Uyarı", "Lütfen sevk edilecek personeli seçiniz.", "warning");
+    const alan = sevkListe.find(".uets-sevk-kisi.secili input").map(function () { return this.value; }).get();
+    if (!alan.length) {
+      Swal.fire("Uyarı", "Lütfen sevk edilecek en az bir personel seçiniz.", "warning");
       return;
     }
     const btn = $(this).prop("disabled", true);
     $.post(sevkApi, {
       action: "uets-sevk-et",
       id: $("#uetsSevkEvrakId").val(),
-      alan_user_id: alan,
+      alan_user_ids: alan,
       sevk_notu: $("#uets_sevk_notu").val(),
     }, null, "json")
       .done(function (res) {

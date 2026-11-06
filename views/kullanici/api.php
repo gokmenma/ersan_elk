@@ -7,6 +7,7 @@ use App\Model\UserModel;
 use App\Model\SystemLogModel;
 use App\Model\PermissionPolicyModel;
 use App\Model\UserRoleAssignmentModel;
+use App\Model\UserNotificationPreferenceModel;
 use App\Service\Gate;
 
 $User = new UserModel();
@@ -120,6 +121,23 @@ if ($action == "kullanici-kaydet") {
             $id > 0 ? 'Kullanıcı düzenleme ekranından güncellendi' : 'Kullanıcı oluşturulurken atandı'
         );
         unset($_SESSION['topbar_firma_option_cache']);
+
+        if (Gate::isSuperAdmin() && $savedUserId > 0 && ($_POST['notification_admin_form'] ?? '') === '1') {
+            $allowedPosted = $_POST['notification_allowed'] ?? [];
+            $allowedPosted = is_array($allowedPosted) ? array_keys($allowedPosted) : [];
+            $disabledTypes = array_values(array_diff(UserNotificationPreferenceModel::TYPES, $allowedPosted));
+            try {
+                (new UserNotificationPreferenceModel())->setAdminDisabledTypes($savedUserId, $disabledTypes);
+                (new SystemLogModel())->logAction(
+                    (int) ($_SESSION['id'] ?? $_SESSION['user_id'] ?? 0),
+                    'Kullanıcı Bildirim İzinleri',
+                    'Kapatılan bildirim türleri (Kullanıcı ID: ' . $savedUserId . '): ' . ($disabledTypes ? implode(', ', $disabledTypes) : 'yok'),
+                    SystemLogModel::LEVEL_IMPORTANT
+                );
+            } catch (\RuntimeException $ex) {
+                error_log('bildirim izinleri kaydedilemedi: ' . $ex->getMessage());
+            }
+        }
 
         $logModel = new SystemLogModel();
         $currentUserId = $_SESSION['id'] ?? $_SESSION['user_id'] ?? 0;
