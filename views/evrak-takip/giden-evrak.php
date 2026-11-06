@@ -243,7 +243,7 @@ if ($canSendKep || $gonderimKanali === 'kep') {
         <input type="hidden" name="gonderim_kanali" id="gonderim_kanali" value="<?php echo htmlspecialchars($gonderimKanali, ENT_QUOTES, 'UTF-8'); ?>">
 
         <div class="card border-0 shadow-sm overflow-hidden">
-            <div class="card-header bg-white d-flex align-items-center justify-content-between py-3">
+            <div class="card-header bg-white d-flex align-items-center justify-content-between px-4 py-3" style="padding:1rem 1.5rem !important">
                 <div><h5 class="mb-1 fw-bold"><?php echo $record ? 'Giden Evrak Düzenle' : 'Giden Evrak Ekle'; ?></h5><div class="text-muted small">Resmî yazı içeriğini ve evrak bilgilerini düzenleyin</div></div>
                 <div class="d-flex align-items-center gap-2">
                     <?php if (!$kilitli): ?><button type="button" id="btnEvrakSablonlari" class="btn btn-outline-secondary"><i data-feather="copy" class="icon-xs me-1"></i> Şablonlar</button><?php endif; ?>
@@ -413,7 +413,7 @@ if ($canSendKep || $gonderimKanali === 'kep') {
                                     </h2>
                                     <div id="collapseIliskiliKayitlar" class="accordion-collapse collapse" aria-labelledby="headingIliskiliKayitlar">
                                         <div class="accordion-body p-3 pt-2 d-grid gap-2">
-                                             <?php echo Form::FormSelect2('ilgili_evrak_id', $gelenOptions, $selectedRelated, 'İlişkili Gelen Evrak', 'link', 'key', '', 'form-select giden-select2'); ?>
+                                             <input type="hidden" name="ilgili_evrak_id" id="ilgili_evrak_id" value="<?php echo htmlspecialchars((string) $selectedRelated, ENT_QUOTES, 'UTF-8'); ?>">
                                             <?php echo Form::FormSelect2('personel_id', $personelOptions, $value('personel_id'), 'Zimmetlenen Personel', 'user-check', 'key', '', 'form-select giden-select2'); ?>
                                             <?php echo Form::FormSelect2('ilgili_personel_id', $personelOptions, $value('ilgili_personel_id'), 'İlgili Personel', 'user', 'key', '', 'form-select giden-select2'); ?>
                                         </div>
@@ -466,7 +466,7 @@ if ($canSendKep || $gonderimKanali === 'kep') {
                 <?php endif; ?>
             </div>
             <div class="d-flex gap-2">
-                <a href="index?p=evrak-takip/list" class="btn btn-light px-4"><?php echo $kilitli ? 'Listeye Dön' : 'Vazgeç'; ?></a>
+                <a href="index?p=evrak-takip/list" class="btn btn-light px-4"><i class="bx bx-arrow-back me-1"></i>Listeye Dön</a>
                 <button type="button" id="btnGidenPdfOnizle" class="btn btn-outline-primary px-4"><i data-feather="eye" class="icon-xs me-1"></i> Önizle</button>
                 <?php
                 $imzalayabilir = $onayDurumu === 'onay_bekliyor' && $siraBende;

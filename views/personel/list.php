@@ -328,6 +328,11 @@ if (Gate::canWithMessage("personel_listesi")) {
                                         <button type="button" id="btnImportExcel" class="dropdown-item d-flex align-items-center text-warning">
                                             <i class='mdi mdi-file-import fs-5 me-2'></i> Excelden Yükle
                                         </button>
+                                        <?php if (Gate::allows('personel_karsilama_mesaji')): ?>
+                                        <button type="button" id="btnKarsilamaSelected" class="dropdown-item d-flex align-items-center text-success" disabled>
+                                            <i class="bx bxl-whatsapp fs-5 me-2"></i> Karşılama Mesajı Gönder
+                                        </button>
+                                        <?php endif; ?>
                                         <div class="dropdown-divider"></div>
                                         <button type="button" id="btnDeleteSelected" class="dropdown-item d-flex align-items-center text-danger" disabled>
                                             <i class="mdi mdi-trash-can fs-5 me-2"></i> Personeli Sil
@@ -640,5 +645,7 @@ if (Gate::canWithMessage("personel_listesi")) {
             </div>
         </div>
     </div>
+
+    <?php include __DIR__ . '/icerik/modals/karsilama_mesaji.php'; ?>
 
 <?php } ?>

@@ -17,6 +17,7 @@ use App\Model\PersonelEvrakModel;
 use App\Service\ImageUploadService;
 use App\Service\Gate;
 use App\Model\PermissionPolicyModel;
+use App\Model\PersonelKarsilamaModel;
 
 
 
@@ -603,7 +604,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 'status' => 'success',
                 'message' => $message,
                 'id' => Security::encrypt($currentPid),
-                'is_update' => ($personel_id > 0)
+                'is_update' => ($personel_id > 0),
+                'karsilama_yetki' => ($personel_id <= 0) && Gate::allows('personel_karsilama_mesaji')
             ]);
 
         } catch (Throwable $e) {
@@ -616,6 +618,88 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
             }
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    } elseif (in_array($action, ['karsilama-mesaji-hazirla', 'karsilama-mesaji-durum', 'karsilama-sablon-getir', 'karsilama-sablon-kaydet'], true)) {
+        header('Content-Type: application/json; charset=utf-8');
+        try {
+            $Karsilama = new PersonelKarsilamaModel();
+            $izinGerekli = in_array($action, ['karsilama-sablon-getir', 'karsilama-sablon-kaydet'], true) ? 'personel_karsilama_sablon' : 'personel_karsilama_mesaji';
+            if (!Gate::allows($izinGerekli)) {
+                echo json_encode(['status' => 'error', 'message' => 'Bu işlem için yetkiniz bulunmamaktadır.']);
+                exit;
+            }
+
+            if ($action === 'karsilama-sablon-getir') {
+                echo json_encode(['status' => 'success', 'data' => $Karsilama->getSablon((int) $firma_id)]);
+                exit;
+            }
+
+            if ($action === 'karsilama-sablon-kaydet') {
+                $sablon = [];
+                foreach (['mesaj_metni' => 2000, 'sayfa_baslik' => 255, 'evraklar' => 4000, 'banka_adimi' => 1000, 'kase_bilgisi' => 1000] as $alan => $limit) {
+                    $sablon[$alan] = trim(mb_substr(str_replace("\r", '', (string) ($_POST[$alan] ?? '')), 0, $limit, 'UTF-8'));
+                }
+                if ($sablon['mesaj_metni'] === '' || $sablon['sayfa_baslik'] === '' || $sablon['evraklar'] === '') {
+                    echo json_encode(['status' => 'error', 'message' => 'Mesaj metni, sayfa başlığı ve evrak listesi boş bırakılamaz.']);
+                    exit;
+                }
+                $Karsilama->saveSablon((int) $firma_id, $sablon, (int) $userId);
+                $SystemLog->logAction($userId, 'Karşılama Şablonu', 'Personel karşılama mesajı şablonu güncellendi.', SystemLogModel::LEVEL_IMPORTANT);
+                echo json_encode(['status' => 'success', 'message' => 'Şablon kaydedildi.']);
+                exit;
+            }
+
+            if ($action === 'karsilama-mesaji-hazirla') {
+                $pid = (int) Security::decrypt((string) ($_POST['personel_id'] ?? ''));
+                $personelKaydi = $pid > 0 ? $Personel->find($pid) : null;
+                if (!$personelKaydi || (int) $personelKaydi->firma_id !== (int) $firma_id) {
+                    echo json_encode(['status' => 'error', 'message' => 'Personel bulunamadı.']);
+                    exit;
+                }
+
+                $hazir = $Karsilama->hazirla((int) $firma_id, $pid, (int) $userId);
+                $httpsAktif = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
+                $appBase = trim((string) ($_ENV['APP_BASE'] ?? ''), " \t\n\r\0\x0B\"'");
+                if ($appBase !== '') {
+                    $kok = 'https://' . $appBase;
+                } else {
+                    $host = preg_replace('/[^A-Za-z0-9.:-]/', '', (string) ($_SERVER['HTTP_HOST'] ?? ''));
+                    $altDizin = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '', 3)), '/');
+                    $kok = ($httpsAktif ? 'https://' : 'http://') . $host . $altDizin;
+                }
+                $link = rtrim($kok, '/') . '/karsilama.php?t=' . $hazir['token'];
+
+                $sablon = $Karsilama->getSablon((int) $firma_id);
+                $adSoyad = (string) $personelKaydi->adi_soyadi;
+                $mesaj = PersonelKarsilamaModel::mesajOlustur($sablon['mesaj_metni'], $adSoyad, $Karsilama->firmaAdi((int) $firma_id), $link);
+
+                echo json_encode(['status' => 'success', 'data' => [
+                    'kayit_id' => Security::encrypt((int) $hazir['kayit']->id),
+                    'adi_soyadi' => $adSoyad,
+                    'telefon' => (string) ($personelKaydi->cep_telefonu ?? ''),
+                    'mesaj' => $mesaj,
+                    'link' => $link,
+                    'durum' => $hazir['kayit']->durum,
+                    'gonderim_tarihi' => $hazir['kayit']->gonderim_tarihi,
+                    'sablon_yetki' => Gate::allows('personel_karsilama_sablon'),
+                ]]);
+                exit;
+            }
+
+            $kayitId = (int) Security::decrypt((string) ($_POST['kayit_id'] ?? ''));
+            $durum = (string) ($_POST['durum'] ?? '');
+            $telefon = PersonelKarsilamaModel::telefonNormalize((string) ($_POST['telefon'] ?? ''));
+            $kayit = $kayitId > 0 ? $Karsilama->findForFirma($kayitId, (int) $firma_id) : null;
+            if (!$kayit || !$Karsilama->durumGuncelle($kayitId, (int) $firma_id, $durum, $telefon)) {
+                echo json_encode(['status' => 'error', 'message' => 'Kayıt güncellenemedi.']);
+                exit;
+            }
+            $hedef = $Personel->find((int) $kayit->personel_id);
+            $SystemLog->logAction($userId, 'Karşılama Mesajı', ($durum === 'gonderildi' ? 'Karşılama mesajı WhatsApp ile gönderildi: ' : 'Karşılama mesajı sonraya bırakıldı: ') . ($hedef->adi_soyadi ?? '') . ' (ID: ' . (int) $kayit->personel_id . ')', SystemLogModel::LEVEL_IMPORTANT);
+            echo json_encode(['status' => 'success']);
+        } catch (Throwable $e) {
+            error_log('personel/api karsilama hatası: ' . $e->getMessage());
+            echo json_encode(['status' => 'error', 'message' => 'İşlem sırasında bir hata oluştu.']);
         }
     } elseif ($action == 'personel-sil') {
         try {

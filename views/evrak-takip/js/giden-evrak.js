@@ -299,6 +299,7 @@ $(document).ready(function () {
       formattedText = selectedOpt.text().trim();
     }
 
+    $("#ilgili_evrak_id").val(ilgiGelenSelect.val());
     const eklendi = ilgiEkle(formattedText);
     ilgiGelenSelect.val(null).trigger("change");
     Swal.fire({

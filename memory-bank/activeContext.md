@@ -3703,3 +3703,9 @@
 ## Giden Evrak — Yapay Zekâ ile Oluştur Geliştirmesi
 - `EvrakAiTaslakService::create` artık 3 adımlı: (1) belge analizi (tür, dosya no, borçlu, T.C., talepler), (2) borçlunun personel kayıtlarıyla eşleştirilmesi (`PersonelModel::findByTc`, çalışma durumu, `PersonelIcralariModel` dosya eşleşmesi), (3) belge türüne özgü kurallı cevap üretimi. Kayıtta olmayan olgular uydurulmaz; `[YER TUTUCU]` kullanılır.
 - Yanıta `analiz` ve `uyarilar` eklendi; modalda hızlı senaryo butonları, talimat isteğe bağlı; işlem `SystemLogModel` ile loglanıyor.
+
+## Personel Karşılama Mesajı (WhatsApp, wa.me)
+- Yeni personel kaydında (`karsilama_yetki` dönerse) ve personel listesi İşlemler menüsünde "Karşılama Mesajı Gönder" ile `icerik/modals/karsilama_mesaji.php` modalı açılır; `views/personel/js/karsilama.js` (`window.KarsilamaMesaji.ac(encId, {onKapat})`) telefonu normalize edip `wa.me/{90...}?text=` açar.
+- Mesaj kısa metin + süreli (30 gün) token'lı herkese açık `karsilama.php?t=...` bilgilendirme sayfası (evrak onay listesi, maaş hesabı adımı, kaşe bilgisi metin; görsel yok). Token SHA-256 hash + şifreli saklanır; sayfa açılma sayısı kaydedilir.
+- Model: `PersonelKarsilamaModel` (şablon yoksa varsayılan şablon). API: `personel/api` `karsilama-mesaji-hazirla|durum`, `karsilama-sablon-getir|kaydet`.
+- Yetkiler: `personel_karsilama_mesaji`, `personel_karsilama_sablon`. SQL: sql/2026_11_06_personel_karsilama_mesaji.sql (yerelde uygulandı, tekrar çalıştırılabilir).

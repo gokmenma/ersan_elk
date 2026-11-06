@@ -1028,6 +1028,7 @@ foreach ($tabCategories as $catKey => $cat) {
                     <?php include_once "icerik/modals/calisma_gecmisi.php"; ?>
                     <?php include_once "icerik/modals/calisma_bilgileri_bilgi.php"; ?>
                     <?php include_once "icerik/modals/ozel_is_turu_ucreti.php"; ?>
+                    <?php include_once "icerik/modals/karsilama_mesaji.php"; ?>
                     <!-- Dinamik yüklenen tab'lar (izinler, zimmetler vb.) form dışında kalmalı, iç içe form sorunu yaşanmaması için -->
                     <?php if ($id > 0): ?>
                         <div class="tab-pane <?php echo $activeTab === 'izinler' ? 'active show' : ''; ?>" id="izinler"

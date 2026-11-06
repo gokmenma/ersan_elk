@@ -232,7 +232,14 @@ $(document).ready(function () {
           }).then((result) => {
             let isUpdate = res.is_update !== undefined ? res.is_update : (personel_id && String(personel_id).trim() !== "" && String(personel_id).trim() !== "0");
             if (!isUpdate && res.id) {
-              window.location.href = "index?p=personel/manage&id=" + encodeURIComponent(res.id);
+              var yonlendir = function () {
+                window.location.href = "index?p=personel/manage&id=" + encodeURIComponent(res.id);
+              };
+              if (res.karsilama_yetki && window.KarsilamaMesaji) {
+                window.KarsilamaMesaji.ac(res.id, { onKapat: yonlendir });
+              } else {
+                yonlendir();
+              }
             }
           });
         } else {

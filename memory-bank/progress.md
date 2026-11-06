@@ -2172,3 +2172,5 @@
 - [x] Süper Admin'in kullanıcı bazlı bildirim türlerini kapatıp kilitleyebilmesi (SQL scripti uygulanmalı)
 
 - [x] Giden evrak AI taslağı: belge analizi + personel kaydı eşleştirme + uyarılar + hızlı senaryolar (gerçek API ile uçtan uca test edilmedi)
+
+- [x] Personel karşılama mesajı (WhatsApp wa.me + görsel bilgilendirme sayfası, şablon düzenleme, kayıt sonrası ve liste İşlemler menüsü); model/SQL/public sayfa test edildi, modal tarayıcıda elle denenmedi

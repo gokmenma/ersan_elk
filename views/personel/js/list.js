@@ -246,7 +246,7 @@ $(document).ready(function () {
 
   // Butonları aktif/pasif yapma fonksiyonu
   function toggleButtons(enable) {
-    var buttons = $("#btnEditSelected, #btnDeleteSelected, #btnDetailSelected");
+    var buttons = $("#btnEditSelected, #btnDeleteSelected, #btnDetailSelected, #btnKarsilamaSelected");
     if (enable) {
       buttons.prop("disabled", false);
     } else {
@@ -304,6 +304,13 @@ $(document).ready(function () {
           );
         }
       });
+    }
+  });
+
+  $("#btnKarsilamaSelected").click(function () {
+    var id = getSelectedId();
+    if (id && window.KarsilamaMesaji) {
+      window.KarsilamaMesaji.ac(id);
     }
   });
 
