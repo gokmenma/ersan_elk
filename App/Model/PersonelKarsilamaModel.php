@@ -21,7 +21,7 @@ class PersonelKarsilamaModel extends Model
         return [
             'mesaj_metni' => "Merhaba {ad_soyad},\n\n{firma_adi} adına işe alım bilgilendirme mesajıdır.\nGerekli evrakları ve banka hesabı bilgilerini aşağıdaki sayfada bulabilirsiniz:\n\n{link}",
             'sayfa_baslik' => 'İşe Alımda Gerekli Evraklar',
-            'evraklar' => "Kimlik Fotokopisi\nEhliyet Fotokopisi\nDiploma Fotokopisi\n2 Adet Biyometrik ya da Vesikalık Fotoğraf\n- Son 6 ayda çekilmiş olacak\nİkametgah Belgesi (E-Devlet)\nAdli Sicil Kaydı (E-Devlet)\nNüfus Kayıt Örneği (E-Devlet)\n- Evlilerde eş çocuk bilgileri dahil, bekarlar için tüm aile bireyleri dahil\nSağlık Raporu",
+            'evraklar' => "Kimlik Fotokopisi\nEhliyet Fotokopisi\nDiploma Fotokopisi\n[elden] 2 Adet Biyometrik ya da Vesikalık Fotoğraf\n- Son 6 ayda çekilmiş olacak\nİkametgah Belgesi (E-Devlet)\nAdli Sicil Kaydı (E-Devlet)\nNüfus Kayıt Örneği (E-Devlet)\n- Evlilerde eş çocuk bilgileri dahil, bekarlar için tüm aile bireyleri dahil\nSağlık Raporu",
             'banka_adimi' => 'QNB Bankasından kaşedeki firma bilgileriyle MAAŞ HESABI açılacak.',
             'kase_bilgisi' => "ER-SAN ELEKTRİK İNŞ.TAAH.TİC.LTD.ŞTİ.\nŞ.Pamir Cad. Dökmeci İş.Han. No:41/5\nTel&Fax: 0326 613 3860\nAkdeniz V.D. 336 054 1355",
         ];
@@ -174,6 +174,122 @@ class PersonelKarsilamaModel extends Model
         $stmt = $this->db->prepare("SELECT COALESCE(NULLIF(firma_unvan, ''), firma_adi) AS ad FROM firmalar WHERE id = :id");
         $stmt->execute(['id' => $firmaId]);
         return (string) ($stmt->fetchColumn() ?: '');
+    }
+
+    private const MADDE_ELDEN_ISARET = '[elden]';
+
+    private static function sadelestir(string $metin): string
+    {
+        return strtolower(strtr($metin, [
+            'İ' => 'i', 'I' => 'i', 'ı' => 'i', 'Ş' => 's', 'ş' => 's', 'Ğ' => 'g', 'ğ' => 'g',
+            'Ü' => 'u', 'ü' => 'u', 'Ö' => 'o', 'ö' => 'o', 'Ç' => 'c', 'ç' => 'c',
+        ]));
+    }
+
+    public static function maddeleriAyir(string $evraklar): array
+    {
+        $maddeler = [];
+        foreach (preg_split('/\n/', $evraklar) as $satir) {
+            $satir = trim($satir);
+            if ($satir === '') {
+                continue;
+            }
+            if ($satir[0] === '-' && $maddeler) {
+                $maddeler[count($maddeler) - 1]['not'][] = trim(ltrim($satir, '- '));
+                continue;
+            }
+            $elden = false;
+            if (stripos($satir, self::MADDE_ELDEN_ISARET) === 0) {
+                $elden = true;
+                $satir = trim(substr($satir, strlen(self::MADDE_ELDEN_ISARET)));
+            }
+            $sade = self::sadelestir($satir);
+            if (preg_match('/fotograf|vesikalik|biyometrik/', $sade)) {
+                $elden = true;
+            }
+            $turu = 'diger';
+            foreach (['kimlik' => 'kimlik', 'ehliyet' => 'ehliyet', 'diploma' => 'diploma', 'ikamet' => 'ikametgah', 'adli sicil' => 'adli_sicil_kaydi', 'nufus' => 'nufus_kayit_ornegi', 'saglik' => 'saglik_raporu'] as $anahtar => $deger) {
+                if (strpos($sade, $anahtar) !== false) {
+                    $turu = $deger;
+                    break;
+                }
+            }
+            $maddeler[] = ['ad' => $satir, 'not' => [], 'elden' => $elden, 'turu' => $turu];
+        }
+        return $maddeler;
+    }
+
+    public function yuklemeler(int $karsilamaId): array
+    {
+        $stmt = $this->db->prepare("SELECT id, madde_index, dosya_boyutu, dosya_tipi, created_at
+            FROM personel_karsilama_yuklemeleri
+            WHERE karsilama_id = :id AND durum = 'basarili' AND is_active = 1 AND deleted_at IS NULL
+            ORDER BY id ASC");
+        $stmt->execute(['id' => $karsilamaId]);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    public function yuklemeSayilari(int $karsilamaId, int $maddeIndex): array
+    {
+        $stmt = $this->db->prepare("SELECT COUNT(*) AS toplam, COALESCE(SUM(madde_index = :madde), 0) AS madde
+            FROM personel_karsilama_yuklemeleri
+            WHERE karsilama_id = :id AND durum = 'basarili' AND is_active = 1 AND deleted_at IS NULL");
+        $stmt->execute(['id' => $karsilamaId, 'madde' => $maddeIndex]);
+        $r = $stmt->fetch(PDO::FETCH_ASSOC);
+        return ['toplam' => (int) $r['toplam'], 'madde' => (int) $r['madde']];
+    }
+
+    public function sonSaatDeneme(string $ip, int $karsilamaId): int
+    {
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM personel_karsilama_yuklemeleri
+            WHERE (ip_adresi = :ip OR karsilama_id = :id) AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)");
+        $stmt->execute(['ip' => $ip, 'id' => $karsilamaId]);
+        return (int) $stmt->fetchColumn();
+    }
+
+    public function ayniDosyaVarMi(int $karsilamaId, string $sha256): bool
+    {
+        $stmt = $this->db->prepare("SELECT 1 FROM personel_karsilama_yuklemeleri
+            WHERE karsilama_id = :id AND dosya_sha256 = :h AND durum = 'basarili' AND is_active = 1 LIMIT 1");
+        $stmt->execute(['id' => $karsilamaId, 'h' => $sha256]);
+        return (bool) $stmt->fetchColumn();
+    }
+
+    public function yuklemeKaydet(array $d): int
+    {
+        $stmt = $this->db->prepare("INSERT INTO personel_karsilama_yuklemeleri
+            (karsilama_id, firma_id, personel_id, evrak_id, madde_index, madde_adi, ip_adresi, dosya_sha256, dosya_boyutu, dosya_tipi, durum, red_nedeni)
+            VALUES (:karsilama_id, :firma_id, :personel_id, :evrak_id, :madde_index, :madde_adi, :ip, :sha, :boyut, :tip, :durum, :red)");
+        $stmt->execute([
+            'karsilama_id' => $d['karsilama_id'],
+            'firma_id' => $d['firma_id'],
+            'personel_id' => $d['personel_id'],
+            'evrak_id' => $d['evrak_id'] ?? null,
+            'madde_index' => $d['madde_index'] ?? 0,
+            'madde_adi' => mb_substr((string) ($d['madde_adi'] ?? ''), 0, 255, 'UTF-8'),
+            'ip' => $d['ip'],
+            'sha' => $d['sha256'] ?? null,
+            'boyut' => $d['boyut'] ?? 0,
+            'tip' => $d['tip'] ?? null,
+            'durum' => $d['durum'],
+            'red' => isset($d['red_nedeni']) ? mb_substr((string) $d['red_nedeni'], 0, 255, 'UTF-8') : null,
+        ]);
+        return (int) $this->db->lastInsertId();
+    }
+
+    public function yuklemeSil(int $yuklemeId, int $karsilamaId): ?int
+    {
+        $stmt = $this->db->prepare("SELECT evrak_id FROM personel_karsilama_yuklemeleri
+            WHERE id = :id AND karsilama_id = :k AND durum = 'basarili' AND is_active = 1");
+        $stmt->execute(['id' => $yuklemeId, 'k' => $karsilamaId]);
+        $r = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$r) {
+            return null;
+        }
+        $up = $this->db->prepare("UPDATE personel_karsilama_yuklemeleri
+            SET durum = 'silindi', is_active = 0, deleted_at = NOW() WHERE id = :id");
+        $up->execute(['id' => $yuklemeId]);
+        return (int) $r['evrak_id'];
     }
 
     public static function mesajOlustur(string $sablon, string $adSoyad, string $firmaAdi, string $link): string

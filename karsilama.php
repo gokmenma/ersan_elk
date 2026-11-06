@@ -34,17 +34,11 @@ if (!$kayit) {
 }
 
 $maddeler = [];
+$yuklemeler = [];
 if ($kayit) {
-    foreach (preg_split('/\n/', (string) $sablon['evraklar']) as $satir) {
-        $satir = trim($satir);
-        if ($satir === '') {
-            continue;
-        }
-        if ($satir[0] === '-' && $maddeler) {
-            $maddeler[count($maddeler) - 1]['not'][] = trim(ltrim($satir, '- '));
-        } else {
-            $maddeler[] = ['ad' => $satir, 'not' => []];
-        }
+    $maddeler = PersonelKarsilamaModel::maddeleriAyir((string) $sablon['evraklar']);
+    foreach ($Karsilama->yuklemeler((int) $kayit->id) as $y) {
+        $yuklemeler[(int) $y->madde_index][] = $y;
     }
     $ilkAd = trim((string) strtok((string) $kayit->adi_soyadi, ' '));
     $baslikMeta = 'İşe Alım Bilgilendirmesi - ' . $firmaAdi;
@@ -94,6 +88,19 @@ if ($kayit) {
         .kase { background: var(--bg); border: 1px dashed var(--muted); border-radius: 14px; padding: 14px; font-size: 15px; line-height: 1.6; }
         .kase b { display: block; }
         button.kopya { margin-top: 12px; width: 100%; min-height: 48px; border: 0; border-radius: 12px; background: var(--brand); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; }
+        .bilgi { background: var(--brand-soft); color: var(--ink); border-radius: 12px; padding: 10px 12px; font-size: 13px; margin-bottom: 8px; }
+        .rozet { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 99px; margin-top: 4px; }
+        .rozet.elden { background: #fff1d6; color: #8a5a00; }
+        @media (prefers-color-scheme: dark) { .rozet.elden { background: #3a2c10; color: #f5c26b; } }
+        .item.dijital { display: flex; gap: 12px; align-items: flex-start; padding: 12px 2px; }
+        .box.durum.tamam { background: var(--ok); border-color: var(--ok); color: #fff; }
+        .dosyalar { display: block; margin-top: 8px; }
+        .dosya { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: var(--ok-soft); border-radius: 10px; padding: 6px 10px; font-size: 13px; margin-bottom: 6px; }
+        .kaldir { border: 0; background: transparent; color: #dc3545; font-size: 13px; font-weight: 600; min-height: 36px; padding: 0 6px; cursor: pointer; }
+        .yukle-btn { display: inline-flex; align-items: center; gap: 8px; margin-top: 8px; min-height: 44px; padding: 0 16px; border: 1.5px solid var(--brand); background: transparent; color: var(--brand); border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; }
+        .yukle-btn:disabled { opacity: .55; cursor: progress; }
+        .hata-mesaj { display: block; color: #dc3545; font-size: 13px; margin-top: 6px; }
+        .hata-mesaj:empty { display: none; }
         .foot { text-align: center; color: var(--muted); font-size: 12px; padding: 8px 0 24px; }
         .hata { text-align: center; padding: 60px 20px; }
     </style>
@@ -116,17 +123,37 @@ if ($kayit) {
         <h2><span class="ico">&#9776;</span> <?= $e($sablon['sayfa_baslik']) ?></h2>
         <div class="progress" id="ilerleme">0 / <?= count($maddeler) ?> hazır</div>
         <div class="bar"><i id="bar"></i></div>
+        <div class="bilgi">Elden teslim yazanlar dışındaki evrakları buradan fotoğraf çekerek veya dosya seçerek yükleyebilirsiniz (JPG, PNG, PDF &middot; en fazla 8 MB).</div>
         <ul class="list">
-            <?php foreach ($maddeler as $i => $m): ?>
-                <li>
-                    <label class="item">
-                        <input type="checkbox" class="chk" data-i="<?= (int) $i ?>">
-                        <span class="box">&#10003;</span>
-                        <span class="txt">
-                            <span class="ad"><?= $e($m['ad']) ?></span>
-                            <?php foreach ($m['not'] as $not): ?><span class="not"><?= $e($not) ?></span><?php endforeach; ?>
-                        </span>
-                    </label>
+            <?php foreach ($maddeler as $i => $m): $dosyalar = $yuklemeler[$i] ?? []; ?>
+                <li class="madde" data-i="<?= (int) $i ?>" data-elden="<?= !empty($m['elden']) ? '1' : '0' ?>">
+                    <?php if (!empty($m['elden'])): ?>
+                        <label class="item">
+                            <input type="checkbox" class="chk" data-i="<?= (int) $i ?>">
+                            <span class="box">&#10003;</span>
+                            <span class="txt">
+                                <span class="ad"><?= $e($m['ad']) ?></span>
+                                <span class="rozet elden">Elden teslim</span>
+                                <?php foreach ($m['not'] as $not): ?><span class="not"><?= $e($not) ?></span><?php endforeach; ?>
+                            </span>
+                        </label>
+                    <?php else: ?>
+                        <div class="item dijital">
+                            <span class="box durum <?= $dosyalar ? 'tamam' : '' ?>">&#10003;</span>
+                            <span class="txt">
+                                <span class="ad"><?= $e($m['ad']) ?></span>
+                                <?php foreach ($m['not'] as $not): ?><span class="not"><?= $e($not) ?></span><?php endforeach; ?>
+                                <span class="dosyalar">
+                                    <?php foreach ($dosyalar as $k => $d): ?>
+                                        <span class="dosya" data-id="<?= (int) $d->id ?>"><span>Dosya <?= $k + 1 ?> &middot; <?= $e(number_format($d->dosya_boyutu / 1024 / 1024, 2, ',', '.')) ?> MB</span><button type="button" class="kaldir" aria-label="Dosyayı kaldır">Kaldır</button></span>
+                                    <?php endforeach; ?>
+                                </span>
+                                <span class="hata-mesaj" role="alert"></span>
+                                <button type="button" class="yukle-btn"><span class="yl">&#8679;</span> <span class="yt"><?= $dosyalar ? 'Başka Dosya Ekle' : 'Fotoğraf Çek / Dosya Yükle' ?></span></button>
+                                <input type="file" class="dosya-input" accept="image/jpeg,image/png,application/pdf" hidden>
+                            </span>
+                        </div>
+                    <?php endif; ?>
                 </li>
             <?php endforeach; ?>
         </ul>
@@ -153,15 +180,20 @@ if ($kayit) {
 <?php if ($kayit): ?>
 <script>
 (function () {
+    var TOKEN = <?= json_encode((string) ($_GET['t'] ?? ''), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     var anahtar = 'karsilama_<?= substr(hash('sha256', (string) $kayit->token_hash), 0, 16) ?>';
     var kutular = document.querySelectorAll('.chk');
     var durum = {};
     try { durum = JSON.parse(localStorage.getItem(anahtar) || '{}'); } catch (e) {}
+
     function guncelle() {
-        var n = 0;
+        var n = 0, toplam = document.querySelectorAll('.madde').length;
         kutular.forEach(function (k) { if (k.checked) n++; });
-        document.getElementById('ilerleme').textContent = n + ' / ' + kutular.length + ' hazır';
-        document.getElementById('bar').style.width = (kutular.length ? n * 100 / kutular.length : 0) + '%';
+        document.querySelectorAll('.madde[data-elden="0"]').forEach(function (m) {
+            if (m.querySelector('.dosya')) n++;
+        });
+        document.getElementById('ilerleme').textContent = n + ' / ' + toplam + ' hazır';
+        document.getElementById('bar').style.width = (toplam ? n * 100 / toplam : 0) + '%';
     }
     kutular.forEach(function (k) {
         k.checked = !!durum[k.dataset.i];
@@ -171,6 +203,87 @@ if ($kayit) {
             guncelle();
         });
     });
+
+    function mbBiçim(b) { return (b / 1048576).toFixed(2).replace('.', ',') + ' MB'; }
+
+    function kucult(dosya) {
+        return new Promise(function (coz) {
+            if (!/^image\/(jpeg|png)$/.test(dosya.type) || !window.createImageBitmap) { return coz(dosya); }
+            createImageBitmap(dosya).then(function (bmp) {
+                var en = Math.max(bmp.width, bmp.height), olcek = en > 2200 ? 2200 / en : 1;
+                var c = document.createElement('canvas');
+                c.width = Math.round(bmp.width * olcek); c.height = Math.round(bmp.height * olcek);
+                var g = c.getContext('2d');
+                g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+                g.drawImage(bmp, 0, 0, c.width, c.height);
+                c.toBlob(function (b) { coz(b || dosya); }, 'image/jpeg', 0.85);
+            }, function () { coz(dosya); });
+        });
+    }
+
+    function dosyaEkle(madde, d, no) {
+        var kap = madde.querySelector('.dosyalar');
+        var s = document.createElement('span'); s.className = 'dosya'; s.dataset.id = d.id;
+        var t = document.createElement('span'); t.textContent = 'Dosya ' + no + ' · ' + mbBiçim(d.boyut);
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'kaldir'; b.textContent = 'Kaldır';
+        b.setAttribute('aria-label', 'Dosyayı kaldır');
+        s.appendChild(t); s.appendChild(b); kap.appendChild(s);
+    }
+
+    function maddeDurum(madde) {
+        var var_ = !!madde.querySelector('.dosya');
+        madde.querySelector('.box.durum').classList.toggle('tamam', var_);
+        madde.querySelector('.yt').textContent = var_ ? 'Başka Dosya Ekle' : 'Fotoğraf Çek / Dosya Yükle';
+        guncelle();
+    }
+
+    function hata(madde, m) { madde.querySelector('.hata-mesaj').textContent = m || ''; }
+
+    function istek(fd) {
+        return fetch('karsilama-yukle.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+            .then(function (r) { return r.json().catch(function () { return { ok: false, mesaj: 'Sunucudan geçersiz yanıt alındı.' }; }); });
+    }
+
+    document.querySelectorAll('.madde[data-elden="0"]').forEach(function (madde) {
+        var btn = madde.querySelector('.yukle-btn'), inp = madde.querySelector('.dosya-input');
+        btn.addEventListener('click', function () { hata(madde, ''); inp.click(); });
+        inp.addEventListener('change', function () {
+            var f = inp.files && inp.files[0];
+            inp.value = '';
+            if (!f) return;
+            if (f.size > 40 * 1048576) { return hata(madde, 'Dosya çok büyük.'); }
+            var yt = madde.querySelector('.yt');
+            btn.disabled = true; yt.textContent = 'Yükleniyor…';
+            kucult(f).then(function (dosya) {
+                var ad = dosya.type === 'application/pdf' ? 'belge.pdf' : (dosya.type === 'image/png' ? 'belge.png' : 'belge.jpg');
+                if (dosya !== f) { ad = 'belge.jpg'; }
+                if (dosya.size > 8388608) { throw new Error('Dosya boyutu en fazla 8 MB olabilir.'); }
+                var fd = new FormData();
+                fd.append('t', TOKEN); fd.append('a', 'yukle'); fd.append('madde', madde.dataset.i);
+                fd.append('dosya', dosya, ad);
+                return istek(fd);
+            }).then(function (r) {
+                if (r.ok) { dosyaEkle(madde, r.dosya, madde.querySelectorAll('.dosya').length + 1); } else { hata(madde, r.mesaj); }
+            }).catch(function (e) {
+                hata(madde, e && e.message ? e.message : 'Yükleme başarısız oldu. Lütfen tekrar deneyin.');
+            }).then(function () { btn.disabled = false; maddeDurum(madde); });
+        });
+        madde.addEventListener('click', function (ev) {
+            if (!ev.target.classList.contains('kaldir')) return;
+            var satir = ev.target.closest('.dosya');
+            if (!window.confirm('Bu dosya kaldırılsın mı?')) return;
+            var fd = new FormData();
+            fd.append('t', TOKEN); fd.append('a', 'sil'); fd.append('id', satir.dataset.id);
+            istek(fd).then(function (r) {
+                if (r.ok) {
+                    satir.remove();
+                    madde.querySelectorAll('.dosya > span:first-child').forEach(function (el, i) { el.textContent = el.textContent.replace(/^Dosya \d+/, 'Dosya ' + (i + 1)); });
+                    maddeDurum(madde);
+                } else { hata(madde, r.mesaj); }
+            });
+        });
+    });
+
     guncelle();
     var btn = document.getElementById('btnKopya');
     if (btn) {

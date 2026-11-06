@@ -630,7 +630,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
 
             if ($action === 'karsilama-sablon-getir') {
-                echo json_encode(['status' => 'success', 'data' => $Karsilama->getSablon((int) $firma_id)]);
+                echo json_encode(['status' => 'success', 'data' => (($_POST['varsayilan'] ?? '') === '1') ? PersonelKarsilamaModel::varsayilanSablon() : $Karsilama->getSablon((int) $firma_id)]);
                 exit;
             }
 

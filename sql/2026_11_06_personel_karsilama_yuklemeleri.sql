@@ -1,0 +1,22 @@
+CREATE TABLE IF NOT EXISTS personel_karsilama_yuklemeleri (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    karsilama_id INT UNSIGNED NOT NULL,
+    firma_id INT NOT NULL,
+    personel_id INT NOT NULL,
+    evrak_id INT NULL,
+    madde_index SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    madde_adi VARCHAR(255) NOT NULL DEFAULT '',
+    ip_adresi VARCHAR(45) NOT NULL DEFAULT '',
+    dosya_sha256 CHAR(64) NULL,
+    dosya_boyutu INT UNSIGNED NOT NULL DEFAULT 0,
+    dosya_tipi VARCHAR(50) NULL,
+    durum ENUM('basarili','reddedildi','silindi') NOT NULL DEFAULT 'basarili',
+    red_nedeni VARCHAR(255) NULL,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    deleted_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_yukleme_karsilama (karsilama_id, durum, madde_index),
+    KEY idx_yukleme_ip (ip_adresi, created_at),
+    KEY idx_yukleme_hash (karsilama_id, dosya_sha256)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_turkish_ci;
