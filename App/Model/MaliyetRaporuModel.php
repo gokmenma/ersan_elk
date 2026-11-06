@@ -22,6 +22,8 @@ use PDO;
  */
 class MaliyetRaporuModel extends Db
 {
+    public const SGK_ISVEREN_ALT_KATEGORI = 'SGK İşveren Payı';
+
     private int $firmaId;
     private ?array $manuelGiderColumns = null;
 
@@ -34,34 +36,6 @@ class MaliyetRaporuModel extends Db
     /* ------------------------------------------------------------------ */
     /*  BİRLEŞİK UNION SORGUSU                                            */
     /* ------------------------------------------------------------------ */
-
-    /**
-     * Tüm giderleri birleştirerek döndürür
-     * Her satır: tarih, kategori, alt_kategori, tutar, kaynak_tablo, aciklama
-     */
-    public function getAll(?string $baslangic = null, ?string $bitis = null, ?string $kategori = null): array
-    {
-        $parts  = [];
-        $params = [];
-
-        $this->addAracYakit($parts, $params, $baslangic, $bitis, $kategori);
-        $this->addAracBakim($parts, $params, $baslangic, $bitis, $kategori);
-        $this->addAracServis($parts, $params, $baslangic, $bitis, $kategori);
-        $this->addAracSigorta($parts, $params, $baslangic, $bitis, $kategori);
-        $this->addDemirbasServis($parts, $params, $baslangic, $bitis, $kategori);
-        $this->addPersonelBordro($parts, $params, $baslangic, $bitis, $kategori);
-        $this->addManuelGiderler($parts, $params, $baslangic, $bitis, $kategori);
-
-        if (empty($parts)) {
-            return [];
-        }
-
-        $sql = implode("\nUNION ALL\n", $parts) . "\nORDER BY tarih DESC";
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_OBJ);
-    }
 
     /* ------------------------------------------------------------------ */
     /*  ÖZET SORGULARI                                                     */
@@ -199,6 +173,156 @@ class MaliyetRaporuModel extends Db
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         return (float) $stmt->fetchColumn();
+    }
+
+    /**
+     * Yıl/ay filtresinden tarih aralığı üretir
+     */
+    public static function tarihAraligi($yil, $ay): array
+    {
+        $yil = (int) $yil;
+        $ay  = (int) $ay;
+        if ($yil <= 0) {
+            return [null, null];
+        }
+        if ($ay >= 1 && $ay <= 12) {
+            $bas = sprintf('%04d-%02d-01', $yil, $ay);
+            return [$bas, date('Y-m-t', strtotime($bas))];
+        }
+        return ["{$yil}-01-01", "{$yil}-12-31"];
+    }
+
+    /**
+     * İşveren SGK + işsizlik payı toplamı (bordro kayıtlarındaki snapshot ile birebir)
+     */
+    public function getSgkIsverenTotal(?string $baslangic = null, ?string $bitis = null, ?string $kategori = null): float
+    {
+        if ($kategori && $kategori !== 'Personel') {
+            return 0.0;
+        }
+
+        $parts  = [];
+        $params = [];
+        $this->addPersonelBordro($parts, $params, $baslangic, $bitis);
+
+        $inner = implode("\nUNION ALL\n", $parts);
+        $sql = "SELECT COALESCE(SUM(tutar), 0) FROM ({$inner}) AS unified
+                WHERE alt_kategori = " . $this->utf8Expr(':alt_sgk');
+        $params['alt_sgk'] = self::SGK_ISVEREN_ALT_KATEGORI;
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return round((float) $stmt->fetchColumn(), 2);
+    }
+
+    /**
+     * DataTables server-side liste
+     */
+    public function ajaxList(array $params, ?string $baslangic = null, ?string $bitis = null, ?string $kategori = null): array
+    {
+        $parts  = [];
+        $bind   = [];
+
+        $this->addAracYakit($parts, $bind, $baslangic, $bitis, $kategori);
+        $this->addAracBakim($parts, $bind, $baslangic, $bitis, $kategori);
+        $this->addAracServis($parts, $bind, $baslangic, $bitis, $kategori);
+        $this->addAracSigorta($parts, $bind, $baslangic, $bitis, $kategori);
+        $this->addDemirbasServis($parts, $bind, $baslangic, $bitis, $kategori);
+        $this->addPersonelBordro($parts, $bind, $baslangic, $bitis, $kategori);
+        $this->addManuelGiderler($parts, $bind, $baslangic, $bitis, $kategori);
+
+        $draw = (int) ($params['draw'] ?? 0);
+        if (empty($parts)) {
+            return ['draw' => $draw, 'recordsTotal' => 0, 'recordsFiltered' => 0, 'data' => []];
+        }
+
+        $inner = implode("\nUNION ALL\n", $parts);
+
+        $totalStmt = $this->db->prepare("SELECT COUNT(*) FROM ({$inner}) AS unified");
+        $totalStmt->execute($bind);
+        $total = (int) $totalStmt->fetchColumn();
+
+        $kolonlar = [
+            1 => 'tarih',
+            2 => 'kategori',
+            3 => 'alt_kategori',
+            4 => 'tutar',
+            5 => 'kaynak_tablo',
+            6 => 'aciklama',
+        ];
+        $metinKolonlari = ['kategori', 'alt_kategori', 'kaynak_tablo', 'aciklama'];
+
+        $where  = [];
+        $filter = [];
+
+        $arama = trim((string) ($params['search']['value'] ?? ''));
+        if ($arama !== '') {
+            $where[] = "(CAST(tarih AS CHAR) LIKE :q_arama OR kategori LIKE :q_arama OR alt_kategori LIKE :q_arama
+                         OR CAST(tutar AS CHAR) LIKE :q_arama OR kaynak_tablo LIKE :q_arama OR aciklama LIKE :q_arama)";
+            $filter['q_arama'] = '%' . $arama . '%';
+        }
+
+        foreach (($params['columns'] ?? []) as $i => $kolon) {
+            $i = (int) $i;
+            $deger = trim((string) ($kolon['search']['value'] ?? ''));
+            if ($deger === '' || !isset($kolonlar[$i])) {
+                continue;
+            }
+            $ad = $kolonlar[$i];
+            if (in_array($ad, $metinKolonlari, true)) {
+                $where[] = "{$ad} LIKE :q_col_{$i}";
+            } else {
+                $where[] = "CAST({$ad} AS CHAR) LIKE :q_col_{$i}";
+            }
+            $filter["q_col_{$i}"] = '%' . $deger . '%';
+        }
+
+        $whereSql = $where ? ' WHERE ' . implode(' AND ', $where) : '';
+
+        $filteredStmt = $this->db->prepare("SELECT COUNT(*) FROM ({$inner}) AS unified{$whereSql}");
+        $filteredStmt->execute($bind + $filter);
+        $filtered = (int) $filteredStmt->fetchColumn();
+
+        $siralama = [];
+        foreach (($params['order'] ?? []) as $o) {
+            $idx = (int) ($o['column'] ?? -1);
+            if (isset($kolonlar[$idx])) {
+                $yon = strtolower((string) ($o['dir'] ?? 'asc')) === 'asc' ? 'ASC' : 'DESC';
+                $siralama[] = $kolonlar[$idx] . ' ' . $yon;
+            }
+        }
+        if (empty($siralama)) {
+            $siralama[] = 'tarih DESC';
+        }
+        $siralama[] = 'kaynak_tablo ASC';
+        $siralama[] = 'aciklama ASC';
+
+        $baslangicSatir = max(0, (int) ($params['start'] ?? 0));
+        $uzunluk = (int) ($params['length'] ?? 25);
+        $uzunluk = $uzunluk > 0 ? min($uzunluk, 500) : 25;
+
+        $sql = "SELECT tarih, kategori, alt_kategori, tutar, kaynak_tablo, aciklama
+                FROM ({$inner}) AS unified{$whereSql}
+                ORDER BY " . implode(', ', $siralama) . "
+                LIMIT :baslangic, :uzunluk";
+        $stmt = $this->db->prepare($sql);
+        foreach ($bind + $filter as $k => $v) {
+            $stmt->bindValue($k, $v);
+        }
+        $stmt->bindValue('baslangic', $baslangicSatir, PDO::PARAM_INT);
+        $stmt->bindValue('uzunluk', $uzunluk, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $sumStmt = $this->db->prepare("SELECT COALESCE(SUM(tutar), 0) FROM ({$inner}) AS unified{$whereSql}");
+        $sumStmt->execute($bind + $filter);
+
+        return [
+            'draw'            => $draw,
+            'recordsTotal'    => $total,
+            'recordsFiltered' => $filtered,
+            'toplam'          => round((float) $sumStmt->fetchColumn(), 2),
+            'data'            => $stmt->fetchAll(PDO::FETCH_OBJ),
+        ];
     }
 
     /* ------------------------------------------------------------------ */
@@ -365,31 +489,41 @@ class MaliyetRaporuModel extends Db
         if ($kat && $kat !== 'Personel') return;
 
         $kategoriExpr = $this->utf8Expr("'Personel'");
-        $altKategoriExpr = $this->utf8Expr("'Maaş'");
         $kaynakExpr = $this->utf8Expr("'bordro_personel'");
         $aciklamaExpr = $this->utf8Expr("CONCAT(p.adi_soyadi, ' - ', bd.donem_adi)");
+        $sgkExpr = "(COALESCE(bp.sgk_isveren, 0) + COALESCE(bp.issizlik_isveren, 0))";
 
-        $sql = "SELECT bd.baslangic_tarihi AS tarih,
-                       {$kategoriExpr} AS kategori,
-                       {$altKategoriExpr} AS alt_kategori,
-                       bp.toplam_maliyet AS tutar,
-                       {$kaynakExpr} AS kaynak_tablo,
-                       {$aciklamaExpr} AS aciklama
-                FROM bordro_personel bp
-                INNER JOIN bordro_donemi bd ON bp.donem_id = bd.id
-                INNER JOIN personel p ON bp.personel_id = p.id
-                                WHERE bp.silinme_tarihi IS NULL
-                                    AND bd.firma_id = :f_bp
-                                    AND COALESCE(bp.toplam_maliyet, 0) <> 0";
-        $params['f_bp'] = $this->firmaId;
+        $parcalar = [
+            ['alt' => 'Maaş', 'tutar' => "(COALESCE(bp.toplam_maliyet, 0) - {$sgkExpr})", 'sfx' => 'bp'],
+            ['alt' => self::SGK_ISVEREN_ALT_KATEGORI, 'tutar' => $sgkExpr, 'sfx' => 'bs'],
+        ];
 
-        if ($bas && $bit) {
-            $sql .= " AND bd.baslangic_tarihi BETWEEN :bas_bp AND :bit_bp";
-            $params['bas_bp'] = $bas;
-            $params['bit_bp'] = $bit;
+        foreach ($parcalar as $parca) {
+            $sfx = $parca['sfx'];
+            $altKategoriExpr = $this->utf8Expr("'" . $parca['alt'] . "'");
+
+            $sql = "SELECT bd.baslangic_tarihi AS tarih,
+                           {$kategoriExpr} AS kategori,
+                           {$altKategoriExpr} AS alt_kategori,
+                           {$parca['tutar']} AS tutar,
+                           {$kaynakExpr} AS kaynak_tablo,
+                           {$aciklamaExpr} AS aciklama
+                    FROM bordro_personel bp
+                    INNER JOIN bordro_donemi bd ON bp.donem_id = bd.id
+                    INNER JOIN personel p ON bp.personel_id = p.id
+                    WHERE bp.silinme_tarihi IS NULL
+                      AND bd.firma_id = :f_{$sfx}
+                      AND {$parca['tutar']} <> 0";
+            $params["f_{$sfx}"] = $this->firmaId;
+
+            if ($bas && $bit) {
+                $sql .= " AND bd.baslangic_tarihi BETWEEN :bas_{$sfx} AND :bit_{$sfx}";
+                $params["bas_{$sfx}"] = $bas;
+                $params["bit_{$sfx}"] = $bit;
+            }
+
+            $parts[] = "({$sql})";
         }
-
-        $parts[] = "({$sql})";
     }
 
     private function addManuelGiderler(array &$parts, array &$params, ?string $bas = null, ?string $bit = null, ?string $kat = null): void

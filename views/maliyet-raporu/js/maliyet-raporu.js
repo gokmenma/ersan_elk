@@ -6,6 +6,68 @@ $(document).ready(function () {
     const API_URL = 'views/maliyet-raporu/api.php';
 
     /* ------------------------------------------------------------ */
+    /*  TÜM GİDERLER (SERVER-SIDE)                                   */
+    /* ------------------------------------------------------------ */
+    const esc = function (v) {
+        return $('<div>').text(v == null ? '' : v).html();
+    };
+    const tl = function (n) {
+        return Number(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
+    };
+
+    const $maliyetTable = $('#maliyetDetayTable');
+    if ($maliyetTable.length) {
+        const renk = window.maliyetKategoriRenk || {};
+        const maliyetDt = $maliyetTable.DataTable(applyLengthStateSave({
+            ...getDatatableOptions(),
+            processing: true,
+            serverSide: true,
+            responsive: false,
+            ajax: {
+                url: API_URL,
+                type: 'POST',
+                data: function (d) {
+                    d.action = 'maliyet-ajax-list';
+                    d.yil = $maliyetTable.data('yil');
+                    d.ay = $maliyetTable.data('ay');
+                    d.kategori = $maliyetTable.data('kategori');
+                },
+                dataSrc: function (json) {
+                    $('#maliyetKayitSayisi').text(json.recordsTotal || 0);
+                    $('#maliyetFiltreliToplam').text(tl(json.toplam));
+                    return json.data;
+                }
+            },
+            columns: [
+                {
+                    data: null, className: 'text-center fw-medium', orderable: false, searchable: false,
+                    render: function (d, t, r, meta) { return meta.row + meta.settings._iDisplayStart + 1; }
+                },
+                { data: 'tarih' },
+                {
+                    data: 'kategori',
+                    render: function (d) {
+                        const c = renk[d] || renk['Diğer'] || { renk: '#64748b' };
+                        return '<span class="badge" style="background:' + c.renk + '1a;color:' + c.renk + ';">' + esc(d) + '</span>';
+                    }
+                },
+                { data: 'alt_kategori', render: function (d) { return esc(d); } },
+                { data: 'tutar', className: 'text-end fw-medium', render: function (d) { return tl(d); } },
+                {
+                    data: 'kaynak_tablo',
+                    render: function (d) { return '<span class="badge bg-light text-dark border" style="font-size:11px;">' + esc(d) + '</span>'; }
+                },
+                {
+                    data: 'aciklama', className: 'text-truncate', render: function (d) {
+                        return '<span title="' + esc(d) + '" style="display:inline-block;max-width:300px;overflow:hidden;text-overflow:ellipsis;">' + esc(d) + '</span>';
+                    }
+                }
+            ],
+            order: [[1, 'desc']]
+        }));
+    }
+
+    /* ------------------------------------------------------------ */
     /*  YENİ KAYIT BUTONU                                            */
     /* ------------------------------------------------------------ */
     $('#manuelGiderEkle').on('click', function () {

@@ -6590,8 +6590,8 @@ class BordroPersonelModel extends Model
             // Net ve Prim Usülü için vergi/SGK yok
             $sgkIsciOrani = 0;
             $issizlikIsciOrani = 0;
-            $sgkIsverenOrani = 0;
-            $issizlikIsverenOrani = 0;
+            $sgkIsverenOrani = ($genelAyarlarMap['sgk_isveren_orani'] ?? 20.5) / 100;
+            $issizlikIsverenOrani = ($genelAyarlarMap['issizlik_isveren_orani'] ?? 2) / 100;
             $damgaVergisiOrani = 0;
         } else {
             $sgkIsciOrani = ($genelAyarlarMap['sgk_isci_orani'] ?? 14) / 100;

@@ -2179,3 +2179,6 @@
 
 - [x] İK İşe Alım modülü: ilan + herkese açık başvuru formu + AI ön değerlendirme + dashboard + başvuru listesi/detayı + personele dönüştürme. Uçtan uca (başvuru, gerçek OpenAI çağrısı, liste, dashboard, CV indirme, dönüştürme, güvenlik red senaryoları) yerelde test edildi; test verisi temizlendi. Tarayıcıda 4 sayfa hatasız açıldı.
 - [ ] İşe alım: yönetici mobil SPA ekranı, KVKK saklama süresi sonrası anonimleştirme, Yetki Kataloğu / Yetki Grubu ekranında görünürlüğün elle doğrulanması
+
+- [x] İşveren SGK payı Net/Prim personelde hesaplanıyor; Maliyet Raporu sayfasında SGK kartı ve server-side tablo (DB'de Personel toplamı = bordro toplam_maliyet doğrulandı)
+- [ ] Maliyet raporu: politika SQL'inin çalıştırılması, ilgili dönemlerin yetkili yeniden hesaplanması, tarayıcıda elle doğrulama

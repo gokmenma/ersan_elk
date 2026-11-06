@@ -40,9 +40,9 @@ if ($selectedAy && $selectedYil) {
 $kategoriFiltre = $selectedKat ?: null;
 
 /* -------- Verileri çek -------- */
-$tumGiderler     = $MaliyetRaporu->getAll($baslangic, $bitis, $kategoriFiltre);
 $kategoriOzet    = $MaliyetRaporu->getCategorySummary($baslangic, $bitis);
 $genelToplam     = $MaliyetRaporu->getGrandTotal($baslangic, $bitis);
+$sgkIsverenToplam = $MaliyetRaporu->getSgkIsverenTotal($baslangic, $bitis);
 $aylikToplam     = $MaliyetRaporu->getMonthlyTotals((int) $selectedYil);
 $manuelGiderler  = $ManuelGider->getFiltered($baslangic, $bitis, $kategoriFiltre);
 
@@ -154,6 +154,27 @@ $ayIsimleri = [1=>'Oca',2=>'Şub',3=>'Mar',4=>'Nis',5=>'May',6=>'Haz',7=>'Tem',8
             </div>
         </div>
 
+        <!-- SGK İşveren Payı -->
+        <div class="col-xl col-md-6">
+            <div class="card border-0 shadow-sm h-100"
+                 style="border-bottom: 3px solid #14b8a6 !important;">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center mb-2">
+                        <div class="rounded-circle p-2 me-2" style="background: #14b8a61a;">
+                            <i data-feather="shield" class="fs-4" style="color:#14b8a6;"></i>
+                        </div>
+                        <span class="text-muted small fw-bold" style="font-size:0.65rem;">PERSONEL</span>
+                    </div>
+                    <p class="text-muted mb-1 small fw-bold" style="letter-spacing:0.5px;opacity:0.7;">SGK İŞVEREN PAYI</p>
+                    <h4 class="mb-0 fw-bold">
+                        <?= number_format($sgkIsverenToplam, 2, ',', '.') ?>
+                        <span style="font-size:0.85rem;font-weight:600;">₺</span>
+                    </h4>
+                    <small class="text-muted">SGK + işsizlik, Personel toplamına dahil</small>
+                </div>
+            </div>
+        </div>
+
         <!-- Kategori kartları -->
         <?php foreach ($kategoriOzet as $ko):
             $cfg = $kategoriRenk[$ko->kategori] ?? $kategoriRenk['Diğer'];
@@ -250,78 +271,42 @@ $ayIsimleri = [1=>'Oca',2=>'Şub',3=>'Mar',4=>'Nis',5=>'May',6=>'Haz',7=>'Tem',8
     <?php endif; ?>
 
     <!-- ======== TÜM GİDERLER TABLOSU ======== -->
-    <div class="card border-0 shadow-sm mb-4">
+    <div class="card border-0 shadow-sm mb-4" id="maliyetListCard">
         <div class="card-header border-bottom bg-white">
             <div class="d-flex align-items-center justify-content-between">
                 <h5 class="card-title mb-0">
                     <i data-feather="list" class="text-primary me-2"></i>Tüm Gider Kayıtları
-                    <span class="badge bg-secondary ms-2"><?= count($tumGiderler) ?></span>
+                    <span class="badge bg-secondary ms-2" id="maliyetKayitSayisi">0</span>
                 </h5>
             </div>
         </div>
         <div class="card-body">
-            <?php if (!empty($tumGiderler)): ?>
             <div class="table-responsive">
-                <table id="maliyetDetayTable" class="table table-hover table-bordered nowrap w-100 align-middle datatable">
+                <table id="maliyetDetayTable" class="table table-hover table-bordered nowrap w-100 align-middle mb-0"
+                       data-yil="<?= htmlspecialchars((string) $selectedYil, ENT_QUOTES, 'UTF-8') ?>"
+                       data-ay="<?= htmlspecialchars((string) $selectedAy, ENT_QUOTES, 'UTF-8') ?>"
+                       data-kategori="<?= htmlspecialchars((string) $selectedKat, ENT_QUOTES, 'UTF-8') ?>">
                     <thead class="table-light text-muted">
                         <tr>
-                            <th style="width:50px;" class="text-center">#</th>
-                            <th>Tarih</th>
-                            <th>Kategori</th>
-                            <th>Alt Kategori</th>
-                            <th class="text-end">Tutar</th>
-                            <th>Kaynak</th>
-                            <th>Açıklama</th>
+                            <th style="width:50px;" class="text-center" data-filter="none">#</th>
+                            <th data-filter="string">Tarih</th>
+                            <th data-filter="string">Kategori</th>
+                            <th data-filter="string">Alt Kategori</th>
+                            <th class="text-end" data-filter="string">Tutar</th>
+                            <th data-filter="string">Kaynak</th>
+                            <th data-filter="string">Açıklama</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <?php
-                        $sira = 1;
-                        foreach ($tumGiderler as $g):
-                            $cfg = $kategoriRenk[$g->kategori] ?? $kategoriRenk['Diğer'];
-                        ?>
-                        <tr>
-                            <td class="text-center fw-medium"><?= $sira++ ?></td>
-                            <td><?= htmlspecialchars($g->tarih) ?></td>
-                            <td>
-                                <span class="badge" style="background:<?= $cfg['renk'] ?>1a;color:<?= $cfg['renk'] ?>;">
-                                    <i data-feather="<?= $cfg['ikon'] ?>" class="me-1"></i><?= htmlspecialchars($g->kategori) ?>
-                                </span>
-                            </td>
-                            <td><?= htmlspecialchars($g->alt_kategori ?? '-') ?></td>
-                            <td class="text-end fw-medium"><?= number_format((float)$g->tutar, 2, ',', '.') ?> ₺</td>
-                            <td>
-                                <span class="badge bg-light text-dark border" style="font-size:11px;">
-                                    <?= htmlspecialchars($g->kaynak_tablo) ?>
-                                </span>
-                            </td>
-                            <td class="text-truncate" style="max-width:300px;"
-                                title="<?= htmlspecialchars($g->aciklama ?? '') ?>">
-                                <?= htmlspecialchars($g->aciklama ?? '-') ?>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
+                    <tbody></tbody>
                     <tfoot class="table-light fw-bold">
                         <tr>
-                            <th colspan="4" class="text-end">GENEL TOPLAM:</th>
-                            <th class="text-end text-primary fs-6"><?= number_format($genelToplam, 2, ',', '.') ?> ₺</th>
+                            <th colspan="4" class="text-end">FİLTRELİ TOPLAM:</th>
+                            <th class="text-end text-primary fs-6" id="maliyetFiltreliToplam">0,00 ₺</th>
                             <th colspan="2"></th>
                         </tr>
                     </tfoot>
                 </table>
             </div>
-            <?php else: ?>
-            <div class="text-center py-5">
-                <div class="avatar-lg mx-auto mb-3">
-                    <div class="avatar-title bg-light text-muted rounded-circle fs-2">
-                        <i data-feather="folder"></i>
-                    </div>
-                </div>
-                <h5 class="mt-3 text-secondary">Kayıt Bulunamadı</h5>
-                <p class="text-muted">Seçilen filtre kriterlerine göre gider kaydı bulunmamaktadır.</p>
-            </div>
-            <?php endif; ?>
         </div>
     </div>
 
@@ -475,6 +460,9 @@ $ayIsimleri = [1=>'Oca',2=>'Şub',3=>'Mar',4=>'Nis',5=>'May',6=>'Haz',7=>'Tem',8
     </div>
 </div>
 
+<script>
+window.maliyetKategoriRenk = <?= json_encode($kategoriRenk, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+</script>
 <!-- JS -->
 <script src="<?php echo \App\Helper\Helper::assetVersion('views/maliyet-raporu/js/maliyet-raporu.js'); ?>"></script>
 

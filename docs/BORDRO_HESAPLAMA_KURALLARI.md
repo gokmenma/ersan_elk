@@ -675,3 +675,9 @@ edilen kısımdır. `elden_tutardan` kesintisi ana kesinti kartından gizlenemez
 ### Saatlik izin (2026-11-04)
 - `personel_izinleri.izin_saati` dolu kayıtlar (Saatlik İzin) ücretli kabul edilir ve bordroda ücretten düşülmez.
 - Saatlik izin gün bazlı hesaplara (ücretli/ücretsiz izin günü, rapor/genel tatil günü, fiili çalışma günü) dahil edilmez; aynı gün normal çalışma günü olarak sayılmaya devam eder. Böylece gün çift sayılmaz ve yemek/fiili gün düşmez.
+
+### İşveren SGK Payı ve Maliyet Raporu Tutarlılığı (2026-11-06)
+- Net ve Prim Usulü personelde de işveren SGK (`sgk_isveren_orani`) ve işsizlik (`issizlik_isveren_orani`) payı `sgkMatrahi` üzerinden hesaplanır; işçi payı ve damga oranı bu personel tiplerinde sıfır kalmaya devam eder. `toplam_maliyet = brüt + sgk_isveren + issizlik_isveren + brüt ek ödemeler` formülü değişmedi.
+- Bordro modalı (5. SGK İşveren Payı), SGK Bildirge, Maliyet Raporu, İcmal, SGK Excel ve arşiv yalnızca `bordro_personel.sgk_isveren` / `issizlik_isveren` snapshot kolonlarını okur.
+- `maliyet-raporu/list` sayfasında bordro kaydı iki satıra ayrılır: `Personel / Maaş` (= toplam_maliyet − işveren SGK − işveren işsizlik) ve `Personel / SGK İşveren Payı`. Personel toplamı değişmez; SGK kartı aynı kolonlardan beslenir.
+- Yeni hesaplama kuralı yalnız dönemin yetkili biçimde yeniden hesaplanmasıyla mevcut snapshot'lara yansır (Bölüm 5.1); eski kayıtlar değiştirilmez.

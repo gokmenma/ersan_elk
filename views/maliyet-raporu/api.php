@@ -31,6 +31,36 @@ if ($permissionPolicy->isReady()) {
 }
 
 /* ------------------------------------------------------------------ */
+/*  MALİYET LİSTESİ (DataTables server-side)                           */
+/* ------------------------------------------------------------------ */
+if ($action === 'maliyet-ajax-list') {
+    header('Content-Type: application/json; charset=utf-8');
+    try {
+        [$bas, $bit] = MaliyetRaporuModel::tarihAraligi($_POST['yil'] ?? '', $_POST['ay'] ?? '');
+        $kat = trim((string) ($_POST['kategori'] ?? '')) ?: null;
+        $sonuc = $MaliyetRaporu->ajaxList($_POST, $bas, $bit, $kat);
+
+        $sonuc['data'] = array_map(static function ($r) {
+            return [
+                'tarih'        => $r->tarih ? date('d.m.Y', strtotime($r->tarih)) : '-',
+                'tarih_sort'   => $r->tarih,
+                'kategori'     => $r->kategori,
+                'alt_kategori' => $r->alt_kategori ?? '-',
+                'tutar'        => (float) $r->tutar,
+                'kaynak_tablo' => $r->kaynak_tablo,
+                'aciklama'     => $r->aciklama ?? '-',
+            ];
+        }, $sonuc['data']);
+
+        echo json_encode($sonuc, JSON_UNESCAPED_UNICODE);
+    } catch (\Throwable $e) {
+        error_log('maliyet-ajax-list: ' . $e->getMessage());
+        echo json_encode(['draw' => (int) ($_POST['draw'] ?? 0), 'recordsTotal' => 0, 'recordsFiltered' => 0, 'data' => [], 'error' => 'Liste yüklenemedi.'], JSON_UNESCAPED_UNICODE);
+    }
+    exit;
+}
+
+/* ------------------------------------------------------------------ */
 /*  MANUEL GİDER KAYDET / GÜNCELLE                                     */
 /* ------------------------------------------------------------------ */
 if ($action === 'manuel-gider-kaydet') {
