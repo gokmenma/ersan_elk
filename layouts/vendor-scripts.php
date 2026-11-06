@@ -14,14 +14,14 @@ $page = $_GET['p'] ?? 'home';
 <!-- Sayfalara Özel Scriptler -->
 <!--***************************************-->
 
-<?php if ($page == 'home' || $page == 'cari/dashboard' || $page == 'demirbas/list' || $page == 'demirbas/sayac-deposu' || $page == 'demirbas/aparat-deposu' || $page == 'demirbas/servis' || $page == 'demirbas/zimmet' || $page == 'personel/performans-raporu' || $page == 'arac-takip/arac-performans' || $page == 'puantaj/defter-bazli-rapor' || $page == 'puantaj/veri-yukleme') { ?>
+<?php if ($page == 'home' || $page == 'cari/dashboard' || $page == 'ik-ise-alim/dashboard' || $page == 'demirbas/list' || $page == 'demirbas/sayac-deposu' || $page == 'demirbas/aparat-deposu' || $page == 'demirbas/servis' || $page == 'demirbas/zimmet' || $page == 'personel/performans-raporu' || $page == 'arac-takip/arac-performans' || $page == 'puantaj/defter-bazli-rapor' || $page == 'puantaj/veri-yukleme') { ?>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <?php if ($page == 'home') { ?>
         <script src="assets/js/pages/allchart.js"></script>
     <?php } ?>
 <?php } ?>
 
-<?php if ($page == 'ihbar/list' || $page == 'kacak/list' || $page == 'puantaj/personel-is-raporu' || $page == 'cari/dashboard') { ?>
+<?php if ($page == 'ihbar/list' || $page == 'kacak/list' || $page == 'puantaj/personel-is-raporu' || $page == 'cari/dashboard' || $page == 'ik-ise-alim/dashboard') { ?>
     <script src="assets/libs/apexcharts/apexcharts.min.js"></script>
 <?php } ?>
 
@@ -170,6 +170,7 @@ if ($page == "hakedisler/hakedis-detay") {
     $page == "raporlar/list" || $page == "maliyet-raporu/list" || strpos($page, "bordro/raporlar/") === 0 ||
     $page == "personel/performans-raporu" || $page == "arac-takip/arac-performans" ||
     strpos($page, "cari/") === 0 ||
+    strpos($page, "ik-ise-alim/") === 0 ||
     $page == "formlar/list" || $page == "formlar/manage" ||
     $page == "yardim/list" || $page == "yardim/user-list" ||
     $page == "bildirim/list" ||

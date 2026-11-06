@@ -2176,3 +2176,6 @@
 - [x] Personel karşılama mesajı (WhatsApp wa.me + görsel bilgilendirme sayfası, şablon düzenleme, kayıt sonrası ve liste İşlemler menüsü); model/SQL/public sayfa test edildi, modal tarayıcıda elle denenmedi
 - [x] Karşılama sayfasından güvenli dijital evrak yükleme (fotoğraf elden); zararlı dosya testleri (sahte uzantı, PHP, SVG, exe, JS'li/obfuskeli/ObjStm'li PDF, boyut) geçti, arayüz mobil viewport'ta denendi
 - [x] Karşılama sayfasında IBAN girişi + hesap görseli yükleme (sunucu ve mobil arayüz testi geçti)
+
+- [x] İK İşe Alım modülü: ilan + herkese açık başvuru formu + AI ön değerlendirme + dashboard + başvuru listesi/detayı + personele dönüştürme. Uçtan uca (başvuru, gerçek OpenAI çağrısı, liste, dashboard, CV indirme, dönüştürme, güvenlik red senaryoları) yerelde test edildi; test verisi temizlendi. Tarayıcıda 4 sayfa hatasız açıldı.
+- [ ] İşe alım: yönetici mobil SPA ekranı, KVKK saklama süresi sonrası anonimleştirme, Yetki Kataloğu / Yetki Grubu ekranında görünürlüğün elle doğrulanması
