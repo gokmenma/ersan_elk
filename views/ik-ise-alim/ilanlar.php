@@ -115,10 +115,10 @@ $durumOptions = ['taslak' => 'Taslak', 'yayinda' => 'Yayında', 'kapali' => 'Kap
                             <th class="text-center" style="width: 50px;">#</th>
                             <th data-filter="string">İLAN BAŞLIĞI</th>
                             <th data-filter="string">DEPARTMAN</th>
-                            <th data-filter="string" style="width: 110px;">DURUM</th>
-                            <th data-filter="none" class="text-center" style="width: 100px;">BAŞVURU</th>
-                            <th data-filter="none" class="text-center" style="width: 110px;">AI OLUMLU</th>
-                            <th data-filter="none" style="width: 130px;">OLUŞTURMA</th>
+                            <th data-filter="select" data-filter-options="Taslak|Yayında|Kapalı" style="width: 110px;">DURUM</th>
+                            <th data-filter="number" class="text-center" style="width: 100px;">BAŞVURU</th>
+                            <th data-filter="number" class="text-center" style="width: 110px;">AI OLUMLU</th>
+                            <th data-filter="date" style="width: 130px;">OLUŞTURMA</th>
                             <th data-filter="none" style="width: 150px;" class="text-center">İŞLEMLER</th>
                         </tr>
                     </thead>
@@ -129,66 +129,138 @@ $durumOptions = ['taslak' => 'Taslak', 'yayinda' => 'Yayında', 'kapali' => 'Kap
     </div>
 </div>
 
-<div class="modal fade" id="ikilanModal" tabindex="-1" aria-labelledby="ikilanModalLabel" aria-hidden="true">
+<style>
+.ikm .modal-content { border-radius: 18px; overflow: hidden; }
+.ikm .ikm-head { padding: 20px 24px 0; display: flex; gap: 14px; align-items: center; }
+.ikm .ikm-ico { width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex: none; }
+.ikm .ikm-steps { display: flex; gap: 8px; padding: 16px 24px 0; }
+.ikm .ikm-step { flex: 1; border: 1px solid var(--bs-border-color, #e3e8ef); border-radius: 12px; padding: 8px 12px; background: transparent; text-align: left; display: flex; gap: 10px; align-items: center; color: inherit; transition: all .15s; }
+.ikm .ikm-step .no { width: 24px; height: 24px; border-radius: 50%; background: var(--bs-secondary-bg, #eef1f5); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex: none; }
+.ikm .ikm-step .tx { font-size: 13px; font-weight: 600; line-height: 1.2; }
+.ikm .ikm-step .tx small { display: block; font-weight: 400; opacity: .65; font-size: 11px; }
+.ikm .ikm-step.active { border-color: var(--bs-primary, #556ee6); background: var(--bs-primary-bg-subtle, #e8ecfd); }
+.ikm .ikm-step.active .no { background: var(--bs-primary, #556ee6); color: #fff; }
+@media (max-width: 575px) { .ikm .ikm-step .tx small { display: none; } .ikm .ikm-step { padding: 8px; } }
+.ikm .ikm-hint { font-size: 12px; color: #74788d; margin: 6px 2px 0; }
+.ikm .ikm-sec { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #74788d; margin: 4px 0 -4px; }
+.ikm .soru-satir { display: flex; align-items: center; gap: 8px; border: 1px solid var(--bs-border-color, #e3e8ef); border-radius: 10px; padding: 7px 10px; margin-bottom: 8px; background: var(--bs-body-bg); }
+.ikm .soru-satir .no { width: 22px; height: 22px; border-radius: 50%; background: var(--bs-primary-bg-subtle, #e8ecfd); color: var(--bs-primary, #556ee6); font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none; }
+.ikm .soru-satir .metin { flex: 1; font-size: 13.5px; word-break: break-word; }
+.ikm .kriter-chip { cursor: pointer; border-radius: 99px; padding: 3px 12px; font-size: 12px; border: 1px dashed var(--bs-border-color, #cfd6e0); background: transparent; color: inherit; }
+.ikm .kriter-chip:hover { border-color: var(--bs-primary, #556ee6); color: var(--bs-primary, #556ee6); }
+.ikm .wa-balon { background: #dcf8c6; color: #1c2530; border-radius: 4px 16px 16px 16px; padding: 12px 14px; font-size: 13.5px; white-space: pre-wrap; word-break: break-word; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+html[data-bs-theme="dark"] .ikm .wa-balon, [data-theme-preset="macos-dark"] .ikm .wa-balon { background: #075e54; color: #e9f5f2; }
+.ikm .wa-zemin { background: #efe7dd; border-radius: 14px; padding: 16px; }
+html[data-bs-theme="dark"] .ikm .wa-zemin, [data-theme-preset="macos-dark"] .ikm .wa-zemin { background: #0b141a; }
+.ikm .qr-kutu { width: 168px; height: 168px; border-radius: 14px; background: #fff; border: 1px solid #e3e8ef; display: flex; align-items: center; justify-content: center; padding: 8px; }
+.ikm .qr-kutu img { width: 100%; height: 100%; image-rendering: pixelated; }
+</style>
+
+<div class="modal fade ikm no-upgrade" id="ikilanModal" tabindex="-1" aria-labelledby="ikilanModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4 align-items-start">
-                <div class="d-flex align-items-center">
-                    <div class="bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px;">
-                        <i class="bx bx-briefcase-alt-2 fs-4"></i>
-                    </div>
-                    <div>
-                        <h5 class="modal-title fw-bold mb-1" id="ikilanModalLabel">Yeni İlan</h5>
-                        <p class="text-muted small mb-0">İlan bilgilerini ve yapay zekâ değerlendirme kriterlerini girin.</p>
-                    </div>
+            <div class="ikm-head">
+                <div class="ikm-ico bg-primary-subtle text-primary"><i class="bx bx-briefcase-alt-2"></i></div>
+                <div class="flex-grow-1">
+                    <h5 class="mb-0 fw-bold" id="ikilanModalLabel">Yeni İlan</h5>
+                    <p class="text-muted font-size-12 mb-0">Üç kısa adımda ilanı hazırlayın; kaydedince başvuru bağlantısını paylaşabilirsiniz.</p>
                 </div>
-                <button type="button" class="btn-close mt-1" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                <button type="button" class="btn-close align-self-start" data-bs-dismiss="modal" aria-label="Kapat"></button>
             </div>
-            <form id="ikilanForm">
+            <div class="ikm-steps" role="tablist">
+                <button type="button" class="ikm-step active" data-adim="1" role="tab"><span class="no">1</span><span class="tx">İlan Bilgileri<small>Başlık, yer, durum</small></span></button>
+                <button type="button" class="ikm-step" data-adim="2" role="tab"><span class="no">2</span><span class="tx">Aday Ekranı<small>Adayın göreceği içerik</small></span></button>
+                <button type="button" class="ikm-step" data-adim="3" role="tab"><span class="no">3</span><span class="tx">Yapay Zekâ<small>Kriter ve sorular</small></span></button>
+            </div>
+            <form id="ikilanForm" novalidate>
                 <input type="hidden" name="action" value="ilan-kaydet">
                 <input type="hidden" name="id" id="ilan_id" value="">
-                <div class="modal-body px-4 pt-3 pb-2">
-                    <div class="row g-3">
-                        <div class="col-md-8"><?= Form::FormFloatInput("text", "baslik", "", "İlan Başlığı", "İlan Başlığı *", "briefcase", "form-control fw-semibold", true, 255) ?></div>
-                        <div class="col-md-4"><?= Form::FormSelect2("durum", $durumOptions, "taslak", "Durum", "activity") ?></div>
-                        <div class="col-md-4"><?= Form::FormFloatInput("text", "departman", "", "Departman", "Departman", "layers", "form-control", false, 150) ?></div>
-                        <div class="col-md-4"><?= Form::FormFloatInput("text", "gorev", "", "Görev / Unvan", "Görev / Unvan", "user", "form-control", false, 150) ?></div>
-                        <div class="col-md-4"><?= Form::FormFloatInput("text", "calisma_yeri", "", "Çalışma Yeri", "Çalışma Yeri", "map-pin", "form-control", false, 150) ?></div>
-                        <div class="col-md-6"><?= Form::FormFloatInput("date", "gecerlilik_tarihi", "", "Son Başvuru Tarihi", "Son Başvuru Tarihi", "calendar", "form-control") ?></div>
-                        <div class="col-12"><?= Form::FormFloatTextarea("aciklama", "", "İş tanımı, çalışma koşulları...", "İş Tanımı (adaya gösterilir)", "file-text", "form-control", false, "90px") ?></div>
-                        <div class="col-12"><?= Form::FormFloatTextarea("aranan_nitelikler", "", "Eğitim, deneyim, belge...", "Aranan Nitelikler (adaya gösterilir)", "check-square", "form-control", false, "90px") ?></div>
-                        <div class="col-12"><?= Form::FormFloatTextarea("ai_kriterleri", "", "Örn: Zorunlu: C sınıfı ehliyet, 2 yıl saha deneyimi. Artı: AG/OG tecrübesi", "Yapay Zekâ Değerlendirme Kriterleri (adaya gösterilmez)", "cpu", "form-control", false, "90px") ?></div>
-                        <div class="col-12"><?= Form::FormFloatTextarea("sorular", "", "Her satıra bir soru yazın (en fazla 8)", "Pozisyona Özel Sorular (her satıra bir soru)", "help-circle", "form-control", false, "90px") ?></div>
+                <input type="hidden" name="sorular" id="sorular" value="">
+                <div class="modal-body px-4 pt-4 pb-2" style="min-height: 330px;">
+                    <div class="ikm-panel" data-adim="1">
+                        <div class="row g-3">
+                            <div class="col-md-8"><?= Form::FormFloatInput("text", "baslik", "", "Örn: Endeks Okuma Memuru", "İlan Başlığı *", "briefcase", "form-control fw-semibold", true, 255) ?></div>
+                            <div class="col-md-4"><?= Form::FormSelect2("durum", $durumOptions, "taslak", "Durum", "activity") ?></div>
+                            <div class="col-md-4"><?= Form::FormFloatInput("text", "departman", "", "Departman", "Departman", "layers", "form-control", false, 150) ?></div>
+                            <div class="col-md-4"><?= Form::FormFloatInput("text", "gorev", "", "Görev / Unvan", "Görev / Unvan", "user", "form-control", false, 150) ?></div>
+                            <div class="col-md-4"><?= Form::FormFloatInput("text", "calisma_yeri", "", "Çalışma Yeri", "Çalışma Yeri", "map-pin", "form-control", false, 150) ?></div>
+                            <div class="col-md-6"><?= Form::FormFloatInput("date", "gecerlilik_tarihi", "", "Son Başvuru Tarihi", "Son Başvuru Tarihi", "calendar", "form-control") ?></div>
+                            <div class="col-md-6 d-flex align-items-center"><p class="ikm-hint mb-0"><i class="bx bx-info-circle"></i> "Yayında" olmayan veya süresi geçen ilanın bağlantısı adaya "geçersiz" görünür. Boş bırakırsanız süresiz açık kalır.</p></div>
+                        </div>
+                    </div>
+                    <div class="ikm-panel d-none" data-adim="2">
+                        <div class="row g-3">
+                            <div class="col-12"><?= Form::FormFloatTextarea("aciklama", "", "İş tanımı, çalışma koşulları, yan haklar...", "İş Tanımı", "file-text", "form-control", false, "130px") ?><p class="ikm-hint">Başvuru sayfasının üstünde adaya gösterilir.</p></div>
+                            <div class="col-12"><?= Form::FormFloatTextarea("aranan_nitelikler", "", "Eğitim, deneyim, belge, ehliyet...", "Aranan Nitelikler", "check-square", "form-control", false, "130px") ?><p class="ikm-hint">Aday bu maddeleri okuyup kendini değerlendirir; satır satır yazmanız önerilir.</p></div>
+                        </div>
+                    </div>
+                    <div class="ikm-panel d-none" data-adim="3">
+                        <div class="ikm-sec mb-2">Yapay zekâ değerlendirme kriterleri <span class="text-muted text-lowercase fw-normal">(adaya gösterilmez)</span></div>
+                        <?= Form::FormFloatTextarea("ai_kriterleri", "", "Zorunlu: C sınıfı ehliyet, 2 yıl saha deneyimi. Artı: AG/OG tecrübesi", "Değerlendirme kriterleri", "cpu", "form-control", false, "110px") ?>
+                        <div class="d-flex flex-wrap gap-2 mt-2">
+                            <button type="button" class="kriter-chip" data-ekle="Zorunlu: ">+ Zorunlu</button>
+                            <button type="button" class="kriter-chip" data-ekle="Artı: ">+ Artı puan</button>
+                            <button type="button" class="kriter-chip" data-ekle="Elenme sebebi: ">+ Elenme sebebi</button>
+                            <button type="button" class="kriter-chip" data-ekle="Maaş aralığı: ">+ Maaş aralığı</button>
+                        </div>
+                        <p class="ikm-hint">Puanlama yalnızca buna ve ilan niteliklerine göre yapılır; sonuç sadece öneridir.</p>
+                        <div class="ikm-sec mt-4 mb-2">Pozisyona özel sorular <span class="text-muted text-lowercase fw-normal">(en fazla 8)</span></div>
+                        <div id="soruListe"></div>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="yeniSoru" maxlength="300" placeholder="Örn: Daha önce hangi firmalarda çalıştınız?" aria-label="Yeni soru">
+                            <button type="button" class="btn btn-outline-primary" id="btnSoruEkle"><i class="bx bx-plus"></i> Soru ekle</button>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer border-top-0 px-4 pb-4">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Vazgeç</button>
-                    <button type="submit" class="btn btn-primary text-white" id="btnIlanKaydet"><i class="bx bx-save me-1"></i> Kaydet</button>
+                <div class="modal-footer border-top-0 px-4 pb-4 pt-2 d-flex justify-content-between">
+                    <button type="button" class="btn btn-light" id="btnGeri"><i class="bx bx-chevron-left"></i> Geri</button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-subtle-primary" id="btnIleri">İleri <i class="bx bx-chevron-right"></i></button>
+                        <button type="submit" class="btn btn-primary text-white" id="btnIlanKaydet"><i class="bx bx-save me-1"></i> Kaydet</button>
+                    </div>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="ikilanLinkModal" tabindex="-1" aria-labelledby="ikilanLinkModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+<div class="modal fade ikm no-upgrade" id="ikilanLinkModal" tabindex="-1" aria-labelledby="ikilanLinkModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
-                <h5 class="modal-title fw-bold" id="ikilanLinkModalLabel"><i class="bx bxl-whatsapp text-success me-1"></i> Başvuru Bağlantısını Paylaş</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
-            </div>
-            <div class="modal-body px-4">
-                <div class="alert alert-warning py-2 font-size-12 d-none" id="linkYayindaDegil">Bu ilan yayında değil; bağlantı yayınlanana kadar adaylara "geçersiz" görünür.</div>
-                <label class="form-label font-size-12 text-muted mb-1" for="linkMesaj">WhatsApp mesajı</label>
-                <textarea class="form-control mb-2" id="linkMesaj" rows="7"></textarea>
-                <div class="input-group mb-3">
-                    <input type="text" class="form-control" id="linkUrl" readonly aria-label="Başvuru bağlantısı">
-                    <button type="button" class="btn btn-outline-secondary" id="btnLinkKopyala"><i class="bx bx-copy"></i> Kopyala</button>
+            <div class="ikm-head">
+                <div class="ikm-ico bg-success-subtle text-success"><i class="bx bxl-whatsapp"></i></div>
+                <div class="flex-grow-1">
+                    <h5 class="mb-0 fw-bold" id="ikilanLinkModalLabel">Başvuru Bağlantısını Paylaş</h5>
+                    <p class="text-muted font-size-12 mb-0" id="linkIlanAd">İlan</p>
                 </div>
-                <div class="text-center mb-2"><img id="linkQr" alt="QR kod" class="img-fluid border rounded-3 p-1" style="max-width: 160px;"></div>
+                <button type="button" class="btn-close align-self-start" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body px-4 pt-3">
+                <div class="alert alert-warning py-2 font-size-12 d-none" id="linkYayindaDegil"><i class="bx bx-error me-1"></i> Bu ilan şu an yayında değil; bağlantı yayınlanana kadar adaylara "geçersiz" görünür.</div>
+                <div class="row g-4">
+                    <div class="col-md-7">
+                        <div class="ikm-sec mb-2">Mesaj önizleme (düzenleyebilirsiniz)</div>
+                        <div class="wa-zemin">
+                            <div class="wa-balon" id="linkBalon" contenteditable="true" role="textbox" aria-label="WhatsApp mesajı" spellcheck="false"></div>
+                        </div>
+                        <div class="ikm-sec mt-3 mb-2">Doğrudan bir numaraya gönder <span class="text-muted text-lowercase fw-normal">(isteğe bağlı)</span></div>
+                        <input type="tel" class="form-control" id="linkTelefon" placeholder="05xx xxx xx xx — boş bırakırsanız kişiyi/grubu WhatsApp'ta seçersiniz" inputmode="tel" aria-label="Telefon numarası">
+                    </div>
+                    <div class="col-md-5 text-center">
+                        <div class="ikm-sec mb-2 text-start">QR kod</div>
+                        <div class="qr-kutu mx-auto"><img id="linkQr" alt="QR kod" class="d-none"><span id="linkQrYok" class="text-muted font-size-12">QR oluşturuluyor...</span></div>
+                        <p class="ikm-hint">Telefonla okutarak veya ilan panosuna basarak paylaşın.</p>
+                        <div class="ikm-sec mt-3 mb-2 text-start">Bağlantı</div>
+                        <div class="input-group">
+                            <input type="text" class="form-control form-control-sm" id="linkUrl" readonly aria-label="Başvuru bağlantısı">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnLinkKopyala" title="Kopyala"><i class="bx bx-copy"></i></button>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer border-top-0 px-4 pb-4">
                 <button type="button" class="btn btn-light" data-bs-dismiss="modal">Kapat</button>
+                <button type="button" class="btn btn-subtle-primary" id="btnMesajKopyala"><i class="bx bx-copy me-1"></i> Mesajı Kopyala</button>
                 <button type="button" class="btn btn-success text-white" id="btnWhatsappPaylas"><i class="bx bxl-whatsapp me-1"></i> WhatsApp'ta Paylaş</button>
             </div>
         </div>

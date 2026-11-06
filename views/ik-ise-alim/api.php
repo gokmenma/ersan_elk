@@ -29,6 +29,7 @@ $ikActions = [
     'basvuru-not' => 'ik_basvuru_listesi',
     'basvuru-ai-yeniden' => 'ik_basvuru_listesi',
     'basvuru-cv' => 'ik_basvuru_listesi',
+    'basvuru-foto' => 'ik_basvuru_listesi',
     'basvuru-sil' => 'ik_basvuru_listesi',
     'personele-donustur' => 'ik_basvuru_personele_donustur',
 ];
@@ -43,7 +44,7 @@ $cevap = static function (array $veri, int $kod = 200): void {
 if (!isset($ikActions[$action])) {
     $cevap(['status' => 'error', 'message' => 'Tanımsız işlem.'], 400);
 }
-if ($action !== 'basvuru-cv' && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+if (!in_array($action, ['basvuru-cv', 'basvuru-foto'], true) && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     $cevap(['status' => 'error', 'message' => 'Geçersiz istek.'], 405);
 }
 if (empty($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true || empty($_SESSION['firma_id'])) {
@@ -203,6 +204,7 @@ try {
                 'ise_baslama' => $b->ise_baslama,
                 'cevaplar' => $jsonAlan($b->cevaplar),
                 'cv_var' => !empty($b->cv_dosya),
+                'foto_var' => !empty($b->foto_dosya),
                 'cv_metin_var' => !empty($b->cv_metin),
                 'ilan_baslik' => $b->ilan_baslik,
                 'durum' => $b->durum,
@@ -292,6 +294,21 @@ try {
             header('X-Content-Type-Options: nosniff');
             header("Content-Security-Policy: sandbox");
             header('Cache-Control: private, no-store');
+            echo $icerik;
+            exit;
+
+        case 'basvuru-foto':
+            $b = $Basvuru->bul($idCoz('id'), $firmaId);
+            $yol = $b && !empty($b->foto_dosya) ? dirname(__DIR__, 2) . '/uploads/ik_basvuru/' . $firmaId . '/' . basename((string) $b->foto_dosya) : '';
+            if ($yol === '' || !is_file($yol)) {
+                http_response_code(404);
+                exit;
+            }
+            $icerik = Security::decryptFile((string) file_get_contents($yol));
+            header('Content-Type: image/jpeg');
+            header('Content-Length: ' . strlen($icerik));
+            header('X-Content-Type-Options: nosniff');
+            header('Cache-Control: private, max-age=300');
             echo $icerik;
             exit;
 

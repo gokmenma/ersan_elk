@@ -11,6 +11,7 @@ use App\Model\PersonelKarsilamaModel;
 use App\Model\SystemLogModel;
 use App\Service\GuvenliBelgeYuklemeService;
 use App\Service\IkBasvuruAiService;
+use App\Service\IkBasvuruBildirimService;
 
 header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
@@ -56,6 +57,7 @@ if (time() - (int) ($_SESSION['ik_basvuru_form_zamani'] ?? 0) < 4) {
 
 $ip = substr((string) ($_SERVER['REMOTE_ADDR'] ?? 'bilinmiyor'), 0, 45);
 $kayitliDosya = null;
+$kayitliFoto = null;
 $basvuruId = 0;
 
 try {
@@ -169,6 +171,26 @@ try {
         $cvMime = $islenmis['mime'];
     }
 
+    if (isset($_FILES['foto']) && (int) $_FILES['foto']['error'] !== UPLOAD_ERR_NO_FILE) {
+        try {
+            $foto = GuvenliBelgeYuklemeService::isle($_FILES['foto']);
+        } catch (DomainException $ex) {
+            $yanit(false, 'Vesikalık fotoğraf: ' . $ex->getMessage(), 422);
+        }
+        if ($foto['mime'] !== 'image/jpeg') {
+            $yanit(false, 'Vesikalık fotoğraf JPG veya PNG olmalıdır.', 422);
+        }
+        $fotoDizin = __DIR__ . '/uploads/ik_basvuru/' . $firmaId . '/';
+        if (!is_dir($fotoDizin) && !@mkdir($fotoDizin, 0733, true) && !is_dir($fotoDizin)) {
+            throw new RuntimeException('Fotoğraf klasörü oluşturulamadı.');
+        }
+        $kayitliFoto = bin2hex(random_bytes(16)) . '.enc';
+        if (file_put_contents($fotoDizin . $kayitliFoto, Security::encryptFile($foto['veri']), LOCK_EX) === false) {
+            $kayitliFoto = null;
+            throw new RuntimeException('Fotoğraf kaydedilemedi.');
+        }
+    }
+
     $basvuruId = $Basvuru->ekle([
         'firma_id' => $firmaId,
         'ilan_id' => $ilanId,
@@ -187,9 +209,11 @@ try {
         'cv_dosya' => $kayitliDosya,
         'cv_mime' => $cvMime,
         'cv_metin' => $cvMetin !== '' ? $cvMetin : null,
+        'foto_dosya' => $kayitliFoto,
         'ip_adresi' => $ip,
     ]);
     $kayitliDosya = null;
+    $kayitliFoto = null;
 
     $Basvuru->denemeKaydet($ilanId, $ip, 'basarili');
     $Basvuru->olayEkle($firmaId, $basvuruId, null, 'Başvuru alındı', 'Aday dijital başvuru formunu gönderdi.');
@@ -212,6 +236,7 @@ try {
     }
 
     set_time_limit(180);
+    $bildirimSonuc = null;
     try {
         $sonuc = (new IkBasvuruAiService())->degerlendir($ilan, [
             'sehir' => $sehir,
@@ -225,16 +250,25 @@ try {
             'cv_metin' => $cvMetin,
         ], $firmaId);
         $Basvuru->aiSonucKaydet($basvuruId, $sonuc);
+        $bildirimSonuc = $sonuc;
         $Basvuru->olayEkle($firmaId, $basvuruId, null, 'Yapay zekâ değerlendirmesi', 'Puan: ' . $sonuc['puan'] . ' / Etiket: ' . $sonuc['etiket']);
     } catch (Throwable $ex) {
         error_log('İK başvuru AI değerlendirme hatası (Başvuru ' . $basvuruId . '): ' . $ex->getMessage());
         $Basvuru->aiHataKaydet($basvuruId);
         $Basvuru->olayEkle($firmaId, $basvuruId, null, 'Yapay zekâ hatası', 'Değerlendirme tamamlanamadı; yeniden denenebilir.');
     }
+
+    try {
+        (new IkBasvuruBildirimService())->yeniBasvuru($firmaId, $basvuruId, $adSoyad, (string) $ilan->baslik, $bildirimSonuc);
+    } catch (Throwable $ex) {
+        error_log('İK başvuru bildirimi hatası (Başvuru ' . $basvuruId . '): ' . $ex->getMessage());
+    }
 } catch (Throwable $ex) {
     error_log('basvuru-gonder.php hatası: ' . $ex->getMessage());
-    if ($kayitliDosya !== null && isset($firmaId)) {
-        @unlink(__DIR__ . '/uploads/ik_basvuru/' . $firmaId . '/' . $kayitliDosya);
+    foreach ([$kayitliDosya, $kayitliFoto] as $temizlenecek) {
+        if ($temizlenecek !== null && isset($firmaId)) {
+            @unlink(__DIR__ . '/uploads/ik_basvuru/' . $firmaId . '/' . $temizlenecek);
+        }
     }
     if ($basvuruId === 0 && !headers_sent()) {
         $yanit(false, 'Başvuru şu anda kaydedilemedi. Lütfen daha sonra tekrar deneyin.', 500);

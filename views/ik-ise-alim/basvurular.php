@@ -114,10 +114,10 @@ $title = 'Başvurular';
                             <th data-filter="string">İLAN</th>
                             <th data-filter="string" style="width: 130px;">TELEFON</th>
                             <th data-filter="string" style="width: 120px;">ŞEHİR</th>
-                            <th data-filter="none" class="text-center" style="width: 90px;">AI PUAN</th>
-                            <th data-filter="none" class="text-center" style="width: 110px;">AI ETİKET</th>
-                            <th data-filter="none" style="width: 140px;">DURUM</th>
-                            <th data-filter="none" style="width: 120px;">BAŞVURU</th>
+                            <th data-filter="number" class="text-center" style="width: 90px;">AI PUAN</th>
+                            <th data-filter="select" data-filter-options="Olumlu|Belirsiz|Olumsuz" class="text-center" style="width: 110px;">AI ETİKET</th>
+                            <th data-filter="select" data-filter-options="Yeni|Değerlendirildi|Görüşme|Olumlu|Olumsuz|Personele Dönüştü" style="width: 140px;">DURUM</th>
+                            <th data-filter="date" style="width: 120px;">BAŞVURU</th>
                             <th data-filter="none" style="width: 110px;" class="text-center">İŞLEMLER</th>
                         </tr>
                     </thead>

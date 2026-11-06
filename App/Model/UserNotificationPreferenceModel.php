@@ -21,6 +21,9 @@ class UserNotificationPreferenceModel extends Model
     public const TYPE_KEP = 'kep';
     public const TYPE_PAYROLL = 'payroll';
     public const TYPE_KESME_ACMA = 'kesme_acma';
+    public const TYPE_IK_APPLICATION = 'ik_application';
+
+    public const OPT_IN_TYPES = [self::TYPE_IK_APPLICATION];
 
     public const TYPES = [
         self::TYPE_KACAK_CREATED,
@@ -38,6 +41,7 @@ class UserNotificationPreferenceModel extends Model
         self::TYPE_KEP,
         self::TYPE_PAYROLL,
         self::TYPE_KESME_ACMA,
+        self::TYPE_IK_APPLICATION,
     ];
 
     public const LABELS = [
@@ -56,6 +60,7 @@ class UserNotificationPreferenceModel extends Model
         self::TYPE_KEP => ['KEP Bildirimleri', 'Yeni gelen KEP ve otomatik KEP alım hataları için bildirim alın.'],
         self::TYPE_PAYROLL => ['Bordro Bildirimleri', 'Ücret pusulası itirazı gibi bordro bildirimlerini alın.'],
         self::TYPE_KESME_ACMA => ['Kesme/Açma Uyarıları', 'Yönetim eşiğini aşan kesme/açma uyarıları için bildirim alın.'],
+        self::TYPE_IK_APPLICATION => ['İşe Alım Başvuruları', 'Yeni aday başvurusu geldiğinde bildirim alın. Varsayılan kapalıdır; yönetici açar.'],
     ];
 
     protected $table = 'user_notification_preferences';
@@ -82,6 +87,41 @@ class UserNotificationPreferenceModel extends Model
         return self::$hasAdminColumn;
     }
 
+    private static ?bool $hasGrantColumn = null;
+
+    private function hasGrantColumn(): bool
+    {
+        if (self::$hasGrantColumn === null) {
+            $stmt = $this->db->prepare(
+                "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :t AND COLUMN_NAME = 'admin_granted'"
+            );
+            $stmt->execute(['t' => $this->table]);
+            self::$hasGrantColumn = (int) $stmt->fetchColumn() > 0;
+        }
+
+        return self::$hasGrantColumn;
+    }
+
+    private function getGrantedOptInTypes(int $userId): array
+    {
+        if (!$this->hasGrantColumn()) {
+            return [];
+        }
+
+        $stmt = $this->db->prepare(
+            "SELECT notification_type FROM {$this->table} WHERE user_id = :user_id AND admin_granted = 1"
+        );
+        $stmt->execute(['user_id' => $userId]);
+
+        return array_values(array_intersect(self::OPT_IN_TYPES, $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []));
+    }
+
+    private function getUngrantedOptInTypes(int $userId): array
+    {
+        return array_values(array_diff(self::OPT_IN_TYPES, $this->getGrantedOptInTypes($userId)));
+    }
+
     public function isEnabled(int $userId, string $notificationType): bool
     {
         $adminColumn = $this->hasAdminColumn() ? 'admin_disabled' : '0';
@@ -97,6 +137,11 @@ class UserNotificationPreferenceModel extends Model
         ]);
 
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (in_array($notificationType, self::OPT_IN_TYPES, true)
+            && !in_array($notificationType, $this->getGrantedOptInTypes($userId), true)) {
+            return false;
+        }
 
         if ($row === false) {
             return true;
@@ -134,7 +179,9 @@ class UserNotificationPreferenceModel extends Model
         );
         $stmt->execute(['user_id' => $userId]);
 
-        return array_values(array_intersect(self::TYPES, $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []));
+        $disabled = array_values(array_intersect(self::TYPES, $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []));
+
+        return array_values(array_unique(array_merge($disabled, $this->getUngrantedOptInTypes($userId))));
     }
 
     public function getPreferences(int $userId): array
@@ -159,16 +206,16 @@ class UserNotificationPreferenceModel extends Model
 
     public function getAdminDisabledTypes(int $userId): array
     {
-        if (!$this->hasAdminColumn()) {
-            return [];
+        $disabled = [];
+        if ($this->hasAdminColumn()) {
+            $stmt = $this->db->prepare(
+                "SELECT notification_type FROM {$this->table} WHERE user_id = :user_id AND admin_disabled = 1"
+            );
+            $stmt->execute(['user_id' => $userId]);
+            $disabled = array_values(array_intersect(self::TYPES, $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []));
         }
 
-        $stmt = $this->db->prepare(
-            "SELECT notification_type FROM {$this->table} WHERE user_id = :user_id AND admin_disabled = 1"
-        );
-        $stmt->execute(['user_id' => $userId]);
-
-        return array_values(array_intersect(self::TYPES, $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []));
+        return array_values(array_unique(array_merge($disabled, $this->getUngrantedOptInTypes($userId))));
     }
 
     public function setAdminDisabledTypes(int $userId, array $disabledTypes): void
@@ -182,8 +229,24 @@ class UserNotificationPreferenceModel extends Model
              VALUES (:user_id, :notification_type, 1, :admin_disabled, NOW(), NOW())
              ON DUPLICATE KEY UPDATE admin_disabled = VALUES(admin_disabled), updated_at = NOW()"
         );
+        $grantStmt = $this->hasGrantColumn() ? $this->db->prepare(
+            "INSERT INTO {$this->table} (user_id, notification_type, is_enabled, admin_disabled, admin_granted, created_at, updated_at)
+             VALUES (:user_id, :notification_type, 1, 0, :admin_granted, NOW(), NOW())
+             ON DUPLICATE KEY UPDATE admin_disabled = 0, admin_granted = VALUES(admin_granted), updated_at = NOW()"
+        ) : null;
 
         foreach (self::TYPES as $type) {
+            if (in_array($type, self::OPT_IN_TYPES, true)) {
+                if ($grantStmt === null) {
+                    throw new \RuntimeException('admin_granted kolonu bulunamadı; SQL scriptini çalıştırın.');
+                }
+                $grantStmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+                $grantStmt->bindValue(':notification_type', $type, PDO::PARAM_STR);
+                $grantStmt->bindValue(':admin_granted', in_array($type, $disabledTypes, true) ? 0 : 1, PDO::PARAM_INT);
+                $grantStmt->execute();
+                continue;
+            }
+
             $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
             $stmt->bindValue(':notification_type', $type, PDO::PARAM_STR);
             $stmt->bindValue(':admin_disabled', in_array($type, $disabledTypes, true) ? 1 : 0, PDO::PARAM_INT);

@@ -39,6 +39,8 @@ class IkBasvuruDonusturService
         $telefon = (string) $basvuru->telefon;
         $cepTelefonu = strlen($telefon) === 12 ? '0' . substr($telefon, 2) : $telefon;
 
+        $resimYolu = $this->fotoAktar($basvuru, $firmaId);
+
         $db->beginTransaction();
         try {
             $veri = [
@@ -51,6 +53,7 @@ class IkBasvuruDonusturService
                 'email_adresi' => $basvuru->email ?: null,
                 'dogum_tarihi' => $basvuru->dogum_tarihi ?: null,
                 'ehliyet_sinifi' => $basvuru->ehliyet ?: null,
+                'resim_yolu' => $resimYolu,
                 'aktif_mi' => 1,
                 'olusturma_tarihi' => date('Y-m-d H:i:s'),
             ];
@@ -103,9 +106,36 @@ class IkBasvuruDonusturService
             if ($kopyaYol !== null) {
                 @unlink($kopyaYol);
             }
+            if ($resimYolu !== null) {
+                @unlink(dirname(__DIR__, 2) . '/' . $resimYolu);
+            }
             throw $e;
         }
 
         return ['personel_id' => $personelId, 'personel_enc_id' => Security::encrypt($personelId)];
+    }
+
+    private function fotoAktar(object $basvuru, int $firmaId): ?string
+    {
+        if (empty($basvuru->foto_dosya)) {
+            return null;
+        }
+        $kaynak = dirname(__DIR__, 2) . '/uploads/ik_basvuru/' . $firmaId . '/' . basename((string) $basvuru->foto_dosya);
+        if (!is_file($kaynak)) {
+            return null;
+        }
+        try {
+            $icerik = Security::decryptFile((string) file_get_contents($kaynak));
+            $dizin = dirname(__DIR__, 2) . '/assets/images/users/';
+            $ad = 'personel_' . bin2hex(random_bytes(12)) . '.jpg';
+            if ($icerik === '' || @file_put_contents($dizin . $ad, $icerik, LOCK_EX) === false) {
+                error_log('İK başvuru fotoğrafı personel klasörüne yazılamadı.');
+                return null;
+            }
+            return 'assets/images/users/' . $ad;
+        } catch (Throwable $e) {
+            error_log('İK başvuru fotoğrafı aktarılamadı: ' . $e->getMessage());
+            return null;
+        }
     }
 }

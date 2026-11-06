@@ -352,6 +352,46 @@ class UserModel extends Model
         }));
     }
 
+    public function ikMailKolonuVarMi(): bool
+    {
+        static $var = null;
+        if ($var === null) {
+            $stmt = $this->db->prepare(
+                "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :t AND COLUMN_NAME = 'mail_ise_alim_basvuru'"
+            );
+            $stmt->execute(['t' => $this->table]);
+            $var = (int) $stmt->fetchColumn() > 0;
+        }
+
+        return $var;
+    }
+
+    /**
+     * Yeni işe alım başvurusu için bildirim/e-posta alabilecek, başvuru listesi yetkisi olan aktif kullanıcıları getirir.
+     * @param bool $sadeceMailAcik True ise yalnızca e-posta tercihi "Evet" olanlar döner
+     */
+    public function getIkBasvuruBildirimKullanicilari(int $firmaId, bool $sadeceMailAcik = false): array
+    {
+        $sql = "SELECT * FROM $this->table WHERE durum = 'Aktif'";
+        if ($sadeceMailAcik) {
+            if (!$this->ikMailKolonuVarMi()) {
+                return [];
+            }
+            $sql .= " AND mail_ise_alim_basvuru = 'Evet' AND email_adresi IS NOT NULL AND email_adresi != ''";
+        }
+        $query = $this->db->prepare($sql);
+        $query->execute();
+
+        return array_values(array_filter($query->fetchAll(PDO::FETCH_OBJ), function ($u) use ($firmaId) {
+            $firmalar = array_values(array_filter(array_map('trim', explode(',', (string) ($u->firma_ids ?? ''))), 'strlen'));
+            if ($firmalar && !in_array((string) $firmaId, $firmalar, true)) {
+                return false;
+            }
+            return $this->hasUserPermission($u, 'ik-ise-alim/basvurular');
+        }));
+    }
+
     /**
      * Belirli bir talep türü için İLGİLİ SAYFAYA YETKİSİ BULUNAN aktif kullanıcıları getirir.
      * Kullanıcının bildirim tercihi (Profil > Ayarlar) bildirim oluşturulurken ayrıca uygulanır.

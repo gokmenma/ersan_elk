@@ -78,10 +78,48 @@ $(document).ready(function () {
         tablo.ajax.reload();
     });
 
+    let sorular = [];
+    let adim = 1;
+
+    const soruCiz = () => {
+        $('#soruListe').html(sorular.map((q, i) => `<div class="soru-satir"><span class="no">${i + 1}</span><span class="metin">${esc(q)}</span><button type="button" class="btn btn-sm btn-subtle-danger table-action-btn btn-soru-sil" data-i="${i}" title="Sil" aria-label="Soruyu sil"><i class="bx bx-x"></i></button></div>`).join(''));
+        $('#sorular').val(sorular.join('\n'));
+        $('#btnSoruEkle').prop('disabled', sorular.length >= 8);
+    };
+    const soruEkle = () => {
+        const v = $('#yeniSoru').val().trim();
+        if (!v || sorular.length >= 8) return;
+        sorular.push(v);
+        $('#yeniSoru').val('').trigger('focus');
+        soruCiz();
+    };
+    $('#btnSoruEkle').on('click', soruEkle);
+    $('#yeniSoru').on('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); soruEkle(); } });
+    $('#soruListe').on('click', '.btn-soru-sil', function () { sorular.splice(parseInt($(this).data('i'), 10), 1); soruCiz(); });
+    $('.kriter-chip').on('click', function () {
+        const alan = $('#ai_kriterleri');
+        const mevcut = alan.val();
+        alan.val(mevcut + (mevcut && !mevcut.endsWith('\n') ? '\n' : '') + $(this).data('ekle')).trigger('focus');
+    });
+
+    const adimGoster = (n) => {
+        adim = Math.min(3, Math.max(1, n));
+        $('.ikm-panel').addClass('d-none').filter(`[data-adim="${adim}"]`).removeClass('d-none');
+        $('.ikm-step').removeClass('active').filter(`[data-adim="${adim}"]`).addClass('active');
+        $('#btnGeri').css('visibility', adim === 1 ? 'hidden' : 'visible');
+        $('#btnIleri').toggle(adim < 3);
+    };
+    $('.ikm-step').on('click', function () { adimGoster(parseInt($(this).data('adim'), 10)); });
+    $('#btnIleri').on('click', function () { adimGoster(adim + 1); });
+    $('#btnGeri').on('click', function () { adimGoster(adim - 1); });
+
     const formuSifirla = () => {
         $('#ikilanForm')[0].reset();
         $('#ilan_id').val('');
         $('#durum').val('taslak').trigger('change.select2');
+        sorular = [];
+        soruCiz();
+        adimGoster(1);
     };
 
     $('#btnYeniIlan').on('click', function () {
@@ -96,7 +134,9 @@ $(document).ready(function () {
             formuSifirla();
             const d = res.data;
             $('#ilan_id').val(d.id);
-            ['baslik', 'departman', 'gorev', 'calisma_yeri', 'gecerlilik_tarihi', 'aciklama', 'aranan_nitelikler', 'ai_kriterleri', 'sorular'].forEach((k) => $('#' + k).val(d[k] || ''));
+            ['baslik', 'departman', 'gorev', 'calisma_yeri', 'gecerlilik_tarihi', 'aciklama', 'aranan_nitelikler', 'ai_kriterleri'].forEach((k) => $('#' + k).val(d[k] || ''));
+            sorular = (d.sorular || '').split('\n').map((x) => x.trim()).filter(Boolean);
+            soruCiz();
             $('#durum').val(d.durum).trigger('change.select2');
             $('#ikilanModalLabel').text('İlanı Düzenle');
             $('#ikilanModal').modal('show');
@@ -111,6 +151,8 @@ $(document).ready(function () {
 
     $('#ikilanForm').on('submit', function (e) {
         e.preventDefault();
+        if (!$('#baslik').val().trim()) { adimGoster(1); $('#baslik').addClass('is-invalid').trigger('focus'); return; }
+        $('#baslik').removeClass('is-invalid');
         const btn = $('#btnIlanKaydet').prop('disabled', true);
         $.post(API, $(this).serialize(), function (res) {
             if (res.status === 'success') {
@@ -135,30 +177,71 @@ $(document).ready(function () {
     });
 
     $('#ikilanTable tbody').on('click', '.btn-ilan-paylas', function () {
+        const baslik = tablo.row($(this).closest('tr')).data().baslik;
         $.post(API, { action: 'ilan-link', id: $(this).data('id') }, function (res) {
             if (res.status !== 'success') { Swal.fire('Hata', res.message || 'Bağlantı alınamadı.', 'error'); return; }
             aktifLink = res.data;
-            $('#linkMesaj').val(res.data.mesaj);
+            $('#linkIlanAd').text(baslik);
+            $('#linkBalon').text(res.data.mesaj);
             $('#linkUrl').val(res.data.link);
-            $('#linkQr').attr('src', res.data.qr || '');
+            $('#linkTelefon').val('');
             $('#linkYayindaDegil').toggleClass('d-none', !!res.data.yayinda);
+            const img = $('#linkQr');
+            img.addClass('d-none').off('load error');
+            $('#linkQrYok').removeClass('d-none').text('QR oluşturuluyor...');
+            const istemciQr = () => qrIstemciUret(res.data.link, function (url) {
+                if (url) { img.attr('src', url).removeClass('d-none'); $('#linkQrYok').addClass('d-none'); }
+                else { $('#linkQrYok').removeClass('d-none').text('QR oluşturulamadı. Bağlantıyı kopyalayın.'); }
+            });
+            if (res.data.qr) {
+                img.on('load', function () { img.removeClass('d-none'); $('#linkQrYok').addClass('d-none'); })
+                   .on('error', istemciQr)
+                   .attr('src', res.data.qr);
+            } else {
+                istemciQr();
+            }
             $('#ikilanLinkModal').modal('show');
         }, 'json').fail(() => Swal.fire('Hata', 'Bağlantı alınamadı.', 'error'));
     });
 
-    $('#btnLinkKopyala').on('click', function () {
-        const url = $('#linkUrl').val();
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(url).then(() => showToast('Bağlantı kopyalandı.', 'success'));
-        } else {
-            $('#linkUrl').trigger('select');
-            document.execCommand('copy');
-            showToast('Bağlantı kopyalandı.', 'success');
+    const qrIstemciUret = (metin, cb) => {
+        const uret = () => {
+            try {
+                const qr = window.qrcode(0, 'M');
+                qr.addData(metin);
+                qr.make();
+                cb(qr.createDataURL(6, 8));
+            } catch (e) { cb(null); }
+        };
+        if (window.qrcode) { uret(); return; }
+        const sc = document.createElement('script');
+        sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js';
+        sc.onload = uret;
+        sc.onerror = () => cb(null);
+        document.head.appendChild(sc);
+    };
+
+    const panoyaKopyala = (metin, bildirim) => {
+        const bitir = () => showToast(bildirim, 'success');
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(metin).then(bitir);
+            return;
         }
-    });
+        const t = $('<textarea>').val(metin).css({ position: 'fixed', opacity: 0 }).appendTo('body');
+        t[0].select();
+        document.execCommand('copy');
+        t.remove();
+        bitir();
+    };
+    $('#btnLinkKopyala').on('click', () => panoyaKopyala($('#linkUrl').val(), 'Bağlantı kopyalandı.'));
+    $('#btnMesajKopyala').on('click', () => panoyaKopyala($('#linkBalon').text(), 'Mesaj kopyalandı.'));
 
     $('#btnWhatsappPaylas').on('click', function () {
-        const mesaj = $('#linkMesaj').val();
-        window.open('https://wa.me/?text=' + encodeURIComponent(mesaj), '_blank', 'noopener');
+        const mesaj = $('#linkBalon').text();
+        let no = ($('#linkTelefon').val() || '').replace(/\D/g, '');
+        if (no.length === 11 && no[0] === '0') no = '9' + no;
+        else if (no.length === 10 && no[0] === '5') no = '90' + no;
+        const hedef = no.length >= 11 && no.length <= 15 ? no : '';
+        window.open('https://wa.me/' + hedef + '?text=' + encodeURIComponent(mesaj), '_blank', 'noopener');
     });
 });

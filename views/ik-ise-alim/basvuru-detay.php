@@ -22,7 +22,7 @@ $donusturYetki = Gate::allows('ik_basvuru_personele_donustur');
 <div class="container-fluid" id="ikDetayRoot">
     <div class="row align-items-center mb-3">
         <div class="col-md-7 col-12 d-flex align-items-center gap-3">
-            <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 44px; height: 44px;">
+            <div id="dFoto" class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0 overflow-hidden" style="width: 44px; height: 44px;">
                 <i class="bx bx-user fs-4 text-primary"></i>
             </div>
             <div>

@@ -68,6 +68,7 @@ if ($action == "kullanici-kaydet") {
         $mail_izin_talep = isset($_POST['mail_izin_talep']) && $_POST['mail_izin_talep'] == 'Evet' ? 'Evet' : 'Hayır';
         $mail_genel_talep = isset($_POST['mail_genel_talep']) && $_POST['mail_genel_talep'] == 'Evet' ? 'Evet' : 'Hayır';
         $mail_ariza_talep = isset($_POST['mail_ariza_talep']) && $_POST['mail_ariza_talep'] == 'Evet' ? 'Evet' : 'Hayır';
+        $mail_ise_alim_basvuru = isset($_POST['mail_ise_alim_basvuru']) && $_POST['mail_ise_alim_basvuru'] == 'Evet' ? 'Evet' : 'Hayır';
 
         $yonetilen_departman = "";
         if (isset($_POST['yonetilen_departman'])) {
@@ -106,6 +107,9 @@ if ($action == "kullanici-kaydet") {
             'yonetilen_departman' => $yonetilen_departman,
             'durum' => $_POST['durum'] ?? 'Aktif'
         ];
+        if ($User->ikMailKolonuVarMi()) {
+            $data['mail_ise_alim_basvuru'] = $mail_ise_alim_basvuru;
+        }
         $passwordChanged = false;
         if (!empty($_POST['password'])) {
             $data['password'] = password_hash($_POST['password'], PASSWORD_BCRYPT);

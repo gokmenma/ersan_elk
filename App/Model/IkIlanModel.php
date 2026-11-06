@@ -158,11 +158,23 @@ class IkIlanModel extends Model
 
         foreach (($params['columns'] ?? []) as $i => $kolon) {
             $deger = trim((string) ($kolon['search']['value'] ?? ''));
-            if ($deger === '' || !in_array((int) $i, [1, 2, 3], true)) {
+            if ($deger === '' || !in_array((int) $i, [1, 2], true)) {
                 continue;
             }
             $where .= " AND {$kolonlar[(int) $i]} LIKE :kol_$i";
             $bind["kol_$i"] = '%' . $deger . '%';
+        }
+
+        $ilanBasvuru = "(SELECT COUNT(*) FROM ik_basvurular b WHERE b.ilan_id = i.id AND b.is_active = 1 AND b.deleted_at IS NULL)";
+        $ilanOlumlu = "(SELECT COUNT(*) FROM ik_basvurular b WHERE b.ilan_id = i.id AND b.is_active = 1 AND b.deleted_at IS NULL AND b.ai_etiket = 'olumlu')";
+        $gelismis = [
+            3 => ['select', 'i.durum', array_flip(self::DURUMLAR)],
+            4 => ['number', $ilanBasvuru, []],
+            5 => ['number', $ilanOlumlu, []],
+            6 => ['date', 'i.created_at', []],
+        ];
+        foreach ($gelismis as $i => [$tip, $ifade, $harita]) {
+            $where .= \App\Helper\DataTableColumnFilter::apply($tip, (string) ($params['columns'][$i]['search']['value'] ?? ''), $ifade, "gkol_$i", $bind, $harita);
         }
 
         $toplam = $this->sayac("SELECT COUNT(*) FROM {$this->table} i WHERE i.firma_id = :firma_id AND i.is_active = 1 AND i.deleted_at IS NULL", ['firma_id' => $firmaId]);

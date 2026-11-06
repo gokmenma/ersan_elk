@@ -18,6 +18,9 @@ $(document).ready(function () {
     const ciz = () => {
         const d = veri;
         $('#dAd').text(d.ad_soyad);
+        if (d.foto_var) {
+            $('#dFoto').addClass('p-0').css({ width: '56px', height: '72px' }).html(`<img src="${API}?action=basvuru-foto&id=${encodeURIComponent(d.id)}" alt="Vesikalık fotoğraf" style="width:100%;height:100%;object-fit:cover" onerror="this.remove()">`);
+        }
         $('#dAlt').text(`${d.ilan_baslik} • Başvuru: ${(d.created_at || '').substring(0, 16)} • Durum: ${durumAd[d.durum] || d.durum}`);
 
         let ai = '';

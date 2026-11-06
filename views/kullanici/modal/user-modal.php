@@ -29,7 +29,7 @@ $isEdit = !empty($user && $user->id);
 $canManageNotificationPermissions = Gate::isSuperAdmin();
 $adminLockedNotifications = $isEdit
     ? (new UserNotificationPreferenceModel())->getAdminDisabledMap((int) $user->id)
-    : [];
+    : array_fill_keys(UserNotificationPreferenceModel::OPT_IN_TYPES, true);
 $notificationIcons = [
     'kacak_created' => ['mdi-shield-alert-outline', 'info'],
     'ihbar_created' => ['mdi-alert-outline', 'danger'],
@@ -46,6 +46,7 @@ $notificationIcons = [
     'kep' => ['mdi-email-outline', 'info'],
     'payroll' => ['mdi-credit-card-outline', 'success'],
     'kesme_acma' => ['mdi-content-cut', 'danger'],
+    'ik_application' => ['mdi-account-plus-outline', 'success'],
 ];
 $selectedRoleIds = $isEdit
     ? (new UserRoleAssignmentModel())->activeRoleIdsForUser((int) $user->id)
@@ -615,6 +616,20 @@ $selectedRoleIds = $isEdit
                     <div class="notif-tile-content">
                         <div class="notif-tile-title">Arıza Bildirimi</div>
                         <div class="notif-tile-desc">Arıza kayıtları</div>
+                    </div>
+                    <div class="notif-tile-check">✓</div>
+                </label>
+
+                <!-- İşe Alım Başvurusu -->
+                <label class="notification-tile <?= ($user->mail_ise_alim_basvuru ?? 'Hayır') == 'Evet' ? 'is-active' : '' ?>" for="mail_ise_alim_basvuru">
+                    <input class="d-none notif-checkbox" type="checkbox" id="mail_ise_alim_basvuru" name="mail_ise_alim_basvuru"
+                        value="Evet" <?= ($user->mail_ise_alim_basvuru ?? 'Hayır') == 'Evet' ? 'checked' : '' ?>>
+                    <div class="notif-tile-icon bg-soft-success text-success">
+                        <i class="mdi mdi-account-plus-outline"></i>
+                    </div>
+                    <div class="notif-tile-content">
+                        <div class="notif-tile-title">İşe Alım Başvurusu</div>
+                        <div class="notif-tile-desc">Yeni aday başvurusu</div>
                     </div>
                     <div class="notif-tile-check">✓</div>
                 </label>

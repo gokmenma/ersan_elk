@@ -46,10 +46,10 @@ class IkBasvuruModel extends Model
     {
         $stmt = $this->db->prepare("INSERT INTO {$this->table}
             (firma_id, ilan_id, ad_soyad, telefon, email, dogum_tarihi, sehir, egitim, deneyim_yili, deneyim_ozet, ehliyet,
-             maas_beklentisi, ise_baslama, cevaplar, cv_dosya, cv_mime, cv_metin, kvkk_onay_tarihi, ip_adresi)
+             maas_beklentisi, ise_baslama, cevaplar, cv_dosya, cv_mime, cv_metin, foto_dosya, kvkk_onay_tarihi, ip_adresi)
             VALUES
             (:firma_id, :ilan_id, :ad_soyad, :telefon, :email, :dogum_tarihi, :sehir, :egitim, :deneyim_yili, :deneyim_ozet, :ehliyet,
-             :maas_beklentisi, :ise_baslama, :cevaplar, :cv_dosya, :cv_mime, :cv_metin, NOW(), :ip_adresi)");
+             :maas_beklentisi, :ise_baslama, :cevaplar, :cv_dosya, :cv_mime, :cv_metin, :foto_dosya, NOW(), :ip_adresi)");
         $stmt->execute([
             'firma_id' => $v['firma_id'],
             'ilan_id' => $v['ilan_id'],
@@ -68,6 +68,7 @@ class IkBasvuruModel extends Model
             'cv_dosya' => $v['cv_dosya'],
             'cv_mime' => $v['cv_mime'],
             'cv_metin' => $v['cv_metin'],
+            'foto_dosya' => $v['foto_dosya'] ?? null,
             'ip_adresi' => $v['ip_adresi'],
         ]);
         return (int) $this->db->lastInsertId();
@@ -220,6 +221,16 @@ class IkBasvuruModel extends Model
             }
             $where .= " AND {$kolonlar[(int) $i]} LIKE :kol_$i";
             $bind["kol_$i"] = '%' . $deger . '%';
+        }
+
+        $gelismis = [
+            5 => ['number', 'b.ai_puan', []],
+            6 => ['select', 'b.ai_etiket', array_flip(self::ETIKETLER)],
+            7 => ['select', 'b.durum', array_flip(self::DURUMLAR)],
+            8 => ['date', 'b.created_at', []],
+        ];
+        foreach ($gelismis as $i => [$tip, $ifade, $harita]) {
+            $where .= \App\Helper\DataTableColumnFilter::apply($tip, (string) ($params['columns'][$i]['search']['value'] ?? ''), $ifade, "gkol_$i", $bind, $harita);
         }
 
         $baz = "FROM {$this->table} b JOIN ik_ilanlar i ON i.id = b.ilan_id";
