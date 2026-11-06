@@ -62,11 +62,15 @@ if ($kayit) {
         <meta property="og:title" content="<?= $e($baslikMeta) ?>">
         <meta property="og:description" content="<?= $e($aciklamaMeta) ?>">
     <?php endif; ?>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
     <style>
         :root { --bg: #eef1f5; --card: #fff; --ink: #1c2530; --muted: #6b7686; --brand: #0b5ed7; --brand-soft: #e7f0ff; --ok: #198754; --ok-soft: #e4f5ec; --line: #e3e8ef; }
         @media (prefers-color-scheme: dark) { :root { --bg: #14181f; --card: #1d232d; --ink: #eef1f6; --muted: #9aa5b5; --brand: #6ea8fe; --brand-soft: #1e2d47; --ok: #4cc38a; --ok-soft: #173326; --line: #2c3541; } }
         * { box-sizing: border-box; }
-        body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        button, input, textarea { font-family: inherit; }
         .wrap { max-width: 560px; margin: 0 auto; padding: 16px; }
         .hero { background: linear-gradient(135deg, #0b5ed7, #0a3d91); color: #fff; border-radius: 22px; padding: 24px 20px; margin-bottom: 14px; }
         .hero small { opacity: .8; letter-spacing: .04em; text-transform: uppercase; font-size: 12px; }
@@ -82,7 +86,12 @@ if ($kayit) {
         ul.list li { border-top: 1px solid var(--line); }
         ul.list li:first-child { border-top: 0; }
         label.item { display: flex; gap: 12px; align-items: flex-start; padding: 12px 2px; min-height: 48px; cursor: pointer; }
-        label.item input { position: absolute; opacity: 0; }
+        label.item input, .kutu input { position: absolute; opacity: 0; }
+        .kutu { position: relative; display: inline-flex; flex: none; cursor: pointer; }
+        .kutu input { inset: -10px; width: calc(100% + 20px); height: calc(100% + 20px); margin: 0; cursor: pointer; }
+        .kutu input:checked + .box { background: var(--ok); border-color: var(--ok); color: #fff; }
+        .kutu input:focus-visible + .box { outline: 3px solid var(--brand); outline-offset: 2px; }
+        .kutu input:disabled + .box { opacity: .85; cursor: default; }
         .box { width: 24px; height: 24px; border-radius: 8px; border: 2px solid var(--line); flex: none; display: flex; align-items: center; justify-content: center; color: transparent; font-size: 14px; margin-top: 1px; }
         label.item input:checked + .box { background: var(--ok); border-color: var(--ok); color: #fff; }
         label.item input:checked ~ .txt .ad { color: var(--muted); text-decoration: line-through; }
@@ -110,7 +119,7 @@ if ($kayit) {
         .iban-kayitli { background: var(--ok-soft); border-radius: 12px; padding: 10px 12px; font-size: 14px; margin-bottom: 10px; }
         .iban-kayitli .not { display: block; font-size: 12.5px; color: var(--muted); margin-top: 2px; }
         .rozet.tamam { background: var(--ok); color: #fff; margin-left: 6px; margin-top: 0; }
-        .alan { width: 100%; min-height: 48px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink); font: 600 15px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; padding: 0 12px; letter-spacing: .01em; }
+        .alan { width: 100%; min-height: 48px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink); font: 600 16px/1.2 'Outfit', ui-monospace, sans-serif; font-variant-numeric: tabular-nums; padding: 0 12px; letter-spacing: .04em; }
         .alan:focus { outline: 3px solid var(--brand-soft); border-color: var(--brand); }
         .alan.gecersiz { border-color: #dc3545; }
         .onay { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; margin: 12px 0 4px; min-height: 44px; cursor: pointer; }
@@ -118,6 +127,7 @@ if ($kayit) {
         .yukle-btn.dolu { background: var(--brand); color: #fff; width: 100%; justify-content: center; }
         .ok-mesaj { display: block; color: var(--ok); font-size: 13px; font-weight: 600; margin-top: 6px; }
         .ok-mesaj:empty { display: none; }
+        .uyg-link { display: block; margin-top: 12px; padding: 14px; text-align: center; border-radius: 12px; border: 1.5px solid var(--brand); color: var(--brand); font-weight: 600; font-size: 17px; text-decoration: none; word-break: break-all; }
         .foot { text-align: center; color: var(--muted); font-size: 12px; padding: 8px 0 24px; }
         .hata { text-align: center; padding: 60px 20px; }
     </style>
@@ -140,7 +150,7 @@ if ($kayit) {
         <h2><span class="ico">&#9776;</span> <?= $e($sablon['sayfa_baslik']) ?></h2>
         <div class="progress" id="ilerleme">0 / <?= count($maddeler) ?> hazır</div>
         <div class="bar"><i id="bar"></i></div>
-        <div class="bilgi">Elden teslim yazanlar dışındaki evrakları buradan fotoğraf çekerek veya dosya seçerek yükleyebilirsiniz (JPG, PNG, PDF &middot; en fazla 8 MB).</div>
+        <div class="bilgi">Evrakları hazır olduklarında işaretleyebilirsiniz; dilerseniz fotoğraf çekerek veya dosya seçerek buradan da yükleyebilirsiniz (JPG, PNG, PDF &middot; en fazla 8 MB). Yükleme zorunlu değildir; elden teslim yazanları yanınızda getirin.</div>
         <ul class="list" id="evrakListe">
             <?php foreach ($maddeler as $i => $m): $dosyalar = $yuklemeler[$i] ?? []; ?>
                 <li class="madde" data-i="<?= (int) $i ?>" data-elden="<?= !empty($m['elden']) ? '1' : '0' ?>">
@@ -156,7 +166,7 @@ if ($kayit) {
                         </label>
                     <?php else: ?>
                         <div class="item dijital">
-                            <span class="box durum <?= $dosyalar ? 'tamam' : '' ?>">&#10003;</span>
+                            <label class="kutu"><input type="checkbox" class="chk" data-i="<?= (int) $i ?>" <?= $dosyalar ? 'checked disabled' : '' ?>><span class="box">&#10003;</span></label>
                             <span class="txt">
                                 <span class="ad"><?= $e($m['ad']) ?></span>
                                 <?php foreach ($m['not'] as $not): ?><span class="not"><?= $e($not) ?></span><?php endforeach; ?>
@@ -225,6 +235,19 @@ if ($kayit) {
         </div>
     <?php endif; ?>
 
+    <?php
+    $personelUygulama = preg_replace('#^https?://#i', '', trim((string) ($_ENV['PERSON_APP_BASE'] ?? getenv('PERSON_APP_BASE') ?: ''), " \t\n\r\0\x0B\"'/"));
+    if ($personelUygulama !== '' && preg_match('/^[A-Za-z0-9.-]+(:\d+)?$/', $personelUygulama)):
+        $personelUrl = 'https://' . $personelUygulama;
+    ?>
+        <div class="card">
+            <h2><span class="ico">&#9638;</span> Personel Uygulaması</h2>
+            <div class="adim" style="background:var(--brand-soft);">İşe başladıktan sonra puantaj, izin, bordro ve duyurularınıza bu uygulamadan ulaşabilirsiniz.</div>
+            <a class="uyg-link" href="<?= $e($personelUrl) ?>" target="_blank" rel="noopener"><?= $e($personelUygulama) ?></a>
+            <button type="button" class="kopya" id="btnUygKopya" data-url="<?= $e($personelUrl) ?>">Linki Kopyala</button>
+        </div>
+    <?php endif; ?>
+
     <div class="foot">Bu sayfa size özel hazırlanmıştır, lütfen başkalarıyla paylaşmayın.</div>
 <?php endif; ?>
 </div>
@@ -239,15 +262,12 @@ if ($kayit) {
 
     function guncelle() {
         var n = 0, toplam = document.querySelectorAll('#evrakListe .madde').length;
-        kutular.forEach(function (k) { if (k.checked) n++; });
-        document.querySelectorAll('#evrakListe .madde[data-elden="0"]').forEach(function (m) {
-            if (m.querySelector('.dosya')) n++;
-        });
+        document.querySelectorAll('#evrakListe .chk').forEach(function (k) { if (k.checked) n++; });
         document.getElementById('ilerleme').textContent = n + ' / ' + toplam + ' hazır';
         document.getElementById('bar').style.width = (toplam ? n * 100 / toplam : 0) + '%';
     }
     kutular.forEach(function (k) {
-        k.checked = !!durum[k.dataset.i];
+        if (!k.disabled) { k.checked = !!durum[k.dataset.i]; }
         k.addEventListener('change', function () {
             durum[k.dataset.i] = k.checked;
             try { localStorage.setItem(anahtar, JSON.stringify(durum)); } catch (e) {}
@@ -282,9 +302,16 @@ if ($kayit) {
     }
 
     function maddeDurum(madde) {
-        var var_ = !!madde.querySelector('.dosya');
-        madde.querySelector('.box.durum').classList.toggle('tamam', var_);
-        madde.querySelector('.yt').textContent = var_ ? 'Başka Dosya Ekle' : 'Fotoğraf Çek / Dosya Yükle';
+        var varDosya = !!madde.querySelector('.dosya');
+        var chk = madde.querySelector('.chk');
+        if (chk) {
+            chk.disabled = varDosya;
+            chk.checked = varDosya || !!durum[chk.dataset.i];
+        } else {
+            var kutu = madde.querySelector('.box.durum');
+            if (kutu) kutu.classList.toggle('tamam', varDosya);
+        }
+        madde.querySelector('.yt').textContent = varDosya ? 'Başka Dosya Ekle' : 'Fotoğraf Çek / Dosya Yükle';
         guncelle();
     }
 
@@ -377,6 +404,13 @@ if ($kayit) {
         });
     }
 
+    var uyg = document.getElementById('btnUygKopya');
+    if (uyg) {
+        uyg.addEventListener('click', function () {
+            var bitti = function () { uyg.textContent = 'Kopyalandı ✓'; setTimeout(function () { uyg.textContent = 'Linki Kopyala'; }, 1800); };
+            if (navigator.clipboard) { navigator.clipboard.writeText(uyg.dataset.url).then(bitti, bitti); } else { bitti(); }
+        });
+    }
     guncelle();
     var btn = document.getElementById('btnKopya');
     if (btn) {
