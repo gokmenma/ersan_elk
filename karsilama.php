@@ -2,6 +2,7 @@
 require_once __DIR__ . '/Autoloader.php';
 
 use App\Model\PersonelKarsilamaModel;
+use App\Model\PersonelModel;
 use App\Model\SystemLogModel;
 
 header('X-Frame-Options: DENY');
@@ -23,6 +24,9 @@ try {
             (new SystemLogModel())->logActionForFirm((int) $kayit->firma_id, 0, 'Karşılama Mesajı', 'Bilgilendirme sayfası personel tarafından açıldı (Personel ID: ' . (int) $kayit->personel_id . ')', SystemLogModel::LEVEL_INFO);
         }
         $Karsilama->acilmaKaydet((int) $kayit->id);
+        $per = (new PersonelModel())->find((int) $kayit->personel_id);
+        $mevcutIban = strtoupper(preg_replace('/\s+/', '', (string) ($per->iban_numarasi ?? '')));
+        $ibanDurum = $mevcutIban === '' ? 'bos' : (!empty($kayit->iban_girildi_tarihi) ? 'duzenlenebilir' : 'kilitli');
     }
 } catch (Throwable $ex) {
     error_log('karsilama.php hatası: ' . $ex->getMessage());
@@ -101,6 +105,19 @@ if ($kayit) {
         .yukle-btn:disabled { opacity: .55; cursor: progress; }
         .hata-mesaj { display: block; color: #dc3545; font-size: 13px; margin-top: 6px; }
         .hata-mesaj:empty { display: none; }
+        .iban-blok { margin-top: 14px; }
+        .iban-baslik { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+        .iban-kayitli { background: var(--ok-soft); border-radius: 12px; padding: 10px 12px; font-size: 14px; margin-bottom: 10px; }
+        .iban-kayitli .not { display: block; font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+        .rozet.tamam { background: var(--ok); color: #fff; margin-left: 6px; margin-top: 0; }
+        .alan { width: 100%; min-height: 48px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink); font: 600 15px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; padding: 0 12px; letter-spacing: .01em; }
+        .alan:focus { outline: 3px solid var(--brand-soft); border-color: var(--brand); }
+        .alan.gecersiz { border-color: #dc3545; }
+        .onay { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; margin: 12px 0 4px; min-height: 44px; cursor: pointer; }
+        .onay input { width: 22px; height: 22px; flex: none; margin-top: 1px; accent-color: var(--ok); }
+        .yukle-btn.dolu { background: var(--brand); color: #fff; width: 100%; justify-content: center; }
+        .ok-mesaj { display: block; color: var(--ok); font-size: 13px; font-weight: 600; margin-top: 6px; }
+        .ok-mesaj:empty { display: none; }
         .foot { text-align: center; color: var(--muted); font-size: 12px; padding: 8px 0 24px; }
         .hata { text-align: center; padding: 60px 20px; }
     </style>
@@ -124,7 +141,7 @@ if ($kayit) {
         <div class="progress" id="ilerleme">0 / <?= count($maddeler) ?> hazır</div>
         <div class="bar"><i id="bar"></i></div>
         <div class="bilgi">Elden teslim yazanlar dışındaki evrakları buradan fotoğraf çekerek veya dosya seçerek yükleyebilirsiniz (JPG, PNG, PDF &middot; en fazla 8 MB).</div>
-        <ul class="list">
+        <ul class="list" id="evrakListe">
             <?php foreach ($maddeler as $i => $m): $dosyalar = $yuklemeler[$i] ?? []; ?>
                 <li class="madde" data-i="<?= (int) $i ?>" data-elden="<?= !empty($m['elden']) ? '1' : '0' ?>">
                     <?php if (!empty($m['elden'])): ?>
@@ -159,12 +176,46 @@ if ($kayit) {
         </ul>
     </div>
 
-    <?php if (trim((string) $sablon['banka_adimi']) !== ''): ?>
-        <div class="card">
-            <h2><span class="ico">&#9830;</span> Maaş Hesabı</h2>
+    <?php $ibanDosyalar = $yuklemeler[1000] ?? []; ?>
+    <div class="card" id="maasKart">
+        <h2><span class="ico">&#9830;</span> Maaş Hesabı</h2>
+        <?php if (trim((string) $sablon['banka_adimi']) !== ''): ?>
             <div class="adim"><?= nl2br($e($sablon['banka_adimi'])) ?></div>
+        <?php endif; ?>
+        <div class="iban-blok" data-durum="<?= $e($ibanDurum) ?>">
+            <div class="iban-baslik">IBAN numaranız</div>
+            <?php if ($ibanDurum === 'kilitli'): ?>
+                <div class="iban-kayitli">Hesap bilginiz kayıtlı: <b><?= $e(PersonelKarsilamaModel::ibanMaske($mevcutIban)) ?></b><span class="not">Değişiklik için lütfen yetkili ile iletişime geçin.</span></div>
+            <?php else: ?>
+                <div class="iban-kayitli" id="ibanKayitli" <?= $ibanDurum === 'bos' ? 'hidden' : '' ?>>Kayıtlı IBAN: <b id="ibanMaske"><?= $ibanDurum === 'duzenlenebilir' ? $e(PersonelKarsilamaModel::ibanMaske($mevcutIban)) : '' ?></b> <span class="rozet tamam">Kaydedildi</span></div>
+                <input type="text" id="ibanInput" class="alan" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="32" placeholder="TR00 0000 0000 0000 0000 0000 00" aria-label="IBAN numarası">
+                <label class="onay"><input type="checkbox" id="ibanOnay"> <span>Bu hesabın <b>kendi adıma</b> açılmış olduğunu onaylıyorum.</span></label>
+                <button type="button" class="yukle-btn dolu" id="ibanKaydet"><span class="yt"><?= $ibanDurum === 'bos' ? 'IBAN\'ı Kaydet' : 'IBAN\'ı Güncelle' ?></span></button>
+                <span class="hata-mesaj" id="ibanHata" role="alert"></span>
+                <span class="ok-mesaj" id="ibanOk" role="status"></span>
+            <?php endif; ?>
         </div>
-    <?php endif; ?>
+        <div class="iban-baslik" style="margin-top:16px;">Hesap görseli (isteğe bağlı)</div>
+        <div class="bilgi" style="margin-bottom:0;">IBAN'ınızın göründüğü banka kartı, hesap cüzdanı veya mobil bankacılık ekran görüntüsünü yükleyebilirsiniz.</div>
+        <ul class="list">
+            <li class="madde" data-i="iban" data-elden="0">
+                <div class="item dijital">
+                    <span class="box durum <?= $ibanDosyalar ? 'tamam' : '' ?>">&#10003;</span>
+                    <span class="txt">
+                        <span class="ad">Hesap görseli / belgesi</span>
+                        <span class="dosyalar">
+                            <?php foreach ($ibanDosyalar as $k => $d): ?>
+                                <span class="dosya" data-id="<?= (int) $d->id ?>"><span>Dosya <?= $k + 1 ?> &middot; <?= $e(number_format($d->dosya_boyutu / 1024 / 1024, 2, ',', '.')) ?> MB</span><button type="button" class="kaldir" aria-label="Dosyayı kaldır">Kaldır</button></span>
+                            <?php endforeach; ?>
+                        </span>
+                        <span class="hata-mesaj" role="alert"></span>
+                        <button type="button" class="yukle-btn"><span class="yl">&#8679;</span> <span class="yt"><?= $ibanDosyalar ? 'Başka Dosya Ekle' : 'Fotoğraf Çek / Dosya Yükle' ?></span></button>
+                        <input type="file" class="dosya-input" accept="image/jpeg,image/png,application/pdf" hidden>
+                    </span>
+                </div>
+            </li>
+        </ul>
+    </div>
 
     <?php if ($kaseSatirlari): ?>
         <div class="card">
@@ -187,9 +238,9 @@ if ($kayit) {
     try { durum = JSON.parse(localStorage.getItem(anahtar) || '{}'); } catch (e) {}
 
     function guncelle() {
-        var n = 0, toplam = document.querySelectorAll('.madde').length;
+        var n = 0, toplam = document.querySelectorAll('#evrakListe .madde').length;
         kutular.forEach(function (k) { if (k.checked) n++; });
-        document.querySelectorAll('.madde[data-elden="0"]').forEach(function (m) {
+        document.querySelectorAll('#evrakListe .madde[data-elden="0"]').forEach(function (m) {
             if (m.querySelector('.dosya')) n++;
         });
         document.getElementById('ilerleme').textContent = n + ' / ' + toplam + ' hazır';
@@ -283,6 +334,48 @@ if ($kayit) {
             });
         });
     });
+
+
+    var ibanInput = document.getElementById('ibanInput');
+    if (ibanInput) {
+        var ibanOk = function (t) {
+            if (!/^TR\d{24}$/.test(t)) return false;
+            var r = t.slice(4) + t.slice(0, 4), n = '';
+            for (var i = 0; i < r.length; i++) { var c = r.charCodeAt(i); n += (c >= 65 && c <= 90) ? (c - 55) : r.charAt(i); }
+            var m = 0;
+            for (var j = 0; j < n.length; j += 7) { m = parseInt(String(m) + n.substr(j, 7), 10) % 97; }
+            return m === 1;
+        };
+        var temiz = function () { return ibanInput.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase(); };
+        ibanInput.addEventListener('input', function () {
+            var t = temiz();
+            if (t && /^\d/.test(t)) { t = 'TR' + t; }
+            t = t.slice(0, 26);
+            ibanInput.value = t.replace(/(.{4})/g, '$1 ').trim();
+            ibanInput.classList.toggle('gecersiz', t.length === 26 && !ibanOk(t));
+        });
+        var kaydet = document.getElementById('ibanKaydet'), hataEl = document.getElementById('ibanHata'), okEl = document.getElementById('ibanOk');
+        kaydet.addEventListener('click', function () {
+            hataEl.textContent = ''; okEl.textContent = '';
+            var t = temiz();
+            if (!ibanOk(t)) { hataEl.textContent = 'Geçerli bir IBAN girin (TR ile başlayan 26 karakter).'; ibanInput.classList.add('gecersiz'); return; }
+            if (!document.getElementById('ibanOnay').checked) { hataEl.textContent = 'Hesabın size ait olduğunu onaylamanız gerekir.'; return; }
+            kaydet.disabled = true;
+            var fd = new FormData();
+            fd.append('t', TOKEN); fd.append('a', 'iban'); fd.append('iban', t); fd.append('onay', '1');
+            istek(fd).then(function (r) {
+                if (r.ok) {
+                    document.getElementById('ibanMaske').textContent = r.maske;
+                    document.getElementById('ibanKayitli').hidden = false;
+                    kaydet.querySelector('.yt').textContent = 'IBAN\'ı Güncelle';
+                    ibanInput.value = '';
+                    document.getElementById('ibanOnay').checked = false;
+                    okEl.textContent = 'IBAN numaranız kaydedildi' + (r.banka ? ' (' + r.banka + ')' : '') + '.';
+                } else { hataEl.textContent = r.mesaj; }
+            }).catch(function () { hataEl.textContent = 'Kaydedilemedi. Lütfen tekrar deneyin.'; })
+              .then(function () { kaydet.disabled = false; });
+        });
+    }
 
     guncelle();
     var btn = document.getElementById('btnKopya');

@@ -2175,3 +2175,4 @@
 
 - [x] Personel karşılama mesajı (WhatsApp wa.me + görsel bilgilendirme sayfası, şablon düzenleme, kayıt sonrası ve liste İşlemler menüsü); model/SQL/public sayfa test edildi, modal tarayıcıda elle denenmedi
 - [x] Karşılama sayfasından güvenli dijital evrak yükleme (fotoğraf elden); zararlı dosya testleri (sahte uzantı, PHP, SVG, exe, JS'li/obfuskeli/ObjStm'li PDF, boyut) geçti, arayüz mobil viewport'ta denendi
+- [x] Karşılama sayfasında IBAN girişi + hesap görseli yükleme (sunucu ve mobil arayüz testi geçti)

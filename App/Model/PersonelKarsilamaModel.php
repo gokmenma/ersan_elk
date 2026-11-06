@@ -292,6 +292,45 @@ class PersonelKarsilamaModel extends Model
         return (int) $r['evrak_id'];
     }
 
+    private const BANKA_KODLARI = [
+        '00010' => 'ZİRAAT', '00012' => 'HALKBANK', '00015' => 'VAKIFBANK', '00046' => 'AKBANK',
+        '00062' => 'GARANTİ', '00064' => 'İŞ BANKASI', '00067' => 'YAPI KREDİ', '00111' => 'QNB',
+        '00203' => 'ALBARAKA', '00205' => 'KUVEYTTÜRK', '00206' => 'TÜRKİYE FİNANS', '00134' => 'DENİZBANK',
+        '00032' => 'TEB', '00123' => 'HSBC', '00059' => 'ŞEKERBANK', '00099' => 'ING',
+        '00209' => 'ZİRAAT KATILIM', '00210' => 'VAKIF KATILIM',
+    ];
+
+    public static function ibanTemizle(?string $iban): ?string
+    {
+        $t = strtoupper(preg_replace('/[\s\-]/', '', (string) $iban));
+        if (!preg_match('/^TR\d{24}$/', $t) || !\App\Helper\Validator::iban($t)) {
+            return null;
+        }
+        return $t;
+    }
+
+    public static function bankaAdi(string $iban): ?string
+    {
+        return self::BANKA_KODLARI[substr($iban, 4, 5)] ?? null;
+    }
+
+    public static function ibanMaske(string $iban): string
+    {
+        if (!preg_match('/^TR\d{24}$/', $iban)) {
+            return '•••• •••• •••• ••••';
+        }
+        return substr($iban, 0, 4) . ' •••• •••• •••• •••• ••' . substr($iban, -2);
+    }
+
+    public function ibanIsaretle(int $karsilamaId): void
+    {
+        $stmt = $this->db->prepare("UPDATE {$this->table}
+            SET iban_girildi_tarihi = COALESCE(iban_girildi_tarihi, NOW()),
+                iban_degisim_sayisi = LEAST(iban_degisim_sayisi + 1, 255)
+            WHERE id = :id");
+        $stmt->execute(['id' => $karsilamaId]);
+    }
+
     public static function mesajOlustur(string $sablon, string $adSoyad, string $firmaAdi, string $link): string
     {
         $metin = strtr($sablon, [

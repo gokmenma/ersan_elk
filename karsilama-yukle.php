@@ -4,6 +4,7 @@ require_once __DIR__ . '/Autoloader.php';
 use App\Helper\Security;
 use App\Model\PersonelEvrakModel;
 use App\Model\PersonelKarsilamaModel;
+use App\Model\PersonelModel;
 use App\Model\SystemLogModel;
 use App\Service\GuvenliBelgeYuklemeService;
 
@@ -75,14 +76,64 @@ try {
         $yanit(true, 'Dosya kaldırıldı.');
     }
 
+    if ($islem === 'iban') {
+        $ibanReddet = static function (string $mesaj, int $kod = 422) use ($Karsilama, $karsilamaId, $firmaId, $personelId, $ip, $yanit): void {
+            try {
+                $Karsilama->yuklemeKaydet(['karsilama_id' => $karsilamaId, 'firma_id' => $firmaId, 'personel_id' => $personelId, 'madde_index' => 1001, 'madde_adi' => 'IBAN', 'ip' => $ip, 'durum' => 'reddedildi', 'red_nedeni' => $mesaj]);
+            } catch (Throwable $e) {
+                error_log('karsilama-yukle iban red kaydı yazılamadı: ' . $e->getMessage());
+            }
+            $yanit(false, $mesaj, [], $kod);
+        };
+
+        if (($_POST['onay'] ?? '') !== '1') {
+            $ibanReddet('Hesabın size ait olduğunu onaylamanız gerekir.', 400);
+        }
+        if ((int) $kayit->iban_degisim_sayisi >= 5) {
+            $ibanReddet('IBAN değiştirme sınırına ulaşıldı. Lütfen yetkili ile iletişime geçin.', 429);
+        }
+
+        $PersonelModel = new PersonelModel();
+        $personel = $PersonelModel->find($personelId);
+        if (!$personel || (int) $personel->firma_id !== $firmaId) {
+            $yanit(false, 'Personel bulunamadı.', [], 404);
+        }
+        $mevcut = strtoupper(preg_replace('/\s+/', '', (string) ($personel->iban_numarasi ?? '')));
+        if ($mevcut !== '' && empty($kayit->iban_girildi_tarihi)) {
+            $ibanReddet('Hesap bilginiz zaten kayıtlı. Değişiklik için lütfen yetkili ile iletişime geçin.', 403);
+        }
+
+        $temiz = PersonelKarsilamaModel::ibanTemizle((string) ($_POST['iban'] ?? ''));
+        if ($temiz === null) {
+            $ibanReddet('Geçerli bir IBAN girin (TR ile başlayan 26 karakter).');
+        }
+
+        $banka = PersonelKarsilamaModel::bankaAdi($temiz);
+        if ($temiz !== $mevcut) {
+            $guncelle = ['id' => $personelId, 'iban_numarasi' => $temiz];
+            if ($banka !== null && trim((string) ($personel->banka ?? '')) === '') {
+                $guncelle['banka'] = $banka;
+            }
+            $PersonelModel->saveWithAttr($guncelle);
+            $Karsilama->ibanIsaretle($karsilamaId);
+            $SystemLog->logActionForFirm($firmaId, 0, 'Karşılama IBAN', 'Personel maaş IBAN bilgisini karşılama bağlantısından girdi: ' . PersonelKarsilamaModel::ibanMaske($temiz) . ' (Personel ID: ' . $personelId . ')', SystemLogModel::LEVEL_IMPORTANT);
+        }
+        $yanit(true, 'IBAN kaydedildi.', ['maske' => PersonelKarsilamaModel::ibanMaske($temiz), 'banka' => $banka]);
+    }
+
     if ($islem !== 'yukle') {
         $yanit(false, 'Geçersiz istek.', [], 400);
     }
 
     $sablon = $Karsilama->getSablon($firmaId);
     $maddeler = PersonelKarsilamaModel::maddeleriAyir((string) $sablon['evraklar']);
-    $maddeIndex = (int) ($_POST['madde'] ?? -1);
-    $madde = $maddeler[$maddeIndex] ?? null;
+    if (($_POST['madde'] ?? '') === 'iban') {
+        $maddeIndex = 1000;
+        $madde = ['ad' => 'Maaş Hesabı (IBAN) Belgesi', 'not' => [], 'elden' => false, 'turu' => 'diger'];
+    } else {
+        $maddeIndex = (int) ($_POST['madde'] ?? -1);
+        $madde = $maddeler[$maddeIndex] ?? null;
+    }
     if (!$madde) {
         $yanit(false, 'Evrak maddesi bulunamadı.', [], 400);
     }
