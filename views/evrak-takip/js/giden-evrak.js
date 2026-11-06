@@ -229,19 +229,60 @@ $(document).ready(function () {
   // İlk Yükleme Senkronizasyonu
   syncSignerState();
 
-  // --- Gelen Evraktan İlgi Ekleme Seçicisi ---
+  // --- İlgi Listesi ve Gelen Evraktan İlgi Ekleme ---
   const ilgiGelenSelect = $("#ilgiGelenEvrakSelect");
-  const btnIlgiyeEkle = $("#btnIlgiyeEkle");
+  const ilgiHarf = (i) => String.fromCharCode(97 + (i % 26)).repeat(Math.floor(i / 26) + 1) + ")";
+  const ilgiEscape = (v) => $("<div>").text(v == null ? "" : String(v)).html();
+  const ilgiSatirlari = () => $("#ilgiler").val().split("\n").map(l => l.trim()).filter(l => l !== "");
 
-  ilgiGelenSelect.on("change", function () {
-    const val = $(this).val();
-    btnIlgiyeEkle.prop("disabled", !val);
+  function ilgiListeCiz() {
+    const lines = ilgiSatirlari();
+    $("#ilgiSayisi").text(lines.length + " ilgi");
+    $("#ilgiListe").html(lines.map(function (line, i) {
+      return '<div class="ilgi-satir"><span class="ilgi-harf">' + ilgiHarf(i).replace(")", "") + '</span><span class="ilgi-metin">' + ilgiEscape(line) +
+        '</span><button type="button" class="ilgi-sil" data-index="' + i + '" title="Kaldır"><i class="bx bx-x"></i></button></div>';
+    }).join(""));
+  }
+
+  function ilgiEkle(text) {
+    const lines = ilgiSatirlari();
+    if (!text || lines.includes(text)) return false;
+    lines.push(text);
+    $("#ilgiler").val(lines.join("\n")).trigger("input").trigger("change");
+    return true;
+  }
+
+  $("#ilgiler").on("input change", ilgiListeCiz);
+  $(document).on("click", ".ilgi-sil", function () {
+    const lines = ilgiSatirlari();
+    lines.splice(parseInt($(this).data("index"), 10), 1);
+    $("#ilgiler").val(lines.join("\n")).trigger("input").trigger("change");
+  });
+  ilgiListeCiz();
+
+  ilgiGelenSelect.select2({
+    width: "100%",
+    placeholder: "No, konu veya kurum yazarak ara...",
+    allowClear: true,
+    language: { noResults: () => "Eşleşen evrak yok", searching: () => "Aranıyor..." },
+    matcher: function (params, data) {
+      if (!params.term || !data.element) return data;
+      const el = $(data.element);
+      const hay = [data.text, el.data("kurum"), el.data("tarih")].join(" ").toLocaleLowerCase("tr-TR");
+      return hay.indexOf(params.term.toLocaleLowerCase("tr-TR").trim()) !== -1 ? data : null;
+    },
+    templateResult: function (data) {
+      if (!data.id || !data.element) return data.text;
+      const el = $(data.element);
+      const alt = [el.data("tarih"), el.data("kurum")].filter(Boolean).join(" · ");
+      return $('<div><div class="ilgi-opt-baslik"></div><div class="ilgi-opt-alt"></div></div>')
+        .find(".ilgi-opt-baslik").text(data.text).end().find(".ilgi-opt-alt").text(alt).end();
+    }
   });
 
-  btnIlgiyeEkle.on("click", function () {
+  ilgiGelenSelect.on("select2:select", function () {
     const selectedOpt = ilgiGelenSelect.find("option:selected");
-    const val = ilgiGelenSelect.val();
-    if (!val || !selectedOpt.length) return;
+    if (!ilgiGelenSelect.val() || !selectedOpt.length) return;
 
     const evrakNo = (selectedOpt.data("no") || "").toString().trim();
     const tarih = (selectedOpt.data("tarih") || "").toString().trim();
@@ -249,11 +290,7 @@ $(document).ready(function () {
 
     let formattedText = "";
     if (tarih && evrakNo) {
-      if (kurum) {
-        formattedText = `${tarih} tarihli ve ${kurum}'nın ${evrakNo} sayılı yazısı.`;
-      } else {
-        formattedText = `${tarih} tarihli ve ${evrakNo} sayılı yazınız.`;
-      }
+      formattedText = kurum ? `${tarih} tarihli ve ${kurum}'nın ${evrakNo} sayılı yazısı.` : `${tarih} tarihli ve ${evrakNo} sayılı yazınız.`;
     } else if (tarih) {
       formattedText = `${tarih} tarihli yazınız.`;
     } else if (evrakNo) {
@@ -262,41 +299,15 @@ $(document).ready(function () {
       formattedText = selectedOpt.text().trim();
     }
 
-    const currentIlgiler = $("#ilgiler").val().trim();
-    let updatedIlgiler = "";
-
-    if (currentIlgiler === "") {
-      updatedIlgiler = formattedText;
-    } else {
-      const lines = currentIlgiler.split("\n").map(l => l.trim()).filter(l => l !== "");
-      if (!lines.includes(formattedText)) {
-        lines.push(formattedText);
-        updatedIlgiler = lines.join("\n");
-      } else {
-        updatedIlgiler = currentIlgiler;
-      }
-    }
-
-    $("#ilgiler").val(updatedIlgiler).trigger("input").trigger("change");
-
-    // Dropdown'ı kapat ve sıfırla
-    ilgiGelenSelect.val("").trigger("change");
-    const dropdownBtn = document.getElementById("btnIlgiGelenEvrakSec");
-    if (dropdownBtn && typeof bootstrap !== "undefined" && bootstrap.Dropdown) {
-      const bsDropdown = bootstrap.Dropdown.getInstance(dropdownBtn) || new bootstrap.Dropdown(dropdownBtn);
-      bsDropdown.hide();
-    }
-
-    // Toast bildirimi
+    const eklendi = ilgiEkle(formattedText);
+    ilgiGelenSelect.val(null).trigger("change");
     Swal.fire({
       toast: true,
       position: "top-end",
-      icon: "success",
-      title: "İlgi alanına eklendi",
-      text: formattedText,
+      icon: eklendi ? "success" : "info",
+      title: eklendi ? "İlgi listesine eklendi" : "Bu ilgi zaten ekli",
       showConfirmButton: false,
-      timer: 2000,
-      timerProgressBar: true
+      timer: 1600
     });
   });
 
@@ -612,6 +623,12 @@ $(document).ready(function () {
       });
   });
 
+  $("#aiHizliSenaryolar").on("click", "[data-ai-senaryo]", function () {
+    const metin = $(this).data("ai-senaryo");
+    const alan = $("#aiTalimat");
+    alan.val(alan.val().trim() ? alan.val().trim() + "\n" + metin : metin).trigger("focus");
+  });
+
   $("#btnAiTemizle").on("click", function () {
     $("#aiGelenEvrak").val("");
     $("#aiTalimat").val("");
@@ -644,11 +661,11 @@ $(document).ready(function () {
   $("#btnAiTaslakOlustur").on("click", function () {
     const file = $("#aiGelenEvrak")[0].files[0];
     const instruction = $("#aiTalimat").val().trim();
-    if (!file || !instruction) {
-      Swal.fire("Eksik Bilgi", "Gelen evrakı seçin ve ne yapmak istediğinizi yazın.", "warning");
+    if (!file && !instruction) {
+      Swal.fire("Eksik Bilgi", "Gelen evrakı seçin veya ne yazılacağını belirtin.", "warning");
       return;
     }
-    if (file.size > 12 * 1024 * 1024) {
+    if (file && file.size > 12 * 1024 * 1024) {
       Swal.fire("Dosya Çok Büyük", "Gelen evrak en fazla 12 MB olabilir.", "warning");
       return;
     }
@@ -656,7 +673,7 @@ $(document).ready(function () {
     const button = $(this);
     const originalHtml = button.html();
     const data = new FormData();
-    data.append("gelen_evrak", file, file.name);
+    if (file) data.append("gelen_evrak", file, file.name);
     data.append("talimat", instruction);
     button.prop("disabled", true).html('<span class="spinner-border spinner-border-sm me-2"></span>Evrak hazırlanıyor...');
 
@@ -682,7 +699,15 @@ $(document).ready(function () {
         }
         $("#evrakAiModal").modal("hide");
         $("#gidenEvrakTabs button[data-bs-target='#gidenIcerikTab']").tab("show");
-        Swal.fire("Taslak Hazır", "Alanlar yapay zekâ taslağıyla dolduruldu. Kaydetmeden önce bilgileri kontrol ediniz.", "success");
+        const esc = function (value) { return $("<div>").text(value || "").html(); };
+        const analiz = draft.analiz || {};
+        const ozet = [];
+        if (analiz.evrak_turu) ozet.push("<b>Belge:</b> " + esc(analiz.evrak_turu) + (analiz.dosya_no ? " (" + esc(analiz.dosya_no) + ")" : ""));
+        if (analiz.personel) ozet.push("<b>Personel kaydı:</b> " + esc(analiz.personel) + " — " + esc(analiz.calisma_durumu));
+        const uyarilar = (draft.uyarilar || []).map(function (u) { return "<li>" + esc(u) + "</li>"; }).join("");
+        const html = '<div class="text-start small">' + (ozet.length ? "<p>" + ozet.join("<br>") + "</p>" : "")
+          + (uyarilar ? '<div class="alert alert-warning mb-0"><b>Kontrol ediniz:</b><ul class="mb-0 ps-3">' + uyarilar + "</ul></div>" : "<p>Kaydetmeden önce bilgileri kontrol ediniz.</p>") + "</div>";
+        Swal.fire({ title: "Taslak Hazır", html: html, icon: uyarilar ? "warning" : "success" });
       },
       error: function (xhr) {
         const message = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : "Yapay zekâ servisine ulaşılamadı.";

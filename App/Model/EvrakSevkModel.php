@@ -407,7 +407,7 @@ class EvrakSevkModel extends Model
             throw $e;
         }
 
-        $this->notifyRecipient($evrak, $fromUserId, $toUserId);
+        $this->notifyRecipient($evrak, $fromUserId, $toUserId, $note);
         try {
             (new SystemLogModel())->logActionForFirm(
                 $firmaId,
@@ -495,19 +495,60 @@ class EvrakSevkModel extends Model
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
-    private function notifyRecipient(object $evrak, int $fromUserId, int $toUserId): void
+    private function notifyRecipient(object $evrak, int $fromUserId, int $toUserId, string $note = ''): void
     {
         try {
-            $from = (new UserModel())->find($fromUserId);
+            $userModel = new UserModel();
+            $from = $userModel->find($fromUserId);
             $fromName = trim((string) ($from->adi_soyadi ?? $from->user_name ?? 'Bir kullanıcı'));
-            (new BildirimModel())->createNotification(
+            $title = 'UETS Evrakı Size Sevk Edildi';
+            $message = $fromName . ' tarafından size bir UETS tebligat evrakı sevk edildi: ' . mb_substr((string) ($evrak->konu ?? ''), 0, 120);
+
+            $sent = (new BildirimModel())->createNotificationWithPush(
                 $toUserId,
-                'UETS Evrakı Size Sevk Edildi',
-                $fromName . ' tarafından size bir UETS tebligat evrakı sevk edildi: ' . mb_substr((string) ($evrak->konu ?? ''), 0, 120),
+                $title,
+                $message,
                 'evrak-takip/list',
                 'envelope',
-                'warning'
+                'warning',
+                UserNotificationPreferenceModel::TYPE_DOCUMENT
             );
+            if (!$sent) {
+                return;
+            }
+
+            $to = $userModel->find($toUserId);
+            $email = trim((string) ($to->email_adresi ?? ''));
+            if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                return;
+            }
+
+            $e = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+            $rows = [
+                'Kurum' => $evrak->kurum_adi ?? '',
+                'Konu' => $evrak->konu ?? '',
+                'Evrak No' => $evrak->evrak_no ?? '',
+                'Evrak Tarihi' => !empty($evrak->tarih) ? date('d.m.Y', strtotime((string) $evrak->tarih)) : '',
+                'Sevk Eden' => $fromName,
+                'Sevk Notu' => $note,
+            ];
+            $table = '';
+            foreach ($rows as $label => $value) {
+                if (trim((string) $value) !== '') {
+                    $table .= '<tr><td style="padding:4px 12px 4px 0;color:#74788d;"><b>' . $e($label) . '</b></td><td style="padding:4px 0;">' . $e($value) . '</td></tr>';
+                }
+            }
+            $body = '<p>Merhaba <b>' . $e($to->adi_soyadi ?? '') . '</b>,</p>'
+                . '<p>' . $e($fromName) . ' tarafından size bir UETS tebligat evrakı sevk edildi.</p>'
+                . '<table style="border-collapse:collapse;font-size:14px;">' . $table . '</table>';
+
+            $appBase = trim((string) ($_ENV['APP_BASE'] ?? ($_SERVER['HTTP_HOST'] ?? '')), " \t\n\r\0\x0B\"'");
+            $url = $appBase !== '' ? 'https://' . $appBase . '/index?p=evrak-takip/list' : null;
+            $content = \App\Helper\EmailTemplateHelper::getTemplate($title, $body, $url ? 'Evrakı Görüntüle' : null, $url);
+
+            if (!\App\Service\MailGonderService::gonder([$email], $title, $content, [], [], [], null, (int) ($evrak->firma_id ?? 0) ?: null)) {
+                error_log('EvrakSevkModel sevk maili gönderilemedi. Alıcı kullanıcı ID: ' . $toUserId);
+            }
         } catch (\Throwable $e) {
             error_log('EvrakSevkModel bildirim hatası: ' . $e->getMessage());
         }

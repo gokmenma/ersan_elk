@@ -2170,3 +2170,5 @@
 - [x] Araç modal sadeleştirme + ruhsat AI ile araç doldurma
 
 - [x] Süper Admin'in kullanıcı bazlı bildirim türlerini kapatıp kilitleyebilmesi (SQL scripti uygulanmalı)
+
+- [x] Giden evrak AI taslağı: belge analizi + personel kaydı eşleştirme + uyarılar + hızlı senaryolar (gerçek API ile uçtan uca test edilmedi)

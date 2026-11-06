@@ -3699,3 +3699,7 @@
 - Kullanıcı tanımlama modalında (user-modal.php) yalnızca Süper Admin'e "Bildirim İzinleri" bölümü görünür; kapatılan tür `user_notification_preferences.admin_disabled = 1` olur. Kullanıcının kendi tercihi (`is_enabled`) korunur, yönetici tekrar açarsa eski tercihine döner.
 - Profil ekranında kilitli türler disabled gelir; `setPreference` kilitli türü yazmaz; `isEnabled`/`getDisabledTypes` kilitli türleri kapalı sayar. Kolon yoksa model eski davranışla çalışır.
 - SQL: database/migrations/2026_11_06_add_admin_disabled_to_user_notification_preferences.sql uygulanmalı.
+
+## Giden Evrak — Yapay Zekâ ile Oluştur Geliştirmesi
+- `EvrakAiTaslakService::create` artık 3 adımlı: (1) belge analizi (tür, dosya no, borçlu, T.C., talepler), (2) borçlunun personel kayıtlarıyla eşleştirilmesi (`PersonelModel::findByTc`, çalışma durumu, `PersonelIcralariModel` dosya eşleşmesi), (3) belge türüne özgü kurallı cevap üretimi. Kayıtta olmayan olgular uydurulmaz; `[YER TUTUCU]` kullanılır.
+- Yanıta `analiz` ve `uyarilar` eklendi; modalda hızlı senaryo butonları, talimat isteğe bağlı; işlem `SystemLogModel` ile loglanıyor.

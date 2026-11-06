@@ -69,8 +69,18 @@ foreach ($personeller as $personel) {
 }
 $gelenOptions = ['' => 'İlişkili gelen evrak seçiniz...'];
 $gelenEvrakMap = [];
+$ilgiOptions = ['' => ''];
 foreach ($gelenEvraklar as $gelen) {
     $encId = Security::encrypt($gelen->id);
+    $ilgiOptions[$encId] = [
+        'name' => ($gelen->evrak_no ?: '-') . ' — ' . $gelen->konu,
+        'data' => [
+            'no' => (string) $gelen->evrak_no,
+            'konu' => (string) $gelen->konu,
+            'tarih' => !empty($gelen->tarih) ? date('d.m.Y', strtotime($gelen->tarih)) : '',
+            'kurum' => (string) $gelen->kurum_adi,
+        ],
+    ];
     $gelenOptions[$encId] = ($gelen->evrak_no ?: '-') . ' — ' . $gelen->konu . ' (' . date('d.m.Y', strtotime($gelen->tarih)) . ')';
     $gelenEvrakMap[$encId] = [
         'id' => $encId,
@@ -423,42 +433,17 @@ if ($canSendKep || $gonderimKanali === 'kep') {
                                     </h2>
                                     <div id="collapseIlgiEkMetinleri" class="accordion-collapse collapse" aria-labelledby="headingIlgiEkMetinleri">
                                         <div class="accordion-body p-3 pt-2 d-grid gap-2">
-                                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                            <div class="d-flex align-items-center justify-content-between">
                                                 <span class="small fw-bold text-uppercase text-muted" style="font-size:0.7rem">İlgi Tanımı</span>
-                                                <div class="dropdown">
-                                                    <button type="button" class="btn btn-xs btn-outline-primary d-inline-flex align-items-center gap-1 shadow-none" data-bs-toggle="dropdown" aria-expanded="false" id="btnIlgiGelenEvrakSec" style="font-size:11px; padding: 2px 8px;">
-                                                        <i class="bx bx-file-plus font-size-13"></i>
-                                                        <span>Gelen Evraktan İlgi Ekle</span>
-                                                    </button>
-                                                    <div class="dropdown-menu dropdown-menu-end shadow border-0 p-2" style="min-width: 320px; max-width: 360px;">
-                                                        <div class="d-flex align-items-center justify-content-between px-1 mb-2 border-bottom pb-1">
-                                                            <span class="small fw-bold text-dark">İlgiye Eklenecek Gelen Evrak</span>
-                                                            <span class="badge bg-light text-muted" style="font-size:10px"><?php echo count($gelenEvraklar); ?> Evrak</span>
-                                                        </div>
-                                                        <select id="ilgiGelenEvrakSelect" class="form-select form-select-sm mb-2" style="width:100%">
-                                                            <option value="">Evrak seçiniz...</option>
-                                                            <?php foreach ($gelenEvraklar as $gelen): 
-                                                                $encId = Security::encrypt($gelen->id);
-                                                                $label = ($gelen->evrak_no ?: '-') . ' — ' . $gelen->konu . ' (' . date('d.m.Y', strtotime($gelen->tarih)) . ')';
-                                                            ?>
-                                                                <option value="<?php echo htmlspecialchars($encId, ENT_QUOTES, 'UTF-8'); ?>" 
-                                                                        data-no="<?php echo htmlspecialchars((string) $gelen->evrak_no, ENT_QUOTES, 'UTF-8'); ?>" 
-                                                                        data-tarih="<?php echo !empty($gelen->tarih) ? date('d.m.Y', strtotime($gelen->tarih)) : ''; ?>" 
-                                                                        data-kurum="<?php echo htmlspecialchars((string) $gelen->kurum_adi, ENT_QUOTES, 'UTF-8'); ?>">
-                                                                    <?php echo htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?>
-                                                                </option>
-                                                            <?php endforeach; ?>
-                                                        </select>
-                                                        <div class="d-flex gap-1">
-                                                            <button type="button" id="btnIlgiyeEkle" class="btn btn-primary btn-sm w-100 fw-semibold" style="font-size:11px" disabled>
-                                                                <i class="bx bx-plus me-1"></i> İlgi Alanına Ekle
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                                <span class="badge bg-light text-muted border" id="ilgiSayisi">0 ilgi</span>
                                             </div>
-                                            <?php echo Form::FormFloatTextarea('ilgiler', $value('ilgiler'), 'İlgi — Her satıra bir kayıt', 'İlgi Belgeleri', 'link', 'form-control', false, '95px'); ?>
-                                            <div class="form-text mt-n2 mb-2">PDF'de a), b), c) şeklinde sıralanır.</div>
+                                            <div id="ilgiListe" class="ilgi-liste"></div>
+                                            <div class="ilgi-ekle-kutu">
+                                                <div class="small text-muted mb-1"><i class="bx bx-search-alt me-1"></i>Gelen evraklardan ara ve seçerek ekle (<?php echo count($gelenEvraklar); ?> evrak)</div>
+                                                <?php echo Form::FormSelect2('ilgiGelenEvrakSelect', $ilgiOptions, '', 'Gelen Evrak Seç', 'bx bx-file-plus', 'key', '', 'form-select ilgi-select2', false, 'width:100%', '', 'ilgiGelenEvrakSelect'); ?>
+                                            </div>
+                                            <?php echo Form::FormFloatTextarea('ilgiler', $value('ilgiler'), 'İlgi — Her satıra bir kayıt', 'Serbest İlgi Metni (her satıra bir kayıt)', 'link', 'form-control', false, '95px'); ?>
+                                            <div class="form-text mt-n2 mb-2">Yukarıdaki listeyle eş zamanlıdır; elle de yazabilirsiniz. PDF'de a), b), c) şeklinde sıralanır.</div>
                                             <?php echo Form::FormFloatTextarea('ekler', $value('ekler'), 'Ekler — Her satıra bir kayıt', 'Ek Metni (İsteğe Bağlı)', 'paperclip', 'form-control', false, '80px'); ?>
                                             <div class="form-text mt-n2">Resmî yazıda Ek alanının görünmesini istiyorsanız doldurunuz.</div>
                                         </div>
@@ -632,6 +617,17 @@ if ($canSendKep || $gonderimKanali === 'kep') {
 </div>
 
 <style>
+    .ilgi-liste { display: flex; flex-direction: column; gap: 6px; }
+    .ilgi-liste:empty { display: none; }
+    .ilgi-satir { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border: 1px solid var(--bs-border-color, #e3e6ef); border-radius: 10px; background: var(--bs-body-bg, #fff); }
+    .ilgi-harf { flex: 0 0 24px; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; background: var(--bs-primary-bg-subtle, #e7ebff); color: var(--bs-primary, #556ee6); }
+    .ilgi-metin { flex: 1; min-width: 0; font-size: 12.5px; line-height: 1.4; word-break: break-word; }
+    .ilgi-sil { flex: 0 0 auto; border: 0; background: transparent; color: var(--bs-danger, #f46a6a); padding: 0 2px; line-height: 1; font-size: 18px; }
+    .ilgi-ekle-kutu { padding: 10px; border: 1px dashed var(--bs-border-color, #ced4da); border-radius: 10px; background: var(--bs-tertiary-bg, #f8f9fb); }
+    .ilgi-opt-baslik { font-weight: 600; font-size: 12.5px; }
+    .ilgi-opt-alt { font-size: 11px; opacity: .75; }
+</style>
+<style>
 .giden-action-bar{position:fixed;left:250px;right:0;bottom:0;z-index:1020;margin:0}
 #gidenEvrakForm>.card{margin-bottom:0}
 #imzaDurumListesi>div:last-child{border-bottom:0!important}
@@ -798,7 +794,14 @@ window.gidenKepAutoStart = <?php echo $canSendKep && (string) ($_GET['kep_gonder
         <div class="modal-body">
             <div class="alert alert-info small"><strong>Bilgi:</strong> Oluşturulan taslak doğrudan kaydedilmez. Alanlara aktarıldıktan sonra kontrol edip düzenleyebilirsiniz.</div>
             <div class="mb-3"><label for="aiGelenEvrak" class="form-label fw-semibold">Gelen Evrak</label><input type="file" id="aiGelenEvrak" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.webp"><div class="form-text">PDF, JPG, PNG veya WEBP — en fazla 12 MB</div></div>
-            <div><label for="aiTalimat" class="form-label fw-semibold">Ne yapmak istiyorsunuz?</label><textarea id="aiTalimat" class="form-control" rows="6" maxlength="4000" placeholder="Örnek: Talebi uygun bulduğumuzu, işlemlerin 15 gün içinde tamamlanacağını belirten resmî bir cevap hazırla."></textarea></div>
+            <div class="mb-2 small text-muted">Yazı; belge okunarak türü, dosya numarası ve borçlu/ilgili kişi tespit edilir, kişi personel kayıtlarıyla (T.C. kimlik no ile) eşleştirilir. Kayıtlarda olmayan bilgiler uydurulmaz, köşeli parantezle işaretlenir.</div>
+            <div class="mb-2 d-flex flex-wrap gap-1" id="aiHizliSenaryolar">
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-ai-senaryo="Personel şirketimizde halen çalışmaktadır. Haciz müzekkeresi işleme alınmış olup kesintiler yasal sınırlar içinde yapılarak icra dairesi hesabına yatırılacaktır.">Çalışıyor — kesinti yapılacak</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-ai-senaryo="Personel şirketimizden ayrılmıştır. Ayrılış tarihini ve varsa ayrılışta yapılacak ödemeler üzerindeki haczi belirt.">Personel ayrıldı</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-ai-senaryo="Personel kayıtlarımızda bulunmamaktadır, bu nedenle haciz uygulanamamıştır. Kişi şirketimiz personeli değildir.">Personelimiz değil</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-ai-senaryo="Personelin sırada bekleyen başka icra dosyaları bulunduğundan bu dosyadaki kesintiye sıra geldiğinde başlanacaktır.">Sırada bekliyor</button>
+            </div>
+            <div><label for="aiTalimat" class="form-label fw-semibold">Ek talimat <span class="text-muted fw-normal">(isteğe bağlı)</span></label><textarea id="aiTalimat" class="form-control" rows="5" maxlength="4000" placeholder="Boş bırakırsanız belgenin talebine ve personel kayıtlarına göre cevap hazırlanır. Örnek: Kesintiye bu ay başlanacağını belirt."></textarea></div>
         </div>
         <div class="modal-footer justify-content-between"><button type="button" id="btnAiTemizle" class="btn btn-outline-secondary"><i class="bx bx-refresh me-1"></i> Temizle</button><div><button type="button" class="btn btn-light me-1" data-bs-dismiss="modal">Vazgeç</button><button type="button" id="btnAiTaslakOlustur" class="btn btn-primary px-4"><i data-feather="zap" class="icon-xs me-1"></i> Taslağı Oluştur</button></div></div>
     </div></div>

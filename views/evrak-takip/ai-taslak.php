@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 use App\Model\MenuModel;
+use App\Model\SystemLogModel;
 use App\Service\EvrakAiTaslakService;
 
 header('Content-Type: application/json; charset=utf-8');
@@ -30,8 +31,15 @@ if (!(new MenuModel())->userCanAccessMenuLink($userId, 'evrak-takip/list')) {
 
 try {
     $draft = (new EvrakAiTaslakService())->create($_FILES['gelen_evrak'] ?? [], (string) ($_POST['talimat'] ?? ''));
+    (new SystemLogModel())->logAction(
+        $userId,
+        'Yapay Zekâ ile Evrak Taslağı',
+        'Belge: ' . ($draft['analiz']['evrak_turu'] ?? '-') . ', Dosya: ' . ($draft['analiz']['dosya_no'] ?? '-') . ', Personel: ' . ($draft['analiz']['personel'] ?? '-'),
+        SystemLogModel::LEVEL_INFO
+    );
     echo json_encode(['status' => 'success', 'data' => $draft], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 } catch (Throwable $e) {
+    error_log('Evrak AI taslak hatası: ' . $e->getMessage());
     http_response_code(422);
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
 }
