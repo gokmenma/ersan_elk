@@ -74,7 +74,7 @@ $jsonAlan = static function ($deger): array {
 try {
     switch ($action) {
         case 'dashboard-data':
-            $cevap(['status' => 'success'] + $Basvuru->dashboardStats($firmaId, (int) ($_POST['gun'] ?? 30)) + ['ilan_ozet' => $Ilan->summary($firmaId)]);
+            $cevap(['status' => 'success'] + $Basvuru->dashboardStats($firmaId, (int) ($_POST['gun'] ?? 30)));
 
         case 'ilan-ajax-list':
             $cevap($Ilan->ajaxList($_POST, $firmaId) + ['summary' => $Ilan->summary($firmaId)]);

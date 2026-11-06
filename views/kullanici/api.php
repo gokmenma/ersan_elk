@@ -126,6 +126,7 @@ if ($action == "kullanici-kaydet") {
         );
         unset($_SESSION['topbar_firma_option_cache']);
 
+        $notificationSaveFailed = false;
         if (Gate::isSuperAdmin() && $savedUserId > 0 && ($_POST['notification_admin_form'] ?? '') === '1') {
             $allowedPosted = $_POST['notification_allowed'] ?? [];
             $allowedPosted = is_array($allowedPosted) ? array_keys($allowedPosted) : [];
@@ -140,6 +141,10 @@ if ($action == "kullanici-kaydet") {
                 );
             } catch (\RuntimeException $ex) {
                 error_log('bildirim izinleri kaydedilemedi: ' . $ex->getMessage());
+                $notificationSaveFailed = true;
+            } catch (\PDOException $ex) {
+                error_log('bildirim izinleri kaydedilemedi: ' . $ex->getMessage());
+                $notificationSaveFailed = true;
             }
         }
 
@@ -156,7 +161,9 @@ if ($action == "kullanici-kaydet") {
         }
 
         $status = "success";
-        $message = "Kullanıcı başarıyla kaydedildi.";
+        $message = $notificationSaveFailed
+            ? "Kullanıcı kaydedildi ancak bildirim izinleri kaydedilemedi."
+            : "Kullanıcı başarıyla kaydedildi.";
     } catch (PDOException $ex) {
         error_log('kullanici-kaydet hatası: ' . $ex->getMessage());
         if ($ex->getCode() == 23000) {

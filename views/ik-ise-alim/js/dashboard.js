@@ -54,7 +54,7 @@ $(document).ready(function () {
 
         const g = gunlukSeri(r.gunluk, r.gun);
         grafikCiz('gunluk', '#chartGunluk', {
-            chart: { type: 'area', height: 280, toolbar: { show: false }, fontFamily: 'inherit' },
+            chart: { type: 'area', height: 280, toolbar: { show: false }, fontFamily: 'inherit', animations: { enabled: false } },
             series: [{ name: 'Başvuru', data: g.degerler }],
             xaxis: { categories: g.etiketler, tickAmount: Math.min(12, g.etiketler.length), labels: { rotate: 0 } },
             yaxis: { min: 0, forceNiceScale: true, labels: { formatter: (v) => Math.round(v) } },
@@ -66,7 +66,7 @@ $(document).ready(function () {
         });
 
         grafikCiz('etiket', '#chartEtiket', {
-            chart: { type: 'donut', height: 280, fontFamily: 'inherit' },
+            chart: { type: 'donut', height: 280, fontFamily: 'inherit', animations: { enabled: false } },
             series: aiToplam ? [s.ai_olumlu, s.ai_belirsiz, s.ai_olumsuz] : [],
             labels: ['Olumlu', 'Belirsiz', 'Olumsuz'],
             colors: ['#34c38f', '#f1b44c', '#f46a6a'],
@@ -75,7 +75,7 @@ $(document).ready(function () {
         });
 
         grafikCiz('ilan', '#chartIlan', {
-            chart: { type: 'bar', height: 300, toolbar: { show: false }, fontFamily: 'inherit' },
+            chart: { type: 'bar', height: 300, toolbar: { show: false }, fontFamily: 'inherit', animations: { enabled: false } },
             series: [
                 { name: 'Başvuru', data: r.ilanlar.map((i) => parseInt(i.adet, 10)) },
                 { name: 'AI olumlu', data: r.ilanlar.map((i) => parseInt(i.olumlu || 0, 10)) }
@@ -92,7 +92,7 @@ $(document).ready(function () {
         const puanHarita = {};
         r.puanlar.forEach((p) => { puanHarita[Math.min(90, parseInt(p.aralik, 10))] = (puanHarita[Math.min(90, parseInt(p.aralik, 10))] || 0) + parseInt(p.adet, 10); });
         grafikCiz('puan', '#chartPuan', {
-            chart: { type: 'bar', height: 300, toolbar: { show: false }, fontFamily: 'inherit' },
+            chart: { type: 'bar', height: 300, toolbar: { show: false }, fontFamily: 'inherit', animations: { enabled: false } },
             series: [{ name: 'Aday', data: araliklar.map((a) => puanHarita[a] || 0) }],
             xaxis: { categories: araliklar.map((a) => (a === 90 ? '90-100' : `${a}-${a + 9}`)) },
             yaxis: { min: 0, forceNiceScale: true, labels: { formatter: (v) => Math.round(v) } },
@@ -111,6 +111,18 @@ $(document).ready(function () {
     };
 
     const yukle = () => {
+        if (window.ikDashIlk && $('#dashGun').val() === '30') {
+            const ilk = window.ikDashIlk;
+            window.ikDashIlk = null;
+            ilk.then((res) => {
+                if (res && res.status === 'success') ciz(res); else yukleAjax();
+            });
+            return;
+        }
+        yukleAjax();
+    };
+
+    const yukleAjax = () => {
         $.post(API, { action: 'dashboard-data', gun: $('#dashGun').val() }, function (res) {
             if (res.status === 'success') ciz(res);
             else Swal.fire('Hata', res.message || 'Veriler alınamadı.', 'error');

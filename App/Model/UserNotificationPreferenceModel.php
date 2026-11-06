@@ -218,42 +218,78 @@ class UserNotificationPreferenceModel extends Model
         return array_values(array_unique(array_merge($disabled, $this->getUngrantedOptInTypes($userId))));
     }
 
+    public function getUserOffTypes(int $userId): array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT notification_type FROM {$this->table} WHERE user_id = :user_id AND is_enabled = 0"
+            . ($this->hasAdminColumn() ? ' AND admin_disabled = 0' : '')
+        );
+        $stmt->execute(['user_id' => $userId]);
+        $off = array_values(array_intersect(self::TYPES, $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []));
+
+        return array_values(array_diff($off, $this->getUngrantedOptInTypes($userId)));
+    }
+
+    public function getUserOffMap(int $userId): array
+    {
+        $off = $this->getUserOffTypes($userId);
+        $map = [];
+        foreach (self::TYPES as $type) {
+            $map[$type] = in_array($type, $off, true);
+        }
+
+        return $map;
+    }
+
     public function setAdminDisabledTypes(int $userId, array $disabledTypes): void
     {
         if (!$this->hasAdminColumn()) {
             throw new \RuntimeException('admin_disabled kolonu bulunamadı; SQL scriptini çalıştırın.');
         }
+        if (!$this->hasGrantColumn()) {
+            throw new \RuntimeException('admin_granted kolonu bulunamadı; SQL scriptini çalıştırın.');
+        }
 
-        $stmt = $this->db->prepare(
+        $userOff = $this->getUserOffTypes($userId);
+
+        $lockStmt = $this->db->prepare(
             "INSERT INTO {$this->table} (user_id, notification_type, is_enabled, admin_disabled, created_at, updated_at)
-             VALUES (:user_id, :notification_type, 1, :admin_disabled, NOW(), NOW())
-             ON DUPLICATE KEY UPDATE admin_disabled = VALUES(admin_disabled), updated_at = NOW()"
+             VALUES (:user_id, :notification_type, 1, 1, NOW(), NOW())
+             ON DUPLICATE KEY UPDATE admin_disabled = 1, updated_at = NOW()"
         );
-        $grantStmt = $this->hasGrantColumn() ? $this->db->prepare(
+        $openStmt = $this->db->prepare(
+            "INSERT INTO {$this->table} (user_id, notification_type, is_enabled, admin_disabled, created_at, updated_at)
+             VALUES (:user_id, :notification_type, 1, 0, NOW(), NOW())
+             ON DUPLICATE KEY UPDATE admin_disabled = 0, is_enabled = 1, updated_at = NOW()"
+        );
+        $grantOnStmt = $this->db->prepare(
             "INSERT INTO {$this->table} (user_id, notification_type, is_enabled, admin_disabled, admin_granted, created_at, updated_at)
-             VALUES (:user_id, :notification_type, 1, 0, :admin_granted, NOW(), NOW())
-             ON DUPLICATE KEY UPDATE admin_disabled = 0, admin_granted = VALUES(admin_granted), updated_at = NOW()"
-        ) : null;
+             VALUES (:user_id, :notification_type, 1, 0, 1, NOW(), NOW())
+             ON DUPLICATE KEY UPDATE admin_disabled = 0, admin_granted = 1, is_enabled = 1, updated_at = NOW()"
+        );
+        $grantOffStmt = $this->db->prepare(
+            "INSERT INTO {$this->table} (user_id, notification_type, is_enabled, admin_disabled, admin_granted, created_at, updated_at)
+             VALUES (:user_id, :notification_type, 1, 0, 0, NOW(), NOW())
+             ON DUPLICATE KEY UPDATE admin_disabled = 0, admin_granted = 0, updated_at = NOW()"
+        );
 
         foreach (self::TYPES as $type) {
-            if (in_array($type, self::OPT_IN_TYPES, true)) {
-                if ($grantStmt === null) {
-                    throw new \RuntimeException('admin_granted kolonu bulunamadı; SQL scriptini çalıştırın.');
-                }
-                $grantStmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
-                $grantStmt->bindValue(':notification_type', $type, PDO::PARAM_STR);
-                $grantStmt->bindValue(':admin_granted', in_array($type, $disabledTypes, true) ? 0 : 1, PDO::PARAM_INT);
-                $grantStmt->execute();
+            $blocked = in_array($type, $disabledTypes, true);
+            if ($blocked && in_array($type, $userOff, true)) {
                 continue;
+            }
+
+            if (in_array($type, self::OPT_IN_TYPES, true)) {
+                $stmt = $blocked ? $grantOffStmt : $grantOnStmt;
+            } else {
+                $stmt = $blocked ? $lockStmt : $openStmt;
             }
 
             $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
             $stmt->bindValue(':notification_type', $type, PDO::PARAM_STR);
-            $stmt->bindValue(':admin_disabled', in_array($type, $disabledTypes, true) ? 1 : 0, PDO::PARAM_INT);
             $stmt->execute();
         }
     }
-
     public function getAdminDisabledMap(int $userId): array
     {
         $disabled = $this->getAdminDisabledTypes($userId);

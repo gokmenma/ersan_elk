@@ -30,6 +30,9 @@ $canManageNotificationPermissions = Gate::isSuperAdmin();
 $adminLockedNotifications = $isEdit
     ? (new UserNotificationPreferenceModel())->getAdminDisabledMap((int) $user->id)
     : array_fill_keys(UserNotificationPreferenceModel::OPT_IN_TYPES, true);
+$userOffNotifications = $isEdit
+    ? (new UserNotificationPreferenceModel())->getUserOffMap((int) $user->id)
+    : [];
 $notificationIcons = [
     'kacak_created' => ['mdi-shield-alert-outline', 'info'],
     'ihbar_created' => ['mdi-alert-outline', 'danger'],
@@ -656,7 +659,8 @@ $selectedRoleIds = $isEdit
             <div class="notification-grid notification-grid-wide" id="notifPermGrid">
                 <?php foreach (UserNotificationPreferenceModel::LABELS as $notificationType => [$notifLabel, $notifDesc]): ?>
                     <?php
-                    $notifAllowed = empty($adminLockedNotifications[$notificationType]);
+                    $notifUserOff = !empty($userOffNotifications[$notificationType]);
+                    $notifAllowed = empty($adminLockedNotifications[$notificationType]) && !$notifUserOff;
                     [$notifIcon, $notifColor] = $notificationIcons[$notificationType] ?? ['mdi-bell-outline', 'primary'];
                     $notifInputId = 'notification_allowed_' . $notificationType;
                     ?>
@@ -668,6 +672,7 @@ $selectedRoleIds = $isEdit
                         <div class="notif-tile-content">
                             <div class="notif-tile-title"><?= htmlspecialchars($notifLabel, ENT_QUOTES, 'UTF-8') ?></div>
                             <div class="notif-tile-desc"><?= htmlspecialchars($notifDesc, ENT_QUOTES, 'UTF-8') ?></div>
+                            <?php if ($notifUserOff): ?><div class="notif-tile-desc text-danger">Kullanıcı kendi tarafında kapattı.</div><?php endif; ?>
                         </div>
                         <div class="notif-tile-check">✓</div>
                     </label>

@@ -14,6 +14,8 @@ $title = 'İşe Alım Dashboard';
 .ik-mini-liste .satir:last-child { border-bottom: 0; }
 </style>
 
+<script>window.ikDashIlk = fetch('views/ik-ise-alim/api.php', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'action=dashboard-data&gun=30' }).then(function (r) { return r.json(); }).catch(function () { return null; });</script>
+
 <?php include 'layouts/breadcrumb.php'; ?>
 
 <div class="container-fluid">
