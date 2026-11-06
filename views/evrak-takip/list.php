@@ -90,6 +90,9 @@ $title = "Evrak Listesi";
     .uets-sevk-bilgi { flex: 1; min-width: 0; display: flex; flex-direction: column; }
     .uets-sevk-ad { font-weight: 600; font-size: 13px; }
     .uets-sevk-unvan { font-size: 12px; color: var(--bs-secondary-color, #74788d); }
+    .uets-sevk-kisi.disabled { opacity: .6; cursor: not-allowed; background: var(--bs-tertiary-bg, #f6f7fb); }
+    .uets-sevk-kisi.disabled .uets-sevk-tik { display: none; }
+    .uets-sevk-neden { font-size: 11px; color: var(--bs-secondary-color, #74788d); margin-top: 2px; }
     .uets-sevk-tik { font-size: 22px; color: var(--bs-border-color, #ced4da); }
     .uets-sevk-kisi.secili .uets-sevk-tik { color: var(--bs-warning, #f1b44c); }
 </style>

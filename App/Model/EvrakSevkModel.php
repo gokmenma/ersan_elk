@@ -321,6 +321,23 @@ class EvrakSevkModel extends Model
         ));
     }
 
+    public function userHasFullAccess(int $userId): bool
+    {
+        $roleIds = (new UserRoleAssignmentModel())->activeRoleIdsForUser($userId);
+        if (!$roleIds) {
+            return false;
+        }
+        $placeholders = implode(',', array_fill(0, count($roleIds), '?'));
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(*) FROM user_roles WHERE id IN ({$placeholders}) AND (superadmin = 1 OR role_type = 'superadmin')"
+        );
+        $stmt->execute($roleIds);
+        if ((int) $stmt->fetchColumn() > 0) {
+            return true;
+        }
+        return in_array(self::PERMISSION, (new PermissionsModel())->getPermissionsForUser($userId), true);
+    }
+
     public function userCanOpenEvrakTakip(int $userId): bool
     {
         $roleModel = new UserRoleAssignmentModel();
@@ -356,6 +373,9 @@ class EvrakSevkModel extends Model
         $validRecipients = array_map(static fn(object $u): int => (int) $u->id, $this->recipients($firmaId, $ownerId, $fromUserId));
         if (!in_array($toUserId, $validRecipients, true)) {
             throw new Exception('Seçilen personel bu evrakı alabilecek yetkide değil.');
+        }
+        if ($this->userHasFullAccess($toUserId)) {
+            throw new Exception('Seçilen personel bu evrakı zaten görüntüleyebiliyor.');
         }
         if ($this->hasActiveSevk($evrakId, $toUserId)) {
             throw new Exception('Evrak bu personele zaten sevk edilmiş.');

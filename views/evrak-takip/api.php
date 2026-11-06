@@ -1725,12 +1725,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if (!$evrak || !\App\Model\EvrakSevkModel::isRestricted($evrak)) {
                     throw new Exception('Evrak bulunamadı.');
                 }
-                $users = (new \App\Model\EvrakSevkModel())->recipients((int) $_SESSION['firma_id'], (int) ($_SESSION['owner_id'] ?? 0), $currentUserId);
-                echo json_encode(['status' => 'success', 'data' => array_map(static fn(object $u): array => [
-                    'id' => Security::encrypt((int) $u->id),
-                    'adi' => (string) $u->adi,
-                    'unvan' => (string) $u->unvan,
-                ], $users)], JSON_UNESCAPED_UNICODE);
+                $sevkModel = new \App\Model\EvrakSevkModel();
+                $users = $sevkModel->recipients((int) $_SESSION['firma_id'], (int) ($_SESSION['owner_id'] ?? 0), $currentUserId);
+                $evrakIdNum = (int) $evrak->id;
+                echo json_encode(['status' => 'success', 'data' => array_map(static function (object $u) use ($sevkModel, $evrakIdNum): array {
+                    $uid = (int) $u->id;
+                    $neden = '';
+                    if ($sevkModel->userHasFullAccess($uid)) {
+                        $neden = 'Tüm UETS evraklarını görüntüleme yetkisi var';
+                    } elseif ($sevkModel->hasActiveSevk($evrakIdNum, $uid)) {
+                        $neden = 'Evrak zaten sevk edilmiş';
+                    }
+                    return [
+                        'id' => Security::encrypt($uid),
+                        'adi' => (string) $u->adi,
+                        'unvan' => (string) $u->unvan,
+                        'devre_disi' => $neden !== '',
+                        'neden' => $neden,
+                    ];
+                }, $users)], JSON_UNESCAPED_UNICODE);
                 break;
 
             case 'uets-sevk-et':

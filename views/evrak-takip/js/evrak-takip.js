@@ -2975,7 +2975,7 @@ $(function () {
     return ((p[0] || "?").charAt(0) + (p.length > 1 ? p[p.length - 1].charAt(0) : "")).toLocaleUpperCase("tr-TR");
   }
 
-  $(document).on("click", ".uets-sevk-kisi", function () {
+  $(document).on("click", ".uets-sevk-kisi:not(.disabled)", function () {
     $(this).toggleClass("secili");
     $(this).find("input").prop("checked", $(this).hasClass("secili"));
     sevkSecimGuncelle();
@@ -2993,7 +2993,7 @@ $(function () {
   });
 
   $("#btnUetsSevkTumunuSec").on("click", function () {
-    sevkListe.find(".uets-sevk-kisi:not(.d-none)").addClass("secili").find("input").prop("checked", true);
+    sevkListe.find(".uets-sevk-kisi:not(.d-none):not(.disabled)").addClass("secili").find("input").prop("checked", true);
     sevkSecimGuncelle();
   });
 
@@ -3026,11 +3026,12 @@ $(function () {
         let html = "";
         rows.forEach(function (u) {
           const arama = (u.adi + " " + (u.unvan || "")).toLocaleLowerCase("tr-TR");
-          html += '<div class="uets-sevk-kisi" data-arama="' + escapeHtml(arama) + '">' +
-            '<input type="checkbox" value="' + escapeHtml(u.id) + '">' +
+          html += '<div class="uets-sevk-kisi' + (u.devre_disi ? " disabled" : "") + '" data-arama="' + escapeHtml(arama) + '"' + (u.devre_disi ? ' title="' + escapeHtml(u.neden) + '"' : "") + ">" +
+            '<input type="checkbox" value="' + escapeHtml(u.id) + '"' + (u.devre_disi ? " disabled" : "") + ">" +
             '<span class="uets-sevk-avatar">' + escapeHtml(sevkBasHarf(u.adi)) + "</span>" +
             '<span class="uets-sevk-bilgi"><span class="uets-sevk-ad">' + escapeHtml(u.adi) + "</span>" +
-            (u.unvan ? '<span class="uets-sevk-unvan">' + escapeHtml(u.unvan) + "</span>" : "") + "</span>" +
+            (u.unvan ? '<span class="uets-sevk-unvan">' + escapeHtml(u.unvan) + "</span>" : "") +
+            (u.devre_disi ? '<span class="uets-sevk-neden"><i class="bx bx-lock-alt"></i> ' + escapeHtml(u.neden) + "</span>" : "") + "</span>" +
             '<i class="bx bx-check-circle uets-sevk-tik"></i></div>';
         });
         sevkListe.html(html + '<div class="uets-sevk-bos d-none text-center text-muted py-3 font-size-13">Eşleşen personel yok.</div>');
