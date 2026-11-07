@@ -140,7 +140,7 @@ const isSignConfirmOpen = ref(false)
 const isReturnConfirmOpen = ref(false)
 const isSevkOpen = ref(false)
 const sevkUsers = ref([])
-const sevkAlan = ref('')
+const sevkAlan = ref([])
 const sevkNotu = ref('')
 const sevkLoading = ref(false)
 const isDeleteConfirmOpen = ref(false)
@@ -892,7 +892,7 @@ const TARIHCE_ISLEM = {
 }
 
 async function openSevk(doc) {
-  sevkAlan.value = ''
+  sevkAlan.value = []
   sevkNotu.value = ''
   sevkUsers.value = []
   isSevkOpen.value = true
@@ -909,14 +909,14 @@ async function openSevk(doc) {
 }
 
 async function confirmSevk() {
-  if (!sevkAlan.value) {
+  if (!sevkAlan.value.length) {
     showToast('Lütfen sevk edilecek personeli seçiniz.', 'error')
     return
   }
   sevkLoading.value = true
   try {
     const res = await evrakApi.uetsSevkEt(
-      { id: selectedDetail.value.id, alan_user_id: sevkAlan.value, sevk_notu: sevkNotu.value.trim() },
+      { id: selectedDetail.value.id, alan_user_ids: sevkAlan.value, sevk_notu: sevkNotu.value.trim() },
       auth.state.csrfToken
     )
     showToast(res.message || 'Evrak sevk edildi.')
@@ -2727,17 +2727,34 @@ onBeforeUnmount(stopMobileSignTimer)
           <p>Seçilen personel evrakı görüntüleyebilir ve başka bir personele iletebilir. İşlem tarihçeye kaydedilir.</p>
 
           <div class="w-100 text-left my-3">
-            <label class="evrak-form-label">PERSONEL *</label>
-            <select v-model="sevkAlan" class="evrak-textarea" :disabled="sevkLoading">
-              <option value="">{{ sevkLoading ? 'Yükleniyor...' : 'Personel seçiniz' }}</option>
-              <option v-for="u in sevkUsers" :key="u.id" :value="u.id">{{ u.adi }}<template v-if="u.unvan"> - {{ u.unvan }}</template></option>
-            </select>
+            <label class="evrak-form-label">PERSONEL * <span v-if="sevkAlan.length">({{ sevkAlan.length }} seçili)</span></label>
+            <div class="evrak-sevk-list">
+              <div v-if="sevkLoading && !sevkUsers.length" class="evrak-no-files">Yükleniyor...</div>
+              <label
+                v-for="u in sevkUsers"
+                :key="u.id"
+                class="evrak-sevk-user"
+                :class="{ 'is-disabled': u.devre_disi }"
+              >
+                <input
+                  type="checkbox"
+                  :value="u.id"
+                  v-model="sevkAlan"
+                  :disabled="sevkLoading || u.devre_disi"
+                />
+                <span>
+                  <strong>{{ u.adi }}</strong>
+                  <small v-if="u.unvan"> - {{ u.unvan }}</small>
+                  <small v-if="u.devre_disi" class="d-block">{{ u.neden }}</small>
+                </span>
+              </label>
+            </div>
             <label class="evrak-form-label mt-3">SEVK NOTU</label>
             <textarea v-model="sevkNotu" rows="3" maxlength="500" class="evrak-textarea" placeholder="İsteğe bağlı not"></textarea>
           </div>
 
           <div class="evrak-dialog-actions">
-            <button type="button" class="evrak-btn evrak-btn--amber" :disabled="sevkLoading || !sevkAlan" @click="confirmSevk">
+            <button type="button" class="evrak-btn evrak-btn--amber" :disabled="sevkLoading || !sevkAlan.length" @click="confirmSevk">
               {{ sevkLoading ? 'İşleniyor...' : 'Sevk Et' }}
             </button>
             <button type="button" class="evrak-btn evrak-btn--outline" @click="isSevkOpen = false">Vazgeç</button>
@@ -4069,6 +4086,29 @@ onBeforeUnmount(stopMobileSignTimer)
   color: #fff !important;
   font-weight: 800;
   letter-spacing: 0.04em;
+}
+
+.evrak-sevk-list {
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+}
+
+.evrak-sevk-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 12px;
+  margin: 0;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.evrak-sevk-user.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .evrak-sevk-row {

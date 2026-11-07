@@ -291,6 +291,7 @@ function sessionPayload(): array
         'illegal_revert_cancel' => Gate::allows('kacak_iptal') || Gate::isSuperAdmin(),
         'support' => mobileCan(['admin_destek_talebi', 'Destek Taleplerim (Kullanıcı)']),
         'live_support' => mobileCan(['canli_sohbet_ayarlari_sekmesi']),
+        'site_messages' => mobileCan(['site_mesaj_yonetimi']),
         'logs' => mobileCan(['log_kayitlari']),
     ];
     return [
@@ -493,6 +494,7 @@ try {
             'puantaj',
             'logs',
             'live_support',
+            'site_messages',
             'support',
         ];
         $allowedGroupKeys = ['finans', 'operasyon', 'planlama', 'sistem'];

@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Helper\MobileSpa;
 use App\Model\BildirimModel;
 use App\Model\UserModel;
 use App\Model\UserNotificationPreferenceModel;
@@ -26,7 +27,9 @@ class SiteMesajBildirimService
                     'index.php?p=site-yonetimi/mesajlar',
                     'mail',
                     'primary',
-                    UserNotificationPreferenceModel::TYPE_SITE_MESSAGE
+                    UserNotificationPreferenceModel::TYPE_SITE_MESSAGE,
+                    null,
+                    MobileSpa::url('/site-mesajlar')
                 );
             }
         } catch (Throwable $e) {

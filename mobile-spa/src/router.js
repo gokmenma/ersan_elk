@@ -29,6 +29,7 @@ const LogView = () => import('./views/LogView.vue')
 const SozlesmeHakedisView = () => import('./views/SozlesmeHakedisView.vue')
 const SozlesmeDetailView = () => import('./views/SozlesmeDetailView.vue')
 const HakedisDetailView = () => import('./views/HakedisDetailView.vue')
+const SiteMesajlarView = () => import('./views/SiteMesajlarView.vue')
 const SupportView = () => import('./views/SupportView.vue')
 const DosyaView = () => import('./views/DosyaView.vue')
 import { auth } from './services/auth.js'
@@ -89,6 +90,7 @@ const router = createRouter({
     { path: '/ihbarlar', redirect: '/ihbar' },
     { path: '/loglar', name: 'logs', component: LogView, meta: { requiresAuth: true, requiresCompany: true, permission: 'logs' } },
     { path: '/canli-destek', name: 'live-support', component: SupportView, meta: { requiresAuth: true, requiresCompany: true, permission: 'live_support' } },
+    { path: '/site-mesajlar', name: 'site-mesajlar', component: SiteMesajlarView, meta: { requiresAuth: true, requiresCompany: true, permission: 'site_messages' } },
     { path: '/log-kayitlari', redirect: '/loglar' },
     { path: '/sistem-loglari', redirect: '/loglar' },
     { path: '/:pathMatch(.*)*', redirect: '/' },

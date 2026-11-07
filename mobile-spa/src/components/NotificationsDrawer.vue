@@ -84,7 +84,9 @@ async function handleNotificationClick(n) {
   if (!link) return
 
   // SPA hash veya route yönlendirmesi
-  if (link.includes('talepler')) {
+  if (link.includes('site-mesajlar') || link.includes('site-yonetimi/mesajlar')) {
+    router.push('/site-mesajlar')
+  } else if (link.includes('talepler')) {
     router.push('/talepler')
   } else if (link.includes('km-onay')) {
     router.push('/km-onaylari')

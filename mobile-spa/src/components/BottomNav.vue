@@ -30,6 +30,7 @@ import {
   LayoutDashboard,
   LayoutGrid,
   LogOut,
+  Mail,
   Megaphone,
   MapPin,
   MessageCircle,
@@ -500,6 +501,18 @@ const MODULE_CATALOG = {
     theme: 'emerald',
     to: '/canli-destek',
   },
+  site_messages: {
+    key: 'site_messages',
+    group: 'sistem',
+    permission: 'site_messages',
+    label: 'Site Mesajları',
+    navLabel: 'Mesajlar',
+    eyebrow: 'KURUMSAL SİTE',
+    subtitle: 'Siteden gelen iletişim mesajları',
+    icon: Mail,
+    theme: 'blue',
+    to: '/site-mesajlar',
+  },
 }
 
 const DEFAULT_NAVBAR_KEYS = ['personnel', 'reports', 'requests']
@@ -508,7 +521,7 @@ const DEFAULT_GROUP_ITEMS = {
   finans: ['invoices', 'cash', 'current_accounts', 'payroll', 'contracts'],
   operasyon: ['vehicles', 'km_approvals', 'documents', 'files', 'notices', 'illegal', 'reports'],
   planlama: ['personnel', 'personnel_tracking', 'requests', 'tasks', 'shifts', 'puantaj'],
-  sistem: ['logs', 'live_support'],
+  sistem: ['logs', 'live_support', 'site_messages'],
 }
 
 function isModulePermitted(key) {

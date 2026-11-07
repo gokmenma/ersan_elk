@@ -75,7 +75,9 @@ self.addEventListener('notificationclick', event => {
   const urlObj = new URL(targetUrl, self.location.origin)
   const fullSearch = urlObj.pathname + urlObj.search
 
-  if (fullSearch.includes('talepler')) {
+  if (fullSearch.includes('site-yonetimi/mesajlar')) {
+    targetUrl = new URL('/#/site-mesajlar', self.location.origin).href
+  } else if (fullSearch.includes('talepler')) {
     targetUrl = new URL('/#/talepler', self.location.origin).href
   } else if (fullSearch.includes('km-onay')) {
     targetUrl = new URL('/#/km-onaylari', self.location.origin).href

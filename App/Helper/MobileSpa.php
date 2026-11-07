@@ -24,6 +24,7 @@ class MobileSpa
         'nobet' => '/nobet',
         'ihbar' => '/ihbar',
         'yardim' => '/canli-destek',
+        'site-mesajlar' => '/site-mesajlar',
     ];
 
     public static function baseUrl(): string

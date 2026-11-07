@@ -686,12 +686,25 @@ try {
         if (!$evrak || !\App\Model\EvrakSevkModel::isRestricted($evrak)) {
             evrakApiResponse(['success' => false, 'message' => 'Evrak bulunamadı.'], 404);
         }
-        $users = (new \App\Model\EvrakSevkModel())->recipients($firmaId, (int) ($_SESSION['owner_id'] ?? 0), $currentUserId);
-        evrakApiResponse(['success' => true, 'data' => array_map(static fn(object $u): array => [
-            'id' => Security::encrypt((int) $u->id),
-            'adi' => (string) $u->adi,
-            'unvan' => (string) $u->unvan,
-        ], $users)]);
+        $sevkModel = new \App\Model\EvrakSevkModel();
+        $users = $sevkModel->recipients($firmaId, (int) ($_SESSION['owner_id'] ?? 0), $currentUserId);
+        $evrakIdNum = (int) $evrak->id;
+        evrakApiResponse(['success' => true, 'data' => array_map(static function (object $u) use ($sevkModel, $evrakIdNum): array {
+            $uid = (int) $u->id;
+            $neden = '';
+            if ($sevkModel->userHasFullAccess($uid)) {
+                $neden = 'Tüm UETS evraklarını görüntüleme yetkisi var';
+            } elseif ($sevkModel->hasActiveSevk($evrakIdNum, $uid)) {
+                $neden = 'Evrak zaten sevk edilmiş';
+            }
+            return [
+                'id' => Security::encrypt($uid),
+                'adi' => (string) $u->adi,
+                'unvan' => (string) $u->unvan,
+                'devre_disi' => $neden !== '',
+                'neden' => $neden,
+            ];
+        }, $users)]);
     }
 
     if ($method === 'POST' && $action === 'uets-sevk-et') {
@@ -700,18 +713,29 @@ try {
         if (!$evrak) {
             evrakApiResponse(['success' => false, 'message' => 'Evrak bulunamadı.'], 404);
         }
-        try {
-            (new \App\Model\EvrakSevkModel())->sevkEt(
-                $evrak,
-                $currentUserId,
-                $decryptId($_POST['alan_user_id'] ?? ''),
-                (string) ($_POST['sevk_notu'] ?? ''),
-                (int) ($_SESSION['owner_id'] ?? 0)
-            );
-        } catch (\Throwable $e) {
-            evrakApiResponse(['success' => false, 'message' => $e->getMessage()], 400);
+        $rawIds = $_POST['alan_user_ids'] ?? [];
+        if (is_string($rawIds)) {
+            $rawIds = json_decode($rawIds, true);
         }
-        evrakApiResponse(['success' => true, 'message' => 'Evrak seçilen personele sevk edildi.']);
+        if (!is_array($rawIds) || !$rawIds) {
+            evrakApiResponse(['success' => false, 'message' => 'Lütfen en az bir personel seçiniz.'], 400);
+        }
+        $sevkModel = new \App\Model\EvrakSevkModel();
+        $okCount = 0;
+        $errors = [];
+        foreach (array_unique(array_map('strval', $rawIds)) as $rawId) {
+            try {
+                $sevkModel->sevkEt($evrak, $currentUserId, $decryptId($rawId), (string) ($_POST['sevk_notu'] ?? ''), (int) ($_SESSION['owner_id'] ?? 0));
+                $okCount++;
+            } catch (\Throwable $e) {
+                error_log('mobil uets-sevk-et Error: ' . $e->getMessage());
+                $errors[] = $e->getMessage();
+            }
+        }
+        if ($okCount === 0) {
+            evrakApiResponse(['success' => false, 'message' => $errors[0] ?? 'Sevk işlemi yapılamadı.'], 400);
+        }
+        evrakApiResponse(['success' => true, 'message' => $okCount . ' personele sevk edildi.' . ($errors ? ' ' . count($errors) . ' personele sevk edilemedi: ' . implode(' | ', array_unique($errors)) : '')]);
     }
 
     // -------------------------------------------------------------

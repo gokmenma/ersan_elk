@@ -134,7 +134,7 @@ class BildirimModel extends Model
         return $this->saveWithAttr($data);
     }
 
-    public function createNotificationWithPush($userId, $title, $message, $link = null, $icon = 'bell', $color = 'primary', ?string $notificationType = null, ?string $pushTitle = null): bool
+    public function createNotificationWithPush($userId, $title, $message, $link = null, $icon = 'bell', $color = 'primary', ?string $notificationType = null, ?string $pushTitle = null, ?string $pushUrl = null): bool
     {
         if (!$this->createNotification($userId, $title, $message, $link, $icon, $color, $notificationType)) {
             return false;
@@ -144,7 +144,7 @@ class BildirimModel extends Model
             (new \App\Service\PushNotificationService())->sendToUser((int) $userId, [
                 'title' => $pushTitle ?? $title,
                 'body' => $message,
-                'url' => $link ?? '',
+                'url' => $pushUrl ?? $link ?? '',
             ], true, $notificationType);
         } catch (\Throwable $e) {
             error_log('Bildirim push gönderilemedi (kullanıcı ' . (int) $userId . '): ' . $e->getMessage());
