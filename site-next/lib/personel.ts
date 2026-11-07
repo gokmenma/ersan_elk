@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
+
 export function personelUrl(): string {
   return (process.env.PERSONEL_URL ?? "").replace(/\/+$/, "");
 }
@@ -30,6 +33,7 @@ export async function siteApiGetir<T>(yol: string): Promise<T | null> {
 
 export function personelDosyaUrl(yol: string | null | undefined): string | null {
   if (!yol || !/^uploads\/site\/[a-zA-Z0-9_\-/]+\.(jpg|jpeg|png)$/.test(yol)) return null;
+  if (fs.existsSync(path.join(process.cwd(), "public", yol))) return `/${yol}`;
   const taban = personelUrl();
   return taban ? `${taban}/${yol}` : null;
 }

@@ -1,17 +1,17 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
-  "/robots.txt/route": "app/robots.txt/route.js",
   "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/robots.txt/route": "app/robots.txt/route.js",
   "/api/kariyer/basvuru/route": "app/api/kariyer/basvuru/route.js",
   "/sitemap.xml/route": "app/sitemap.xml/route.js",
   "/hakkimizda/page": "app/hakkimizda/page.js",
-  "/iletisim/page": "app/iletisim/page.js",
+  "/hizmetlerimiz/[slug]/page": "app/hizmetlerimiz/[slug]/page.js",
   "/hizmetlerimiz/page": "app/hizmetlerimiz/page.js",
+  "/iletisim/page": "app/iletisim/page.js",
   "/kariyer/[token]/page": "app/kariyer/[token]/page.js",
   "/kariyer/page": "app/kariyer/page.js",
   "/projeler/[slug]/page": "app/projeler/[slug]/page.js",
   "/projeler/page": "app/projeler/page.js",
-  "/hizmetlerimiz/[slug]/page": "app/hizmetlerimiz/[slug]/page.js",
-  "/referanslar/page": "app/referanslar/page.js",
-  "/page": "app/page.js"
+  "/page": "app/page.js",
+  "/referanslar/page": "app/referanslar/page.js"
 }

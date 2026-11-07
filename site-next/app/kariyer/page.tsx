@@ -4,7 +4,7 @@ import PageHero from "@/components/PageHero";
 import { basvuruUrl, ilanlariGetir, type Ilan } from "@/lib/ilanlar";
 import { siteAyarlari } from "@/lib/ayarlar";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Kariyer",

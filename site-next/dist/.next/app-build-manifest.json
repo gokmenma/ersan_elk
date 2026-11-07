@@ -20,7 +20,7 @@
       "static/chunks/4bd1b696-c023c6e3521b1417.js",
       "static/chunks/255-73938ce8a8eac1ad.js",
       "static/chunks/main-app-c544525e8842837d.js",
-      "static/css/71b941a260994bd3.css",
+      "static/css/fc73d04efe7e81b3.css",
       "static/chunks/619-ba102abea3e3d0e4.js",
       "static/chunks/356-dd477792e2aa9b3a.js",
       "static/chunks/app/layout-cc1ab699678d5448.js"
@@ -55,13 +55,14 @@
       "static/chunks/356-dd477792e2aa9b3a.js",
       "static/chunks/app/hakkimizda/page-c4e5d72380372895.js"
     ],
-    "/iletisim/page": [
+    "/hizmetlerimiz/[slug]/page": [
       "static/chunks/webpack-d3210641ebdf48bd.js",
       "static/chunks/4bd1b696-c023c6e3521b1417.js",
       "static/chunks/255-73938ce8a8eac1ad.js",
       "static/chunks/main-app-c544525e8842837d.js",
       "static/chunks/619-ba102abea3e3d0e4.js",
-      "static/chunks/app/iletisim/page-7a534b9098a75d9e.js"
+      "static/chunks/356-dd477792e2aa9b3a.js",
+      "static/chunks/app/hizmetlerimiz/[slug]/page-242821ea9cca0c05.js"
     ],
     "/hizmetlerimiz/page": [
       "static/chunks/webpack-d3210641ebdf48bd.js",
@@ -71,6 +72,14 @@
       "static/chunks/619-ba102abea3e3d0e4.js",
       "static/chunks/356-dd477792e2aa9b3a.js",
       "static/chunks/app/hizmetlerimiz/page-242821ea9cca0c05.js"
+    ],
+    "/iletisim/page": [
+      "static/chunks/webpack-d3210641ebdf48bd.js",
+      "static/chunks/4bd1b696-c023c6e3521b1417.js",
+      "static/chunks/255-73938ce8a8eac1ad.js",
+      "static/chunks/main-app-c544525e8842837d.js",
+      "static/chunks/619-ba102abea3e3d0e4.js",
+      "static/chunks/app/iletisim/page-7a534b9098a75d9e.js"
     ],
     "/kariyer/[token]/page": [
       "static/chunks/webpack-d3210641ebdf48bd.js",
@@ -106,14 +115,14 @@
       "static/chunks/356-dd477792e2aa9b3a.js",
       "static/chunks/app/projeler/page-4367419d897fca93.js"
     ],
-    "/hizmetlerimiz/[slug]/page": [
+    "/page": [
       "static/chunks/webpack-d3210641ebdf48bd.js",
       "static/chunks/4bd1b696-c023c6e3521b1417.js",
       "static/chunks/255-73938ce8a8eac1ad.js",
       "static/chunks/main-app-c544525e8842837d.js",
       "static/chunks/619-ba102abea3e3d0e4.js",
       "static/chunks/356-dd477792e2aa9b3a.js",
-      "static/chunks/app/hizmetlerimiz/[slug]/page-242821ea9cca0c05.js"
+      "static/chunks/app/page-e82adc2763cf0491.js"
     ],
     "/referanslar/page": [
       "static/chunks/webpack-d3210641ebdf48bd.js",
@@ -123,15 +132,6 @@
       "static/chunks/619-ba102abea3e3d0e4.js",
       "static/chunks/356-dd477792e2aa9b3a.js",
       "static/chunks/app/referanslar/page-7ced48fc645b2ab5.js"
-    ],
-    "/page": [
-      "static/chunks/webpack-d3210641ebdf48bd.js",
-      "static/chunks/4bd1b696-c023c6e3521b1417.js",
-      "static/chunks/255-73938ce8a8eac1ad.js",
-      "static/chunks/main-app-c544525e8842837d.js",
-      "static/chunks/619-ba102abea3e3d0e4.js",
-      "static/chunks/356-dd477792e2aa9b3a.js",
-      "static/chunks/app/page-e82adc2763cf0491.js"
     ]
   }
 }
