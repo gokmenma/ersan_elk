@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/projeler/layout,_N_T_/projeler/[slug]/layout,_N_T_/projeler/[slug]/page,_N_T_/projeler/iskenderun-endeks-okuma"
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/05811923371a51fb5dd46c6c47e67b82c5e87d54f8bc4e7be64e134585e6aa9e/$/projeler/iskenderun-endeks-okuma",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/projeler/[slug]/page"
+    },
+    "isFallback": false
+  }
+}

@@ -1,17 +1,18 @@
 {
   "/_not-found/page": "/_not-found",
-  "/favicon.ico/route": "/favicon.ico",
   "/robots.txt/route": "/robots.txt",
+  "/favicon.ico/route": "/favicon.ico",
+  "/api/kariyer/goruntule/route": "/api/kariyer/goruntule",
   "/api/kariyer/basvuru/route": "/api/kariyer/basvuru",
   "/sitemap.xml/route": "/sitemap.xml",
   "/hakkimizda/page": "/hakkimizda",
-  "/hizmetlerimiz/[slug]/page": "/hizmetlerimiz/[slug]",
-  "/hizmetlerimiz/page": "/hizmetlerimiz",
   "/iletisim/page": "/iletisim",
-  "/kariyer/[token]/page": "/kariyer/[token]",
+  "/hizmetlerimiz/page": "/hizmetlerimiz",
   "/kariyer/page": "/kariyer",
-  "/projeler/[slug]/page": "/projeler/[slug]",
+  "/kariyer/[token]/page": "/kariyer/[token]",
   "/projeler/page": "/projeler",
-  "/page": "/",
-  "/referanslar/page": "/referanslar"
+  "/projeler/[slug]/page": "/projeler/[slug]",
+  "/referanslar/page": "/referanslar",
+  "/hizmetlerimiz/[slug]/page": "/hizmetlerimiz/[slug]",
+  "/page": "/"
 }

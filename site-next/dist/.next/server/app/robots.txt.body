@@ -3,5 +3,5 @@ Allow: /
 Disallow: /api/
 Disallow: /kariyer/
 
-Host: http://site.ersantr.com
-Sitemap: http://site.ersantr.com/sitemap.xml
+Host: http://localhost:3000
+Sitemap: http://localhost:3000/sitemap.xml

@@ -1,6 +1,7 @@
 {
   "version": 1,
   "functions": {
-    "/api/kariyer/basvuru": {}
+    "/api/kariyer/basvuru": {},
+    "/api/kariyer/goruntule": {}
   }
 }

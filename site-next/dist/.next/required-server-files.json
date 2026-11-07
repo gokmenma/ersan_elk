@@ -63,9 +63,9 @@
       "remotePatterns": [
         {
           "protocol": "http",
-          "hostname": "app.ersantr.com",
+          "hostname": "localhost",
           "port": "",
-          "pathname": "/uploads/site/**"
+          "pathname": "/ersan_elk/uploads/site/**"
         }
       ],
       "unoptimized": true
@@ -107,7 +107,7 @@
         "transform": "lodash/{{member}}"
       }
     },
-    "outputFileTracingRoot": "/opt/lampp/htdocs/ersan_elk/site-next",
+    "outputFileTracingRoot": "/tmp/claude-1000/-opt-lampp-htdocs-ersan-elk/cc5f3565-7811-435c-ac5c-9f96373dac91/scratchpad/sitebuild",
     "experimental": {
       "useSkewCookie": false,
       "cacheLife": {
@@ -296,10 +296,10 @@
     "bundlePagesRouterDependencies": false,
     "configFileName": "next.config.ts",
     "turbopack": {
-      "root": "/opt/lampp/htdocs/ersan_elk/site-next"
+      "root": "/tmp/claude-1000/-opt-lampp-htdocs-ersan-elk/cc5f3565-7811-435c-ac5c-9f96373dac91/scratchpad/sitebuild"
     }
   },
-  "appDir": "/opt/lampp/htdocs/ersan_elk/site-next",
+  "appDir": "/tmp/claude-1000/-opt-lampp-htdocs-ersan-elk/cc5f3565-7811-435c-ac5c-9f96373dac91/scratchpad/sitebuild",
   "relativeAppDir": "",
   "files": [
     ".next/routes-manifest.json",
@@ -322,6 +322,6 @@
     ".next/required-server-files.json"
   ],
   "ignore": [
-    "node_modules/next/dist/compiled/@ampproject/toolbox-optimizer/**/*"
+    "../../../../../../opt/lampp/htdocs/ersan_elk/site-next/node_modules/next/dist/compiled/@ampproject/toolbox-optimizer/**/*"
   ]
 }

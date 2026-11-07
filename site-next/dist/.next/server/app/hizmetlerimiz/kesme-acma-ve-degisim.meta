@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/hizmetlerimiz/layout,_N_T_/hizmetlerimiz/[slug]/layout,_N_T_/hizmetlerimiz/[slug]/page,_N_T_/hizmetlerimiz/kesme-acma-ve-degisim"
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/6f54747ac2e5082dba9fa839024a4dfb4feffa8873668a5c7cf2fd0540fd1e21/$/hizmetlerimiz/kesme-acma-ve-degisim",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/hizmetlerimiz/[slug]/page"
+    },
+    "isFallback": false
+  }
+}
