@@ -7,6 +7,7 @@ require_once dirname(__DIR__, 2) . '/Autoloader.php';
 use App\Helper\Security;
 use App\Model\IkBasvuruModel;
 use App\Model\IkIlanModel;
+use App\Model\IkMulakatModel;
 use App\Model\PermissionPolicyModel;
 use App\Model\SystemLogModel;
 use App\Service\Gate;
@@ -31,6 +32,8 @@ $ikActions = [
     'basvuru-cv' => 'ik_basvuru_listesi',
     'basvuru-foto' => 'ik_basvuru_listesi',
     'basvuru-sil' => 'ik_basvuru_listesi',
+    'mulakat-kaydet' => 'ik_basvuru_mulakat',
+    'mulakat-sil' => 'ik_basvuru_mulakat',
     'personele-donustur' => 'ik_basvuru_personele_donustur',
 ];
 
@@ -62,6 +65,7 @@ $userId = (int) ($_SESSION['user_id'] ?? 0);
 
 $Ilan = new IkIlanModel();
 $Basvuru = new IkBasvuruModel();
+$Mulakat = new IkMulakatModel();
 $Log = new SystemLogModel();
 
 $idCoz = static fn(string $alan): int => (int) Security::decrypt((string) ($_POST[$alan] ?? $_GET[$alan] ?? ''));
@@ -189,7 +193,27 @@ try {
                 $cevap(['status' => 'error', 'message' => 'Başvuru bulunamadı.'], 404);
             }
             $olaylar = $Basvuru->olaylar((int) $b->id, $firmaId);
+            $guncel = $Mulakat->guncelDegerler((int) $b->id, $firmaId);
+            $mulakatYetki = Gate::allows('ik_basvuru_mulakat');
+            $mulakatlar = [];
+            if ($mulakatYetki) {
+                foreach ($Mulakat->listele((int) $b->id, $firmaId) as $m) {
+                    $mulakatlar[] = [
+                        'id' => Security::encrypt((int) $m->id),
+                        'mulakat_tarihi' => $m->mulakat_tarihi,
+                        'tur' => $m->tur,
+                        'sonuc' => $m->sonuc,
+                        'genel_puan' => $m->genel_puan,
+                        'genel_not' => $m->genel_not,
+                        'sorular' => $jsonAlan($m->sorular_cevaplar),
+                        'yapan' => $m->yapan,
+                    ];
+                }
+            }
             $cevap(['status' => 'success', 'data' => [
+                'mulakat_yetki' => $mulakatYetki,
+                'mulakatlar' => $mulakatlar,
+                'guncel' => $guncel,
                 'id' => Security::encrypt((int) $b->id),
                 'ad_soyad' => $b->ad_soyad,
                 'telefon' => $b->telefon,
@@ -253,6 +277,7 @@ try {
                 $cevap(['status' => 'error', 'message' => 'İlan bulunamadı.'], 404);
             }
             set_time_limit(180);
+            $b = $Mulakat->guncelUygula($b, $Mulakat->guncelDegerler((int) $b->id, $firmaId));
             try {
                 $sonuc = (new IkBasvuruAiService())->degerlendir($ilan, [
                     'sehir' => $b->sehir,
@@ -320,11 +345,126 @@ try {
             $Log->logAction($userId, 'İşe Alım Başvurusu', 'Başvuru silindi (Başvuru ID: ' . $id . ')', SystemLogModel::LEVEL_IMPORTANT);
             $cevap(['status' => 'success', 'message' => 'Başvuru silindi.']);
 
+        case 'mulakat-kaydet':
+            $basvuruId = $idCoz('id');
+            $b = $Basvuru->bul($basvuruId, $firmaId);
+            if (!$b) {
+                $cevap(['status' => 'error', 'message' => 'Başvuru bulunamadı.'], 404);
+            }
+            if ($b->durum === 'personele_donustu') {
+                $cevap(['status' => 'error', 'message' => 'Personele dönüşmüş başvuruda mülakat kaydı eklenemez.']);
+            }
+            $mulakatId = ($_POST['mulakat_id'] ?? '') !== '' ? $idCoz('mulakat_id') : 0;
+            if ($mulakatId > 0) {
+                $mevcut = $Mulakat->bul($mulakatId, $firmaId);
+                if (!$mevcut || (int) $mevcut->basvuru_id !== $basvuruId) {
+                    $cevap(['status' => 'error', 'message' => 'Mülakat kaydı bulunamadı.'], 404);
+                }
+            }
+
+            $tarih = DateTime::createFromFormat('Y-m-d\TH:i', (string) ($_POST['mulakat_tarihi'] ?? ''));
+            if (!$tarih) {
+                $cevap(['status' => 'error', 'message' => 'Mülakat tarihi geçersiz.']);
+            }
+            $tur = (string) ($_POST['tur'] ?? '');
+            $sonucDeger = (string) ($_POST['sonuc'] ?? '');
+            if (!isset(IkMulakatModel::TURLER[$tur]) || !isset(IkMulakatModel::SONUCLAR[$sonucDeger])) {
+                $cevap(['status' => 'error', 'message' => 'Mülakat türü veya sonucu geçersiz.']);
+            }
+            $puanAl = static function ($deger): ?int {
+                $deger = (int) $deger;
+                return $deger >= 1 && $deger <= 5 ? $deger : null;
+            };
+
+            $sorular = [];
+            foreach (array_slice($jsonAlan($_POST['sorular'] ?? ''), 0, 20) as $satir) {
+                if (!is_array($satir)) {
+                    continue;
+                }
+                $soru = trim(mb_substr(strip_tags((string) ($satir['soru'] ?? '')), 0, 300, 'UTF-8'));
+                $cevapMetni = trim(mb_substr(str_replace("\r", '', strip_tags((string) ($satir['cevap'] ?? ''))), 0, 2000, 'UTF-8'));
+                if ($soru === '' || ($cevapMetni === '' && $puanAl($satir['puan'] ?? null) === null)) {
+                    continue;
+                }
+                $sorular[] = ['soru' => $soru, 'cevap' => $cevapMetni, 'puan' => $puanAl($satir['puan'] ?? null)];
+            }
+
+            $etkin = $Mulakat->guncelUygula($b, $Mulakat->guncelDegerler($basvuruId, $firmaId));
+            $degisiklikler = [];
+            $bilgiGirdi = $jsonAlan($_POST['bilgi'] ?? '');
+            foreach (IkMulakatModel::DUZELTILEBILIR_ALANLAR as $alan => $etiketAdi) {
+                if (!array_key_exists($alan, $bilgiGirdi)) {
+                    continue;
+                }
+                $yeni = trim(mb_substr(str_replace("\r", '', (string) $bilgiGirdi[$alan]), 0, $alan === 'deneyim_ozet' ? 2000 : 150, 'UTF-8'));
+                if ($yeni === '') {
+                    continue;
+                }
+                if ($alan === 'deneyim_yili' || $alan === 'maas_beklentisi') {
+                    $sayi = str_replace(',', '.', $yeni);
+                    if (!is_numeric($sayi) || (float) $sayi < 0 || (float) $sayi > ($alan === 'deneyim_yili' ? 60 : 9999999)) {
+                        $cevap(['status' => 'error', 'message' => $etiketAdi . ' alanı geçersiz.']);
+                    }
+                    $yeni = $alan === 'deneyim_yili' ? number_format((float) $sayi, 1, '.', '') : number_format((float) $sayi, 2, '.', '');
+                    $eskiKarsilastir = $etkin->$alan !== null && $etkin->$alan !== '' ? (float) $etkin->$alan : null;
+                    if ($eskiKarsilastir !== null && abs($eskiKarsilastir - (float) $yeni) < 0.0001) {
+                        continue;
+                    }
+                } elseif ($yeni === trim((string) $etkin->$alan)) {
+                    continue;
+                }
+                $degisiklikler[$alan] = [$etkin->$alan !== null && $etkin->$alan !== '' ? (string) $etkin->$alan : null, $yeni];
+            }
+
+            $db = $Mulakat->getDb();
+            $db->beginTransaction();
+            try {
+                $mulakatId = $Mulakat->kaydet($mulakatId, [
+                    'firma_id' => $firmaId,
+                    'basvuru_id' => $basvuruId,
+                    'mulakat_tarihi' => $tarih->format('Y-m-d H:i:s'),
+                    'tur' => $tur,
+                    'mulakat_yapan_id' => $userId,
+                    'sonuc' => $sonucDeger,
+                    'genel_puan' => $puanAl($_POST['genel_puan'] ?? null),
+                    'genel_not' => $metin('genel_not', 3000) !== '' ? $metin('genel_not', 3000) : null,
+                    'sorular_cevaplar' => json_encode($sorular, JSON_UNESCAPED_UNICODE),
+                ]);
+                foreach ($degisiklikler as $alan => [$eski, $yeni]) {
+                    $Mulakat->guncellemeEkle($firmaId, $basvuruId, $mulakatId, $alan, $eski, $yeni, $userId);
+                    $Basvuru->olayEkle($firmaId, $basvuruId, $userId, 'Bilgi düzeltildi', IkMulakatModel::DUZELTILEBILIR_ALANLAR[$alan] . ': ' . ($eski ?? '-') . ' → ' . $yeni);
+                }
+                $Basvuru->olayEkle($firmaId, $basvuruId, $userId, 'Mülakat kaydedildi', IkMulakatModel::TURLER[$tur] . ' • ' . IkMulakatModel::SONUCLAR[$sonucDeger]);
+                if (in_array($b->durum, ['yeni', 'degerlendirildi'], true)) {
+                    $Basvuru->durumGuncelle($basvuruId, $firmaId, 'gorusme');
+                    $Basvuru->olayEkle($firmaId, $basvuruId, $userId, 'Durum değişti', IkBasvuruModel::DURUMLAR['gorusme']);
+                }
+                $db->commit();
+            } catch (Throwable $e) {
+                if ($db->inTransaction()) {
+                    $db->rollBack();
+                }
+                throw $e;
+            }
+            $Log->logAction($userId, 'İşe Alım Başvurusu', 'Mülakat kaydedildi (Başvuru ID: ' . $basvuruId . ', Mülakat ID: ' . $mulakatId . ', düzeltilen alan: ' . count($degisiklikler) . ')', SystemLogModel::LEVEL_INFO);
+            $cevap(['status' => 'success', 'message' => 'Mülakat kaydedildi.']);
+
+        case 'mulakat-sil':
+            $mulakatId = $idCoz('mulakat_id');
+            $m = $Mulakat->bul($mulakatId, $firmaId);
+            if (!$m || !$Mulakat->softDeleteForFirma($mulakatId, $firmaId)) {
+                $cevap(['status' => 'error', 'message' => 'Mülakat kaydı silinemedi.']);
+            }
+            $Basvuru->olayEkle($firmaId, (int) $m->basvuru_id, $userId, 'Mülakat kaydı silindi', date('d.m.Y H:i', strtotime((string) $m->mulakat_tarihi)));
+            $Log->logAction($userId, 'İşe Alım Başvurusu', 'Mülakat kaydı silindi (Mülakat ID: ' . $mulakatId . ')', SystemLogModel::LEVEL_IMPORTANT);
+            $cevap(['status' => 'success', 'message' => 'Mülakat kaydı silindi.']);
+
         case 'personele-donustur':
             $b = $Basvuru->bul($idCoz('id'), $firmaId);
             if (!$b) {
                 $cevap(['status' => 'error', 'message' => 'Başvuru bulunamadı.'], 404);
             }
+            $b = $Mulakat->guncelUygula($b, $Mulakat->guncelDegerler((int) $b->id, $firmaId));
             try {
                 $sonuc = (new IkBasvuruDonusturService())->donustur(
                     $b,

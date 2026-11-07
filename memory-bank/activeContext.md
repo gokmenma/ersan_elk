@@ -3764,3 +3764,8 @@
 ## 2026-11-07 — İK Başvuru Detay UI/UX + Ehliyet Kuralı
 - views/ik-ise-alim/basvuru-detay.php ve js/basvuru-detay.js yeniden tasarlandı (puan halkası, renkli AI kutuları, iletişim chipleri, zaman çizelgesi, sticky karar kartı).
 - IkBasvuruAiService promptuna ehliyet hiyerarşisi (E => C/D, C/D => B) eklendi; aday verisine kapsadığı sınıflar yazılıyor.
+
+## 2026-11-07 — İK Mülakat Kaydı
+- sql/2026_11_07_ik_basvuru_mulakat.sql: ik_basvuru_mulakatlari, ik_basvuru_bilgi_guncellemeleri, ik_basvuru_mulakat yetkisi + mulakat-kaydet/mulakat-sil politikaları (superadmin rollerine otomatik atama).
+- App/Model/IkMulakatModel.php; api.php mulakat-kaydet/mulakat-sil; basvuru-detay mülakat kartı + modal. Orijinal başvuru verisi korunur, düzeltmeler append-only log (alan, eski, yeni); AI yeniden değerlendirme ve personele dönüştürme güncel değerleri kullanır.
+- Bekleyen: SQL scriptinin çalıştırılması, Yetki Kataloğu/Yetki Grubu ekranında görünürlük doğrulaması, AI puan sürüm geçmişi (aşama 4).

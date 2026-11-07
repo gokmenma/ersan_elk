@@ -6,6 +6,10 @@ use App\Service\Gate;
 $maintitle = 'İşe Alım';
 $title = 'Başvuru Detayı';
 $donusturYetki = Gate::allows('ik_basvuru_personele_donustur');
+$mulakatYetki = Gate::allows('ik_basvuru_mulakat');
+$mulakatTurOptions = ['yuz_yuze' => 'Yüz yüze', 'telefon' => 'Telefon', 'online' => 'Online'];
+$mulakatSonucOptions = ['beklemede' => 'Beklemede', 'olumlu' => 'Olumlu', 'olumsuz' => 'Olumsuz'];
+$mulakatPuanOptions = ['' => 'Puan verilmedi', '1' => '1 - Çok zayıf', '2' => '2 - Zayıf', '3' => '3 - Orta', '4' => '4 - İyi', '5' => '5 - Çok iyi'];
 ?>
 <style>
 .ik-puan-halka { --p: 0; --c: #94a3b8; width: 104px; height: 104px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; position: relative; background: conic-gradient(var(--c) calc(var(--p) * 1%), #e9edf3 0); }
@@ -39,6 +43,15 @@ a.ik-chip:hover { background: rgba(85,110,230,.12); color: #556ee6; }
 .ik-zaman-oge { position: relative; padding-bottom: 14px; }
 .ik-zaman-oge:last-child { padding-bottom: 0; }
 .ik-zaman-oge::before { content: ''; position: absolute; left: -22px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background: var(--bs-card-bg, #fff); border: 3px solid #556ee6; }
+.ik-mulakat { border: 1px solid rgba(116,120,141,.2); border-radius: 12px; overflow: hidden; }
+.ik-mulakat + .ik-mulakat { margin-top: 10px; }
+.ik-mulakat-baslik { padding: 10px 14px; display: flex; align-items: center; gap: 10px; cursor: pointer; flex-wrap: wrap; }
+.ik-mulakat-govde { padding: 4px 14px 14px; border-top: 1px dashed rgba(116,120,141,.25); }
+.ik-qa { background: rgba(116,120,141,.06); border-radius: 10px; padding: 9px 12px; margin-top: 8px; }
+.ik-qa .q { font-weight: 600; font-size: 13px; }
+.ik-qa .a { font-size: 13px; white-space: pre-line; margin-top: 2px; }
+.ik-soru-satir { border: 1px solid rgba(116,120,141,.2); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+.ik-degisti { font-size: 11px; color: #b07d1c; }
 .ik-karar-btn { flex: 1 1 0; min-width: 0; padding: 10px 6px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 12px; font-weight: 600; line-height: 1.2; }
 .ik-karar-btn i { font-size: 20px; }
 .ik-karar-btn.aktif { box-shadow: 0 0 0 2px currentColor inset; }
@@ -81,6 +94,17 @@ a.ik-chip:hover { background: rgba(85,110,230,.12); color: #556ee6; }
                     <div id="aiAlani"></div>
                 </div>
             </div>
+            <?php if ($mulakatYetki): ?>
+            <div class="card summary-kpi-card mb-3" id="mulakatKart">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h5 class="font-size-14 fw-bold mb-0"><i class="bx bx-conversation text-primary me-1"></i> Mülakatlar <span class="badge bg-primary-subtle text-primary rounded-pill ms-1" id="mulakatSayisi">0</span></h5>
+                        <button type="button" class="btn btn-sm btn-primary text-white d-none" id="btnMulakatEkle"><i class="bx bx-plus"></i> Mülakat Kaydet</button>
+                    </div>
+                    <div id="mulakatListe" class="font-size-13"></div>
+                </div>
+            </div>
+            <?php endif; ?>
             <div class="card summary-kpi-card mb-3">
                 <div class="card-body">
                     <h5 class="font-size-14 fw-bold mb-3"><i class="bx bx-history text-primary me-1"></i> Geçmiş</h5>
@@ -145,4 +169,48 @@ a.ik-chip:hover { background: rgba(85,110,230,.12); color: #556ee6; }
 </div>
 <?php endif; ?>
 
+<?php if ($mulakatYetki): ?>
+<div class="modal fade" id="mulakatModal" tabindex="-1" aria-labelledby="mulakatModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                <h5 class="modal-title fw-bold" id="mulakatModalLabel"><i class="bx bx-conversation text-primary me-1"></i> Mülakat Kaydı</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <form id="mulakatForm">
+                <input type="hidden" id="mulakat_id" value="">
+                <div class="modal-body px-4">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4"><?= Form::FormFloatInput("datetime-local", "mulakat_tarihi", "", "Mülakat tarihi", "Mülakat Tarihi *", "calendar", "form-control", true) ?></div>
+                        <div class="col-md-4"><?= Form::FormSelect2("mulakat_tur", $mulakatTurOptions, "yuz_yuze", "Mülakat Türü", "bx bx-video") ?></div>
+                        <div class="col-md-4"><?= Form::FormSelect2("mulakat_sonuc", $mulakatSonucOptions, "beklemede", "Mülakat Sonucu", "bx bx-flag") ?></div>
+                    </div>
+
+                    <h6 class="fw-bold font-size-13 mb-2"><i class="bx bx-help-circle text-primary"></i> Sorular ve Cevaplar</h6>
+                    <div id="mulakatSorular"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary mb-3" id="btnSoruEkle"><i class="bx bx-plus"></i> Soru ekle</button>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4"><?= Form::FormSelect2("mulakat_puan", $mulakatPuanOptions, "", "Genel Puan (1-5)", "bx bx-star") ?></div>
+                        <div class="col-md-8"><?= Form::FormFloatTextarea("mulakat_not", "", "Genel değerlendirme", "Genel Değerlendirme Notu", "bx bx-note", "form-control", false, "80px", 3, 'maxlength="3000"') ?></div>
+                    </div>
+
+                    <div class="border rounded-3 p-3" style="border-color: rgba(116,120,141,.2)!important;">
+                        <h6 class="fw-bold font-size-13 mb-1"><i class="bx bx-edit text-warning"></i> Mülakatta Teyit Edilen / Düzeltilen Bilgiler</h6>
+                        <p class="text-muted font-size-12 mb-2">Aday mülakatta farklı bir bilgi verdiyse yeni değeri yazın. Başvurudaki orijinal beyan korunur; değişiklik eski ve yeni değeriyle kayda alınır.</p>
+                        <div class="row g-2" id="mulakatBilgi"></div>
+                    </div>
+                    <div class="alert alert-light border font-size-12 mt-3 mb-0"><i class="bx bx-shield-quarter"></i> Notlarda yaş, cinsiyet, medeni hal, sağlık, din gibi korunan kişisel bilgileri yazmayın; yalnızca işle ilgili gözlemleri girin.</div>
+                </div>
+                <div class="modal-footer border-top-0 px-4 pb-4">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Vazgeç</button>
+                    <button type="submit" class="btn btn-primary text-white" id="btnMulakatKaydet"><i class="bx bx-save"></i> Mülakatı Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+<script>window.IK_MULAKAT_YETKI = <?= $mulakatYetki ? 'true' : 'false' ?>;</script>
 <script src="views/ik-ise-alim/js/basvuru-detay.js?v=<?php echo time(); ?>"></script>

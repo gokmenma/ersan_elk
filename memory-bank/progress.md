@@ -2215,3 +2215,4 @@
 - [2026-11-07] Site mesajı bildirimi artık yönetici mobil SPA `/site-mesajlar` sayfasına açılır: yeni `mobile-spa/public/api/site-mesajlar.php` (list/detail/update_status, `site_mesaj_yonetimi` yetkisi, policy SQL: `database/migrations/2026_11_07_mobile_site_mesajlar_policies.sql`), `SiteMesajlarView.vue`, `auth.php` `site_messages` yetkisi, push URL için `BildirimModel::createNotificationWithPush` `$pushUrl` parametresi. Canlıda `MOBILE_SPA_URL` tanımlı olmalı.
 
 - [x] 2026-11-07: İK başvuru detay sayfası UI/UX iyileştirmesi ve ehliyet hiyerarşisi düzeltmesi.
+- [x] 2026-11-07: Mülakat kaydı, soru-cevap ve bilgi düzeltme günlüğü (SQL çalıştırılmayı bekliyor).
