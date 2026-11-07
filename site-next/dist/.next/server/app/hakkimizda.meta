@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/hakkimizda/layout,_N_T_/hakkimizda/page,_N_T_/hakkimizda"
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/d469df7ffe7c4e2ad5cc216f2b2147a67e8dabf1cbf597db8d3bf0786a54ca93/$/hakkimizda",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/hakkimizda/page"
+    },
+    "isFallback": false
+  }
+}

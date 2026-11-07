@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/referanslar/layout,_N_T_/referanslar/page,_N_T_/referanslar"
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/f926cd38076f5ba9eb4bfc7f6d71284beea090b992c9168631d7f723526bef09/$/referanslar",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/referanslar/page"
+    },
+    "isFallback": false
+  }
+}

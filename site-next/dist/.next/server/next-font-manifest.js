@@ -1,0 +1,1 @@
+self.__NEXT_FONT_MANIFEST='{"pages":{},"app":{"/opt/lampp/htdocs/ersan_elk/site-next/app/layout":["static/media/dc1a31dd116e0329-s.p.woff2","static/media/eebd5672f205c2b9-s.p.woff2"]},"appUsingSizeAdjust":true,"pagesUsingSizeAdjust":false}';

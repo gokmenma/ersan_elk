@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/iletisim/layout,_N_T_/iletisim/page,_N_T_/iletisim"
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/a7654e7e65f8b38ce9f43a56a04710f5fa8b21c07f8cc378efea9e3183063c58/$/iletisim",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/iletisim/page"
+    },
+    "isFallback": false
+  }
+}

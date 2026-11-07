@@ -1,0 +1,7 @@
+User-Agent: *
+Allow: /
+Disallow: /api/
+Disallow: /kariyer/
+
+Host: http://site.ersantr.com
+Sitemap: http://site.ersantr.com/sitemap.xml

@@ -1,0 +1,17 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/robots.txt/route": "/robots.txt",
+  "/favicon.ico/route": "/favicon.ico",
+  "/api/kariyer/basvuru/route": "/api/kariyer/basvuru",
+  "/sitemap.xml/route": "/sitemap.xml",
+  "/hakkimizda/page": "/hakkimizda",
+  "/iletisim/page": "/iletisim",
+  "/hizmetlerimiz/page": "/hizmetlerimiz",
+  "/kariyer/[token]/page": "/kariyer/[token]",
+  "/kariyer/page": "/kariyer",
+  "/projeler/[slug]/page": "/projeler/[slug]",
+  "/projeler/page": "/projeler",
+  "/hizmetlerimiz/[slug]/page": "/hizmetlerimiz/[slug]",
+  "/referanslar/page": "/referanslar",
+  "/page": "/"
+}
