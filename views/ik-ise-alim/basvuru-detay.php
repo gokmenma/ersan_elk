@@ -8,13 +8,42 @@ $title = 'Başvuru Detayı';
 $donusturYetki = Gate::allows('ik_basvuru_personele_donustur');
 ?>
 <style>
-.ik-puan-halka { width: 96px; height: 96px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; border: 8px solid #e2e8f0; flex-shrink: 0; }
-.ik-puan-halka.olumlu { border-color: #34c38f; color: #1f8f68; }
-.ik-puan-halka.belirsiz { border-color: #f1b44c; color: #b07d1c; }
-.ik-puan-halka.olumsuz { border-color: #f46a6a; color: #c0392b; }
-.ik-liste { padding-left: 1.1rem; margin-bottom: 0; }
-.ik-bilgi dt { font-size: 12px; font-weight: 600; color: #74788d; margin-bottom: 0; }
-.ik-bilgi dd { margin-bottom: .6rem; white-space: pre-line; }
+.ik-puan-halka { --p: 0; --c: #94a3b8; width: 104px; height: 104px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; position: relative; background: conic-gradient(var(--c) calc(var(--p) * 1%), #e9edf3 0); }
+.ik-puan-halka::before { content: ''; position: absolute; inset: 9px; border-radius: 50%; background: var(--bs-card-bg, #fff); }
+.ik-puan-halka span { position: relative; font-size: 30px; font-weight: 800; line-height: 1; color: var(--c); }
+.ik-puan-halka small { position: relative; display: block; font-size: 10px; color: #74788d; text-align: center; margin-top: 2px; }
+.ik-puan-halka.olumlu { --c: #34c38f; }
+.ik-puan-halka.belirsiz { --c: #f1b44c; }
+.ik-puan-halka.olumsuz { --c: #f46a6a; }
+.ik-ai-kutu { border-radius: 12px; padding: 14px 16px; height: 100%; border: 1px solid transparent; }
+.ik-ai-kutu h6 { font-size: 13px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.ik-ai-kutu ul { padding-left: 1.1rem; margin: 0; font-size: 13px; }
+.ik-ai-kutu li + li { margin-top: 4px; }
+.ik-ai-kutu.guclu { background: rgba(52,195,143,.08); border-color: rgba(52,195,143,.25); }
+.ik-ai-kutu.guclu h6 { color: #1f8f68; }
+.ik-ai-kutu.zayif { background: rgba(244,106,106,.07); border-color: rgba(244,106,106,.25); }
+.ik-ai-kutu.zayif h6 { color: #c0392b; }
+.ik-ai-kutu.risk { background: rgba(241,180,76,.1); border-color: rgba(241,180,76,.3); }
+.ik-ai-kutu.risk h6 { color: #b07d1c; }
+.ik-ai-kutu.soru { background: rgba(85,110,230,.06); border-color: rgba(85,110,230,.22); }
+.ik-ai-kutu.soru h6 { color: #556ee6; }
+.ik-ozet { background: rgba(116,120,141,.07); border-radius: 10px; padding: 10px 14px; font-size: 13.5px; }
+.ik-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: rgba(116,120,141,.1); color: #495057; text-decoration: none; border: 1px solid rgba(116,120,141,.15); }
+a.ik-chip:hover { background: rgba(85,110,230,.12); color: #556ee6; }
+.ik-bilgi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
+.ik-bilgi-grid .ik-tam { grid-column: 1 / -1; }
+.ik-bilgi-oge .et { font-size: 11px; font-weight: 600; color: #74788d; text-transform: uppercase; letter-spacing: .03em; display: flex; align-items: center; gap: 4px; margin-bottom: 2px; }
+.ik-bilgi-oge .dg { font-size: 14px; font-weight: 500; white-space: pre-line; word-break: break-word; }
+.ik-zaman { position: relative; padding-left: 22px; }
+.ik-zaman::before { content: ''; position: absolute; left: 6px; top: 6px; bottom: 6px; width: 2px; background: rgba(116,120,141,.2); }
+.ik-zaman-oge { position: relative; padding-bottom: 14px; }
+.ik-zaman-oge:last-child { padding-bottom: 0; }
+.ik-zaman-oge::before { content: ''; position: absolute; left: -22px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background: var(--bs-card-bg, #fff); border: 3px solid #556ee6; }
+.ik-karar-btn { flex: 1 1 0; min-width: 0; padding: 10px 6px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 12px; font-weight: 600; line-height: 1.2; }
+.ik-karar-btn i { font-size: 20px; }
+.ik-karar-btn.aktif { box-shadow: 0 0 0 2px currentColor inset; }
+@media (min-width: 992px) { .ik-sticky { position: sticky; top: 90px; } }
+@media (max-width: 575px) { .ik-bilgi-grid { grid-template-columns: 1fr; } }
 </style>
 
 <?php include 'layouts/breadcrumb.php'; ?>
@@ -39,11 +68,16 @@ $donusturYetki = Gate::allows('ik_basvuru_personele_donustur');
         </div>
     </div>
 
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3" id="dChipler"></div>
+
     <div class="row g-3">
-        <div class="col-lg-7">
+        <div class="col-lg-8">
             <div class="card summary-kpi-card mb-3">
                 <div class="card-body">
-                    <h5 class="font-size-14 fw-bold mb-3"><i class="bx bx-cpu text-primary me-1"></i> Yapay Zekâ Ön Değerlendirmesi</h5>
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h5 class="font-size-14 fw-bold mb-0"><i class="bx bx-cpu text-primary me-1"></i> Yapay Zekâ Ön Değerlendirmesi</h5>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnAiYeniden"><i class="bx bx-refresh"></i> Yeniden değerlendir</button>
+                    </div>
                     <div id="aiAlani"></div>
                 </div>
             </div>
@@ -55,25 +89,30 @@ $donusturYetki = Gate::allows('ik_basvuru_personele_donustur');
             </div>
         </div>
 
-        <div class="col-lg-5">
-            <div class="card summary-kpi-card mb-3">
-                <div class="card-body">
-                    <h5 class="font-size-14 fw-bold mb-3"><i class="bx bx-id-card text-primary me-1"></i> Aday Bilgileri</h5>
-                    <dl class="ik-bilgi mb-0" id="adayBilgi"></dl>
-                    <div id="cvAlani" class="mt-2"></div>
-                </div>
-            </div>
-            <div class="card summary-kpi-card mb-3">
-                <div class="card-body">
-                    <h5 class="font-size-14 fw-bold mb-3"><i class="bx bx-task text-primary me-1"></i> İK Kararı</h5>
-                    <div class="d-flex flex-wrap gap-2 mb-3" id="durumButonlari">
-                        <button type="button" class="btn btn-sm btn-subtle-warning ik-durum" data-durum="gorusme"><i class="bx bx-phone-call"></i> Görüşmeye Al</button>
-                        <button type="button" class="btn btn-sm btn-subtle-success ik-durum" data-durum="olumlu"><i class="bx bx-like"></i> Olumlu</button>
-                        <button type="button" class="btn btn-sm btn-subtle-danger ik-durum" data-durum="olumsuz"><i class="bx bx-dislike"></i> Olumsuz</button>
+        <div class="col-lg-4">
+            <div class="ik-sticky">
+                <div class="card summary-kpi-card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <h5 class="font-size-14 fw-bold mb-0"><i class="bx bx-task text-primary me-1"></i> İK Kararı</h5>
+                            <span id="durumRozet"></span>
+                        </div>
+                        <div class="d-flex gap-2 mb-3" id="durumButonlari">
+                            <button type="button" class="btn btn-subtle-warning ik-durum ik-karar-btn" data-durum="gorusme"><i class="bx bx-phone-call"></i> Görüşmeye Al</button>
+                            <button type="button" class="btn btn-subtle-success ik-durum ik-karar-btn" data-durum="olumlu"><i class="bx bx-like"></i> Olumlu</button>
+                            <button type="button" class="btn btn-subtle-danger ik-durum ik-karar-btn" data-durum="olumsuz"><i class="bx bx-dislike"></i> Olumsuz</button>
+                        </div>
+                        <label class="form-label font-size-12 text-muted mb-1" for="ik_notu">İK Notu</label>
+                        <textarea class="form-control mb-2" id="ik_notu" rows="4" maxlength="3000" placeholder="Görüşme notları, değerlendirme..."></textarea>
+                        <button type="button" class="btn btn-sm btn-primary text-white" id="btnNotKaydet"><i class="bx bx-save"></i> Notu Kaydet</button>
                     </div>
-                    <label class="form-label font-size-12 text-muted mb-1" for="ik_notu">İK Notu</label>
-                    <textarea class="form-control mb-2" id="ik_notu" rows="4" maxlength="3000"></textarea>
-                    <button type="button" class="btn btn-sm btn-primary text-white" id="btnNotKaydet"><i class="bx bx-save"></i> Notu Kaydet</button>
+                </div>
+                <div class="card summary-kpi-card mb-3">
+                    <div class="card-body">
+                        <h5 class="font-size-14 fw-bold mb-3"><i class="bx bx-id-card text-primary me-1"></i> Aday Bilgileri</h5>
+                        <div class="ik-bilgi-grid" id="adayBilgi"></div>
+                        <div id="cvAlani" class="mt-3"></div>
+                    </div>
                 </div>
             </div>
         </div>

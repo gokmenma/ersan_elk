@@ -37,7 +37,7 @@ class IkBasvuruModel extends Model
 
     public function telefonVarMi(int $ilanId, string $telefon): bool
     {
-        $stmt = $this->db->prepare("SELECT 1 FROM {$this->table} WHERE ilan_id = :ilan_id AND telefon = :telefon LIMIT 1");
+        $stmt = $this->db->prepare("SELECT 1 FROM {$this->table} WHERE ilan_id = :ilan_id AND telefon = :telefon AND is_active = 1 AND deleted_at IS NULL LIMIT 1");
         $stmt->execute(['ilan_id' => $ilanId, 'telefon' => $telefon]);
         return (bool) $stmt->fetchColumn();
     }

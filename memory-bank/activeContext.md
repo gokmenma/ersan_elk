@@ -3760,3 +3760,7 @@
 - SEO: layout `generateMetadata` (başlık şablonu `%s | Site Adı`, OpenGraph/Twitter), JSON-LD LocalBusiness, `app/sitemap.ts` + `app/robots.ts` (env `SITE_URL`), Site Ayarları'nda SEO sekmesi (`seo_baslik`, `seo_aciklama`). Canlıya alma kontrol listesi: `docs/SITE_CANLIYA_ALMA.md`. SQL artık 3 birleşik dosya: `sql/2026_11_07_site_yonetimi_{SITE_DB,PERSONEL_DB,WEBSITE_DB}.sql` (ayarlar bölümü eklendi, bağımsız ayarlar betikleri kaldırıldı).
 
 - [2026-11-07] Site mesajı bildirimi artık yönetici mobil SPA `/site-mesajlar` sayfasına açılır: yeni `mobile-spa/public/api/site-mesajlar.php` (list/detail/update_status, `site_mesaj_yonetimi` yetkisi, policy SQL: `database/migrations/2026_11_07_mobile_site_mesajlar_policies.sql`), `SiteMesajlarView.vue`, `auth.php` `site_messages` yetkisi, push URL için `BildirimModel::createNotificationWithPush` `$pushUrl` parametresi. Canlıda `MOBILE_SPA_URL` tanımlı olmalı.
+
+## 2026-11-07 — İK Başvuru Detay UI/UX + Ehliyet Kuralı
+- views/ik-ise-alim/basvuru-detay.php ve js/basvuru-detay.js yeniden tasarlandı (puan halkası, renkli AI kutuları, iletişim chipleri, zaman çizelgesi, sticky karar kartı).
+- IkBasvuruAiService promptuna ehliyet hiyerarşisi (E => C/D, C/D => B) eklendi; aday verisine kapsadığı sınıflar yazılıyor.

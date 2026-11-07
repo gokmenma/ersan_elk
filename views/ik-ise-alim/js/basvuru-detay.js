@@ -11,9 +11,11 @@ $(document).ready(function () {
     };
     const durumAd = { yeni: 'Yeni', degerlendirildi: 'Değerlendirildi', gorusme: 'Görüşme', olumlu: 'Olumlu', olumsuz: 'Olumsuz', personele_donustu: 'Personele Dönüştü' };
     const etiketAd = { olumlu: 'Olumlu', belirsiz: 'Belirsiz', olumsuz: 'Olumsuz' };
-    const liste = (dizi) => dizi && dizi.length ? `<ul class="ik-liste">${dizi.map((m) => `<li>${esc(m)}</li>`).join('')}</ul>` : '<span class="text-muted">-</span>';
-
-    const bilgi = (etiket, deger) => `<dt>${esc(etiket)}</dt><dd>${deger === null || deger === undefined || deger === '' ? '<span class="text-muted">-</span>' : esc(deger)}</dd>`;
+    const durumRenk = { yeni: 'secondary', degerlendirildi: 'info', gorusme: 'warning', olumlu: 'success', olumsuz: 'danger', personele_donustu: 'primary' };
+    const liste = (dizi) => dizi && dizi.length ? `<ul>${dizi.map((m) => `<li>${esc(m)}</li>`).join('')}</ul>` : '<span class="text-muted font-size-12">Belirtilmedi.</span>';
+    const kutu = (sinif, ikon, baslik, dizi) => `<div class="col-md-6"><div class="ik-ai-kutu ${sinif}"><h6><i class="bx ${ikon}"></i> ${baslik}</h6>${liste(dizi)}</div></div>`;
+    const bilgi = (etiket, deger, ikon, tam) => `<div class="ik-bilgi-oge${tam ? ' ik-tam' : ''}"><div class="et">${ikon ? `<i class="bx ${ikon}"></i>` : ''}${esc(etiket)}</div><div class="dg">${deger === null || deger === undefined || deger === '' ? '<span class="text-muted">-</span>' : esc(deger)}</div></div>`;
+    const telSade = (t) => String(t || '').replace(/\D/g, '');
 
     const ciz = () => {
         const d = veri;
@@ -21,47 +23,61 @@ $(document).ready(function () {
         if (d.foto_var) {
             $('#dFoto').addClass('p-0').css({ width: '56px', height: '72px' }).html(`<img src="${API}?action=basvuru-foto&id=${encodeURIComponent(d.id)}" alt="Vesikalık fotoğraf" style="width:100%;height:100%;object-fit:cover" onerror="this.remove()">`);
         }
-        $('#dAlt').text(`${d.ilan_baslik} • Başvuru: ${(d.created_at || '').substring(0, 16)} • Durum: ${durumAd[d.durum] || d.durum}`);
+        $('#dAlt').text(`${d.ilan_baslik} • Başvuru: ${(d.created_at || '').substring(0, 16)}`);
+
+        const renk = durumRenk[d.durum] || 'secondary';
+        $('#durumRozet').html(`<span class="badge bg-${renk}-subtle text-${renk} border border-${renk}-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">${esc(durumAd[d.durum] || d.durum)}</span>`);
+        $('.ik-durum').removeClass('aktif').filter(`[data-durum="${d.durum}"]`).addClass('aktif');
+
+        const tel = telSade(d.telefon);
+        let chip = '';
+        if (d.telefon) chip += `<a class="ik-chip" href="tel:+${esc(tel)}"><i class="bx bx-phone"></i> ${esc(d.telefon)}</a><a class="ik-chip" target="_blank" rel="noopener" href="https://wa.me/${esc(tel)}"><i class="bx bxl-whatsapp text-success"></i> WhatsApp</a>`;
+        if (d.email) chip += `<a class="ik-chip" href="mailto:${esc(d.email)}"><i class="bx bx-envelope"></i> ${esc(d.email)}</a>`;
+        if (d.sehir) chip += `<span class="ik-chip"><i class="bx bx-map"></i> ${esc(d.sehir)}</span>`;
+        if (d.ehliyet) chip += `<span class="ik-chip"><i class="bx bx-id-card"></i> Ehliyet: ${esc(d.ehliyet)}</span>`;
+        if (d.deneyim_yili) chip += `<span class="ik-chip"><i class="bx bx-briefcase"></i> ${esc(d.deneyim_yili)} yıl deneyim</span>`;
+        if (d.maas_beklentisi) chip += `<span class="ik-chip"><i class="bx bx-lira"></i> ${esc(Number(d.maas_beklentisi).toLocaleString('tr-TR'))} ₺</span>`;
+        $('#dChipler').html(chip);
 
         let ai = '';
         if (d.ai_durum === 'tamam') {
-            ai = `<div class="d-flex gap-3 align-items-center mb-3">
-                    <div class="ik-puan-halka ${esc(d.ai_etiket)}">${esc(d.ai_puan)}</div>
-                    <div>
-                        <div class="fw-bold">${esc(etiketAd[d.ai_etiket] || '')} aday önerisi</div>
-                        <div class="text-muted font-size-12">${tarihSaat(d.ai_tarihi)} • Yalnızca öneridir, karar İK'ya aittir</div>
-                        <p class="mb-0 mt-2">${esc(d.ai_ozet)}</p>
+            const puan = Math.max(0, Math.min(100, Number(d.ai_puan) || 0));
+            ai = `<div class="d-flex gap-3 align-items-center mb-3 flex-wrap">
+                    <div class="ik-puan-halka ${esc(d.ai_etiket)}" style="--p:${puan}"><div><span>${esc(puan)}</span><small>/ 100</small></div></div>
+                    <div class="flex-grow-1" style="min-width:220px">
+                        <div class="fw-bold font-size-15">${esc(etiketAd[d.ai_etiket] || '')} aday önerisi</div>
+                        <div class="text-muted font-size-12 mb-2">${tarihSaat(d.ai_tarihi)} • Yalnızca öneridir, karar İK'ya aittir</div>
+                        <div class="ik-ozet">${esc(d.ai_ozet)}</div>
                     </div>
                   </div>
                   <div class="row g-3">
-                    <div class="col-md-6"><div class="fw-semibold text-success mb-1"><i class="bx bx-plus-circle"></i> Güçlü yönler</div>${liste(d.ai_guclu)}</div>
-                    <div class="col-md-6"><div class="fw-semibold text-danger mb-1"><i class="bx bx-minus-circle"></i> Zayıf yönler</div>${liste(d.ai_zayif)}</div>
-                    <div class="col-md-6"><div class="fw-semibold text-warning mb-1"><i class="bx bx-error"></i> Riskler / eksik bilgi</div>${liste(d.ai_riskler)}</div>
-                    <div class="col-md-6"><div class="fw-semibold text-primary mb-1"><i class="bx bx-help-circle"></i> Önerilen mülakat soruları</div>${liste(d.ai_mulakat_sorulari)}</div>
+                    ${kutu('guclu', 'bx-plus-circle', 'Güçlü yönler', d.ai_guclu)}
+                    ${kutu('zayif', 'bx-minus-circle', 'Zayıf yönler', d.ai_zayif)}
+                    ${kutu('risk', 'bx-error', 'Riskler / eksik bilgi', d.ai_riskler)}
+                    ${kutu('soru', 'bx-help-circle', 'Önerilen mülakat soruları', d.ai_mulakat_sorulari)}
                   </div>`;
         } else if (d.ai_durum === 'hata') {
-            ai = '<div class="alert alert-danger mb-2">Yapay zekâ değerlendirmesi tamamlanamadı.</div>';
+            ai = '<div class="alert alert-danger mb-0">Yapay zekâ değerlendirmesi tamamlanamadı.</div>';
         } else {
-            ai = '<div class="alert alert-info mb-2">Değerlendirme henüz tamamlanmadı.</div>';
+            ai = '<div class="alert alert-info mb-0">Değerlendirme henüz tamamlanmadı.</div>';
         }
-        ai += '<div class="mt-3"><button type="button" class="btn btn-sm btn-outline-primary" id="btnAiYeniden"><i class="bx bx-refresh"></i> Yapay zekâyla yeniden değerlendir</button></div>';
         $('#aiAlani').html(ai);
 
         let b = '';
-        b += bilgi('Telefon', d.telefon) + bilgi('E-posta', d.email) + bilgi('Şehir', d.sehir) + bilgi('Eğitim', d.egitim);
-        b += bilgi('Deneyim (yıl)', d.deneyim_yili) + bilgi('Ehliyet', d.ehliyet);
-        b += bilgi('Maaş beklentisi', d.maas_beklentisi ? Number(d.maas_beklentisi).toLocaleString('tr-TR') + ' ₺' : '');
-        b += bilgi('İşe başlama', d.ise_baslama) + bilgi('Deneyim özeti', d.deneyim_ozet);
-        Object.keys(d.cevaplar || {}).forEach((soru) => { b += bilgi(soru, d.cevaplar[soru]); });
+        b += bilgi('Eğitim', d.egitim, 'bx-book-reader') + bilgi('Deneyim (yıl)', d.deneyim_yili, 'bx-briefcase');
+        b += bilgi('Ehliyet', d.ehliyet, 'bx-id-card') + bilgi('İşe başlama', d.ise_baslama, 'bx-calendar-check');
+        b += bilgi('Maaş beklentisi', d.maas_beklentisi ? Number(d.maas_beklentisi).toLocaleString('tr-TR') + ' ₺' : '', 'bx-lira', true);
+        b += bilgi('Deneyim özeti', d.deneyim_ozet, 'bx-notepad', true);
+        Object.keys(d.cevaplar || {}).forEach((soru) => { b += bilgi(soru, d.cevaplar[soru], 'bx-message-square-detail', true); });
         $('#adayBilgi').html(b);
 
         $('#cvAlani').html(d.cv_var
-            ? `<a class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener" href="${API}?action=basvuru-cv&id=${encodeURIComponent(d.id)}"><i class="bx bx-file"></i> CV'yi Görüntüle (PDF)</a>${d.cv_metin_var ? '' : '<div class="text-warning font-size-12 mt-1">CV metni okunamadı (taranmış olabilir).</div>'}`
+            ? `<a class="btn btn-outline-secondary w-100" target="_blank" rel="noopener" href="${API}?action=basvuru-cv&id=${encodeURIComponent(d.id)}"><i class="bx bx-file"></i> CV'yi Görüntüle (PDF)</a>${d.cv_metin_var ? '' : '<div class="text-warning font-size-12 mt-1"><i class="bx bx-error"></i> CV metni okunamadı (taranmış olabilir).</div>'}`
             : '<span class="text-muted font-size-12">CV yüklenmedi.</span>');
 
         $('#ik_notu').val(d.ik_notu || '');
         $('#olaylar').html((d.olaylar || []).length
-            ? d.olaylar.map((o) => `<div class="border-bottom py-2"><span class="fw-semibold">${esc(o.olay)}</span>${o.aciklama ? ' – ' + esc(o.aciklama) : ''}<div class="text-muted font-size-12">${tarihSaat(o.created_at)}${o.kullanici ? ' • ' + esc(o.kullanici) : ''}</div></div>`).join('')
+            ? `<div class="ik-zaman">${d.olaylar.map((o) => `<div class="ik-zaman-oge"><div><span class="fw-semibold">${esc(o.olay)}</span>${o.aciklama ? ' – ' + esc(o.aciklama) : ''}</div><div class="text-muted font-size-12">${tarihSaat(o.created_at)}${o.kullanici ? ' • ' + esc(o.kullanici) : ''}</div></div>`).join('')}</div>`
             : '<span class="text-muted">Kayıt yok.</span>');
 
         const donustu = d.durum === 'personele_donustu';
@@ -82,9 +98,10 @@ $(document).ready(function () {
 
     $(document).on('click', '#btnAiYeniden', function () {
         const btn = $(this).prop('disabled', true).html('<i class="bx bx-loader bx-spin"></i> Değerlendiriliyor...');
+        $('#aiAlani').css('opacity', .5);
         $.post(API, { action: 'basvuru-ai-yeniden', id: basvuruId }, function (res) {
             if (res.status === 'success') showToast(res.message, 'success'); else Swal.fire('Hata', res.message || 'Değerlendirme yapılamadı.', 'error');
-        }, 'json').fail(() => Swal.fire('Hata', 'Değerlendirme yapılamadı.', 'error')).always(yukle);
+        }, 'json').fail(() => Swal.fire('Hata', 'Değerlendirme yapılamadı.', 'error')).always(() => { btn.prop('disabled', false).html('<i class="bx bx-refresh"></i> Yeniden değerlendir'); $('#aiAlani').css('opacity', 1); yukle(); });
     });
 
     $('.ik-durum').on('click', function () {
