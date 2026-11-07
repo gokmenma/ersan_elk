@@ -50,6 +50,7 @@ $notificationIcons = [
     'payroll' => ['mdi-credit-card-outline', 'success'],
     'kesme_acma' => ['mdi-content-cut', 'danger'],
     'ik_application' => ['mdi-account-plus-outline', 'success'],
+    'site_message' => ['mdi-email-fast-outline', 'primary'],
 ];
 $selectedRoleIds = $isEdit
     ? (new UserRoleAssignmentModel())->activeRoleIdsForUser((int) $user->id)

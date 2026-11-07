@@ -183,3 +183,9 @@ Tüm DataTables tablolarında satıra sağ tıklandığında modern floating con
 - "mobil", "mobil SPA" veya "yönetici mobil" → `mobile-spa/` (yönetici mobil SPA, Vue). Bölüm 10 ve 12 bu uygulama için geçerlidir.
 - "personel mobil" veya "personel PWA" → `views/personel-pwa/` (personel PWA).
 - Kullanıcı yalnızca "mobil" dediğinde `mobile-spa/` anlaşılacak; `views/personel-pwa/`, `mobile/` ve `ersan_rn_test` (React Native prototip worktree'si) kapsam dışıdır.
+
+## 14. Kurumsal Site (`site-next/`) Köşe Yuvarlama Standardı
+- Sitedeki tüm kartlar, butonlar, form alanları (input, textarea, select), uyarı kutuları, görsel kapsayıcıları ve görsel üzerindeki etiketler (rozet) `rounded-ui` sınıfını kullanacaktır; sabit `rounded-*` değerleri veya köşeli (yuvarlaksız) bileşen yazılmayacaktır.
+- `rounded-ui` değeri `site-next/app/globals.css` içindeki `--radius-ui` değişkeninden gelir (varsayılan `6px`). Köşe dilini değiştirmek için yalnızca bu değişken güncellenir (köşeli tasarım için `0px`).
+- Görsel kapsayıcılarında `overflow-hidden rounded-ui` birlikte kullanılır; görsel üstü etiketler köşeye yapışık değil `left-3 top-3` ile içeriden konumlanır.
+- Tam ekran Hero görseli ve logo bu kuralın dışındadır.

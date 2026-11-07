@@ -22,6 +22,7 @@ class UserNotificationPreferenceModel extends Model
     public const TYPE_PAYROLL = 'payroll';
     public const TYPE_KESME_ACMA = 'kesme_acma';
     public const TYPE_IK_APPLICATION = 'ik_application';
+    public const TYPE_SITE_MESSAGE = 'site_message';
 
     public const OPT_IN_TYPES = [self::TYPE_IK_APPLICATION];
 
@@ -42,6 +43,7 @@ class UserNotificationPreferenceModel extends Model
         self::TYPE_PAYROLL,
         self::TYPE_KESME_ACMA,
         self::TYPE_IK_APPLICATION,
+        self::TYPE_SITE_MESSAGE,
     ];
 
     public const LABELS = [
@@ -61,6 +63,7 @@ class UserNotificationPreferenceModel extends Model
         self::TYPE_PAYROLL => ['Bordro Bildirimleri', 'Ücret pusulası itirazı gibi bordro bildirimlerini alın.'],
         self::TYPE_KESME_ACMA => ['Kesme/Açma Uyarıları', 'Yönetim eşiğini aşan kesme/açma uyarıları için bildirim alın.'],
         self::TYPE_IK_APPLICATION => ['İşe Alım Başvuruları', 'Yeni aday başvurusu geldiğinde bildirim alın. Varsayılan kapalıdır; yönetici açar.'],
+        self::TYPE_SITE_MESSAGE => ['Site Mesajları', 'Kurumsal siteden yeni iletişim mesajı geldiğinde bildirim alın.'],
     ];
 
     protected $table = 'user_notification_preferences';

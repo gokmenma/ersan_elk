@@ -371,6 +371,20 @@ class UserModel extends Model
      * Yeni işe alım başvurusu için bildirim/e-posta alabilecek, başvuru listesi yetkisi olan aktif kullanıcıları getirir.
      * @param bool $sadeceMailAcik True ise yalnızca e-posta tercihi "Evet" olanlar döner
      */
+    public function getSiteMesajBildirimKullanicilari(int $firmaId = 0): array
+    {
+        $query = $this->db->prepare("SELECT * FROM $this->table WHERE durum = 'Aktif'");
+        $query->execute();
+
+        return array_values(array_filter($query->fetchAll(PDO::FETCH_OBJ), function ($u) use ($firmaId) {
+            $firmalar = array_values(array_filter(array_map('trim', explode(',', (string) ($u->firma_ids ?? ''))), 'strlen'));
+            if ($firmaId > 0 && $firmalar && !in_array((string) $firmaId, $firmalar, true)) {
+                return false;
+            }
+            return $this->hasUserPermission($u, 'site-yonetimi/mesajlar');
+        }));
+    }
+
     public function getIkBasvuruBildirimKullanicilari(int $firmaId, bool $sadeceMailAcik = false): array
     {
         $sql = "SELECT * FROM $this->table WHERE durum = 'Aktif'";

@@ -171,6 +171,7 @@ if ($page == "hakedisler/hakedis-detay") {
     $page == "personel/performans-raporu" || $page == "arac-takip/arac-performans" ||
     strpos($page, "cari/") === 0 ||
     ($page !== "ik-ise-alim/dashboard" && strpos($page, "ik-ise-alim/") === 0) ||
+    strpos($page, "site-yonetimi/") === 0 ||
     $page == "formlar/list" || $page == "formlar/manage" ||
     $page == "yardim/list" || $page == "yardim/user-list" ||
     $page == "bildirim/list" ||

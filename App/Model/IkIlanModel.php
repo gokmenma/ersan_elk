@@ -62,6 +62,18 @@ class IkIlanModel extends Model
         return (string) Security::decrypt((string) $ilan->token_sifreli);
     }
 
+    public function yayindakiListe(int $firmaId): array
+    {
+        $stmt = $this->db->prepare("SELECT id, baslik, departman, gorev, calisma_yeri, aciklama, aranan_nitelikler, token_sifreli, created_at
+            FROM {$this->table}
+            WHERE firma_id = :firma_id AND is_active = 1 AND deleted_at IS NULL
+              AND durum = 'yayinda'
+              AND (gecerlilik_tarihi IS NULL OR gecerlilik_tarihi > NOW())
+            ORDER BY created_at DESC");
+        $stmt->execute(['firma_id' => $firmaId]);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
     public function aktifListe(int $firmaId): array
     {
         $stmt = $this->db->prepare("SELECT id, baslik FROM {$this->table}

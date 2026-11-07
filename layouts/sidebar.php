@@ -21,12 +21,89 @@ $activeMenuIds = $Menus->getActiveMenuIds($currentMenu);
 $favoriteMenuIds = $Menus->getFavoriteMenuIds($currentUserId);
 $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
 
+$sectionConfig = [
+    'Site Yönetimi' => ['key' => 'site-yonetimi', 'icon' => 'globe', 'desc' => 'Kurumsal web sitesi'],
+];
+$sectionPanels = [];
+$activeSectionKey = '';
+foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
+    if (empty($menu_data[$sectionGroup])) {
+        continue;
+    }
+    $sectionItems = [];
+    $sectionIds = [];
+    $sectionIcon = $sectionCfg['icon'];
+    foreach ($menu_data[$sectionGroup] as $sectionMenu) {
+        if (isset($sectionMenu->is_menu) && $sectionMenu->is_menu == 0) {
+            continue;
+        }
+        $sectionIds[] = (int) $sectionMenu->id;
+        if (!empty($sectionMenu->menu_icon)) {
+            $sectionIcon = $sectionMenu->menu_icon;
+        }
+        if (!empty($sectionMenu->children)) {
+            foreach ($sectionMenu->children as $sectionSub) {
+                $sectionIds[] = (int) $sectionSub->id;
+                if (isset($sectionSub->is_menu) && $sectionSub->is_menu == 0) {
+                    continue;
+                }
+                if (!empty($sectionSub->menu_link) && !$Menus->userCanAccessMenuLink($currentUserId, $sectionSub->menu_link)) {
+                    continue;
+                }
+                $sectionItems[] = $sectionSub;
+            }
+        } elseif (!empty($sectionMenu->menu_link) && $Menus->userCanAccessMenuLink($currentUserId, $sectionMenu->menu_link)) {
+            $sectionItems[] = $sectionMenu;
+        }
+    }
+    if (empty($sectionItems)) {
+        unset($menu_data[$sectionGroup]);
+        continue;
+    }
+    $sectionActive = (bool) array_intersect($sectionIds, array_map('intval', $activeMenuIds));
+    if ($sectionActive) {
+        $activeSectionKey = $sectionCfg['key'];
+    }
+    $sectionStub = (object) [
+        'id' => $sectionIds[0],
+        'menu_name' => $sectionGroup,
+        'menu_icon' => $sectionIcon,
+        'menu_link' => '',
+        'is_menu' => 1,
+        'is_section' => true,
+        'section_key' => $sectionCfg['key'],
+        'section_home' => $sectionItems[0]->menu_link,
+        'section_active' => $sectionActive,
+        'children' => [],
+    ];
+    $menu_data[$sectionGroup] = [$sectionStub];
+    $sectionPanels[$sectionGroup] = [
+        'key' => $sectionCfg['key'],
+        'icon' => $sectionIcon,
+        'desc' => $sectionCfg['desc'],
+        'items' => $sectionItems,
+        'active' => $sectionActive,
+    ];
+}
+
 ?>
 
 <div class="vertical-menu" id="navbar">
     <canvas id="sidebar-particles-canvas" class="sidebar-particles-canvas" style="display: none;"></canvas>
 
     <style>
+        #side-menu .section-panel { display: none !important; }
+        #side-menu .section-panel.is-open { display: block !important; }
+        #side-menu.in-section-mode .menu-section:not(.section-panel) { display: none !important; }
+        #side-menu .section-entry > a { position: relative; }
+        #side-menu .section-entry > a::after { content: ''; position: absolute; right: 16px; top: 50%; width: 7px; height: 7px; margin-top: -5px; border-right: 2px solid currentColor; border-top: 2px solid currentColor; transform: rotate(45deg); opacity: .55; }
+        #side-menu .section-panel-head { padding: 6px 10px 12px; }
+        #side-menu .section-back-btn { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 36px; background: transparent; border: 0; color: var(--sidebar-foreground); opacity: .8; font-size: 12px; font-weight: 600; padding: 6px 10px; border-radius: 8px; text-align: left; cursor: pointer; transition: opacity .15s ease, background .15s ease; }
+        #side-menu .section-back-btn:hover, #side-menu .section-back-btn:focus-visible { opacity: 1; background: rgba(127, 127, 127, .16); outline: none; }
+        #side-menu .section-panel-title { display: flex; align-items: center; gap: 10px; padding: 10px 10px 0; font-size: 15px; font-weight: 700; color: #f1f5f9; }
+        #side-menu .section-panel-title i, #side-menu .section-panel-title svg { width: 18px; height: 18px; }
+        #side-menu .section-panel-desc { padding: 2px 10px 0 38px; font-size: 11px; opacity: .6; color: var(--sidebar-foreground); }
+
         /* Sidebar Parçacık Ağı Tuvali */
         .sidebar-particles-canvas {
             position: absolute !important;
@@ -1797,7 +1874,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                 <div id="sidebar-menu">
 
                     <!-- Left Menu Start -->
-                    <div id="side-menu" class="side-menu-container">
+                    <div id="side-menu" class="side-menu-container<?php echo $activeSectionKey !== '' ? ' in-section-mode' : ''; ?>" data-active-section="<?php echo htmlspecialchars($activeSectionKey, ENT_QUOTES, 'UTF-8'); ?>">
 
                 <?php foreach ($menu_data as $group_name => $menus): ?>
 
@@ -1817,6 +1894,19 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                         <ul class="metismenu menu-items-list list-unstyled" data-group-name="<?php echo htmlspecialchars($group_name); ?>">
                             <?php foreach ($menus as $menu): ?>
                                 <?php
+                                if (!empty($menu->is_section)) {
+                                    ?>
+                                    <li class="<?php echo !empty($menu->section_active) ? 'mm-active' : ''; ?> menu-item-draggable section-entry" data-menu-id="<?php echo (int) $menu->id; ?>">
+                                        <a href="<?php echo Route::Link($menu->section_home); ?>" class="waves-effect <?php echo !empty($menu->section_active) ? 'active' : ''; ?>" aria-label="<?php echo htmlspecialchars($menu->menu_name, ENT_QUOTES, 'UTF-8'); ?> ana sayfası">
+                                            <?php if (!empty($menu->menu_icon)): ?>
+                                                <i data-feather="<?php echo htmlspecialchars($menu->menu_icon, ENT_QUOTES, 'UTF-8'); ?>"></i>
+                                            <?php endif; ?>
+                                            <span class="menu-name"><?php echo htmlspecialchars($menu->menu_name, ENT_QUOTES, 'UTF-8'); ?></span>
+                                        </a>
+                                    </li>
+                                    <?php
+                                    continue;
+                                }
                                 if (isset($menu->is_menu) && $menu->is_menu == 0)
                                     continue;
 
@@ -1882,6 +1972,42 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                         </ul>
                     </div>
 
+                <?php endforeach; ?>
+
+                <?php foreach ($sectionPanels as $panelGroup => $panel): ?>
+                    <div class="menu-section section-panel<?php echo $activeSectionKey === $panel['key'] ? ' is-open' : ''; ?>" data-section-key="<?php echo htmlspecialchars($panel['key'], ENT_QUOTES, 'UTF-8'); ?>" data-group-name="<?php echo htmlspecialchars($panelGroup, ENT_QUOTES, 'UTF-8'); ?>">
+                        <div class="section-panel-head">
+                            <button type="button" class="section-back-btn" data-close-section>
+                                <i data-feather="chevron-left" style="width: 14px; height: 14px;"></i> Ana Menü
+                            </button>
+                            <div class="section-panel-title">
+                                <i data-feather="<?php echo htmlspecialchars($panel['icon'], ENT_QUOTES, 'UTF-8'); ?>"></i>
+                                <span><?php echo htmlspecialchars($panelGroup, ENT_QUOTES, 'UTF-8'); ?></span>
+                            </div>
+                            <div class="section-panel-desc"><?php echo htmlspecialchars($panel['desc'], ENT_QUOTES, 'UTF-8'); ?></div>
+                        </div>
+                        <ul class="menu-items-list list-unstyled" data-group-name="<?php echo htmlspecialchars($panelGroup, ENT_QUOTES, 'UTF-8'); ?>">
+                            <?php foreach ($panel['items'] as $panelItem): ?>
+                                <?php
+                                $isPanelActive = in_array((int) $panelItem->id, $activeMenuIds) || ($currentPath !== '' && $panelItem->menu_link === $currentPath);
+                                $isPanelFav = in_array((int) $panelItem->id, $favoriteMenuIds);
+                                ?>
+                                <li class="<?php echo $isPanelActive ? 'mm-active' : ''; ?>" data-menu-id="<?php echo (int) $panelItem->id; ?>">
+                                    <a href="<?php echo Route::Link($panelItem->menu_link); ?>" class="waves-effect <?php echo $isPanelActive ? 'active' : ''; ?>">
+                                        <?php if (!empty($panelItem->menu_icon)): ?>
+                                            <i data-feather="<?php echo htmlspecialchars($panelItem->menu_icon, ENT_QUOTES, 'UTF-8'); ?>"></i>
+                                        <?php endif; ?>
+                                        <span class="menu-name"><?php echo htmlspecialchars($panelItem->menu_name, ENT_QUOTES, 'UTF-8'); ?></span>
+                                    </a>
+                                    <div class="star-btn <?php echo $isPanelFav ? 'active' : ''; ?>"
+                                         data-id="<?php echo (int) $panelItem->id; ?>"
+                                         title="<?php echo $isPanelFav ? 'Favorilerden Kaldır' : 'Favorilere Ekle'; ?>">
+                                        <i class="<?php echo $isPanelFav ? 'fas' : 'far'; ?> fa-star" style="font-size: 11px;"></i>
+                                    </div>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
                 <?php endforeach; ?>
 
             </div>
@@ -2152,6 +2278,32 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
             });
         }
 
+        // Bölüm paneli (ikinci sidebar) geçişi
+        function setSidebarSection(key) {
+            if (!sideMenu) return;
+            const panels = sideMenu.querySelectorAll('.section-panel');
+            panels.forEach(function (panel) {
+                panel.classList.toggle('is-open', key !== '' && panel.getAttribute('data-section-key') === key);
+            });
+            sideMenu.classList.toggle('in-section-mode', key !== '');
+            sideMenu.setAttribute('data-active-section', key);
+            if (searchInput && searchInput.value !== '') {
+                searchInput.value = '';
+                searchInput.dispatchEvent(new Event('input'));
+            }
+            const scrollEl = document.querySelector('.vertical-menu .simplebar-content-wrapper');
+            if (scrollEl) scrollEl.scrollTop = 0;
+            if (typeof feather !== 'undefined') feather.replace();
+        }
+        if (sideMenu) {
+            sideMenu.addEventListener('click', function (e) {
+                if (e.target.closest('[data-close-section]')) {
+                    e.preventDefault();
+                    setSidebarSection('');
+                }
+            });
+        }
+
         // 2. SortableJS ile Sürükle-Bırak Menü Sıralaması
         function initMenuSortables() {
             if (typeof Sortable === 'undefined' || !sideMenu) return;
@@ -2162,7 +2314,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
             new Sortable(sideMenu, {
                 animation: 200,
                 handle: '.menu-title',
-                draggable: '.menu-section',
+                draggable: '.menu-section:not(.section-panel)',
                 ghostClass: 'sortable-ghost-group',
                 chosenClass: 'sortable-chosen-group',
                 dragClass: 'sortable-drag-group',
@@ -2234,7 +2386,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
             const menus = {};
             const submenus = {};
 
-            document.querySelectorAll('#side-menu .menu-section').forEach(function(section) {
+            document.querySelectorAll('#side-menu .menu-section:not(.section-panel)').forEach(function(section) {
                 const groupName = section.getAttribute('data-group-name');
                 if (!groupName) return;
                 groups.push(groupName);

@@ -200,6 +200,21 @@ class SystemLogModel extends Model
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
+    public function getRecentByActionType(string $actionType, int $firmaId, int $limit = 8): array
+    {
+        $stmt = $this->db->prepare("SELECT l.description, l.created_at, u.adi_soyadi
+                FROM {$this->table} l
+                LEFT JOIN users u ON l.user_id = u.id
+                WHERE l.firma_id = :firma_id AND l.action_type = :action_type
+                ORDER BY l.created_at DESC, l.id DESC
+                LIMIT :limit");
+        $stmt->bindValue(':firma_id', $firmaId, PDO::PARAM_INT);
+        $stmt->bindValue(':action_type', $actionType, PDO::PARAM_STR);
+        $stmt->bindValue(':limit', max(1, min(50, $limit)), PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
 
     /**
      * Get all logs with filtering

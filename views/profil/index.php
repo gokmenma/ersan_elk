@@ -40,6 +40,7 @@ $notificationOptions = [
     UserNotificationPreferenceModel::TYPE_PAYROLL => ['Bordro Bildirimleri', 'Ücret pusulası itirazı gibi bordro bildirimlerini alın.', 'credit-card', 'text-success'],
     UserNotificationPreferenceModel::TYPE_KESME_ACMA => ['Kesme/Açma Uyarıları', 'Yönetim eşiğini aşan kesme/açma uyarıları için bildirim alın.', 'scissors', 'text-danger'],
     UserNotificationPreferenceModel::TYPE_IK_APPLICATION => ['İşe Alım Başvuruları', 'Yeni aday başvurusu geldiğinde bildirim alın. Yönetici izin verdiyse kullanılabilir.', 'user-plus', 'text-success'],
+    UserNotificationPreferenceModel::TYPE_SITE_MESSAGE => ['Site Mesajları', 'Kurumsal siteden yeni iletişim mesajı geldiğinde bildirim alın.', 'mail', 'text-primary'],
 ];
 ?>
 
