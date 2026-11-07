@@ -7,6 +7,8 @@ $maintitle = 'İşe Alım';
 $title = 'Başvuru Detayı';
 $donusturYetki = Gate::allows('ik_basvuru_personele_donustur');
 $mulakatYetki = Gate::allows('ik_basvuru_mulakat');
+$bildirimYetki = Gate::allows('ik_basvuru_aday_bildirim');
+$bildirimSablonOptions = ['gorusme' => 'Görüşmeye davet', 'olumlu' => 'Olumlu dönüş', 'olumsuz' => 'Olumsuz dönüş', 'serbest' => 'Serbest mesaj'];
 $mulakatTurOptions = ['yuz_yuze' => 'Yüz yüze', 'telefon' => 'Telefon', 'online' => 'Online'];
 $mulakatSonucOptions = ['beklemede' => 'Beklemede', 'olumlu' => 'Olumlu', 'olumsuz' => 'Olumsuz'];
 $mulakatPuanOptions = ['' => 'Puan verilmedi', '1' => '1 - Çok zayıf', '2' => '2 - Zayıf', '3' => '3 - Orta', '4' => '4 - İyi', '5' => '5 - Çok iyi'];
@@ -128,7 +130,12 @@ a.ik-chip:hover { background: rgba(85,110,230,.12); color: #556ee6; }
                         </div>
                         <label class="form-label font-size-12 text-muted mb-1" for="ik_notu">İK Notu</label>
                         <textarea class="form-control mb-2" id="ik_notu" rows="4" maxlength="3000" placeholder="Görüşme notları, değerlendirme..."></textarea>
-                        <button type="button" class="btn btn-sm btn-primary text-white" id="btnNotKaydet"><i class="bx bx-save"></i> Notu Kaydet</button>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="button" class="btn btn-sm btn-primary text-white" id="btnNotKaydet"><i class="bx bx-save"></i> Notu Kaydet</button>
+                            <?php if ($bildirimYetki): ?>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnAdayaBildir"><i class="bx bx-send"></i> Adaya Bildir</button>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
                 <div class="card summary-kpi-card mb-3">
@@ -212,5 +219,33 @@ a.ik-chip:hover { background: rgba(85,110,230,.12); color: #556ee6; }
 </div>
 <?php endif; ?>
 
+<?php if ($bildirimYetki): ?>
+<div class="modal fade" id="bildirimModal" tabindex="-1" aria-labelledby="bildirimModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                <h5 class="modal-title fw-bold" id="bildirimModalLabel"><i class="bx bx-send text-primary me-1"></i> Adaya Bildir</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body px-4">
+                <p class="text-muted font-size-13 mb-3">Mesaj kendiliğinden gönderilmez. Metni gözden geçirip düzenleyin, ardından kanalı seçin. Kritik kararlarda yapay zekâ puanı veya gerekçesi adayla paylaşılmamalıdır.</p>
+                <div class="row g-3">
+                    <div class="col-md-5"><?= Form::FormSelect2("bildirim_sablon", $bildirimSablonOptions, "olumlu", "Mesaj Şablonu", "bx bx-message-detail") ?></div>
+                    <div class="col-md-7"><?= Form::FormFloatInput("text", "bildirim_konu", "", "E-posta konusu", "E-posta Konusu", "bx bx-envelope", "form-control", false, 190, "off") ?></div>
+                    <div class="col-12"><?= Form::FormFloatTextarea("bildirim_mesaj", "", "Mesaj", "Mesaj", "bx bx-chat", "form-control", false, "220px", 10, 'maxlength="3000"') ?></div>
+                </div>
+                <div class="d-flex flex-wrap gap-3 font-size-12 text-muted mt-3" id="bildirimAlici"></div>
+            </div>
+            <div class="modal-footer border-top-0 px-4 pb-4">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="button" class="btn btn-success text-white" id="btnBildirimWhatsapp"><i class="bx bxl-whatsapp"></i> WhatsApp'ta Aç</button>
+                <button type="button" class="btn btn-primary text-white" id="btnBildirimEposta"><i class="bx bx-envelope"></i> E-posta Gönder</button>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+<script>window.IK_BILDIRIM_YETKI = <?= $bildirimYetki ? 'true' : 'false' ?>;</script>
 <script>window.IK_MULAKAT_YETKI = <?= $mulakatYetki ? 'true' : 'false' ?>;</script>
 <script src="views/ik-ise-alim/js/basvuru-detay.js?v=<?php echo time(); ?>"></script>

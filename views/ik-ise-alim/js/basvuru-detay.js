@@ -194,6 +194,68 @@ $(document).ready(function () {
         });
     }
 
+    if (window.IK_BILDIRIM_YETKI) {
+        $('#bildirimModal .select2').select2({ dropdownParent: $('#bildirimModal'), width: '100%', minimumResultsForSearch: Infinity });
+
+        const waNo = (t) => {
+            let n = String(t || '').replace(/\D/g, '');
+            if (n.startsWith('00')) n = n.substring(2);
+            if (n.startsWith('0')) n = '90' + n.substring(1);
+            else if (n.length === 10) n = '90' + n;
+            return n;
+        };
+
+        const sablonYukle = (sablon) => {
+            $.post(API, { action: 'aday-bildirim-hazirla', id: basvuruId, sablon: sablon }, function (res) {
+                if (res.status === 'success') { $('#bildirim_konu').val(res.konu); $('#bildirim_mesaj').val(res.mesaj); }
+                else Swal.fire('Hata', res.message || 'Şablon alınamadı.', 'error');
+            }, 'json').fail(() => Swal.fire('Hata', 'Şablon alınamadı.', 'error'));
+        };
+
+        const bildirimAc = (sablon) => {
+            $('#bildirim_sablon').val(sablon).trigger('change.select2');
+            const eposta = veri.email, tel = waNo(veri.telefon);
+            $('#btnBildirimEposta').prop('disabled', !eposta);
+            $('#btnBildirimWhatsapp').prop('disabled', !tel);
+            $('#bildirimAlici').html(`<span><i class="bx bx-envelope"></i> ${eposta ? esc(eposta) : 'E-posta yok'}</span><span><i class="bx bx-phone"></i> ${tel ? esc(veri.telefon) : 'Telefon yok'}</span>`);
+            sablonYukle(sablon);
+            $('#bildirimModal').modal('show');
+        };
+
+        $('#btnAdayaBildir').on('click', () => {
+            const varsayilan = { gorusme: 'gorusme', olumlu: 'olumlu', olumsuz: 'olumsuz' }[veri.durum] || 'serbest';
+            bildirimAc(varsayilan);
+        });
+        $('#bildirim_sablon').on('change', function () { if ($('#bildirimModal').hasClass('show')) sablonYukle($(this).val()); });
+
+        const gonder = (kanal) => {
+            const mesaj = $('#bildirim_mesaj').val(), konu = $('#bildirim_konu').val();
+            const gonderIslem = () => {
+                const waPencere = kanal === 'whatsapp' ? window.open('about:blank', '_blank') : null;
+                $('#btnBildirimEposta, #btnBildirimWhatsapp').prop('disabled', true);
+                $.post(API, { action: 'aday-bildirim-gonder', id: basvuruId, kanal: kanal, sablon: $('#bildirim_sablon').val(), konu: konu, mesaj: mesaj }, function (res) {
+                    if (res.status === 'success') {
+                        if (waPencere) waPencere.location.href = 'https://wa.me/' + waNo(veri.telefon) + '?text=' + encodeURIComponent(mesaj);
+                        $('#bildirimModal').modal('hide');
+                        showToast(res.message, 'success');
+                        yukle();
+                    } else {
+                        if (waPencere) waPencere.close();
+                        Swal.fire('Hata', res.message || 'Bildirim gönderilemedi.', 'error');
+                    }
+                }, 'json').fail(() => { if (waPencere) waPencere.close(); Swal.fire('Hata', 'Bildirim gönderilemedi.', 'error'); })
+                    .always(() => { $('#btnBildirimEposta').prop('disabled', !veri.email); $('#btnBildirimWhatsapp').prop('disabled', !waNo(veri.telefon)); });
+            };
+            if (/\[[^\]]+\]/.test(mesaj)) {
+                Swal.fire({ title: 'Doldurulmamış alan var', text: 'Mesajda köşeli parantezli bir alan kaldı (örn. [tarih ve saat]). Yine de gönderilsin mi?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yine de gönder', cancelButtonText: 'Düzenle' }).then((r) => { if (r.isConfirmed) gonderIslem(); });
+            } else gonderIslem();
+        };
+        $('#btnBildirimEposta').on('click', () => gonder('eposta'));
+        $('#btnBildirimWhatsapp').on('click', () => gonder('whatsapp'));
+
+        window.ikBildirimAc = bildirimAc;
+    }
+
     yukle();
 
     $(document).on('click', '#btnAiYeniden', function () {
@@ -205,9 +267,14 @@ $(document).ready(function () {
     });
 
     $('.ik-durum').on('click', function () {
-        $.post(API, { action: 'basvuru-durum', id: basvuruId, durum: $(this).data('durum') }, function (res) {
-            if (res.status === 'success') { showToast(res.message, 'success'); yukle(); }
-            else Swal.fire('Hata', res.message || 'Durum güncellenemedi.', 'error');
+        const btnDurum = $(this).data('durum');
+        $.post(API, { action: 'basvuru-durum', id: basvuruId, durum: btnDurum }, function (res) {
+            if (res.status === 'success') {
+                showToast(res.message, 'success');
+                const durum = btnDurum;
+                yukle();
+                if (res.degisti && window.IK_BILDIRIM_YETKI && window.ikBildirimAc && ['gorusme', 'olumlu', 'olumsuz'].includes(durum)) setTimeout(() => window.ikBildirimAc(durum), 400);
+            } else Swal.fire('Hata', res.message || 'Durum güncellenemedi.', 'error');
         }, 'json');
     });
 

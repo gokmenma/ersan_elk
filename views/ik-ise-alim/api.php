@@ -6,11 +6,13 @@ require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 use App\Helper\Security;
 use App\Model\IkBasvuruModel;
+use App\Model\IkAdayBildirimModel;
 use App\Model\IkIlanModel;
 use App\Model\IkMulakatModel;
 use App\Model\PermissionPolicyModel;
 use App\Model\SystemLogModel;
 use App\Service\Gate;
+use App\Service\IkAdayBildirimService;
 use App\Service\IkBasvuruAiService;
 use App\Service\IkBasvuruDonusturService;
 
@@ -34,6 +36,8 @@ $ikActions = [
     'basvuru-sil' => 'ik_basvuru_listesi',
     'mulakat-kaydet' => 'ik_basvuru_mulakat',
     'mulakat-sil' => 'ik_basvuru_mulakat',
+    'aday-bildirim-hazirla' => 'ik_basvuru_aday_bildirim',
+    'aday-bildirim-gonder' => 'ik_basvuru_aday_bildirim',
     'personele-donustur' => 'ik_basvuru_personele_donustur',
 ];
 
@@ -66,6 +70,7 @@ $userId = (int) ($_SESSION['user_id'] ?? 0);
 $Ilan = new IkIlanModel();
 $Basvuru = new IkBasvuruModel();
 $Mulakat = new IkMulakatModel();
+$AdayBildirim = new IkAdayBildirimModel();
 $Log = new SystemLogModel();
 
 $idCoz = static fn(string $alan): int => (int) Security::decrypt((string) ($_POST[$alan] ?? $_GET[$alan] ?? ''));
@@ -210,7 +215,16 @@ try {
                     ];
                 }
             }
+            $bildirimYetki = Gate::allows('ik_basvuru_aday_bildirim');
+            $bildirimler = [];
+            if ($bildirimYetki) {
+                foreach ($AdayBildirim->listele((int) $b->id, $firmaId) as $bl) {
+                    $bildirimler[] = ['kanal' => $bl->kanal, 'sablon' => $bl->sablon, 'durum' => $bl->durum, 'created_at' => $bl->created_at, 'kullanici' => $bl->kullanici];
+                }
+            }
             $cevap(['status' => 'success', 'data' => [
+                'bildirim_yetki' => $bildirimYetki,
+                'bildirimler' => $bildirimler,
                 'mulakat_yetki' => $mulakatYetki,
                 'mulakatlar' => $mulakatlar,
                 'guncel' => $guncel,
@@ -250,12 +264,22 @@ try {
         case 'basvuru-durum':
             $id = $idCoz('id');
             $durum = (string) ($_POST['durum'] ?? '');
+            $mevcutBasvuru = $Basvuru->bul($id, $firmaId);
+            if (!$mevcutBasvuru) {
+                $cevap(['status' => 'error', 'message' => 'Başvuru bulunamadı.'], 404);
+            }
+            if ($mevcutBasvuru->durum === 'personele_donustu') {
+                $cevap(['status' => 'error', 'message' => 'Personele dönüşmüş başvurunun durumu değiştirilemez.']);
+            }
+            if ($mevcutBasvuru->durum === $durum && isset(IkBasvuruModel::DURUMLAR[$durum])) {
+                $cevap(['status' => 'success', 'message' => 'Başvuru zaten bu durumda.', 'degisti' => false]);
+            }
             if (!$Basvuru->durumGuncelle($id, $firmaId, $durum)) {
                 $cevap(['status' => 'error', 'message' => 'Durum güncellenemedi.']);
             }
             $Basvuru->olayEkle($firmaId, $id, $userId, 'Durum değişti', IkBasvuruModel::DURUMLAR[$durum] ?? $durum);
             $Log->logAction($userId, 'İşe Alım Başvurusu', 'Başvuru durumu değişti (Başvuru ID: ' . $id . ') → ' . $durum, SystemLogModel::LEVEL_INFO);
-            $cevap(['status' => 'success', 'message' => 'Durum güncellendi.']);
+            $cevap(['status' => 'success', 'message' => 'Durum güncellendi.', 'degisti' => true]);
 
         case 'basvuru-not':
             $id = $idCoz('id');
@@ -458,6 +482,71 @@ try {
             $Basvuru->olayEkle($firmaId, (int) $m->basvuru_id, $userId, 'Mülakat kaydı silindi', date('d.m.Y H:i', strtotime((string) $m->mulakat_tarihi)));
             $Log->logAction($userId, 'İşe Alım Başvurusu', 'Mülakat kaydı silindi (Mülakat ID: ' . $mulakatId . ')', SystemLogModel::LEVEL_IMPORTANT);
             $cevap(['status' => 'success', 'message' => 'Mülakat kaydı silindi.']);
+
+        case 'aday-bildirim-hazirla':
+            $b = $Basvuru->bul($idCoz('id'), $firmaId);
+            if (!$b) {
+                $cevap(['status' => 'error', 'message' => 'Başvuru bulunamadı.'], 404);
+            }
+            $sablon = (string) ($_POST['sablon'] ?? '');
+            if (!isset(IkAdayBildirimService::SABLONLAR[$sablon])) {
+                $cevap(['status' => 'error', 'message' => 'Şablon geçersiz.']);
+            }
+            $mulakatTarihi = null;
+            if ($sablon === 'gorusme' && Gate::allows('ik_basvuru_mulakat')) {
+                foreach ($Mulakat->listele((int) $b->id, $firmaId) as $m) {
+                    if (strtotime((string) $m->mulakat_tarihi) > time()) {
+                        $mulakatTarihi = (string) $m->mulakat_tarihi;
+                        break;
+                    }
+                }
+            }
+            [$konu, $mesaj] = IkAdayBildirimService::hazirla($sablon, (string) $b->ad_soyad, (string) $b->ilan_baslik, (string) $Ilan->firmaAdi($firmaId), $mulakatTarihi);
+            $cevap(['status' => 'success', 'konu' => $konu, 'mesaj' => $mesaj]);
+
+        case 'aday-bildirim-gonder':
+            $basvuruId = $idCoz('id');
+            $b = $Basvuru->bul($basvuruId, $firmaId);
+            if (!$b) {
+                $cevap(['status' => 'error', 'message' => 'Başvuru bulunamadı.'], 404);
+            }
+            $kanal = (string) ($_POST['kanal'] ?? '');
+            $sablon = (string) ($_POST['sablon'] ?? '');
+            if (!in_array($kanal, ['eposta', 'whatsapp'], true) || !isset(IkAdayBildirimService::SABLONLAR[$sablon])) {
+                $cevap(['status' => 'error', 'message' => 'Kanal veya şablon geçersiz.']);
+            }
+            $konu = $metin('konu', 190);
+            $mesaj = $metin('mesaj', 3000);
+            if ($mesaj === '' || ($kanal === 'eposta' && $konu === '')) {
+                $cevap(['status' => 'error', 'message' => 'Konu ve mesaj boş olamaz.']);
+            }
+            $kayit = ['firma_id' => $firmaId, 'basvuru_id' => $basvuruId, 'kanal' => $kanal, 'sablon' => $sablon, 'konu' => $konu !== '' ? $konu : null, 'mesaj' => $mesaj, 'kullanici_id' => $userId];
+
+            if ($kanal === 'eposta') {
+                $alici = trim((string) $b->email);
+                if ($alici === '' || !filter_var($alici, FILTER_VALIDATE_EMAIL)) {
+                    $cevap(['status' => 'error', 'message' => 'Adayın geçerli bir e-posta adresi yok.']);
+                }
+                $basarili = false;
+                try {
+                    $basarili = IkAdayBildirimService::epostaGonder($alici, $konu, $mesaj, $firmaId);
+                } catch (Throwable $e) {
+                    error_log('İK aday e-postası gönderilemedi: ' . $e->getMessage());
+                }
+                $AdayBildirim->ekle($kayit + ['alici' => $alici, 'durum' => $basarili ? 'gonderildi' : 'hata']);
+                if (!$basarili) {
+                    $Log->logAction($userId, 'İşe Alım Başvurusu', 'Adaya e-posta gönderilemedi (Başvuru ID: ' . $basvuruId . ')', SystemLogModel::LEVEL_WARNING);
+                    $cevap(['status' => 'error', 'message' => 'E-posta gönderilemedi. Lütfen daha sonra tekrar deneyin.']);
+                }
+                $Basvuru->olayEkle($firmaId, $basvuruId, $userId, 'Adaya e-posta gönderildi', IkAdayBildirimService::SABLONLAR[$sablon]);
+                $Log->logAction($userId, 'İşe Alım Başvurusu', 'Adaya e-posta ile karar bildirildi (Başvuru ID: ' . $basvuruId . ', şablon: ' . $sablon . ')', SystemLogModel::LEVEL_IMPORTANT);
+                $cevap(['status' => 'success', 'message' => 'E-posta gönderildi.']);
+            }
+
+            $AdayBildirim->ekle($kayit + ['alici' => (string) $b->telefon, 'durum' => 'whatsapp_acildi']);
+            $Basvuru->olayEkle($firmaId, $basvuruId, $userId, 'Adaya WhatsApp mesajı hazırlandı', IkAdayBildirimService::SABLONLAR[$sablon]);
+            $Log->logAction($userId, 'İşe Alım Başvurusu', 'Adaya WhatsApp ile karar bildirimi açıldı (Başvuru ID: ' . $basvuruId . ', şablon: ' . $sablon . ')', SystemLogModel::LEVEL_IMPORTANT);
+            $cevap(['status' => 'success', 'message' => 'WhatsApp mesajı kaydedildi.']);
 
         case 'personele-donustur':
             $b = $Basvuru->bul($idCoz('id'), $firmaId);

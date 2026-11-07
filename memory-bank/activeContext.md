@@ -3769,3 +3769,8 @@
 - sql/2026_11_07_ik_basvuru_mulakat.sql: ik_basvuru_mulakatlari, ik_basvuru_bilgi_guncellemeleri, ik_basvuru_mulakat yetkisi + mulakat-kaydet/mulakat-sil politikaları (superadmin rollerine otomatik atama).
 - App/Model/IkMulakatModel.php; api.php mulakat-kaydet/mulakat-sil; basvuru-detay mülakat kartı + modal. Orijinal başvuru verisi korunur, düzeltmeler append-only log (alan, eski, yeni); AI yeniden değerlendirme ve personele dönüştürme güncel değerleri kullanır.
 - Bekleyen: SQL scriptinin çalıştırılması, Yetki Kataloğu/Yetki Grubu ekranında görünürlük doğrulaması, AI puan sürüm geçmişi (aşama 4).
+
+## 2026-11-07 — Adaya Karar Bildirimi
+- sql/2026_11_07_ik_aday_bildirim.sql (ik_basvuru_bildirimleri, ik_basvuru_aday_bildirim yetkisi, aday-bildirim-hazirla/gonder politikaları); IkAdayBildirimService/Model; basvuru-detay Adaya Bildir modalı (e-posta SMTP + WhatsApp wa.me). Varsayılan şablonlar koda gömülü, her gönderimde düzenlenebilir.
+- basvuru-durum: aynı duruma tekrar basınca hata vermez (rowCount=0 sorunu giderildi).
+- Bekleyen: SQL çalıştırma.

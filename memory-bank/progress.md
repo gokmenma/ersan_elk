@@ -2216,3 +2216,4 @@
 
 - [x] 2026-11-07: İK başvuru detay sayfası UI/UX iyileştirmesi ve ehliyet hiyerarşisi düzeltmesi.
 - [x] 2026-11-07: Mülakat kaydı, soru-cevap ve bilgi düzeltme günlüğü (SQL çalıştırılmayı bekliyor).
+- [x] 2026-11-07: Adaya e-posta/WhatsApp karar bildirimi; durum güncelleme hatası düzeltildi.
