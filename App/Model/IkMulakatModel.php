@@ -28,6 +28,16 @@ class IkMulakatModel extends Model
 
     public function listele(int $basvuruId, int $firmaId): array
     {
+        try {
+            return $this->listeleSorgu($basvuruId, $firmaId);
+        } catch (\PDOException $e) {
+            error_log('İK mülakat kayıtları okunamadı: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    private function listeleSorgu(int $basvuruId, int $firmaId): array
+    {
         $stmt = $this->db->prepare("SELECT m.id, m.mulakat_tarihi, m.tur, m.sonuc, m.genel_puan, m.genel_not, m.sorular_cevaplar, m.created_at, u.adi_soyadi AS yapan
             FROM {$this->table} m
             LEFT JOIN users u ON u.id = m.mulakat_yapan_id
@@ -79,10 +89,15 @@ class IkMulakatModel extends Model
 
     public function guncelDegerler(int $basvuruId, int $firmaId): array
     {
-        $stmt = $this->db->prepare("SELECT g.alan, g.yeni_deger FROM ik_basvuru_bilgi_guncellemeleri g
-            JOIN (SELECT alan, MAX(id) AS son_id FROM ik_basvuru_bilgi_guncellemeleri
-                  WHERE basvuru_id = :basvuru_id AND firma_id = :firma_id GROUP BY alan) s ON s.son_id = g.id");
-        $stmt->execute(['basvuru_id' => $basvuruId, 'firma_id' => $firmaId]);
+        try {
+            $stmt = $this->db->prepare("SELECT g.alan, g.yeni_deger FROM ik_basvuru_bilgi_guncellemeleri g
+                JOIN (SELECT alan, MAX(id) AS son_id FROM ik_basvuru_bilgi_guncellemeleri
+                      WHERE basvuru_id = :basvuru_id AND firma_id = :firma_id GROUP BY alan) s ON s.son_id = g.id");
+            $stmt->execute(['basvuru_id' => $basvuruId, 'firma_id' => $firmaId]);
+        } catch (\PDOException $e) {
+            error_log('İK bilgi güncellemeleri okunamadı: ' . $e->getMessage());
+            return [];
+        }
         $sonuc = [];
         foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $satir) {
             $sonuc[$satir->alan] = $satir->yeni_deger;

@@ -70,7 +70,7 @@ $page = $_GET['p'] ?? 'home';
 
 <!-- Rehber Listesi -->
 <?php if ($page == 'rehber/list') { ?>
-    <script type="module" src="views/rehber/js/rehber.js"></script>
+    <script src="<?php echo Helper::assetVersion('views/rehber/js/rehber.js'); ?>"></script>
 <?php } ?>
 
 <!-- Kullanıcı Sayfası -->

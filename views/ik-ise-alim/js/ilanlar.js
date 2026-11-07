@@ -52,6 +52,7 @@ $(document).ready(function () {
             { data: 'baslik', render: (d) => `<span class="fw-semibold">${esc(d)}</span>` },
             { data: 'departman', render: (d) => esc(d || '-') },
             { data: 'durum', render: (d) => durumRozet[d] || esc(d) },
+            { data: 'goruntuleme_sayisi', className: 'text-center', render: (d) => `<span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-1 font-size-11"><i class="bx bx-show"></i> ${esc(d)}</span>` },
             { data: 'basvuru_sayisi', className: 'text-center', orderable: true },
             { data: 'olumlu_sayisi', className: 'text-center', render: (d) => `<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11">${esc(d)}</span>` },
             { data: 'created_at', render: (d) => esc((d || '').substring(0, 10).split('-').reverse().join('.')) },
@@ -68,7 +69,7 @@ $(document).ready(function () {
         createdRow: function (row) {
             $(row).find('td:not(:last-child)').attr('style', 'cursor: pointer !important');
         },
-        order: [[6, 'desc']]
+        order: [[7, 'desc']]
     }));
 
     $('.status-quick-filter').on('click', function () {
@@ -80,23 +81,63 @@ $(document).ready(function () {
 
     let sorular = [];
     let adim = 1;
+    let duzenlenen = -1;
 
     const soruCiz = () => {
-        $('#soruListe').html(sorular.map((q, i) => `<div class="soru-satir"><span class="no">${i + 1}</span><span class="metin">${esc(q)}</span><button type="button" class="btn btn-sm btn-subtle-danger table-action-btn btn-soru-sil" data-i="${i}" title="Sil" aria-label="Soruyu sil"><i class="bx bx-x"></i></button></div>`).join(''));
+        const html = sorular.map((q, i) => {
+            if (i === duzenlenen) {
+                return `<div class="soru-satir duzenleniyor"><span class="no">${i + 1}</span><input type="text" class="form-control form-control-sm soru-duzenle-input" maxlength="300" value="${esc(q)}" aria-label="Soruyu düzenle">
+                    <button type="button" class="btn btn-subtle-success btn-ikon btn-soru-kaydet" data-i="${i}" title="Kaydet" aria-label="Kaydet"><i class="bx bx-check"></i></button>
+                    <button type="button" class="btn btn-subtle-secondary btn-ikon btn-soru-iptal" title="Vazgeç" aria-label="Vazgeç"><i class="bx bx-undo"></i></button></div>`;
+            }
+            return `<div class="soru-satir"><span class="no">${i + 1}</span><span class="metin">${esc(q)}</span>
+                <button type="button" class="btn btn-subtle-secondary btn-ikon btn-soru-yukari" data-i="${i}" title="Yukarı taşı" aria-label="Yukarı taşı"${i === 0 ? ' disabled' : ''}><i class="bx bx-chevron-up"></i></button>
+                <button type="button" class="btn btn-subtle-secondary btn-ikon btn-soru-asagi" data-i="${i}" title="Aşağı taşı" aria-label="Aşağı taşı"${i === sorular.length - 1 ? ' disabled' : ''}><i class="bx bx-chevron-down"></i></button>
+                <button type="button" class="btn btn-subtle-warning btn-ikon btn-soru-duzenle" data-i="${i}" title="Düzenle" aria-label="Soruyu düzenle"><i class="bx bx-edit"></i></button>
+                <button type="button" class="btn btn-subtle-danger btn-ikon btn-soru-sil" data-i="${i}" title="Sil" aria-label="Soruyu sil"><i class="bx bx-trash"></i></button></div>`;
+        }).join('');
+        $('#soruListe').html(html || '<div class="soru-bos"><i class="bx bx-help-circle"></i> Henüz soru eklenmedi. Aşağıdan yazın veya hazır öneriyi seçin.</div>');
         $('#sorular').val(sorular.join('\n'));
-        $('#btnSoruEkle').prop('disabled', sorular.length >= 8);
+        $('#soruSayac').text(`${sorular.length} / 8`);
+        const dolu = sorular.length >= 8;
+        $('#btnSoruEkle, #yeniSoru').prop('disabled', dolu);
+        $('.soru-oneri').prop('disabled', dolu).each(function () { $(this).toggleClass('d-none', sorular.includes($(this).data('soru'))); });
+        if (duzenlenen >= 0) $('#soruListe .soru-duzenle-input').trigger('focus');
     };
-    const soruEkle = () => {
-        const v = $('#yeniSoru').val().trim();
+    const soruEkle = (metin) => {
+        const v = (metin !== undefined ? metin : $('#yeniSoru').val()).trim();
         if (!v || sorular.length >= 8) return;
         sorular.push(v);
-        $('#yeniSoru').val('').trigger('focus');
+        if (metin === undefined) $('#yeniSoru').val('').trigger('focus');
         soruCiz();
     };
-    $('#btnSoruEkle').on('click', soruEkle);
+    const duzenlemeKaydet = () => {
+        if (duzenlenen < 0) return;
+        const v = $('#soruListe .soru-duzenle-input').val().trim();
+        if (v) sorular[duzenlenen] = v; else sorular.splice(duzenlenen, 1);
+        duzenlenen = -1;
+        soruCiz();
+    };
+    $('#btnSoruEkle').on('click', () => soruEkle());
     $('#yeniSoru').on('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); soruEkle(); } });
-    $('#soruListe').on('click', '.btn-soru-sil', function () { sorular.splice(parseInt($(this).data('i'), 10), 1); soruCiz(); });
-    $('.kriter-chip').on('click', function () {
+    $('.soru-oneri').on('click', function () { soruEkle($(this).data('soru')); });
+    $('#soruListe').on('click', '.btn-soru-sil', function () { duzenlenen = -1; sorular.splice(parseInt($(this).data('i'), 10), 1); soruCiz(); });
+    $('#soruListe').on('click', '.btn-soru-duzenle', function () { duzenlenen = parseInt($(this).data('i'), 10); soruCiz(); });
+    $('#soruListe').on('click', '.btn-soru-kaydet', duzenlemeKaydet);
+    $('#soruListe').on('click', '.btn-soru-iptal', function () { duzenlenen = -1; soruCiz(); });
+    $('#soruListe').on('keydown', '.soru-duzenle-input', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); duzenlemeKaydet(); }
+        else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); duzenlenen = -1; soruCiz(); }
+    });
+    const soruTasi = (i, yon) => {
+        const j = i + yon;
+        if (j < 0 || j >= sorular.length) return;
+        [sorular[i], sorular[j]] = [sorular[j], sorular[i]];
+        soruCiz();
+    };
+    $('#soruListe').on('click', '.btn-soru-yukari', function () { soruTasi(parseInt($(this).data('i'), 10), -1); });
+    $('#soruListe').on('click', '.btn-soru-asagi', function () { soruTasi(parseInt($(this).data('i'), 10), 1); });
+    $('.kriter-chip[data-ekle]').on('click', function () {
         const alan = $('#ai_kriterleri');
         const mevcut = alan.val();
         alan.val(mevcut + (mevcut && !mevcut.endsWith('\n') ? '\n' : '') + $(this).data('ekle')).trigger('focus');
@@ -113,8 +154,15 @@ $(document).ready(function () {
     $('#btnIleri').on('click', function () { adimGoster(adim + 1); });
     $('#btnGeri').on('click', function () { adimGoster(adim - 1); });
 
+    const tarihAlan = document.getElementById('gecerlilik_tarihi');
+    const tarihFp = window.flatpickr ? window.flatpickr(tarihAlan, { locale: 'tr', dateFormat: 'd.m.Y', allowInput: true, minDate: null, disableMobile: true, appendTo: document.getElementById('ikilanModal') }) : null;
+    const trTarih = (iso) => (iso ? iso.split('-').reverse().join('.') : '');
+    const isoTarih = (tr) => { const m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec((tr || '').trim()); return m ? `${m[3]}-${m[2]}-${m[1]}` : ''; };
+
     const formuSifirla = () => {
         $('#ikilanForm')[0].reset();
+        duzenlenen = -1;
+        if (tarihFp) tarihFp.clear();
         $('#ilan_id').val('');
         $('#durum').val('taslak').trigger('change.select2');
         sorular = [];
@@ -134,7 +182,8 @@ $(document).ready(function () {
             formuSifirla();
             const d = res.data;
             $('#ilan_id').val(d.id);
-            ['baslik', 'departman', 'gorev', 'calisma_yeri', 'gecerlilik_tarihi', 'aciklama', 'aranan_nitelikler', 'ai_kriterleri'].forEach((k) => $('#' + k).val(d[k] || ''));
+            ['baslik', 'departman', 'gorev', 'calisma_yeri', 'aciklama', 'aranan_nitelikler', 'ai_kriterleri'].forEach((k) => $('#' + k).val(d[k] || ''));
+            if (tarihFp) tarihFp.setDate(trTarih(d.gecerlilik_tarihi), false, 'd.m.Y'); else $('#gecerlilik_tarihi').val(trTarih(d.gecerlilik_tarihi));
             sorular = (d.sorular || '').split('\n').map((x) => x.trim()).filter(Boolean);
             soruCiz();
             $('#durum').val(d.durum).trigger('change.select2');
@@ -153,8 +202,12 @@ $(document).ready(function () {
         e.preventDefault();
         if (!$('#baslik').val().trim()) { adimGoster(1); $('#baslik').addClass('is-invalid').trigger('focus'); return; }
         $('#baslik').removeClass('is-invalid');
+        duzenlemeKaydet();
+        const tr = $('#gecerlilik_tarihi').val().trim();
+        if (tr !== '' && !isoTarih(tr)) { adimGoster(1); Swal.fire('Uyarı', 'Son başvuru tarihi gg.aa.yyyy biçiminde olmalıdır.', 'warning'); return; }
+        const veriDizi = $(this).serializeArray().map((o) => (o.name === 'gecerlilik_tarihi' ? { name: o.name, value: isoTarih(tr) } : o));
         const btn = $('#btnIlanKaydet').prop('disabled', true);
-        $.post(API, $(this).serialize(), function (res) {
+        $.post(API, $.param(veriDizi), function (res) {
             if (res.status === 'success') {
                 $('#ikilanModal').modal('hide');
                 tablo.ajax.reload(null, false);

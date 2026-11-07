@@ -306,6 +306,15 @@
     return true;
   }
 
+  window.dtHasSavedFilters = function (tableId) {
+    try {
+      const st = loadFiltersFromStorage(tableId);
+      return !!st && Object.keys(st).length > 0;
+    } catch (e) {
+      return true;
+    }
+  };
+
   // --- Main Init ---
   window.initAdvancedFilters = function (api, settings) {
     const tableId = settings.sTableId;
@@ -318,6 +327,8 @@
       $premiumShell = $table.closest(".dataTables_wrapper");
     }
     $premiumShell.addClass("datatable-premium-shell");
+
+    $thead.find(".dt-filter-placeholder").remove();
 
     const hasAnyFilter = $thead.find("th[data-filter]").length > 0;
     if (!hasAnyFilter) return;
@@ -1200,4 +1211,119 @@
       }
     });
   }
+})(jQuery);
+
+(function ($) {
+  "use strict";
+
+  const LOADING_HTML =
+    '<div class="dt-loading-overlay" role="status" aria-live="polite">' +
+    '<div class="text-center"><div class="spinner-border text-primary dt-loading-spinner" aria-hidden="true"></div>' +
+    '<div class="dt-loading-title">Veriler yükleniyor...</div>' +
+    '<div class="dt-loading-sub">Lütfen bekleyiniz</div></div>' +
+    "</div>";
+
+  function isRemote(settings) {
+    return !!(
+      settings.ajax ||
+      settings.sAjaxSource ||
+      (settings.oInit && (settings.oInit.ajax || settings.oInit.sAjaxSource)) ||
+      (settings.oFeatures && settings.oFeatures.bServerSide)
+    );
+  }
+
+  function host(settings) {
+    return $(settings.nTable).parent();
+  }
+
+  function removeOverlay(settings) {
+    if (settings._dtOverlay) {
+      settings._dtOverlay.remove();
+      settings._dtOverlay = null;
+    }
+    if (settings._dtOverlayHost) {
+      settings._dtOverlayHost.removeClass("dt-loading-host");
+      settings._dtOverlayHost = null;
+    }
+  }
+
+  function showLoading(settings) {
+    if (!settings || !settings.nTable) return;
+    if (!isRemote(settings)) return;
+    if ($(settings.nTable).attr("data-dt-loader") === "off") return;
+    const $host = host(settings);
+    if (!$host.length) return;
+    if (settings._dtOverlayHost && settings._dtOverlayHost[0] !== $host[0]) removeOverlay(settings);
+    $host.addClass("dt-loading-host");
+    let $ov = settings._dtOverlay;
+    if (!$ov || !$ov.length) {
+      $ov = $(LOADING_HTML).appendTo($host);
+      settings._dtOverlay = $ov;
+      settings._dtOverlayHost = $host;
+    }
+    const $thead = $(settings.nTable).children("thead");
+    const top = $thead.length && $thead.is(":visible") ? $thead.outerHeight() || 0 : 0;
+    $ov.css("top", top + "px");
+    settings._dtLoading = true;
+  }
+
+  function hideLoading(settings) {
+    if (!settings || !settings.nTable) return;
+    removeOverlay(settings);
+    settings._dtLoading = false;
+  }
+
+  function addPlaceholder(settings) {
+    if (settings._dtPlaceholder) return;
+    settings._dtPlaceholder = true;
+    if (settings.oInit && settings.oInit.deferAdvancedFilters) return;
+    const $thead = $(settings.nTable).children("thead");
+    if (!$thead.length || !$thead.find("th[data-filter]").length) return;
+    if ($thead.find(".dt-filter-row, .dt-filter-placeholder").length) return;
+
+    if (
+      typeof window.initAdvancedFilters === "function" &&
+      typeof window.dtHasSavedFilters === "function" &&
+      settings.sTableId &&
+      !window.dtHasSavedFilters(settings.sTableId)
+    ) {
+      try {
+        window.initAdvancedFilters(new $.fn.dataTable.Api(settings), settings);
+        if ($thead.find(".dt-filter-row").length) {
+          if (settings._dtLoading) showLoading(settings);
+          return;
+        }
+      } catch (err) {
+        $thead.find(".dt-filter-row").remove();
+      }
+    }
+
+    const $row = $('<tr class="dt-filter-row dt-filter-placeholder" aria-hidden="true"></tr>');
+    for (let i = 0; i < settings.aoColumns.length; i++) $row.append("<th></th>");
+    $thead.append($row);
+    setTimeout(function () {
+      $thead.find(".dt-filter-placeholder").remove();
+    }, 8000);
+    if (settings._dtLoading) showLoading(settings);
+  }
+
+  $(document)
+    .on("preDraw.dt", function (e, settings) {
+      if (e.namespace !== "dt") return;
+      addPlaceholder(settings);
+    })
+    .on("preInit.dt", function (e, settings) {
+      if (e.namespace !== "dt") return;
+      showLoading(settings);
+    })
+    .on("processing.dt", function (e, settings, processing) {
+      if (e.namespace !== "dt") return;
+      if (processing) showLoading(settings);
+      else hideLoading(settings);
+    })
+    .on("xhr.dt error.dt destroy.dt", function (e, settings) {
+      if (e.namespace !== "dt") return;
+      if (e.type === "xhr" && settings.oFeatures && settings.oFeatures.bServerSide) return;
+      hideLoading(settings);
+    });
 })(jQuery);

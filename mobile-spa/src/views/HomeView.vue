@@ -218,6 +218,7 @@ const iconComponentsMap = {
 const ALL_SYSTEM_ACTIONS = [
   // Standart Ana Modüller
   { id: 'act_personnel', permission: 'personnel', label: 'Personel', iconName: 'UsersRound', to: '/personel', theme: 'blue' },
+  { id: 'act_recruitment', permission: 'recruitment', label: 'İşe Alım', iconName: 'UserCheck', to: '/ise-alim', theme: 'purple' },
   { id: 'act_tracking', permission: 'personnel_tracking', label: 'Personel Takip', iconName: 'Clock', to: '/personel-takip', theme: 'emerald' },
   { id: 'act_vehicles', permission: 'vehicles', label: 'Araçlar', iconName: 'CarFront', to: '/arac-takip', theme: 'emerald' },
   { id: 'act_shifts', permission: 'shifts', label: 'Nöbetler', iconName: 'CalendarCheck', to: '/nobet-onay', theme: 'indigo' },

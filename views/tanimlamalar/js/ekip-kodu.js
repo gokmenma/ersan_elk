@@ -109,8 +109,8 @@ $(document).ready(function () {
     });
   }
 
-  // 7. Bölge kurallarını yükle
-  loadBolgeKurallari();
+  // 7. Bölge kuralları sayfa ile birlikte gelir
+  bolgeKurallari = window.EKIP_BOLGE_KURALLARI || {};
 
   // 8. Sekme değişikliğinde butonları güncelle
   $('button[data-bs-toggle="tab"]').on("shown.bs.tab", function (e) {
@@ -129,24 +129,6 @@ $(document).ready(function () {
     updateEkipKoduInfo();
   });
 });
-
-// Bölge kurallarını yükle
-function loadBolgeKurallari() {
-  var formData = new FormData();
-  formData.append("action", "bolge-kurallari-getir");
-
-  fetch(url, {
-    method: "POST",
-    body: formData,
-  })
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.status === "success") {
-        bolgeKurallari = data.kurallar || {};
-      }
-    })
-    .catch((err) => console.error("Kurallar yüklenemedi:", err));
-}
 
 // Ekip kodu info güncelleme
 function updateEkipKoduInfo() {
@@ -492,7 +474,7 @@ $(document).on("click", ".gecmis", function (e) {
             : '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold"><i class="bx bx-time me-1"></i>Tamamlandı</span>';
 
           html += `<tr>
-            <td class="fw-semibold text-dark"><i class="bx bx-user text-primary me-1"></i>${escapeHtml(item.adi_soyadi)}</td>
+            <td class="fw-semibold"><i class="bx bx-user text-primary me-1"></i>${escapeHtml(item.adi_soyadi)}</td>
             <td class="text-center font-size-12">${item.baslangic_tarihi || "-"}</td>
             <td class="text-center font-size-12">${isOngoing ? "-" : item.bitis_tarihi}</td>
             <td class="text-center">${statusBadge}</td>

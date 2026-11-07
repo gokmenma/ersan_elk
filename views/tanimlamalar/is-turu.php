@@ -223,7 +223,7 @@ $title = "İş Türü Tanımlamaları";
         <div class="card-body p-3 pt-0">
             <div class="table-responsive" style="overflow-x: auto !important;">
                 <table id="actionTable" class="table table-bordered table-hover nowrap align-middle w-100 mb-0">
-                    <thead class="table-light">
+                    <thead>
                         <tr>
                             <th data-filter="none" class="text-center" style="width: 50px;">SIRA</th>
                             <th data-filter="string">İŞ TÜRÜ</th>
@@ -249,21 +249,21 @@ $title = "İş Türü Tanımlamaları";
                                 <td class="text-center text-muted fw-semibold font-size-12">
                                     <?php echo $isTuru->id; ?>
                                 </td>
-                                <td class="fw-bold text-dark font-size-13">
-                                    <a href="javascript:void(0);" class="duzenle text-dark text-decoration-none" data-id="<?php echo $enc_id; ?>" title="Düzenlemek için tıklayın">
+                                <td class="fw-bold font-size-13">
+                                    <a href="javascript:void(0);" class="duzenle text-decoration-none" data-id="<?php echo $enc_id; ?>" title="Düzenlemek için tıklayın">
                                         <i class="bx bx-briefcase text-primary me-1"></i><?php echo htmlspecialchars($isTuru->tur_adi, ENT_QUOTES, 'UTF-8'); ?>
                                     </a>
                                 </td>
                                 <td class="font-size-12 fw-medium">
                                     <?php echo htmlspecialchars($isTuru->is_emri_sonucu ?: '-', ENT_QUOTES, 'UTF-8'); ?>
                                 </td>
-                                <td class="text-end font-size-13 fw-semibold text-dark">
+                                <td class="text-end font-size-13 fw-semibold">
                                     <?php echo Helper::formattedMoney($isTuru->is_turu_ucret ?? 0); ?>
                                 </td>
-                                <td class="text-end font-size-13 fw-semibold text-dark">
+                                <td class="text-end font-size-13 fw-semibold">
                                     <?php echo Helper::formattedMoney($isTuru->aracli_personel_is_turu_ucret ?? 0); ?>
                                 </td>
-                                <td class="text-end font-size-13 fw-semibold text-dark">
+                                <td class="text-end font-size-13 fw-semibold">
                                     <?php echo Helper::formattedMoney($isTuru->okuma_is_turu_ucret ?? 0); ?>
                                 </td>
                                 <td class="text-center text-nowrap">
@@ -278,7 +278,7 @@ $title = "İş Türü Tanımlamaları";
                                     <?php elseif ($sekmeRaw === 'kacakkontrol'): ?>
                                         <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Kaçak Kontrol</span>
                                     <?php elseif (!empty($isTuru->rapor_sekmesi)): ?>
-                                        <span class="badge bg-light text-dark border rounded-pill px-2 py-1 font-size-11 fw-semibold text-capitalize"><?php echo htmlspecialchars($isTuru->rapor_sekmesi, ENT_QUOTES, 'UTF-8'); ?></span>
+                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold text-capitalize"><?php echo htmlspecialchars($isTuru->rapor_sekmesi, ENT_QUOTES, 'UTF-8'); ?></span>
                                     <?php else: ?>
                                         <span class="text-muted font-size-12 fst-italic">-</span>
                                     <?php endif; ?>
@@ -328,15 +328,117 @@ $title = "İş Türü Tanımlamaları";
 #actionTable thead th {
     font-size: 11.5px !important;
     font-weight: 700 !important;
-    color: #334155 !important;
     letter-spacing: 0.3px;
-    background-color: #f8fafc !important;
     vertical-align: middle !important;
 }
 #actionTable tbody td {
     padding: 8px 12px !important;
     vertical-align: middle !important;
-    color: #0f172a !important;
+}
+
+/* Açık Mod Varsayılan Renkleri */
+:root:not([data-theme-preset="macos-dark"]):not([data-bs-theme="dark"]) #actionTable thead th {
+    color: #334155;
+    background-color: #f8fafc;
+}
+:root:not([data-theme-preset="macos-dark"]):not([data-bs-theme="dark"]) #actionTable tbody td {
+    color: #0f172a;
+}
+:root:not([data-theme-preset="macos-dark"]):not([data-bs-theme="dark"]) #actionTable a.duzenle {
+    color: #0f172a;
+}
+
+/* ==========================================================================
+   Koyu Tema (Dark Mode & macOS Dark) Renk Uyumları
+   ========================================================================== */
+html[data-theme-preset="macos-dark"] #actionTable thead th,
+[data-bs-theme="dark"] #actionTable thead th,
+body[data-layout-mode="dark"] #actionTable thead th,
+[data-theme-mode="dark"] #actionTable thead th {
+    background-color: rgba(39, 40, 44, 0.96) !important;
+    color: rgba(224, 225, 229, 0.9) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html[data-theme-preset="macos-dark"] #actionTable tbody td,
+[data-bs-theme="dark"] #actionTable tbody td,
+body[data-layout-mode="dark"] #actionTable tbody td,
+[data-theme-mode="dark"] #actionTable tbody td {
+    color: rgba(232, 233, 236, 0.9) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html[data-theme-preset="macos-dark"] #actionTable a.duzenle,
+[data-bs-theme="dark"] #actionTable a.duzenle,
+body[data-layout-mode="dark"] #actionTable a.duzenle,
+[data-theme-mode="dark"] #actionTable a.duzenle {
+    color: rgba(240, 242, 246, 0.95) !important;
+}
+
+html[data-theme-preset="macos-dark"] #actionTable .text-muted,
+[data-bs-theme="dark"] #actionTable .text-muted,
+html[data-theme-preset="macos-dark"] #actionTable tbody td.text-muted,
+[data-bs-theme="dark"] #actionTable tbody td.text-muted {
+    color: rgba(200, 205, 218, 0.65) !important;
+}
+
+/* Canlı Filtreleme Kutuları (Koyu Mod) */
+html[data-theme-preset="macos-dark"] #actionTable thead .dt-filter-row input,
+html[data-theme-preset="macos-dark"] #actionTable thead .dt-filter-row select,
+[data-bs-theme="dark"] #actionTable thead .dt-filter-row input,
+[data-bs-theme="dark"] #actionTable thead .dt-filter-row select {
+    background-color: rgba(20, 22, 26, 0.94) !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+    color: rgba(240, 242, 246, 0.95) !important;
+}
+
+html[data-theme-preset="macos-dark"] #actionTable thead .dt-filter-row input::placeholder,
+[data-bs-theme="dark"] #actionTable thead .dt-filter-row input::placeholder {
+    color: rgba(200, 205, 218, 0.5) !important;
+}
+
+/* Ücret Geçmişi Tablosu (Koyu Mod) */
+html[data-theme-preset="macos-dark"] #ucretGecmisTable thead th,
+[data-bs-theme="dark"] #ucretGecmisTable thead th {
+    background-color: rgba(39, 40, 44, 0.96) !important;
+    color: rgba(224, 225, 229, 0.9) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html[data-theme-preset="macos-dark"] #ucretGecmisTable tbody td,
+[data-bs-theme="dark"] #ucretGecmisTable tbody td {
+    color: rgba(232, 233, 236, 0.9) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Modallar Koyu Mod Uyumları */
+html[data-theme-preset="macos-dark"] .modal-header.bg-light,
+html[data-theme-preset="macos-dark"] .modal-footer.bg-light,
+[data-bs-theme="dark"] .modal-header.bg-light,
+[data-bs-theme="dark"] .modal-footer.bg-light {
+    background-color: rgba(255, 255, 255, 0.03) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html[data-theme-preset="macos-dark"] .bg-light.border,
+[data-bs-theme="dark"] .bg-light.border {
+    background-color: rgba(255, 255, 255, 0.03) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html[data-theme-preset="macos-dark"] .top-action-btn.bg-white,
+html[data-theme-preset="macos-dark"] .top-icon-btn.bg-white,
+[data-bs-theme="dark"] .top-action-btn.bg-white,
+[data-bs-theme="dark"] .top-icon-btn.bg-white {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    color: rgba(240, 242, 246, 0.9) !important;
+}
+
+html[data-theme-preset="macos-dark"] .top-icon-btn.bg-white:hover,
+[data-bs-theme="dark"] .top-icon-btn.bg-white:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
 }
 
 /* Muhasebe ve Tablo Satır Butonları */

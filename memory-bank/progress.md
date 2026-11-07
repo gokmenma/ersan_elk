@@ -1,5 +1,57 @@
 # Progress
 
+## 2026-11-07 — Bordro: Bordro Detay Modalı Koyu Mod (Dark Mode) Düzeltmesi
+- [x] `bordro/list` detay modalında hem standart tema (`data-bs-theme="dark"`) hem de macOS Dark preset (`data-theme-preset="macos-dark"`) için tam koyu mod desteği sağlandı.
+- [x] Kartların beyaz arkaplan almasına neden olan hardcoded `.bg-white` ve inline stiller temizlendi.
+- [x] Personel başlık şeridi (`.header-glass`), sözleşme hesabı, resmî alacak ve kesintiler kartları, tablo satırları (`.parent-row`, `.child-row`, `.footer-row`), badge'ler ve arkaplan boşlukları koyu temaya kusursuz uyarlandı.
+- [x] PHP sözdizimi kontrolleri (`/opt/lampp/bin/php -l`) başarıyla tamamlandı.
+
+
+## 2026-11-07 — Rehber: Yeni Sayfa Standardına Geçiş (Özet Kartsız)
+- [x] `views/rehber/list.php` AGENTS.md Bölüm 8 standartlarına dönüştürüldü (kullanıcı talebiyle özet kartları olmadan minimal ve modern yapı).
+- [x] `layouts/breadcrumb.php` ve standart üst başlık satırı (44x44px subtle ikon kutusu `bx bxs-contact`, başlık, açıklama ve `+ Yeni Kayıt Ekle` butonu) uygulandı.
+- [x] `#rehberListCard` liste kartı yapısı oluşturuldu (38x38px ikon kutusu, Excel ve Yazdır araç çubuğu).
+- [x] DataTables `<th>` etiketlerine standart canlı sütun filtreleme nitelikleri (`data-filter="string"`, `data-filter="date"`, `data-filter="none"`) eklendi.
+- [x] `App/Model/RehberModel.php` içine PDO parametrik bağlama ile `ajaxList(array $params): array` metodu yazıldı.
+- [x] `views/rehber/api.php` server-side DataTables (`rehber-ajax-list`), güvenli kaydetme (`kaydet`), silme (`kayitSil`) ve veri getirme (`kayitGetir`) aksiyonları yapılandırıldı.
+- [x] `sql/2026_11_07_add_rehber_ajax_list_policy.sql` oluşturuldu ve `permission_policies` tablosuna `rehber-ajax-list` için API izin politikası eklendi.
+- [x] `views/rehber/export-excel.php` eklenerek arama kriterleriyle uyumlu PhpSpreadsheet Excel dışa aktarımı sağlandı.
+- [x] `views/rehber/modal/general-modal.php` macOS ve form standartlarına (`FormFloatInput`, `FormFloatTextarea`) uygun modern modala dönüştürüldü.
+- [x] `views/rehber/js/rehber.js` DataTables `applyLengthStateSave({ ...getDatatableOptions(), ... })` ile başlatıldı, satır tıklama ile düzenleme, SweetAlert2 onay ve bildirimleri entegre edildi.
+- [x] PHP sözdizimi kontrolleri (`/opt/lampp/bin/php -l`) ve model arama/filtreleme testleri başarıyla doğrulandı.
+
+## 2026-11-07 — Araç Takip: KM Bildirim Onayları Yeni Sayfa Standardına Geçiş
+- [x] `views/arac-takip/km-onaylari.php` sayfası AGENTS.md Bölüm 8 (Yeni Sayfa Tasarım ve DataTables Standartları) standartlarına dönüştürüldü.
+- [x] `layouts/breadcrumb.php` ve standart üst başlık satırı (ikon kutusu, modül başlığı ve açıklama) eklendi.
+- [x] 4 adet minimal özet KPI kartı (Onay Bekleyenler, Onaylananlar, Reddedilenler, Bildirim Yapmayanlar) eklendi; sıçramasız `localStorage` durum yönetimi (`km-summary-hidden`) uygulandı.
+- [x] Özet kartlarındaki durum hap butonları (`.status-quick-filter`) ile liste kartı başlığındaki sekmeler (`.status-filter-group`) çift yönlü senkronize edildi.
+- [x] DataTables `<th>` etiketlerine standart canlı arama ve filtreleme nitelikleri (`data-filter="string"`, `data-filter="date"`, `data-filter="select"`, `data-filter="number"`, `data-filter="none"`) eklendi.
+- [x] `applyLengthStateSave({ ...getDatatableOptions(), ... })` ile DataTables başlatma sağlandı.
+- [x] Sayfadaki tüm iş kuralları (saat 13:00 kuralı, AI analizi, toplu onay, resim temizleme/arşivleme, onaylı KM düzenleme modalı, eksik bildirim toplu SMS) eksiksiz korundu.
+- [x] PHP sözdizimi kontrolü (`/opt/lampp/bin/php -l`) başarıyla tamamlandı.
+
+## 2026-11-07 — Mobil SPA: İşe Alım İlan Yönetimi 3 Adımlı Sihirbaz
+- [x] Mobildeki ilan modalı, masaüstündeki 3 adımlı sihirbaz (İlan Bilgileri, Aday Ekranı, Yapay Zekâ & Sorular) ile birebir aynı yeteneklere kavuşturuldu.
+- [x] Hızlı AI kriter çipleri (+ Zorunlu, + Artı puan, vb.) ve 8 adede kadar dinamik soru yönetimi (sıralama, silme, hazır soru çipleri) eklendi.
+- [x] `npm run build` ile derleme tamamlandı.
+
+## 2026-11-07 — Mobil SPA: İşe Alım İlan Yönetimi & Durum Düzeltmesi
+- [x] İlan listesinde `durum` ve detay alanlarının eksik gelmesi sorunu giderildi (tüm kolonlar + başvuru sayısı çekildi).
+- [x] "Yayına Al" hatası düzeltildi: Model durum kodları (`yayinda`, `taslak`, `kapali`) ile senkronize edildi ve durum zaten oysa çakışma önlendi.
+- [x] Mobilde ilan düzenleme, güncelleme ve yeni ilan oluşturma modalı eklendi (`job-detail`, `save-job`, `delete-job`).
+- [x] API izin politikaları veritabanına uygulandı.
+- [x] `npm run build` ile Vite derlemesi başarıyla tamamlandı.
+
+## 2026-11-07 — Mobil SPA: İnsan Kaynakları (İşe Alım) Modülü
+- [x] `sql/2026_11_07_ik_mobile_policies.sql` hazırlandı ve yerel veritabanında çalıştırıldı (`mobile-spa/ik-ise-alim` için API yetki politikaları).
+- [x] Backend API endpoint'i `mobile-spa/public/api/ik-ise-alim.php` ve `dist/api/ik-ise-alim.php` oluşturuldu (istatistikler, aday listesi, aday detayı, durum güncelleme, İK notu, AI analizi, mülakat yönetimi, bildirim şablonları, personele dönüştürme ve güvenli şifreli dosya akışı).
+- [x] Yetkilendirme (`auth.php`): `recruitment`, `recruitment_interview`, `recruitment_notify`, `recruitment_convert` yetkileri eklendi.
+- [x] Frontend Servisi: `mobile-spa/src/services/recruitment.js` API istemcisi oluşturuldu.
+- [x] Görünüm & UI: `mobile-spa/src/views/RecruitmentView.vue` (Soft Bento & Claymorphic UI mimarisiyle KPI kartları, arama, filtreler, aday kartları, AI skoru, aday detay çekmecesi, mülakat & bildirim modalları, ilanlar ve KPI paneli).
+- [x] Navigasyon Entegrasyonu: `router.js` (`/ise-alim`), `BottomNav.vue` (Planlama grubu altında İşe Alım modülü) ve `HomeView.vue` sistem aksiyonları güncellendi.
+- [x] Derleme & Doğrulama: `npm run build` ile `mobile-spa` Vite derlemesi başarıyla tamamlandı, PHP sözdizimi kontrol edildi (`php -l`).
+
+
 ## 2026-11-05 — E-Fatura: Manuel Gelen Fatura / Makbuz Ekleme
 - [x] `sql/2026_11_05_manuel_gelen_fatura.sql` (belge_turu ENUM, `kaynak`, `stopaj_orani/tutari`, `efatura/manuel-fatura` yetkisi + süper yetkili rollere atama) yerelde iki kez çalıştırıldı.
 - [x] `ManuelFaturaService`, `ManuelFaturaAiService`, `EInvoiceModel` manuel metotları, API aksiyonları, modal + `manuel-fatura.js`, Gelen Faturalar rozet/düzenle/sil, manuel önizleme.
@@ -2217,3 +2269,7 @@
 - [x] 2026-11-07: İK başvuru detay sayfası UI/UX iyileştirmesi ve ehliyet hiyerarşisi düzeltmesi.
 - [x] 2026-11-07: Mülakat kaydı, soru-cevap ve bilgi düzeltme günlüğü (SQL çalıştırılmayı bekliyor).
 - [x] 2026-11-07: Adaya e-posta/WhatsApp karar bildirimi; durum güncelleme hatası düzeltildi.
+
+- [x] Sütunlar butonu -> başlık sağ tık menüsü (merkezi)
+- [x] 2026-11-07: İlan modalında soru düzenleme ve flatpickr tarih.
+- [x] İlan başvuru sayfası görüntüleme sayacı ve ilan listesinde GÖRÜNTÜLEME kolonu (SQL bekliyor).

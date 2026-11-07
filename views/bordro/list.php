@@ -946,15 +946,64 @@ if (!empty($dbGelirler)) {
             border-color: rgba(16, 185, 129, 0.35) !important;
         }
 
-        /* macOS Glassmorphism Modallar */
+        /* Bordro Footer Summary Kartları (Normal & Koyu Mod / macOS Dark) */
+        .bordro-footer-kpi {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s ease;
+        }
+        .bordro-footer-kpi.kpi-net {
+            background-color: rgba(16, 185, 129, 0.1);
+            border-color: rgba(16, 185, 129, 0.25);
+        }
+
+        html[data-bs-theme="dark"] .bordro-footer-kpi,
+        html[data-theme-preset="macos-dark"] .bordro-footer-kpi,
+        [data-bs-theme="dark"] .bordro-footer-kpi {
+            background-color: rgba(255, 255, 255, 0.05) !important;
+            border-color: rgba(255, 255, 255, 0.08) !important;
+            backdrop-filter: blur(12px);
+        }
+        html[data-bs-theme="dark"] .bordro-footer-kpi .kpi-label,
+        html[data-theme-preset="macos-dark"] .bordro-footer-kpi .kpi-label,
+        [data-bs-theme="dark"] .bordro-footer-kpi .kpi-label {
+            color: #94a3b8 !important;
+        }
+        html[data-bs-theme="dark"] .bordro-footer-kpi .kpi-value.text-dark,
+        html[data-theme-preset="macos-dark"] .bordro-footer-kpi .kpi-value.text-dark,
+        [data-bs-theme="dark"] .bordro-footer-kpi .kpi-value.text-dark {
+            color: #ffffff !important;
+        }
+        html[data-bs-theme="dark"] .bordro-footer-kpi.kpi-net,
+        html[data-theme-preset="macos-dark"] .bordro-footer-kpi.kpi-net,
+        [data-bs-theme="dark"] .bordro-footer-kpi.kpi-net {
+            background-color: rgba(16, 185, 129, 0.18) !important;
+            border-color: rgba(16, 185, 129, 0.35) !important;
+        }
+
+        /* Glassmorphism & Dark Mod Modallar */
+        html[data-bs-theme="dark"] #bordroDetailModal .modal-content,
+        html[data-bs-theme="dark"] #modalIcraDetay .modal-content,
+        html[data-bs-theme="dark"] #modalPersonelKesintiEkle .modal-content,
+        html[data-bs-theme="dark"] #modalPersonelEkOdemeEkle .modal-content,
+        html[data-bs-theme="dark"] #modalDonemGuncelle .modal-content,
+        html[data-bs-theme="dark"] #yeniDonemModal .modal-content,
+        html[data-bs-theme="dark"] #modalFixMatrah .modal-content,
         html[data-theme-preset="macos-dark"] #bordroDetailModal .modal-content,
         html[data-theme-preset="macos-dark"] #modalIcraDetay .modal-content,
         html[data-theme-preset="macos-dark"] #modalPersonelKesintiEkle .modal-content,
         html[data-theme-preset="macos-dark"] #modalPersonelEkOdemeEkle .modal-content,
         html[data-theme-preset="macos-dark"] #modalDonemGuncelle .modal-content,
         html[data-theme-preset="macos-dark"] #yeniDonemModal .modal-content,
-        html[data-theme-preset="macos-dark"] #modalFixMatrah .modal-content {
-            background-color: rgba(26, 28, 35, 0.88) !important;
+        html[data-theme-preset="macos-dark"] #modalFixMatrah .modal-content,
+        [data-bs-theme="dark"] #bordroDetailModal .modal-content,
+        [data-bs-theme="dark"] #modalIcraDetay .modal-content,
+        [data-bs-theme="dark"] #modalPersonelKesintiEkle .modal-content,
+        [data-bs-theme="dark"] #modalPersonelEkOdemeEkle .modal-content,
+        [data-bs-theme="dark"] #modalDonemGuncelle .modal-content,
+        [data-bs-theme="dark"] #yeniDonemModal .modal-content,
+        [data-bs-theme="dark"] #modalFixMatrah .modal-content {
+            background-color: rgba(26, 28, 35, 0.95) !important;
             backdrop-filter: blur(28px) !important;
             -webkit-backdrop-filter: blur(28px) !important;
             border: 1px solid rgba(255, 255, 255, 0.12) !important;
@@ -963,45 +1012,89 @@ if (!empty($dbGelirler)) {
             color: #e2e8f0 !important;
         }
 
+        html[data-bs-theme="dark"] #bordroDetailModal .modal-header,
+        html[data-bs-theme="dark"] #modalIcraDetay .modal-header,
+        html[data-bs-theme="dark"] #modalPersonelKesintiEkle .modal-header,
+        html[data-bs-theme="dark"] #modalPersonelEkOdemeEkle .modal-header,
+        html[data-bs-theme="dark"] #modalDonemGuncelle .modal-header,
+        html[data-bs-theme="dark"] #yeniDonemModal .modal-header,
+        html[data-bs-theme="dark"] #modalFixMatrah .modal-header,
         html[data-theme-preset="macos-dark"] #bordroDetailModal .modal-header,
         html[data-theme-preset="macos-dark"] #modalIcraDetay .modal-header,
         html[data-theme-preset="macos-dark"] #modalPersonelKesintiEkle .modal-header,
         html[data-theme-preset="macos-dark"] #modalPersonelEkOdemeEkle .modal-header,
         html[data-theme-preset="macos-dark"] #modalDonemGuncelle .modal-header,
         html[data-theme-preset="macos-dark"] #yeniDonemModal .modal-header,
-        html[data-theme-preset="macos-dark"] #modalFixMatrah .modal-header {
-            background-color: rgba(18, 20, 26, 0.96) !important;
+        html[data-theme-preset="macos-dark"] #modalFixMatrah .modal-header,
+        [data-bs-theme="dark"] #bordroDetailModal .modal-header,
+        [data-bs-theme="dark"] #modalIcraDetay .modal-header,
+        [data-bs-theme="dark"] #modalPersonelKesintiEkle .modal-header,
+        [data-bs-theme="dark"] #modalPersonelEkOdemeEkle .modal-header,
+        [data-bs-theme="dark"] #modalDonemGuncelle .modal-header,
+        [data-bs-theme="dark"] #yeniDonemModal .modal-header,
+        [data-bs-theme="dark"] #modalFixMatrah .modal-header {
+            background-color: rgba(18, 20, 26, 0.98) !important;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
             color: #ffffff !important;
             border-top-left-radius: 18px !important;
             border-top-right-radius: 18px !important;
         }
 
+        html[data-bs-theme="dark"] #bordroDetailModal .modal-body,
+        html[data-bs-theme="dark"] #modalIcraDetay .modal-body,
+        html[data-bs-theme="dark"] #modalPersonelKesintiEkle .modal-body,
+        html[data-bs-theme="dark"] #modalPersonelEkOdemeEkle .modal-body,
+        html[data-bs-theme="dark"] #modalDonemGuncelle .modal-body,
+        html[data-bs-theme="dark"] #yeniDonemModal .modal-body,
+        html[data-bs-theme="dark"] #modalFixMatrah .modal-body,
         html[data-theme-preset="macos-dark"] #bordroDetailModal .modal-body,
         html[data-theme-preset="macos-dark"] #modalIcraDetay .modal-body,
         html[data-theme-preset="macos-dark"] #modalPersonelKesintiEkle .modal-body,
         html[data-theme-preset="macos-dark"] #modalPersonelEkOdemeEkle .modal-body,
         html[data-theme-preset="macos-dark"] #modalDonemGuncelle .modal-body,
         html[data-theme-preset="macos-dark"] #yeniDonemModal .modal-body,
-        html[data-theme-preset="macos-dark"] #modalFixMatrah .modal-body {
+        html[data-theme-preset="macos-dark"] #modalFixMatrah .modal-body,
+        [data-bs-theme="dark"] #bordroDetailModal .modal-body,
+        [data-bs-theme="dark"] #modalIcraDetay .modal-body,
+        [data-bs-theme="dark"] #modalPersonelKesintiEkle .modal-body,
+        [data-bs-theme="dark"] #modalPersonelEkOdemeEkle .modal-body,
+        [data-bs-theme="dark"] #modalDonemGuncelle .modal-body,
+        [data-bs-theme="dark"] #yeniDonemModal .modal-body,
+        [data-bs-theme="dark"] #modalFixMatrah .modal-body {
             background-color: transparent !important;
             color: #e2e8f0 !important;
         }
 
+        html[data-bs-theme="dark"] #bordroDetailModal .modal-footer,
+        html[data-bs-theme="dark"] #modalIcraDetay .modal-footer,
+        html[data-bs-theme="dark"] #modalPersonelKesintiEkle .modal-footer,
+        html[data-bs-theme="dark"] #modalPersonelEkOdemeEkle .modal-footer,
+        html[data-bs-theme="dark"] #modalDonemGuncelle .modal-footer,
+        html[data-bs-theme="dark"] #yeniDonemModal .modal-footer,
+        html[data-bs-theme="dark"] #modalFixMatrah .modal-footer,
         html[data-theme-preset="macos-dark"] #bordroDetailModal .modal-footer,
         html[data-theme-preset="macos-dark"] #modalIcraDetay .modal-footer,
         html[data-theme-preset="macos-dark"] #modalPersonelKesintiEkle .modal-footer,
         html[data-theme-preset="macos-dark"] #modalPersonelEkOdemeEkle .modal-footer,
         html[data-theme-preset="macos-dark"] #modalDonemGuncelle .modal-footer,
         html[data-theme-preset="macos-dark"] #yeniDonemModal .modal-footer,
-        html[data-theme-preset="macos-dark"] #modalFixMatrah .modal-footer {
-            background-color: rgba(18, 20, 26, 0.96) !important;
+        html[data-theme-preset="macos-dark"] #modalFixMatrah .modal-footer,
+        [data-bs-theme="dark"] #bordroDetailModal .modal-footer,
+        [data-bs-theme="dark"] #modalIcraDetay .modal-footer,
+        [data-bs-theme="dark"] #modalPersonelKesintiEkle .modal-footer,
+        [data-bs-theme="dark"] #modalPersonelEkOdemeEkle .modal-footer,
+        [data-bs-theme="dark"] #modalDonemGuncelle .modal-footer,
+        [data-bs-theme="dark"] #yeniDonemModal .modal-footer,
+        [data-bs-theme="dark"] #modalFixMatrah .modal-footer {
+            background-color: rgba(18, 20, 26, 0.98) !important;
             border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
             border-bottom-left-radius: 18px !important;
             border-bottom-right-radius: 18px !important;
         }
 
-        html[data-theme-preset="macos-dark"] .modal .btn-close {
+        html[data-bs-theme="dark"] .modal .btn-close,
+        html[data-theme-preset="macos-dark"] .modal .btn-close,
+        [data-bs-theme="dark"] .modal .btn-close {
             background-color: rgba(255, 255, 255, 0.1) !important;
             border: 1px solid rgba(255, 255, 255, 0.15) !important;
             border-radius: 50% !important;
@@ -1009,7 +1102,9 @@ if (!empty($dbGelirler)) {
             opacity: 0.8;
             transition: all 0.2s ease;
         }
-        html[data-theme-preset="macos-dark"] .modal .btn-close:hover {
+        html[data-bs-theme="dark"] .modal .btn-close:hover,
+        html[data-theme-preset="macos-dark"] .modal .btn-close:hover,
+        [data-bs-theme="dark"] .modal .btn-close:hover {
             opacity: 1;
             transform: scale(1.1);
         }

@@ -513,6 +513,18 @@ const MODULE_CATALOG = {
     theme: 'blue',
     to: '/site-mesajlar',
   },
+  recruitment: {
+    key: 'recruitment',
+    group: 'planlama',
+    permission: 'recruitment',
+    label: 'İşe Alım',
+    navLabel: 'İşe Alım',
+    eyebrow: 'İNSAN KAYNAKLARI',
+    subtitle: 'Aday başvuruları, AI analizleri ve mülakatlar',
+    icon: UserCheck,
+    theme: 'purple',
+    to: '/ise-alim',
+  },
 }
 
 const DEFAULT_NAVBAR_KEYS = ['personnel', 'reports', 'requests']
@@ -520,7 +532,7 @@ const DEFAULT_GROUP_KEYS = ['finans', 'operasyon', 'planlama', 'sistem']
 const DEFAULT_GROUP_ITEMS = {
   finans: ['invoices', 'cash', 'current_accounts', 'payroll', 'contracts'],
   operasyon: ['vehicles', 'km_approvals', 'documents', 'files', 'notices', 'illegal', 'reports'],
-  planlama: ['personnel', 'personnel_tracking', 'requests', 'tasks', 'shifts', 'puantaj'],
+  planlama: ['personnel', 'recruitment', 'personnel_tracking', 'requests', 'tasks', 'shifts', 'puantaj'],
   sistem: ['logs', 'live_support', 'site_messages'],
 }
 

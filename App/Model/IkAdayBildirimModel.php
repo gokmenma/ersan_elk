@@ -34,6 +34,16 @@ class IkAdayBildirimModel extends Model
 
     public function listele(int $basvuruId, int $firmaId): array
     {
+        try {
+            return $this->listeleSorgu($basvuruId, $firmaId);
+        } catch (\PDOException $e) {
+            error_log('İK aday bildirimleri okunamadı: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    private function listeleSorgu(int $basvuruId, int $firmaId): array
+    {
         $stmt = $this->db->prepare("SELECT b.kanal, b.sablon, b.konu, b.mesaj, b.durum, b.created_at, u.adi_soyadi AS kullanici
             FROM {$this->table} b
             LEFT JOIN users u ON u.id = b.kullanici_id

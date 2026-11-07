@@ -409,7 +409,7 @@ html[data-theme-preset="macos-dark"]
 .card-body:has(> .dataTables_wrapper),
 .card-body:has(> div > .table-responsive),
 .card-body:has(> div > .dataTables_wrapper) {
-  padding: 4px !important;
+  padding: 2px !important;
 }
 
 .card > .dataTables_wrapper,
@@ -1393,3 +1393,92 @@ th.dt-draggable-header:active {
   cursor: grabbing;
 }
 
+
+/* Kart içindeki tablo: dış boşluk/çerçeve yok, tablo kartın kenarına tam oturur */
+.card .datatable-premium-shell,
+.card .table-responsive:has(table.dataTable),
+.card .dataTables_wrapper > .table-responsive {
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.card .dataTables_wrapper {
+  margin-bottom: 0 !important;
+}
+
+.card .dataTables_wrapper > .row,
+.card .dataTables_wrapper > .dataTables_info,
+.card .dataTables_wrapper > .dataTables_paginate {
+  padding: 8px 12px;
+}
+
+/* Filtre satırı gelmeden önce yerini ayıran yer tutucu (kayma önleme) */
+table.dataTable thead tr.dt-filter-placeholder th {
+  height: 42px;
+  padding: 0 !important;
+}
+
+/* Merkezi veri yükleniyor katmanı (tablo gövdesi) */
+div.dataTables_wrapper div.dataTables_processing {
+  display: none !important;
+}
+
+.dt-loading-host {
+  position: relative;
+  min-height: 260px;
+}
+
+.dt-loading-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 150px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(2px);
+  animation: dtLoadingIn 0.18s ease both;
+}
+
+.dt-loading-spinner {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-width: 0.2rem;
+}
+
+.dt-loading-title {
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bs-body-color, #212529);
+}
+
+.dt-loading-sub {
+  font-size: 11px;
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+[data-bs-theme="dark"] .dt-loading-overlay,
+html[data-theme-preset="macos-dark"] .dt-loading-overlay {
+  background: rgba(24, 26, 32, 0.88);
+}
+
+[data-bs-theme="dark"] .dt-loading-title,
+html[data-theme-preset="macos-dark"] .dt-loading-title {
+  color: #f1f5f9;
+}
+
+@keyframes dtLoadingIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

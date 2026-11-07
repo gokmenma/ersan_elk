@@ -162,9 +162,9 @@ function loadUcretGecmisi(isTuruId) {
           <tr>
             <td class="text-center font-size-12">${formatDateToTr(item.gecerlilik_baslangic)}</td>
             <td class="text-center font-size-12">${item.gecerlilik_bitis ? formatDateToTr(item.gecerlilik_bitis) : '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-0.5 font-size-11">Aktif</span>'}</td>
-            <td class="text-end font-size-13 fw-semibold text-dark">${formatMoneyTr(item.ucret)}</td>
-            <td class="text-end font-size-13 fw-semibold text-dark">${formatMoneyTr(item.aracli_ucret)}</td>
-            <td class="text-end font-size-13 fw-semibold text-dark">${formatMoneyTr(item.okuma_ucret)}</td>
+            <td class="text-end font-size-13 fw-semibold">${formatMoneyTr(item.ucret)}</td>
+            <td class="text-end font-size-13 fw-semibold">${formatMoneyTr(item.aracli_ucret)}</td>
+            <td class="text-end font-size-13 fw-semibold">${formatMoneyTr(item.okuma_ucret)}</td>
             ${islemBtn}
           </tr>
         `);

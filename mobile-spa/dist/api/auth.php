@@ -292,6 +292,12 @@ function sessionPayload(): array
         'support' => mobileCan(['admin_destek_talebi', 'Destek Taleplerim (Kullanıcı)']),
         'live_support' => mobileCan(['canli_sohbet_ayarlari_sekmesi']),
         'site_messages' => mobileCan(['site_mesaj_yonetimi']),
+        'recruitment' => mobileCan(['ik_ise_alim_dashboard', 'ik_basvuru_listesi', 'ik_ilan_yonetimi']),
+        'recruitment_applications' => mobileCan(['ik_basvuru_listesi']),
+        'recruitment_jobs' => mobileCan(['ik_ilan_yonetimi']),
+        'recruitment_interview' => Gate::allows('ik_basvuru_mulakat') || Gate::isSuperAdmin(),
+        'recruitment_notify' => Gate::allows('ik_basvuru_aday_bildirim') || Gate::isSuperAdmin(),
+        'recruitment_convert' => Gate::allows('ik_basvuru_personele_donustur') || Gate::isSuperAdmin(),
         'logs' => mobileCan(['log_kayitlari']),
     ];
     return [

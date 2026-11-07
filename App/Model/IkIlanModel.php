@@ -74,6 +74,19 @@ class IkIlanModel extends Model
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
+    public function goruntulemeKaydet(string $token, string $ziyaretciHash, int $firmaId): bool
+    {
+        $ilan = $this->tokenIleBul($token);
+        if (!$ilan || (int) $ilan->firma_id !== $firmaId || !preg_match('/^[a-f0-9]{64}$/', $ziyaretciHash)) {
+            return false;
+        }
+        $stmt = $this->db->prepare("INSERT INTO ik_ilan_goruntulemeler (firma_id, ilan_id, ziyaretci_hash)
+            VALUES (:firma_id, :ilan_id, :hash)
+            ON DUPLICATE KEY UPDATE goruntuleme_sayisi = goruntuleme_sayisi + 1, son_goruntuleme = NOW()");
+        $stmt->execute(['firma_id' => $firmaId, 'ilan_id' => (int) $ilan->id, 'hash' => $ziyaretciHash]);
+        return true;
+    }
+
     public function aktifListe(int $firmaId): array
     {
         $stmt = $this->db->prepare("SELECT id, baslik FROM {$this->table}
@@ -149,9 +162,10 @@ class IkIlanModel extends Model
             1 => 'i.baslik',
             2 => 'i.departman',
             3 => 'i.durum',
-            4 => 'basvuru_sayisi',
-            5 => 'olumlu_sayisi',
-            6 => 'i.created_at',
+            4 => 'goruntuleme_sayisi',
+            5 => 'basvuru_sayisi',
+            6 => 'olumlu_sayisi',
+            7 => 'i.created_at',
         ];
         $where = "i.firma_id = :firma_id AND i.is_active = 1 AND i.deleted_at IS NULL";
         $bind = ['firma_id' => $firmaId];
@@ -179,11 +193,13 @@ class IkIlanModel extends Model
 
         $ilanBasvuru = "(SELECT COUNT(*) FROM ik_basvurular b WHERE b.ilan_id = i.id AND b.is_active = 1 AND b.deleted_at IS NULL)";
         $ilanOlumlu = "(SELECT COUNT(*) FROM ik_basvurular b WHERE b.ilan_id = i.id AND b.is_active = 1 AND b.deleted_at IS NULL AND b.ai_etiket = 'olumlu')";
+        $ilanGoruntuleme = "(SELECT COUNT(*) FROM ik_ilan_goruntulemeler g WHERE g.ilan_id = i.id)";
         $gelismis = [
             3 => ['select', 'i.durum', array_flip(self::DURUMLAR)],
-            4 => ['number', $ilanBasvuru, []],
-            5 => ['number', $ilanOlumlu, []],
-            6 => ['date', 'i.created_at', []],
+            4 => ['number', $ilanGoruntuleme, []],
+            5 => ['number', $ilanBasvuru, []],
+            6 => ['number', $ilanOlumlu, []],
+            7 => ['date', 'i.created_at', []],
         ];
         foreach ($gelismis as $i => [$tip, $ifade, $harita]) {
             $where .= \App\Helper\DataTableColumnFilter::apply($tip, (string) ($params['columns'][$i]['search']['value'] ?? ''), $ifade, "gkol_$i", $bind, $harita);
@@ -204,6 +220,7 @@ class IkIlanModel extends Model
         $uzunluk = $uzunluk > 0 ? min($uzunluk, 200) : 25;
 
         $stmt = $this->db->prepare("SELECT i.id, i.baslik, i.departman, i.gorev, i.durum, i.created_at,
+                (SELECT COUNT(*) FROM ik_ilan_goruntulemeler g WHERE g.ilan_id = i.id) AS goruntuleme_sayisi,
                 (SELECT COUNT(*) FROM ik_basvurular b WHERE b.ilan_id = i.id AND b.is_active = 1 AND b.deleted_at IS NULL) AS basvuru_sayisi,
                 (SELECT COUNT(*) FROM ik_basvurular b WHERE b.ilan_id = i.id AND b.is_active = 1 AND b.deleted_at IS NULL AND b.ai_etiket = 'olumlu') AS olumlu_sayisi
             FROM {$this->table} i

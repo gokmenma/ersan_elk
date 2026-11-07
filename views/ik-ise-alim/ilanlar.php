@@ -116,6 +116,7 @@ $durumOptions = ['taslak' => 'Taslak', 'yayinda' => 'Yayında', 'kapali' => 'Kap
                             <th data-filter="string">İLAN BAŞLIĞI</th>
                             <th data-filter="string">DEPARTMAN</th>
                             <th data-filter="select" data-filter-options="Taslak|Yayında|Kapalı" style="width: 110px;">DURUM</th>
+                            <th data-filter="number" class="text-center" style="width: 120px;">GÖRÜNTÜLEME</th>
                             <th data-filter="number" class="text-center" style="width: 100px;">BAŞVURU</th>
                             <th data-filter="number" class="text-center" style="width: 110px;">AI OLUMLU</th>
                             <th data-filter="date" style="width: 130px;">OLUŞTURMA</th>
@@ -146,6 +147,10 @@ $durumOptions = ['taslak' => 'Taslak', 'yayinda' => 'Yayında', 'kapali' => 'Kap
 .ikm .soru-satir { display: flex; align-items: center; gap: 8px; border: 1px solid var(--bs-border-color, #e3e8ef); border-radius: 10px; padding: 7px 10px; margin-bottom: 8px; background: var(--bs-body-bg); }
 .ikm .soru-satir .no { width: 22px; height: 22px; border-radius: 50%; background: var(--bs-primary-bg-subtle, #e8ecfd); color: var(--bs-primary, #556ee6); font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none; }
 .ikm .soru-satir .metin { flex: 1; font-size: 13.5px; word-break: break-word; }
+.ikm .soru-satir .btn-ikon { width: 27px; height: 27px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; }
+.ikm .soru-satir .soru-duzenle-input { flex: 1; }
+.ikm .soru-satir.duzenleniyor { border-color: var(--bs-primary, #556ee6); box-shadow: 0 0 0 3px rgba(85,110,230,.12); }
+.ikm .soru-bos { text-align: center; padding: 14px; border: 1px dashed var(--bs-border-color, #cfd6e0); border-radius: 10px; font-size: 13px; color: #74788d; margin-bottom: 8px; }
 .ikm .kriter-chip { cursor: pointer; border-radius: 99px; padding: 3px 12px; font-size: 12px; border: 1px dashed var(--bs-border-color, #cfd6e0); background: transparent; color: inherit; }
 .ikm .kriter-chip:hover { border-color: var(--bs-primary, #556ee6); color: var(--bs-primary, #556ee6); }
 .ikm .wa-balon { background: #dcf8c6; color: #1c2530; border-radius: 4px 16px 16px 16px; padding: 12px 14px; font-size: 13.5px; white-space: pre-wrap; word-break: break-word; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
@@ -184,7 +189,7 @@ html[data-bs-theme="dark"] .ikm .wa-zemin, [data-theme-preset="macos-dark"] .ikm
                             <div class="col-md-4"><?= Form::FormFloatInput("text", "departman", "", "Departman", "Departman", "layers", "form-control", false, 150) ?></div>
                             <div class="col-md-4"><?= Form::FormFloatInput("text", "gorev", "", "Görev / Unvan", "Görev / Unvan", "user", "form-control", false, 150) ?></div>
                             <div class="col-md-4"><?= Form::FormFloatInput("text", "calisma_yeri", "", "Çalışma Yeri", "Çalışma Yeri", "map-pin", "form-control", false, 150) ?></div>
-                            <div class="col-md-6"><?= Form::FormFloatInput("date", "gecerlilik_tarihi", "", "Son Başvuru Tarihi", "Son Başvuru Tarihi", "calendar", "form-control") ?></div>
+                            <div class="col-md-6"><?= Form::FormFloatInput("text", "gecerlilik_tarihi", "", "", "Son Başvuru Tarihi", "calendar", "form-control flatpickr", false, 10, "off") ?></div>
                             <div class="col-md-6 d-flex align-items-center"><p class="ikm-hint mb-0"><i class="bx bx-info-circle"></i> "Yayında" olmayan veya süresi geçen ilanın bağlantısı adaya "geçersiz" görünür. Boş bırakırsanız süresiz açık kalır.</p></div>
                         </div>
                     </div>
@@ -203,9 +208,18 @@ html[data-bs-theme="dark"] .ikm .wa-zemin, [data-theme-preset="macos-dark"] .ikm
                             <button type="button" class="kriter-chip" data-ekle="Elenme sebebi: ">+ Elenme sebebi</button>
                             <button type="button" class="kriter-chip" data-ekle="Maaş aralığı: ">+ Maaş aralığı</button>
                         </div>
-                        <p class="ikm-hint">Puanlama yalnızca buna ve ilan niteliklerine göre yapılır; sonuç sadece öneridir.</p>
-                        <div class="ikm-sec mt-4 mb-2">Pozisyona özel sorular <span class="text-muted text-lowercase fw-normal">(en fazla 8)</span></div>
+                        <p class="ikm-hint">Puanlama yalnızca buna ve ilan niteliklerine göre yapılır; sonuç sadece öneridir. Ehliyet sınıfları kapsayıcı değerlendirilir (E sınıfı C'yi kapsar).</p>
+                        <div class="d-flex align-items-center justify-content-between mt-4 mb-2">
+                            <div class="ikm-sec m-0">Pozisyona özel sorular <span class="text-muted text-lowercase fw-normal">(adaya sorulur)</span></div>
+                            <span class="badge bg-primary-subtle text-primary rounded-pill" id="soruSayac">0 / 8</span>
+                        </div>
                         <div id="soruListe"></div>
+                        <div class="d-flex flex-wrap gap-2 mb-2" id="soruOneriler">
+                            <button type="button" class="kriter-chip soru-oneri" data-soru="Daha önce hangi firmalarda çalıştınız?">+ Önceki firmalar</button>
+                            <button type="button" class="kriter-chip soru-oneri" data-soru="Hangi ehliyet sınıflarına sahipsiniz?">+ Ehliyet sınıfı</button>
+                            <button type="button" class="kriter-chip soru-oneri" data-soru="Ne zaman işe başlayabilirsiniz?">+ İşe başlama</button>
+                            <button type="button" class="kriter-chip soru-oneri" data-soru="Sahada vardiyalı / seyahatli çalışmaya uygun musunuz?">+ Saha uygunluğu</button>
+                        </div>
                         <div class="input-group">
                             <input type="text" class="form-control" id="yeniSoru" maxlength="300" placeholder="Örn: Daha önce hangi firmalarda çalıştınız?" aria-label="Yeni soru">
                             <button type="button" class="btn btn-outline-primary" id="btnSoruEkle"><i class="bx bx-plus"></i> Soru ekle</button>

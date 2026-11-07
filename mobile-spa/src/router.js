@@ -32,6 +32,7 @@ const HakedisDetailView = () => import('./views/HakedisDetailView.vue')
 const SiteMesajlarView = () => import('./views/SiteMesajlarView.vue')
 const SupportView = () => import('./views/SupportView.vue')
 const DosyaView = () => import('./views/DosyaView.vue')
+const RecruitmentView = () => import('./views/RecruitmentView.vue')
 import { auth } from './services/auth.js'
 
 const router = createRouter({
@@ -91,6 +92,10 @@ const router = createRouter({
     { path: '/loglar', name: 'logs', component: LogView, meta: { requiresAuth: true, requiresCompany: true, permission: 'logs' } },
     { path: '/canli-destek', name: 'live-support', component: SupportView, meta: { requiresAuth: true, requiresCompany: true, permission: 'live_support' } },
     { path: '/site-mesajlar', name: 'site-mesajlar', component: SiteMesajlarView, meta: { requiresAuth: true, requiresCompany: true, permission: 'site_messages' } },
+    { path: '/ise-alim', name: 'recruitment', component: RecruitmentView, meta: { requiresAuth: true, requiresCompany: true, permission: 'recruitment' } },
+    { path: '/ik-ise-alim', redirect: '/ise-alim' },
+    { path: '/ik', redirect: '/ise-alim' },
+    { path: '/basvurular', redirect: '/ise-alim' },
     { path: '/log-kayitlari', redirect: '/loglar' },
     { path: '/sistem-loglari', redirect: '/loglar' },
     { path: '/:pathMatch(.*)*', redirect: '/' },

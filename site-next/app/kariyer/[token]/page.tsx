@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import BasvuruFormu from "@/components/BasvuruFormu";
+import IlanGoruntulemeSayaci from "@/components/IlanGoruntulemeSayaci";
 import PageHero from "@/components/PageHero";
 import { ilanGetir } from "@/lib/ilanlar";
 
@@ -35,6 +36,7 @@ export default async function BasvuruPage({ params }: Params) {
 
   return (
     <>
+      <IlanGoruntulemeSayaci token={token} />
       <PageHero title={ilan.baslik} kicker="İş Başvurusu" text={ilan.aciklama ?? undefined} />
 
       <section className="bg-paper py-16">

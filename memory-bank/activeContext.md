@@ -1,5 +1,104 @@
 # Active Context
 
+## Bordro — Bordro Detay Modalı Koyu Mod (Dark Mode) Renk Düzeltmesi (2026-11-07)
+- `bordro/list` sayfasındaki Bordro Detay modalında koyu temada (`data-bs-theme="dark"` ve `data-theme-preset="macos-dark"`) oluşan renk ve kontrast uyumsuzlukları giderildi.
+- **Tespit Edilen Sorunlar**:
+  - Modal içeriğindeki koyu mod kuralları yalnızca `html[data-theme-preset="macos-dark"]` için tanımlanmış, standart navbar koyu mod toggle (`data-bs-theme="dark"`) kapsam dışında kalmıştı.
+  - Kartlarda hardcoded `.bg-white` bootstrap sınıfları ve kesintiler başlığında inline background stili bulunuyordu.
+  - Kart başlıkları (`.tint-hakedis`, `.tint-resmi`, `.tint-kesinti`) ve alt özet satırları (`.footer-row`) beyaz kalırken içlerindeki metinler Bootstrap koyu mod nedeniyle açık renge dönmüş ve okunmaz hale gelmişti.
+  - Boş kalan tablo alanları (`tbody`) ile beyaz kart satırları arasında zıt siyah bloklar oluşuyordu.
+- **Uygulanan Çözümler**:
+  - `views/bordro/api.php`:
+    - `.bordro-compact-view` CSS stilleri hem `html[data-bs-theme="dark"]`, `[data-bs-theme="dark"]` hem de `html[data-theme-preset="macos-dark"]` seçicilerini kapsayacak şekilde genişletildi.
+    - `.main-card`, `.header-glass`, `.unified-table`, `.parent-row`, `.child-row`, `.section-row`, `.footer-row` zemin ve metin renkleri koyu moda tam uyumlu hale getirildi.
+    - Kart başlık barları (`.tint-hakedis`, `.tint-resmi`, `.tint-kesinti`) koyu modda şeffaf yeşil, mavi ve kırmızı gradyanlarla zenginleştirildi; inline style kaldırıldı.
+    - Personel bilgi şeridindeki badge'ler, layout switch butonu, net maaş açma butonu ve kümülatif/hesaplama bilgileri koyu mod renklerine büründürüldü.
+    - `.main-card` üzerindeki hardcoded `bg-white` sınıfları kaldırıldı.
+  - `views/bordro/list.php` & `assets/css/style.css`:
+    - `#bordroDetailModal` modal-content, modal-header, modal-body, modal-footer ve bordro footer KPI stillerine `html[data-bs-theme="dark"]` ve `[data-bs-theme="dark"]` seçicileri eklendi.
+
+
+## Rehber Modülü — Yeni Sayfa Standardına Geçiş (2026-11-07)
+- `views/rehber/list.php` sayfası AGENTS.md Bölüm 8 (Yeni Sayfa Tasarım ve DataTables Standartları - Cari/Sözleşme Standardı) kurallarına tam uyumlu hale getirildi.
+- Kullanıcı talebi doğrultusunda **özet kartları yer almayacak şekilde** minimal ve modern bir liste tasarımı uygulandı.
+- **Sayfa Başlığı ve Üst Araç Çubuğu (8.1)**:
+  - `layouts/breadcrumb.php` standardına geçildi (`$maintitle = "Rehber"; $title = "Telefon Listesi";`).
+  - 44x44px subtle ikon kutusu (`bx bxs-contact`), başlık ve açıklama.
+  - `.personel-action-toolbar`: `+ Yeni Kayıt Ekle` butonu (`#yeniEkle`).
+- **DataTables Liste Kartı (`#rehberListCard`, 8.3)**:
+  - 38x38px ikonlu kart başlığı (`bx bx-list-ul`), açıklama, sağ araç çubuğu (Excel ve Yazdır butonları).
+  - Canlı sütun filtreleme nitelikleri (`data-filter="string"`, `data-filter="date"`, `data-filter="none"`).
+  - Adı Soyadı alanında metin üzerine binen karmaşık harf avatarı (initials) kaldırılarak Cari formatında zarif kullanıcı ikonu (`bx bx-user`) ile temiz metin düzenine geçildi.
+  - Açıklama alanı (`aciklama`) hem tabloda hem de Excel dışa aktarımında ayrı bir sütun olarak eklendi (`bx bx-note` ikonu, truncate ve tooltip desteği).
+  - E-posta alanında e-posta olmayan metinler için gereksiz `mailto:` kaldırılıp düzgün metin gösterimi sağlandı.
+  - Tıklanabilir telefon (`tel:`) bağlantıları eklendi.
+  - İşlem sütunu: `.action-btn-group` içinde 27x27px `.table-action-btn` subtle butonları (`btn-subtle-warning` Düzenle, `btn-subtle-danger` Sil).
+  - İşlem sütunu ve linkler hariç satıra tıklanınca düzenleme modalının otomatik açılması.
+- **Model ve API Katmanı (8.4 & PDO)**:
+  - `App/Model/RehberModel.php`: Server-side DataTables için `ajaxList(array $params): array` metodu PDO parametrik binding ile geliştirildi.
+  - `views/rehber/api.php`: `rehber-ajax-list`, `kaydet`, `kayitSil`, `kayitGetir` aksiyonları güvenli, temiz ve JSON yanıt standardında yapılandırıldı.
+  - `views/rehber/export-excel.php`: Arama filtrelerine uyumlu PhpSpreadsheet tabanlı Excel dışa aktarma servisi eklendi.
+  - `sql/2026_11_07_add_rehber_ajax_list_policy.sql`: `rehber-ajax-list` API politikası veritabanına uygulandı.
+- **Modern Modal (9 & Form Standartları)**:
+  - `views/rehber/modal/general-modal.php`: Form floating (`Form::FormFloatInput`, `Form::FormFloatTextarea`) mimarisi ve başlık ikonlarıyla macOS standartlarına uygun hale getirildi.
+- **JavaScript Başlatma (8.4)**:
+  - `views/rehber/js/rehber.js`: `applyLengthStateSave({ ...getDatatableOptions(), processing: true, serverSide: true, ajax: ... })` ile başlatıldı. SweetAlert2 bildirimleri ve hata yönetimi uygulandı.
+  - `layouts/vendor-scripts.php`: Script sürüm takibi `Helper::assetVersion('views/rehber/js/rehber.js')` ile güncellendi.
+
+## Araç Takip — KM Bildirim Onayları Yeni Sayfa Standardına Geçiş (2026-11-07)
+- `views/arac-takip/km-onaylari.php` sayfası AGENTS.md Bölüm 8 (Yeni Sayfa Tasarım ve DataTables Standartları - Cari/Sözleşme Standardı) kurallarına tam uyumlu hale getirildi.
+- **Tasarım ve Düzenleme İyileştirmeleri**:
+  - Özet kartları (`#summaryCardsContainer .summary-kpi-card`) ve liste kartı (`#kmListCard`) saf beyaz arka plana (`#ffffff`) ve zarif kenarlık çizgisine kavuşturuldu.
+  - Durum filtre butonları (`.status-filter-group`) kart başlığının doğrudan en soluna hizalandı.
+  - DataTables DOM yapısı (`dom`) Bootstrap 5 ızgara formatına (`row` - sol: `info` + `length`, sağ: `paginate`) uyarlanarak sayfalama elemanlarının sağa yaslanması sağlandı.
+- **Sayfa Başlığı ve Üst Araç Çubuğu**:
+  - `layouts/breadcrumb.php` standardına geçildi (`$maintitle = 'Araç Takip'; $title = 'KM Bildirim Onayları';`).
+  - 44x44px subtle ikon kutusu (`bx bx-tachometer`), başlık ve açıklama.
+  - `.personel-action-toolbar`: Yapay Zekâ ile Kontrol (`#btnKmAiKontrol`), Toplu Onayla (`#btnTopluOnayla`), İşlemler Dropdown (Excel'e Aktar, Eski Resimleri Arşivle & Temizle) ve Özet Kartları Aç/Kapa butonu (`#btnToggleSummaryCards`).
+- **4 Adet Minimal Özet KPI Kartı (`#summaryCardsContainer`)**:
+  - Sıçramasız `localStorage` durum okuma (`km-summary-hidden`, `km_summary_cards_state`).
+  - 4 Kart: Onay Bekleyenler (`stat_bekleyen`), Onaylananlar (`stat_onaylanan`), Reddedilenler (`stat_reddedilen`), Bildirim Yapmayanlar (`stat_yapmayanlar`).
+  - Her kartın içinde hızlı filtre butonu (`summary-pill-btn status-quick-filter`), sekme geçişiyle iki yönlü tam senkron çalışıyor.
+- **DataTables Liste Kartı (`#kmListCard`)**:
+  - 38x38px ikonlu kart başlığı, sekme navigasyonu (`status-filter-group`), sağ araç çubuğu (Excel, Yazdır butonları).
+  - Canlı sütun filtreleme nitelikleri (`data-filter="string"`, `data-filter="date"`, `data-filter="select"`, `data-filter="number"`, `data-filter="none"`).
+  - `applyLengthStateSave({ ...getDatatableOptions(), ... })` ile server-side ve client-side DataTables başlatma.
+- **Tüm Modallar ve İş Kuralları Korundu**:
+  - Saat 13:00 öncesi aynı gün akşam KM onaylama engeli, yapay zekâ analiz popup'ı, onaylı KM düzenleme modalı, düzelt & onayla modalı, red modalı, resim temizleme ve arşivleme modalı ve eksik bildirim toplu SMS/hatırlatma akışı eksiksiz korundu.
+
+## Mobil SPA — İşe Alım İlan Yönetimi 3 Adımlı Sihirbaz (2026-11-07)
+- **Masaüstü Standardında 3 Adımlı Sihirbaz**:
+  - `RecruitmentView.vue`: Masaüstündeki `views/ik-ise-alim/ilanlar.php` mimarisinin tamamı mobil ortama aktarıldı.
+  - **Adım 1 (İlan Bilgisi)**: Başlık, Durum (Yayında/Taslak/Kapalı), Departman, Görev/Unvan, Çalışma Yeri, Son Başvuru Tarihi ve bilgilendirme ipucu.
+  - **Adım 2 (Aday Ekranı)**: İş Tanımı ve Aranan Nitelikler.
+  - **Adım 3 (AI & Sorular)**: Yapay zekâ değerlendirme kriterleri, hızlı kriter çipleri (`+ Zorunlu`, `+ Artı puan`, `+ Elenme sebebi`, `+ Maaş aralığı`), pozisyona özel soru yönetimi (en fazla 8 soru, soru sıralama butonları, silme), hazır soru önerileri çipleri (`+ Önceki firmalar`, `+ Ehliyet sınıfı`, `+ İşe başlama`, `+ Saha uygunluğu`) ve yeni soru ekleme alanı.
+  - İlan silme, geri/ileri sihirbaz butonları ve kaydetme akışı tamamlandı.
+  - `npm run build` ile yeniden derlendi.
+
+## Mobil SPA — İşe Alım İlan Yönetimi & Durum Düzeltmesi (2026-11-07)
+- **Sorun**: İlan listesinde `durum` bilgisi eksik geliyordu (aktifListe sadece `id, baslik` çekiyordu) ve veritabanında zaten `yayinda` olan ilana tekrar "Yayına Al" denildiğinde `durumGuncelle` `rowCount() = 0` döndüğü için "İlan durumu güncellenemedi" hatası veriyordu. Ayrıca yayından kaldırma durum kodu modelde `kapali` iken `kapandi` olarak gönderiliyordu.
+- **Düzeltmeler**:
+  - `mobile-spa/public/api/ik-ise-alim.php` ve `dist/api/ik-ise-alim.php`: İlan listesi için `i.*, COUNT(b.id) AS basvuru_sayisi` ile tüm sütunlar çekildi; `job-detail`, `save-job` ve `delete-job` API aksiyonları eklendi. `job-status` içinde mevcut durum kontrolü ve doğru durum kodları (`yayinda`, `taslak`, `kapali`) sağlandı.
+  - `sql/2026_11_07_ik_mobile_policies.sql`: `job-detail`, `save-job` ve `delete-job` izin politikaları veritabanına uygulandı.
+  - `mobile-spa/src/services/recruitment.js`: `getJobDetail(id)`, `saveJob(data)` ve `deleteJob(id)` servis metodları eklendi.
+  - `mobile-spa/src/views/RecruitmentView.vue`: İlanlar sekmesine "+ Yeni İlan Oluştur" butonu, ilan kartlarına "Düzenle" butonu ve kapsamlı ilan oluşturma/düzenleme modalı (Başlık, Durum, Departman, Görev, Çalışma Yeri, Geçerlilik Tarihi, Açıklama, Aranan Nitelikler, AI Kriterleri, Özel Sorular ve İlan Silme) eklendi.
+  - `npm run build` ile yeniden derlendi.
+
+## Mobil SPA — İnsan Kaynakları (İşe Alım) Modülü Eklendi (2026-11-07)
+- **Kapsam**: İnsan Kaynakları / İşe Alım modülü yönetici mobil SPA'ya (`mobile-spa/`) Soft Bento & Claymorphic UI standartlarında tam yetenekli olarak entegre edildi.
+- **Backend API**:
+  - `mobile-spa/public/api/ik-ise-alim.php` ve `mobile-spa/dist/api/ik-ise-alim.php`: Dashboard stats, başvurular, başvuru detayı, durum güncelleme, İK notu, AI yeniden değerlendirme, ilan yönetimi & paylaşım linki, mülakat kaydetme/silme, e-posta/WhatsApp bildirim şablonları & gönderimi, personele dönüştürme ve güvenli (AES-256) CV/fotoğraf görüntüleme uç noktaları oluşturuldu.
+  - `sql/2026_11_07_ik_mobile_policies.sql`: `permission_policies` tablosuna `mobile-spa/ik-ise-alim` kaynağı için `permission_key` bağlantılı politikalar eklendi.
+  - `mobile-spa/public/api/auth.php` & `dist/api/auth.php`: `recruitment`, `recruitment_interview`, `recruitment_notify`, `recruitment_convert` yetkileri eklendi.
+- **Frontend & UI**:
+  - `mobile-spa/src/services/recruitment.js`: Mobil API servis katmanı yazıldı.
+  - `mobile-spa/src/views/RecruitmentView.vue`: Soft Bento & Claymorphic UI mimarisiyle; 4 Bento KPI kartı, durum filtre hapları, arama, aday listesi, AI uyum skoru göstergesi, kapsamlı aday detay çekmecesi (Bilgiler, AI analizi, mülakatlar, karar & WhatsApp/E-posta bildirim, personele dönüştürme ve süreç günlüğü), ilanlar sekmesi ve dashboard sekmeleri hazırlandı.
+  - `mobile-spa/src/router.js`: `/ise-alim` rotası ve yönlendirmeleri eklendi.
+  - `mobile-spa/src/components/BottomNav.vue`: `recruitment` modülü planlama grubuna eklendi.
+  - `mobile-spa/src/views/HomeView.vue`: `ALL_SYSTEM_ACTIONS` içine `act_recruitment` kısayolu tanımlandı.
+- **Derleme**: `npm run build` ile `mobile-spa` Vite derlemesi başarıyla tamamlandı.
+
+
 ## Mobil SPA — Görevler Gerçek Veriye Bağlandı (2026-11-05)
 - `mobile-spa/public/api/gorevler.php`: `list` (listeler + görevler, atananlar) ve `tamamla`/`geri-al` (CSRF + `gorevYetkisi` sahip/duzenle kontrolü, sistem logu). Erişim `Gate::allows('gorevler')` ile sunucuda doğrulanır; ID'ler `Security::encrypt`.
 - `src/services/gorevler.js` ve `src/views/TasksView.vue`: sabit örnek veri kaldırıldı; Bugün (geciken dahil) / Yaklaşan / Tamamlanan sekmeleri, ilerleme çubuğu, 44px tamamla/geri al düğmesi. Salt okunur paylaşımlı listelerde düğme pasif.
@@ -3774,3 +3873,23 @@
 - sql/2026_11_07_ik_aday_bildirim.sql (ik_basvuru_bildirimleri, ik_basvuru_aday_bildirim yetkisi, aday-bildirim-hazirla/gonder politikaları); IkAdayBildirimService/Model; basvuru-detay Adaya Bildir modalı (e-posta SMTP + WhatsApp wa.me). Varsayılan şablonlar koda gömülü, her gönderimde düzenlenebilir.
 - basvuru-durum: aynı duruma tekrar basınca hata vermez (rowCount=0 sorunu giderildi).
 - Bekleyen: SQL çalıştırma.
+
+- Sütun yöneticisi (assets/js/datatable-columns.js): "Sütunlar" butonu kaldırıldı; menü tablo başlığına (thead) sağ tıkla açılan yüzen menü olarak merkezi sunuluyor. data-dt-colman-for slotları boşaltılır.
+
+## 2026-11-07 — İlan Modalı İyileştirme
+- ilanlar.php/js: soru satırında düzenle/taşı/sil, soru sayacı, hazır soru önerileri; Son Başvuru Tarihi flatpickr (gg.aa.yyyy, API için Y-m-d çevrilir); AI kriter ipucuna ehliyet kapsama notu.
+
+- DataTable kart içi boşluk: card-body, table-responsive/premium-shell padding-margin-border 0; footer row padding 8px 12px (assets/css/datatable-filters.css sonu).
+
+- DataTable başlık flaşı: filtre satırı (kutular dahil) ilk preDraw'da veri beklemeden kurulur; kayıtlı filtre varsa yer tutucu (.dt-filter-placeholder) kullanılır. Gövdede yükleme katmanı gösterilir.
+
+- DataTable merkezi yükleniyor katmanı (.dt-loading-overlay): preInit/processing.dt ile tablo gövdesinde spinner; varsayılan dataTables_processing gizli (datatable-filters.js/css sonu).
+
+- Merkezi yükleme katmanı Gelir-Gider görünümüne (spinner-border + "Veriler yükleniyor..." + "Lütfen bekleyiniz", %88 blur) çekildi; table[data-dt-loader="off"] ile kapatılır (gelir-gider kendi katmanını kullanır).
+
+- Yükleme katmanı hatası düzeltildi: DOM kaynaklı tablolarda gösterilmez; katman settings._dtOverlay üzerinde tutulur (DataTables sarmalayınca parent değişiyordu, katman takılı kalıyordu).
+
+## İlan Başvuru Sayfası Görüntüleme Sayacı
+- site-next `/kariyer/[token]` açılınca `IlanGoruntulemeSayaci` → `/api/kariyer/goruntule` → `api/external/kariyer-goruntule.php` → `IkIlanModel::goruntulemeKaydet()`.
+- Tekil ziyaretçi = sha256(IP|UA); bot UA'lar sayılmaz. Tablo: `ik_ilan_goruntulemeler` (sql/2026_11_07_ik_ilan_goruntulemeler.sql — çalıştırılmalı).
+- `ik-ise-alim/ilanlar` listesine GÖRÜNTÜLEME kolonu eklendi (kolon indeksleri kaydı, order 7).

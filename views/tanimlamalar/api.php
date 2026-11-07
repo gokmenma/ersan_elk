@@ -936,9 +936,10 @@ if (isset($_POST["action"]) && $_POST["action"] == "bolge-kurallari-getir") {
             "kurallar" => $kurallar
         ]);
     } catch (PDOException $ex) {
+        error_log('bolge-kurallari-getir: ' . $ex->getMessage());
         echo json_encode([
             "status" => "error",
-            "message" => $ex->getMessage(),
+            "message" => "Kurallar yüklenemedi.",
             "kurallar" => []
         ]);
     }

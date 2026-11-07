@@ -1295,7 +1295,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // ============================================================
                 $html = '<style>
                     .bordro-compact-view { font-family: "Inter", system-ui, -apple-system, sans-serif; }
-                    .bordro-compact-view .main-card { border-radius: 16px; border: 1.5px solid #cbd5e1; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
+                    .bordro-compact-view .main-card { background: #ffffff; border-radius: 16px; border: 1.5px solid #cbd5e1; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
                     .bordro-compact-view .header-glass { background: #ffffff; border: 1.5px solid #cbd5e1; padding: 15px 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
                     .bordro-compact-view .card-header-tint { padding: 14px 20px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #cbd5e1; }
                     .bordro-compact-view .calculation-toggle { cursor:pointer; user-select:none; }
@@ -1353,6 +1353,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                     .bordro-compact-view .tint-hakedis { background: linear-gradient(to right, #f0fdf4, #ffffff); color: #166534; }
                     .bordro-compact-view .tint-resmi { background: linear-gradient(to right, #eff6ff, #ffffff); color: #1d4ed8; }
+                    .bordro-compact-view .tint-kesinti { background: linear-gradient(to right, #fef2f2, #ffffff); color: #991b1b; }
                     .bordro-compact-view .calculation-note { display:block; margin-top:3px; font-size:.72rem; font-weight:500; color:#94a3b8; }
                     .bordro-compact-view .section-row td { padding-top:10px; padding-bottom:8px; background:#f8fafc; color:#64748b; font-size:.72rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; border-bottom: 1px solid #cbd5e1; }
                     .bordro-compact-view .unified-table { width: 100%; margin-bottom: 0; border-collapse: separate; border-spacing: 0; }
@@ -1380,62 +1381,200 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     .rotate-icon { transition: transform 0.3s; }
                     .parent-row[aria-expanded="true"] .rotate-icon { transform: rotate(180deg); }
 
-                    /* macOS Dark Uyumu */
-                    html[data-theme-preset="macos-dark"] .bordro-compact-view .main-card {
-                        background: rgba(30, 32, 40, 0.6) !important;
-                        border: 1px solid rgba(255, 255, 255, 0.16) !important;
-                        backdrop-filter: blur(20px);
+                    /* Dark Mode (Standart data-bs-theme="dark" & macOS Dark) Uyumu */
+                    html[data-bs-theme="dark"] .bordro-compact-view .main-card,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .main-card,
+                    [data-bs-theme="dark"] .bordro-compact-view .main-card {
+                        background: #1e222d !important;
+                        border: 1.5px solid rgba(255, 255, 255, 0.12) !important;
+                        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
                     }
-                    html[data-theme-preset="macos-dark"] .bordro-compact-view .header-glass {
-                        background: rgba(255, 255, 255, 0.04) !important;
-                        border: 1px solid rgba(255, 255, 255, 0.16) !important;
-                        backdrop-filter: blur(16px);
-                    }
-                    html[data-theme-preset="macos-dark"] .bordro-compact-view .card-header-tint {
-                        border-bottom-color: rgba(255, 255, 255, 0.14) !important;
-                    }
-                    html[data-theme-preset="macos-dark"] .bordro-compact-view .header-glass h5 {
-                        color: #ffffff !important;
-                    }
-                    html[data-theme-preset="macos-dark"] .bordro-compact-view .unified-table td {
-                        border-bottom-color: rgba(255, 255, 255, 0.1) !important;
-                        color: #e2e8f0 !important;
-                    }
-                    html[data-theme-preset="macos-dark"] .bordro-compact-view .unified-table .parent-row {
-                        background: rgba(30, 32, 40, 0.4) !important;
+                    html[data-bs-theme="dark"] .bordro-compact-view .header-glass,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .header-glass,
+                    [data-bs-theme="dark"] .bordro-compact-view .header-glass {
+                        background: #1e222d !important;
+                        border: 1.5px solid rgba(255, 255, 255, 0.12) !important;
                         color: #f1f5f9 !important;
                     }
-                    html[data-theme-preset="macos-dark"] .bordro-compact-view .unified-table .parent-row:hover {
-                        background: rgba(255, 255, 255, 0.06) !important;
-                    }
-                    html[data-theme-preset="macos-dark"] .bordro-compact-view .unified-table .child-row {
-                        background: rgba(20, 22, 28, 0.4) !important;
-                        color: #94a3b8 !important;
-                    }
-                    html[data-theme-preset="macos-dark"] .bordro-compact-view .unified-table .footer-row {
-                        background: rgba(255, 255, 255, 0.04) !important;
+                    html[data-bs-theme="dark"] .bordro-compact-view .header-glass h5,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .header-glass h5,
+                    [data-bs-theme="dark"] .bordro-compact-view .header-glass h5,
+                    html[data-bs-theme="dark"] .bordro-compact-view .header-glass .text-dark,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .header-glass .text-dark,
+                    [data-bs-theme="dark"] .bordro-compact-view .header-glass .text-dark {
                         color: #ffffff !important;
                     }
-                    html[data-theme-preset="macos-dark"] .bordro-compact-view .unified-table .footer-row td {
-                        border-top-color: rgba(255, 255, 255, 0.14) !important;
+                    html[data-bs-theme="dark"] .bordro-compact-view .header-glass .text-muted,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .header-glass .text-muted,
+                    [data-bs-theme="dark"] .bordro-compact-view .header-glass .text-muted {
+                        color: #94a3b8 !important;
                     }
-                    html[data-theme-preset="macos-dark"] .bordro-compact-view .btn-toggle-net-expand {
+                    html[data-bs-theme="dark"] .bordro-compact-view .header-glass .layout-switch,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .header-glass .layout-switch,
+                    [data-bs-theme="dark"] .bordro-compact-view .header-glass .layout-switch {
+                        background: rgba(255, 255, 255, 0.08) !important;
+                        border-color: rgba(255, 255, 255, 0.18) !important;
+                        color: #f1f5f9 !important;
+                    }
+                    html[data-bs-theme="dark"] .bordro-compact-view .header-glass .layout-switch:hover,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .header-glass .layout-switch:hover,
+                    [data-bs-theme="dark"] .bordro-compact-view .header-glass .layout-switch:hover {
+                        background: rgba(255, 255, 255, 0.14) !important;
+                        color: #ffffff !important;
+                    }
+                    html[data-bs-theme="dark"] .bordro-compact-view .header-glass .badge,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .header-glass .badge,
+                    [data-bs-theme="dark"] .bordro-compact-view .header-glass .badge {
+                        background: rgba(255, 255, 255, 0.06) !important;
+                        border-color: rgba(255, 255, 255, 0.12) !important;
+                        color: #f1f5f9 !important;
+                    }
+                    html[data-bs-theme="dark"] .bordro-compact-view .header-glass .badge small,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .header-glass .badge small,
+                    [data-bs-theme="dark"] .bordro-compact-view .header-glass .badge small {
+                        color: #94a3b8 !important;
+                    }
+                    html[data-bs-theme="dark"] .bordro-compact-view .card-header-tint,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .card-header-tint,
+                    [data-bs-theme="dark"] .bordro-compact-view .card-header-tint {
+                        border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+                    }
+                    html[data-bs-theme="dark"] .bordro-compact-view .tint-hakedis,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .tint-hakedis,
+                    [data-bs-theme="dark"] .bordro-compact-view .tint-hakedis {
+                        background: linear-gradient(to right, rgba(16, 185, 129, 0.18), rgba(30, 34, 45, 0.95)) !important;
+                        color: #34d399 !important;
+                        border-bottom-color: rgba(16, 185, 129, 0.25) !important;
+                    }
+                    html[data-bs-theme="dark"] .bordro-compact-view .tint-resmi,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .tint-resmi,
+                    [data-bs-theme="dark"] .bordro-compact-view .tint-resmi {
+                        background: linear-gradient(to right, rgba(59, 130, 246, 0.18), rgba(30, 34, 45, 0.95)) !important;
+                        color: #60a5fa !important;
+                        border-bottom-color: rgba(59, 130, 246, 0.25) !important;
+                    }
+                    html[data-bs-theme="dark"] .bordro-compact-view .tint-kesinti,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .tint-kesinti,
+                    [data-bs-theme="dark"] .bordro-compact-view .tint-kesinti {
+                        background: linear-gradient(to right, rgba(239, 68, 68, 0.18), rgba(30, 34, 45, 0.95)) !important;
+                        color: #f87171 !important;
+                        border-bottom-color: rgba(239, 68, 68, 0.25) !important;
+                    }
+                    html[data-bs-theme="dark"] .bordro-compact-view .calculation-note,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .calculation-note,
+                    [data-bs-theme="dark"] .bordro-compact-view .calculation-note {
+                        color: #94a3b8 !important;
+                    }
+                    html[data-bs-theme="dark"] .bordro-compact-view .section-row td,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .section-row td,
+                    [data-bs-theme="dark"] .bordro-compact-view .section-row td {
+                        background-color: rgba(255, 255, 255, 0.05) !important;
+                        color: #94a3b8 !important;
+                        border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+                    }
+                    html[data-bs-theme="dark"] .bordro-compact-view .unified-table,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .unified-table,
+                    [data-bs-theme="dark"] .bordro-compact-view .unified-table {
+                        --bs-table-bg: transparent !important;
+                        background-color: transparent !important;
+                    }
+                    html[data-bs-theme="dark"] .bordro-compact-view .unified-table td,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .unified-table td,
+                    [data-bs-theme="dark"] .bordro-compact-view .unified-table td {
+                        border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+                        color: #e2e8f0 !important;
+                        background-color: transparent !important;
+                    }
+                    html[data-bs-theme="dark"] .bordro-compact-view .unified-table .parent-row,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .unified-table .parent-row,
+                    [data-bs-theme="dark"] .bordro-compact-view .unified-table .parent-row {
+                        background-color: rgba(255, 255, 255, 0.02) !important;
+                        color: #f1f5f9 !important;
+                    }
+                    html[data-bs-theme="dark"] .bordro-compact-view .unified-table .parent-row:hover,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .unified-table .parent-row:hover,
+                    [data-bs-theme="dark"] .bordro-compact-view .unified-table .parent-row:hover {
+                        background-color: rgba(255, 255, 255, 0.06) !important;
+                    }
+                    html[data-bs-theme="dark"] .bordro-compact-view .unified-table .parent-row .text-dark,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .unified-table .parent-row .text-dark,
+                    [data-bs-theme="dark"] .bordro-compact-view .unified-table .parent-row .text-dark {
+                        color: #f1f5f9 !important;
+                    }
+                    html[data-bs-theme="dark"] .bordro-compact-view .unified-table .child-row,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .unified-table .child-row,
+                    [data-bs-theme="dark"] .bordro-compact-view .unified-table .child-row {
+                        background-color: rgba(0, 0, 0, 0.25) !important;
+                        color: #94a3b8 !important;
+                    }
+                    html[data-bs-theme="dark"] .bordro-compact-view .unified-table .child-row td,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .unified-table .child-row td,
+                    [data-bs-theme="dark"] .bordro-compact-view .unified-table .child-row td {
+                        border-bottom-color: rgba(255, 255, 255, 0.05) !important;
+                        color: #cbd5e1 !important;
+                    }
+                    html[data-bs-theme="dark"] .bordro-compact-view .unified-table .footer-row,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .unified-table .footer-row,
+                    [data-bs-theme="dark"] .bordro-compact-view .unified-table .footer-row {
+                        background-color: rgba(255, 255, 255, 0.04) !important;
+                        color: #ffffff !important;
+                    }
+                    html[data-bs-theme="dark"] .bordro-compact-view .unified-table .footer-row td,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .unified-table .footer-row td,
+                    [data-bs-theme="dark"] .bordro-compact-view .unified-table .footer-row td {
+                        border-top-color: rgba(255, 255, 255, 0.14) !important;
+                        border-bottom: none !important;
+                    }
+                    html[data-bs-theme="dark"] .bordro-compact-view .unified-table .badge.bg-light,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .unified-table .badge.bg-light,
+                    [data-bs-theme="dark"] .bordro-compact-view .unified-table .badge.bg-light {
+                        background-color: rgba(255, 255, 255, 0.08) !important;
+                        color: #e2e8f0 !important;
+                        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+                    }
+                    html[data-bs-theme="dark"] .bordro-compact-view .unified-table .text-muted,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .unified-table .text-muted,
+                    [data-bs-theme="dark"] .bordro-compact-view .unified-table .text-muted {
+                        color: #94a3b8 !important;
+                    }
+                    html[data-bs-theme="dark"] .bordro-compact-view .btn-toggle-net-expand,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .btn-toggle-net-expand,
+                    [data-bs-theme="dark"] .bordro-compact-view .btn-toggle-net-expand {
                         background: rgba(255, 255, 255, 0.1) !important;
                         border-color: rgba(255, 255, 255, 0.18) !important;
                         color: #f1f5f9 !important;
                     }
-                    html[data-theme-preset="macos-dark"] .bordro-compact-view .btn-toggle-net-expand:hover {
+                    html[data-bs-theme="dark"] .bordro-compact-view .btn-toggle-net-expand:hover,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .btn-toggle-net-expand:hover,
+                    [data-bs-theme="dark"] .bordro-compact-view .btn-toggle-net-expand:hover {
                         background: rgba(255, 255, 255, 0.2) !important;
                         color: #ffffff !important;
                     }
+                    html[data-bs-theme="dark"] .bordro-compact-view .bg-light,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .bg-light,
+                    [data-bs-theme="dark"] .bordro-compact-view .bg-light {
+                        background-color: rgba(255, 255, 255, 0.05) !important;
+                        border-color: rgba(255, 255, 255, 0.12) !important;
+                    }
+                    html[data-bs-theme="dark"] .bordro-compact-view .text-dark,
+                    html[data-theme-preset="macos-dark"] .bordro-compact-view .text-dark,
+                    [data-bs-theme="dark"] .bordro-compact-view .text-dark {
+                        color: #f1f5f9 !important;
+                    }
                     @media (min-width:1200px) {
-                        html[data-theme-preset="macos-dark"] .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner {
+                        html[data-bs-theme="dark"] .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner,
+                        html[data-theme-preset="macos-dark"] .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner,
+                        [data-bs-theme="dark"] .bordro-compact-view.layout-side .bordro-net-result-column .net-bottom-banner {
                             background:#14243e; color:#f1f5f9; border-color:#2c4263;
                         }
-                        html[data-theme-preset="macos-dark"] .bordro-compact-view.layout-side .bordro-net-result-column .dist-badge {
+                        html[data-bs-theme="dark"] .bordro-compact-view.layout-side .bordro-net-result-column .dist-badge,
+                        html[data-theme-preset="macos-dark"] .bordro-compact-view.layout-side .bordro-net-result-column .dist-badge,
+                        [data-bs-theme="dark"] .bordro-compact-view.layout-side .bordro-net-result-column .dist-badge {
                             background:rgba(255,255,255,.04); color:#f1f5f9; border-color:rgba(255,255,255,.08);
                         }
-                        html[data-theme-preset="macos-dark"] .bordro-compact-view.layout-side.net-fullwidth .bordro-net-result-column .net-bottom-banner .col-md-5 {
+                        html[data-bs-theme="dark"] .bordro-compact-view.layout-side.net-fullwidth .bordro-net-result-column .net-bottom-banner .col-md-5,
+                        html[data-theme-preset="macos-dark"] .bordro-compact-view.layout-side.net-fullwidth .bordro-net-result-column .net-bottom-banner .col-md-5,
+                        [data-bs-theme="dark"] .bordro-compact-view.layout-side.net-fullwidth .bordro-net-result-column .net-bottom-banner .col-md-5 {
                             border-right-color: rgba(255, 255, 255, 0.14) !important;
                         }
                     }
@@ -1486,7 +1625,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // --- COLUMN 1: PERSONELIN KENDI ALACAGI ---
                 $kendiAlacakPanelId = 'kendiAlacakPanel_' . intval($bp->id);
                 $html .= '<div class="col-12 bordro-calculation-panel">';
-                $html .= '<div class="main-card bg-white">';
+                $html .= '<div class="main-card">';
                 $html .= '<div class="card-header-tint tint-hakedis calculation-toggle" role="button" tabindex="0" data-collapse-target="#' . $kendiAlacakPanelId . '" aria-expanded="false" aria-controls="' . $kendiAlacakPanelId . '">
                             <span><i class="bx bx-calculator me-2"></i>SÖZLEŞME ALACAĞI HESABI <small class="d-block opacity-75 mt-1">Resmî + gayriresmî, kesinti öncesi</small></span>
                             <span class="d-flex align-items-center gap-2"><span class="badge rounded-pill bg-success">' . number_format($sozlesmeAlacagiOzeti['toplam'] ?? 0, 2, ',', '.') . ' ₺</span><i class="bx bx-chevron-down panel-chevron"></i></span>
@@ -1704,7 +1843,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // --- COLUMN 2: RESMI ALACAK / BANKA HESABI ---
                 $resmiAlacakPanelId = 'resmiAlacakPanel_' . intval($bp->id);
                 $html .= '<div class="col-12 bordro-calculation-panel">';
-                $html .= '<div class="main-card bg-white">';
+                $html .= '<div class="main-card">';
                 $html .= '<div class="card-header-tint tint-resmi calculation-toggle" role="button" tabindex="0" data-collapse-target="#' . $resmiAlacakPanelId . '" aria-expanded="false" aria-controls="' . $resmiAlacakPanelId . '">
                             <span><i class="bx bx-building-house me-2"></i>RESMÎ ALACAĞI HESABI <small class="d-block opacity-75 mt-1">Kesinti öncesi resmî hakediş</small></span>
                             <span class="d-flex align-items-center gap-2"><span class="badge rounded-pill bg-primary">' . number_format($bankaDetayDagilimi['brut_banka'], 2, ',', '.') . ' ₺</span><i class="bx bx-chevron-down panel-chevron"></i></span>
@@ -1764,8 +1903,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // --- RIGHT COLUMN: KESINTILER ---
                 $personelKesintiOzeti = $BordroPersonel->getPersonelKesintiOzeti($bp);
                 $html .= '<div class="col-lg-4 bordro-deduction-column">';
-                $html .= '<div class="main-card bg-white">';
-                $html .= '<div class="card-header-tint" style="background:linear-gradient(to right,#fef2f2,#fff);color:#991b1b;">
+                $html .= '<div class="main-card">';
+                $html .= '<div class="card-header-tint tint-kesinti">
                             <span><i class="bx bx-minus-circle me-2"></i>KESİNTİLER</span>
                             <span class="badge rounded-pill bg-danger">' . ($personelKesintiOzeti['toplam'] > 0 ? '-' : '') . number_format($personelKesintiOzeti['toplam'], 2, ',', '.') . ' ₺</span>
                           </div>';

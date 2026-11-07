@@ -652,7 +652,7 @@
               position: "top-end",
               icon: "info",
               title: '"' + ctx.titles[orig] + '" gizlendi',
-              text: "Geri getirmek için Sütunlar menüsünü kullanabilirsiniz.",
+              text: "Geri getirmek için tablo başlığına sağ tıklayın.",
               showConfirmButton: false,
               timer: 2600,
               timerProgressBar: true,
@@ -665,54 +665,83 @@
     });
   }
 
-  function buildUi(ctx) {
-    const toolbarSlot = $('[data-dt-colman-for="' + ctx.tableId + '"]').first();
-    const inToolbar = toolbarSlot.length > 0;
-    const btnClass = inToolbar
-      ? toolbarSlot.attr("data-dt-colman-style") === "outline"
-        ? "btn btn-sm btn-outline-secondary bg-white px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold"
-        : "btn btn-link btn-sm text-secondary text-decoration-none px-2 d-flex align-items-center"
-      : "btn btn-sm btn-outline-secondary bg-white shadow-sm d-flex align-items-center";
+  function closeMenu(ctx) {
+    if (!ctx.$menu || !ctx.menuOpen) return;
+    ctx.menuOpen = false;
+    ctx.$menu.removeClass("show").css({ display: "none" });
+    $(document).off(".dtcmMenu" + ctx.tableId);
+    $(window).off(".dtcmMenu" + ctx.tableId);
+  }
 
-    const $ui = $(
-      '<div class="dropdown d-inline-block dt-colman">' +
-        '<button type="button" class="' + btnClass + '" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="Sütunları Düzenle">' +
-        '<i class="mdi mdi-view-column fs-5 me-1"></i> Sütunlar</button>' +
-        '<div class="dropdown-menu dropdown-menu-end p-0 shadow-lg border-0 dt-colman-menu">' +
+  function openMenu(ctx, x, y) {
+    const $menu = ctx.$menu;
+    renderList(ctx);
+    $menu.css({ display: "block", visibility: "hidden", left: 0, top: 0 }).addClass("show");
+    const w = $menu.outerWidth();
+    const h = $menu.outerHeight();
+    const left = Math.max(8, Math.min(x, window.innerWidth - w - 8));
+    const top = Math.max(8, Math.min(y, window.innerHeight - h - 8));
+    $menu.css({ left: left + "px", top: top + "px", visibility: "visible" });
+    ctx.menuOpen = true;
+
+    const ns = ".dtcmMenu" + ctx.tableId;
+    $(document)
+      .on("mousedown" + ns + " touchstart" + ns, function (ev) {
+        if (!$(ev.target).closest($menu).length) closeMenu(ctx);
+      })
+      .on("keydown" + ns, function (ev) {
+        if (ev.key === "Escape") closeMenu(ctx);
+      })
+      .on("contextmenu" + ns, function (ev) {
+        if (!$(ev.target).closest($(ctx.settings.nTable).find("> thead")).length && !$(ev.target).closest($menu).length) closeMenu(ctx);
+      });
+    $(window).on("resize" + ns + " blur" + ns, function () {
+      closeMenu(ctx);
+    });
+    window.addEventListener(
+      "scroll",
+      function onScroll(ev) {
+        if (ctx.$menu && ctx.$menu[0].contains(ev.target)) return;
+        window.removeEventListener("scroll", onScroll, true);
+        closeMenu(ctx);
+      },
+      true
+    );
+  }
+
+  function buildUi(ctx) {
+    $('[data-dt-colman-for="' + ctx.tableId + '"]').empty();
+
+    const $menu = $(
+      '<div class="p-0 shadow-lg border-0 dt-colman-menu dt-colman-floating" role="menu">' +
         '<div class="p-2 border-bottom d-flex justify-content-between align-items-center dt-colman-head">' +
-        '<span class="fw-semibold font-size-12 text-muted">SÜTUN GÖRÜNÜMÜ</span>' +
+        '<span class="fw-semibold font-size-12 text-muted"><i class="mdi mdi-view-column me-1"></i>SÜTUN GÖRÜNÜMÜ</span>' +
         '<button type="button" class="btn btn-sm btn-link text-primary text-decoration-none p-0 font-size-12 fw-bold dt-colman-reset"><i class="mdi mdi-refresh me-1"></i>VARSAYILAN</button>' +
         "</div>" +
         '<div class="p-2 dt-colman-list"></div>' +
         '<div class="px-3 py-2 border-top font-size-11 text-muted dt-colman-hint"><i class="bx bx-move-horizontal me-1"></i>Genişlik için başlık kenarını sürükleyin; sıfırlamak için çift tıklayın.</div>' +
-        "</div></div>"
-    );
+        "</div>"
+    ).appendTo(document.body);
 
-    if (inToolbar) {
-      toolbarSlot.empty().append($ui);
-    } else {
-      const $bar = $('<div class="dt-colman-bar d-flex justify-content-end mb-2"></div>').append($ui);
-      $(ctx.settings.nTableWrapper).before($bar);
-      ctx.$bar = $bar;
-    }
+    ctx.$menu = $menu;
+    ctx.$ui = $menu;
+    ctx.$list = $menu.find(".dt-colman-list");
+    ctx.menuOpen = false;
 
-    ctx.$ui = $ui;
-    ctx.$list = $ui.find(".dt-colman-list");
+    $(ctx.settings.nTable)
+      .find("> thead")
+      .on("contextmenu.dtcm", function (ev) {
+        if ($(ev.target).closest("input, textarea, select, .select2").length) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        openMenu(ctx, ev.clientX, ev.clientY);
+      });
 
-    const btn = $ui.find("[data-bs-toggle]")[0];
-    if (window.bootstrap && window.bootstrap.Dropdown) {
-      new window.bootstrap.Dropdown(btn, { autoClose: "outside" });
-    }
-
-    $ui.on("show.bs.dropdown", function () {
-      renderList(ctx);
+    $menu.on("contextmenu", function (ev) {
+      ev.preventDefault();
     });
 
-    $ui.on("click", ".dt-colman-list", function (ev) {
-      ev.stopPropagation();
-    });
-
-    $ui.on("change", ".dt-colman-check", function () {
+    $menu.on("change", ".dt-colman-check", function () {
       const orig = parseInt($(this).attr("data-orig"), 10);
       const show = this.checked;
       const cur = curOf(ctx, orig);
@@ -720,7 +749,7 @@
       refreshAfterLayout(ctx);
     });
 
-    $ui.on("click", ".dt-colman-reset", function (ev) {
+    $menu.on("click", ".dt-colman-reset", function (ev) {
       ev.preventDefault();
       ev.stopPropagation();
       resetAll(ctx);
@@ -821,14 +850,77 @@
       if (ctx.sortable) ctx.sortable.destroy();
       if (ctx.$zone) ctx.$zone.remove();
       $table.find("> thead").off(".dtcm");
-      if (ctx.$bar) ctx.$bar.remove();
-      else if (ctx.$ui) ctx.$ui.remove();
+      closeMenu(ctx);
+      if (ctx.$menu) ctx.$menu.remove();
       $table.find(".dt-colman-resizer").remove();
       $table.removeClass("dt-colman-fixed");
       $table.off(".dtcm");
       registry.delete(settings);
     });
   }
+
+  function legacyMenu() {
+    const $list = $("#columnList, #columnListContainer").first();
+    if (!$list.length) return null;
+    const $menu = $list.closest(".dropdown-menu");
+    return $menu.length ? $menu : null;
+  }
+
+  function hideToggle($menu) {
+    $menu.siblings('[data-bs-toggle="dropdown"]').each(function () {
+      this.style.setProperty("display", "none", "important");
+    });
+  }
+
+  function closeLegacy($menu) {
+    $menu.removeClass("show").css("display", "none");
+    $(document).off(".dtcmLegacy");
+    $(window).off(".dtcmLegacy");
+  }
+
+  $(document).on("contextmenu", "table.dataTable > thead", function (ev) {
+    if ($(ev.target).closest("input, textarea, select, .select2").length) return;
+    const $menu = legacyMenu();
+    if (!$menu) return;
+    ev.preventDefault();
+
+    if (!$menu.data("dtcmMoved")) {
+      hideToggle($menu);
+      $menu.removeClass("dropdown-menu dropdown-menu-end").addClass("dt-colman-floating bg-body").appendTo(document.body).data("dtcmMoved", true);
+      $menu.on("contextmenu", function (e) {
+        e.preventDefault();
+      });
+    }
+
+    $menu.css({ display: "block", visibility: "hidden", left: 0, top: 0 }).addClass("show");
+    const w = $menu.outerWidth();
+    const h = $menu.outerHeight();
+    $menu.css({
+      left: Math.max(8, Math.min(ev.clientX, window.innerWidth - w - 8)) + "px",
+      top: Math.max(8, Math.min(ev.clientY, window.innerHeight - h - 8)) + "px",
+      visibility: "visible",
+    });
+
+    $(document)
+      .off(".dtcmLegacy")
+      .on("mousedown.dtcmLegacy touchstart.dtcmLegacy", function (e) {
+        if (!$(e.target).closest($menu).length) closeLegacy($menu);
+      })
+      .on("keydown.dtcmLegacy", function (e) {
+        if (e.key === "Escape") closeLegacy($menu);
+      })
+      .on("contextmenu.dtcmLegacy", function (e) {
+        if (!$(e.target).closest("table.dataTable > thead, .dt-colman-floating").length) closeLegacy($menu);
+      });
+    $(window).off(".dtcmLegacy").on("resize.dtcmLegacy blur.dtcmLegacy", function () {
+      closeLegacy($menu);
+    });
+  });
+
+  $(function () {
+    const $menu = legacyMenu();
+    if ($menu) hideToggle($menu);
+  });
 
   $(document).on("init.dt", function (e, settings) {
     if (e.namespace !== "dt") return;

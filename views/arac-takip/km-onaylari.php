@@ -7,265 +7,409 @@ use App\Helper\Security;
 use App\Model\AracKmBildirimModel;
 use App\Service\Gate;
 
+$maintitle = 'Araç Takip';
+$title = 'KM Bildirim Onayları';
+
 $KmBildirim = new AracKmBildirimModel();
-$pendingReports = $KmBildirim->getPendingReports();
-$approvedReports = $KmBildirim->getReportsByStatus('onaylandi');
-$rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
+$counts = $KmBildirim->getReportCounts();
+$pendingCount = (int) ($counts['pending'] ?? 0);
+$approvedCount = (int) ($counts['approved'] ?? 0);
+$rejectedCount = (int) ($counts['rejected'] ?? 0);
+$unreportedCount = (int) ($counts['unreported'] ?? 0);
 ?>
 
+<script>try { document.documentElement.classList.toggle('km-summary-hidden', localStorage.getItem('km_summary_cards_state') === 'hidden'); } catch (e) {}</script>
 <style>
-    /* Premium Filter Buttons Styles */
-    .status-filter-group {
-        background: #f8fafc; padding: 4px; border-radius: 50px;
-        border: 1px solid #e2e8f0; display: inline-flex; align-items: center; gap: 2px;
-    }
-    [data-bs-theme="dark"] .status-filter-group { background: #2a3042; border-color: #32394e; }
-    
-    .status-filter-group .nav-link {
-        border: none !important;
-        border-radius: 100px !important;
-        font-size: 0.75rem; font-weight: 600; padding: 8px 20px; color: #64748b;
-        transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 8px; line-height: normal;
-    }
-    
-    [data-bs-theme="dark"] .status-filter-group .nav-link { color: #a6b0cf; }
-    .status-filter-group .nav-link:hover { background: rgba(0, 0, 0, 0.04); color: #1e293b; }
-    [data-bs-theme="dark"] .status-filter-group .nav-link:hover { background: rgba(255, 255, 255, 0.05); color: #fff; }
-    
-    .status-filter-group .nav-link.active { 
-        border-radius: 100px !important;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
-        color: white !important;
-    }
-    
-    .status-filter-group .nav-link.active[href="#pending"] { background: #3b82f6 !important; }
-    .status-filter-group .nav-link.active[href="#approved"] { background: #10b981 !important; }
-    .status-filter-group .nav-link.active[href="#rejected"] { background: #ef4444 !important; }
-    .status-filter-group .nav-link.active[href="#unreported"] { background: #f59e0b !important; }
-    
-    .status-filter-group .nav-link i { font-size: 1.1rem; }
-    .status-filter-group .nav-link .badge { font-size: 0.7rem; padding: 0.25em 0.6em; }
+/* Özet Kartları Aç/Kapa Animasyon ve Standartları */
+#summaryCardsContainer { overflow: hidden; max-height: 1100px; opacity: 1; transition: max-height .3s ease, opacity .3s ease, margin .3s ease; }
+.km-summary-hidden #summaryCardsContainer { max-height: 0 !important; opacity: 0; margin-top: 0 !important; margin-bottom: 0 !important; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { #summaryCardsContainer { transition: none; } }
+#summaryCardsContainer .summary-kpi-card,
+#kmListCard { 
+    background-color: #ffffff !important; 
+    border: 1px solid #e2e8f0 !important; 
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important; 
+}
+html[data-theme-preset="macos-dark"] #summaryCardsContainer .summary-kpi-card, 
+html[data-theme-preset="macos-dark"] #kmListCard,
+[data-bs-theme="dark"] #summaryCardsContainer .summary-kpi-card,
+[data-bs-theme="dark"] #kmListCard { 
+    background-color: #2a3042 !important; 
+    border-color: #32394e !important; 
+}
 
-    /* Custom Checkbox Styles */
-    .unreported-checkbox-wrapper {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-    .custom-check {
-        cursor: pointer;
-        width: 20px;
-        height: 20px;
-        background: #fff;
-        border: 2px solid #ccc;
-        border-radius: 4px;
-        position: relative;
-        transition: all 0.2s;
-    }
-    input.unreported-checkbox:checked + .custom-check,
-    input#checkAllUnreported:checked + .custom-check {
-        background: #3b82f6;
-        border-color: #3b82f6;
-    }
-    input.unreported-checkbox:checked + .custom-check::after,
-    input#checkAllUnreported:checked + .custom-check::after {
-        content: '\2713';
-        color: white;
-        font-size: 14px;
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-    }
-    .unreported-checkbox { display: none !important; }
+/* Durum Filtre Grubu Nav Pills */
+.status-filter-group {
+    background: #f8fafc; padding: 4px; border-radius: 50px;
+    border: 1px solid #e2e8f0; display: inline-flex; align-items: center; gap: 2px;
+}
+[data-bs-theme="dark"] .status-filter-group,
+html[data-theme-preset="macos-dark"] .status-filter-group { background: #2a3042; border-color: #32394e; }
+
+.status-filter-group .nav-link {
+    border: none !important;
+    border-radius: 100px !important;
+    font-size: 0.75rem; font-weight: 600; padding: 6px 16px; color: #64748b;
+    transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 6px; line-height: normal;
+}
+
+[data-bs-theme="dark"] .status-filter-group .nav-link,
+html[data-theme-preset="macos-dark"] .status-filter-group .nav-link { color: #a6b0cf; }
+.status-filter-group .nav-link:hover { background: rgba(0, 0, 0, 0.04); color: #1e293b; }
+[data-bs-theme="dark"] .status-filter-group .nav-link:hover,
+html[data-theme-preset="macos-dark"] .status-filter-group .nav-link:hover { background: rgba(255, 255, 255, 0.05); color: #fff; }
+
+.status-filter-group .nav-link.active { 
+    border-radius: 100px !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+    color: white !important;
+}
+
+.status-filter-group .nav-link.active[href="#pending"] { background: #3b82f6 !important; }
+.status-filter-group .nav-link.active[href="#approved"] { background: #10b981 !important; }
+.status-filter-group .nav-link.active[href="#rejected"] { background: #ef4444 !important; }
+.status-filter-group .nav-link.active[href="#unreported"] { background: #f59e0b !important; }
+
+.status-filter-group .nav-link i { font-size: 1rem; }
+.status-filter-group .nav-link .badge { font-size: 0.7rem; padding: 0.25em 0.6em; }
+
+/* Özel Checkbox Stilleri */
+.unreported-checkbox-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.custom-check {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    background: #fff;
+    border: 2px solid #cbd5e1;
+    border-radius: 4px;
+    position: relative;
+    transition: all 0.2s;
+    margin-bottom: 0;
+}
+input.unreported-checkbox:checked + .custom-check,
+input#checkAllUnreported:checked + .custom-check {
+    background: #3b82f6;
+    border-color: #3b82f6;
+}
+input.unreported-checkbox:checked + .custom-check::after,
+input#checkAllUnreported:checked + .custom-check::after {
+    content: '\2713';
+    color: white;
+    font-size: 13px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+.unreported-checkbox { display: none !important; }
+
+/* DataTables Sayfalama ve Bilgi Elemanları Hizalama */
+.dataTables_wrapper .dataTables_paginate {
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center;
+}
+.dataTables_wrapper .dataTables_info {
+    padding-top: 0 !important;
+}
 </style>
+
+<?php include 'layouts/breadcrumb.php'; ?>
 
 <div class="container-fluid">
 
-    <!-- start page title -->
-    <div class="row">
-        <div class="col-12">
-            <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                <h4 class="mb-sm-0 font-size-18">KM Bildirim Onayları</h4>
+    <!-- 1. Üst Başlık ve Aksiyon Araç Çubuğu (Standart Format) -->
+    <div class="row align-items-center mb-3">
+        <div class="col-md-6 col-12 d-flex align-items-center gap-3">
+            <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 44px; height: 44px;">
+                <i class="bx bx-tachometer fs-4 text-primary"></i>
+            </div>
+            <div>
+                <h4 class="mb-0 fw-bold text-dark font-size-16">KM Bildirim Onayları</h4>
+                <p class="text-muted mb-0 font-size-12">Personel araç KM bildirimlerinin incelenmesi, yapay zekâ doğrulaması ve onay yönetimi</p>
+            </div>
+        </div>
 
-                <div class="page-title-right">
-                    <ol class="breadcrumb m-0">
-                        <li class="breadcrumb-item"><a href="arac-takip">Araç Takip</a></li>
-                        <li class="breadcrumb-item active">KM Onayları</li>
-                    </ol>
+        <div class="personel-action-toolbar col-md-6 col-12 d-flex align-items-center justify-content-md-end gap-2 mt-2 mt-md-0">
+            <!-- 1. Yapay Zekâ ile Kontrol Butonu -->
+            <button type="button" id="btnKmAiKontrol" class="btn btn-primary top-action-btn shadow-sm text-white" title="Seçilen fotoğrafları yapay zekâ ile kontrol et" disabled>
+                <i class="bx bx-bot font-size-16"></i> <span>Yapay Zekâ ile Kontrol (<span id="aiSelectedCount">0</span>)</span>
+            </button>
+
+            <!-- 2. Toplu Onayla Butonu -->
+            <button type="button" id="btnTopluOnayla" class="btn btn-success top-action-btn shadow-sm text-white d-none" title="Seçilenleri Onayla">
+                <i class="bx bx-check-double font-size-16"></i> <span>Toplu Onayla (<span id="selectedCount">0</span>)</span>
+            </button>
+
+            <!-- 3. İşlemler Dropdown -->
+            <div class="dropdown d-inline-block">
+                <button type="button" class="btn btn-outline-secondary bg-white top-action-btn dropdown-toggle shadow-sm" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <i class="bx bx-cog font-size-16 text-primary"></i> İşlemler
+                </button>
+                <div class="dropdown-menu dropdown-menu-end shadow-lg border-0">
+                    <button type="button" class="dropdown-item d-flex align-items-center" id="btnDropdownExportExcel">
+                        <i class="bx bx-spreadsheet me-2 font-size-16 text-success"></i> Excel'e Aktar
+                    </button>
+                    <button type="button" class="dropdown-item d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#imageCleanupModal">
+                        <i class="bx bx-trash me-2 font-size-16 text-danger"></i> Eski Resimleri Arşivle & Temizle
+                    </button>
+                    <div class="dropdown-divider"></div>
+                    <a class="dropdown-item d-flex align-items-center" href="arac-takip">
+                        <i class="bx bx-car me-2 font-size-16 text-primary"></i> Araç Takip Paneli
+                    </a>
                 </div>
+            </div>
 
+            <!-- 4. Özet Kartları Açma/Kapama Butonu -->
+            <button type="button" class="btn btn-outline-secondary bg-white top-icon-btn shadow-sm" id="btnToggleSummaryCards" title="Özet Kartları Göster/Gizle" aria-expanded="true">
+                <i class="bx bx-chevron-up"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- 2. 4 Adet Minimal Özet KPI Kartı (AGENTS.md Standardı) -->
+    <div class="row g-3 mb-3 summary-cards-group" id="summaryCardsContainer">
+        <!-- Kart 1: ONAY BEKLEYENLER -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">ONAY BEKLEYENLER</span>
+                        <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
+                            <i class="bx bx-time"></i>
+                        </div>
+                    </div>
+                    <h3 class="summary-kpi-value my-1 text-primary" id="stat_bekleyen_sayi"><?= $pendingCount ?></h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext" id="stat_sub_pending">İnceleme bekleyen bildirimler</span>
+                        <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" data-tab="#pending">
+                            <i class="bx bx-time"></i> Bekleyenler
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kart 2: ONAYLANANLAR -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">ONAYLANANLAR</span>
+                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                            <i class="bx bx-check-circle"></i>
+                        </div>
+                    </div>
+                    <h3 class="summary-kpi-value my-1 text-success" id="stat_onaylanan_sayi"><?= $approvedCount ?></h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext text-success fw-semibold" id="stat_sub_approved">Kayıtlara işlenen bildirimler</span>
+                        <button type="button" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-tab="#approved">
+                            <i class="bx bx-check-double"></i> Onaylananlar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kart 3: REDDEDİLENLER -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">REDDEDİLENLER</span>
+                        <div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
+                            <i class="bx bx-x-circle"></i>
+                        </div>
+                    </div>
+                    <h3 class="summary-kpi-value my-1 text-danger" id="stat_reddedilen_sayi"><?= $rejectedCount ?></h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext text-danger fw-semibold" id="stat_sub_rejected">Gerekçe ile reddedilenler</span>
+                        <button type="button" class="btn btn-sm btn-subtle-danger rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-tab="#rejected">
+                            <i class="bx bx-x"></i> Reddedilenler
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kart 4: BİLDİRİM YAPMAYANLAR -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">BİLDİRİM YAPMAYANLAR</span>
+                        <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                            <i class="bx bx-error-circle"></i>
+                        </div>
+                    </div>
+                    <h3 class="summary-kpi-value my-1 text-warning" id="stat_yapmayanlar_sayi"><?= $unreportedCount ?></h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext text-warning fw-semibold" id="stat_sub_unreported">Eksik bildirim takibi</span>
+                        <button type="button" class="btn btn-sm btn-subtle-warning rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-tab="#unreported">
+                            <i class="bx bx-bell"></i> Eksikler
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-    <!-- end page title -->
 
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-body">
-                    
-                    <div class="d-flex align-items-center justify-content-between mb-4">
-                        <div class="status-filter-group nav nav-pills" role="tablist">
-                            <a class="nav-link active" data-bs-toggle="tab" href="#pending" role="tab">
-                                <i class="bx bx-time"></i>
-                                <span>Onay Bekleyenler</span>
-                                <span class="badge bg-danger ms-1"><?= count($pendingReports) ?></span>
-                            </a>
-                            <a class="nav-link" data-bs-toggle="tab" href="#approved" role="tab">
-                                <i class="bx bx-check-circle"></i>
-                                <span>Onaylananlar</span>
-                                <span class="badge bg-success ms-1"><?= count($approvedReports) ?></span>
-                            </a>
-                            <a class="nav-link" data-bs-toggle="tab" href="#rejected" role="tab">
-                                <i class="bx bx-x-circle"></i>
-                                <span>Reddedilenler</span>
-                                <span class="badge bg-secondary ms-1"><?= count($rejectedReports) ?></span>
-                            </a>
-                            <a class="nav-link" data-bs-toggle="tab" href="#unreported" role="tab" id="tabUnreportedLink">
-                                <i class="bx bx-error-circle"></i>
-                                <span>Bildirim Yapmayanlar</span>
-                            </a>
-                        </div>
+    <!-- 3. Standart DataTables Liste Kartı -->
+    <div class="card summary-kpi-card mb-3" id="kmListCard">
+        <div class="card-header bg-transparent border-0 px-3 py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <!-- Sol Taraf: Durum Filtre Grubu Sekmeleri (Solda) -->
+            <div class="status-filter-group nav nav-pills" role="tablist">
+                <a class="nav-link active" data-bs-toggle="tab" href="#pending" role="tab" id="tabPendingLink">
+                    <i class="bx bx-time"></i>
+                    <span>Onay Bekleyenler</span>
+                    <span class="badge bg-danger ms-1" id="badge_pending"><?= $pendingCount ?></span>
+                </a>
+                <a class="nav-link" data-bs-toggle="tab" href="#approved" role="tab" id="tabApprovedLink">
+                    <i class="bx bx-check-circle"></i>
+                    <span>Onaylananlar</span>
+                    <span class="badge bg-success ms-1" id="badge_approved"><?= $approvedCount ?></span>
+                </a>
+                <a class="nav-link" data-bs-toggle="tab" href="#rejected" role="tab" id="tabRejectedLink">
+                    <i class="bx bx-x-circle"></i>
+                    <span>Reddedilenler</span>
+                    <span class="badge bg-secondary ms-1" id="badge_rejected"><?= $rejectedCount ?></span>
+                </a>
+                <a class="nav-link" data-bs-toggle="tab" href="#unreported" role="tab" id="tabUnreportedLink">
+                    <i class="bx bx-error-circle"></i>
+                    <span>Bildirim Yapmayanlar</span>
+                    <span class="badge bg-warning ms-1" id="badge_unreported"><?= $unreportedCount ?></span>
+                </a>
+            </div>
 
-                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1 ms-auto">
-                            <button type="button" id="btnKmAiKontrol" class="btn btn-primary btn-sm text-white px-2 d-flex align-items-center" title="Seçilen fotoğrafları yapay zekâ ile kontrol et" disabled>
-                                <i class="bx bx-bot fs-5 me-1"></i> <span>Yapay Zekâ ile Kontrol (<span id="aiSelectedCount">0</span>)</span>
-                            </button>
-                            <div class="vr" id="btnKmAiKontrolDivider" style="height: 20px; align-self: center;"></div>
-                            <button type="button" id="btnTopluOnayla" class="btn btn-success btn-sm text-white shadow-success text-decoration-none px-2 d-none align-items-center" title="Seçilenleri Onayla">
-                                <i class="bx bx-check-double fs-5 me-1"></i> <span>Toplu Onayla (<span id="selectedCount">0</span>)</span>
-                            </button>
-                            <div class="vr d-none" id="btnTopluOnaylaDivider" style="height: 20px; align-self: center;"></div>
-                            <button type="button" id="exportExcelKm" class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center" title="Excel'e Aktar">
-                                <i class="bx bx-spreadsheet fs-5 me-1"></i> <span class="d-none d-xl-inline">Excel'e Aktar</span>
-                            </button>
-                            <div class="vr" style="height: 20px; align-self: center;"></div>
-                            <button type="button" data-bs-toggle="modal" data-bs-target="#imageCleanupModal" class="btn btn-link btn-sm text-danger text-decoration-none px-2 d-flex align-items-center" title="Eski Resimleri Temizle">
-                                <i class="bx bx-trash fs-5 me-1"></i> <span class="d-none d-xl-inline">Eski Resimleri Temizle</span>
-                            </button>
-                        </div>
+            <!-- Sağ Araç Çubuğu Butonları -->
+            <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+                <button type="button" class="btn btn-sm btn-subtle-success px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="exportExcelKm" title="Excel'e Aktar">
+                    <i class="bx bx-file font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Excel</span>
+                </button>
+                <button type="button" class="btn btn-sm btn-subtle-secondary px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderPrint" title="Tabloyu Yazdır">
+                    <i class="bx bx-printer font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Yazdır</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="card-body p-3 pt-0">
+            <div class="tab-content">
+                <!-- 1. Onay Bekleyenler -->
+                <div class="tab-pane active" id="pending" role="tabpanel">
+                    <div class="table-responsive" style="overflow-x: auto !important;">
+                        <table class="table table-bordered table-hover nowrap align-middle w-100 mb-0" id="tablePending">
+                            <thead>
+                                <tr>
+                                    <th data-filter="none" class="text-center" style="width: 40px;">
+                                        <div class="form-check font-size-16 d-flex justify-content-center">
+                                             <input class="form-check-input" type="checkbox" id="checkAllKm">
+                                             <label class="form-check-label" for="checkAllKm"></label>
+                                        </div>
+                                    </th>
+                                    <th data-filter="none" class="text-center" style="width: 50px;">SIRA</th>
+                                    <th data-filter="string" style="width: 15%;">PERSONEL</th>
+                                    <th data-filter="string" style="width: 15%;">ARAÇ</th>
+                                    <th data-filter="date" class="text-center" style="width: 10%;">TARİH</th>
+                                    <th data-filter="date" class="text-center" style="width: 10%;">KAYIT TARİHİ</th>
+                                    <th data-filter="select" class="text-center" style="width: 10%;">TÜR</th>
+                                    <th data-filter="number" class="text-end" style="width: 10%;">BİLDİRİLEN KM</th>
+                                    <th data-filter="string" style="width: 15%;">AÇIKLAMA</th>
+                                    <th data-filter="none" class="text-center" style="width: 80px;">RESİM</th>
+                                    <th data-filter="none" class="text-center" style="width: 120px;">İŞLEMLER</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
                     </div>
+                </div>
 
-                    <div class="tab-content">
-                        <!-- Onay Bekleyenler -->
-                        <div class="tab-pane active" id="pending" role="tabpanel">
-                            <div class="table-responsive">
-                                <table class="table table-hover table-bordered nowrap w-100" id="tablePending">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th class="text-center" style="width:3%">
-                                                <div class="form-check font-size-16">
-                                                     <input class="form-check-input" type="checkbox" id="checkAllKm">
-                                                     <label class="form-check-label" for="checkAllKm"></label>
-                                                </div>
-                                            </th>
-                                            <th class="text-center" style="width:5%">Sıra</th>
-                                            <th style="width:15%">Personel</th>
-                                            <th style="width:15%">Araç</th>
-                                            <th style="width:10%">Tarih</th>
-                                            <th style="width:10%">Kayıt Tarihi</th>
-                                            <th style="width:10%">Tür</th>
-                                            <th style="width:10%" class="text-end">Bildirilen KM</th>
-                                            <th style="width:15%">Açıklama</th>
-                                            <th style="width:10%" class="text-center">Resim</th>
-                                            <th style="width:10%" class="text-center">İşlemler</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <!-- Onaylananlar -->
-                        <div class="tab-pane" id="approved" role="tabpanel">
-                            <div class="table-responsive">
-                                <table class="table table-hover table-bordered nowrap w-100" id="tableApproved">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th class="text-center" style="width:5%">Sıra</th>
-                                            <th style="width:15%">Personel</th>
-                                            <th style="width:15%">Araç</th>
-                                            <th style="width:10%">Tarih</th>
-                                            <th style="width:10%">Kayıt Tarihi</th>
-                                            <th style="width:10%">Tür</th>
-                                            <th style="width:10%" class="text-end">Bildirilen KM</th>
-                                            <th style="width:10%" class="text-end">Onaylanan KM</th>
-                                            <th style="width:15%">Onaylayan / Tarih</th>
-                                            <th style="width:10%" class="text-center">Resim / İşlem</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <!-- Reddedilenler -->
-                        <div class="tab-pane" id="rejected" role="tabpanel">
-                            <div class="table-responsive">
-                                <table class="table table-hover table-bordered nowrap w-100" id="tableRejected">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th class="text-center" style="width:5%">Sıra</th>
-                                            <th style="width:15%">Personel</th>
-                                            <th style="width:15%">Araç</th>
-                                            <th style="width:10%">Tarih</th>
-                                            <th style="width:10%">Kayıt Tarihi</th>
-                                            <th style="width:10%">Tür</th>
-                                            <th style="width:10%" class="text-end">Bildirilen KM</th>
-                                            <th style="width:15%">Red Nedeni</th>
-                                            <th style="width:10%" class="text-center">Resim / İşlem</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <!-- Bildirim Yapmayanlar -->
-                        <div class="tab-pane" id="unreported" role="tabpanel">
-                            <div class="d-flex align-items-center mb-3 gap-2">
-                                <button type="button" class="btn btn-primary btn-sm d-none" id="btnBulkSendReminder">
-                                    <i class="bx bx-paper-plane"></i> Seçilenlere Bildirim Gönder
-                                </button>
-                                <div class="ms-auto text-muted small" id="selectionSummary"></div>
-                            </div>
-                            <div class="table-responsive">
-                                <table class="table table-hover table-bordered nowrap w-100" id="tableUnreported">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th class="text-center" style="width:3%">
-                                                <div class="unreported-checkbox-wrapper">
-                                                    <input type="checkbox" id="checkAllUnreported" class="unreported-checkbox">
-                                                    <label for="checkAllUnreported" class="custom-check mb-0"></label>
-                                                </div>
-                                            </th>
-                                            <th style="width:22%">Personel</th>
-                                            <th style="width:15%">Araç / Plaka</th>
-                                            <th style="width:12%">Hedef Tarih</th>
-                                            <th style="width:18%">Tür / Gecikme</th>
-                                            <th style="width:15%">Telefon</th>
-                                            <th style="width:15%" class="text-center">İşlemler</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="unreportedListBody">
-                                        <tr>
-                                            <td colspan="7" class="text-center py-4">
-                                                <div class="spinner-border text-primary" role="status">
-                                                    <span class="visually-hidden">Yükleniyor...</span>
-                                                </div>
-                                                <p class="mt-2 text-muted">Veriler kontrol ediliyor...</p>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                <!-- 2. Onaylananlar -->
+                <div class="tab-pane" id="approved" role="tabpanel">
+                    <div class="table-responsive" style="overflow-x: auto !important;">
+                        <table class="table table-bordered table-hover nowrap align-middle w-100 mb-0" id="tableApproved">
+                            <thead>
+                                <tr>
+                                    <th data-filter="none" class="text-center" style="width: 50px;">SIRA</th>
+                                    <th data-filter="string" style="width: 15%;">PERSONEL</th>
+                                    <th data-filter="string" style="width: 15%;">ARAÇ</th>
+                                    <th data-filter="date" class="text-center" style="width: 10%;">TARİH</th>
+                                    <th data-filter="date" class="text-center" style="width: 10%;">KAYIT TARİHİ</th>
+                                    <th data-filter="select" class="text-center" style="width: 10%;">TÜR</th>
+                                    <th data-filter="number" class="text-end" style="width: 10%;">BİLDİRİLEN KM</th>
+                                    <th data-filter="number" class="text-end" style="width: 10%;">ONAYLANAN KM</th>
+                                    <th data-filter="string" style="width: 15%;">ONAYLAYAN / TARİH</th>
+                                    <th data-filter="none" class="text-center" style="width: 120px;">RESİM / İŞLEM</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
                     </div>
+                </div>
 
+                <!-- 3. Reddedilenler -->
+                <div class="tab-pane" id="rejected" role="tabpanel">
+                    <div class="table-responsive" style="overflow-x: auto !important;">
+                        <table class="table table-bordered table-hover nowrap align-middle w-100 mb-0" id="tableRejected">
+                            <thead>
+                                <tr>
+                                    <th data-filter="none" class="text-center" style="width: 50px;">SIRA</th>
+                                    <th data-filter="string" style="width: 15%;">PERSONEL</th>
+                                    <th data-filter="string" style="width: 15%;">ARAÇ</th>
+                                    <th data-filter="date" class="text-center" style="width: 10%;">TARİH</th>
+                                    <th data-filter="date" class="text-center" style="width: 10%;">KAYIT TARİHİ</th>
+                                    <th data-filter="select" class="text-center" style="width: 10%;">TÜR</th>
+                                    <th data-filter="number" class="text-end" style="width: 10%;">BİLDİRİLEN KM</th>
+                                    <th data-filter="string" style="width: 20%;">RED NEDENİ</th>
+                                    <th data-filter="none" class="text-center" style="width: 120px;">RESİM / İŞLEM</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 4. Bildirim Yapmayanlar -->
+                <div class="tab-pane" id="unreported" role="tabpanel">
+                    <div class="d-flex align-items-center mb-3 gap-2 flex-wrap">
+                        <button type="button" class="btn btn-primary btn-sm d-none shadow-sm" id="btnBulkSendReminder">
+                            <i class="bx bx-paper-plane me-1"></i> Seçilenlere Bildirim Gönder
+                        </button>
+                        <div class="ms-auto text-muted small" id="selectionSummary"></div>
+                    </div>
+                    <div class="table-responsive" style="overflow-x: auto !important;">
+                        <table class="table table-bordered table-hover nowrap align-middle w-100 mb-0" id="tableUnreported">
+                            <thead>
+                                <tr>
+                                    <th data-filter="none" class="text-center" style="width: 40px;">
+                                        <div class="unreported-checkbox-wrapper">
+                                            <input type="checkbox" id="checkAllUnreported" class="unreported-checkbox">
+                                            <label for="checkAllUnreported" class="custom-check mb-0"></label>
+                                        </div>
+                                    </th>
+                                    <th data-filter="string" style="width: 22%;">PERSONEL</th>
+                                    <th data-filter="string" style="width: 15%;">ARAÇ / PLAKA</th>
+                                    <th data-filter="date" class="text-center" style="width: 12%;">HEDEF TARİH</th>
+                                    <th data-filter="select" class="text-center" style="width: 18%;">TÜR / GECİKME</th>
+                                    <th data-filter="string" style="width: 15%;">TELEFON</th>
+                                    <th data-filter="none" class="text-center" style="width: 130px;">İŞLEMLER</th>
+                                </tr>
+                            </thead>
+                            <tbody id="unreportedListBody">
+                                <tr>
+                                    <td colspan="7" class="text-center py-4">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Yükleniyor...</span>
+                                        </div>
+                                        <p class="mt-2 text-muted">Veriler kontrol ediliyor...</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -276,7 +420,7 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
 <!-- KM Red Modalı -->
 <div class="modal fade" id="kmRedModal" tabindex="-1" role="dialog" aria-labelledby="kmRedModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
-        <div class="modal-content">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
             <div class="modal-header">
                 <h5 class="modal-title" id="kmRedModalLabel"><i class="bx bx-x-circle text-danger me-2"></i>Bildirimi Reddet</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -498,9 +642,33 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
 <script src="views/arac-takip/js/arac-takip.js?v=<?= time() ?>"></script>
 <script>
 $(document).ready(function() {
-    // Initialize all datatables on the page
-    $('.datatable').each(function() {
-        AracTakip.initDataTable(this);
+    // Özet Kartları Açma/Kapama (AGENTS.md Standardı)
+    const toggleBtn = $('#btnToggleSummaryCards');
+    const updateToggleState = () => {
+        const isHidden = $('html').hasClass('km-summary-hidden');
+        if (toggleBtn.length) {
+            toggleBtn.attr('aria-expanded', !isHidden);
+            toggleBtn.find('i').attr('class', isHidden ? 'bx bx-chevron-down' : 'bx bx-chevron-up');
+            toggleBtn.attr('title', isHidden ? 'Özet Kartları Göster' : 'Özet Kartları Gizle');
+        }
+    };
+    updateToggleState();
+
+    toggleBtn.on('click', function () {
+        const willHide = !$('html').hasClass('km-summary-hidden');
+        $('html').toggleClass('km-summary-hidden', willHide);
+        localStorage.setItem('km_summary_cards_state', willHide ? 'hidden' : 'visible');
+        updateToggleState();
+    });
+
+    // Özet Kartları Hızlı Filtre Butonları Tıklanması
+    $('.status-quick-filter').on('click', function() {
+        const targetTab = $(this).data('tab');
+        if (targetTab) {
+            $('.status-quick-filter').removeClass('active');
+            $(this).addClass('active');
+            $(`.status-filter-group a[href="${targetTab}"]`).tab('show');
+        }
     });
 
     const pendingColumns = [
@@ -579,6 +747,10 @@ $(document).ready(function() {
             pageLength: 10
         };
 
+        if (typeof applyLengthStateSave === "function") {
+            options = applyLengthStateSave(options);
+        }
+
         options.processing = true;
         options.serverSide = true;
         options.ajax = {
@@ -591,7 +763,7 @@ $(document).ready(function() {
         };
         options.columns = columnsConfig;
         options.order = defaultOrder || [[0, "desc"]];
-        options.dom = "Bfrtip";
+        options.dom = '<"d-none"B>t<"row align-items-center mt-3"<"col-sm-12 col-md-6 d-flex align-items-center justify-content-start"i<"ms-3 text-nowrap"l>><"col-sm-12 col-md-6 d-flex justify-content-end"p>>';
         options.buttons = [
             {
                 extend: "excelHtml5",
@@ -612,16 +784,35 @@ $(document).ready(function() {
     initServerSideDataTable('#tableRejected', 'reddedildi', rejectedColumns, [[4, 'desc']]);
 
     // Excel Export Handler
-    $('#exportExcelKm').on('click', function() {
-        // Get the active tab's table
+    $('#exportExcelKm, #btnDropdownExportExcel').on('click', function() {
         var activeTable = $('.tab-pane.active table').DataTable();
         if (activeTable) {
             activeTable.button('.buttons-excel').trigger();
         }
     });
 
-    // Handle tab changes to re-adjust datatable columns if needed
+    // Yazdır Butonu
+    $('#btnHeaderPrint').on('click', function() {
+        window.print();
+    });
+
+    // Handle tab changes to re-adjust datatable columns and sync quick filter buttons
     $('a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+        const target = $(e.target).attr('href');
+        
+        // Özet kartlarındaki aktif butonu senkronize et
+        $('.status-quick-filter').removeClass('active');
+        $(`.status-quick-filter[data-tab="${target}"]`).addClass('active');
+
+        // AI kontrol butonunun görünürlüğü (Yalnızca beklemede sekmesinde)
+        if (target === '#pending') {
+            $('#btnKmAiKontrol').removeClass('d-none');
+            updateBatchButton();
+        } else {
+            $('#btnKmAiKontrol').addClass('d-none');
+            $('#btnTopluOnayla').addClass('d-none');
+        }
+
         $($.fn.dataTable.tables(true)).DataTable().columns.adjust();
     });
 
@@ -640,7 +831,6 @@ $(document).ready(function() {
 
     // Onay Yapmayanlar Listesini Yükle
     function loadUnreported() {
-        // Prepare table for loading
         if ($.fn.DataTable.isDataTable('#tableUnreported')) {
             $('#tableUnreported').DataTable().destroy();
         }
@@ -650,7 +840,12 @@ $(document).ready(function() {
             if (res.status === 'success') {
                 const body = $('#unreportedListBody');
                 body.empty();
-                if (res.data.length === 0) {
+                
+                const unCount = res.data ? res.data.length : 0;
+                $('#stat_yapmayanlar_sayi').text(unCount);
+                $('#badge_unreported').text(unCount);
+
+                if (unCount === 0) {
                     body.append('<tr><td colspan="7" class="text-center py-4 text-success"><i class="bx bx-check-double fs-2"></i><br>Tüm bildirimler eksiksiz!</td></tr>');
                     return;
                 }
@@ -678,12 +873,12 @@ $(document).ready(function() {
                             <td><span class="fw-bold text-danger">${r.gecikme_turu}</span> <br> ${turBadge}</td>
                             <td><a href="tel:${r.telefon || ''}">${r.telefon || '-'}</a></td>
                             <td class="text-center">
-                                <button type="button" class="btn btn-sm btn-warning btn-send-reminder" 
+                                <button type="button" class="btn btn-sm btn-subtle-warning btn-send-reminder" 
                                     data-id="${r.personel_id}" 
                                     data-tarih="${r.hedef_tarih}" 
                                     data-tur="${r.hedef_tur}"
                                     title="Bildirim Gönder">
-                                    <i class="bx bx-bell"></i> Bildirim Gönder
+                                    <i class="bx bx-bell me-1"></i> Bildirim Gönder
                                 </button>
                             </td>
                         </tr>
@@ -707,7 +902,7 @@ $(document).ready(function() {
         loadUnreported();
     });
 
-    // Sayfa açıldığında veya yenilendiğinde kontrol et
+    // Sayfa açıldığında veya yenilendiğinde hash kontrolü
     function checkInitialTab() {
         const hash = window.location.hash;
         const activeTab = $('.nav-link.active').attr('href');
@@ -716,21 +911,13 @@ $(document).ready(function() {
             loadUnreported();
         }
     }
-
-    $(document).ready(function() {
-        setTimeout(checkInitialTab, 500);
-    });
+    setTimeout(checkInitialTab, 300);
 
     // Toplu Seçim Olayları (DataTables uyumlu)
     $(document).on('change', '#checkAllUnreported', function() {
         const isChecked = $(this).is(':checked');
-        const table = $('#tableUnreported').DataTable();
-        
-        // Tüm sayfalardaki checkboxları seçmek için DataTable API kullan
-        // Ancak görsel olarak sadece bu sayfadakiler değişir
         $('.row-selector').prop('checked', isChecked);
         
-        // Global durum için bir marker ekle
         if (isChecked) {
             $('#tableUnreported').addClass('all-selected-mode');
         } else {
@@ -773,7 +960,6 @@ $(document).ready(function() {
         const selectedItems = [];
         
         if ($('#tableUnreported').hasClass('all-selected-mode')) {
-            // Filtrelenmiş TÜM kayıtları al (sayfalamadan bağımsız)
             table.rows({ filter: 'applied' }).every(function() {
                 const node = this.node();
                 const $chk = $(node).find('.row-selector');
@@ -785,7 +971,6 @@ $(document).ready(function() {
                 });
             });
         } else {
-            // Sadece seçili olan yerel kayıtları al
             $('.row-selector:checked').each(function() {
                 selectedItems.push({
                     personel_id: $(this).data('id'),
@@ -851,7 +1036,7 @@ $(document).ready(function() {
             icon: 'success',
             confirmButtonText: 'Kapat'
         }).then(() => {
-            loadUnreported(); // Listeyi yenile
+            loadUnreported();
         });
     }
 
@@ -900,39 +1085,37 @@ $(document).ready(function() {
                 };
 
                 $.post('views/arac-takip/api.php', data, function(res) {
-                        if (res.status === 'success') {
-                            if (typeof Toastify !== 'undefined') {
-                                Toastify({
-                                    text: "Bildirim başarıyla gönderildi.",
-                                    duration: 3000,
-                                    gravity: "top",
-                                    position: "right",
-                                    stopOnFocus: true,
-                                    style: {
-                                        background: "linear-gradient(to right, #00b09b, #96c93d)",
-                                        borderRadius: "8px",
-                                        boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
-                                    }
-                                }).showToast();
-                            }
-
-                            // Buton durumunu güncelle (Tekrar gönderime izin ver)
-                            btn.prop('disabled', false)
-                                .removeClass('btn-warning')
-                                .addClass('btn-outline-secondary btn-sm')
-                                .html('<i class="bx bx-redo"></i> Tekrar Gönder');
-                            
-                            // Gönderildi bilgisini yanına ekle (Mavi çift tik)
-                            if (btn.parent().find('.sent-status-icon').length === 0) {
-                                btn.before('<span class="sent-status-icon me-1" style="color: #34B7F1 !important; font-size: 1.3rem; vertical-align: middle;" title="Gönderildi"><i class="bx bx-check-double"></i></span>');
-                            }
-                        } else {
-                            Swal.fire('Hata', res.message, 'error');
-                            btn.prop('disabled', false).html('<i class="bx bx-bell"></i> Bildirim Gönder');
+                    if (res.status === 'success') {
+                        if (typeof Toastify !== 'undefined') {
+                            Toastify({
+                                text: "Bildirim başarıyla gönderildi.",
+                                duration: 3000,
+                                gravity: "top",
+                                position: "right",
+                                stopOnFocus: true,
+                                style: {
+                                    background: "linear-gradient(to right, #00b09b, #96c93d)",
+                                    borderRadius: "8px",
+                                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
+                                }
+                            }).showToast();
                         }
+
+                        btn.prop('disabled', false)
+                            .removeClass('btn-subtle-warning')
+                            .addClass('btn-subtle-secondary btn-sm')
+                            .html('<i class="bx bx-redo me-1"></i> Tekrar Gönder');
+                        
+                        if (btn.parent().find('.sent-status-icon').length === 0) {
+                            btn.before('<span class="sent-status-icon me-1" style="color: #34B7F1 !important; font-size: 1.3rem; vertical-align: middle;" title="Gönderildi"><i class="bx bx-check-double"></i></span>');
+                        }
+                    } else {
+                        Swal.fire('Hata', res.message, 'error');
+                        btn.prop('disabled', false).html('<i class="bx bx-bell me-1"></i> Bildirim Gönder');
+                    }
                 }, 'json').fail(function() {
                     Swal.fire('Hata', 'İşlem sırasında bir bağlantı hatası oluştu.', 'error');
-                    btn.prop('disabled', false).html('<i class="bx bx-bell"></i> Bildirim Gönder');
+                    btn.prop('disabled', false).html('<i class="bx bx-bell me-1"></i> Bildirim Gönder');
                 });
             }
         });
@@ -959,11 +1142,9 @@ $(document).ready(function() {
         $('#aiSelectedCount').text(selectedCount);
         $('#btnKmAiKontrol').prop('disabled', selectedCount === 0);
         if (selectedCount > 0) {
-            $('#btnTopluOnayla').removeClass('d-none').addClass('d-flex');
-            $('#btnTopluOnaylaDivider').removeClass('d-none');
+            $('#btnTopluOnayla').removeClass('d-none');
         } else {
-            $('#btnTopluOnayla').addClass('d-none').removeClass('d-flex');
-            $('#btnTopluOnaylaDivider').addClass('d-none');
+            $('#btnTopluOnayla').addClass('d-none');
         }
     }
 
@@ -1056,7 +1237,6 @@ $(document).ready(function() {
             const tur = $(this).data('tur');
             const tarih = $(this).data('tarih');
 
-            // Eğer bugün ise, tür akşam ise ve saat 13:00'dan önce ise
             if (tarih === todayStr && tur === 'aksam' && currentHour < 13) {
                 hasInvalidAksam = true;
                 $(this).closest('tr').addClass('table-danger');
@@ -1200,21 +1380,18 @@ $(document).ready(function() {
 
     // KM Resim Temizleme ve Arşivleme Modalı Olayları
     $('#imageCleanupModal').on('show.bs.modal', function () {
-        // Reset modal state
         $('#cleanupFormSection').removeClass('d-none');
         $('#cleanupLoadingSection').addClass('d-none');
         $('#cleanupResultSection').addClass('d-none');
         $('#cleanupCountFeedback').addClass('d-none').text('');
         $('#btnStartCleanup').addClass('d-none');
         
-        // Initialize flatpickr on the date range input
         $('#cleanup_date_range').val('').flatpickr({
             mode: 'range',
             locale: 'tr',
             dateFormat: 'd.m.Y'
         });
 
-        // Ensure feather icons are rendered inside the modal
         if (typeof feather !== "undefined") {
             setTimeout(function() {
                 feather.replace();

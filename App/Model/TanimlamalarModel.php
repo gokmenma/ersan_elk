@@ -186,26 +186,28 @@ class TanimlamalarModel extends Model
 
     public function getEkipKodlari()
     {
-        $sql = $this->db->prepare("SELECT t.*, 
-                                   (SELECT COUNT(DISTINCT p.id) FROM personel p 
-                                    WHERE p.firma_id = t.firma_id AND p.aktif_mi IN (1, 2) 
-                                    AND (EXISTS (SELECT 1 FROM personel_ekip_gecmisi peg 
-                                                 WHERE peg.personel_id = p.id AND peg.ekip_kodu_id = t.id 
-                                                 AND (peg.baslangic_tarihi IS NULL OR peg.baslangic_tarihi = '' OR DATE(peg.baslangic_tarihi) <= CURDATE())
-                                                 AND (peg.bitis_tarihi IS NULL OR peg.bitis_tarihi = '' OR peg.bitis_tarihi = '0000-00-00' OR DATE(peg.bitis_tarihi) >= CURDATE()))
-                                         OR (p.ekip_no = t.id AND NOT EXISTS (SELECT 1 FROM personel_ekip_gecmisi peg2 WHERE peg2.personel_id = p.id)))) as kullanim_sayisi,
-                                   (SELECT GROUP_CONCAT(DISTINCT p.adi_soyadi SEPARATOR ', ') FROM personel p 
-                                    WHERE p.firma_id = t.firma_id AND p.aktif_mi IN (1, 2) 
-                                    AND (EXISTS (SELECT 1 FROM personel_ekip_gecmisi peg 
-                                                 WHERE peg.personel_id = p.id AND peg.ekip_kodu_id = t.id 
-                                                 AND (peg.baslangic_tarihi IS NULL OR peg.baslangic_tarihi = '' OR DATE(peg.baslangic_tarihi) <= CURDATE())
-                                                 AND (peg.bitis_tarihi IS NULL OR peg.bitis_tarihi = '' OR peg.bitis_tarihi = '0000-00-00' OR DATE(peg.bitis_tarihi) >= CURDATE()))
-                                         OR (p.ekip_no = t.id AND NOT EXISTS (SELECT 1 FROM personel_ekip_gecmisi peg2 WHERE peg2.personel_id = p.id)))) as personel_isimleri,
+        $sql = $this->db->prepare("SELECT t.*,
+                                   COUNT(DISTINCT a.personel_id) as kullanim_sayisi,
+                                   GROUP_CONCAT(DISTINCT a.adi_soyadi SEPARATOR ', ') as personel_isimleri,
                                    TRIM(t.ekip_bolge) as ekip_bolge
-                                   FROM $this->table t 
+                                   FROM $this->table t
+                                   LEFT JOIN (
+                                       SELECT peg.ekip_kodu_id as ekip_id, p.id as personel_id, p.adi_soyadi
+                                       FROM personel p
+                                       INNER JOIN personel_ekip_gecmisi peg ON peg.personel_id = p.id
+                                       WHERE p.firma_id = ? AND p.aktif_mi IN (1, 2)
+                                         AND (peg.baslangic_tarihi IS NULL OR peg.baslangic_tarihi = '' OR DATE(peg.baslangic_tarihi) <= CURDATE())
+                                         AND (peg.bitis_tarihi IS NULL OR peg.bitis_tarihi = '' OR peg.bitis_tarihi = '0000-00-00' OR DATE(peg.bitis_tarihi) >= CURDATE())
+                                       UNION
+                                       SELECT p.ekip_no as ekip_id, p.id as personel_id, p.adi_soyadi
+                                       FROM personel p
+                                       WHERE p.firma_id = ? AND p.aktif_mi IN (1, 2) AND p.ekip_no IS NOT NULL
+                                         AND NOT EXISTS (SELECT 1 FROM personel_ekip_gecmisi peg2 WHERE peg2.personel_id = p.id)
+                                   ) a ON a.ekip_id = t.id
                                    WHERE t.grup = ? AND t.firma_id = ? AND t.silinme_tarihi IS NULL
+                                   GROUP BY t.id
                                    ORDER BY t.id DESC");
-        $sql->execute(['ekip_kodu', $_SESSION['firma_id']]);
+        $sql->execute([$_SESSION['firma_id'], $_SESSION['firma_id'], 'ekip_kodu', $_SESSION['firma_id']]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 

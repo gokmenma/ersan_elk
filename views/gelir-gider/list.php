@@ -1012,7 +1012,7 @@ include 'layouts/breadcrumb.php';
                     <i class="bx bx-trash"></i>
                     <span>Sütunu Gizlemek İçin Buraya Bırakın</span>
                 </div>
-                <table id="gelirGiderTable" class="table table-bordered table-hover nowrap align-middle w-100 mb-0">
+                <table id="gelirGiderTable" data-dt-loader="off" class="table table-bordered table-hover nowrap align-middle w-100 mb-0">
                     <thead>
                         <tr>
                             <th data-filter="none" style="width: 35px;" class="text-center sorting_disabled no-drag">

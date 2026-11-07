@@ -148,3 +148,19 @@ table.dataTable.dt-colman-pending {
 .dt-colman-col-hidden {
   display: none !important;
 }
+
+.dt-colman-floating {
+  position: fixed;
+  display: none;
+  z-index: 2000;
+  margin: 0;
+  overflow: hidden;
+  background-color: var(--bs-body-bg, #fff);
+  color: var(--bs-body-color, inherit);
+  border-radius: 10px;
+  border: 1px solid var(--bs-border-color, rgba(0, 0, 0, 0.08)) !important;
+}
+
+.dt-colman-floating.show {
+  display: block;
+}
