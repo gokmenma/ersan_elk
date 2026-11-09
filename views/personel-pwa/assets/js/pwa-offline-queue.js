@@ -14,7 +14,7 @@
     var STORE_META = "transfer_meta";
     var leaseOwner = uuidUret();
     var accountKey = global.PWA_ACCOUNT_KEY || "";
-    var LEASE_MS = 150000;
+    var LEASE_MS = 45000;
     var STORE_KUYRUK = "kuyruk";
     var STORE_REFERANS = "referans";
     var SYNC_ETIKETI = "ersan-kuyruk-sync";
@@ -345,7 +345,10 @@
         mutationBusy = true;
         var acquired = false;
         try {
-            acquired = await lease("acquire");
+            for (var deneme = 0; deneme < 10 && !acquired; deneme++) {
+                acquired = await lease("acquire");
+                if (!acquired) await new Promise(function (r) { setTimeout(r, 1000); });
+            }
             if (!acquired) throw new Error("Gönderim başka bir pencerede sürüyor; yeniden deneyin.");
             return await fn.apply(null, args);
         } finally {
@@ -761,7 +764,7 @@
             acquired = await lease("acquire");
             if (!acquired) return { gonderildi: 0, atlandi: true };
             leaseLost = false;
-            heartbeat = setInterval(function () { lease("renew").then(function (ok) { if (!ok) leaseLost = true; }).catch(function () { leaseLost = true; }); }, 30000);
+            heartbeat = setInterval(function () { lease("renew").then(function (ok) { if (!ok) leaseLost = true; }).catch(function () { leaseLost = true; }); }, 10000);
             var identity = await istekGonder("pwaTransferIdentity", {}, [], "hesap");
             if (identity.sonuc !== "tamam") return { gonderildi: 0, oturum: identity.sonuc === "oturum", gecici: identity.sonuc === "bekle" };
             var serverKey = identity.veri.account_key;
