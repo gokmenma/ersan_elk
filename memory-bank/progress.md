@@ -2273,3 +2273,4 @@
 - [x] Sütunlar butonu -> başlık sağ tık menüsü (merkezi)
 - [x] 2026-11-07: İlan modalında soru düzenleme ve flatpickr tarih.
 - [x] İlan başvuru sayfası görüntüleme sayacı ve ilan listesinde GÖRÜNTÜLEME kolonu (SQL bekliyor).
+- [x] Evrak Takip: gelen evrakta Cevap Yaz akışı (liste butonu + giden evrak ön doldurma)

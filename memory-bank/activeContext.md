@@ -3893,3 +3893,7 @@
 - site-next `/kariyer/[token]` açılınca `IlanGoruntulemeSayaci` → `/api/kariyer/goruntule` → `api/external/kariyer-goruntule.php` → `IkIlanModel::goruntulemeKaydet()`.
 - Tekil ziyaretçi = sha256(IP|UA); bot UA'lar sayılmaz. Tablo: `ik_ilan_goruntulemeler` (sql/2026_11_07_ik_ilan_goruntulemeler.sql — çalıştırılmalı).
 - `ik-ise-alim/ilanlar` listesine GÖRÜNTÜLEME kolonu eklendi (kolon indeksleri kaydı, order 7).
+
+## Evrak Takip — Gelen Evrakta "Cevap Yaz" Akışı
+- Gelen evrak satırına (list.php + api.php `evrak-listesi` İşlemler menüsü) `Cevap Yaz` aksiyonu eklendi; yalnızca `evrak-takip/giden-evrak` yetkisi olana çizilir.
+- `index?p=evrak-takip/giden-evrak&cevap_id={şifreli gelen id}`: giden-evrak.php gelen evrakı `getById` (görünürlük kontrolüyle) okur; muhatap, konu (+Hk.), ilgi satırı, ilişkili gelen evrak ve personel alanlarını önceden doldurur. Kayıtta mevcut mantık gelen evrakı `markAsReplied` ile cevaplandı yapar. Şema/SQL değişikliği yok.

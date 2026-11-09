@@ -1240,6 +1240,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $latestKepEvidenceMap = (new KepDelilModel())->getLatestByEvrakIds($ids, (int) $_SESSION['firma_id']);
                 $kepSentMap = (new KepMesajModel())->getSentEvrakIdMap((int) $_SESSION['firma_id'], $ids);
                 $canSendKep = Gate::allows('evrak-takip/kep');
+                $canGidenEvrak = Gate::allows('evrak-takip/giden-evrak');
                 $uetsFullAccess = (new \App\Model\EvrakSevkModel())->hasFullAccess();
                 $uetsReadIds = array_flip((new \App\Model\EvrakSevkModel())->readEvrakIds((int) $_SESSION['firma_id'], $currentUserId, $ids));
                 $esc = static fn($value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
@@ -1335,6 +1336,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         }
                     } else {
                         $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-duzenle" data-id="' . $esc($encryptedId) . '" title="Düzenle"><i class="bx bx-edit-alt text-primary"></i><span>Düzenle</span></button>';
+                    }
+                    if ($type === 'gelen' && $canGidenEvrak) {
+                        $actionItems .= '<a href="index?p=evrak-takip/giden-evrak&amp;cevap_id=' . $esc($encryptedId) . '" class="dropdown-item d-flex align-items-center gap-2" title="Cevap Yaz"><i class="bx bx-reply text-success"></i><span>Cevap Yaz</span></a>';
                     }
                     if ($kepSent) $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 btn-kep-onizle-menu" data-id="' . $esc($encryptedId) . '" title="KEP İletisi ve Delil Önizleme"><i class="bx bx-mail-send text-primary"></i><span>KEP İletisi ve Delil Önizleme</span></button>';
                     if (\App\Model\EvrakSevkModel::isRestricted($evrak)) {

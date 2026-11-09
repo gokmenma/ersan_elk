@@ -21,6 +21,7 @@ $currentUserId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
 $uetsOkunmamisSayisi = (int) (new \App\Model\EvrakSevkModel())->unreadUets((int) ($_SESSION['firma_id'] ?? 0), $currentUserId, 0)['count'];
 $canSendKep = Gate::allows('evrak-takip/kep');
 $canUetsYonet = Gate::allows('evrak-takip/uets');
+$canGidenEvrak = Gate::allows('evrak-takip/giden-evrak');
 $canMobilImzaAyar = Gate::allows('mobil_imza_ayarlari_sekmesi');
 $onayMap = [];
 $imzamiBekleyenSayisi = $Evrak->countPendingSignatureForUser($currentUserId);
@@ -588,6 +589,11 @@ $title = "Evrak Listesi";
                                                 <i class="bx <?= $kilitli ? 'bx-show' : 'bx-edit-alt'; ?>"></i>
                                             </a>
                                         <?php else: ?>
+                                            <?php if ($canGidenEvrak): ?>
+                                                <a href="index?p=evrak-takip/giden-evrak&amp;cevap_id=<?= htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-subtle-success table-action-btn" title="Cevap Yaz">
+                                                    <i class="bx bx-reply"></i>
+                                                </a>
+                                            <?php endif; ?>
                                             <button type="button" class="btn btn-subtle-primary table-action-btn evrak-duzenle" data-id="<?= htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" title="Düzenle">
                                                 <i class="bx bx-edit-alt"></i>
                                             </button>

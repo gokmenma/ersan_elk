@@ -59,6 +59,40 @@ if ($icraParam !== '' && !$record) {
     }
 }
 
+$cevapGelen = null;
+$cevapParam = (string) ($_GET['cevap_id'] ?? '');
+if ($cevapParam !== '' && !$record) {
+    $cevapGelenId = (int) Security::decrypt($cevapParam);
+    $adayGelen = $cevapGelenId > 0 ? $Evrak->getById($cevapGelenId) : false;
+    if ($adayGelen && $adayGelen->evrak_tipi === 'gelen') {
+        $cevapGelen = $adayGelen;
+        $gelenTarih = !empty($adayGelen->tarih) ? date('d.m.Y', strtotime((string) $adayGelen->tarih)) : '';
+        $gelenNo = trim((string) $adayGelen->evrak_no);
+        $gelenKurum = trim((string) $adayGelen->kurum_adi);
+        if ($gelenTarih !== '' && $gelenNo !== '') {
+            $cevapIlgi = $gelenKurum !== ''
+                ? "{$gelenTarih} tarihli ve {$gelenKurum}'nın {$gelenNo} sayılı yazısı."
+                : "{$gelenTarih} tarihli ve {$gelenNo} sayılı yazınız.";
+        } elseif ($gelenTarih !== '') {
+            $cevapIlgi = "{$gelenTarih} tarihli yazınız.";
+        } elseif ($gelenNo !== '') {
+            $cevapIlgi = "{$gelenNo} sayılı yazınız.";
+        } else {
+            $cevapIlgi = '';
+        }
+        $gelenKonu = trim((string) $adayGelen->konu);
+        $prefill = [
+            'konu' => $gelenKonu !== '' && !preg_match('/\bhk\.?$/iu', $gelenKonu) ? $gelenKonu . ' Hk.' : $gelenKonu,
+            'kurum_adi' => $gelenKurum,
+            'ilgiler' => $cevapIlgi,
+            'personel_id' => $adayGelen->personel_id ?? '',
+            'ilgili_personel_id' => $adayGelen->ilgili_personel_id ?? '',
+        ];
+    } else {
+        error_log('Giden evrak cevap ön doldurma: geçersiz veya erişilemeyen gelen evrak.');
+    }
+}
+
 $value = static fn(string $field, mixed $default = '') => $record->$field ?? ($prefill[$field] ?? $default);
 $defaultEvrakNo = $record ? ($record->evrak_no ?? '') : 'Kayıtta Alacak';
 $dateValue = $record && !empty($record->tarih) ? date('d.m.Y', strtotime($record->tarih)) : date('d.m.Y');
@@ -131,7 +165,7 @@ foreach ($selectedSignerIds as $idx => $id) {
         ];
     }
 }
-$selectedRelated = !empty($record->ilgili_evrak_id) ? Security::encrypt($record->ilgili_evrak_id) : '';
+$selectedRelated = !empty($record->ilgili_evrak_id) ? Security::encrypt($record->ilgili_evrak_id) : ($cevapGelen ? Security::encrypt((int) $cevapGelen->id) : '');
 $solLogoPath = (string) ($settings->sol_logo_yolu ?? $firma->logo_yolu ?? '');
 $sagLogoPath = (string) ($settings->sag_logo_yolu ?? '');
 $currentUserId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
@@ -188,6 +222,23 @@ if ($canSendKep || $gonderimKanali === 'kep') {
 
 <div class="container-fluid">
     <?php $maintitle = 'Evrak Takip'; $title = $record ? 'Giden Evrak Düzenle' : 'Yeni Giden Evrak'; include 'layouts/breadcrumb.php'; ?>
+
+    <?php if ($cevapGelen): ?>
+        <div class="alert alert-info d-flex align-items-start border-0 shadow-sm mb-3">
+            <i class="bx bx-reply font-size-20 me-2"></i>
+            <div>
+                <div class="fw-bold">Gelen evraka cevap hazırlanıyor</div>
+                <div class="small">
+                    <?php echo htmlspecialchars(trim(($cevapGelen->evrak_no ?: '-') . ' — ' . $cevapGelen->konu), ENT_QUOTES, 'UTF-8'); ?>
+                    (<?php echo htmlspecialchars((string) $cevapGelen->kurum_adi, ENT_QUOTES, 'UTF-8'); ?>).
+                    Muhatap, konu ve ilgi alanları gelen evraktan dolduruldu; kayıt sonrasında gelen evrak "cevap verildi" olarak işaretlenir.
+                    <?php if (!empty($cevapGelen->cevap_verildi_mi)): ?>
+                        <span class="fw-semibold text-warning-emphasis">Bu evrak daha önce cevaplandı olarak işaretlenmiş.</span>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
 
     <?php if ($kilitli): ?>
         <div class="alert <?php echo $onayDurumu === 'onaylandi' ? 'alert-success' : 'alert-warning'; ?> d-flex align-items-start border-0 shadow-sm mb-3">
