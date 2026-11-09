@@ -295,6 +295,9 @@ try {
                                             <div class="badge-filter" style="cursor: pointer;" onclick="toggleMapStatusFilter('aktif', this)">
                                                 <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 font-size-11 fw-semibold"><i class="bx bxs-circle me-1"></i> Görevde</span>
                                             </div>
+                                            <div class="badge-filter" style="cursor: pointer;" onclick="toggleMapStatusFilter('molada', this)">
+                                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2.5 py-1 font-size-11 fw-semibold"><i class="bx bxs-circle me-1"></i> Molada</span>
+                                            </div>
                                             <div class="badge-filter" style="cursor: pointer;" onclick="toggleMapStatusFilter('bitti', this)">
                                                 <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1 font-size-11 fw-semibold"><i class="bx bxs-circle me-1"></i> Tamamladı</span>
                                             </div>
@@ -1098,7 +1101,7 @@ try {
     var haritaMap = null;
     var allMapData = []; // Store raw data for filtering
     var haritaMarkers = [];
-    var activeStatusFilters = ['aktif', 'bitti', 'baslamadi', 'izinli']; // Başlangıçta hepsi aktif
+    var activeStatusFilters = ['aktif', 'molada', 'bitti', 'baslamadi', 'izinli']; // Başlangıçta hepsi aktif
 
     document.addEventListener('DOMContentLoaded', function () {
         // İstatistikleri yükle
@@ -1451,6 +1454,9 @@ try {
                 } else if (p.durum === 'bitti') {
                     markerColor = '#556ee6'; // Mavi
                     statusIcon = 'bx-check';
+                } else if (p.durum === 'molada') {
+                    markerColor = '#f1b44c';
+                    statusIcon = 'bx-coffee';
                 } else if (p.durum === 'izinli') {
                     markerColor = '#74788d'; // Gri (İzinli)
                     statusIcon = 'bx-calendar-minus';
@@ -1477,7 +1483,7 @@ try {
                     ? '<small class="text-muted">Son konum: ' + new Date(p.son_zaman || Date.now()).toLocaleTimeString('tr-TR') + '</small>'
                     : '<small class="text-warning"><i class="bx bx-error-circle"></i> Konum bilgisi yok</small>';
 
-                var badgeClass = p.durum === 'aktif' ? 'bg-success' : (p.durum === 'bitti' ? 'bg-primary' : (p.durum === 'izinli' ? 'bg-info' : 'bg-secondary'));
+                var badgeClass = p.durum === 'aktif' ? 'bg-success' : (p.durum === 'bitti' ? 'bg-primary' : (p.durum === 'izinli' ? 'bg-info' : (p.durum === 'molada' ? 'bg-warning' : 'bg-secondary')));
 
                 marker.bindPopup(
                     '<div class="marker-popup" style="text-align:center; min-width: 150px;">' +

@@ -639,6 +639,67 @@ class PersonelIzinleriModel extends Model
         return !$mazeretMi && (int) ($izinTuru->ucretli_mi ?? 0) === 1;
     }
 
+    public function onayliSaatlikIzinler(string $baslangic, string $bitis, ?int $firmaId = null, ?int $personelId = null): array
+    {
+        $sql = "SELECT pi.personel_id, DATE(pi.baslangic_tarihi) AS gun, pi.baslangic_saati, pi.izin_saati
+                FROM personel_izinleri pi
+                INNER JOIN personel p ON p.id = pi.personel_id
+                WHERE pi.silinme_tarihi IS NULL
+                  AND pi.onay_durumu = 'Onaylandı'
+                  AND pi.izin_saati IS NOT NULL
+                  AND pi.baslangic_saati IS NOT NULL
+                  AND DATE(pi.baslangic_tarihi) >= :bas
+                  AND DATE(pi.baslangic_tarihi) <= :bit";
+        $params = [':bas' => $baslangic, ':bit' => $bitis];
+        if ($firmaId) {
+            $sql .= " AND p.firma_id = :firma_id";
+            $params[':firma_id'] = $firmaId;
+        }
+        if ($personelId) {
+            $sql .= " AND pi.personel_id = :personel_id";
+            $params[':personel_id'] = $personelId;
+        }
+        $sql .= " ORDER BY pi.baslangic_saati ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+
+        $map = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $row) {
+            $basDk = $this->timeToMinutes(substr((string) $row->baslangic_saati, 0, 5));
+            $bitDk = min(24 * 60, $basDk + (int) round(((float) $row->izin_saati) * 60));
+            $map[(int) $row->personel_id][(string) $row->gun][] = [
+                'bas_dk' => $basDk,
+                'bit_dk' => $bitDk,
+                'bas' => sprintf('%02d:%02d', intdiv($basDk, 60), $basDk % 60),
+                'bit' => sprintf('%02d:%02d', intdiv($bitDk % (24 * 60), 60), $bitDk % 60),
+                'sure' => (float) $row->izin_saati,
+            ];
+        }
+        return $map;
+    }
+
+    public static function saatlikIzinDurumu(array $izinler, ?int $simdiDk = null): ?array
+    {
+        if (!$izinler) {
+            return null;
+        }
+        $simdiDk = $simdiDk ?? ((int) date('G') * 60 + (int) date('i'));
+        $sonraki = null;
+        $biten = null;
+        foreach ($izinler as $izin) {
+            if ($simdiDk >= $izin['bas_dk'] && $simdiDk < $izin['bit_dk']) {
+                return $izin + ['durum' => 'molada', 'kalan_dk' => $izin['bit_dk'] - $simdiDk];
+            }
+            if ($simdiDk < $izin['bas_dk'] && $sonraki === null) {
+                $sonraki = $izin + ['durum' => 'yaklasiyor', 'kalan_dk' => $izin['bas_dk'] - $simdiDk];
+            }
+            if ($simdiDk >= $izin['bit_dk']) {
+                $biten = $izin + ['durum' => 'bitti', 'kalan_dk' => 0];
+            }
+        }
+        return $sonraki ?? $biten;
+    }
+
     public function isHourlyLeaveType($izinTuru): bool
     {
         if (!$izinTuru) {

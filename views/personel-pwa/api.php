@@ -3642,8 +3642,19 @@ try {
             $HareketModel = new PersonelHareketleriModel();
             $acikGorev = $HareketModel->getAcikGorev($personel_id);
 
+            $saatlikIzinler = (new PersonelIzinleriModel())->onayliSaatlikIzinler(date('Y-m-d'), date('Y-m-d'), null, (int) $personel_id);
+            $saatlikIzin = PersonelIzinleriModel::saatlikIzinDurumu($saatlikIzinler[(int) $personel_id][date('Y-m-d')] ?? []);
+            $saatlikIzinYanit = $saatlikIzin ? [
+                'durum' => $saatlikIzin['durum'],
+                'bas' => $saatlikIzin['bas'],
+                'bit' => $saatlikIzin['bit'],
+                'bas_dk' => $saatlikIzin['bas_dk'],
+                'bit_dk' => $saatlikIzin['bit_dk'],
+            ] : null;
+
             if ($acikGorev) {
                 response(true, [
+                    'saatlik_izin' => $saatlikIzinYanit,
                     'gorev_var' => true,
                     'baslangic_zamani' => $acikGorev->zaman,
                     'baslangic_saat' => date('H:i', strtotime($acikGorev->zaman)),
@@ -3653,6 +3664,7 @@ try {
                 ]);
             } else {
                 response(true, [
+                    'saatlik_izin' => $saatlikIzinYanit,
                     'gorev_var' => false
                 ]);
             }

@@ -82,6 +82,7 @@ try {
             $tamamladi = 0;
             $baslamadi = 0;
             $izinli_count = 0;
+            $molada_count = 0;
             $gec_kalan = 0;
 
             $now = new DateTime();
@@ -94,7 +95,7 @@ try {
             }
 
             foreach ($personeller as $p) {
-                $is_izinli = in_array($p->personel_id, $izinliler);
+                $is_izinli = in_array($p->personel_id, $izinliler) || $p->durum === 'molada';
                 $limit_saat = getDeptMesai($p->departman, $deptMesaileri);
                 try {
                     $limit_time = new DateTime($gun . ' ' . $limit_saat);
@@ -119,6 +120,8 @@ try {
                     $tamamladi++;
                 } elseif ($p->durum === 'izinli') {
                     $izinli_count++;
+                } elseif ($p->durum === 'molada') {
+                    $molada_count++;
                 } else {
                     $baslamadi++;
                     // Başlamamış ve saat geçmiş (bugün için)
@@ -133,6 +136,7 @@ try {
                 'tamamladi' => $tamamladi,
                 'baslamadi' => $baslamadi,
                 'izinli' => $izinli_count,
+                'molada' => $molada_count,
                 'gec_kalan' => $gec_kalan,
                 'toplam' => count($personeller)
             ]);
@@ -167,6 +171,9 @@ try {
                         break;
                     case 'izinli':
                         $durum_badge = '<span class="badge bg-info">İzinli</span>';
+                        break;
+                    case 'molada':
+                        $durum_badge = '<span class="badge bg-warning">' . htmlspecialchars($p->durum_text, ENT_QUOTES, 'UTF-8') . '</span>';
                         break;
                     default:
                         $durum_badge = '<span class="badge bg-secondary">Başlamadı</span>';

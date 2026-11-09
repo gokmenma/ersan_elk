@@ -172,6 +172,14 @@ $kartSirasi = static fn(string $anahtar): int => (int) array_search($anahtar, $a
                         </div>
                     </div>
 
+                    <div id="gorev-izin-banner" class="pwa-izin-banner hidden" role="status" aria-live="polite">
+                        <span class="material-symbols-outlined" id="gorev-izin-ikon">free_breakfast</span>
+                        <div>
+                            <strong id="gorev-izin-baslik"></strong>
+                            <small id="gorev-izin-alt"></small>
+                        </div>
+                    </div>
+
                     <!-- GÖREVE BAŞLA (Görev Yok) -->
                     <div id="gorev-basla-panel" class="pwa-fx-body hidden">
                         <div class="pwa-fx-scene-title">
@@ -827,6 +835,8 @@ $kartSirasi = static fn(string $anahtar): int => (int) array_search($anahtar, $a
                 if (containerEl) containerEl.classList.remove('hidden');
 
                 if (response.success && response.data) {
+                    gorevSaatlikIzin = response.data.saatlik_izin || null;
+                    renderGorevIzinBanner();
                     if (response.data.gorev_var) {
                         // Aktif görev var - Bitir panelini göster
                         showGorevBitirPanel(response.data);
@@ -844,6 +854,52 @@ $kartSirasi = static fn(string $anahtar): int => (int) array_search($anahtar, $a
                 showGorevBaslaPanel();
             }
         }
+
+        var gorevSaatlikIzin = null;
+
+        function renderGorevIzinBanner() {
+            var banner = document.getElementById('gorev-izin-banner');
+            var kart = document.getElementById('gorev-takip-card');
+            if (!banner) return;
+            var izin = gorevSaatlikIzin;
+            var simdi = new Date();
+            var simdiDk = simdi.getHours() * 60 + simdi.getMinutes();
+            var molada = false;
+            if (izin && simdiDk >= izin.bas_dk && simdiDk < izin.bit_dk) {
+                molada = true;
+                var kalan = izin.bit_dk - simdiDk;
+                document.getElementById('gorev-izin-ikon').textContent = 'free_breakfast';
+                document.getElementById('gorev-izin-baslik').textContent = 'Moladasınız (Saatlik İzin)';
+                document.getElementById('gorev-izin-alt').textContent = izin.bit + '\'de sona erer · ' + (kalan >= 60 ? Math.floor(kalan / 60) + ' sa ' : '') + (kalan % 60 ? kalan % 60 + ' dk ' : '') + 'kaldı';
+                banner.className = 'pwa-izin-banner is-molada';
+            } else if (izin && simdiDk < izin.bas_dk) {
+                var kala = izin.bas_dk - simdiDk;
+                document.getElementById('gorev-izin-ikon').textContent = 'schedule';
+                document.getElementById('gorev-izin-baslik').textContent = 'Saatlik izniniz: ' + izin.bas + ' – ' + izin.bit;
+                document.getElementById('gorev-izin-alt').textContent = (kala >= 60 ? Math.floor(kala / 60) + ' sa ' : '') + (kala % 60 ? kala % 60 + ' dk ' : '') + 'sonra başlıyor';
+                banner.className = 'pwa-izin-banner is-yaklasiyor';
+            } else {
+                banner.className = 'pwa-izin-banner hidden';
+            }
+            if (kart) kart.classList.toggle('is-molada', molada);
+        }
+
+        function gorevMoladaMi() {
+            var kart = document.getElementById('gorev-takip-card');
+            return !!(kart && kart.classList.contains('is-molada'));
+        }
+
+        async function gorevMolaOnayi(islem) {
+            if (!gorevMoladaMi()) return true;
+            return await Alert.confirm(
+                'Saatlik izindesiniz',
+                'Onaylı saatlik izin aralığındasınız (' + gorevSaatlikIzin.bas + ' – ' + gorevSaatlikIzin.bit + '). ' + islem + ' devam etmek istiyor musunuz?',
+                'Devam Et',
+                'Vazgeç'
+            );
+        }
+
+        setInterval(renderGorevIzinBanner, 30000);
 
         function setGorevSahne(durum) {
             var kart = document.getElementById('gorev-takip-card');
@@ -1096,6 +1152,7 @@ $kartSirasi = static fn(string $anahtar): int => (int) array_search($anahtar, $a
 
             var btn = document.getElementById('btn-gorev-basla');
             if (!btn) return;
+            if (!(await gorevMolaOnayi('Göreve başlayarak'))) return;
             var originalHtml = btn.innerHTML;
 
             // Butonu disable yap

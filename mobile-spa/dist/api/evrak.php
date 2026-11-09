@@ -538,6 +538,51 @@ try {
     }
 
     // -------------------------------------------------------------
+    // 4b. GELEN EVRAĞA CEVAP TASLAĞI (GET cevap-taslak)
+    // -------------------------------------------------------------
+    if ($method === 'GET' && $action === 'cevap-taslak') {
+        if (!Gate::allows('evrak-takip/giden-evrak')) {
+            evrakApiResponse(['success' => false, 'message' => 'Giden evrak oluşturma yetkiniz bulunmuyor.'], 403);
+        }
+        $gelenId = $decryptId($_GET['id'] ?? '');
+        $gelen = $gelenId > 0 ? $EvrakModel->getById($gelenId) : false;
+        if (!$gelen || $gelen->evrak_tipi !== 'gelen') {
+            evrakApiResponse(['success' => false, 'message' => 'Cevap yazılacak gelen evrak bulunamadı.'], 404);
+        }
+
+        $gelenTarih = !empty($gelen->tarih) ? date('d.m.Y', strtotime((string) $gelen->tarih)) : '';
+        $gelenNo = trim((string) $gelen->evrak_no);
+        $gelenKurum = trim((string) $gelen->kurum_adi);
+        $gelenKonu = trim((string) $gelen->konu);
+        if ($gelenTarih !== '' && $gelenNo !== '') {
+            $ilgi = $gelenKurum !== ''
+                ? "{$gelenTarih} tarihli ve {$gelenKurum}'nın {$gelenNo} sayılı yazısı."
+                : "{$gelenTarih} tarihli ve {$gelenNo} sayılı yazınız.";
+        } elseif ($gelenTarih !== '') {
+            $ilgi = "{$gelenTarih} tarihli yazınız.";
+        } elseif ($gelenNo !== '') {
+            $ilgi = "{$gelenNo} sayılı yazınız.";
+        } else {
+            $ilgi = '';
+        }
+
+        evrakApiResponse([
+            'success' => true,
+            'taslak' => [
+                'konu' => $gelenKonu !== '' && !preg_match('/\bhk\.?$/iu', $gelenKonu) ? $gelenKonu . ' Hk.' : $gelenKonu,
+                'kurum_adi' => $gelenKurum,
+                'ilgiler' => $ilgi,
+                'ilgili_evrak_id' => Security::encrypt((int) $gelen->id),
+                'personel_id' => !empty($gelen->personel_id) ? Security::encrypt((int) $gelen->personel_id) : '',
+                'ilgili_personel_id' => !empty($gelen->ilgili_personel_id) ? Security::encrypt((int) $gelen->ilgili_personel_id) : '',
+                'gelen_ozet' => trim(($gelenNo !== '' ? $gelenNo : '-') . ' — ' . $gelenKonu),
+                'gelen_kurum' => $gelenKurum,
+                'cevaplandi' => !empty($gelen->cevap_verildi_mi),
+            ],
+        ]);
+    }
+
+    // -------------------------------------------------------------
     // 5. TEK EVRAK DETAYI (GET detail)
     // -------------------------------------------------------------
     if ($method === 'GET' && $action === 'detail') {

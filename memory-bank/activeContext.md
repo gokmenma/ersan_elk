@@ -3897,3 +3897,14 @@
 ## Evrak Takip — Gelen Evrakta "Cevap Yaz" Akışı
 - Gelen evrak satırına (list.php + api.php `evrak-listesi` İşlemler menüsü) `Cevap Yaz` aksiyonu eklendi; yalnızca `evrak-takip/giden-evrak` yetkisi olana çizilir.
 - `index?p=evrak-takip/giden-evrak&cevap_id={şifreli gelen id}`: giden-evrak.php gelen evrakı `getById` (görünürlük kontrolüyle) okur; muhatap, konu (+Hk.), ilgi satırı, ilişkili gelen evrak ve personel alanlarını önceden doldurur. Kayıtta mevcut mantık gelen evrakı `markAsReplied` ile cevaplandı yapar. Şema/SQL değişikliği yok.
+
+## Yönetici Mobil (mobile-spa) — Gelen Evrakta "Cevap Yaz"
+- `public/api/evrak.php` yeni GET aksiyonu `cevap-taslak` (id=gelen evrak): `evrak-takip/giden-evrak` yetkisi + `getById` görünürlük kontrolü; konu(+Hk.), kurum, ilgi, ilgili_evrak_id, personel id'leri (şifreli) döner.
+- `EvrakView.vue`: gelen kartında ve detay modalında `Cevap Yaz` (yalnız `permissions.outgoing_documents`) → `/giden-evrak?cevap_id=`. `GidenEvrakView.vue` onMounted'da `applyCevapTaslak` ile formu doldurur, bilgi bandı gösterir. `npm run build` ile dist güncellendi.
+
+## Saatlik İzin → "Molada" Durumu (Personel Takip + Personel PWA)
+- Yalnızca `onay_durumu = 'Onaylandı'` saatlik izinler (`izin_saati`/`baslangic_saati` dolu). `PersonelIzinleriModel::onayliSaatlikIzinler($bas, $bit, $firmaId, $personelId)` → [personel][tarih][]; `saatlikIzinDurumu()` → molada / yaklasiyor / bitti.
+- Çalışma süresi: `PersonelTakipModel::gunlukOzetler(..., $saatlikIzinler)` görev aralığı ile izin aralığının kesişimini dakikadan düşer (mobil SPA gün/personel/analiz sorguları).
+- Mobil SPA takip: `durum = 'molada'` (yalnız bugün; tamamladı hariç), `saatlik_izin` alanı, sayaç `molada`, gecikme hesaplanmaz. Vue: rozet, filtre, segment, etiket.
+- Masaüstü takip: `getTumPersonelDurumu` molada üretir; getOzet/getPersonelDurumlari/harita rozet ve filtresi eklendi.
+- PWA ana sayfa: `getGorevDurumu` → `saatlik_izin`; görev kartında banner (yaklaşıyor / moladasınız + kalan süre), izin aralığında göreve başlarken onay sorusu (engel yok).

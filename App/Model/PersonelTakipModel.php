@@ -223,7 +223,7 @@ class PersonelTakipModel extends Model
         return $stmt->execute([':pid' => $personelId, ':tarih' => $tarih, ':aciklama' => $aciklama, ':uid' => $userId, ':uid2' => $userId]);
     }
 
-    public function gunlukOzetler(array $hareketler, string $bugun, int $nowTs): array
+    public function gunlukOzetler(array $hareketler, string $bugun, int $nowTs, array $saatlikIzinler = []): array
     {
         $gruplar = [];
         foreach ($hareketler as $h) {
@@ -236,7 +236,7 @@ class PersonelTakipModel extends Model
                 $ilkBasla = null;
                 $sonBitir = null;
                 $acikBasla = null;
-                $dakika = 0.0;
+                $araliklar = [];
                 $otomatik = false;
                 foreach ($liste as $h) {
                     $ts = strtotime((string) $h['zaman']);
@@ -246,7 +246,7 @@ class PersonelTakipModel extends Model
                     } else {
                         $sonBitir = $h;
                         if ($acikBasla !== null && $ts > $acikBasla) {
-                            $dakika += ($ts - $acikBasla) / 60;
+                            $araliklar[] = [$acikBasla, $ts];
                         }
                         $acikBasla = null;
                         if (!empty($h['aciklama']) && stripos((string) $h['aciklama'], 'otomatik') !== false) {
@@ -258,13 +258,17 @@ class PersonelTakipModel extends Model
                 if ($devamEdiyor && $tarih === $bugun && $nowTs > $acikBasla) {
                     $fark = ($nowTs - $acikBasla) / 60;
                     if ($fark < self::MAKS_ACIK_GOREV_DK) {
-                        $dakika += $fark;
+                        $araliklar[] = [$acikBasla, $nowTs];
                     }
                 }
-                if ($dakika <= 0 && $ilkBasla && $sonBitir) {
-                    $fark = strtotime((string) $sonBitir['zaman']) - strtotime((string) $ilkBasla['zaman']);
-                    $dakika = max(0, $fark / 60);
+                if (!$araliklar && $ilkBasla && $sonBitir) {
+                    $basTs = strtotime((string) $ilkBasla['zaman']);
+                    $bitTs = strtotime((string) $sonBitir['zaman']);
+                    if ($bitTs > $basTs) {
+                        $araliklar[] = [$basTs, $bitTs];
+                    }
                 }
+                $dakika = $this->izinDusulmusDakika($araliklar, $saatlikIzinler[$pid][$tarih] ?? [], $tarih);
                 $son = end($liste);
                 $sonuc[$pid][$tarih] = [
                     'ilk_basla' => $ilkBasla['zaman'] ?? null,
@@ -286,6 +290,24 @@ class PersonelTakipModel extends Model
             }
         }
         return $sonuc;
+    }
+
+    private function izinDusulmusDakika(array $araliklar, array $izinler, string $tarih): float
+    {
+        $toplam = 0.0;
+        foreach ($araliklar as [$bas, $bit]) {
+            $sure = ($bit - $bas) / 60;
+            foreach ($izinler as $izin) {
+                $izinBas = strtotime($tarih . ' 00:00:00') + $izin['bas_dk'] * 60;
+                $izinBit = strtotime($tarih . ' 00:00:00') + $izin['bit_dk'] * 60;
+                $kesisim = min($bit, $izinBit) - max($bas, $izinBas);
+                if ($kesisim > 0) {
+                    $sure -= $kesisim / 60;
+                }
+            }
+            $toplam += max(0, $sure);
+        }
+        return $toplam;
     }
 
     public function gecikmeDakika(string $tarih, ?string $ilkBasla, string $mesai, int $nowTs, bool $bugunMu): ?int

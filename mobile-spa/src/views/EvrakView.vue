@@ -30,6 +30,7 @@ import {
   Pencil,
   Plus,
   RefreshCw,
+  Reply,
   RotateCcw,
   Search,
   Send,
@@ -447,6 +448,12 @@ async function openCreateForm(type = 'gelen') {
   }
 
   isFormOpen.value = true
+}
+
+function openCevapYaz(doc) {
+  if (!auth.state.permissions.outgoing_documents) return
+  isDetailOpen.value = false
+  router.push({ path: '/giden-evrak', query: { cevap_id: doc.id } })
 }
 
 // Evrak Düzenle Formunu Aç
@@ -1433,6 +1440,17 @@ onBeforeUnmount(stopMobileSignTimer)
                 <span>KEP Gönder</span>
               </button>
 
+              <button
+                v-if="item.evrak_tipi === 'gelen' && auth.state.permissions.outgoing_documents"
+                type="button"
+                class="evrak-action-btn evrak-action-btn--submit"
+                title="Cevap Yaz"
+                @click="openCevapYaz(item)"
+              >
+                <Reply :size="14" />
+                <span>Cevap Yaz</span>
+              </button>
+
               <!-- Düzenle (Kilitli Değilse) -->
               <button
                 v-if="!item.kilitli && !item.uets_kisitli"
@@ -1887,6 +1905,16 @@ onBeforeUnmount(stopMobileSignTimer)
               <Pencil v-if="!selectedDetail.kilitli" :size="16" />
               <Eye v-else :size="16" />
               <span>{{ selectedDetail.kilitli ? 'Evrakı İncele' : 'Giden Evrakı Düzenle' }}</span>
+            </button>
+
+            <button
+              v-if="selectedDetail.evrak_tipi === 'gelen' && auth.state.permissions.outgoing_documents"
+              type="button"
+              class="evrak-btn evrak-btn--primary"
+              @click="isDetailOpen = false; openCevapYaz(selectedDetail)"
+            >
+              <Reply :size="16" />
+              <span>Cevap Yaz</span>
             </button>
 
             <!-- Gelen Evrak İse Modalda Düzenle -->

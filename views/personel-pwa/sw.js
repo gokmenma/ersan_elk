@@ -8,7 +8,7 @@
 // updateViaCache="none" kullanılarak worker bağımlılıklarının eski HTTP
 // önbelleğinden gelmesi de engellenir.
 const KUYRUK_SURUM = "35";
-const ONBELLEK_REVIZYON = "20261031d";
+const ONBELLEK_REVIZYON = "20261109b";
 const CACHE_NAME = "personel-pwa-v" + KUYRUK_SURUM + "-" + ONBELLEK_REVIZYON;
 const SAYFA_CACHE = "personel-pwa-sayfa-v6";
 const OFFLINE_URL = "offline.html";
@@ -335,8 +335,8 @@ self.addEventListener("push", (event) => {
   const title = data.title || "Ersan | Personel Yönetim";
   const options = {
     body: data.body || "Yeni bildiriminiz var",
-    icon: "./assets/icons/icon-192-new.png", // Her zaman varsayılan logo
-    badge: "./assets/icons/icon-72.png",
+    icon: "./assets/icons/app-192.png?v=2",
+    badge: "./assets/icons/badge-96.png?v=1",
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),

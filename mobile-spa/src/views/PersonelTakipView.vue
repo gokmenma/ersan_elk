@@ -37,6 +37,7 @@ const STATUS_META = {
   tamamladi: { label: 'Tamamladı', tone: 'blue' },
   kapanmadi: { label: 'Bitiş yok', tone: 'coral' },
   izinli: { label: 'İzinli', tone: 'purple' },
+  molada: { label: 'Molada', tone: 'amber' },
   baslamadi: { label: 'Başlamadı', tone: 'slate' },
 }
 const DAY_STATUS = {
@@ -114,30 +115,31 @@ let refreshTimer = null
 
 const isToday = computed(() => selectedDate.value === today)
 const canShiftSettings = computed(() => Boolean(day.value?.can_mesai))
-const summary = computed(() => day.value?.ozet || { toplam: 0, gorevde: 0, kapanmadi: 0, tamamladi: 0, baslamadi: 0, izinli: 0, gec: 0, toplam_dakika: 0 })
+const summary = computed(() => day.value?.ozet || { toplam: 0, gorevde: 0, kapanmadi: 0, tamamladi: 0, baslamadi: 0, izinli: 0, molada: 0, gec: 0, toplam_dakika: 0 })
 const departments = computed(() => day.value?.departmanlar || [])
 const segments = computed(() => {
   const total = Math.max(1, summary.value.toplam)
-  return ['gorevde', 'tamamladi', 'kapanmadi', 'izinli', 'baslamadi']
+  return ['gorevde', 'molada', 'tamamladi', 'kapanmadi', 'izinli', 'baslamadi']
     .map(key => ({ key, ...STATUS_META[key], count: summary.value[key] || 0, pct: ((summary.value[key] || 0) / total) * 100 }))
-    .filter(seg => seg.key !== 'kapanmadi' || seg.count > 0)
+    .filter(seg => !['kapanmadi', 'molada'].includes(seg.key) || seg.count > 0)
 })
 const attendancePct = computed(() => {
   const s = summary.value
   const expected = s.toplam - s.izinli
   return expected > 0 ? Math.round((fieldCount.value / expected) * 100) : 0
 })
-const fieldCount = computed(() => summary.value.gorevde + summary.value.tamamladi + (summary.value.kapanmadi || 0))
+const fieldCount = computed(() => summary.value.gorevde + summary.value.tamamladi + (summary.value.kapanmadi || 0) + (summary.value.molada || 0))
 const filterChips = computed(() => [
   { key: 'all', label: 'Tümü', count: summary.value.toplam },
   { key: 'gorevde', label: 'Görevde', count: summary.value.gorevde },
+  { key: 'molada', label: 'Molada', count: summary.value.molada || 0, tone: 'amber' },
   { key: 'tamamladi', label: 'Tamamladı', count: summary.value.tamamladi },
   { key: 'kapanmadi', label: 'Bitiş yok', count: summary.value.kapanmadi || 0, tone: 'coral' },
   { key: 'gec', label: 'Geç', count: summary.value.gec, tone: 'amber' },
   { key: 'baslamadi', label: 'Başlamadı', count: summary.value.baslamadi },
   { key: 'izinli', label: 'İzinli', count: summary.value.izinli },
-].filter(chip => chip.key !== 'kapanmadi' || chip.count > 0))
-const STATUS_ORDER = { gorevde: 0, kapanmadi: 1, tamamladi: 2, baslamadi: 3, izinli: 4 }
+].filter(chip => !['kapanmadi', 'molada'].includes(chip.key) || chip.count > 0))
+const STATUS_ORDER = { gorevde: 0, molada: 1, kapanmadi: 2, tamamladi: 3, baslamadi: 4, izinli: 5 }
 const filteredItems = computed(() => {
   const q = fold(search.value.trim())
   const list = (day.value?.items || []).filter(item => {
@@ -643,7 +645,8 @@ onBeforeUnmount(() => {
                   <span v-if="item.dakika"><Timer :size="13" />{{ duration(item.dakika) }}</span>
                   <span class="pt-muted">Mesai {{ item.mesai }}</span>
                 </div>
-                <div v-if="item.gecikme_dk !== null || item.otomatik_kapandi || item.canli_konum || item.aciklama || item.konum_bekleniyor" class="pt-card__tags">
+                <div v-if="item.saatlik_izin || item.gecikme_dk !== null || item.otomatik_kapandi || item.canli_konum || item.aciklama || item.konum_bekleniyor" class="pt-card__tags">
+                  <span v-if="item.saatlik_izin" class="pt-tag" :class="item.saatlik_izin.durum === 'molada' ? 'tone-amber' : 'tone-slate'"><Clock3 :size="12" />Saatlik izin {{ item.saatlik_izin.bas }}–{{ item.saatlik_izin.bit }}<template v-if="item.saatlik_izin.durum === 'molada'"> · {{ duration(item.saatlik_izin.kalan_dk) }} kaldı</template><template v-else-if="item.saatlik_izin.durum === 'bitti'"> · bitti</template></span>
                   <span v-if="item.gecikme_dk !== null" class="pt-tag tone-amber"><AlarmClock :size="12" />{{ item.baslama ? `${duration(item.gecikme_dk)} geç` : `${duration(item.gecikme_dk)} gecikiyor` }}</span>
                   <span v-if="item.otomatik_kapandi" class="pt-tag tone-coral">Otomatik kapandı</span>
                   <span v-if="item.canli_konum" class="pt-tag tone-emerald"><Radio :size="12" />Canlı · {{ ageLabel(item.canli_konum.yas_dk) }}</span>
@@ -1017,6 +1020,7 @@ onBeforeUnmount(() => {
 :deep(.pt-marker--gorevde) { background: var(--ds-emerald); }
 :deep(.pt-marker--tamamladi) { background: var(--ds-blue-ink); }
 :deep(.pt-marker--izinli) { background: var(--ds-purple); }
+:deep(.pt-marker--molada) { background: var(--ds-amber); }
 :deep(.pt-marker--kapanmadi) { background: var(--ds-coral); }
 :deep(.pt-marker.is-late) { border-color: var(--ds-amber); }
 
@@ -1029,6 +1033,7 @@ onBeforeUnmount(() => {
 .dot-gorevde { background: var(--ds-emerald) !important; }
 .dot-tamamladi { background: var(--ds-blue) !important; }
 .dot-izinli { background: var(--ds-purple) !important; }
+.dot-molada { background: var(--ds-amber) !important; }
 .dot-kapanmadi { background: var(--ds-coral) !important; }
 .pt-card__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .pt-card__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -1053,6 +1058,7 @@ onBeforeUnmount(() => {
 .pt-track .tone-emerald, .pt-legend .tone-emerald, .pt-map-legend .tone-emerald { background: var(--ds-emerald); }
 .pt-track .tone-blue, .pt-legend .tone-blue, .pt-map-legend .tone-blue { background: var(--ds-blue); }
 .pt-track .tone-purple, .pt-legend .tone-purple { background: var(--ds-purple); }
+.pt-track .tone-amber, .pt-legend .tone-amber { background: var(--ds-amber); }
 .pt-track .tone-coral, .pt-legend .tone-coral { background: var(--ds-coral); }
 .pt-track .tone-slate, .pt-legend .tone-slate { background: #475569; }
 .text-tone-emerald { color: var(--ds-emerald-ink); }

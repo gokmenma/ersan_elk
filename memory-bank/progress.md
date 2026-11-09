@@ -2274,3 +2274,5 @@
 - [x] 2026-11-07: İlan modalında soru düzenleme ve flatpickr tarih.
 - [x] İlan başvuru sayfası görüntüleme sayacı ve ilan listesinde GÖRÜNTÜLEME kolonu (SQL bekliyor).
 - [x] Evrak Takip: gelen evrakta Cevap Yaz akışı (liste butonu + giden evrak ön doldurma)
+- [x] mobile-spa: gelen evrakta Cevap Yaz akışı (API cevap-taslak + EvrakView buton + GidenEvrakView ön doldurma)
+- [x] 2026-11-09: Onaylı saatlik izin için Molada durumu (mobil SPA takip, masaüstü takip, personel PWA banner) ve izin süresinin çalışma süresinden düşülmesi.

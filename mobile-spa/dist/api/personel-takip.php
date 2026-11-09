@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Helper\Security;
+use App\Model\PersonelIzinleriModel;
 use App\Model\PersonelTakipModel;
 use App\Model\SystemLogModel;
 use App\Service\Gate;
@@ -114,13 +115,14 @@ try {
         $nowTs = time();
 
         $personeller = $Takip->takipPersonelleri($firmaId);
-        $ozetler = $Takip->gunlukOzetler($Takip->hareketler($firmaId, $tarih, $tarih), $bugun, $nowTs);
+        $saatlikIzinler = (new PersonelIzinleriModel())->onayliSaatlikIzinler($tarih, $tarih, $firmaId);
+        $ozetler = $Takip->gunlukOzetler($Takip->hareketler($firmaId, $tarih, $tarih), $bugun, $nowTs, $saatlikIzinler);
         $izinler = $Takip->izinGunleri($firmaId, $tarih, $tarih);
         $aciklamalar = $Takip->aciklamalar($firmaId, $tarih, $tarih);
         $canli = $bugunMu ? $Takip->canliKonumlar($firmaId) : [];
         $bekleyen = $bugunMu ? $Takip->bekleyenKonumIstekleri($firmaId) : [];
 
-        $sayac = ['toplam' => 0, 'gorevde' => 0, 'kapanmadi' => 0, 'tamamladi' => 0, 'baslamadi' => 0, 'izinli' => 0, 'gec' => 0, 'toplam_dakika' => 0];
+        $sayac = ['toplam' => 0, 'gorevde' => 0, 'kapanmadi' => 0, 'tamamladi' => 0, 'baslamadi' => 0, 'izinli' => 0, 'molada' => 0, 'gec' => 0, 'toplam_dakika' => 0];
         $departmanlar = [];
         $items = [];
 
@@ -130,8 +132,12 @@ try {
             $mesai = $Takip->mesaiSaati($departman);
             $ozet = $ozetler[$pid][$tarih] ?? null;
             $izin = $izinler[$pid][$tarih] ?? null;
+            $saatlik = $bugunMu ? PersonelIzinleriModel::saatlikIzinDurumu($saatlikIzinler[$pid][$tarih] ?? []) : null;
+            $moladaMi = $saatlik !== null && $saatlik['durum'] === 'molada';
 
-            if ($ozet && $ozet['devam_ediyor']) {
+            if ($moladaMi && !$izin && !($ozet && !$ozet['devam_ediyor'])) {
+                $durum = 'molada';
+            } elseif ($ozet && $ozet['devam_ediyor']) {
                 $durum = $bugunMu ? 'gorevde' : 'kapanmadi';
             } elseif ($ozet) {
                 $durum = 'tamamladi';
@@ -141,7 +147,7 @@ try {
                 $durum = 'baslamadi';
             }
 
-            $gecikme = $izin ? null : $Takip->gecikmeDakika($tarih, $ozet['ilk_basla'] ?? null, $mesai, $nowTs, $bugunMu);
+            $gecikme = ($izin || $moladaMi) ? null : $Takip->gecikmeDakika($tarih, $ozet['ilk_basla'] ?? null, $mesai, $nowTs, $bugunMu);
             $sayac['toplam']++;
             $sayac[$durum]++;
             if ($gecikme !== null) {
@@ -176,6 +182,12 @@ try {
                 'foto' => takipFoto($p),
                 'durum' => $durum,
                 'izin_turu' => $izin,
+                'saatlik_izin' => $saatlik ? [
+                    'durum' => $saatlik['durum'],
+                    'bas' => $saatlik['bas'],
+                    'bit' => $saatlik['bit'],
+                    'kalan_dk' => $saatlik['kalan_dk'],
+                ] : null,
                 'mesai' => $mesai,
                 'baslama' => takipSaat($ozet['ilk_basla'] ?? null),
                 'bitis' => takipSaat($ozet['son_bitir'] ?? null),
@@ -218,7 +230,8 @@ try {
         $nowTs = time();
         $mesai = $Takip->mesaiSaati((string) ($personel['departman'] ?? ''));
         $hareketler = $Takip->hareketler($firmaId, $baslangic, $bitis, $pid);
-        $ozetler = $Takip->gunlukOzetler($hareketler, $bugun, $nowTs)[$pid] ?? [];
+        $saatlikIzinler = (new PersonelIzinleriModel())->onayliSaatlikIzinler($baslangic, $bitis, $firmaId, $pid);
+        $ozetler = $Takip->gunlukOzetler($hareketler, $bugun, $nowTs, $saatlikIzinler)[$pid] ?? [];
         $izinler = $Takip->izinGunleri($firmaId, $baslangic, $bitis, $pid)[$pid] ?? [];
         $aciklamalar = $Takip->aciklamalar($firmaId, $baslangic, $bitis, $pid)[$pid] ?? [];
 
@@ -330,7 +343,8 @@ try {
         $nowTs = time();
 
         $personeller = $Takip->takipPersonelleri($firmaId, $departman !== '' ? $departman : null);
-        $ozetler = $Takip->gunlukOzetler($Takip->hareketler($firmaId, $baslangic, $bitis), $bugun, $nowTs);
+        $saatlikIzinler = (new PersonelIzinleriModel())->onayliSaatlikIzinler($baslangic, $bitis, $firmaId);
+        $ozetler = $Takip->gunlukOzetler($Takip->hareketler($firmaId, $baslangic, $bitis), $bugun, $nowTs, $saatlikIzinler);
         $izinler = $Takip->izinGunleri($firmaId, $baslangic, $bitis);
 
         $tarihler = [];

@@ -126,6 +126,9 @@ const form = reactive({
   imza_kimin_adina: [],
 })
 
+const cevapBilgi = ref(null)
+const cevapHata = ref('')
+
 // Ek Dosyalar
 const existingAttachments = ref([])
 const removedAttachmentIds = ref([])
@@ -327,6 +330,10 @@ onMounted(async () => {
     if (icraParam) {
       await applyIcraTaslak(icraParam)
     }
+    const cevapParam = route.query.cevap_id
+    if (cevapParam && !icraParam) {
+      await applyCevapTaslak(cevapParam)
+    }
   }
 })
 
@@ -490,6 +497,24 @@ async function createIcraUstYazi() {
     showToast(err.message || 'İcra taslağı oluşturulamadı.', 'error')
   } finally {
     icraLoading.value = false
+  }
+}
+
+async function applyCevapTaslak(gelenId) {
+  try {
+    const res = await evrakApi.cevapTaslak(gelenId)
+    const t = res.taslak
+    if (!t) return
+    form.konu = t.konu || form.konu
+    form.kurum_adi = t.kurum_adi || form.kurum_adi
+    form.ilgiler = t.ilgiler || form.ilgiler
+    form.ilgili_evrak_id = t.ilgili_evrak_id || form.ilgili_evrak_id
+    form.personel_id = t.personel_id || form.personel_id
+    form.ilgili_personel_id = t.ilgili_personel_id || form.ilgili_personel_id
+    cevapBilgi.value = t
+  } catch (err) {
+    console.error('Cevap taslağı yüklenemedi:', err)
+    cevapHata.value = err.message || 'Gelen evrak bilgileri alınamadı.'
   }
 }
 
@@ -871,6 +896,17 @@ async function imzaGeriAl() {
     <!-- SEKME 1: EVRAK VE MUHATAP BİLGİLERİ -->
     <!-- ==================================================== -->
     <div v-show="activeTab === 'bilgiler'" class="giden-tab-body">
+      <div v-if="cevapBilgi" class="giden-cevap-banner">
+        <div class="giden-cevap-banner__title">Gelen evraka cevap hazırlanıyor</div>
+        <div class="giden-cevap-banner__text">
+          {{ cevapBilgi.gelen_ozet }}<template v-if="cevapBilgi.gelen_kurum"> ({{ cevapBilgi.gelen_kurum }})</template>.
+          Muhatap, konu ve ilgi alanları gelen evraktan dolduruldu; kayıt sonrası gelen evrak “cevap verildi” olur.
+          <strong v-if="cevapBilgi.cevaplandi"> Bu evrak daha önce cevaplandı olarak işaretlenmiş.</strong>
+        </div>
+      </div>
+      <div v-else-if="cevapHata" class="giden-cevap-banner giden-cevap-banner--error">
+        <div class="giden-cevap-banner__text">{{ cevapHata }}</div>
+      </div>
       <section class="bento-card giden-section-card">
         <div class="giden-card-head">
           <div class="giden-card-head__icon bg-primary-soft text-primary">
@@ -3359,5 +3395,27 @@ async function imzaGeriAl() {
   to {
     transform: translateY(0);
   }
+}
+
+.giden-cevap-banner {
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border-radius: 20px;
+  background: #eaf2ff;
+  color: #1f3a66;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+}
+.giden-cevap-banner--error {
+  background: #fdecec;
+  color: #8a2b2b;
+}
+.giden-cevap-banner__title {
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+.giden-cevap-banner__text {
+  font-size: 13px;
+  line-height: 1.4;
 }
 </style>

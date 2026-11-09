@@ -467,6 +467,10 @@ class PersonelHareketleriModel extends Model
 
         $personeller = $stmt->fetchAll(PDO::FETCH_OBJ);
 
+        $saatlikIzinler = $tarih === date('Y-m-d')
+            ? (new PersonelIzinleriModel())->onayliSaatlikIzinler($tarih, $tarih, $firma_id ? (int) $firma_id : null)
+            : [];
+
         // Her personel için aktif görev durumunu belirle
         foreach ($personeller as &$personel) {
             if ($personel->son_baslama && (!$personel->son_bitis || $personel->son_baslama > $personel->son_bitis)) {
@@ -478,6 +482,12 @@ class PersonelHareketleriModel extends Model
             } else {
                 $personel->durum = 'baslamadi';
                 $personel->durum_text = 'Henüz Başlamadı';
+            }
+
+            $personel->saatlik_izin = PersonelIzinleriModel::saatlikIzinDurumu($saatlikIzinler[(int) $personel->personel_id][$tarih] ?? []);
+            if ($personel->saatlik_izin && $personel->saatlik_izin['durum'] === 'molada' && $personel->durum !== 'bitti') {
+                $personel->durum = 'molada';
+                $personel->durum_text = 'Molada · ' . $personel->saatlik_izin['bas'] . '–' . $personel->saatlik_izin['bit'];
             }
         }
 
