@@ -503,9 +503,14 @@
         return Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000) + 1;
     }
 
+    function izinAktifMi(izin) {
+        return izin.durum !== 'reddedildi' && izin.durum !== 'iptal_edildi';
+    }
+
     function izinGunDolu(dateStr) {
         const t = new Date(dateStr + 'T00:00:00').getTime();
         return izinlerData.some(izin => {
+            if (!izinAktifMi(izin)) return false;
             const bas = parseDateCustom(izin.baslangic);
             const bit = parseDateCustom(izin.bitis);
             if (!bas || !bit) return false;
@@ -648,7 +653,7 @@
                 opacityClass = '';
             }
 
-            let mainIzin = dayIzinler.length > 0 ? dayIzinler[0] : null;
+            let mainIzin = dayIzinler.find(izinAktifMi) || null;
             let onclickAction = '';
 
             if (mainIzin) {

@@ -114,7 +114,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && $error === '') {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>KASKİ Kaçak Kontrol Portalı | Ersan Elektrik</title>
-    <link rel="shortcut icon" href="../assets/images/favicon.ico">
+    <link rel="icon" type="image/svg+xml" href="../assets/icons/panel-favicon.svg?v=3">
+<link rel="icon" type="image/x-icon" href="../assets/icons/panel-favicon.ico?v=3">
+<link rel="icon" type="image/png" sizes="192x192" href="../assets/icons/panel-icon-192.png?v=3">
+<link rel="apple-touch-icon" href="../assets/icons/panel-apple-touch.png?v=3">
     <link href="../assets/css/bootstrap.min.css" rel="stylesheet">
     <link href="../assets/css/icons.min.css" rel="stylesheet">
     <link href="../assets/css/app.min.css" rel="stylesheet">

@@ -5,7 +5,9 @@
 <!-- PWA Meta Tags -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#135bec">
-<link rel="apple-touch-icon" href="assets/icons/icon-192-new.png">
 <!-- App favicon -->
-<link rel="shortcut icon" href="assets/images/fav.png">
+<link rel="icon" type="image/svg+xml" href="assets/icons/panel-favicon.svg?v=3">
+<link rel="icon" type="image/x-icon" href="assets/icons/panel-favicon.ico?v=3">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/panel-icon-192.png?v=3">
+<link rel="apple-touch-icon" href="assets/icons/panel-apple-touch.png?v=3">
 <link rel="canonical" href="https://www.ersantr.com/index" />

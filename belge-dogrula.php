@@ -106,7 +106,10 @@ $fmtDate = static fn($v, string $f = 'd.m.Y'): string => !empty($v) && strtotime
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
     <title>Belge Doğrulama | Ersan Elektrik</title>
-    <link rel="shortcut icon" href="assets/images/favicon.ico">
+    <link rel="icon" type="image/svg+xml" href="assets/icons/panel-favicon.svg?v=3">
+<link rel="icon" type="image/x-icon" href="assets/icons/panel-favicon.ico?v=3">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/panel-icon-192.png?v=3">
+<link rel="apple-touch-icon" href="assets/icons/panel-apple-touch.png?v=3">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
