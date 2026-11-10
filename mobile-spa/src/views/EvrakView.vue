@@ -13,6 +13,7 @@ import {
   Check,
   CheckCircle,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   Clock,
   Copy,
@@ -140,6 +141,9 @@ const previewPdfHost = ref(null)
 const previewPdfLoading = ref(false)
 const previewPdfFailed = ref(false)
 const showTeknikEkler = ref(false)
+const showUetsSevk = ref(false)
+const atamaSaving = ref(false)
+const showUetsErisim = ref(false)
 
 const detailAnaEkler = computed(() => (selectedDetail.value?.attachments || []).filter((f) => !f.teknik))
 const detailTeknikEkler = computed(() => (selectedDetail.value?.attachments || []).filter((f) => f.teknik))
@@ -399,6 +403,8 @@ async function openDetail(doc) {
   selectedDetail.value = doc
   detailTab.value = 'info'
   showTeknikEkler.value = false
+  showUetsSevk.value = false
+  showUetsErisim.value = false
   detailKep.value = null
   detailKepError.value = ''
   isDetailOpen.value = true
@@ -463,6 +469,36 @@ function openCevapYaz(doc) {
   if (!auth.state.permissions.outgoing_documents) return
   isDetailOpen.value = false
   router.push({ path: '/giden-evrak', query: { cevap_id: doc.id } })
+}
+
+const canAtama = computed(
+  () => selectedDetail.value?.evrak_tipi === 'gelen' && !!auth.state.permissions.incoming_documents,
+)
+
+function ensureAtamaMeta() {
+  if (!meta.value.personeller?.length) loadMeta()
+}
+
+async function setAtama(field, value) {
+  if (!selectedDetail.value || atamaSaving.value) return
+  const payload = {
+    id: selectedDetail.value.id,
+    personel_id: selectedDetail.value.personel_id || '',
+    ilgili_personel_id: selectedDetail.value.ilgili_personel_id || '',
+    [field]: value,
+  }
+  atamaSaving.value = true
+  try {
+    const res = await evrakApi.personelAta(payload, auth.state.csrfToken)
+    Object.assign(selectedDetail.value, res.data || {})
+    const listed = items.value.find((entry) => entry.id === selectedDetail.value.id)
+    if (listed) Object.assign(listed, res.data || {})
+    showToast(res.message || 'Personel atamaları güncellendi.')
+  } catch (err) {
+    showToast(err.message || 'Atama kaydedilemedi.', 'error')
+  } finally {
+    atamaSaving.value = false
+  }
 }
 
 // Evrak Düzenle Formunu Aç
@@ -1709,19 +1745,45 @@ onBeforeUnmount(stopMobileSignTimer)
               <div class="evrak-detail-section">
                 <span class="evrak-section-label">ATANAN PERSONEL</span>
                 <div class="evrak-detail-grid-2">
-                  <div class="evrak-detail-box">
+                  <div class="evrak-detail-box" :class="{ 'evrak-detail-box--select': canAtama, 'is-saving': atamaSaving }">
                     <User :size="16" class="text-muted" />
-                    <div>
+                    <div class="evrak-box-text">
                       <small>Ofis Zimmetli</small>
                       <strong>{{ selectedDetail.personel_adi || 'Seçilmedi' }}</strong>
                     </div>
+                    <ChevronDown v-if="canAtama" :size="16" class="evrak-box-chevron" />
+                    <select
+                      v-if="canAtama"
+                      class="evrak-box-select"
+                      aria-label="Ofis zimmetli personel seç"
+                      :value="selectedDetail.personel_id || ''"
+                      :disabled="atamaSaving"
+                      @focus="ensureAtamaMeta"
+                      @change="setAtama('personel_id', $event.target.value)"
+                    >
+                      <option value="">Seçilmedi</option>
+                      <option v-for="p in meta.ofis_personeller" :key="p.id" :value="p.id">{{ p.name }}</option>
+                    </select>
                   </div>
-                  <div class="evrak-detail-box">
+                  <div class="evrak-detail-box" :class="{ 'evrak-detail-box--select': canAtama, 'is-saving': atamaSaving }">
                     <UserCheck :size="16" class="text-blue" />
-                    <div>
+                    <div class="evrak-box-text">
                       <small>İlgili Personel</small>
                       <strong>{{ selectedDetail.ilgili_personel_adi || 'Seçilmedi' }}</strong>
                     </div>
+                    <ChevronDown v-if="canAtama" :size="16" class="evrak-box-chevron" />
+                    <select
+                      v-if="canAtama"
+                      class="evrak-box-select"
+                      aria-label="İlgili personel seç"
+                      :value="selectedDetail.ilgili_personel_id || ''"
+                      :disabled="atamaSaving"
+                      @focus="ensureAtamaMeta"
+                      @change="setAtama('ilgili_personel_id', $event.target.value)"
+                    >
+                      <option value="">Seçilmedi</option>
+                      <option v-for="p in meta.personeller" :key="p.id" :value="p.id">{{ p.name }}</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -1799,33 +1861,6 @@ onBeforeUnmount(stopMobileSignTimer)
                 </div>
               </div>
 
-              <!-- Ek Dosyalar Listesi -->
-              <div v-if="selectedDetail.uets_kisitli" class="evrak-detail-section">
-                <span class="evrak-section-label">SEVK GEÇMİŞİ</span>
-                <div v-if="!selectedDetail.sevk_gecmisi?.length" class="evrak-no-files">
-                  Bu evrak henüz sevk edilmemiş.
-                </div>
-                <div v-else class="evrak-detail-card">
-                  <div v-for="(s, i) in selectedDetail.sevk_gecmisi" :key="i" class="evrak-sevk-row">
-                    <strong>{{ s.sevk_eden }} → {{ s.alan }}</strong>
-                    <span class="evrak-sevk-state">{{ SEVK_DURUM[s.durum] || s.durum }}</span>
-                    <small>Sevk: {{ s.tarih }}<template v-if="s.goruldu"> · Görüldü: {{ s.goruldu }}</template></small>
-                    <small v-if="s.not">Not: {{ s.not }}</small>
-                  </div>
-                </div>
-              </div>
-
-              <div v-if="selectedDetail.uets_kisitli && selectedDetail.tarihce?.length" class="evrak-detail-section">
-                <span class="evrak-section-label">ERİŞİM VE İŞLEM KAYITLARI</span>
-                <div class="evrak-detail-card">
-                  <div v-for="(t, i) in selectedDetail.tarihce" :key="i" class="evrak-sevk-row">
-                    <strong>{{ TARIHCE_ISLEM[t.islem] || t.islem }}</strong>
-                    <small>{{ t.tarih }} · {{ t.islem_yapan }}<template v-if="t.hedef"> → {{ t.hedef }}</template></small>
-                    <small v-if="t.aciklama">{{ t.aciklama }}</small>
-                  </div>
-                </div>
-              </div>
-
               <div class="evrak-detail-section">
                 <span class="evrak-section-label">
                   EKLER ({{ detailAnaEkler.length }}<template v-if="detailTeknikEkler.length"> + {{ detailTeknikEkler.length }} teknik</template>)
@@ -1859,39 +1894,92 @@ onBeforeUnmount(stopMobileSignTimer)
                     </a>
                   </div>
 
-                  <button
-                    v-if="detailTeknikEkler.length"
-                    type="button"
-                    class="evrak-teknik-toggle"
-                    @click="showTeknikEkler = !showTeknikEkler"
-                  >
-                    {{ showTeknikEkler ? 'Teknik dosyaları gizle' : `Teknik dosyalar (${detailTeknikEkler.length})` }}
-                  </button>
-                  <template v-if="showTeknikEkler">
-                    <div
-                      v-for="file in detailTeknikEkler"
-                      :key="file.id || file.path"
-                      class="evrak-file-tile evrak-file-tile--teknik"
-                      @click="openFilePreview(file)"
+                  <div v-if="detailTeknikEkler.length" class="evrak-accordion">
+                    <button
+                      type="button"
+                      class="evrak-accordion-head"
+                      :aria-expanded="showTeknikEkler"
+                      @click="showTeknikEkler = !showTeknikEkler"
                     >
-                      <div class="evrak-file-icon">
-                        <Paperclip :size="18" class="text-muted" />
-                      </div>
-                      <div class="evrak-file-meta">
-                        <strong class="truncate">{{ file.name }}</strong>
-                        <small>{{ formatFileSize(file.size) }}</small>
-                      </div>
-                      <a
-                        :href="`${file.url}&download=1`"
-                        class="clay-circle-btn evrak-file-dl"
-                        download
-                        @click.stop
-                        title="İndir"
+                      <span class="evrak-section-label">TEKNİK DOSYALAR ({{ detailTeknikEkler.length }})</span>
+                      <ChevronRight :size="16" class="evrak-accordion-chevron" :class="{ 'is-open': showTeknikEkler }" />
+                    </button>
+                    <div v-if="showTeknikEkler" class="evrak-accordion-body">
+                      <div
+                        v-for="file in detailTeknikEkler"
+                        :key="file.id || file.path"
+                        class="evrak-file-tile evrak-file-tile--teknik"
+                        @click="openFilePreview(file)"
                       >
-                        <Download :size="16" />
-                      </a>
+                        <div class="evrak-file-icon">
+                          <Paperclip :size="18" class="text-muted" />
+                        </div>
+                        <div class="evrak-file-meta">
+                          <strong class="truncate">{{ file.name }}</strong>
+                          <small>{{ formatFileSize(file.size) }}</small>
+                        </div>
+                        <a
+                          :href="`${file.url}&download=1`"
+                          class="clay-circle-btn evrak-file-dl"
+                          download
+                          @click.stop
+                          title="İndir"
+                        >
+                          <Download :size="16" />
+                        </a>
+                      </div>
                     </div>
-                  </template>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="selectedDetail.uets_kisitli" class="evrak-detail-section">
+                <div class="evrak-accordion">
+                  <button
+                    type="button"
+                    class="evrak-accordion-head"
+                    :aria-expanded="showUetsSevk"
+                    @click="showUetsSevk = !showUetsSevk"
+                  >
+                    <span class="evrak-section-label">SEVK GEÇMİŞİ ({{ selectedDetail.sevk_gecmisi?.length || 0 }})</span>
+                    <ChevronRight :size="16" class="evrak-accordion-chevron" :class="{ 'is-open': showUetsSevk }" />
+                  </button>
+                  <div v-if="showUetsSevk" class="evrak-accordion-body">
+                    <div v-if="!selectedDetail.sevk_gecmisi?.length" class="evrak-no-files">
+                      Bu evrak henüz sevk edilmemiş.
+                    </div>
+                    <div v-else class="evrak-detail-card">
+                      <div v-for="(s, i) in selectedDetail.sevk_gecmisi" :key="i" class="evrak-sevk-row">
+                        <strong>{{ s.sevk_eden }} → {{ s.alan }}</strong>
+                        <span class="evrak-sevk-state">{{ SEVK_DURUM[s.durum] || s.durum }}</span>
+                        <small>Sevk: {{ s.tarih }}<template v-if="s.goruldu"> · Görüldü: {{ s.goruldu }}</template></small>
+                        <small v-if="s.not">Not: {{ s.not }}</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="selectedDetail.uets_kisitli && selectedDetail.tarihce?.length" class="evrak-detail-section">
+                <div class="evrak-accordion">
+                  <button
+                    type="button"
+                    class="evrak-accordion-head"
+                    :aria-expanded="showUetsErisim"
+                    @click="showUetsErisim = !showUetsErisim"
+                  >
+                    <span class="evrak-section-label">ERİŞİM VE İŞLEM KAYITLARI ({{ selectedDetail.tarihce.length }})</span>
+                    <ChevronRight :size="16" class="evrak-accordion-chevron" :class="{ 'is-open': showUetsErisim }" />
+                  </button>
+                  <div v-if="showUetsErisim" class="evrak-accordion-body">
+                    <div class="evrak-detail-card">
+                      <div v-for="(t, i) in selectedDetail.tarihce" :key="i" class="evrak-sevk-row">
+                        <strong>{{ TARIHCE_ISLEM[t.islem] || t.islem }}</strong>
+                        <small>{{ t.tarih }} · {{ t.islem_yapan }}<template v-if="t.hedef"> → {{ t.hedef }}</template></small>
+                        <small v-if="t.aciklama">{{ t.aciklama }}</small>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </template>
@@ -4636,5 +4724,61 @@ onBeforeUnmount(stopMobileSignTimer)
   padding: 24px 0;
   font-size: 13px;
   color: var(--ds-muted);
+}
+
+.evrak-accordion {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+}
+.evrak-accordion-body {
+  padding: 4px 0 12px;
+}
+.evrak-accordion-head:focus-visible {
+  outline: 2px solid var(--ds-muted);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+.evrak-accordion-head {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+.evrak-accordion-chevron {
+  transition: transform 0.2s ease;
+  color: var(--ds-muted);
+}
+.evrak-accordion-chevron.is-open {
+  transform: rotate(90deg);
+}
+.evrak-detail-box--select {
+  position: relative;
+}
+.evrak-detail-box--select.is-saving {
+  opacity: 0.6;
+}
+.evrak-box-text {
+  flex: 1;
+  min-width: 0;
+}
+.evrak-box-chevron {
+  flex-shrink: 0;
+  color: var(--ds-muted);
+}
+.evrak-box-select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  font-size: 16px;
 }
 </style>

@@ -1303,6 +1303,25 @@ class EvrakTakipModel extends Model
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
+    public function updatePersonelAtama(int $evrakId, ?int $personelId, ?int $ilgiliPersonelId): bool
+    {
+        $sql = $this->db->prepare("
+            UPDATE {$this->table}
+            SET personel_id = :personel_id,
+                ilgili_personel_id = :ilgili_personel_id
+            WHERE id = :id
+            AND firma_id = :firma_id
+            AND evrak_tipi = 'gelen'
+            AND silinme_tarihi IS NULL
+        ");
+        return $sql->execute([
+            'personel_id' => $personelId,
+            'ilgili_personel_id' => $ilgiliPersonelId,
+            'id' => $evrakId,
+            'firma_id' => (int) ($_SESSION['firma_id'] ?? 0),
+        ]);
+    }
+
     /**
      * Evrakı cevaplandı olarak işaretler
      */

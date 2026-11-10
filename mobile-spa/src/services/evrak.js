@@ -67,6 +67,9 @@ export const evrakApi = {
   detail(id) {
     return request('detail', { params: { id } })
   },
+  personelAta(body, csrfToken) {
+    return request('personel-ata', { method: 'POST', body, csrfToken })
+  },
   cevapTaslak(id) {
     return request('cevap-taslak', { params: { id } })
   },

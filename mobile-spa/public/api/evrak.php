@@ -1122,6 +1122,56 @@ try {
     // -------------------------------------------------------------
     // 7. EVRAK KAYDET / GÜNCELLE (POST save)
     // -------------------------------------------------------------
+    if ($method === 'POST' && $action === 'personel-ata') {
+        verifyCsrfToken();
+        if (!Gate::allows('evrak-takip/gelen-evrak')) {
+            evrakApiResponse(['success' => false, 'message' => 'Gelen evrak düzenleme yetkiniz bulunmuyor.'], 403);
+        }
+        $evrakId = $decryptId($_POST['id'] ?? '');
+        $evrak = $evrakId > 0 ? $EvrakModel->getById($evrakId) : false;
+        if (!$evrak || $evrak->evrak_tipi !== 'gelen') {
+            evrakApiResponse(['success' => false, 'message' => 'Gelen evrak bulunamadı.'], 404);
+        }
+
+        $personelId = $decryptId($_POST['personel_id'] ?? '');
+        $ilgiliPersonelId = $decryptId($_POST['ilgili_personel_id'] ?? '');
+        $gecerliIds = array_map(static fn(object $p): int => (int) $p->id, (new PersonelModel())->all(true, 'evrak'));
+        foreach ([$personelId, $ilgiliPersonelId] as $secilen) {
+            if ($secilen > 0 && !in_array($secilen, $gecerliIds, true)) {
+                evrakApiResponse(['success' => false, 'message' => 'Seçilen personel geçerli değil.'], 422);
+            }
+        }
+
+        $EvrakModel->updatePersonelAtama($evrakId, $personelId > 0 ? $personelId : null, $ilgiliPersonelId > 0 ? $ilgiliPersonelId : null);
+        if (\App\Model\EvrakSevkModel::isRestricted($evrak)) {
+            (new \App\Model\EvrakSevkModel())->recordHistory($firmaId, $evrakId, 'duzenleme', $currentUserId, null, 'Zimmetli/ilgili personel güncellendi (mobil).');
+        }
+        (new SystemLogModel())->logAction(
+            $currentUserId,
+            'Evrak Personel Ataması',
+            "Evrak ID: {$evrakId} zimmetli/ilgili personel güncellendi (mobil).",
+            SystemLogModel::LEVEL_INFO
+        );
+
+        $personelAdi = '';
+        $ilgiliAdi = '';
+        foreach ((new PersonelModel())->all(true, 'evrak') as $p) {
+            if ((int) $p->id === $personelId) $personelAdi = (string) $p->adi_soyadi;
+            if ((int) $p->id === $ilgiliPersonelId) $ilgiliAdi = (string) $p->adi_soyadi;
+        }
+
+        evrakApiResponse([
+            'success' => true,
+            'message' => 'Personel atamaları güncellendi.',
+            'data' => [
+                'personel_id' => $personelId > 0 ? Security::encrypt($personelId) : '',
+                'personel_adi' => $personelAdi,
+                'ilgili_personel_id' => $ilgiliPersonelId > 0 ? Security::encrypt($ilgiliPersonelId) : '',
+                'ilgili_personel_adi' => $ilgiliAdi,
+            ],
+        ]);
+    }
+
     if ($method === 'POST' && $action === 'save') {
         verifyCsrfToken();
 

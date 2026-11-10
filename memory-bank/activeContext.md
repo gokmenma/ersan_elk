@@ -3915,3 +3915,5 @@
 
 ## 2026-11-10 — Maaşa dahil yardımlı personelde işveren maliyeti brüt asgari ücret bazlı
 - BordroPersonelModel: işveren SGK/işsizlik matrahı ve toplam_maliyet brüt asgari (asgari_ucret_brut/30×gün) üzerinden; docs/BORDRO_HESAPLAMA_KURALLARI.md güncellendi.
+- Mobil evrak detayı (UETS): "Sevk Geçmişi" ve "Erişim ve İşlem Kayıtları" ayrı ayrı akordeon (varsayılan kapalı), Ekler'in altında; Teknik dosyalar da akordeon (EvrakView.vue: showTeknikEkler/showUetsSevk/showUetsErisim).
+- Mobil gelen evrak personel ataması: `evrak.php` POST `personel-ata` (gelen-evrak yetkisi, CSRF, geçerli personel doğrulaması, UETS'te de çalışır + tarihçe/log), `EvrakTakipModel::updatePersonelAtama`. Detayda Ofis Zimmetli ve İlgili Personel kutularının kendisi seçimdir (şeffaf select + chevron, seçince anında kaydeder; EvrakView.vue `setAtama`). Akordeon başlıkları bölüm etiketiyle aynı hizada (kart çerçevesiz).

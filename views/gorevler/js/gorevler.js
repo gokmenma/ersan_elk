@@ -465,6 +465,12 @@
       } else if (tarihObj.getTime() === bugun.getTime()) {
         cls = "bugun";
         label = "Bugün";
+        if (!tamamlandi && g.saat) {
+          const [sa, dk] = g.saat.split(":");
+          const hedef = new Date();
+          hedef.setHours(parseInt(sa, 10) || 0, parseInt(dk, 10) || 0, 0, 0);
+          if (hedef < new Date()) cls = "gecmis";
+        }
       } else if (tarihObj.getTime() === yarin.getTime()) {
         cls = "gelecek";
         label = "Yarın";
