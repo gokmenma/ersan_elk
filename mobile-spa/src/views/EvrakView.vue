@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   AlertCircle,
@@ -135,6 +135,14 @@ const previewFile = ref({
   isPdf: false,
   isImage: false,
 })
+
+const previewPdfHost = ref(null)
+const previewPdfLoading = ref(false)
+const previewPdfFailed = ref(false)
+const showTeknikEkler = ref(false)
+
+const detailAnaEkler = computed(() => (selectedDetail.value?.attachments || []).filter((f) => !f.teknik))
+const detailTeknikEkler = computed(() => (selectedDetail.value?.attachments || []).filter((f) => f.teknik))
 
 // E-İmza & İşlem Onay Modalları
 const isSignConfirmOpen = ref(false)
@@ -390,6 +398,7 @@ async function syncDetailKep() {
 async function openDetail(doc) {
   selectedDetail.value = doc
   detailTab.value = 'info'
+  showTeknikEkler.value = false
   detailKep.value = null
   detailKepError.value = ''
   isDetailOpen.value = true
@@ -637,7 +646,46 @@ function openFilePreview(file) {
     isPdf,
     isImage: isImg,
   }
+  previewPdfFailed.value = false
   isPreviewOpen.value = true
+  if (isPdf && !isImg) renderPreviewPdf(file.url)
+}
+
+async function renderPreviewPdf(url) {
+  previewPdfLoading.value = true
+  await nextTick()
+  const host = previewPdfHost.value
+  if (host) host.replaceChildren()
+  try {
+    const response = await fetch(url, { credentials: 'same-origin' })
+    if (!response.ok) throw new Error('PDF alınamadı')
+    const blob = await response.blob()
+    const pdfjs = await import('pdfjs-dist/build/pdf.min.mjs')
+    const { default: workerUrl } = await import('pdfjs-dist/build/pdf.worker.min.mjs?url')
+    pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
+    const pdf = await pdfjs.getDocument({ data: new Uint8Array(await blob.arrayBuffer()) }).promise
+    const target = previewPdfHost.value
+    if (!target || !isPreviewOpen.value) return
+    const width = Math.max(target.clientWidth - 16, 280)
+    const ratio = Math.min(window.devicePixelRatio || 1, 2)
+    for (let n = 1; n <= pdf.numPages; n += 1) {
+      const page = await pdf.getPage(n)
+      const base = page.getViewport({ scale: 1 })
+      const viewport = page.getViewport({ scale: (width / base.width) * ratio })
+      const canvas = document.createElement('canvas')
+      canvas.width = viewport.width
+      canvas.height = viewport.height
+      canvas.className = 'evrak-preview-canvas'
+      canvas.style.width = `${width}px`
+      target.appendChild(canvas)
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise
+    }
+  } catch (err) {
+    console.error('PDF önizleme çizilemedi:', err)
+    previewPdfFailed.value = true
+  } finally {
+    previewPdfLoading.value = false
+  }
 }
 
 // Giden Evrak PDF Önizleme
@@ -1780,15 +1828,15 @@ onBeforeUnmount(stopMobileSignTimer)
 
               <div class="evrak-detail-section">
                 <span class="evrak-section-label">
-                  EKLER ({{ selectedDetail.attachments?.length || 0 }})
+                  EKLER ({{ detailAnaEkler.length }}<template v-if="detailTeknikEkler.length"> + {{ detailTeknikEkler.length }} teknik</template>)
                 </span>
                 <div v-if="!selectedDetail.attachments?.length" class="evrak-no-files">
                   Ek dosya yüklenmemiş.
                 </div>
                 <div v-else class="evrak-files-grid">
                   <div
-                    v-for="file in selectedDetail.attachments"
-                    :key="file.name"
+                    v-for="file in detailAnaEkler"
+                    :key="file.id || file.path"
                     class="evrak-file-tile"
                     @click="openFilePreview(file)"
                   >
@@ -1810,6 +1858,40 @@ onBeforeUnmount(stopMobileSignTimer)
                       <Download :size="16" />
                     </a>
                   </div>
+
+                  <button
+                    v-if="detailTeknikEkler.length"
+                    type="button"
+                    class="evrak-teknik-toggle"
+                    @click="showTeknikEkler = !showTeknikEkler"
+                  >
+                    {{ showTeknikEkler ? 'Teknik dosyaları gizle' : `Teknik dosyalar (${detailTeknikEkler.length})` }}
+                  </button>
+                  <template v-if="showTeknikEkler">
+                    <div
+                      v-for="file in detailTeknikEkler"
+                      :key="file.id || file.path"
+                      class="evrak-file-tile evrak-file-tile--teknik"
+                      @click="openFilePreview(file)"
+                    >
+                      <div class="evrak-file-icon">
+                        <Paperclip :size="18" class="text-muted" />
+                      </div>
+                      <div class="evrak-file-meta">
+                        <strong class="truncate">{{ file.name }}</strong>
+                        <small>{{ formatFileSize(file.size) }}</small>
+                      </div>
+                      <a
+                        :href="`${file.url}&download=1`"
+                        class="clay-circle-btn evrak-file-dl"
+                        download
+                        @click.stop
+                        title="İndir"
+                      >
+                        <Download :size="16" />
+                      </a>
+                    </div>
+                  </template>
                 </div>
               </div>
             </template>
@@ -2525,6 +2607,15 @@ onBeforeUnmount(stopMobileSignTimer)
             <h3 class="truncate">{{ previewFile.name }}</h3>
             <div class="evrak-preview-actions">
               <a
+                :href="previewFile.url"
+                class="clay-circle-btn"
+                target="_blank"
+                rel="noopener"
+                title="Yeni sekmede aç"
+              >
+                <ExternalLink :size="18" />
+              </a>
+              <a
                 :href="`${previewFile.url}&download=1`"
                 class="clay-circle-btn"
                 download
@@ -2550,12 +2641,18 @@ onBeforeUnmount(stopMobileSignTimer)
               :alt="previewFile.name"
               class="evrak-preview-img"
             />
-            <iframe
-              v-else-if="previewFile.isPdf"
-              :src="previewFile.url"
-              class="evrak-preview-iframe"
-              title="PDF Önizleme"
-            ></iframe>
+            <template v-else-if="previewFile.isPdf">
+              <iframe
+                v-if="previewPdfFailed"
+                :src="previewFile.url"
+                class="evrak-preview-iframe"
+                title="PDF Önizleme"
+              ></iframe>
+              <div v-else class="evrak-preview-pdf-scroll">
+                <div v-if="previewPdfLoading" class="evrak-preview-pdf-loading">PDF yükleniyor...</div>
+                <div ref="previewPdfHost" class="evrak-preview-pdf-pages"></div>
+              </div>
+            </template>
             <div v-else class="evrak-preview-unsupported">
               <FileText :size="48" class="text-muted" />
               <strong>Bu dosya türü doğrudan önizlenemiyor.</strong>
@@ -4498,5 +4595,46 @@ onBeforeUnmount(stopMobileSignTimer)
   background: rgba(2, 132, 199, 0.08);
   padding: 2px 7px;
   border-radius: var(--ds-radius-pill);
+}
+
+.evrak-file-tile--teknik {
+  opacity: 0.75;
+}
+.evrak-teknik-toggle {
+  border: 0;
+  background: transparent;
+  color: var(--ds-muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 10px 4px;
+  min-height: 44px;
+  text-align: left;
+  cursor: pointer;
+}
+.evrak-preview-pdf-scroll {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px;
+}
+.evrak-preview-pdf-pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.evrak-preview-canvas {
+  max-width: 100%;
+  height: auto !important;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12);
+}
+.evrak-preview-pdf-loading {
+  text-align: center;
+  padding: 24px 0;
+  font-size: 13px;
+  color: var(--ds-muted);
 }
 </style>

@@ -681,3 +681,11 @@ edilen kısımdır. `elden_tutardan` kesintisi ana kesinti kartından gizlenemez
 - Bordro modalı (5. SGK İşveren Payı), SGK Bildirge, Maliyet Raporu, İcmal, SGK Excel ve arşiv yalnızca `bordro_personel.sgk_isveren` / `issizlik_isveren` snapshot kolonlarını okur.
 - `maliyet-raporu/list` sayfasında bordro kaydı iki satıra ayrılır: `Personel / Maaş` (= toplam_maliyet − işveren SGK − işveren işsizlik) ve `Personel / SGK İşveren Payı`. Personel toplamı değişmez; SGK kartı aynı kolonlardan beslenir.
 - Yeni hesaplama kuralı yalnız dönemin yetkili biçimde yeniden hesaplanmasıyla mevcut snapshot'lara yansır (Bölüm 5.1); eski kayıtlar değiştirilmez.
+
+### Maaşa Dahil Yardımlı Personelde Brüt Asgari Ücret Bazlı İşveren Maliyeti (2026-11-10)
+- Maaşa dahil yardım alan personelde işveren SGK ve işsizlik payı, net asgari ücret değil **brüt asgari ücret** (`asgari_ucret_brut / 30 × maasHesapGunu`) matrahı üzerinden hesaplanır; matrah = `sgkMatrahi + (brüt asgari − çalışan brüt maaş tabanı)`.
+- `toplam_maliyet`, aradaki brüt farkı (SGK işçi payı + işsizlik işçi payı + vergi kesintileri dahil) ayrıca içerir: `toplam_maliyet = brüt_maas + brüt_farkı + sgk_isveren + issizlik_isveren + brüt ek ödemeler`.
+- Çalışan tarafındaki SGK matrahı, işçi payı, vergi ve ödeme kanalları değişmez; yalnız işveren maliyeti etkilenir. Mevcut snapshot'lar yetkili yeniden hesaplamaya kadar değişmez (Bölüm 5.1).
+- SGK matrahı (`sgk_matrahi`), işçi SGK payı (%14) ve işçi işsizlik payı (%1) de aynı brüt farkını içerir; böylece bordro modalındaki SGK İşçi Primi kartı brüt asgari ücret matrahıyla uyumlu çıkar. Net ödeme, gelir vergisi matrahı ve ödeme kanalları bu değişiklikten etkilenmez (net/prim usulünde işçi payı net hakedişten düşülmez).
+- Brüt asgari ücret farkı yalnız maaşa dahil yardımlı personelle sınırlı değildir: net/prim usulü personelde çalışan brüt tabanı günlük net asgari ücret × SGK günü ise (yemek ayrı gösterilse de) aynı fark SGK matrahına, işçi paylarına ve işveren maliyetine eklenir. Taban asgari net değilse (sözleşme tabanlı, karışık maaş vb.) fark eklenmez.
+- Bu kapsamdaki personelde işçi SGK (%14) ve işçi işsizlik (%1) payı, SGK matrahının tamamı üzerinden gösterilir: brüt asgari ücret × oran + ek matrah payları (`primUsuluGercek*`). Böylece işçi payı = `sgk_matrahi` × oran olur. Net ödeme bundan etkilenmez.

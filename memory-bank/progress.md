@@ -2276,3 +2276,7 @@
 - [x] Evrak Takip: gelen evrakta Cevap Yaz akışı (liste butonu + giden evrak ön doldurma)
 - [x] mobile-spa: gelen evrakta Cevap Yaz akışı (API cevap-taslak + EvrakView buton + GidenEvrakView ön doldurma)
 - [x] 2026-11-09: Onaylı saatlik izin için Molada durumu (mobil SPA takip, masaüstü takip, personel PWA banner) ve izin süresinin çalışma süresinden düşülmesi.
+- [x] mobile-spa: evrak/UETS dosyalarını görüntüleme (ana/teknik ek ayrımı, pdf.js önizleme, yeni sekmede aç)
+
+## 2026-11-10 — Maaşa dahil yardımlı personelde işveren maliyeti brüt asgari ücret bazlı
+- BordroPersonelModel: işveren SGK/işsizlik matrahı ve toplam_maliyet brüt asgari (asgari_ucret_brut/30×gün) üzerinden; docs/BORDRO_HESAPLAMA_KURALLARI.md güncellendi.

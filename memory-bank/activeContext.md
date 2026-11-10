@@ -3908,3 +3908,10 @@
 - Mobil SPA takip: `durum = 'molada'` (yalnız bugün; tamamladı hariç), `saatlik_izin` alanı, sayaç `molada`, gecikme hesaplanmaz. Vue: rozet, filtre, segment, etiket.
 - Masaüstü takip: `getTumPersonelDurumu` molada üretir; getOzet/getPersonelDurumlari/harita rozet ve filtresi eklendi.
 - PWA ana sayfa: `getGorevDurumu` → `saatlik_izin`; görev kartında banner (yaklaşıyor / moladasınız + kalan süre), izin aralığında göreve başlarken onay sorusu (engel yok).
+
+## Yönetici Mobil — Evrak Dosyaları (UETS)
+- `public/api/evrak.php`: ek `mime` uzantıdan tamamlanır (octet-stream ise); UETS evraklarında paket iç dosyaları (.xml, .rels, .imz, .p7s, [Content_Types].xml) `teknik: true` işaretlenir; listede `attachments_count` yalnız ana dosyaları sayar (`attachments_teknik_count` ayrı).
+- `EvrakView.vue`: detayda ana ekler üstte, teknik dosyalar "Teknik dosyalar (N)" ile açılır; PDF önizleme pdf.js ile canvas'a çizilir (mobil tarayıcıda iframe PDF çizmez), hata olursa iframe'e düşer; önizleme başlığında "yeni sekmede aç" eklendi.
+
+## 2026-11-10 — Maaşa dahil yardımlı personelde işveren maliyeti brüt asgari ücret bazlı
+- BordroPersonelModel: işveren SGK/işsizlik matrahı ve toplam_maliyet brüt asgari (asgari_ucret_brut/30×gün) üzerinden; docs/BORDRO_HESAPLAMA_KURALLARI.md güncellendi.

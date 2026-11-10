@@ -83,6 +83,38 @@ $decryptId = static function ($value): int {
     return is_numeric($d) ? (int) $d : 0;
 };
 
+$evrakEkMime = static function (string $name, string $mime): string {
+    if ($mime !== '' && $mime !== 'application/octet-stream') {
+        return $mime;
+    }
+    return match (strtolower(pathinfo($name, PATHINFO_EXTENSION))) {
+        'pdf' => 'application/pdf',
+        'jpg', 'jpeg' => 'image/jpeg',
+        'png' => 'image/png',
+        'gif' => 'image/gif',
+        'webp' => 'image/webp',
+        'tif', 'tiff' => 'image/tiff',
+        'xml' => 'application/xml',
+        'doc' => 'application/msword',
+        'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'xls' => 'application/vnd.ms-excel',
+        'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'txt' => 'text/plain',
+        default => $mime !== '' ? $mime : 'application/octet-stream',
+    };
+};
+
+$evrakEkTeknikMi = static function (string $name, bool $isUets): bool {
+    if (!$isUets) {
+        return false;
+    }
+    $lower = strtolower($name);
+    if ($lower === '[content_types].xml' || str_ends_with($lower, '.rels')) {
+        return true;
+    }
+    return in_array(strtolower(pathinfo($lower, PATHINFO_EXTENSION)), ['xml', 'imz', 'p7s', 'p7m', 'sig', 'cades'], true);
+};
+
 $EvrakModel = new EvrakTakipModel();
 $db = $EvrakModel->getDb();
 $kepMobilYetkisi = in_array($action, ['list', 'detail', 'meta'], true)
@@ -361,6 +393,7 @@ try {
                 ];
             }
 
+            $isUetsEvrak = (($row->kaynak_tipi ?? '') === 'uets' || !empty($row->uets_mesaj_id));
             $attachmentsList = [];
             foreach ($ekler as $ek) {
                 $attEncId = !empty($ek->id) ? Security::encrypt((int) $ek->id) : '';
@@ -368,15 +401,18 @@ try {
                     ? '/api/evrak.php?action=stream-file&id=' . urlencode($attEncId)
                     : '/api/evrak.php?action=stream-file&path=' . urlencode((string) $ek->dosya_yolu);
 
+                $ekAdi = (string) ($ek->dosya_adi ?: basename((string) $ek->dosya_yolu));
                 $attachmentsList[] = [
                     'id' => $attEncId,
-                    'name' => (string) ($ek->dosya_adi ?: basename((string) $ek->dosya_yolu)),
+                    'name' => $ekAdi,
                     'path' => (string) $ek->dosya_yolu,
                     'size' => (int) ($ek->dosya_boyutu ?? 0),
-                    'mime' => (string) ($ek->mime_tipi ?? ''),
+                    'mime' => $evrakEkMime($ekAdi, (string) ($ek->mime_tipi ?? '')),
+                    'teknik' => $evrakEkTeknikMi($ekAdi, $isUetsEvrak),
                     'url' => $streamUrl,
                 ];
             }
+            $anaEkSayisi = count(array_filter($attachmentsList, static fn(array $a): bool => !$a['teknik']));
 
             $isKep = (($row->kaynak_tipi ?? '') === 'kep' || !empty($row->kep_mesaj_id) || ($row->gonderim_kanali ?? '') === 'kep');
             $isUets = (($row->kaynak_tipi ?? '') === 'uets' || !empty($row->uets_mesaj_id));
@@ -424,7 +460,8 @@ try {
                 'plaka' => (string) ($row->plaka ?: ''),
                 'ceza_tutari' => !empty($row->ceza_tutari) ? (float) $row->ceza_tutari : null,
                 'tutar' => !empty($row->tutar) ? (float) $row->tutar : null,
-                'attachments_count' => count($attachmentsList),
+                'attachments_count' => $anaEkSayisi,
+                'attachments_teknik_count' => count($attachmentsList) - $anaEkSayisi,
                 'attachments' => $attachmentsList,
                 'pdf_url' => ($row->evrak_tipi === 'giden') ? '/api/evrak.php?action=pdf&id=' . urlencode($encId) : null,
             ];
@@ -632,14 +669,17 @@ try {
         }
 
         $attachmentList = [];
+        $isUetsDetay = (($evrak->kaynak_tipi ?? '') === 'uets' || !empty($evrak->uets_mesaj_id));
         foreach ($attachments as $att) {
             $attEncId = !empty($att->id) ? Security::encrypt((int) $att->id) : '';
+            $attAdi = (string) ($att->dosya_adi ?: basename((string) $att->dosya_yolu));
             $attachmentList[] = [
                 'id' => $attEncId,
-                'name' => (string) ($att->dosya_adi ?: basename((string) $att->dosya_yolu)),
+                'name' => $attAdi,
                 'path' => (string) $att->dosya_yolu,
                 'size' => (int) ($att->dosya_boyutu ?? 0),
-                'mime' => (string) ($att->mime_tipi ?? ''),
+                'mime' => $evrakEkMime($attAdi, (string) ($att->mime_tipi ?? '')),
+                'teknik' => $evrakEkTeknikMi($attAdi, $isUetsDetay),
                 'url' => !empty($attEncId)
                     ? '/api/evrak.php?action=stream-file&id=' . urlencode($attEncId)
                     : '/api/evrak.php?action=stream-file&path=' . urlencode((string) $att->dosya_yolu),

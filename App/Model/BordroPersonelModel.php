@@ -7343,10 +7343,18 @@ class BordroPersonelModel extends Model
         $sgkIsci = $sgkMatrahi * $sgkIsciOrani;
         $issizlikIsci = $sgkMatrahi * $issizlikIsciOrani;
         if ($isNetMaas || $isPrimUsulu) {
-            // Genel SGK oranı bu personel tipinde sıfır olduğundan, "sgk_matrahi_dahil" işaretli
-            // resmi_tutarlı ek ödemelerin (ör. nöbet) gerçek SGK/İşsizlik payı burada eklenir.
             $sgkIsci += $primUsuluGercekSgkEkleri;
             $issizlikIsci += $primUsuluGercekIssizlikEkleri;
+        }
+
+        $maliyetBrutFarki = 0.0;
+        $asgariNetTabanMaliyet = round((floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50) / 30) * $maasHesapGunu, 2);
+        if (($isNetMaas || $isPrimUsulu) && $calisanBrutMaas > 0 && abs($calisanBrutMaas - $asgariNetTabanMaliyet) < 0.05) {
+            $asgariBrutMaliyet = round((floatval($genelAyarlarMap['asgari_ucret_brut'] ?? 33030.00) / 30) * $maasHesapGunu, 2);
+            $maliyetBrutFarki = max(0.0, round($asgariBrutMaliyet - $calisanBrutMaas, 2));
+            $sgkMatrahi += $maliyetBrutFarki;
+            $sgkIsci += $asgariBrutMaliyet * (floatval($genelAyarlarMap['sgk_isci_orani'] ?? 14) / 100);
+            $issizlikIsci += $asgariBrutMaliyet * (floatval($genelAyarlarMap['issizlik_isci_orani'] ?? 1) / 100);
         }
 
         if ($isNetMaas || $isPrimUsulu) {
@@ -7447,7 +7455,7 @@ class BordroPersonelModel extends Model
 
         $sgkIsveren = $sgkMatrahi * $sgkIsverenOrani;
         $issizlikIsveren = $sgkMatrahi * $issizlikIsverenOrani;
-        $toplamMaliyet = $brutMaas + $sgkIsveren + $issizlikIsveren + $brutEkOdemeler;
+        $toplamMaliyet = $brutMaas + $maliyetBrutFarki + $sgkIsveren + $issizlikIsveren + $brutEkOdemeler;
 
         $toplamEkOdeme = $brutEkOdemeler + $netEkOdemeler;
 
