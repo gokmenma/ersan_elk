@@ -585,6 +585,7 @@ if (Gate::allows("log_kayitlari")) {
                 var user = btn.data('user');
                 var date = btn.data('date');
                 var content = btn.data('content');
+                var meta = btn.attr('data-meta') || '';
                 var changes = [];
                 try {
                     changes = JSON.parse(atob(btn.attr('data-changes') || 'W10='));
@@ -646,6 +647,13 @@ if (Gate::allows("log_kayitlari")) {
                     contentBox.appendChild(tableWrap);
                 } else {
                     document.getElementById('logDetayContent').textContent = content;
+                }
+                if (meta) {
+                    const metaLine = document.createElement('div');
+                    metaLine.className = 'mt-3 text-muted';
+                    metaLine.style.cssText = 'font-size:0.75rem;word-break:break-word;';
+                    metaLine.textContent = 'IP / Cihaz: ' + meta;
+                    document.getElementById('logDetayContent').appendChild(metaLine);
                 }
                 var myModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalLogDetay'));
                 myModal.show();

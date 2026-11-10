@@ -3,7 +3,7 @@ use App\Helper\Form;
 
 $transactions = [];
 $BordroPersonelModel = new \App\Model\BordroPersonelModel();
-$bordroDetayYetkisi = \App\Service\Gate::allows('personel_detay');
+$bordroDetayYetkisi = \App\Service\Gate::allows('personel_detay') || \App\Service\Gate::allows('personel_duzenle');
 $bordroYazdirYetkisi = \App\Service\Gate::allows('bordro/raporlar') || $bordroDetayYetkisi;
 
 if (!empty($bordrolar)) {

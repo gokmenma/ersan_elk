@@ -9,6 +9,8 @@ use PDO;
 class CariModel extends Model
 {
     protected $table = 'cari';
+    protected $auditEnabled = true;
+    protected $auditLabel = 'Cari';
 
     public function __construct()
     {

@@ -118,9 +118,12 @@ try {
                     notifResponse(['success' => false, 'message' => 'Geçersiz abonelik verisi.'], 422);
                 }
 
+                $alreadyCurrent = $pushModel->isUserSubscriptionCurrent($currentUserId, $endpoint, $p256dh, $authKey, $encoding);
                 $saved = $pushModel->saveUserSubscription($currentUserId, $endpoint, $p256dh, $authKey, $encoding);
                 if ($saved) {
-                    $systemLog->logAction($currentUserId, 'Push Bildirim', 'Mobil SPA push bildirimi aboneliği kaydedildi.');
+                    if (!$alreadyCurrent) {
+                        $systemLog->logAction($currentUserId, 'Push Bildirim', 'Mobil SPA push bildirimi aboneliği kaydedildi.');
+                    }
                     notifResponse(['success' => true, 'message' => 'Bildirim aboneliği başarıyla oluşturuldu.']);
                 }
                 notifResponse(['success' => false, 'message' => 'Abonelik kaydedilemedi.'], 500);

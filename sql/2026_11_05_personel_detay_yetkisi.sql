@@ -51,3 +51,16 @@ WHERE scope = 'page'
   AND resource = 'personel/manage'
   AND http_method = 'GET'
   AND permission_id = @personel_detay_permission_id;
+
+INSERT INTO permission_policies
+    (scope, resource, action, http_method, permission_id, superadmin_only, authenticated_only, access_mode)
+SELECT 'api', 'personel/api', 'bordro-detay', 'POST', @personel_detay_permission_id, 0, 0, 'read'
+FROM DUAL
+WHERE @personel_detay_permission_id IS NOT NULL
+ON DUPLICATE KEY UPDATE
+    permission_id = VALUES(permission_id),
+    superadmin_only = 0,
+    authenticated_only = 0,
+    access_mode = 'read',
+    is_active = 1;
+

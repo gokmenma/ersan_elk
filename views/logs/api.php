@@ -96,12 +96,26 @@ try {
                 $module = htmlspecialchars((string) ($log->module_name ?: 'Sistem'), ENT_QUOTES, 'UTF-8');
                 $detail = htmlspecialchars((string) ($log->detail ?? ''), ENT_QUOTES, 'UTF-8');
                 $related = htmlspecialchars((string) ($log->related_record ?? '-'), ENT_QUOTES, 'UTF-8');
+                $changeRows = [];
+                $decodedChanges = json_decode((string) ($log->changes_json ?? ''), true);
+                if (is_array($decodedChanges)) {
+                    foreach ($decodedChanges as $change) {
+                        $rawField = (string) ($change['field'] ?? '');
+                        $changeRows[] = [
+                            'field' => mb_convert_case(str_replace('_', ' ', $rawField), MB_CASE_TITLE, 'UTF-8'),
+                            'old' => (string) ($change['old'] ?? ''),
+                            'new' => (string) ($change['new'] ?? ''),
+                        ];
+                    }
+                }
+                $encodedChanges = base64_encode(json_encode($changeRows, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+                $meta = htmlspecialchars((string) ($log->meta_info ?? ''), ENT_QUOTES, 'UTF-8');
                 $data[] = [
                     'date' => '<div class="audit-date" data-sort="'.date('YmdHis', $dateValue).'"><strong>'.date('d.m.Y H:i:s', $dateValue).'</strong><small>'.($dateValue >= time() - 60 ? 'Az önce' : date('H:i', $dateValue)).'</small></div>',
                     'user' => '<div class="audit-user"><span class="audit-avatar">'.$initial.'</span><strong>'.$escapedUser.'</strong></div>',
                     'type' => '<span class="audit-event-badge '.$badgeClass.'"><i class="bx '.$icon.'"></i>'.$eventType.'</span>',
                     'module' => '<span class="audit-module-badge"><i class="bx bx-cube-alt"></i>'.$module.'</span>',
-                    'detail' => '<button type="button" class="audit-detail-btn btn-log-detay" data-title="'.$eventType.'" data-user="'.$escapedUser.'" data-date="'.date('d.m.Y H:i', $dateValue).'" data-content="'.$detail.'" data-changes="W10="><i class="bx bx-show"></i> Detay</button><span class="audit-detail-text">'.$detail.'</span>',
+                    'detail' => '<button type="button" class="audit-detail-btn btn-log-detay" data-title="'.$eventType.'" data-user="'.$escapedUser.'" data-date="'.date('d.m.Y H:i', $dateValue).'" data-content="'.$detail.'" data-meta="'.$meta.'" data-changes="'.htmlspecialchars($encodedChanges, ENT_QUOTES, 'UTF-8').'"><i class="bx bx-show"></i> Detay</button><span class="audit-detail-text">'.$detail.'</span>',
                     'related' => '<span class="audit-related-badge">'.$related.'</span>',
                 ];
             }

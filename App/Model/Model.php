@@ -27,6 +27,9 @@ class Model extends Db
     protected $primaryKey = 'id';
     protected $attributes = [];
     protected $isNew = true;
+    protected $auditEnabled = false;
+    protected $auditLabel = null;
+    protected $auditIgnore = [];
 
     protected $query = [];
 
@@ -127,6 +130,7 @@ class Model extends Db
     protected function insert()
     {
         $this->sanitizeAttributes();
+        $auditNew = $this->attributes;
         $columns = implode(', ', array_keys($this->attributes));
         $values = ':' . implode(', :', array_keys($this->attributes));
         $sql = $this->db->prepare("INSERT INTO $this->table ($columns) VALUES ($values)");
@@ -139,6 +143,7 @@ class Model extends Db
 
         $this->isNew = false;
         $this->attributes[$this->primaryKey] = $this->db->lastInsertId();
+        $this->auditChange('insert', (int) $this->attributes[$this->primaryKey], null, $auditNew);
 
         return Security::encrypt($this->attributes[$this->primaryKey]);
     }
@@ -148,7 +153,8 @@ class Model extends Db
         $this->sanitizeAttributes();
         $setClause = '';
 
-        if (!$this->find($this->attributes[$this->primaryKey])) {
+        $auditOld = $this->find($this->attributes[$this->primaryKey]);
+        if (!$auditOld) {
             throw new \Exception('Kayıt bulunamadı.' . $this->attributes[$this->primaryKey]);
         }
 
@@ -173,6 +179,40 @@ class Model extends Db
         }
 
         $sql->execute();
+        $this->auditChange('update', (int) $this->attributes[$this->primaryKey], $auditOld, $this->attributes);
+    }
+
+    protected function auditChange(string $operation, int $recordId, $old, ?array $new): void
+    {
+        if (!$this->auditEnabled || $recordId <= 0) {
+            return;
+        }
+        try {
+            $oldData = $old ? (array) $old : null;
+            (new SystemLogModel())->logRecordChange(
+                $operation,
+                (string) $this->table,
+                $recordId,
+                (string) ($this->auditLabel ?: $this->table),
+                $oldData,
+                $new,
+                $this->auditIgnore
+            );
+        } catch (\Throwable $e) {
+            error_log('Denetim log hatası: ' . $e->getMessage());
+        }
+    }
+
+    protected function auditSnapshot($id)
+    {
+        if (!$this->auditEnabled) {
+            return null;
+        }
+        try {
+            return $this->find($id);
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     public function reload()
@@ -189,12 +229,14 @@ class Model extends Db
         if($decrypt){
             $id = Security::decrypt($id);
         }
+        $auditOld = $this->auditSnapshot($id);
         $sql = $this->db->prepare("DELETE FROM $this->table WHERE $this->primaryKey = ?");
         $sql->execute(array($id));
 
         if ($sql->rowCount() === 0) {
             return new \Exception('Kayıt bulunamadı veya silinemedi.');
         }
+        $this->auditChange('delete', (int) $id, $auditOld, null);
         return true;
     }
 
@@ -202,12 +244,14 @@ class Model extends Db
     public function softDelete($id)
     {
         //$id = Security::decrypt($id);
+        $auditOld = $this->auditSnapshot($id);
         $sql = $this->db->prepare("UPDATE $this->table SET silinme_tarihi = NOW() WHERE $this->primaryKey = ?");
         $sql->execute(array($id));
 
         if ($sql->rowCount() === 0) {
             return new \Exception('Kayıt bulunamadı veya silinemedi.');
         }
+        $this->auditChange('delete', (int) $id, $auditOld, null);
         return true;
     }
 

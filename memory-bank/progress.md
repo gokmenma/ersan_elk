@@ -2280,3 +2280,28 @@
 
 ## 2026-11-10 — Maaşa dahil yardımlı personelde işveren maliyeti brüt asgari ücret bazlı
 - BordroPersonelModel: işveren SGK/işsizlik matrahı ve toplam_maliyet brüt asgari (asgari_ucret_brut/30×gün) üzerinden; docs/BORDRO_HESAPLAMA_KURALLARI.md güncellendi.
+
+## 2026-11-10 — Log sistemi detaylı kayıt
+- [x] Hata yakalama, tekrar koruması, IP/cihaz ve alan bazlı değişiklik logu (Cari, Araç); log detay modalı güncellendi.
+- [ ] Diğer modellerde `$auditEnabled` açılması (Personel hariç şifreli alan çözümü gerekir); özel UPDATE sorguları (AracModel::updateKm vb.) kapsam dışı.
+
+## 2026-11-10 — Duyuru listesi yeni sayfa standardına geçirildi
+- [x] `views/duyuru/list.php` Cari standardında (başlık satırı, 4 KPI kartı + aç/kapa, server-side DataTables, hızlı durum filtreleri, satır tıklama düzenleme) yeniden yazıldı.
+- [x] `DuyuruModel::ajaxList()/summary()`; `views/duyuru/api.php` → `ajax-list` aksiyonu, ID'ler `Security::encrypt` ile şifreli (get/save/delete decrypt + firma doğrulaması).
+- [ ] `sql/2026_11_10_duyuru_ajax_list_policy.sql` çalıştırılmalı (yoksa liste 403 döner). Tarayıcıda uçtan uca test yapılmadı.
+
+## 2026-11-10 — Personel PWA ihbar çevrimdışı gönderim testi
+- [x] Playwright (sistem Chrome) ile uçtan uca test: çevrimdışıyken ihbar IndexedDB kuyruğuna yazılıyor, sunucuya kayıt gitmiyor, panel "Bağlantı bekleniyor" gösteriyor; bağlantı gelince `online` olayıyla ~3 sn içinde ana kayıt + ek fotoğraf gönderilip kuyruk boşalıyor.
+- [x] Yerel DB'de eksik iki migration uygulandı: `database/migrations/2026_10_01_pwa_reliable_transfers.sql` (`pwa_transfer_receipts` yoktu → 503) ve `2026_11_04_add_sonuc_kaynagi_to_ihbar_medya.sql` (`ihbar_fotograflari.kaynak` yoktu → yanıltıcı "fotoğraf formatı" hatası). Canlı DB'de uygulandıkları doğrulanmalı.
+- [x] `views/personel-pwa/api.php`: güvenilir aktarım catch bloğu artık hata mesajı ve dosya:satır logluyor; `createIhbar` fotoğraf kaydında PDOException olursa işlem geri alınıyor, diske yazılan fotoğraflar siliniyor ve geçici hata (503) dönülüyor, kayıt cihazda "bekliyor" kalıp otomatik yeniden deneniyor. Yapay DB hatasıyla (geçici trigger) tarayıcıda doğrulandı.
+
+## 2026-11-10 — Mobil giden evrak Resmî İçerik düzeni
+- [x] Biçimlendirme çubuğu tek satır, editörle birleşik çerçeve, yazı tipi/punto tek satır; 430 ve 360px'te Playwright ile doğrulandı (taşma yok, sayfa hatası yok), `npm run build` alındı.
+- [ ] `insertPhrase` 11px satır içi stil hatası ayrıca düzeltilmeli.
+
+## 2026-11-10 — Personel Hesap Hareketleri Bordro Detayı Hatası
+- [x] `personel/manage` altındaki "Hesap Hareketleri" sekmesinde bordro detayı (göz ikonu) 403 Forbidden ("Tanımsız yetki politikası reddedildi: api personel/api bordro-detay POST") hatası çözüldü.
+- [x] `sql/2026_11_05_personel_detay_yetkisi.sql` içine `personel/api` `bordro-detay` POST read politikası eklendi ve DB'ye uygulandı (`personel_detay` yetkisi, superadmin rol atamaları ve API/sayfa politikaları).
+- [x] `views/personel/api.php`, `views/personel/icerik/finansal_islemler.php` ve `views/bordro/bordro-yazdir.php` dosyalarında `personel_detay || personel_duzenle` erişimi sağlandı.
+- [x] Yetki Kataloğu ve API çağrısı testi ile doğrulandı.
+

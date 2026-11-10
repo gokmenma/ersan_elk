@@ -3917,3 +3917,28 @@
 - BordroPersonelModel: işveren SGK/işsizlik matrahı ve toplam_maliyet brüt asgari (asgari_ucret_brut/30×gün) üzerinden; docs/BORDRO_HESAPLAMA_KURALLARI.md güncellendi.
 - Mobil evrak detayı (UETS): "Sevk Geçmişi" ve "Erişim ve İşlem Kayıtları" ayrı ayrı akordeon (varsayılan kapalı), Ekler'in altında; Teknik dosyalar da akordeon (EvrakView.vue: showTeknikEkler/showUetsSevk/showUetsErisim).
 - Mobil gelen evrak personel ataması: `evrak.php` POST `personel-ata` (gelen-evrak yetkisi, CSRF, geçerli personel doğrulaması, UETS'te de çalışır + tarihçe/log), `EvrakTakipModel::updatePersonelAtama`. Detayda Ofis Zimmetli ve İlgili Personel kutularının kendisi seçimdir (şeffaf select + chevron, seçince anında kaydeder; EvrakView.vue `setAtama`). Akordeon başlıkları bölüm etiketiyle aynı hizada (kart çerçevesiz).
+
+## 2026-11-10 — Log sistemi iyileştirmeleri
+- SystemLogModel: `writeLog()` ortak yazıcı (hata yakalar, error_log'a düşer); Info loglarda 15 sn, sayfa görüntülemede 5 dk tekrar koruması. Mobil SPA push abonelik logu yalnız yeni/değişmiş abonelikte yazılır (`PushSubscriptionModel::isUserSubscriptionCurrent`).
+- Detaylı kayıt: `sql/2026_11_10_log_detay_alanlari.sql` (ip_address, user_agent, table_name, record_id, changes). Sütunlar yoksa model sessizce eski davranışa döner (`detailColumnsAvailable`).
+- `Model` opt-in denetim: `$auditEnabled/$auditLabel/$auditIgnore`; insert/update/delete/softDelete eski→yeni fark loglar (`SystemLogModel::logRecordChange`, şifre/token alanları maskeli). Şu an CariModel ve AracModel açık; PersonelModel şifreli alanlar yüzünden kapsam dışı.
+- Log ekranı Detay modalı artık changes JSON'unu ve IP/cihaz bilgisini gösterir (views/logs/api.php, list.php).
+
+- Duyuru listesi (duyuru/list) Cari/Sözleşme yeni sayfa standardına taşındı; `ajax-list` policy SQL'i bekliyor (`sql/2026_11_10_duyuru_ajax_list_policy.sql`).
+
+## 2026-11-10 — Mobil giden evrak "Resmî İçerik" sekmesi sadeleştirildi
+- `mobile-spa/src/views/GidenEvrakView.vue`: biçimlendirme araçları tek satırlık yatay kaydırmalı çubuk (`formatToolGroups` dizisinden `v-for`), HTML düğmesi çubuğun sağında sabit; çubuk + editör + "Hızlı ekle" ifadeleri tek çerçevede (`.giden-composer`).
+- Yazı tipi (Times/Arial) ve punto tek satırda etiketsiz segment (`.giden-seg`); 12 punto standart işareti nokta. Başlık "Yazı İçeriği", butonlar tek satır (400px altında yalnız ikon).
+- Bilinen eski hata (dokunulmadı): hızlı ifade, paragrafsız metne eklenince Chrome `<span style="font-size: 11px">` üretiyor (`insertPhrase` → `insertHTML`).
+
+## 2026-11-10 — Personel Hesap Hareketleri Bordro Detayı Hatası Düzeltildi
+- Personel detay ekranı (`personel/manage`) altındaki "Hesap Hareketleri" sekmesinde yer alan bordro detayı (göz ikonu) tıklandığında "Tanımsız yetki politikası reddedildi: api personel/api bordro-detay POST" hatasıyla 403 Forbidden dönüyordu.
+- Nedenler:
+  1. `permission_policies` tablosunda `resource = 'personel/api'` ve `action = 'bordro-detay'` için politika kaydı bulunmuyordu.
+  2. `personel_detay` yetkisi için hazırlanan `sql/2026_11_05_personel_detay_yetkisi.sql` veritabanına uygulanmamıştı ve içinde `bordro-detay` API politikası eksikti.
+  3. `views/personel/api.php` ve `views/personel/icerik/finansal_islemler.php` dosyalarında bordro detay görüntüleme yetkisi sadece `personel_detay` kontrol ediyordu; `personel_duzenle` yetkisine sahip kullanıcılar da dahil edildi.
+- Yapılanlar:
+  - `sql/2026_11_05_personel_detay_yetkisi.sql` güncellenerek `personel/api` `bordro-detay` POST read politikası eklendi ve veritabanında çalıştırıldı (`personel_detay` yetkisi ID 1055, politika ID 1381, superadmin rolleri atandı).
+  - `views/personel/api.php`, `views/personel/icerik/finansal_islemler.php` ve `views/bordro/bordro-yazdir.php` dosyalarında `personel_detay || personel_duzenle` kontrolü sağlandı.
+  - Test: Abdullah Doğan 1573 numaralı bordro detayı API çağrısı simüle edilerek HTTP 200 ve JSON success ile doğrulandı. Yetki Kataloğu ve Yetki Grupları ekranları teyit edildi.
+

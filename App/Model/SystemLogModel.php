@@ -20,6 +20,8 @@ class SystemLogModel extends Model
     const LEVEL_CRITICAL = 2; // Kritik (toplu silme, güvenlik olayları)
     const LEVEL_PAGE_VIEW = 3; // Sayfa görüntüleme logları
     const CRON_ACTION_PREFIX = 'Cron - ';
+    const ACTION_DEDUPE_SECONDS = 15;
+    const PAGE_VIEW_DEDUPE_SECONDS = 300;
 
     /**
      * Personel PWA, users hesabı yerine personel oturumuyla çalışır ve
@@ -67,50 +69,190 @@ class SystemLogModel extends Model
         parent::__construct($this->table);
     }
 
-    /**
-     * Log a critical action
-     * @param int $userId Kullanıcı ID
-     * @param string $actionType İşlem tipi
-     * @param string $description Açıklama
-     * @param int $level Log seviyesi (0=Info, 1=Önemli, 2=Kritik)
-     */
-    /**
-     * Log a page view action
-     * @param int $userId Kullanıcı ID
-     * @param string $pageName Sayfa adı
-     * @param string $platform Platform (Desktop, Mobile, PWA)
-     */
     public function logPageView($userId, $pageName, $platform = 'Desktop')
     {
-        return $this->saveWithAttr([
-            'user_id' => $userId,
-            'firma_id' => $_SESSION['firma_id'] ?? 0,
-            'action_type' => 'Sayfa Görüntüleme',
-            'description' => "[$platform] $pageName sayfası görüntülendi.",
-            'level' => self::LEVEL_PAGE_VIEW
-        ]);
+        $description = "[$platform] $pageName sayfası görüntülendi.";
+        return $this->writeLog(
+            (int) $userId,
+            (int) ($_SESSION['firma_id'] ?? 0),
+            'Sayfa Görüntüleme',
+            $description,
+            self::LEVEL_PAGE_VIEW,
+            self::PAGE_VIEW_DEDUPE_SECONDS
+        );
     }
 
     public function logAction($userId, $actionType, $description, $level = self::LEVEL_INFO)
     {
-        return $this->saveWithAttr([
-            'user_id' => $userId,
-            'firma_id' => $_SESSION['firma_id'] ?? 0,
-            'action_type' => $actionType,
-            'description' => $this->withClientSource((string) $description),
-            'level' => $level
-        ]);
+        return $this->writeLog(
+            (int) $userId,
+            (int) ($_SESSION['firma_id'] ?? 0),
+            (string) $actionType,
+            $this->withClientSource((string) $description),
+            (int) $level,
+            (int) $level === self::LEVEL_INFO ? self::ACTION_DEDUPE_SECONDS : 0
+        );
     }
 
     public function logActionForFirm(int $firmId, int $userId, string $actionType, string $description, int $level = self::LEVEL_INFO)
     {
-        return $this->saveWithAttr([
-            'user_id' => max(0, $userId),
-            'firma_id' => max(0, $firmId),
-            'action_type' => $actionType,
-            'description' => $this->withClientSource($description),
-            'level' => $level,
-        ]);
+        return $this->writeLog(
+            max(0, $userId),
+            max(0, $firmId),
+            $actionType,
+            $this->withClientSource($description),
+            $level,
+            $level === self::LEVEL_INFO ? self::ACTION_DEDUPE_SECONDS : 0
+        );
+    }
+
+    private function writeLog(int $userId, int $firmId, string $actionType, string $description, int $level, int $dedupeSeconds, array $extra = [])
+    {
+        try {
+            if ($dedupeSeconds > 0 && $this->isRecentDuplicate($userId, $firmId, $actionType, $description, $dedupeSeconds)) {
+                return true;
+            }
+
+            $data = [
+                'user_id' => $userId,
+                'firma_id' => $firmId,
+                'action_type' => $actionType,
+                'description' => $description,
+                'level' => $level,
+            ];
+
+            if ($this->detailColumnsAvailable()) {
+                $ip = trim((string) ($_SERVER['REMOTE_ADDR'] ?? ''));
+                $agent = trim((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''));
+                $data['ip_address'] = $ip !== '' ? mb_substr($ip, 0, 45) : null;
+                $data['user_agent'] = $agent !== '' ? mb_substr($agent, 0, 255) : null;
+                foreach (['table_name', 'record_id', 'changes'] as $key) {
+                    if (isset($extra[$key])) {
+                        $data[$key] = $extra[$key];
+                    }
+                }
+            }
+
+            return $this->saveWithAttr($data);
+        } catch (\Throwable $e) {
+            error_log('Sistem log yazma hatası: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function detailColumnsAvailable(): bool
+    {
+        static $available = null;
+        if ($available === null) {
+            try {
+                $stmt = $this->db->query("SHOW COLUMNS FROM {$this->table} LIKE 'changes'");
+                $available = (bool) $stmt->fetch();
+            } catch (\Throwable $e) {
+                $available = false;
+            }
+        }
+        return $available;
+    }
+
+    public function logRecordChange(string $operation, string $table, int $recordId, string $label, ?array $old, ?array $new, array $ignore = []): bool
+    {
+        $ignoreFields = array_merge(['updated_at', 'created_at', 'guncelleme_tarihi'], $ignore);
+        $changes = [];
+
+        if ($operation === 'update') {
+            foreach ((array) $new as $field => $value) {
+                if (in_array($field, $ignoreFields, true) || $field === 'id') {
+                    continue;
+                }
+                $before = $this->auditValue($field, $old[$field] ?? null);
+                $after = $this->auditValue($field, $value);
+                if ($before === $after) {
+                    continue;
+                }
+                $changes[] = ['field' => $field, 'old' => $before, 'new' => $after];
+            }
+            if (!$changes) {
+                return false;
+            }
+        } else {
+            $source = $operation === 'insert' ? (array) $new : (array) $old;
+            foreach ($source as $field => $value) {
+                if (in_array($field, $ignoreFields, true) || $field === 'id') {
+                    continue;
+                }
+                $shown = $this->auditValue($field, $value);
+                if ($shown === '') {
+                    continue;
+                }
+                $changes[] = $operation === 'insert'
+                    ? ['field' => $field, 'old' => '', 'new' => $shown]
+                    : ['field' => $field, 'old' => $shown, 'new' => ''];
+            }
+        }
+
+        $summary = [];
+        if ($operation === 'update') {
+            foreach (array_slice($changes, 0, 6) as $change) {
+                $summary[] = $change['field'] . ': ' . ($change['old'] === '' ? 'Boş' : $change['old']) . ' → ' . ($change['new'] === '' ? 'Boş' : $change['new']);
+            }
+            if (count($changes) > 6) {
+                $summary[] = '+' . (count($changes) - 6) . ' alan';
+            }
+        }
+
+        $verb = ['insert' => 'oluşturuldu', 'update' => 'güncellendi', 'delete' => 'silindi'][$operation] ?? $operation;
+        $description = sprintf('%s %s (ID: %d)', $label, $verb, $recordId);
+        if ($summary) {
+            $description .= ' - ' . mb_substr(implode(', ', $summary), 0, 700);
+        }
+
+        $userId = (int) ($_SESSION['user']->id ?? $_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
+        $result = $this->writeLog(
+            $userId,
+            (int) ($_SESSION['firma_id'] ?? 0),
+            'Kayıt ' . ucfirst($verb),
+            $this->withClientSource($description),
+            self::LEVEL_IMPORTANT,
+            0,
+            [
+                'table_name' => $table,
+                'record_id' => $recordId,
+                'changes' => json_encode($changes, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR),
+            ]
+        );
+        return $result !== false;
+    }
+
+    private function auditValue(string $field, $value): string
+    {
+        if ($value === null) {
+            return '';
+        }
+        if (preg_match('/(sifre|password|parola|token|secret|api_key|auth_key|private_key)/i', $field)) {
+            return '********';
+        }
+        if (is_bool($value)) {
+            return $value ? '1' : '0';
+        }
+        if (is_array($value) || is_object($value)) {
+            $value = json_encode($value, JSON_UNESCAPED_UNICODE);
+        }
+        $text = trim((string) $value);
+        if (is_numeric($text) && str_contains($text, '.')) {
+            $text = rtrim(rtrim($text, '0'), '.');
+        }
+        return mb_substr($text, 0, 500);
+    }
+
+    private function isRecentDuplicate(int $userId, int $firmId, string $actionType, string $description, int $seconds): bool
+    {
+        $stmt = $this->db->prepare("SELECT 1 FROM {$this->table}
+            WHERE archived_at IS NULL
+              AND created_at >= (NOW() - INTERVAL ? SECOND)
+              AND user_id = ? AND firma_id = ? AND action_type = ? AND description = ?
+            LIMIT 1");
+        $stmt->execute([$seconds, $userId, $firmId, $actionType, $description]);
+        return (bool) $stmt->fetchColumn();
     }
 
     public function logPersonelTalep(int $personelId, string $actionType, string $description, int $kayitId = 0): void
@@ -753,6 +895,9 @@ class SystemLogModel extends Model
         $includePersonnel = in_array($category, ['', 'login'], true);
         $includeAi = !empty($filters['include_ai']) && in_array($category, ['', 'ai'], true);
         $cronL = $this->cronActionSql('l.');
+        $systemDetailSql = $this->detailColumnsAvailable()
+            ? "l.changes AS changes_json, CONCAT_WS(' · ', NULLIF(l.ip_address, ''), NULLIF(l.user_agent, '')) AS meta_info"
+            : "NULL AS changes_json, NULL AS meta_info";
         $systemCategorySql = '';
         if ($category === 'view') {
             $systemCategorySql = ' AND l.level = 3';
@@ -788,7 +933,8 @@ class SystemLogModel extends Model
                    l.description AS detail,
                    CASE WHEN l.level = 3 THEN 'Sayfa' WHEN l.action_type = 'Başarılı Giriş' THEN 'Yönetici Oturumu' ELSE CONCAT('Log #', l.id) END AS related_record,
                    CASE WHEN l.level = 3 THEN 'view' WHEN l.action_type = 'Başarılı Giriş' THEN 'login' WHEN {$cronL} THEN 'cron' WHEN l.level = 2 THEN 'critical' WHEN l.action_type LIKE '%Sil%' THEN 'delete' ELSE 'operation' END AS category,
-                   COALESCE(l.level, 0) AS severity
+                   COALESCE(l.level, 0) AS severity,
+                   {$systemDetailSql}
             FROM system_logs l
             LEFT JOIN users u ON u.id = l.user_id
             WHERE l.firma_id = :firma_system{$systemCategorySql}{$systemScope}";
@@ -797,7 +943,8 @@ class SystemLogModel extends Model
             $parts[] = "
             SELECT pg.id, pg.giris_tarihi AS activity_date, p.adi_soyadi AS user_name, 'Personel Girişi' AS event_type, 'Personel PWA' AS module_name,
                    CONCAT('Personel uygulamasına giriş yapıldı', CASE WHEN pg.tarayici IS NOT NULL AND pg.tarayici <> '' THEN CONCAT(' · ', pg.tarayici) ELSE '' END) AS detail,
-                   COALESCE(NULLIF(pg.ip_adresi, ''), 'Personel Oturumu') AS related_record, 'login' AS category, 0 AS severity
+                   COALESCE(NULLIF(pg.ip_adresi, ''), 'Personel Oturumu') AS related_record, 'login' AS category, 0 AS severity,
+                   NULL AS changes_json, NULL AS meta_info
             FROM personel_giris_loglari pg
             INNER JOIN personel p ON p.id = pg.personel_id
             WHERE p.firma_id = :firma_personel{$personnelScope}";
@@ -808,7 +955,8 @@ class SystemLogModel extends Model
             SELECT a.id, a.created_at AS activity_date, COALESCE(NULLIF(u.adi_soyadi, ''), NULLIF(u.user_name, ''), CONCAT('Kullanıcı #', a.user_id)) AS user_name,
                    'Yapay Zeka Sorgusu' AS event_type, 'Yapay Zeka' AS module_name,
                    CONCAT(COALESCE(a.prompt, ''), CASE WHEN a.status IS NOT NULL THEN CONCAT(' · Durum: ', a.status) ELSE '' END) AS detail,
-                   COALESCE(NULLIF(a.model_used, ''), 'AI Agent') AS related_record, 'ai' AS category, CASE WHEN a.status = 'error' THEN 2 ELSE 0 END AS severity
+                   COALESCE(NULLIF(a.model_used, ''), 'AI Agent') AS related_record, 'ai' AS category, CASE WHEN a.status = 'error' THEN 2 ELSE 0 END AS severity,
+                   NULL AS changes_json, NULL AS meta_info
             FROM ai_agent_logs a
             LEFT JOIN users u ON u.id = a.user_id
             WHERE a.firma_id = :firma_ai{$aiScope}";

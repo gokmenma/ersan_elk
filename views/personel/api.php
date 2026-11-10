@@ -734,7 +734,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     } elseif ($action == 'bordro-detay') {
         header('Content-Type: application/json; charset=utf-8');
         try {
-            if (!Gate::allows('personel_detay')) {
+            if (!Gate::allows('personel_detay') && !Gate::allows('personel_duzenle')) {
                 throw new Exception('Bu işlem için yetkiniz bulunmamaktadır.');
             }
             $bordroId = (int) Security::decrypt((string) ($_POST['bordro_id'] ?? ''));

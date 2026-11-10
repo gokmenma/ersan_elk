@@ -45,6 +45,15 @@ class PushSubscriptionModel extends Model
     }
 
     /**
+     * Aynı kullanıcı, endpoint ve anahtarlarla kayıtlı abonelik var mı
+     */
+    public function isUserSubscriptionCurrent($userId, $endpoint, $publicKey, $authToken, $contentEncoding = 'aes128gcm')
+    {
+        $stmt = $this->db->prepare("SELECT 1 FROM {$this->table} WHERE endpoint = ? AND user_id = ? AND public_key = ? AND auth_token = ? AND content_encoding = ? LIMIT 1");
+        $stmt->execute([$endpoint, $userId, $publicKey, $authToken, $contentEncoding]);
+        return (bool) $stmt->fetchColumn();
+    }
+    /**
      * Kullanıcı aboneliği kaydeder veya günceller
      */
     public function saveUserSubscription($userId, $endpoint, $publicKey, $authToken, $contentEncoding = 'aes128gcm')

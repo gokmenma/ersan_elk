@@ -6233,6 +6233,9 @@ try {
             // Fotoğraf yükleme
             $uploadedPhotoCount = 0;
             $selectedPhotoCount = count($_FILES['fotograflar']['name'] ?? []);
+            $kaydedilenFotoDosyalari = [];
+            $fotoVeritabaniHatasi = false;
+            $projeKoku = dirname(dirname(__DIR__));
             if (!empty($_FILES['fotograflar']) && !empty($_FILES['fotograflar']['name'][0])) {
                 $maxFiles = min(count($_FILES['fotograflar']['name']), App\Model\IhbarModel::MAX_FOTO);
 
@@ -6241,6 +6244,7 @@ try {
                         continue;
                     }
 
+                    $fotoSonuc = null;
                     try {
                         $fotoSonuc = App\Model\IhbarModel::storeUploadedFoto([
                             'name' => $_FILES['fotograflar']['name'][$i],
@@ -6248,17 +6252,36 @@ try {
                             'error' => $_FILES['fotograflar']['error'][$i],
                             'size' => $_FILES['fotograflar']['size'][$i],
                         ], $ihbarId);
+                        $kaydedilenFotoDosyalari[] = $fotoSonuc['yol'];
+                        if (!empty($fotoSonuc['kucuk'])) {
+                            $kaydedilenFotoDosyalari[] = $fotoSonuc['kucuk'];
+                        }
 
                         $IhbarModel->addFotograf($ihbarId, $fotoSonuc['yol'], $fotoSonuc['kucuk']);
                         $uploadedPhotoCount++;
+                    } catch (PDOException $e) {
+                        error_log('PWA ihbar fotoğrafı veritabanına yazılamadı (ihbar ' . $ihbarId . '): ' . $e->getMessage());
+                        $fotoVeritabaniHatasi = true;
+                        break;
                     } catch (Throwable $e) {
                         error_log('PWA ihbar fotoğrafı yüklenemedi (ihbar ' . $ihbarId . '): ' . $e->getMessage());
                     }
                 }
             }
 
-            if ($selectedPhotoCount > 0 && $uploadedPhotoCount === 0) {
-                $ihbarDb->rollBack();
+            if ($fotoVeritabaniHatasi || ($selectedPhotoCount > 0 && $uploadedPhotoCount === 0)) {
+                if ($ihbarDb->inTransaction()) {
+                    $ihbarDb->rollBack();
+                }
+                foreach ($kaydedilenFotoDosyalari as $kaydedilenYol) {
+                    $tamYol = $projeKoku . '/' . ltrim($kaydedilenYol, '/');
+                    if (is_file($tamYol)) {
+                        @unlink($tamYol);
+                    }
+                }
+                if ($fotoVeritabaniHatasi) {
+                    throw new RuntimeException('İhbar fotoğrafları sunucuya kaydedilemedi. Kayıt cihazınızda korunuyor, daha sonra tekrar denenecek.');
+                }
                 throw new Exception('Seçilen fotoğraflar yüklenemedi. Desteklenen formatlar: JPG, PNG ve WEBP.');
             }
 
@@ -6988,7 +7011,7 @@ try {
     }
 } catch (Throwable $e) {
     if (isset($GLOBALS['pwaTransfer']) || str_starts_with($action, 'pwaVideo') || $action === 'pwaTransferPhoto' || !empty($_POST['reliable_transfer'])) {
-        error_log('PWA transfer action=' . $action . ' operation=' . preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($_POST['operation_key'] ?? $_POST['video_key'] ?? '')) . ' request=' . $pwaRequestId . ' exception=' . get_class($e));
+        error_log('PWA transfer action=' . $action . ' operation=' . preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($_POST['operation_key'] ?? $_POST['video_key'] ?? '')) . ' request=' . $pwaRequestId . ' exception=' . get_class($e) . ' message=' . $e->getMessage() . ' at=' . basename($e->getFile()) . ':' . $e->getLine());
         $temporary = $e instanceof PDOException || preg_match('/yazılam|kaydedilemedi|oluşturulamadı|kilidi|okunamadı|birleştirilemedi/u', $e->getMessage());
         if ($temporary) http_response_code(503);
         response(false, ['transfer_error' => $temporary ? 'temporary' : 'validation', 'request_id' => $pwaRequestId], $temporary ? 'Sunucu gönderimi tamamlayamadı; kayıt cihazda korunuyor.' : $e->getMessage());

@@ -11,29 +11,6 @@ $personelModel = new PersonelModel();
 $tanimlamalarModel = new \App\Model\TanimlamalarModel();
 $aracZimmetModel = new \App\Model\AracZimmetModel();
 
-$duyurular = $duyuruModel->getAll();
-$stats = $duyuruModel->getStats();
-$duyuruCounts = [
-    'all' => count($duyurular),
-    'published' => 0,
-    'draft' => 0,
-    'closed' => 0,
-    'expired' => 0,
-];
-$today = date('Y-m-d');
-foreach ($duyurular as $duyuru) {
-    if ($duyuru->durum === 'Yayında') {
-        $duyuruCounts['published']++;
-    } elseif ($duyuru->durum === 'Taslak') {
-        $duyuruCounts['draft']++;
-    } elseif ($duyuru->durum === 'Kapalı') {
-        $duyuruCounts['closed']++;
-    }
-
-    if (!empty($duyuru->etkinlik_tarihi) && substr($duyuru->etkinlik_tarihi, 0, 10) < $today) {
-        $duyuruCounts['expired']++;
-    }
-}
 
 // Departmanları getir (Personel tablosundan direkt çekiyoruz)
 $db = $personelModel->getDb();
@@ -74,194 +51,165 @@ foreach ($personeller as $p) {
 
 ?>
 
-<div class="container-fluid">
-    <?php
-    $maintitle = "Kurumsal";
-    $title = "Duyuru ve Etkinlik Yönetimi";
-    ?>
-    <?php include 'layouts/breadcrumb.php'; ?>
+<script>try { document.documentElement.classList.toggle('duyuru-summary-hidden', localStorage.getItem('duyuru_summary_cards_state') === 'hidden'); } catch (e) {}</script>
+<style>
+#summaryCardsContainer { overflow: hidden; max-height: 1100px; opacity: 1; transition: max-height .3s ease, opacity .3s ease, margin .3s ease; }
+.duyuru-summary-hidden #summaryCardsContainer { max-height: 0 !important; opacity: 0; margin-top: 0 !important; margin-bottom: 0 !important; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { #summaryCardsContainer { transition: none; } }
+</style>
 
-    <!-- Üst İstatistik Kartları -->
-    <div class="row g-3 mb-4">
-        <div class="col-xl-4 col-md-6">
-            <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                style="--card-color: #667eea; border-bottom: 3px solid var(--card-color) !important;">
-                <div class="card-body p-3">
-                    <div class="icon-label-container">
-                        <div class="icon-box" style="background: rgba(102, 126, 234, 0.1);">
-                            <i class="bx bx-news fs-4 text-primary"></i>
+<?php
+$maintitle = "Kurumsal";
+$title = "Duyuru ve Etkinlik Yönetimi";
+include 'layouts/breadcrumb.php';
+?>
+
+<div class="container-fluid">
+    <div class="row align-items-center mb-3">
+        <div class="col-md-6 col-12 d-flex align-items-center gap-3">
+            <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 44px; height: 44px;">
+                <i class="bx bx-news fs-4 text-primary"></i>
+            </div>
+            <div>
+                <h4 class="mb-0 fw-bold text-dark font-size-16">Duyurular ve Etkinlikler</h4>
+                <p class="text-muted mb-0 font-size-12">Personele ve yönetime yönelik duyuruların yayın, hedef kitle ve süre yönetimi</p>
+            </div>
+        </div>
+
+        <div class="personel-action-toolbar col-md-6 col-12 d-flex align-items-center justify-content-md-end gap-2 mt-2 mt-md-0">
+            <button type="button" class="btn btn-primary top-action-btn shadow-sm text-white" id="btnYeniDuyuru"
+                data-bs-toggle="modal" data-bs-target="#duyuruModal">
+                <i class="bx bx-plus font-size-16"></i> Yeni Duyuru
+            </button>
+
+            <button type="button" class="btn btn-outline-secondary bg-white top-icon-btn shadow-sm" id="btnToggleSummaryCards" title="Özet Kartları Göster/Gizle" aria-label="Özet kartlarını gizle" aria-expanded="true">
+                <i class="bx bx-chevron-up"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3 summary-cards-group" id="summaryCardsContainer">
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">TOPLAM DUYURU</span>
+                        <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
+                            <i class="bx bx-news"></i>
                         </div>
-                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">TOPLAM</span>
                     </div>
-                    <h4 class="mb-0 fw-bold bordro-text-heading"><?= $stats->toplam ?> <span
-                            class="small text-muted fw-normal" style="font-size: 0.8rem;">Adet</span></h4>
+                    <h3 class="summary-kpi-value my-1" id="stat_toplam">0</h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext" id="stat_sub_toplam">Yayında: 0 | Taslak: 0 | Kapalı: 0</span>
+                        <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" data-status="all">
+                            <i class="bx bx-layer"></i> Tümü
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-xl-4 col-md-6">
-            <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                style="--card-color: #10b981; border-bottom: 3px solid var(--card-color) !important;">
-                <div class="card-body p-3">
-                    <div class="icon-label-container">
-                        <div class="icon-box" style="background: rgba(16, 185, 129, 0.1);">
-                            <i class="bx bx-check-circle fs-4 text-success"></i>
+
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">AKTİF YAYINDA</span>
+                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                            <i class="bx bx-broadcast"></i>
                         </div>
-                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">AKTİF</span>
                     </div>
-                    <h4 class="mb-0 fw-bold bordro-text-heading"><?= $stats->aktif ?> <span
-                            class="small text-muted fw-normal" style="font-size: 0.8rem;">Adet</span></h4>
+                    <h3 class="summary-kpi-value my-1 text-success" id="stat_aktif">0</h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext text-success fw-semibold" id="stat_sub_aktif">Admin: 0 | Personel: 0</span>
+                        <button type="button" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="published">
+                            <i class="bx bx-check-circle"></i> Yayında
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-xl-4 col-md-6">
-            <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                style="--card-color: #f43f5e; border-bottom: 3px solid var(--card-color) !important;">
-                <div class="card-body p-3">
-                    <div class="icon-label-container">
-                        <div class="icon-box" style="background: rgba(244, 63, 94, 0.1);">
-                            <i class="bx bx-time-five fs-4 text-danger"></i>
+
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">TASLAK / KAPALI</span>
+                        <div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
+                            <i class="bx bx-edit"></i>
                         </div>
-                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">SÜRESİ DOLMUŞ</span>
                     </div>
-                    <h4 class="mb-0 fw-bold bordro-text-heading"><?= $stats->suresi_dolmus ?> <span
-                            class="small text-muted fw-normal" style="font-size: 0.8rem;">Adet</span></h4>
+                    <h3 class="summary-kpi-value my-1 text-info" id="stat_taslak_kapali">0</h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext" id="stat_sub_taslak">Taslak: 0 | Kapalı: 0</span>
+                        <span class="d-flex gap-1">
+                            <button type="button" class="btn btn-sm btn-subtle-info rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="draft">
+                                <i class="bx bx-edit"></i> Taslak
+                            </button>
+                            <button type="button" class="btn btn-sm btn-subtle-secondary rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="closed">
+                                <i class="bx bx-lock-alt"></i> Kapalı
+                            </button>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">SÜRESİ DOLMUŞ</span>
+                        <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                            <i class="bx bx-time-five"></i>
+                        </div>
+                    </div>
+                    <h3 class="summary-kpi-value my-1 text-danger" id="stat_suresi_dolmus">0</h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext text-muted">Bitiş tarihi geçmiş duyurular</span>
+                        <button type="button" class="btn btn-sm btn-subtle-danger rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="expired">
+                            <i class="bx bx-time-five"></i> Süresi Dolan
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="card border-0 shadow-sm duyuru-list-card">
-        <div class="card-header bg-white border-bottom py-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
-            <div class="status-filter-group d-flex align-items-center" role="group" aria-label="Duyuru durum filtresi">
-                <?php
-                $filters = [
-                    'all' => ['Tümü', 'bx-list-ul'],
-                    'published' => ['Yayında', 'bx-broadcast'],
-                    'draft' => ['Taslak', 'bx-edit'],
-                    'closed' => ['Kapalı', 'bx-lock-alt'],
-                    'expired' => ['Süresi Dolan', 'bx-time-five'],
-                ];
-                foreach ($filters as $filterKey => [$filterLabel, $filterIcon]): ?>
-                    <input type="radio" class="btn-check duyuru-status-filter" name="duyuru_status_filter"
-                        id="duyuru-filter-<?= $filterKey ?>" value="<?= $filterKey ?>" <?= $filterKey === 'all' ? 'checked' : '' ?>>
-                    <label class="btn" for="duyuru-filter-<?= $filterKey ?>">
-                        <i class="bx <?= $filterIcon ?>"></i>
-                        <span><?= $filterLabel ?></span>
-                        <span class="count-tag"><?= $duyuruCounts[$filterKey] ?></span>
-                    </label>
-                <?php endforeach; ?>
+    <div class="card summary-kpi-card mb-3" id="duyuruListCard">
+        <div class="card-header bg-transparent border-0 px-3 py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 38px; height: 38px;">
+                    <i class="bx bx-list-ul font-size-20"></i>
+                </div>
+                <div>
+                    <h5 class="card-title mb-0 font-size-14 fw-bold text-dark">Duyuru Listesi</h5>
+                    <p class="text-muted mb-0 font-size-12" style="margin-top: 2px;">Anlık arama, sütun filtreleme ve yayın yönetimi</p>
+                </div>
             </div>
-            <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1 personel-action-toolbar">
 
-                <button type="button" class="btn btn-link btn-sm text-success text-decoration-none px-2"
-                    id="btnExportExcel" title="Excel'e Aktar">
-                    <i class="mdi mdi-file-excel fs-5"></i> Excele Aktar
-                </button>
-                <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
-
-                <button type="button" class="btn btn-primary px-3 py-2 fw-semibold text-nowrap"
-                    data-bs-toggle="modal" data-bs-target="#duyuruModal" onclick="resetForm()" title="Yeni Duyuru">
-                    <i class="mdi mdi-plus-circle fs-5 me-1"></i> Yeni Duyuru
+            <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+                <button type="button" class="btn btn-sm btn-subtle-secondary px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderPrint" title="Tabloyu Yazdır">
+                    <i class="bx bx-printer font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Yazdır</span>
                 </button>
             </div>
         </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table id="duyuruTable" class="table table-hover align-middle">
-                    <thead class="table-light">
+
+        <div class="card-body p-3 pt-0">
+            <div class="table-responsive" style="overflow-x: auto !important;">
+                <table id="duyuruTable" class="table table-bordered table-hover nowrap align-middle w-100 mb-0">
+                    <thead>
                         <tr>
-                            <th>#</th>
-                            <th data-filter="string">Başlık</th>
-                            <th data-filter="string">İçerik</th>
-                            <th data-filter="select">Hedef</th>
-                            <th data-filter="select">Kitle</th>
-                            <th data-filter="date">Yayın / Bitiş</th>
-                            <th data-filter="select">Durum</th>
-                            <th class="text-end">İşlemler</th>
+                            <th data-filter="none" style="width: 50px;" class="text-center">SIRA</th>
+                            <th data-filter="string">BAŞLIK</th>
+                            <th data-filter="string">İÇERİK</th>
+                            <th data-filter="select" data-filter-options="Admin Ana Sayfa|Personel Ana Sayfa|Gösterilmiyor">HEDEF</th>
+                            <th data-filter="select" data-filter-options="Tüm Personel|Özel Liste" style="width: 150px;">KİTLE</th>
+                            <th data-filter="date" style="width: 170px;">YAYIN / BİTİŞ</th>
+                            <th data-filter="select" data-filter-options="Yayında|Taslak|Kapalı" style="width: 150px;">DURUM</th>
+                            <th data-filter="none" style="width: 120px;" class="text-center">İŞLEMLER</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <?php foreach ($duyurular as $idx => $d): ?>
-                            <?php $isExpired = !empty($d->etkinlik_tarihi) && substr($d->etkinlik_tarihi, 0, 10) < $today; ?>
-                            <tr data-status="<?= htmlspecialchars(strtolower($d->durum), ENT_QUOTES, 'UTF-8') ?>"
-                                data-expired="<?= $isExpired ? '1' : '0' ?>">
-                                <td><?= $idx + 1 ?></td>
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <?php if ($d->resim): ?>
-                                            <img src="<?= htmlspecialchars($d->resim, ENT_QUOTES, 'UTF-8') ?>" class="duyuru-thumb me-2" alt="">
-                                        <?php else: ?>
-                                            <div class="bg-light rounded d-flex align-items-center justify-content-center me-2"
-                                                style="width: 40px; height: 40px;">
-                                                <i class="bx bx-image text-muted"></i>
-                                            </div>
-                                        <?php endif; ?>
-                                        <div class="duyuru-title"><?= htmlspecialchars($d->baslik, ENT_QUOTES, 'UTF-8') ?></div>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="text-truncate" style="max-width: 250px;"
-                                        title="<?= htmlspecialchars(strip_tags($d->icerik)) ?>">
-                                        <?= htmlspecialchars(mb_strimwidth(strip_tags($d->icerik), 0, 120, '...')) ?>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="d-flex flex-column gap-1">
-                                        <?php if ($d->ana_sayfada_goster): ?>
-                                            <span class="badge bg-soft-primary text-primary px-2 py-1"
-                                                style="font-size: 10px;">Admin Ana Sayfa</span>
-                                        <?php endif; ?>
-                                        <?php if ($d->pwa_goster): ?>
-                                            <span class="badge bg-soft-info text-info px-2 py-1"
-                                                style="font-size: 10px;">Personel Ana Sayfa</span>
-                                        <?php endif; ?>
-                                        <?php if (!$d->ana_sayfada_goster && !$d->pwa_goster): ?>
-                                            <span class="text-muted small">Ana sayfada gösterilmiyor</span>
-                                        <?php endif; ?>
-                                    </div>
-                                </td>
-                                <td>
-                                    <?php if ($d->alici_tipi == 'toplu'): ?>
-                                        <span class="badge bg-soft-success text-success">Tüm Personel</span>
-                                    <?php else: ?>
-                                        <span class="badge bg-soft-warning text-warning" title="<?= $d->alici_ids ?>">Özel
-                                            (<?= count(explode(',', $d->alici_ids)) ?> kişi)</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <div class="small text-muted">Yayın: <?= date('d.m.Y', strtotime($d->tarih)) ?></div>
-                                    <?php if ($d->etkinlik_tarihi): ?>
-                                        <div class="fw-bold text-primary">Etk:
-                                            <?= date('d.m.Y', strtotime($d->etkinlik_tarihi)) ?>
-                                        </div>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <?php if ($d->durum === 'Taslak'): ?>
-                                        <div class="mb-1"><span class="badge bg-secondary">Taslak</span></div>
-                                    <?php elseif ($d->durum === 'Kapalı'): ?>
-                                        <div class="mb-1"><span class="badge bg-dark">Kapalı</span></div>
-                                    <?php else: ?>
-                                        <div class="mb-1"><span class="badge bg-success">Yayında</span></div>
-                                    <?php endif; ?>
-
-                                    <?php if ($isExpired): ?>
-                                        <span class="badge bg-danger">Süresi Doldu</span>
-                                    <?php else: ?>
-                                        <span class="badge bg-info">Güncel</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td class="text-end">
-                                    <button class="btn btn-soft-primary btn-sm btn-edit" data-id="<?= $d->id ?>" title="Düzenle" aria-label="Duyuruyu düzenle">
-                                        <i class="bx bx-edit-alt"></i>
-                                    </button>
-                                    <button class="btn btn-soft-danger btn-sm btn-delete" data-id="<?= $d->id ?>" title="Sil" aria-label="Duyuruyu sil">
-                                        <i class="bx bx-trash"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
+                    <tbody></tbody>
                 </table>
             </div>
         </div>
@@ -592,42 +540,83 @@ foreach ($personeller as $p) {
             reader.readAsDataURL(file);
         });
 
-        let dtOptions = typeof getDatatableOptions === 'function' ? getDatatableOptions() : {};
-        dtOptions.buttons = [
-            {
-                extend: 'excel',
-                text: 'Excel',
-                className: 'd-none',
-                exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6] }
-            }
-        ];
-
-        let localTable = $('#duyuruTable').DataTable(dtOptions);
-
-        $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
-            if (settings.nTable.id !== 'duyuruTable') return true;
-
-            const selectedFilter = $('.duyuru-status-filter:checked').val() || 'all';
-            if (selectedFilter === 'all') return true;
-
-            const row = localTable.row(dataIndex).node();
-            if (!row) return true;
-            if (selectedFilter === 'expired') return row.dataset.expired === '1';
-
-            const statusMap = {
-                published: 'yayında',
-                draft: 'taslak',
-                closed: 'kapalı'
-            };
-            return row.dataset.status === statusMap[selectedFilter];
+        const toggleBtn = $('#btnToggleSummaryCards');
+        const updateToggleState = () => {
+            const isHidden = $('html').hasClass('duyuru-summary-hidden');
+            toggleBtn.attr('aria-expanded', !isHidden);
+            toggleBtn.attr('title', isHidden ? 'Özet Kartlarını Göster' : 'Özet Kartlarını Gizle');
+            toggleBtn.attr('aria-label', isHidden ? 'Özet kartlarını göster' : 'Özet kartlarını gizle');
+            toggleBtn.find('i').attr('class', isHidden ? 'bx bx-chevron-down' : 'bx bx-chevron-up');
+        };
+        updateToggleState();
+        toggleBtn.on('click', function () {
+            const willHide = !$('html').hasClass('duyuru-summary-hidden');
+            $('html').toggleClass('duyuru-summary-hidden', willHide);
+            try { localStorage.setItem('duyuru_summary_cards_state', willHide ? 'hidden' : 'visible'); } catch (e) {}
+            updateToggleState();
         });
 
-        $('.duyuru-status-filter').on('change', function () {
-            localTable.draw();
+        let currentStatusFilter = 'all';
+
+        const localTable = $('#duyuruTable').DataTable(applyLengthStateSave({
+            ...getDatatableOptions(),
+            processing: true,
+            serverSide: true,
+            ajax: {
+                url: API_URL,
+                type: 'POST',
+                data: function (d) {
+                    d.action = 'ajax-list';
+                    d.status_filter = currentStatusFilter;
+                },
+                dataSrc: function (json) {
+                    const s = json.summary;
+                    if (s) {
+                        $('#stat_toplam').text(s.toplam);
+                        $('#stat_sub_toplam').text(`Yayında: ${s.yayinda} | Taslak: ${s.taslak} | Kapalı: ${s.kapali}`);
+                        $('#stat_aktif').text(s.aktif);
+                        $('#stat_sub_aktif').text(`Admin: ${s.admin_ana_sayfa} | Personel: ${s.pwa_ana_sayfa}`);
+                        $('#stat_taslak_kapali').text(s.taslak + s.kapali);
+                        $('#stat_sub_taslak').text(`Taslak: ${s.taslak} | Kapalı: ${s.kapali}`);
+                        $('#stat_suresi_dolmus').text(s.suresi_dolmus);
+                    }
+                    return json.data;
+                }
+            },
+            columns: [
+                { data: 'id', className: 'text-center', width: '50px' },
+                { data: 'baslik' },
+                { data: 'icerik' },
+                { data: 'hedef' },
+                { data: 'kitle', width: '150px' },
+                { data: 'tarih', width: '170px', className: 'text-nowrap' },
+                { data: 'durum', width: '150px' },
+                { data: 'actions', className: 'text-center', width: '120px', orderable: false, searchable: false }
+            ],
+            createdRow: function (row) {
+                $(row).find('td:not(:last-child)').attr('style', 'cursor: pointer !important');
+            },
+            order: [[5, 'desc']]
+        }));
+
+        $('.status-quick-filter').on('click', function () {
+            currentStatusFilter = $(this).data('status') || 'all';
+            $('.status-quick-filter').removeClass('active');
+            $(this).addClass('active');
+            localTable.ajax.reload();
         });
 
-        $('#btnExportExcel').click(function () {
-            localTable.button('.buttons-excel').trigger();
+        $('#btnHeaderPrint').on('click', function () {
+            window.print();
+        });
+
+        $('#btnYeniDuyuru').on('click', function () {
+            resetForm();
+        });
+
+        $('#duyuruTable tbody').on('click', 'tr td:not(:last-child)', function (e) {
+            if ($(e.target).closest('a, button, .dropdown-menu').length > 0) return;
+            $(this).closest('tr').find('.btn-edit').trigger('click');
         });
 
         $('input[name="alici_tipi"]').change(function () {
@@ -661,7 +650,10 @@ foreach ($personeller as $p) {
                 .then(res => res.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        Swal.fire('Başarılı', data.message, 'success').then(() => location.reload());
+                        Swal.fire('Başarılı', data.message, 'success').then(() => {
+                            $('#duyuruModal').modal('hide');
+                            localTable.ajax.reload(null, false);
+                        });
                     } else {
                         Swal.fire('Hata', data.message, 'error');
                     }
@@ -669,20 +661,20 @@ foreach ($personeller as $p) {
         });
 
         $('#duyuruTable').on('click', '.btn-edit', function () {
-            const id = $(this).data('id');
+            const id = $(this).attr('data-id');
             resetForm();
 
             fetch(API_URL, {
                 method: 'POST',
                 cache: 'no-store',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'action=get&id=' + id
+                body: 'action=get&id=' + encodeURIComponent(id)
             })
                 .then(res => res.json())
                 .then(res => {
                     if (res.status === 'success') {
                         const d = res.data;
-                        $('#duyuruId').val(d.id);
+                        $('#duyuruId').val(d.enc_id);
                         $('#modalTitle').text('Duyuruyu Düzenle');
                         $('input[name="baslik"]').val(d.baslik);
                         
@@ -732,7 +724,7 @@ foreach ($personeller as $p) {
         });
 
         $('#duyuruTable').on('click', '.btn-delete', function () {
-            const id = $(this).data('id');
+            const id = $(this).attr('data-id');
             Swal.fire({
                 title: 'Emin misiniz?',
                 text: "Bu duyuru silinecektir!",
@@ -748,12 +740,12 @@ foreach ($personeller as $p) {
                         method: 'POST',
                         cache: 'no-store',
                         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: 'action=delete&id=' + id
+                        body: 'action=delete&id=' + encodeURIComponent(id)
                     })
                         .then(res => res.json())
                         .then(data => {
                             if (data.status === 'success') {
-                                Swal.fire('Silindi!', data.message, 'success').then(() => location.reload());
+                                Swal.fire('Silindi!', data.message, 'success').then(() => localTable.ajax.reload(null, false));
                             } else {
                                 Swal.fire('Hata', data.message, 'error');
                             }
@@ -935,117 +927,39 @@ foreach ($personeller as $p) {
 </script>
 
 <style>
-    .duyuru-list-card,
     #duyuruModal .modal-content {
         border-radius: 8px !important;
     }
 
-    .status-filter-group {
-        gap: 3px;
-        padding: 4px;
-        overflow-x: auto;
-        max-width: 100%;
-        background: #f1f5f9;
-        border: 1px solid #e2e8f0;
-        border-radius: 7px;
-    }
-
-    .status-filter-group .btn-check + .btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        min-height: 34px;
-        padding: 6px 10px;
-        border: 0;
-        border-radius: 5px;
-        color: #64748b;
-        font-size: 12px;
-        font-weight: 600;
-        white-space: nowrap;
-    }
-
-    .status-filter-group .btn-check + .btn:hover {
-        background: rgba(255, 255, 255, 0.8);
-        color: #1e293b;
-    }
-
-    .status-filter-group .btn-check:checked + .btn {
-        color: #fff;
-        background: #475569;
-        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.16);
-    }
-
-    .status-filter-group .btn-check:checked + .btn[for="duyuru-filter-published"] { background: #059669; }
-    .status-filter-group .btn-check:checked + .btn[for="duyuru-filter-draft"] { background: #64748b; }
-    .status-filter-group .btn-check:checked + .btn[for="duyuru-filter-closed"] { background: #334155; }
-    .status-filter-group .btn-check:checked + .btn[for="duyuru-filter-expired"] { background: #dc2626; }
-
-    .status-filter-group .count-tag {
-        min-width: 20px;
-        padding: 1px 5px;
-        border-radius: 4px;
-        text-align: center;
-        background: rgba(100, 116, 139, 0.12);
-        font-size: 10px;
-    }
-
-    .status-filter-group .btn-check:checked + .btn .count-tag {
-        background: rgba(255, 255, 255, 0.2);
-    }
-
     .duyuru-thumb {
-        width: 42px;
-        height: 42px;
-        flex: 0 0 42px;
-        border-radius: 6px;
+        width: 38px;
+        height: 38px;
+        flex: 0 0 38px;
+        border-radius: 8px;
         object-fit: cover;
         border: 1px solid #e2e8f0;
     }
 
+    .duyuru-thumb-empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f1f5f9;
+        color: #94a3b8;
+    }
+
     .duyuru-title {
-        max-width: 260px;
-        color: #1e293b;
+        max-width: 360px;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        color: #0f172a;
         font-size: 13px;
         font-weight: 700;
-        line-height: 1.35;
     }
 
-    #duyuruTable tbody td {
-        padding-top: 12px;
-        padding-bottom: 12px;
-        border-color: #edf2f7;
-    }
-
-    #duyuruTable tbody tr:hover {
-        background: #f8fafc;
-    }
-
-    [data-bs-theme="dark"] .status-filter-group {
-        background: #242b31;
-        border-color: #32394e;
-    }
-
-    [data-bs-theme="dark"] .duyuru-title {
-        color: #eff2f7;
-    }
-
-    @media (max-width: 767.98px) {
-        .duyuru-list-card .card-header,
-        .personel-action-toolbar {
-            width: 100%;
-        }
-
-        .status-filter-group {
-            width: 100%;
-        }
-
-        .personel-action-toolbar {
-            justify-content: flex-end;
-        }
-
-        .status-filter-group .btn-check + .btn span:not(.count-tag) {
-            display: none;
-        }
+    [data-theme-preset="macos-dark"] .duyuru-title {
+        color: #f5f7fa;
     }
 
     .bg-soft-info {

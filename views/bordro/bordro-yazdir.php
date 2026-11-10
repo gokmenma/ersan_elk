@@ -8,7 +8,7 @@ use App\Service\BordroPusulaService;
 use App\Service\Gate;
 
 $tekPersonelCikti = isset($_GET['id']) && (string) $_GET['id'] !== '';
-$yazdirYetkisi = Gate::allows('bordro/raporlar') || ($tekPersonelCikti && Gate::allows('personel_detay'));
+$yazdirYetkisi = Gate::allows('bordro/raporlar') || ($tekPersonelCikti && (Gate::allows('personel_detay') || Gate::allows('personel_duzenle')));
 if (empty($_SESSION['user']->id) || empty($_SESSION['firma_id']) || !$yazdirYetkisi) {
     http_response_code(403);
     exit('Bu raporu görüntüleme yetkiniz bulunmamaktadır.');

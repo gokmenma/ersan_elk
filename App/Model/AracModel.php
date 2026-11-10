@@ -9,6 +9,8 @@ use PDO;
 class AracModel extends Model
 {
     protected $table = 'araclar';
+    protected $auditEnabled = true;
+    protected $auditLabel = 'Araç';
 
     public function __construct()
     {
