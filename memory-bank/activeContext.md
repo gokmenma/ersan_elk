@@ -3956,3 +3956,7 @@
 - Demirbaş Kategorileri sayfası yeni sayfa standardına geçirildi (demirbasKategoriAjaxList/Summary, aksiyonlar demirbas-kategorisi-liste/ozet); policy SQL: sql/2026_11_11_demirbas_kategori_liste_ozet_policies.sql (çalıştırılmalı).
 
 - Bildirim Gönder sayfası (views/bildirim/gonder.php + js/gonder.js) yeni standarda ve daha kullanıcı dostu akışa geçirildi (3 adımlı form, canlı önizleme, şablonlar, görsel önizleme, gönderim geçmişi DataTable). API: debug_upload.txt yazımı kaldırıldı, toplu/seçili gönderim firma kapsamına alındı, hata detayı sızması kapatıldı. Policy SQL: sql/2026_11_11_bildirim_gonderim_gecmisi_policy.sql (çalıştırılmalı).
+
+- Yıllık İzin Hakedişleri sayfası eklendi (Personel İşlemleri altında, personel/yillik-izin-hakedisleri): YillikIzinHakedisModel (ajaxList/summary/detay), PersonelIzinleriModel::hakedisDetayHesapla ayrıştırıldı (calculateLeaveEntitlement çıktısı 187 personelde birebir doğrulandı), API views/personel/api/APIyillik-izin-hakedisleri.php, yeni yetki+menü+politika SQL: sql/2026_11_11_yillik_izin_hakedisleri_menu_yetki.sql (yerel DB'ye uygulandı; canlıda çalıştırılmalı).
+
+- Yıllık İzin Hakedişleri: manuel hakediş eklendi (modal + Excel şablon/yükleme). Tablo: personel_yillik_izin_manuel_hakedis (sql/2026_11_11_yillik_izin_manuel_hakedis_tablo.sql), yeni yazma yetkisi personel/yillik-izin-hakedisleri-duzenle (menu_yetki SQL içinde). Manuel gün toplamı PersonelIzinleriModel::calculateLeaveEntitlement sonucuna da dahil. Pasif personel anahtarla isteğe bağlı gösterilir.

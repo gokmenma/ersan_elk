@@ -26,7 +26,7 @@ if (empty($_SESSION['loggedin']) || empty($_SESSION['firma_id']) || $userId < 1)
 }
 
 $menuModel = new MenuModel();
-if (!$menuModel->userCanAccessMenuLink($userId, 'evrak-takip/giden-evrak')) {
+if (!$menuModel->userCanAccessMenuLink($userId, 'evrak-takip/giden-evrak') && !$menuModel->userCanAccessMenuLink($userId, 'evrak-takip/list')) {
     http_response_code(403);
     echo json_encode(['status' => 'error', 'message' => 'Bu işlem için yetkiniz yok.'], JSON_UNESCAPED_UNICODE);
     exit;

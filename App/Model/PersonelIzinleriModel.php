@@ -719,6 +719,46 @@ class PersonelIzinleriModel extends Model
         return null;
     }
 
+    public function hakedisDetayHesapla(?\DateTime $giris, ?\DateTime $dogum, ?\DateTime $bugun = null): array
+    {
+        $toplam_hakedis = 0;
+        $detay = [];
+
+        if ($giris) {
+            $bugun = $bugun ?? new \DateTime();
+            if ($giris <= $bugun) {
+                $calisma_yili = (int) $giris->diff($bugun)->y;
+                for ($i = 1; $i <= $calisma_yili; $i++) {
+                    if ($i >= 1 && $i <= 5) {
+                        $hakedis = 14;
+                    } elseif ($i > 5 && $i < 15) {
+                        $hakedis = 20;
+                    } else {
+                        $hakedis = 26;
+                    }
+
+                    if ($dogum) {
+                        $yil_sonu = (clone $giris)->modify("+$i years");
+                        $yas = (int) $dogum->diff($yil_sonu)->y;
+                        if (($yas <= 18 || $yas >= 50) && $hakedis < 20) {
+                            $hakedis = 20;
+                        }
+                    }
+
+                    $detay[] = [
+                        'yil' => $i,
+                        'hakedis_tarihi' => (clone $giris)->modify("+$i years")->format('Y-m-d'),
+                        'hakedis_gun' => $hakedis
+                    ];
+
+                    $toplam_hakedis += $hakedis;
+                }
+            }
+        }
+
+        return ['toplam_hakedis' => $toplam_hakedis, 'detay' => $detay];
+    }
+
     /**
      * Personelin izin hakedişlerini hesaplar
      * @param int $personel_id
@@ -740,52 +780,16 @@ class PersonelIzinleriModel extends Model
         $giris = $this->parseDate($personel->ise_giris_tarihi);
         $dogum = $this->parseDate($personel->dogum_tarihi);
 
-        $toplam_hakedis = 0;
-        $detay = [];
+        $hesap = $this->hakedisDetayHesapla($giris, $dogum);
+        $toplam_hakedis = $hesap['toplam_hakedis'];
+        $detay = $hesap['detay'];
 
-        if ($giris) {
-            $bugun = new \DateTime();
-            if ($giris <= $bugun) {
-                $calisma_yili = (int) $giris->diff($bugun)->y;
-                for ($i = 1; $i <= $calisma_yili; $i++) {
-                    // Hizmet süresine göre temel hakediş
-                    // a) Bir yıldan beş yıla kadar (beş yıl dahil) olanlara ondört günden,
-                    if ($i >= 1 && $i <= 5) {
-                        $hakedis = 14;
-                    }
-                    // b) Beş yıldan fazla onbeş yıldan az olanlara yirmi günden,
-                    elseif ($i > 5 && $i < 15) {
-                        $hakedis = 20;
-                    }
-                    // c) Onbeş yıl (dahil) ve daha fazla olanlara yirmialtı günden,
-                    else {
-                        $hakedis = 26;
-                    }
-
-                    // Yaş kontrolü (18 ve altı, 50 ve üstü -> en az 20 gün)
-                    if ($dogum) {
-                        $yil_sonu = (clone $giris)->modify("+$i years");
-                        $yas = (int) $dogum->diff($yil_sonu)->y;
-                        // onsekiz ve daha küçük yaştaki işçilerle elli ve daha yukarı yaştaki işçilere verilecek yıllık ücretli izin süresi yirmi günden az olamaz.
-                        if (($yas <= 18 || $yas >= 50) && $hakedis < 20) {
-                            $hakedis = 20;
-                        }
-                    }
-
-                    // Yer altı işçisi kontrolü (Şimdilik pasif, alan eklenirse burası güncellenebilir)
-                    // if ($yer_alti) $hakedis += 4;
-
-                    $hakedis_tarihi = (clone $giris)->modify("+$i years")->format('Y-m-d');
-
-                    $detay[] = [
-                        'yil' => $i,
-                        'hakedis_tarihi' => $hakedis_tarihi,
-                        'hakedis_gun' => $hakedis
-                    ];
-
-                    $toplam_hakedis += $hakedis;
-                }
-            }
+        try {
+            $mst = $this->db->prepare("SELECT COALESCE(SUM(gun), 0) FROM personel_yillik_izin_manuel_hakedis WHERE personel_id = ? AND is_active = 1 AND deleted_at IS NULL");
+            $mst->execute([$personel_id]);
+            $toplam_hakedis += (float) $mst->fetchColumn();
+        } catch (\PDOException $e) {
+            error_log('manuel hakedis okunamadi: ' . $e->getMessage());
         }
 
         // 3. Kullanılan izinleri hesapla
