@@ -3942,3 +3942,7 @@
   - `views/personel/api.php`, `views/personel/icerik/finansal_islemler.php` ve `views/bordro/bordro-yazdir.php` dosyalarında `personel_detay || personel_duzenle` kontrolü sağlandı.
   - Test: Abdullah Doğan 1573 numaralı bordro detayı API çağrısı simüle edilerek HTTP 200 ve JSON success ile doğrulandı. Yetki Kataloğu ve Yetki Grupları ekranları teyit edildi.
 
+
+## 2026-11-11 — RN mobil API canlıya hazırlama
+- api/mobile/v1 ve Mobile* modelleri git ekarte alındı (exclude kaldırıldı); canlıda uç noktalar 404 veriyordu.
+- Prototip ağacındaki (ersan_rn_test) güncel API + gereken model/servis metotları main'e taşındı (commit 8c603985). Push ve canlı deploy kullanıcı onayına bağlı.
