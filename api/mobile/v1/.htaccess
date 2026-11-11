@@ -1,0 +1,7 @@
+RewriteEngine On
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+<Files "_bootstrap.php">
+    Require all denied
+</Files>
