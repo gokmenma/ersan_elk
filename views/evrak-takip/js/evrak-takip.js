@@ -738,6 +738,11 @@ $(document).ready(function () {
     updateModalPadesProgress(8, "E-İmza uygulaması kontrol ediliyor", "Akıllı kart ve yerel imza uygulaması aranıyor.");
     fetch("http://127.0.0.1:9191/status", { method: "GET", mode: "cors" })
       .then(response => response.json())
+      .catch(() => {
+        const offline = new Error("E-İmza servisine ulaşılamadı.");
+        offline.code = "EIMZA_AGENT_OFFLINE";
+        throw offline;
+      })
       .then(agent => {
         if (!agent || agent.status !== "success") throw new Error((agent && agent.message) || "E-imza uygulaması çalışmıyor.");
         const versionMatch = String(agent.agent_version || "").match(/^(\d+)\.(\d+)/);
@@ -776,7 +781,16 @@ $(document).ready(function () {
           $("#modal_eimza_pin, #btnModalPadesImzala, #btnModalImzaIade").prop("disabled", false);
           $("#modal_eimza_pin").val("").trigger("focus");
         }
-        if (error?.code === "EIMZA_AGENT_UPDATE_REQUIRED") {
+        if (error?.code === "EIMZA_AGENT_OFFLINE") {
+          updateModalPadesProgress(0, "E-İmza servisi çalışmıyor", "Ersan E-İmza uygulaması açık değil veya akıllı kart takılı değil.", "error");
+          Swal.fire({
+            icon: "warning",
+            title: "E-İmza Servisi Kapalı",
+            html: 'Bilgisayarınızdaki <b>Ersan E-İmza</b> uygulaması çalışmıyor.<br>Uygulamayı başlatıp akıllı kartınızın takılı olduğundan emin olun, ardından tekrar deneyin.<br><a href="downloads/ErsanEImza.jar" download class="fw-semibold"><i class="bx bxs-download me-1"></i>Uygulamayı İndir (.jar)</a>',
+            confirmButtonText: "Tamam",
+            confirmButtonColor: "#556ee6"
+          });
+        } else if (error?.code === "EIMZA_AGENT_UPDATE_REQUIRED") {
           updateModalPadesProgress(0, "E-İmza uygulamasını güncelleyin", "PAdES için Ersan E-İmza v1.2.0 gereklidir.", "error");
         } else if (error?.code === "PADES_OK_KEP_FAILED") {
           updateModalPadesProgress(100, "İmza tamamlandı, KEP gönderilemedi", error.message + " Evrak imzalı olarak kaydedildi.", "error");
@@ -800,6 +814,7 @@ $(document).ready(function () {
     if (this.id !== "btnModalPadesImzala") {
       const $previewBadge = $(this).closest("tr").find(".evrak-imza-onizle").first();
       if ($previewBadge.length) $previewBadge.trigger("click");
+      else showPdfFromRequest({ type: "GET", data: { id: $(this).data("id") } }, true);
       return;
     }
     startModalPadesSignature($(this).data("id"), $(this));

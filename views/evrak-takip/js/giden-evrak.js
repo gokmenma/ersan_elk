@@ -1188,6 +1188,11 @@ $(document).ready(function () {
     const button = $(this);
     fetch("http://127.0.0.1:9191/status", { method: "GET", mode: "cors" })
       .then(response => response.json())
+      .catch(() => {
+        const offline = new Error("E-İmza servisine ulaşılamadı.");
+        offline.code = "EIMZA_AGENT_OFFLINE";
+        throw offline;
+      })
       .then(agent => {
         if (!agent || agent.status !== "success") {
           throw new Error((agent && agent.message) || "E-imza cihazı bulunamadı. Güncel Ersan E-İmza uygulamasını çalıştırınız.");
@@ -1257,6 +1262,16 @@ $(document).ready(function () {
         });
       })
       .catch(error => {
+        if (error && error.code === "EIMZA_AGENT_OFFLINE") {
+          Swal.fire({
+            icon: "warning",
+            title: "E-İmza Servisi Kapalı",
+            html: 'Bilgisayarınızdaki <b>Ersan E-İmza</b> uygulaması çalışmıyor.<br>Uygulamayı başlatıp akıllı kartınızın takılı olduğundan emin olun, ardından tekrar deneyin.<br><a href="downloads/ErsanEImza.jar" download class="fw-semibold"><i class="bx bxs-download me-1"></i>Uygulamayı İndir (.jar)</a>',
+            confirmButtonText: "Tamam",
+            confirmButtonColor: "#556ee6"
+          });
+          return;
+        }
         if (error && error.code === "EIMZA_AGENT_UPDATE_REQUIRED") {
           Swal.fire({
             icon: "warning",

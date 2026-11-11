@@ -1520,5 +1520,297 @@ class NobetModel extends Model
         $stmt = $this->db->prepare($sql);
         return $stmt->execute($ids);
     }
-}
 
+    // =====================================================
+    // PLANLAMA ARAÇ SETİ: GEÇMİŞ / GERİ AL
+    // =====================================================
+
+    public function nobetSnapshot($nobet): ?array
+    {
+        if (!$nobet) {
+            return null;
+        }
+        return [
+            'personel_id' => (int) $nobet->personel_id,
+            'nobet_tarihi' => $nobet->nobet_tarihi,
+            'nobet_tipi' => $nobet->nobet_tipi,
+            'baslangic_saati' => $nobet->baslangic_saati,
+            'bitis_saati' => $nobet->bitis_saati,
+            'aciklama' => $nobet->aciklama ?? null,
+            'adi_soyadi' => $nobet->adi_soyadi ?? null,
+        ];
+    }
+
+    public function logIslem(string $islem, ?int $nobetId, ?array $onceki = null, ?array $yeni = null, ?string $grupKodu = null, ?string $aciklama = null): void
+    {
+        try {
+            $sql = "INSERT INTO nobet_islem_gecmisi
+                    (firma_id, user_id, grup_kodu, islem, nobet_id, onceki_veri, yeni_veri, aciklama, olusturma_tarihi)
+                    VALUES (:firma_id, :user_id, :grup, :islem, :nobet_id, :onceki, :yeni, :aciklama, NOW())";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([
+                'firma_id' => $_SESSION['firma_id'],
+                'user_id' => $_SESSION['user_id'] ?? null,
+                'grup' => $grupKodu,
+                'islem' => $islem,
+                'nobet_id' => $nobetId,
+                'onceki' => $onceki === null ? null : json_encode($onceki, JSON_UNESCAPED_UNICODE),
+                'yeni' => $yeni === null ? null : json_encode($yeni, JSON_UNESCAPED_UNICODE),
+                'aciklama' => $aciklama !== null ? mb_substr($aciklama, 0, 250) : null,
+            ]);
+        } catch (\Throwable $e) {
+            error_log('Nöbet işlem geçmişi yazılamadı: ' . $e->getMessage());
+        }
+    }
+
+    public function getIslemGecmisi(int $limit = 60): array
+    {
+        try {
+            $sql = "SELECT g.id, g.grup_kodu, g.islem, g.nobet_id, g.aciklama, g.geri_alindi, g.geri_alma_tarihi,
+                           g.olusturma_tarihi, u.adi_soyadi AS kullanici
+                    FROM nobet_islem_gecmisi g
+                    LEFT JOIN users u ON u.id = g.user_id
+                    WHERE g.firma_id = :firma_id
+                    ORDER BY g.id DESC
+                    LIMIT " . (int) $limit;
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute(['firma_id' => $_SESSION['firma_id']]);
+            return $stmt->fetchAll(PDO::FETCH_OBJ);
+        } catch (\Throwable $e) {
+            error_log('Nöbet işlem geçmişi okunamadı: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    public function geriAl(int $gecmisId): array
+    {
+        $stmt = $this->db->prepare("SELECT * FROM nobet_islem_gecmisi WHERE id = :id AND firma_id = :firma_id");
+        $stmt->execute(['id' => $gecmisId, 'firma_id' => $_SESSION['firma_id']]);
+        $kayit = $stmt->fetch(PDO::FETCH_OBJ);
+        if (!$kayit) {
+            throw new \Exception('Geçmiş kaydı bulunamadı.');
+        }
+
+        if (!empty($kayit->grup_kodu)) {
+            $stmt = $this->db->prepare("SELECT * FROM nobet_islem_gecmisi WHERE grup_kodu = :grup AND firma_id = :firma_id AND geri_alindi = 0 ORDER BY id DESC");
+            $stmt->execute(['grup' => $kayit->grup_kodu, 'firma_id' => $_SESSION['firma_id']]);
+            $kayitlar = $stmt->fetchAll(PDO::FETCH_OBJ);
+        } else {
+            $kayitlar = $kayit->geri_alindi ? [] : [$kayit];
+        }
+
+        if (empty($kayitlar)) {
+            throw new \Exception('Bu işlem zaten geri alınmış.');
+        }
+
+        $geriAlinan = 0;
+        $atlanan = [];
+
+        $this->db->beginTransaction();
+        try {
+            foreach ($kayitlar as $k) {
+                $onceki = $k->onceki_veri ? json_decode($k->onceki_veri, true) : null;
+                $nobetId = (int) $k->nobet_id;
+                $ok = false;
+
+                if ($k->islem === 'ekle') {
+                    $ok = $this->updateNobet($nobetId, ['silinme_tarihi' => date('Y-m-d H:i:s')]);
+                } elseif ($k->islem === 'sil' && $onceki) {
+                    if ($this->hasNobetOnDate($onceki['personel_id'], $onceki['nobet_tarihi'], $nobetId)) {
+                        $atlanan[] = ($onceki['adi_soyadi'] ?? 'Personel') . ' / ' . $onceki['nobet_tarihi'] . ': aynı gün başka nöbet var';
+                    } else {
+                        $ok = $this->updateNobet($nobetId, ['silinme_tarihi' => null]);
+                    }
+                } elseif (in_array($k->islem, ['tasi', 'guncelle'], true) && $onceki) {
+                    if ($this->hasNobetOnDate($onceki['personel_id'], $onceki['nobet_tarihi'], $nobetId)) {
+                        $atlanan[] = ($onceki['adi_soyadi'] ?? 'Personel') . ' / ' . $onceki['nobet_tarihi'] . ': aynı gün başka nöbet var';
+                    } else {
+                        $ok = $this->updateNobet($nobetId, [
+                            'personel_id' => $onceki['personel_id'],
+                            'nobet_tarihi' => $onceki['nobet_tarihi'],
+                            'nobet_tipi' => $onceki['nobet_tipi'],
+                            'baslangic_saati' => $onceki['baslangic_saati'],
+                            'bitis_saati' => $onceki['bitis_saati'],
+                        ]);
+                    }
+                }
+
+                if ($ok) {
+                    $geriAlinan++;
+                    $up = $this->db->prepare("UPDATE nobet_islem_gecmisi SET geri_alindi = 1, geri_alma_tarihi = NOW() WHERE id = :id");
+                    $up->execute(['id' => $k->id]);
+                }
+            }
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+
+        return ['geri_alinan' => $geriAlinan, 'atlanan' => $atlanan];
+    }
+
+    // =====================================================
+    // PLANLAMA ARAÇ SETİ: ÇAKIŞMA / UYGUNLUK
+    // =====================================================
+
+    public function getIzinliGunler(string $baslangic, string $bitis, ?array $personelIds = null): array
+    {
+        $sql = "SELECT pi.personel_id, pi.baslangic_tarihi, pi.bitis_tarihi
+                FROM personel_izinleri pi
+                INNER JOIN personel p ON p.id = pi.personel_id
+                WHERE p.firma_id = :firma_id
+                AND pi.silinme_tarihi IS NULL
+                AND LOWER(pi.onay_durumu) IN ('onaylandı', 'onaylandi')
+                AND pi.baslangic_tarihi <= :bitis AND pi.bitis_tarihi >= :baslangic";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['firma_id' => $_SESSION['firma_id'], 'baslangic' => $baslangic, 'bitis' => $bitis]);
+
+        $harita = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $row) {
+            $pid = (int) $row->personel_id;
+            if ($personelIds !== null && !in_array($pid, $personelIds, true)) {
+                continue;
+            }
+            $d = max($row->baslangic_tarihi, $baslangic);
+            $son = min($row->bitis_tarihi, $bitis);
+            while ($d <= $son) {
+                $harita[$pid][$d] = true;
+                $d = date('Y-m-d', strtotime($d . ' +1 day'));
+            }
+        }
+        return $harita;
+    }
+
+    public function getCakismaUyarilari(int $personelId, string $tarih, ?int $haricNobetId = null, int $aylikLimit = 0): array
+    {
+        $uyarilar = [];
+
+        $izin = $this->getIzinliGunler($tarih, $tarih, [$personelId]);
+        if (!empty($izin[$personelId][$tarih])) {
+            $uyarilar[] = ['tip' => 'izin', 'mesaj' => 'Personel bu tarihte onaylı izinde.'];
+        }
+
+        foreach ([-1 => 'Önceki gün', 1 => 'Sonraki gün'] as $fark => $etiket) {
+            $komsu = date('Y-m-d', strtotime($tarih . ' ' . ($fark > 0 ? '+1' : '-1') . ' day'));
+            if ($this->hasNobetOnDate($personelId, $komsu, $haricNobetId)) {
+                $uyarilar[] = ['tip' => 'ardisik', 'mesaj' => $etiket . ' (' . date('d.m.Y', strtotime($komsu)) . ') aynı personelin nöbeti var; üst üste nöbet oluşur.'];
+            }
+        }
+
+        if ($aylikLimit > 0) {
+            $ayBas = date('Y-m-01', strtotime($tarih));
+            $ayBit = date('Y-m-t', strtotime($tarih));
+            $sql = "SELECT COUNT(*) FROM {$this->table}
+                    WHERE firma_id = :firma_id AND personel_id = :pid AND silinme_tarihi IS NULL
+                    AND (durum IS NULL OR durum NOT IN ('reddedildi', 'iptal'))
+                    AND nobet_tarihi BETWEEN :bas AND :bit" . ($haricNobetId ? " AND id != :haric" : '');
+            $params = ['firma_id' => $_SESSION['firma_id'], 'pid' => $personelId, 'bas' => $ayBas, 'bit' => $ayBit];
+            if ($haricNobetId) {
+                $params['haric'] = $haricNobetId;
+            }
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+            $sayi = (int) $stmt->fetchColumn();
+            if ($sayi >= $aylikLimit) {
+                $uyarilar[] = ['tip' => 'limit', 'mesaj' => "Personelin bu ayki nöbet sayısı ({$sayi}) aylık limite ({$aylikLimit}) ulaştı."];
+            }
+        }
+
+        return $uyarilar;
+    }
+
+    // =====================================================
+    // PLANLAMA ARAÇ SETİ: DAĞITIM VERİSİ VE RAPORLAR
+    // =====================================================
+
+    public function getDagitimGecmisSayilari(string $baslangic, string $bitis): array
+    {
+        $sql = "SELECT personel_id,
+                       COUNT(*) AS toplam,
+                       SUM(CASE WHEN nobet_tipi IN ('hafta_sonu', 'resmi_tatil') OR DAYOFWEEK(nobet_tarihi) = 1 THEN 1 ELSE 0 END) AS ozel_gun,
+                       MAX(nobet_tarihi) AS son_nobet
+                FROM {$this->table}
+                WHERE firma_id = :firma_id AND silinme_tarihi IS NULL
+                AND (durum IS NULL OR durum NOT IN ('reddedildi', 'iptal'))
+                AND nobet_tarihi BETWEEN :bas AND :bit
+                GROUP BY personel_id";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['firma_id' => $_SESSION['firma_id'], 'bas' => $baslangic, 'bit' => $bitis]);
+
+        $harita = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $row) {
+            $harita[(int) $row->personel_id] = [
+                'toplam' => (int) $row->toplam,
+                'ozel_gun' => (int) $row->ozel_gun,
+                'son_nobet' => $row->son_nobet,
+            ];
+        }
+        return $harita;
+    }
+
+    public function getAralikNobetleri(string $baslangic, string $bitis): array
+    {
+        $sql = "SELECT n.id, n.personel_id, n.nobet_tarihi, n.nobet_tipi, n.baslangic_saati, n.bitis_saati, n.aciklama,
+                       n.yonetici_onayi, n.durum, p.adi_soyadi, p.departman
+                FROM {$this->table} n
+                LEFT JOIN personel p ON p.id = n.personel_id
+                WHERE n.firma_id = :firma_id AND n.silinme_tarihi IS NULL
+                AND (n.durum IS NULL OR n.durum NOT IN ('reddedildi', 'iptal', 'talep_edildi'))
+                AND n.nobet_tarihi BETWEEN :bas AND :bit
+                ORDER BY n.nobet_tarihi ASC, p.adi_soyadi ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['firma_id' => $_SESSION['firma_id'], 'bas' => $baslangic, 'bit' => $bitis]);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    public function getBordroOzeti(string $baslangic, string $bitis): array
+    {
+        $sql = "SELECT p.id AS personel_id, p.adi_soyadi, p.departman,
+                       COUNT(n.id) AS toplam,
+                       SUM(CASE WHEN n.nobet_tipi = 'standart' THEN 1 ELSE 0 END) AS standart,
+                       SUM(CASE WHEN n.nobet_tipi = 'hafta_sonu' THEN 1 ELSE 0 END) AS hafta_sonu,
+                       SUM(CASE WHEN n.nobet_tipi = 'resmi_tatil' THEN 1 ELSE 0 END) AS resmi_tatil,
+                       SUM(CASE WHEN n.nobet_tipi = 'ozel' THEN 1 ELSE 0 END) AS ozel
+                FROM {$this->table} n
+                INNER JOIN personel p ON p.id = n.personel_id
+                WHERE n.firma_id = :firma_id AND n.silinme_tarihi IS NULL AND n.yonetici_onayi = 1
+                AND (n.durum IS NULL OR n.durum NOT IN ('reddedildi', 'iptal', 'talep_edildi'))
+                AND n.nobet_tarihi BETWEEN :bas AND :bit
+                GROUP BY p.id, p.adi_soyadi, p.departman
+                ORDER BY p.adi_soyadi ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['firma_id' => $_SESSION['firma_id'], 'bas' => $baslangic, 'bit' => $bitis]);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    public function getAdaletRaporu(int $yil): array
+    {
+        $sql = "SELECT p.id AS personel_id, p.adi_soyadi, p.departman, MONTH(n.nobet_tarihi) AS ay,
+                       COUNT(n.id) AS sayi,
+                       SUM(CASE WHEN n.nobet_tipi IN ('hafta_sonu', 'resmi_tatil') THEN 1 ELSE 0 END) AS ozel_gun
+                FROM {$this->table} n
+                INNER JOIN personel p ON p.id = n.personel_id
+                WHERE n.firma_id = :firma_id AND n.silinme_tarihi IS NULL
+                AND (n.durum IS NULL OR n.durum NOT IN ('reddedildi', 'iptal', 'talep_edildi'))
+                AND YEAR(n.nobet_tarihi) = :yil
+                GROUP BY p.id, p.adi_soyadi, p.departman, MONTH(n.nobet_tarihi)
+                ORDER BY p.adi_soyadi ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['firma_id' => $_SESSION['firma_id'], 'yil' => $yil]);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    public function getYarinNobetleri(string $tarih): array
+    {
+        $sql = "SELECT n.id, n.personel_id, n.nobet_tarihi, n.baslangic_saati, p.adi_soyadi
+                FROM {$this->table} n
+                INNER JOIN personel p ON p.id = n.personel_id
+                WHERE n.firma_id = :firma_id AND n.silinme_tarihi IS NULL AND n.yonetici_onayi = 1
+                AND (n.durum IS NULL OR n.durum NOT IN ('reddedildi', 'iptal', 'talep_edildi'))
+                AND n.nobet_tarihi = :tarih";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['firma_id' => $_SESSION['firma_id'], 'tarih' => $tarih]);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+}

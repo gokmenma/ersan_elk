@@ -1,260 +1,271 @@
 <?php
-/**
- * Nöbet Talepleri & Mazeretler Sayfası
- * Değişim talepleri ve mazeret bildirimlerini yönetir
- */
-
 use App\Model\PersonelModel;
 use App\Helper\Form;
 
 $Personel = new PersonelModel();
 $personeller = $Personel->all(true, 'nobet');
-?>
-<link rel="stylesheet" href="views/nobet/assets/style.css?v=<?php echo filemtime('views/nobet/assets/style.css'); ?>">
 
-<!-- Sayfa Başlığı -->
-<?php
 $maintitle = "Nöbet Yönetimi";
 $title = 'Talepler & Mazeretler';
+
+$aylar = [1 => 'Ocak', 2 => 'Şubat', 3 => 'Mart', 4 => 'Nisan', 5 => 'Mayıs', 6 => 'Haziran', 7 => 'Temmuz', 8 => 'Ağustos', 9 => 'Eylül', 10 => 'Ekim', 11 => 'Kasım', 12 => 'Aralık'];
+$yillar = [];
+for ($y = (int) date('Y'); $y >= 2024; $y--) {
+    $yillar[$y] = $y;
+}
 ?>
+<script>try { document.documentElement.classList.toggle('talep-summary-hidden', localStorage.getItem('talep_summary_cards_state') === 'hidden'); } catch (e) {}</script>
+<style>
+#summaryCardsContainer { overflow: hidden; max-height: 1100px; opacity: 1; transition: max-height .3s ease, opacity .3s ease, margin .3s ease; }
+.talep-summary-hidden #summaryCardsContainer { max-height: 0 !important; opacity: 0; margin-top: 0 !important; margin-bottom: 0 !important; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { #summaryCardsContainer { transition: none; } }
+#summaryCardsContainer .summary-kpi-card,
+#talepListCard {
+    background-color: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
+}
+html[data-theme-preset="macos-dark"] #summaryCardsContainer .summary-kpi-card,
+html[data-theme-preset="macos-dark"] #talepListCard,
+[data-bs-theme="dark"] #summaryCardsContainer .summary-kpi-card,
+[data-bs-theme="dark"] #talepListCard {
+    background-color: #2a3042 !important;
+    border-color: #32394e !important;
+}
+.status-filter-group {
+    background: #f8fafc; padding: 4px; border-radius: 50px;
+    border: 1px solid #e2e8f0; display: inline-flex; align-items: center; gap: 2px;
+}
+[data-bs-theme="dark"] .status-filter-group,
+html[data-theme-preset="macos-dark"] .status-filter-group { background: #2a3042; border-color: #32394e; }
+.status-filter-group .nav-link {
+    border: none !important; border-radius: 100px !important;
+    font-size: 0.75rem; font-weight: 600; padding: 6px 16px; color: #64748b;
+    transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 6px; line-height: normal;
+}
+[data-bs-theme="dark"] .status-filter-group .nav-link,
+html[data-theme-preset="macos-dark"] .status-filter-group .nav-link { color: #a6b0cf; }
+.status-filter-group .nav-link:hover { background: rgba(0, 0, 0, 0.04); color: #1e293b; }
+[data-bs-theme="dark"] .status-filter-group .nav-link:hover,
+html[data-theme-preset="macos-dark"] .status-filter-group .nav-link:hover { background: rgba(255, 255, 255, 0.05); color: #fff; }
+.status-filter-group .nav-link.active {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+    color: white !important;
+}
+.status-filter-group .nav-link.active[href="#degisim-talepler"] { background: #f59e0b !important; }
+.status-filter-group .nav-link.active[href="#mazeret-bildirimleri"] { background: #ef4444 !important; }
+.status-filter-group .nav-link.active[href="#nobet-talepleri"] { background: #3b82f6 !important; }
+.status-filter-group .nav-link i { font-size: 1rem; }
+.status-filter-group .nav-link .badge { font-size: 0.7rem; padding: 0.25em 0.6em; }
+.status-filter-group .nav-link.active .badge { background: #ffffff !important; color: #1e293b !important; }
+.talep-period-filter { width: 140px; }
+.talep-period-filter.yil { width: 125px; }
+#talepListCard table.dataTable tbody tr { cursor: default; }
+.dataTables_wrapper .dataTables_paginate { display: flex !important; justify-content: flex-end !important; align-items: center; }
+.dataTables_wrapper .dataTables_info { padding-top: 0 !important; }
+</style>
+
 <?php include 'layouts/breadcrumb.php'; ?>
 
-<!-- İstatistik Kartları -->
-<div class="row mb-4 g-3">
-    <div class="col-xl-3 col-md-6">
-        <div class="stat-card"
-            style="--card-color: #f59e0b; --card-rgb: 245, 158, 11; border-bottom: 3px solid var(--card-color) !important;">
-            <div class="card-body">
-                <div class="icon-label-container">
-                    <div class="icon-box">
-                        <i class='bx bx-transfer-alt fs-4' style="color: var(--card-color);"></i>
-                    </div>
-                    <div class="stat-trend neutral">
-                        <i class='bx bx-hourglass'></i> Beklemede
-                    </div>
-                </div>
-                <p class="stat-label-main">BEKLEYEN DEĞİŞİM</p>
-                <h4 class="stat-value" id="stat-degisim-bekleyen">0</h4>
-                <p class="stat-sub">Onay bekleyen değişim talepleri</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-xl-3 col-md-6">
-        <div class="stat-card"
-            style="--card-color: #ef4444; --card-rgb: 239, 68, 68; border-bottom: 3px solid var(--card-color) !important;">
-            <div class="card-body">
-                <div class="icon-label-container">
-                    <div class="icon-box">
-                        <i class='bx bx-error-circle fs-4' style="color: var(--card-color);"></i>
-                    </div>
-                    <div class="stat-trend down">
-                        <i class='bx bx-time-five'></i> Acil
-                    </div>
-                </div>
-                <p class="stat-label-main">MAZERET BİLDİRİMİ</p>
-                <h4 class="stat-value" id="stat-mazeret-bekleyen">0</h4>
-                <p class="stat-sub">İşlem bekleyen mazeretler</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-xl-3 col-md-6">
-        <div class="stat-card"
-            style="--card-color: #10b981; --card-rgb: 16, 185, 129; border-bottom: 3px solid var(--card-color) !important;">
-            <div class="card-body">
-                <div class="icon-label-container">
-                    <div class="icon-box">
-                        <i class='bx bx-check-circle fs-4' style="color: var(--card-color);"></i>
-                    </div>
-                    <div class="stat-trend up">
-                        <i class='bx bx-trending-up'></i> +15%
-                    </div>
-                </div>
-                <p class="stat-label-main">BU AY ONAYLANAN</p>
-                <h4 class="stat-value" id="stat-onaylanan">0</h4>
-                <p class="stat-sub">Başarıyla tamamlanan</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-xl-3 col-md-6">
-        <div class="stat-card"
-            style="--card-color: #64748b; --card-rgb: 100, 116, 139; border-bottom: 3px solid var(--card-color) !important;">
-            <div class="card-body">
-                <div class="icon-label-container">
-                    <div class="icon-box">
-                        <i class='bx bx-x-circle fs-4' style="color: var(--card-color);"></i>
-                    </div>
-                    <div class="stat-trend neutral">
-                        <i class='bx bx-minus'></i> Stabil
-                    </div>
-                </div>
-                <p class="stat-label-main">BU AY REDDEDİLEN</p>
-                <h4 class="stat-value" id="stat-reddedilen">0</h4>
-                <p class="stat-sub">Reddedilen talepler</p>
-            </div>
-        </div>
-    </div>
-</div>
+<div class="container-fluid">
 
-<!-- Ana İçerik -->
-<div class="row">
-    <div class="col-12">
-        <div class="card border-0 shadow-sm" style="border-radius: 16px; overflow: hidden;">
-            <div class="card-header bg-white border-0 py-4 px-4 d-flex justify-content-between align-items-center">
-                <h5 class="mb-0 text-dark fw-extrabold" style="letter-spacing: -0.02em;">
-                    <i class="bx bx-transfer-alt me-2 text-primary"></i>Talepler & Mazeretler
-                </h5>
-                <div class="d-flex align-items-center gap-3">
-                    <div style="width: 150px;">
-                        <?php
-                        $aylar = [1 => 'Ocak', 2 => 'Şubat', 3 => 'Mart', 4 => 'Nisan', 5 => 'Mayıs', 6 => 'Haziran', 7 => 'Temmuz', 8 => 'Ağustos', 9 => 'Eylül', 10 => 'Ekim', 11 => 'Kasım', 12 => 'Aralık'];
-                        echo Form::FormSelect2('filter-ay', $aylar, date('n'), '', 'calendar');
-                        ?>
+    <div class="row align-items-center mb-3">
+        <div class="col-md-6 col-12 d-flex align-items-center gap-3">
+            <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 44px; height: 44px;">
+                <i class="bx bx-transfer-alt fs-4 text-primary"></i>
+            </div>
+            <div>
+                <h4 class="mb-0 fw-bold text-dark font-size-16">Talepler &amp; Mazeretler</h4>
+                <p class="text-muted mb-0 font-size-12">Nöbet değişim talepleri, mazeret bildirimleri ve personel nöbet isteklerinin yönetimi</p>
+            </div>
+        </div>
+
+        <div class="personel-action-toolbar col-md-6 col-12 d-flex align-items-center justify-content-md-end gap-2 mt-2 mt-md-0">
+            <div class="talep-period-filter">
+                <?php echo Form::FormSelect2('filter-ay', $aylar, (int) date('n'), 'Ay', 'calendar'); ?>
+            </div>
+            <div class="talep-period-filter yil">
+                <?php echo Form::FormSelect2('filter-yil', $yillar, (int) date('Y'), 'Yıl', 'calendar'); ?>
+            </div>
+            <button type="button" class="btn btn-outline-secondary bg-white top-icon-btn shadow-sm" id="btnToggleSummaryCards" title="Özet Kartları Göster/Gizle" aria-label="Özet Kartları Göster/Gizle" aria-expanded="true">
+                <i class="bx bx-chevron-up"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3 summary-cards-group" id="summaryCardsContainer">
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">BEKLEYEN DEĞİŞİM</span>
+                        <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                            <i class="bx bx-transfer-alt"></i>
+                        </div>
                     </div>
-                    <div style="width: 110px;">
-                        <?php
-                        $yillar = [];
-                        for ($y = date('Y'); $y >= 2024; $y--) {
-                            $yillar[$y] = $y;
-                        }
-                        echo Form::FormSelect2('filter-yil', $yillar, date('Y'), '', 'calendar');
-                        ?>
-                    </div>
-                    <div class="btn-group gap-2">
-                        <button class="btn btn-primary btn-sm px-3 rounded-pill" onclick="loadTaleplerVeMazeretler()">
-                            <i class="bx bx-refresh"></i>
+                    <h3 class="summary-kpi-value my-1 text-warning" id="stat-degisim-bekleyen">0</h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext">Onay bekleyen değişim talepleri</span>
+                        <button type="button" class="btn btn-sm btn-subtle-warning rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" data-tab="#degisim-talepler">
+                            <i class="bx bx-list-ul"></i> Göster
                         </button>
                     </div>
                 </div>
             </div>
-            <div class="card-body px-4 pt-0">
-                <!-- Tabs and Filters -->
-                <div class="d-flex justify-content-between align-items-center mb-4 border-bottom">
-                    <ul class="nav nav-tabs nav-tabs-custom mb-0" id="talepTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="degisim-tab" data-bs-toggle="tab"
-                                data-bs-target="#degisim-talepler" type="button" role="tab">
-                                <span>Değişim Talepleri</span>
-                                <span class="badge bg-warning-subtle text-warning" id="degisim-badge">0</span>
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="mazeret-tab" data-bs-toggle="tab"
-                                data-bs-target="#mazeret-bildirimleri" type="button" role="tab">
-                                <span>Mazeretler</span>
-                                <span class="badge bg-danger-subtle text-danger" id="mazeret-badge">0</span>
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="nobet-talep-tab" data-bs-toggle="tab"
-                                data-bs-target="#nobet-talepleri" type="button" role="tab">
-                                <span>Talep ve İstekler</span>
-                                <span class="badge bg-info-subtle text-info" id="nobet-talep-badge">0</span>
-                            </button>
-                        </li>
-                    </ul>
+        </div>
 
-                    <div class="d-flex align-items-center gap-2">
-                        <button class="btn btn-outline-info btn-sm rounded-pill px-3" id="btn-toggle-gecmis"
-                            onclick="toggleGecmis()">
-                            <i class="bx bx-history"></i> Geçmiş İşlemler
-                        </button>
-                        <button class="btn btn-success btn-sm rounded-pill px-3" onclick="exportToExcel()">
-                            <i class="bx bx-spreadsheet"></i> Excel
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">MAZERET BİLDİRİMİ</span>
+                        <div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
+                            <i class="bx bx-error-circle"></i>
+                        </div>
+                    </div>
+                    <h3 class="summary-kpi-value my-1 text-danger" id="stat-mazeret-bekleyen">0</h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext">İşlem bekleyen mazeretler</span>
+                        <button type="button" class="btn btn-sm btn-subtle-danger rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-tab="#mazeret-bildirimleri">
+                            <i class="bx bx-list-ul"></i> Göster
                         </button>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <div class="tab-content" id="talepTabContent">
-                    <!-- Değişim Talepleri Tab -->
-                    <div class="tab-pane fade show active" id="degisim-talepler" role="tabpanel">
-                        <div class="table-responsive">
-                            <table class="table table-premium align-middle" id="degisim-table" style="width: 100%;">
-                                <thead>
-                                    <tr>
-                                        <th>Talep Eden</th>
-                                        <th>Talep Edilen</th>
-                                        <th>Nöbet Tarihi</th>
-                                        <th>Açıklama</th>
-                                        <th>Durum</th>
-                                        <th>Talep Tarihi</th>
-                                        <th class="text-center">İşlemler</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="degisim-tbody">
-                                    <tr>
-                                        <td colspan="7" class="text-center text-muted py-4">
-                                            <i class="bx bx-loader-alt bx-spin bx-lg"></i>
-                                            <p class="mb-0 mt-2">Yükleniyor...</p>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">SEÇİLİ AY ONAYLANAN</span>
+                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                            <i class="bx bx-check-circle"></i>
                         </div>
                     </div>
+                    <h3 class="summary-kpi-value my-1 text-success" id="stat-onaylanan">0</h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext">Başarıyla tamamlanan talepler</span>
+                        <button type="button" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 d-flex align-items-center gap-1 summary-pill-btn" id="btnQuickGecmis">
+                            <i class="bx bx-history"></i> Geçmiş
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-                    <!-- Mazeret Bildirimleri Tab -->
-                    <div class="tab-pane fade" id="mazeret-bildirimleri" role="tabpanel">
-                        <div class="table-responsive">
-                            <table class="table table-premium align-middle" id="mazeret-table" style="width: 100%;">
-                                <thead>
-                                    <tr>
-                                        <th>Personel</th>
-                                        <th>Nöbet Tarihi</th>
-                                        <th>Nöbet Saati</th>
-                                        <th>Mazeret Açıklaması</th>
-                                        <th>Bildirim Tarihi</th>
-                                        <th class="text-center">İşlemler</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="mazeret-tbody">
-                                    <tr>
-                                        <td colspan="6" class="text-center text-muted py-4">
-                                            <i class="bx bx-loader-alt bx-spin bx-lg"></i>
-                                            <p class="mb-0 mt-2">Yükleniyor...</p>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">SEÇİLİ AY REDDEDİLEN</span>
+                        <div class="summary-kpi-icon bg-secondary-subtle text-secondary border border-secondary-subtle">
+                            <i class="bx bx-x-circle"></i>
                         </div>
                     </div>
-
-                    <!-- Nöbet Talepleri Tab -->
-                    <div class="tab-pane fade" id="nobet-talepleri" role="tabpanel">
-                        <div class="table-responsive">
-                            <table class="table table-premium align-middle" id="nobet-talep-table" style="width: 100%;">
-                                <thead>
-                                    <tr>
-                                        <th>Personel</th>
-                                        <th>Talep Edilen Tarih</th>
-                                        <th>Açıklama</th>
-                                        <th>Durum</th>
-                                        <th>Talep Tarihi</th>
-                                        <th class="text-center">İşlemler</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="nobet-talep-tbody">
-                                    <tr>
-                                        <td colspan="6" class="text-center text-muted py-4">
-                                            <i class="bx bx-loader-alt bx-spin bx-lg"></i>
-                                            <p class="mb-0 mt-2">Yükleniyor...</p>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                    <h3 class="summary-kpi-value my-1 text-secondary" id="stat-reddedilen">0</h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext">Reddedilen talepler</span>
+                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Toplam</span>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
+    <div class="card summary-kpi-card mb-3" id="talepListCard">
+        <div class="card-header bg-transparent border-0 px-3 py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="status-filter-group nav nav-pills" role="tablist" id="talepTabs">
+                <a class="nav-link active" data-bs-toggle="tab" href="#degisim-talepler" role="tab" id="degisim-tab">
+                    <i class="bx bx-transfer-alt"></i>
+                    <span>Değişim Talepleri</span>
+                    <span class="badge bg-warning ms-1" id="degisim-badge">0</span>
+                </a>
+                <a class="nav-link" data-bs-toggle="tab" href="#mazeret-bildirimleri" role="tab" id="mazeret-tab">
+                    <i class="bx bx-error-circle"></i>
+                    <span>Mazeretler</span>
+                    <span class="badge bg-danger ms-1" id="mazeret-badge">0</span>
+                </a>
+                <a class="nav-link" data-bs-toggle="tab" href="#nobet-talepleri" role="tab" id="nobet-talep-tab">
+                    <i class="bx bx-calendar-plus"></i>
+                    <span>Talep ve İstekler</span>
+                    <span class="badge bg-info ms-1" id="nobet-talep-badge">0</span>
+                </a>
+            </div>
+
+            <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+                <button type="button" class="btn btn-sm btn-subtle-info px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btn-toggle-gecmis" title="Geçmiş işlemleri göster">
+                    <i class="bx bx-history font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Geçmiş İşlemler</span>
+                </button>
+                <button type="button" class="btn btn-sm btn-subtle-success px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnExportExcel" title="Excel'e Aktar">
+                    <i class="bx bx-file font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Excel</span>
+                </button>
+                <button type="button" class="btn btn-sm btn-subtle-secondary px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderPrint" title="Tabloyu Yazdır">
+                    <i class="bx bx-printer font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Yazdır</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="card-body p-3 pt-0">
+            <div class="tab-content" id="talepTabContent">
+                <div class="tab-pane fade show active" id="degisim-talepler" role="tabpanel">
+                    <div class="table-responsive" style="overflow-x: auto !important;">
+                        <table class="table table-bordered table-hover nowrap align-middle w-100 mb-0" id="degisim-table">
+                            <thead>
+                                <tr>
+                                    <th data-filter="string">TALEP EDEN</th>
+                                    <th data-filter="string">TALEP EDİLEN</th>
+                                    <th data-filter="date" class="text-center">NÖBET TARİHİ</th>
+                                    <th data-filter="string">AÇIKLAMA</th>
+                                    <th data-filter="select" class="text-center">DURUM</th>
+                                    <th data-filter="date" class="text-center">TALEP TARİHİ</th>
+                                    <th data-filter="none" class="text-center" style="width: 120px;">İŞLEMLER</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="mazeret-bildirimleri" role="tabpanel">
+                    <div class="table-responsive" style="overflow-x: auto !important;">
+                        <table class="table table-bordered table-hover nowrap align-middle w-100 mb-0" id="mazeret-table">
+                            <thead>
+                                <tr>
+                                    <th data-filter="string">PERSONEL</th>
+                                    <th data-filter="date" class="text-center">NÖBET TARİHİ</th>
+                                    <th data-filter="string" class="text-center">NÖBET SAATİ</th>
+                                    <th data-filter="string">MAZERET AÇIKLAMASI</th>
+                                    <th data-filter="date" class="text-center">BİLDİRİM TARİHİ</th>
+                                    <th data-filter="none" class="text-center" style="width: 130px;">İŞLEMLER</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="nobet-talepleri" role="tabpanel">
+                    <div class="table-responsive" style="overflow-x: auto !important;">
+                        <table class="table table-bordered table-hover nowrap align-middle w-100 mb-0" id="nobet-talep-table">
+                            <thead>
+                                <tr>
+                                    <th data-filter="string">PERSONEL</th>
+                                    <th data-filter="date" class="text-center">TALEP EDİLEN TARİH</th>
+                                    <th data-filter="string">AÇIKLAMA</th>
+                                    <th data-filter="select" class="text-center">DURUM</th>
+                                    <th data-filter="date" class="text-center">TALEP TARİHİ</th>
+                                    <th data-filter="none" class="text-center" style="width: 120px;">İŞLEMLER</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <!-- Segmented Control CSS -->
@@ -361,390 +372,306 @@ $title = 'Talepler & Mazeretler';
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const devirModal = new bootstrap.Modal(document.getElementById('devirModal'));
+        const API_URL = 'views/nobet/api.php';
         let showHistory = false;
+        const tables = {};
 
-        $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
-            if ($.fn.dataTable) {
-                $($.fn.dataTable.tables({ visible: true, api: true })).DataTable().columns.adjust().responsive.recalc();
-            }
-        });
+        const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-        window.loadTaleplerVeMazeretler = function () {
-            const ay = document.getElementById('filter-ay').value;
-            const yil = document.getElementById('filter-yil').value;
-            loadDegisimTalepleri(ay, yil);
-            loadMazeretBildirimleri(ay, yil);
-            loadPersonelNobetTalepleri(ay, yil);
-            loadTalepStats(ay, yil);
+        const formatDateShort = (dateStr) => {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return '-';
+            return date.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' });
         };
 
-        window.toggleGecmis = function () {
-            showHistory = !showHistory;
+        const apiPost = (params) => fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams(params)
+        }).then(r => r.json());
+
+        const showToast = (type, message) => {
+            Toastify({
+                text: message, duration: 3000, gravity: 'top', position: 'center',
+                style: { background: type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#000000', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' },
+                stopOnFocus: true
+            }).showToast();
+        };
+
+        const avatar = (name, tone) => `<div class="d-flex align-items-center gap-2">
+            <span class="avatar-title bg-${tone}-subtle text-${tone} rounded-circle d-inline-flex align-items-center justify-content-center fw-bold" style="width:28px;height:28px;font-size:12px;">${esc((name ? name[0] : '?').toUpperCase())}</span>
+            <strong class="font-size-13">${esc(name || '-')}</strong></div>`;
+
+        const dateBadge = (d, tone) => `<span class="badge bg-${tone}-subtle text-${tone} border border-${tone}-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">${formatDateShort(d)}</span>`;
+
+        const statusBadge = (tone, icon, text) => `<span class="badge bg-${tone}-subtle text-${tone} border border-${tone}-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold"><i class="bx ${icon} me-1"></i>${text}</span>`;
+
+        const degisimDurum = (durum) => ({
+            'beklemede': statusBadge('secondary', 'bx-time-five', 'Personel Onayı Bekleniyor'),
+            'personel_onayladi': statusBadge('warning', 'bx-hourglass', 'Yönetici Onayı Bekleniyor'),
+            'onaylandi': statusBadge('success', 'bx-check-circle', 'Onaylandı'),
+            'reddedildi': statusBadge('danger', 'bx-x-circle', 'Reddedildi'),
+            'iptal': statusBadge('secondary', 'bx-block', 'İptal')
+        }[durum] || statusBadge('secondary', 'bx-info-circle', esc(durum)));
+
+        const talepDurum = (durum) => ({
+            'talep_edildi': statusBadge('warning', 'bx-time-five', 'Beklemede'),
+            'beklemede': statusBadge('warning', 'bx-time-five', 'Beklemede'),
+            'onaylandi': statusBadge('success', 'bx-check-circle', 'Onaylandı'),
+            'cozuldu': statusBadge('success', 'bx-check-circle', 'Onaylandı'),
+            'reddedildi': statusBadge('danger', 'bx-x-circle', 'Reddedildi'),
+            'iptal': statusBadge('secondary', 'bx-block', 'İptal')
+        }[durum] || statusBadge('secondary', 'bx-info-circle', esc(durum)));
+
+        const actionBtn = (cls, action, id, icon, title, extra = '') =>
+            `<button type="button" class="btn btn-sm table-action-btn ${cls}" data-act="${action}" data-id="${esc(id)}" ${extra} title="${title}" aria-label="${title}"><i class="bx ${icon}"></i></button>`;
+
+        const muted = (v, fallback = '-') => v ? esc(v) : `<span class="text-muted">${fallback}</span>`;
+
+        const columnDefs = {
+            '#degisim-table': [
+                { data: 'talep_eden_adi', render: (d, t) => t === 'display' ? avatar(d, 'primary') : (d || '') },
+                { data: 'talep_edilen_adi', render: (d, t) => t === 'display' ? avatar(d, 'success') : (d || '') },
+                { data: 'nobet_tarihi', className: 'text-center', render: (d, t) => t === 'display' ? dateBadge(d, 'info') : (d || '') },
+                { data: 'aciklama', render: (d, t) => t === 'display' ? muted(d) : (d || '') },
+                { data: 'durum', className: 'text-center', render: (d, t) => t === 'display' ? degisimDurum(d) : ({ beklemede: 'Personel Onayı Bekleniyor', personel_onayladi: 'Yönetici Onayı Bekleniyor', onaylandi: 'Onaylandı', reddedildi: 'Reddedildi', iptal: 'İptal' }[d] || d || '') },
+                { data: 'talep_tarihi', className: 'text-center', render: (d, t) => t === 'display' ? formatDateShort(d) : (d || '') },
+                {
+                    data: null, orderable: false, searchable: false, className: 'text-center',
+                    render: (d, t, row) => {
+                        if (row.durum === 'personel_onayladi' && !showHistory) {
+                            return `<div class="action-btn-group d-inline-flex gap-1">${actionBtn('btn-subtle-success', 'degisim-onayla', row.id, 'bx-check', 'Onayla')}${actionBtn('btn-subtle-danger', 'degisim-reddet', row.id, 'bx-x', 'Reddet')}</div>`;
+                        }
+                        return `<span class="text-muted font-size-12">${formatDateShort(row.guncelleme_tarihi || row.talep_tarihi)}</span>`;
+                    }
+                }
+            ],
+            '#mazeret-table': [
+                { data: 'personel_adi', render: (d, t) => t === 'display' ? avatar(d, 'danger') : (d || '') },
+                { data: 'nobet_tarihi', className: 'text-center', render: (d, t) => t === 'display' ? dateBadge(d, 'warning') : (d || '') },
+                { data: null, className: 'text-center', render: (d, t, row) => `${esc(row.baslangic_saati || '18:00')} - ${esc(row.bitis_saati || '23:00')}` },
+                { data: 'mazeret_aciklama', render: (d, t) => t === 'display' ? muted(d, 'Açıklama yok') : (d || '') },
+                { data: 'mazeret_tarihi', className: 'text-center', render: (d, t) => t === 'display' ? formatDateShort(d) : (d || '') },
+                {
+                    data: null, orderable: false, searchable: false, className: 'text-center',
+                    render: (d, t, row) => {
+                        if (showHistory) {
+                            return statusBadge('success', 'bx-check', 'İşlem Yapıldı');
+                        }
+                        return `<div class="action-btn-group d-inline-flex gap-1">${actionBtn('btn-subtle-primary', 'mazeret-devret', row.id, 'bx-user-plus', 'Başka Personele Devret', `data-personel="${esc(row.personel_adi)}"`)}${actionBtn('btn-subtle-warning', 'mazeret-reddet', row.id, 'bx-x-circle', 'Mazereti Reddet')}${actionBtn('btn-subtle-danger', 'mazeret-iptal', row.id, 'bx-trash', 'Nöbeti İptal Et')}</div>`;
+                    }
+                }
+            ],
+            '#nobet-talep-table': [
+                { data: 'personel_adi', render: (d, t) => t === 'display' ? avatar(d, 'info') : (d || '') },
+                { data: 'nobet_tarihi', className: 'text-center', render: (d, t) => t === 'display' ? dateBadge(d, 'primary') : (d || '') },
+                { data: 'aciklama', render: (d, t) => t === 'display' ? muted(d, 'Açıklama yok') : (d || '') },
+                { data: 'durum', className: 'text-center', render: (d, t) => t === 'display' ? talepDurum(d) : ({ talep_edildi: 'Beklemede', beklemede: 'Beklemede', onaylandi: 'Onaylandı', cozuldu: 'Onaylandı', reddedildi: 'Reddedildi', iptal: 'İptal' }[d] || d || '') },
+                { data: 'olusturma_tarihi', className: 'text-center', render: (d, t) => t === 'display' ? formatDateShort(d) : (d || '') },
+                {
+                    data: null, orderable: false, searchable: false, className: 'text-center',
+                    render: (d, t, row) => {
+                        if (row.durum === 'talep_edildi' && !showHistory) {
+                            return `<div class="action-btn-group d-inline-flex gap-1">${actionBtn('btn-subtle-success', 'talep-onayla', row.id, 'bx-check', 'Onayla')}${actionBtn('btn-subtle-danger', 'talep-reddet', row.id, 'bx-x', 'Reddet')}</div>`;
+                        }
+                        return `<span class="text-muted font-size-12">${formatDateShort(row.olusturma_tarihi)}</span>`;
+                    }
+                }
+            ]
+        };
+
+        const initTable = (selector) => {
+            tables[selector] = $(selector).DataTable(applyLengthStateSave({
+                ...getDatatableOptions(),
+                data: [],
+                columns: columnDefs[selector],
+                order: []
+            }));
+        };
+
+        Object.keys(columnDefs).forEach(initTable);
+
+        const fillTable = (selector, rows) => {
+            const dt = tables[selector];
+            dt.clear();
+            dt.rows.add(rows).draw();
+            dt.columns.adjust();
+        };
+
+        const period = () => ({
+            ay: document.getElementById('filter-ay').value,
+            yil: document.getElementById('filter-yil').value
+        });
+
+        const setCount = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        };
+
+        const loadList = (action, selector, onDone) => {
+            const p = period();
+            apiPost({ action, is_gecmis: showHistory ? '1' : '0', ay: p.ay, yil: p.yil })
+                .then(data => {
+                    const rows = (data.success && Array.isArray(data.data)) ? data.data : [];
+                    fillTable(selector, rows);
+                    if (!showHistory) onDone(rows);
+                })
+                .catch(e => {
+                    console.error('Liste yüklenemedi:', e);
+                    showToast('error', 'Liste yüklenirken bir hata oluştu');
+                });
+        };
+
+        window.loadTaleplerVeMazeretler = function () {
+            loadList('get-degisim-talepleri', '#degisim-table', rows => {
+                const n = rows.filter(r => r.durum === 'personel_onayladi' || r.durum === 'beklemede').length;
+                setCount('degisim-badge', n);
+                setCount('stat-degisim-bekleyen', n);
+            });
+            loadList('get-mazeret-bildirimleri', '#mazeret-table', rows => {
+                setCount('mazeret-badge', rows.length);
+                setCount('stat-mazeret-bekleyen', rows.length);
+            });
+            loadList('get-personel-nobet-talepleri', '#nobet-talep-table', rows => {
+                setCount('nobet-talep-badge', rows.length);
+            });
+            const p = period();
+            apiPost({ action: 'get-talep-stats', ay: p.ay, yil: p.yil }).then(data => {
+                if (data.success) {
+                    setCount('stat-onaylanan', data.data.onaylanan);
+                    setCount('stat-reddedilen', data.data.reddedilen);
+                }
+            }).catch(e => console.error('İstatistikler yüklenemedi:', e));
+        };
+
+        const syncHistoryButton = () => {
             const btn = document.getElementById('btn-toggle-gecmis');
-            if (showHistory) {
-                btn.classList.replace('btn-outline-info', 'btn-info');
-                btn.innerHTML = '<i class="bx bx-list-ul"></i> Bekleyen';
-            } else {
-                btn.classList.replace('btn-info', 'btn-outline-info');
-                btn.innerHTML = '<i class="bx bx-history"></i> Geçmiş';
-            }
+            btn.classList.toggle('btn-subtle-info', !showHistory);
+            btn.classList.toggle('btn-info', showHistory);
+            btn.classList.toggle('text-white', showHistory);
+            btn.innerHTML = showHistory
+                ? '<i class="bx bx-list-ul font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Bekleyenler</span>'
+                : '<i class="bx bx-history font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Geçmiş İşlemler</span>';
+            btn.title = showHistory ? 'Bekleyen işlemleri göster' : 'Geçmiş işlemleri göster';
+        };
+
+        const toggleGecmis = () => {
+            showHistory = !showHistory;
+            syncHistoryButton();
             window.loadTaleplerVeMazeretler();
         };
 
-        // URL hash kontrolü
-        if (window.location.hash === '#talepler') {
-            const tab = new bootstrap.Tab(document.getElementById('nobet-talep-tab'));
-            tab.show();
-        }
+        $('#btn-toggle-gecmis').on('click', toggleGecmis);
+        $('#btnQuickGecmis').on('click', function () {
+            if (!showHistory) toggleGecmis();
+        });
 
-        window.loadTaleplerVeMazeretler();
+        $('#filter-ay, #filter-yil').on('change', window.loadTaleplerVeMazeretler);
 
-        window.exportToExcel = function () {
+        $('#btnHeaderPrint').on('click', () => window.print());
+
+        $('#btnExportExcel').on('click', function () {
             const activeTab = document.querySelector('#talepTabs .nav-link.active').id;
-            const tableId = activeTab === 'degisim-tab' ? '#degisim-table' : (activeTab === 'mazeret-tab' ? '#mazeret-table' : '#nobet-talep-table');
-            if ($.fn.dataTable && $.fn.dataTable.isDataTable(tableId)) {
-                $(tableId).DataTable().button('.buttons-excel').trigger();
+            const selector = activeTab === 'degisim-tab' ? '#degisim-table' : (activeTab === 'mazeret-tab' ? '#mazeret-table' : '#nobet-talep-table');
+            const dt = tables[selector];
+            if (dt && dt.button('.buttons-excel').length) {
+                dt.button('.buttons-excel').trigger();
                 showToast('success', 'Veriler Excel\'e aktarılıyor...');
             } else {
                 showToast('error', 'Tablo henüz yüklenmedi veya veri bulunamadı.');
             }
+        });
+
+        const toggleBtn = $('#btnToggleSummaryCards');
+        const updateToggleState = () => {
+            const isHidden = $('html').hasClass('talep-summary-hidden');
+            toggleBtn.attr('aria-expanded', !isHidden);
+            toggleBtn.find('i').attr('class', isHidden ? 'bx bx-chevron-down' : 'bx bx-chevron-up');
+            toggleBtn.attr('title', isHidden ? 'Özet Kartları Göster' : 'Özet Kartları Gizle');
+            toggleBtn.attr('aria-label', isHidden ? 'Özet Kartları Göster' : 'Özet Kartları Gizle');
         };
+        updateToggleState();
+        toggleBtn.on('click', function () {
+            const willHide = !$('html').hasClass('talep-summary-hidden');
+            $('html').toggleClass('talep-summary-hidden', willHide);
+            try { localStorage.setItem('talep_summary_cards_state', willHide ? 'hidden' : 'visible'); } catch (e) {}
+            updateToggleState();
+        });
 
-        function loadDegisimTalepleri(ay, yil) {
-            const tbody = $('#degisim-tbody');
-            tbody.html('<tr><td colspan="7" class="text-center text-muted py-4"><i class="bx bx-loader-alt bx-spin bx-lg"></i><p class="mb-0 mt-2">Yükleniyor...</p></td></tr>');
+        $('.status-quick-filter').on('click', function () {
+            const target = $(this).data('tab');
+            if (target) {
+                bootstrap.Tab.getOrCreateInstance(document.querySelector(`#talepTabs a[href="${target}"]`)).show();
+            }
+        });
 
-            const params = new URLSearchParams({ action: 'get-degisim-talepleri', is_gecmis: showHistory ? '1' : '0' });
-            if (ay) params.append('ay', ay);
-            if (yil) params.append('yil', yil);
+        $('#talepTabs a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+            const target = $(e.target).attr('href');
+            $('.status-quick-filter').removeClass('active');
+            $(`.status-quick-filter[data-tab="${target}"]`).addClass('active');
+            $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
+        });
 
-            fetch('views/nobet/api.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: params
-            }).then(r => r.json()).then(data => {
-                if ($.fn.dataTable && $.fn.dataTable.isDataTable('#degisim-table')) {
-                    $('#degisim-table').DataTable().destroy();
-                }
-                $('#degisim-table thead tr:not(:first-child)').remove();
+        if (window.location.hash === '#talepler') {
+            bootstrap.Tab.getOrCreateInstance(document.getElementById('nobet-talep-tab')).show();
+        }
 
-                if (data.success && data.data.length > 0) {
-                    let html = '';
-                    let bekleyenCount = 0;
-                    data.data.forEach(talep => {
-                        if (talep.durum === 'personel_onayladi' || talep.durum === 'beklemede') bekleyenCount++;
-                        const islemButtons = (talep.durum === 'personel_onayladi' && !showHistory) ? `
-                            <button class="btn btn-sm btn-success me-1" onclick="onaylaDegisimTalebi('${talep.id}')" title="Onayla"><i class="bx bx-check"></i></button>
-                            <button class="btn btn-sm btn-danger" onclick="reddetDegisimTalebi('${talep.id}')" title="Reddet"><i class="bx bx-x"></i></button>
-                        ` : `<span class="text-muted small">${formatDateShort(talep.guncelleme_tarihi || talep.talep_tarihi)}</span>`;
-                        html += `<tr>
-                            <td><div class="d-flex align-items-center"><div class="avatar-sm me-2"><span class="avatar-title bg-primary-subtle text-primary rounded-circle">${(talep.talep_eden_adi ? talep.talep_eden_adi[0] : '?').toUpperCase()}</span></div><strong>${talep.talep_eden_adi || '-'}</strong></div></td>
-                            <td><div class="d-flex align-items-center"><div class="avatar-sm me-2"><span class="avatar-title bg-success-subtle text-success rounded-circle">${(talep.talep_edilen_adi ? talep.talep_edilen_adi[0] : '?').toUpperCase()}</span></div>${talep.talep_edilen_adi || '-'}</div></td>
-                            <td><span class="badge bg-info-subtle text-info">${formatDateShort(talep.nobet_tarihi)}</span></td>
-                            <td>${talep.aciklama || '<span class="text-muted">-</span>'}</td>
-                            <td>${getDegisimDurumBadge(talep.durum)}</td>
-                            <td>${formatDateShort(talep.talep_tarihi)}</td>
-                            <td class="text-center">${islemButtons}</td>
-                        </tr>`;
-                    });
-                    tbody.html(html);
-                    $('#degisim-table').DataTable(typeof getDatatableOptions === 'function' ? getDatatableOptions() : {});
-                    if (!showHistory) {
-                        document.getElementById('degisim-badge').textContent = bekleyenCount;
-                        document.getElementById('stat-degisim-bekleyen').textContent = bekleyenCount;
+        const confirmAction = (opts, action, params, successMsg) => {
+            Swal.fire(opts).then(r => {
+                if (!r.isConfirmed) return;
+                apiPost({ action, ...params(r) }).then(data => {
+                    if (data.success || data.status === 'success') {
+                        showToast('success', data.message || successMsg);
+                        window.loadTaleplerVeMazeretler();
+                    } else {
+                        showToast('error', data.message || 'Bir hata oluştu');
                     }
-                } else {
-                    tbody.empty();
-                    $('#degisim-table').DataTable(typeof getDatatableOptions === 'function' ? getDatatableOptions() : {});
-                    if (!showHistory) {
-                        document.getElementById('degisim-badge').textContent = '0';
-                        document.getElementById('stat-degisim-bekleyen').textContent = '0';
-                    }
-                }
-            }).catch(e => console.error('Değişim talepleri yüklenemedi:', e));
-        }
-
-        function loadMazeretBildirimleri(ay, yil) {
-            const tbody = $('#mazeret-tbody');
-            tbody.html('<tr><td colspan="6" class="text-center text-muted py-4"><i class="bx bx-loader-alt bx-spin bx-lg"></i><p class="mb-0 mt-2">Yükleniyor...</p></td></tr>');
-
-            const params = new URLSearchParams({ action: 'get-mazeret-bildirimleri', is_gecmis: showHistory ? '1' : '0' });
-            if (ay) params.append('ay', ay);
-            if (yil) params.append('yil', yil);
-
-            fetch('views/nobet/api.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: params
-            }).then(r => r.json()).then(data => {
-                if ($.fn.dataTable && $.fn.dataTable.isDataTable('#mazeret-table')) {
-                    $('#mazeret-table').DataTable().destroy();
-                }
-                $('#mazeret-table thead tr:not(:first-child)').remove();
-
-                if (data.success && data.data.length > 0) {
-                    let html = '';
-                    data.data.forEach(m => {
-                        const islemButtons = !showHistory ? `
-                            <button class="btn btn-sm btn-primary me-1" onclick="openDevirModal('${m.id}', '${m.personel_adi}')" title="Başka Personele Devret"><i class="bx bx-user-plus"></i> Devret</button>
-                            <button class="btn btn-sm btn-warning me-1" onclick="reddetMazeret('${m.id}')" title="Mazereti Reddet"><i class="bx bx-x-circle"></i> Reddet</button>
-                            <button class="btn btn-sm btn-outline-danger" onclick="mazeretIptalEt('${m.id}')" title="Nöbeti İptal Et"><i class="bx bx-x"></i></button>
-                        ` : `<span class="badge bg-success">İşlem Yapıldı</span>`;
-                        html += `<tr>
-                            <td><div class="d-flex align-items-center"><div class="avatar-sm me-2"><span class="avatar-title bg-danger-subtle text-danger rounded-circle">${(m.personel_adi ? m.personel_adi[0] : '?').toUpperCase()}</span></div><strong>${m.personel_adi || '-'}</strong></div></td>
-                            <td><span class="badge bg-warning-subtle text-warning">${formatDateShort(m.nobet_tarihi)}</span></td>
-                            <td>${m.baslangic_saati || '18:00'} - ${m.bitis_saati || '23:00'}</td>
-                            <td>${m.mazeret_aciklama || '<span class="text-muted">Açıklama yok</span>'}</td>
-                            <td>${formatDateShort(m.mazeret_tarihi)}</td>
-                            <td class="text-center text-nowrap">${islemButtons}</td>
-                        </tr>`;
-                    });
-                    tbody.html(html);
-                    $('#mazeret-table').DataTable(typeof getDatatableOptions === 'function' ? getDatatableOptions() : {});
-                    if (!showHistory) {
-                        document.getElementById('mazeret-badge').textContent = data.data.length;
-                        document.getElementById('stat-mazeret-bekleyen').textContent = data.data.length;
-                    }
-                } else {
-                    tbody.empty();
-                    $('#mazeret-table').DataTable(typeof getDatatableOptions === 'function' ? getDatatableOptions() : {});
-                    if (!showHistory) {
-                        document.getElementById('mazeret-badge').textContent = '0';
-                        document.getElementById('stat-mazeret-bekleyen').textContent = '0';
-                    }
-                }
-            }).catch(e => console.error('Mazeret bildirimleri yüklenemedi:', e));
-        }
-
-        function loadPersonelNobetTalepleri(ay, yil) {
-            const tbody = $('#nobet-talep-tbody');
-            tbody.html('<tr><td colspan="6" class="text-center text-muted py-4"><i class="bx bx-loader-alt bx-spin bx-lg"></i><p class="mb-0 mt-2">Yükleniyor...</p></td></tr>');
-
-            const params = new URLSearchParams({ action: 'get-personel-nobet-talepleri', is_gecmis: showHistory ? '1' : '0' });
-            if (ay) params.append('ay', ay);
-            if (yil) params.append('yil', yil);
-
-            fetch('views/nobet/api.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: params
-            }).then(r => r.json()).then(data => {
-                if ($.fn.dataTable && $.fn.dataTable.isDataTable('#nobet-talep-table')) {
-                    $('#nobet-talep-table').DataTable().destroy();
-                }
-                $('#nobet-talep-table thead tr:not(:first-child)').remove();
-
-                if (data.success && data.data.length > 0) {
-                    let html = '';
-                    data.data.forEach(t => {
-                        const islemButtons = (t.durum === 'talep_edildi' && !showHistory) ? `
-                            <button class="btn btn-sm btn-success me-1" onclick="onaylaPersonelNobetTalebi('${t.id}')" title="Onayla"><i class="bx bx-check"></i></button>
-                            <button class="btn btn-sm btn-danger" onclick="reddetPersonelNobetTalebi('${t.id}')" title="Reddet"><i class="bx bx-x"></i></button>
-                        ` : `<span class="badge bg-light text-dark">${formatDateShort(t.olusturma_tarihi)}</span>`;
-                        html += `<tr>
-                            <td><div class="d-flex align-items-center"><div class="avatar-sm me-2"><span class="avatar-title bg-info-subtle text-info rounded-circle">${(t.personel_adi ? t.personel_adi[0] : '?').toUpperCase()}</span></div><strong>${t.personel_adi || '-'}</strong></div></td>
-                            <td><span class="badge bg-primary-subtle text-primary">${formatDateShort(t.nobet_tarihi)}</span></td>
-                            <td>${t.aciklama || '<span class="text-muted">Açıklama yok</span>'}</td>
-                            <td>${getTalepDurumBadge(t.durum)}</td>
-                            <td>${formatDateShort(t.olusturma_tarihi)}</td>
-                            <td class="text-center text-nowrap">${islemButtons}</td>
-                        </tr>`;
-                    });
-                    tbody.html(html);
-                    $('#nobet-talep-table').DataTable(typeof getDatatableOptions === 'function' ? getDatatableOptions() : {});
-                    if (!showHistory) {
-                        document.getElementById('nobet-talep-badge').textContent = data.data.length;
-                    }
-                } else {
-                    tbody.empty();
-                    $('#nobet-talep-table').DataTable(typeof getDatatableOptions === 'function' ? getDatatableOptions() : {});
-                    if (!showHistory) {
-                        document.getElementById('nobet-talep-badge').textContent = '0';
-                    }
-                }
-            }).catch(e => console.error('Nöbet talepleri yüklenemedi:', e));
-        }
-
-        function loadTalepStats(ay, yil) {
-            const params = new URLSearchParams({ action: 'get-talep-stats' });
-            if (ay) params.append('ay', ay);
-            if (yil) params.append('yil', yil);
-            fetch('views/nobet/api.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: params
-            }).then(r => r.json()).then(data => {
-                if (data.success) {
-                    document.getElementById('stat-onaylanan').textContent = data.data.onaylanan;
-                    document.getElementById('stat-reddedilen').textContent = data.data.reddedilen;
-                }
-            }).catch(e => console.error('İstatistikler yüklenemedi:', e));
-        }
-
-        function getDegisimDurumBadge(durum) {
-            const badges = {
-                'beklemede': '<span class="badge-premium badge-premium-secondary"><i class="bx bx-time-five"></i> Personel Onayı Bekleniyor</span>',
-                'personel_onayladi': '<span class="badge-premium badge-premium-warning"><i class="bx bx-hourglass"></i> Yönetici Onayı Bekleniyor</span>',
-                'onaylandi': '<span class="badge-premium badge-premium-success"><i class="bx bx-check-circle"></i> Onaylandı</span>',
-                'reddedildi': '<span class="badge-premium badge-premium-danger"><i class="bx bx-x-circle"></i> Reddedildi</span>',
-                'iptal': '<span class="badge-premium badge-premium-secondary">İptal</span>'
-            };
-            return badges[durum] || `<span class="badge-premium badge-premium-secondary">${durum}</span>`;
-        }
-
-        function getTalepDurumBadge(durum) {
-            const badges = {
-                'talep_edildi': '<span class="badge-premium badge-premium-warning"><i class="bx bx-time-five"></i> Beklemede</span>',
-                'onaylandi': '<span class="badge-premium badge-premium-success"><i class="bx bx-check-circle"></i> Onaylandı</span>',
-                'beklemede': '<span class="badge-premium badge-premium-warning"><i class="bx bx-time-five"></i> Beklemede</span>',
-                'cozuldu': '<span class="badge-premium badge-premium-success"><i class="bx bx-check-circle"></i> Onaylandı</span>',
-                'reddedildi': '<span class="badge-premium badge-premium-danger"><i class="bx bx-x-circle"></i> Reddedildi</span>',
-                'iptal': '<span class="badge-premium badge-premium-secondary">İptal</span>'
-            };
-            return badges[durum] || `<span class="badge-premium badge-premium-secondary">${durum}</span>`;
-        }
-
-        function formatDateShort(dateStr) {
-            if (!dateStr) return '-';
-            const date = new Date(dateStr);
-            return date.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        }
-
-        window.onaylaDegisimTalebi = function (id) {
-            Swal.fire({
-                title: 'Değişim Talebini Onayla', text: 'Bu değişim talebini onaylamak istediğinize emin misiniz? Nöbet ataması değiştirilecektir.', icon: 'question', showCancelButton: true, confirmButtonColor: '#28a745', cancelButtonColor: '#6c757d', confirmButtonText: 'Evet, Onayla', cancelButtonText: 'İptal'
-            }).then(r => {
-                if (r.isConfirmed) {
-                    fetch('views/nobet/api.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: new URLSearchParams({ action: 'onayla-amir-talebi', talep_id: id })
-                    }).then(r => r.json()).then(data => {
-                        if (data.success || data.status === 'success') { showToast('success', data.message || 'Değişim talebi onaylandı'); window.loadTaleplerVeMazeretler(); } else { showToast('error', data.message || 'Bir hata oluştu'); }
-                    });
-                }
+                }).catch(() => showToast('error', 'İşlem sırasında bir hata oluştu'));
             });
         };
 
-        window.reddetDegisimTalebi = function (id) {
-            Swal.fire({
-                title: 'Değişim Talebini Reddet', input: 'textarea', inputLabel: 'Red Sebebi (Opsiyonel)', inputPlaceholder: 'Neden reddedildiğini açıklayabilirsiniz...', showCancelButton: true, confirmButtonColor: '#dc3545', cancelButtonColor: '#6c757d', confirmButtonText: 'Reddet', cancelButtonText: 'İptal'
-            }).then(r => {
-                if (r.isConfirmed) {
-                    fetch('views/nobet/api.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: new URLSearchParams({ action: 'reddet-talebi', talep_id: id, red_nedeni: r.value || '' })
-                    }).then(r => r.json()).then(data => {
-                        if (data.success || data.status === 'success') { showToast('success', data.message || 'Değişim talebi reddedildi'); window.loadTaleplerVeMazeretler(); } else { showToast('error', data.message || 'Bir hata oluştu'); }
-                    });
-                }
-            });
+        const confirmBase = { showCancelButton: true, confirmButtonColor: '#28a745', cancelButtonColor: '#6c757d', cancelButtonText: 'İptal' };
+        const rejectBase = { ...confirmBase, input: 'textarea', confirmButtonColor: '#dc3545', confirmButtonText: 'Reddet' };
+
+        const handlers = {
+            'degisim-onayla': (id) => confirmAction(
+                { ...confirmBase, title: 'Değişim Talebini Onayla', text: 'Bu değişim talebini onaylamak istediğinize emin misiniz? Nöbet ataması değiştirilecektir.', icon: 'question', confirmButtonText: 'Evet, Onayla' },
+                'onayla-amir-talebi', () => ({ talep_id: id }), 'Değişim talebi onaylandı'),
+            'degisim-reddet': (id) => confirmAction(
+                { ...rejectBase, title: 'Değişim Talebini Reddet', inputLabel: 'Red Sebebi (Opsiyonel)', inputPlaceholder: 'Neden reddedildiğini açıklayabilirsiniz...' },
+                'reddet-talebi', (r) => ({ talep_id: id, red_nedeni: r.value || '' }), 'Değişim talebi reddedildi'),
+            'talep-onayla': (id) => confirmAction(
+                { ...confirmBase, title: 'Nöbet Talebini Onayla', text: 'Bu talebi onayladığınızda personelin seçtiği tarihe nöbet ataması yapılacaktır. Emin misiniz?', icon: 'question', confirmButtonText: 'Evet, Onayla' },
+                'onayla-personel-nobet-talebi', () => ({ talep_id: id }), 'Talep onaylandı'),
+            'talep-reddet': (id) => confirmAction(
+                { ...rejectBase, title: 'Nöbet Talebini Reddet', inputLabel: 'Red Sebebi', inputPlaceholder: 'Neden reddedildiğini açıklayın...' },
+                'reddet-personel-nobet-talebi', (r) => ({ talep_id: id, red_nedeni: r.value || '' }), 'Talep reddedildi'),
+            'mazeret-reddet': (id) => confirmAction(
+                { ...rejectBase, title: 'Mazereti Reddet', inputLabel: 'Red Sebebi', inputPlaceholder: 'Mazeretin neden reddedildiğini açıklayın...' },
+                'reddet-mazeret', (r) => ({ nobet_id: id, red_nedeni: r.value || '' }), 'Mazeret reddedildi'),
+            'mazeret-iptal': (id) => confirmAction(
+                { ...confirmBase, title: 'Nöbeti İptal Et', text: 'Bu nöbeti tamamen iptal etmek istediğinize emin misiniz?', icon: 'warning', confirmButtonColor: '#dc3545', confirmButtonText: 'Evet, İptal Et', cancelButtonText: 'Vazgeç' },
+                'delete-nobet', () => ({ nobet_id: id }), 'Nöbet iptal edildi'),
+            'mazeret-devret': (id, btn) => {
+                document.getElementById('devir-nobet-id').value = id;
+                document.getElementById('devir-mevcut-personel').value = btn.dataset.personel || '';
+                document.getElementById('devir-yeni-personel').value = '';
+                devirModal.show();
+            }
         };
 
-        window.onaylaPersonelNobetTalebi = function (id) {
-            Swal.fire({
-                title: 'Nöbet Talebini Onayla', text: 'Bu talebi onayladığınızda personelin seçtiği tarihe nöbet ataması yapılacaktır. Emin misiniz?', icon: 'question', showCancelButton: true, confirmButtonColor: '#28a745', cancelButtonColor: '#6c757d', confirmButtonText: 'Evet, Onayla', cancelButtonText: 'İptal'
-            }).then(r => {
-                if (r.isConfirmed) {
-                    fetch('views/nobet/api.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: new URLSearchParams({ action: 'onayla-personel-nobet-talebi', talep_id: id })
-                    }).then(r => r.json()).then(data => {
-                        if (data.success || data.status === 'success') { showToast('success', data.message); window.loadTaleplerVeMazeretler(); } else { showToast('error', data.message); }
-                    });
-                }
-            });
-        };
+        $('#talepListCard').on('click', 'button[data-act]', function (e) {
+            e.stopPropagation();
+            const fn = handlers[this.dataset.act];
+            if (fn) fn(this.dataset.id, this);
+        });
 
-        window.reddetPersonelNobetTalebi = function (id) {
-            Swal.fire({
-                title: 'Nöbet Talebini Reddet', input: 'textarea', inputLabel: 'Red Sebebi', inputPlaceholder: 'Neden reddedildiğini açıklayın...', showCancelButton: true, confirmButtonColor: '#dc3545', cancelButtonColor: '#6c757d', confirmButtonText: 'Reddet', cancelButtonText: 'İptal'
-            }).then(r => {
-                if (r.isConfirmed) {
-                    fetch('views/nobet/api.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: new URLSearchParams({ action: 'reddet-personel-nobet-talebi', talep_id: id, red_nedeni: r.value || '' })
-                    }).then(r => r.json()).then(data => {
-                        if (data.success || data.status === 'success') { showToast('success', data.message); window.loadTaleplerVeMazeretler(); } else { showToast('error', data.message); }
-                    });
-                }
-            });
-        };
-
-        window.openDevirModal = function (id, p) {
-            document.getElementById('devir-nobet-id').value = id;
-            document.getElementById('devir-mevcut-personel').value = p;
-            document.getElementById('devir-yeni-personel').value = '';
-            devirModal.show();
-        };
-
-        window.mazeretIptalEt = function (id) {
-            Swal.fire({
-                title: 'Nöbeti İptal Et', text: 'Bu nöbeti tamamen iptal etmek istediğinize emin misiniz?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc3545', cancelButtonColor: '#6c757d', confirmButtonText: 'Evet, İptal Et', cancelButtonText: 'Vazgeç'
-            }).then(r => {
-                if (r.isConfirmed) {
-                    fetch('views/nobet/api.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: new URLSearchParams({ action: 'delete-nobet', nobet_id: id })
-                    }).then(r => r.json()).then(data => {
-                        if (data.success || data.status === 'success') {
-                            showToast('success', 'Nöbet iptal edildi');
-                            window.loadTaleplerVeMazeretler();
-                        } else {
-                            showToast('error', data.message || 'Bir hata oluştu');
-                        }
-                    });
-                }
-            });
-        };
-
-        // Mazeret Reddetme
-        window.reddetMazeret = function (id) {
-            Swal.fire({
-                title: 'Mazereti Reddet',
-                input: 'textarea',
-                inputLabel: 'Red Sebebi',
-                inputPlaceholder: 'Mazeretin neden reddedildiğini açıklayın...',
-                showCancelButton: true,
-                confirmButtonColor: '#dc3545',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Reddet',
-                cancelButtonText: 'İptal'
-            }).then(r => {
-                if (r.isConfirmed) {
-                    fetch('views/nobet/api.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: new URLSearchParams({ action: 'reddet-mazeret', nobet_id: id, red_nedeni: r.value || '' })
-                    }).then(r => r.json()).then(data => {
-                        if (data.success || data.status === 'success') {
-                            showToast('success', data.message || 'Mazeret reddedildi');
-                            window.loadTaleplerVeMazeretler();
-                        } else {
-                            showToast('error', data.message || 'Bir hata oluştu');
-                        }
-                    });
-                }
-            });
-        };
-
-        // Personel Filtre değişimi (Segmented Control)
         document.querySelectorAll('input[name="devir_personel_turu"]').forEach(radio => {
             radio.addEventListener('change', function () {
-                const type = this.value;
                 const select = document.getElementById('devir-yeni-personel');
-                
-                fetch('views/nobet/api.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({ action: 'get-personel-list', type: type })
-                }).then(r => r.json()).then(data => {
+                apiPost({ action: 'get-personel-list', type: this.value }).then(data => {
                     if (data.success && data.data) {
-                        // Select2 varsa destroy
                         if ($(select).data('select2')) {
                             $(select).select2('destroy');
                         }
@@ -755,12 +682,7 @@ $title = 'Talepler & Mazeretler';
                             opt.textContent = p.adi_soyadi + ' - ' + (p.departman || '');
                             select.appendChild(opt);
                         });
-                        // Re-init select2
-                        $(select).select2({
-                            dropdownParent: $('#devirModal'),
-                            placeholder: 'Personel Seçin',
-                            allowClear: true
-                        });
+                        $(select).select2({ dropdownParent: $('#devirModal'), placeholder: 'Personel Seçin', allowClear: true });
                     }
                 });
             });
@@ -769,34 +691,32 @@ $title = 'Talepler & Mazeretler';
         document.getElementById('devir-form').addEventListener('submit', function (e) {
             e.preventDefault();
             const fd = new FormData(this);
-            fetch('views/nobet/api.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({ action: 'devir-yap', nobet_id: fd.get('nobet_id'), personel_id: fd.get('yeni_personel_id') })
-            }).then(r => r.json()).then(data => {
-                if (data.success || data.status === 'success') { showToast('success', data.message || 'Nöbet başarıyla devredildi'); devirModal.hide(); window.loadTaleplerVeMazeretler(); } else { showToast('error', data.message || 'Bir hata oluştu: ' + data.message); }
+            apiPost({ action: 'devir-yap', nobet_id: fd.get('nobet_id'), personel_id: fd.get('yeni_personel_id') }).then(data => {
+                if (data.success || data.status === 'success') {
+                    showToast('success', data.message || 'Nöbet başarıyla devredildi');
+                    devirModal.hide();
+                    window.loadTaleplerVeMazeretler();
+                } else {
+                    showToast('error', data.message || 'Bir hata oluştu');
+                }
             }).catch(e => {
                 console.error('Devir hatası:', e);
                 showToast('error', 'İşlem sırasında bir hata oluştu');
             });
         });
 
-        // Modal açıldığında feather ikonları render et
         document.getElementById('devirModal').addEventListener('shown.bs.modal', function () {
             if (typeof feather !== 'undefined') feather.replace();
-            // Select2 init
             const select = document.getElementById('devir-yeni-personel');
             if (select && !$(select).data('select2')) {
-                $(select).select2({
-                    dropdownParent: $('#devirModal'),
-                    placeholder: 'Personel Seçin',
-                    allowClear: true
-                });
+                $(select).select2({ dropdownParent: $('#devirModal'), placeholder: 'Personel Seçin', allowClear: true });
             }
         });
 
-        function showToast(type, message) {
-            Toastify({ text: message, duration: 3000, gravity: "top", position: "center", style: { background: type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#000000', borderRadius: "8px", boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }, stopOnFocus: true }).showToast();
-        }
+        $('#filter-ay, #filter-yil').each(function () {
+            if (!$(this).data('select2')) $(this).select2({ width: '100%' });
+        });
+
+        window.loadTaleplerVeMazeretler();
     });
 </script>

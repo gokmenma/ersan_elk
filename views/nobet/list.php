@@ -194,12 +194,69 @@ $title = 'Nöbet Planlama';
 ?>
 <?php include 'layouts/breadcrumb.php'; ?>
 
+<script>try { document.documentElement.classList.toggle('nobet-summary-hidden', localStorage.getItem('nobet_summary_cards_state') === 'hidden'); } catch (e) {}</script>
+<style>
+.nobet-kpi-group { overflow: hidden; max-height: 1100px; opacity: 1; transition: max-height .3s ease, opacity .3s ease, margin .3s ease; }
+.nobet-summary-hidden .nobet-kpi-group { max-height: 0 !important; opacity: 0; margin-top: 0 !important; margin-bottom: 0 !important; pointer-events: none; }
+.nobet-container { height: calc(100vh - 190px); min-height: 640px; }
+.nobet-container .personel-pool-card { flex: 1; min-height: 0; height: auto; }
+.nobet-container .calendar-card { flex: 1; min-height: 0; height: auto; }
+@media (prefers-reduced-motion: reduce) { .nobet-kpi-group, .nobet-container { transition: none; } }
+</style>
+
+<div class="container-fluid">
+    <div class="row align-items-center mb-3">
+        <div class="col-md-6 col-12 d-flex align-items-center gap-3">
+            <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 44px; height: 44px;">
+                <i class="bx bx-calendar-check fs-4 text-primary"></i>
+            </div>
+            <div>
+                <h4 class="mb-0 fw-bold text-dark font-size-16">Nöbet Planlama</h4>
+                <p class="text-muted mb-0 font-size-12">Personel nöbet çizelgesi, değişim talepleri ve nöbet bildirimleri</p>
+            </div>
+        </div>
+        <div class="personel-action-toolbar col-md-6 col-12 d-flex align-items-center justify-content-md-end gap-2 mt-2 mt-md-0">
+            <button type="button" class="btn btn-primary top-action-btn shadow-sm text-white" data-bs-toggle="modal" data-bs-target="#nobetBildirimModal">
+                <i class="bx bx-send font-size-16"></i> Personele Bildir
+            </button>
+            <button type="button" class="btn btn-outline-secondary bg-white top-action-btn shadow-sm" data-bs-toggle="modal" data-bs-target="#nobetIstatistikModal">
+                <i class="bx bx-bar-chart-alt-2 font-size-16 text-primary"></i> <span class="d-none d-sm-inline">İstatistikler</span>
+            </button>
+            <div class="dropdown d-inline-block">
+                <button type="button" class="btn btn-outline-secondary bg-white top-action-btn dropdown-toggle shadow-sm" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <i class="bx bx-cog font-size-16 text-primary"></i> Araçlar
+                </button>
+                <div class="dropdown-menu dropdown-menu-end shadow-lg border-0">
+                    <h6 class="dropdown-header">Planlama</h6>
+                    <button type="button" class="dropdown-item d-flex align-items-center" data-nobet-arac="dagitim"><i class="bx bx-magic-wand me-2 text-primary font-size-16"></i> Otomatik Dağıtım</button>
+                    <button type="button" class="dropdown-item d-flex align-items-center" data-nobet-arac="toplu"><i class="bx bx-calendar-plus me-2 text-primary font-size-16"></i> Toplu Nöbet Ekle</button>
+                    <button type="button" class="dropdown-item d-flex align-items-center" data-nobet-arac="kopyala"><i class="bx bx-copy me-2 text-primary font-size-16"></i> Nöbetleri Kopyala</button>
+                    <button type="button" class="dropdown-item d-flex align-items-center" data-nobet-arac="gecmis"><i class="bx bx-history me-2 text-primary font-size-16"></i> Değişiklik Geçmişi / Geri Al</button>
+                    <div class="dropdown-divider"></div>
+                    <h6 class="dropdown-header">Raporlar</h6>
+                    <button type="button" class="dropdown-item d-flex align-items-center" data-nobet-arac="adalet"><i class="bx bx-balance me-2 text-warning font-size-16"></i> Adalet Raporu</button>
+                    <button type="button" class="dropdown-item d-flex align-items-center" data-nobet-arac="bordro"><i class="bx bx-wallet me-2 text-warning font-size-16"></i> Bordro Aktarım Özeti</button>
+                    <div class="dropdown-divider"></div>
+                    <h6 class="dropdown-header">Çıktı</h6>
+                    <button type="button" class="dropdown-item d-flex align-items-center" data-nobet-arac="yazdir"><i class="bx bx-printer me-2 text-secondary font-size-16"></i> Yazdır / PDF</button>
+                    <button type="button" class="dropdown-item d-flex align-items-center" data-nobet-arac="excel"><i class="bx bx-file me-2 text-success font-size-16"></i> Excel'e Aktar</button>
+                    <button type="button" class="dropdown-item d-flex align-items-center" data-nobet-arac="ics"><i class="bx bx-calendar-event me-2 text-success font-size-16"></i> Takvime Aktar (ICS)</button>
+                    <div class="dropdown-divider"></div>
+                    <button type="button" class="dropdown-item d-flex align-items-center" data-nobet-arac="hatirlat"><i class="bx bx-bell me-2 text-danger font-size-16"></i> Yarının Nöbetçilerine Hatırlat</button>
+                </div>
+            </div>
+            <button type="button" class="btn btn-outline-secondary bg-white top-icon-btn shadow-sm" id="btnToggleSummaryCards" title="Özet Kartları Göster/Gizle" aria-label="Özet Kartları Göster/Gizle" aria-expanded="true">
+                <i class="bx bx-chevron-up"></i>
+            </button>
+        </div>
+    </div>
+
 <!-- Ana İçerik -->
 <div class="nobet-container">
 
     <!-- Sol Panel - Personel Havuzu -->
     <div class="personel-pool">
-        <div class="personel-pool-card">
+    <div class="personel-pool-card">
             <?php
             $departments = [];
             if (isset($personeller)) {
@@ -382,82 +439,72 @@ $title = 'Nöbet Planlama';
 
     <!-- Sağ Panel - Takvim -->
     <div class="calendar-panel">
-        <!-- İstatistik Kartları - Modern Dashboard Tasarımı -->
-        <div class="row mb-4 g-3">
-            <div class="col-xl-3 col-md-6">
-                <div class="stat-card"
-                    style="--card-color: #3b82f6; --card-rgb: 59, 130, 246; border-bottom: 3px solid var(--card-color) !important;">
-                    <div class="card-body">
-                        <div class="icon-label-container">
-                            <div class="icon-box">
-                                <i class="bx bx-calendar-check fs-4" style="color: var(--card-color);"></i>
-                            </div>
-                            <div class="stat-trend up">
-                                <i class="bx bx-trending-up"></i> +12%
-                            </div>
+        <div class="row g-3 mb-3 nobet-kpi-group">
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0 nobet-kpi-click" data-kpi="toplam" role="button" tabindex="0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">TOPLAM NÖBET</span>
+                        <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
+                            <i class="bx bx-calendar-check"></i>
                         </div>
-                        <p class="stat-label-main">TOPLAM NÖBET</p>
-                        <h4 class="stat-value" id="stat-total">0</h4>
-                        <p class="stat-sub">Aylık planlama özeti</p>
                     </div>
-                </div>
-            </div>
-            <div class="col-xl-3 col-md-6">
-                <div class="stat-card"
-                    style="--card-color: #10b981; --card-rgb: 16, 185, 129; border-bottom: 3px solid var(--card-color) !important;">
-                    <div class="card-body">
-                        <div class="icon-label-container">
-                            <div class="icon-box">
-                                <i class="bx bx-user-check fs-4" style="color: var(--card-color);"></i>
-                            </div>
-                            <div class="stat-trend neutral">
-                                <i class="bx bx-minus"></i> Stabil
-                            </div>
-                        </div>
-                        <p class="stat-label-main">BUGÜN NÖBETÇİ</p>
-                        <h4 class="stat-value" id="stat-today">-</h4>
-                        <p class="stat-sub">Güncel görevli personel</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-xl-3 col-md-6">
-                <div class="stat-card"
-                    style="--card-color: #f59e0b; --card-rgb: 245, 158, 11; border-bottom: 3px solid var(--card-color) !important;">
-                    <div class="card-body">
-                        <div class="icon-label-container">
-                            <div class="icon-box">
-                                <i class="bx bx-transfer-alt fs-4" style="color: var(--card-color);"></i>
-                            </div>
-                            <div class="stat-trend down">
-                                <i class="bx bx-trending-down"></i> -8%
-                            </div>
-                        </div>
-                        <p class="stat-label-main">BEKLEYEN TALEPLER</p>
-                        <h4 class="stat-value" id="stat-pending">0</h4>
-                        <p class="stat-sub">Onay bekleyen değişimler</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-xl-3 col-md-6">
-                <div class="stat-card"
-                    style="--card-color: #8b5cf6; --card-rgb: 139, 92, 246; border-bottom: 3px solid var(--card-color) !important;">
-                    <div class="card-body">
-                        <div class="icon-label-container">
-                            <div class="icon-box">
-                                <i class="bx bx-calendar-week fs-4" style="color: var(--card-color);"></i>
-                            </div>
-                            <div class="stat-trend up">
-                                <i class="bx bx-trending-up"></i> +4%
-                            </div>
-                        </div>
-                        <p class="stat-label-main">HAFTA SONU NÖBET</p>
-                        <h4 class="stat-value" id="stat-weekend">0</h4>
-                        <p class="stat-sub">Tatil günü mesaileri</p>
+                    <h3 class="summary-kpi-value my-1" id="stat-total">0</h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext" id="stat-total-sub">Görünen dönem planı</span>
                     </div>
                 </div>
             </div>
         </div>
-
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0 nobet-kpi-click" data-kpi="bugun" role="button" tabindex="0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">BUGÜN NÖBETÇİ</span>
+                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                            <i class="bx bx-user-check"></i>
+                        </div>
+                    </div>
+                    <h3 class="summary-kpi-value my-1 text-success text-truncate" id="stat-today" style="font-size:20px;">-</h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext">Güncel görevli personel</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0 nobet-kpi-click" data-kpi="talep" role="button" tabindex="0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">BEKLEYEN TALEPLER</span>
+                        <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                            <i class="bx bx-transfer-alt"></i>
+                        </div>
+                    </div>
+                    <h3 class="summary-kpi-value my-1" id="stat-pending">0</h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext">Onay bekleyen değişimler</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0 nobet-kpi-click" data-kpi="bos" role="button" tabindex="0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">BOŞ GÜN</span>
+                        <div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
+                            <i class="bx bx-calendar-week"></i>
+                        </div>
+                    </div>
+                    <h3 class="summary-kpi-value my-1" id="stat-bos">0</h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext">Nöbetçisi olmayan günler</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </div>
         <div class="calendar-card">
             <!-- 3. Görsel Referansı (Tab Bar ve Navigasyon) -->
             <div class="calendar-header">
@@ -467,11 +514,12 @@ $title = 'Nöbet Planlama';
                         <button class="btn" data-view="dayGridWeek">Hafta</button>
                         <button class="btn" data-view="multiMonthYear">Yıl</button>
                     </div>
-                    <button class="btn btn-soft-primary"
-                        style="background: rgba(85, 110, 230, 0.1); color: #556ee6; border: none; font-weight: 600; display: flex; align-items: center; gap: 5px; height: 38px; padding: 0 15px; border-radius: 8px;"
-                        data-bs-toggle="modal" data-bs-target="#nobetBildirimModal">
-                        <i class="bx bx-send"></i> Personele Bildir
-                    </button>
+                    <div class="mode-buttons" id="nobet-mode-buttons">
+                        <button class="btn active" type="button" data-mode="takvim" title="Takvim görünümü"><i class="bx bx-calendar"></i></button>
+                        <button class="btn" type="button" data-mode="izgara" title="Personel x Gün ızgarası"><i class="bx bx-grid-alt"></i></button>
+                        <button class="btn" type="button" data-mode="isi" title="Isı haritası (yoğunluk)"><i class="bx bxs-hot"></i></button>
+                    </div>
+                    
 
                     <!-- Personel Filtrele -->
                     <div class="dropdown" id="personel-filter-container">
@@ -491,12 +539,7 @@ $title = 'Nöbet Planlama';
                         </ul>
                     </div>
 
-                    <!-- Personel Nöbet İstatistikleri Butonu -->
-                    <button class="btn btn-soft-warning" type="button" id="btn-nobet-istatistik"
-                        data-bs-toggle="modal" data-bs-target="#nobetIstatistikModal" title="Personel Nöbet İstatistikleri"
-                        style="background: rgba(245, 158, 11, 0.12); color: #d97706; border: none; font-weight: 600; display: flex; align-items: center; justify-content: center; width: 38px; height: 38px; padding: 0; border-radius: 8px;">
-                        <i class="bx bx-bar-chart-alt-2 fs-4"></i>
-                    </button>
+                    
                 </div>
 
                 <div class="d-flex align-items-center gap-3">
@@ -517,6 +560,7 @@ $title = 'Nöbet Planlama';
                 </div>
             </div>
             <div id="nobet-calendar"></div>
+            <div id="nobet-grid" class="d-none"></div>
 
             <!-- Legend -->
             <div class="legend-container">
@@ -837,8 +881,11 @@ $title = 'Nöbet Planlama';
         </div>
     </div>
 </div>
+</div>
 
 
+
+<?php include __DIR__ . '/araclar-modallar.php'; ?>
 
 <!-- Nöbet Ayarları Modalı -->
 <div class="modal fade modern-settings-modal" id="nobetSettingsModal" tabindex="-1">
@@ -878,6 +925,13 @@ $title = 'Nöbet Planlama';
                         <span class="settings-description">
                             Aktif edilirse, personel kendi sayfasında iptal edilmiş veya silinmiş nöbetlerini görmeye
                             devam eder.
+                        </span>
+                    </div>
+
+                    <div class="setting-group mt-4">
+                        <?php echo \App\Helper\Form::FormFloatInput('number', 'nobet_aylik_limit', (string) ((int) ($settingsData['nobet_aylik_limit'] ?? 0)), '0', 'Personel Aylık Nöbet Limiti (0 = sınırsız)', 'bx bx-bar-chart', 'form-control', false, null, 'off', false, 'min="0" max="31"'); ?>
+                        <span class="settings-description">
+                            Limit aşıldığında nöbet atarken çakışma uyarısı gösterilir.
                         </span>
                     </div>
                 </div>
@@ -1169,10 +1223,31 @@ $title = 'Nöbet Planlama';
 
 <!-- FullCalendar -->
 <script src="assets/libs/fullcalendar/index.global.min.js"></script>
+<script src="views/nobet/assets/nobet-araclar.js?v=<?php echo filemtime(__DIR__ . '/assets/nobet-araclar.js'); ?>"></script>
 
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+
+        (function () {
+            const toggleBtn = document.getElementById('btnToggleSummaryCards');
+            const root = document.documentElement;
+            const sync = function () {
+                const hidden = root.classList.contains('nobet-summary-hidden');
+                if (toggleBtn) {
+                    toggleBtn.setAttribute('aria-expanded', hidden ? 'false' : 'true');
+                    toggleBtn.querySelector('i').className = hidden ? 'bx bx-chevron-down' : 'bx bx-chevron-up';
+                }
+                setTimeout(function () { window.dispatchEvent(new Event('resize')); }, 320);
+            };
+            sync();
+            if (toggleBtn) toggleBtn.addEventListener('click', function () {
+                const willHide = !root.classList.contains('nobet-summary-hidden');
+                root.classList.toggle('nobet-summary-hidden', willHide);
+                try { localStorage.setItem('nobet_summary_cards_state', willHide ? 'hidden' : 'visible'); } catch (e) {}
+                sync();
+            });
+        })();
 
         // ============================================
         // DEĞİŞKENLER
@@ -1212,6 +1287,9 @@ $title = 'Nöbet Planlama';
         });
 
         // Takvimi başlat
+        window.nobetOpenForm = function (id, date) { openFormModal(id, date); };
+        window.nobetShowDetail = function (ev) { showNobetDetail(ev); };
+        window.nobetCanEditPast = canEditPast;
         calendar = new FullCalendar.Calendar(calendarEl, {
             locale: 'tr',
             timeZone: 'local',
@@ -1236,6 +1314,8 @@ $title = 'Nöbet Planlama';
                 return diffDays <= 1;
             },
             dayMaxEvents: 4,
+            eventsSet: function () { setTimeout(function () { if (window.nobetRefresh) window.nobetRefresh(); }, 0); },
+            datesSet: function () { setTimeout(function () { if (window.nobetRefresh) window.nobetRefresh(); }, 0); },
             height: '100%',
 
             // Etkinlikleri yükle
@@ -1514,6 +1594,7 @@ $title = 'Nöbet Planlama';
         });
 
         calendar.render();
+        window.nobetCalendar = calendar;
 
         // ============================================
         // TAKVİM BAŞLIK GÜNCELLEME
@@ -2340,7 +2421,8 @@ $title = 'Nöbet Planlama';
 
             document.getElementById('stat-total').textContent = totalCount;
             document.getElementById('stat-today').textContent = todayText;
-            document.getElementById('stat-weekend').textContent = weekendCount;
+            const statWeekendEl = document.getElementById('stat-weekend');
+            if (statWeekendEl) statWeekendEl.textContent = weekendCount;
 
             // 2. Personel Havuzu (Sol Liste) ve Filtre Listesi Verilerini Hazırla
             const allCounts = {};

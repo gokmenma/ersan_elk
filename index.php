@@ -136,24 +136,6 @@ try {
 
 <head>
 
-    <script>
-        <?php if (!isset($_SESSION['force_desktop'])): ?>
-        (function () {
-            function checkMobileRedirect() {
-                var isMobileView = window.matchMedia('(max-width: 1024px)').matches;
-                if (isMobileView) {
-                    window.location.replace(<?= json_encode(\App\Helper\MobileSpa::fromLegacy((string) ($_GET['p'] ?? 'home'), $_GET), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?>);
-                }
-            }
-            
-            // Sayfa yüklendiğinde kontrol et
-            checkMobileRedirect();
-            
-            // Tarayıcı boyutu değiştiğinde (DevTools mobil görünüme geçince) kontrol et
-            window.addEventListener('resize', checkMobileRedirect);
-        })();
-        <?php endif; ?>
-    </script>
 
     <title>Ersan Elektrik | Personel Yönetimi</title>
 

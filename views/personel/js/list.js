@@ -314,6 +314,75 @@ $(document).ready(function () {
     }
   });
 
+  function personelSatirSec($tr) {
+    table.rows(".selected").nodes().each((row) => {
+      row.classList.remove("selected");
+      $(row).find(".form-check-input").prop("checked", false);
+    });
+    $tr.addClass("selected");
+    $tr.find(".form-check-input").prop("checked", true);
+    toggleButtons(true);
+  }
+
+  $("#membersTable tbody").on("contextmenu", "tr", function (e) {
+    var $tr = $(this);
+    if ($tr.find("td").length <= 1 || !$tr.data("id")) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    personelSatirSec($tr);
+    $("table.dataTable tbody tr").removeClass("context-menu-active");
+    $tr.addClass("context-menu-active");
+
+    var ad = $.trim($tr.find("td a.fw-bold").first().text()) || "Personel";
+    var item = function (aksiyon, ikon, metin, ekSinif) {
+      return '<button type="button" class="cm-action-item ' + (ekSinif || "") + '" data-pcm="' + aksiyon + '"><i class="' + ikon + '"></i> <span>' + metin + "</span></button>";
+    };
+
+    var html = '<div class="cm-header"><i class="bx bx-layer text-primary me-2 font-size-15"></i> <span class="text-truncate"></span></div>';
+    html += item("detay", "bx bx-right-arrow-alt", "Detaya Git");
+    html += item("sozlesme", "bx bx-file", "Hizmet Sözleşmesini İndir");
+    if ($("#btnKarsilamaSelected").length) {
+      html += '<div class="cm-divider"></div>';
+      html += item("karsilama", "bx bxl-whatsapp text-success", "Karşılama Mesajı Gönder");
+    }
+    if ($("#btnDeleteSelected").length) {
+      html += '<div class="cm-divider"></div>';
+      html += item("sil", "mdi mdi-trash-can", "Personeli Sil", "cm-danger");
+    }
+
+    var $menu = $("#customContextMenu");
+    if (!$menu.length) {
+      $menu = $('<div id="customContextMenu" class="custom-context-menu"></div>').appendTo("body");
+    }
+    $menu.html(html);
+    $menu.find(".cm-header span").text(ad);
+
+    $menu.css({ display: "block", visibility: "hidden", opacity: "0" });
+    var x = e.clientX;
+    var y = e.clientY;
+    if (x + $menu.outerWidth() > $(window).width()) x = $(window).width() - $menu.outerWidth() - 10;
+    if (y + $menu.outerHeight() > $(window).height()) y = $(window).height() - $menu.outerHeight() - 10;
+    $menu.css({ top: y + "px", left: x + "px", visibility: "visible", opacity: "1" });
+  });
+
+  $(document).on("click", "#customContextMenu .cm-action-item[data-pcm]", function () {
+    var aksiyon = $(this).data("pcm");
+    var id = getSelectedId();
+    $("#customContextMenu").hide();
+    if (!id) return;
+
+    if (aksiyon === "detay") {
+      window.location.href = "index?p=personel/manage&id=" + encodeURIComponent(id);
+    } else if (aksiyon === "sozlesme") {
+      window.location.href = "views/personel/sozlesme-indir.php?id=" + encodeURIComponent(id);
+    } else if (aksiyon === "karsilama") {
+      $("#btnKarsilamaSelected").trigger("click");
+    } else if (aksiyon === "sil") {
+      $("#btnDeleteSelected").trigger("click");
+    }
+  });
+
   // Detay Butonu
   $("#btnDetailSelected").click(function () {
     var id = getSelectedId();

@@ -3960,3 +3960,19 @@
 - Yıllık İzin Hakedişleri sayfası eklendi (Personel İşlemleri altında, personel/yillik-izin-hakedisleri): YillikIzinHakedisModel (ajaxList/summary/detay), PersonelIzinleriModel::hakedisDetayHesapla ayrıştırıldı (calculateLeaveEntitlement çıktısı 187 personelde birebir doğrulandı), API views/personel/api/APIyillik-izin-hakedisleri.php, yeni yetki+menü+politika SQL: sql/2026_11_11_yillik_izin_hakedisleri_menu_yetki.sql (yerel DB'ye uygulandı; canlıda çalıştırılmalı).
 
 - Yıllık İzin Hakedişleri: manuel hakediş eklendi (modal + Excel şablon/yükleme). Tablo: personel_yillik_izin_manuel_hakedis (sql/2026_11_11_yillik_izin_manuel_hakedis_tablo.sql), yeni yazma yetkisi personel/yillik-izin-hakedisleri-duzenle (menu_yetki SQL içinde). Manuel gün toplamı PersonelIzinleriModel::calculateLeaveEntitlement sonucuna da dahil. Pasif personel anahtarla isteğe bağlı gösterilir.
+
+- Nöbet Talepler & Mazeretler sayfası (views/nobet/talepler.php) yeni sayfa standardına geçirildi: başlık satırı, 4 KPI kart (açılır/kapanır, talep_summary_cards_state), status-filter-group sekmeleri, data-filter başlıklı DataTables (applyLengthStateSave), action-btn-group, subtle rozetler, HTML kaçışı, delegated aksiyon butonları. Mevcut nobet/api.php aksiyonları ve client-side veri korundu (server-side ajaxList yapılmadı; ay/yıl bazlı küçük listeler). SQL değişikliği yok.
+
+- Personel listesi sağ tık menüsü (views/personel/js/list.js) özelleştirildi: Detaya Git, Hizmet Sözleşmesini İndir, Excele Aktar, Excelden Yükle, Karşılama Mesajı Gönder (yetkiliyse), Personeli Sil. Hizmet sözleşmesi: views/personel/sozlesme-indir.php, şablon resources/sablonlar/hizmet_sozlesmesi.docx (.htaccess ile web erişimi kapalı); ad, baba adı, doğum yeri/yılı, adres, TC ve işe başlama tarihi doldurulur, log yazılır. SQL değişikliği yok.
+
+## Nöbet Planlama (nobet/list) yeni sayfa standardı
+- `views/nobet/list.php`: Cari standardında üst başlık satırı (44x44 ikon, Personele Bildir / İstatistikler / aç-kapa butonu), 4 KPI kartı (`#summaryCardsContainer`, `nobet_summary_cards_state` localStorage anahtarı, `nobet-summary-hidden` kök sınıfı) ve `container-fluid` sarmalayıcı eklendi. Takvim ve personel havuzu korundu; `stat-*` id`leri aynı.
+
+- Sözleşme Şablonları sayfası (personel/sozlesme-sablonlari): şablon Word dosyasında {{AD_SOYAD}} vb. yer tutucular kullanır (App\Service\SozlesmeSablonService; run bölünmesine dayanıklı), yetkili kullanıcı yeni .docx sürümü yükler/geri döner. Model SozlesmeSablonModel, API views/personel/api/APIsozlesme-sablonlari.php, dosyalar uploads/sozlesme-sablonlari/{firma_id} (.htaccess kapalı), sürüm tablosu personel_sozlesme_sablonlari. SQL: sql/2026_11_11_hizmet_sozlesmesi_sablon_yonetimi.sql (yerel DB uygulandı; canlıda çalıştırılmalı). Varsayılan şablon resources/sablonlar/hizmet_sozlesmesi.docx yer tutuculu hale getirildi.
+
+- nobet/list yerleşimi: 4 KPI kartı yalnızca sağ kolonda, takvimin üstünde tek satır; sol kolonda yalnızca personel havuzu (`.nobet-kpi-group`, aç/kapa ikisini birlikte yönetir).
+
+## Nöbet Planlama araç seti (2026-11-12)
+- Yeni: `App/Service/NobetDagitimService.php` (adil/sıralı dağıtım), `NobetModel` geçmiş/geri al/çakışma/rapor metotları, `views/nobet/araclar-modallar.php`, `assets/nobet-araclar.js`, `cizelge-export.php` (Excel + ICS, `nobet/list` yetkisi).
+- API: çakışma uyarısı `status=warning` döner, `uyari_onay=1` ile geçilir (JS fetch kancası onay penceresi açar). Tüm yeni aksiyonlar `nobet/list` yetkisine SQL ile bağlı: `sql/2026_11_12_nobet_planlama_arac_seti.sql` (tablo `nobet_islem_gecmisi`).
+- Ayar: `nobet_aylik_limit` (Nöbet Ayarları modalı). Mod butonları: takvim / ızgara / ısı haritası. KPI: Boş Gün kartı, kartlar tıklanabilir.

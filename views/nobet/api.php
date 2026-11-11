@@ -105,6 +105,83 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     header('Content-Type: application/json');
 
+    $tarihGecerli = function ($t) {
+        $t = trim((string) $t);
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $t)) {
+            return null;
+        }
+        [$y, $m, $d] = array_map('intval', explode('-', $t));
+        return checkdate($m, $d, $y) ? $t : null;
+    };
+
+    $cakismaKontrol = function (int $personelId, string $tarih, ?int $haricId = null) use ($Nobet) {
+        try {
+            $ayar = (new \App\Model\SettingsModel())->getAllSettingsAsKeyValue($_SESSION['firma_id'] ?? null);
+            $limit = (int) ($ayar['nobet_aylik_limit'] ?? 0);
+        } catch (\Throwable $e) {
+            $limit = 0;
+        }
+        return $Nobet->getCakismaUyarilari($personelId, $tarih, $haricId, $limit);
+    };
+
+    $topluEkle = function (array $satirlar, string $islemAdi, bool $uyariOnay) use ($Nobet, $Personel, $SystemLog, $userId, $tarihGecerli, $cakismaKontrol) {
+        $grup = bin2hex(random_bytes(8));
+        $eklenen = [];
+        $atlanan = [];
+        $onayli = Gate::allows('yonetici_onayi') ? 1 : 0;
+        $adCache = [];
+
+        foreach ($satirlar as $s) {
+            $pid = (int) $s['personel_id'];
+            $tarih = $tarihGecerli($s['tarih'] ?? '');
+            if (!isset($adCache[$pid])) {
+                $pr = $Personel->find($pid);
+                $adCache[$pid] = $pr->adi_soyadi ?? ('#' . $pid);
+            }
+            $ad = $adCache[$pid];
+
+            if (!$tarih) {
+                $atlanan[] = ['ad' => $ad, 'tarih' => (string) ($s['tarih'] ?? ''), 'neden' => 'Geçersiz tarih'];
+                continue;
+            }
+            $tarihTr = date('d.m.Y', strtotime($tarih));
+
+            if ($Nobet->hasNobetOnDate($pid, $tarih)) {
+                $atlanan[] = ['ad' => $ad, 'tarih' => $tarihTr, 'neden' => 'Aynı gün nöbeti var'];
+                continue;
+            }
+            if (!$uyariOnay) {
+                $uyarilar = $cakismaKontrol($pid, $tarih);
+                if ($uyarilar) {
+                    $atlanan[] = ['ad' => $ad, 'tarih' => $tarihTr, 'neden' => $uyarilar[0]['mesaj'], 'uyari' => true];
+                    continue;
+                }
+            }
+
+            $tip = in_array($s['nobet_tipi'] ?? 'standart', ['standart', 'hafta_sonu', 'resmi_tatil', 'ozel'], true) ? $s['nobet_tipi'] : 'standart';
+            $yeniId = $Nobet->addNobet([
+                'personel_id' => $pid,
+                'nobet_tarihi' => $tarih,
+                'baslangic_saati' => $s['baslangic_saati'] ?? '18:00:00',
+                'bitis_saati' => $s['bitis_saati'] ?? '08:00:00',
+                'nobet_tipi' => $tip,
+                'yonetici_onayi' => $onayli,
+            ]);
+            if ($yeniId) {
+                $Nobet->logIslem('ekle', (int) $yeniId, null, ['personel_id' => $pid, 'nobet_tarihi' => $tarih, 'adi_soyadi' => $ad], $grup, $ad . ' / ' . $tarihTr . ' (' . $islemAdi . ')');
+                $eklenen[] = ['ad' => $ad, 'tarih' => $tarihTr];
+            } else {
+                $atlanan[] = ['ad' => $ad, 'tarih' => $tarihTr, 'neden' => 'Kaydedilemedi'];
+            }
+        }
+
+        if (!empty($eklenen)) {
+            $SystemLog->logAction($userId, 'Nöbet Toplu İşlem', count($eklenen) . " nöbet eklendi ({$islemAdi}).", SystemLogModel::LEVEL_IMPORTANT);
+        }
+        return ['eklenen' => $eklenen, 'atlanan' => $atlanan, 'grup' => $grup];
+    };
+
+
     try {
         switch ($action) {
             case 'save-settings':
@@ -113,10 +190,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $islem = $_POST['nobet_gecmis_islem'] ?? '0';
                 $silinmisGoster = $_POST['nobet_silinmis_goster'] ?? '0';
 
-                $result = $Settings->upsertMultipleSettings([
+                $ayarlar = [
                     'nobet_gecmis_islem' => $islem,
                     'nobet_silinmis_goster' => $silinmisGoster
-                ], $firma_id);
+                ];
+                if (isset($_POST['nobet_aylik_limit'])) {
+                    $ayarlar['nobet_aylik_limit'] = (string) max(0, (int) $_POST['nobet_aylik_limit']);
+                }
+                $result = $Settings->upsertMultipleSettings($ayarlar, $firma_id);
                 if ($result) {
                     echo json_encode(['status' => 'success', 'message' => 'Ayarlar güncellendi.']);
                 } else {
@@ -432,10 +513,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
 
+                if (($_POST['uyari_onay'] ?? '') !== '1') {
+                    $uyarilar = $cakismaKontrol((int) $personel_id, $nobet_tarihi);
+                    if ($uyarilar) {
+                        echo json_encode(['success' => false, 'status' => 'warning', 'message' => 'Çakışma uyarısı', 'uyarilar' => $uyarilar]);
+                        break;
+                    }
+                }
+
                 $nobet_id = $Nobet->addNobet($data);
 
                 if ($nobet_id) {
                     $personel = $Personel->find($personel_id);
+                    $Nobet->logIslem('ekle', (int) $nobet_id, null, ['personel_id' => (int) $personel_id, 'nobet_tarihi' => $nobet_tarihi, 'adi_soyadi' => $personel->adi_soyadi ?? null], null, ($personel->adi_soyadi ?? '') . ' / ' . date('d.m.Y', strtotime($nobet_tarihi)));
                     $SystemLog->logAction($userId, 'Nöbet Ekleme', "{$personel->adi_soyadi} için {$nobet_tarihi} tarihinde nöbet eklendi.");
 
                     // PWA Push bildirimi artık otomatik gönderilmiyor
@@ -484,6 +574,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $result = $Nobet->updateNobet($id, $data);
 
                 if ($result) {
+                    $Nobet->logIslem('guncelle', (int) $id, $Nobet->nobetSnapshot($currentNobet), $data, null, ($currentNobet->adi_soyadi ?? '') . ' / ' . date('d.m.Y', strtotime($currentNobet->nobet_tarihi)) . ' güncellendi');
                     echo json_encode(['success' => true, 'status' => 'success', 'message' => 'Nöbet güncellendi.']);
                 } else {
                     throw new Exception("Güncelleme sırasında hata oluştu.");
@@ -497,6 +588,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $result = $Nobet->deleteNobet($id);
 
                 if ($result) {
+                    $Nobet->logIslem('sil', (int) $id, $Nobet->nobetSnapshot($nobet), null, null, ($nobet->adi_soyadi ?? '') . ' / ' . date('d.m.Y', strtotime($nobet->nobet_tarihi)));
                     $SystemLog->logAction($userId, 'Nöbet Silme', "{$nobet->adi_soyadi}'nin {$nobet->nobet_tarihi} tarihli nöbeti silindi.", SystemLogModel::LEVEL_IMPORTANT);
                     echo json_encode(['success' => true, 'status' => 'success', 'message' => 'Nöbet silindi.']);
                 } else {
@@ -522,9 +614,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     throw new Exception("{$personel->adi_soyadi} isimli personelin {$yeni_tarih} tarihinde zaten bir nöbeti bulunuyor.");
                 }
 
+                if (($_POST['uyari_onay'] ?? '') !== '1') {
+                    $uyarilar = $cakismaKontrol((int) $finalPersonelId, $yeni_tarih, (int) $id);
+                    if ($uyarilar) {
+                        echo json_encode(['success' => false, 'status' => 'warning', 'message' => 'Çakışma uyarısı', 'uyarilar' => $uyarilar]);
+                        break;
+                    }
+                }
+
+                $oncekiSnapshot = $Nobet->nobetSnapshot($currentNobet);
                 $result = $Nobet->moveNobet($id, $yeni_tarih, $personel_id);
 
                 if ($result) {
+                    $Nobet->logIslem('tasi', (int) $id, $oncekiSnapshot, ['personel_id' => (int) $finalPersonelId, 'nobet_tarihi' => $yeni_tarih], null, ($currentNobet->adi_soyadi ?? '') . ' / ' . date('d.m.Y', strtotime($currentNobet->nobet_tarihi)) . ' → ' . date('d.m.Y', strtotime($yeni_tarih)));
                     echo json_encode(['success' => true, 'status' => 'success', 'message' => 'Nöbet taşındı.']);
                 } else {
                     throw new Exception("Taşıma işlemi başarısız.");
@@ -602,10 +704,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
 
+                if (($_POST['uyari_onay'] ?? '') !== '1') {
+                    $uyarilar = $cakismaKontrol((int) $personel_id, $nobet_tarihi);
+                    if ($uyarilar) {
+                        echo json_encode(['success' => false, 'status' => 'warning', 'message' => 'Çakışma uyarısı', 'uyarilar' => $uyarilar]);
+                        break;
+                    }
+                }
+
                 $nobet_id = $Nobet->addNobet($data);
 
                 if ($nobet_id) {
                     $personel = $Personel->find($personel_id);
+                    $Nobet->logIslem('ekle', (int) $nobet_id, null, ['personel_id' => (int) $personel_id, 'nobet_tarihi' => $nobet_tarihi, 'adi_soyadi' => $personel->adi_soyadi ?? null], null, ($personel->adi_soyadi ?? '') . ' / ' . date('d.m.Y', strtotime($nobet_tarihi)));
 
                     // PWA Push bildirimi artık otomatik gönderilmiyor
                     // Kullanıcı "Personele Bildir" modalından toplu bildirim yapabilir
@@ -1085,12 +1196,267 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $ids = $_POST['ids'] ?? [];
                 if (!is_array($ids)) $ids = explode(',', $ids);
                 $ids = array_filter(array_map(fn($id) => Security::decrypt($id), $ids));
+                $silGrup = bin2hex(random_bytes(8));
+                $silinecekler = [];
+                foreach ($ids as $silId) {
+                    $silNobet = $Nobet->find((int) $silId);
+                    if ($silNobet) {
+                        $silinecekler[(int) $silId] = $silNobet;
+                    }
+                }
                 $result = $Nobet->bulkSilNobet($ids);
                 if ($result) {
+                    foreach ($silinecekler as $silId => $silNobet) {
+                        $Nobet->logIslem('sil', $silId, $Nobet->nobetSnapshot($silNobet), null, $silGrup, ($silNobet->adi_soyadi ?? '') . ' / ' . date('d.m.Y', strtotime($silNobet->nobet_tarihi)));
+                    }
                     echo json_encode(['success' => true, 'message' => count($ids) . ' adet nöbet silindi.']);
                 } else {
                     throw new Exception("Toplu silme başarısız.");
                 }
+                break;
+
+            case 'get-nobet-gecmisi':
+                $rows = $Nobet->getIslemGecmisi(80);
+                $out = [];
+                foreach ($rows as $r) {
+                    $out[] = [
+                        'id' => Security::encrypt($r->id),
+                        'grup' => $r->grup_kodu,
+                        'islem' => $r->islem,
+                        'aciklama' => $r->aciklama,
+                        'kullanici' => $r->kullanici,
+                        'tarih' => date('d.m.Y H:i', strtotime($r->olusturma_tarihi)),
+                        'geri_alindi' => (int) $r->geri_alindi === 1,
+                    ];
+                }
+                echo json_encode(['success' => true, 'status' => 'success', 'data' => $out]);
+                break;
+
+            case 'geri-al-nobet':
+                $gecmisId = (int) Security::decrypt($_POST['id'] ?? '');
+                if ($gecmisId <= 0) {
+                    throw new Exception('Geçersiz kayıt.');
+                }
+                $sonuc = $Nobet->geriAl($gecmisId);
+                $SystemLog->logAction($userId, 'Nöbet Geri Alma', "{$sonuc['geri_alinan']} nöbet işlemi geri alındı.", SystemLogModel::LEVEL_IMPORTANT);
+                echo json_encode(['success' => true, 'status' => 'success', 'message' => $sonuc['geri_alinan'] . ' işlem geri alındı.', 'atlanan' => $sonuc['atlanan']]);
+                break;
+
+            case 'toplu-nobet-ekle':
+                $personelId = (int) Security::decrypt($_POST['personel_id'] ?? '');
+                if ($personelId <= 0) {
+                    throw new Exception('Personel seçiniz.');
+                }
+                $tarihler = $_POST['tarihler'] ?? [];
+                if (!is_array($tarihler)) {
+                    $tarihler = explode(',', (string) $tarihler);
+                }
+                $tarihler = array_values(array_unique(array_filter(array_map('trim', $tarihler))));
+                if (empty($tarihler) || count($tarihler) > 62) {
+                    throw new Exception('1 ile 62 arasında tarih seçiniz.');
+                }
+                $satirlar = [];
+                foreach ($tarihler as $t) {
+                    $satirlar[] = ['personel_id' => $personelId, 'tarih' => $t, 'nobet_tipi' => $_POST['nobet_tipi'] ?? 'standart'];
+                }
+                $sonuc = $topluEkle($satirlar, 'toplu-ekle', ($_POST['uyari_onay'] ?? '') === '1');
+                echo json_encode(['success' => true, 'status' => 'success', 'message' => count($sonuc['eklenen']) . ' nöbet eklendi, ' . count($sonuc['atlanan']) . ' kayıt atlandı.'] + $sonuc);
+                break;
+
+            case 'nobet-kopyala':
+                $kBas = $tarihGecerli($_POST['kaynak_bas'] ?? '');
+                $kBit = $tarihGecerli($_POST['kaynak_bit'] ?? '');
+                $hBas = $tarihGecerli($_POST['hedef_bas'] ?? '');
+                if (!$kBas || !$kBit || !$hBas || $kBit < $kBas || (strtotime($kBit) - strtotime($kBas)) > 62 * 86400) {
+                    throw new Exception('Kaynak ve hedef tarih aralığı geçersiz (en fazla 62 gün).');
+                }
+                $fark = (int) round((strtotime($hBas) - strtotime($kBas)) / 86400);
+                if ($fark === 0) {
+                    throw new Exception('Hedef başlangıç, kaynak başlangıçla aynı olamaz.');
+                }
+                $satirlar = [];
+                foreach ($Nobet->getAralikNobetleri($kBas, $kBit) as $n) {
+                    $satirlar[] = [
+                        'personel_id' => (int) $n->personel_id,
+                        'tarih' => date('Y-m-d', strtotime($n->nobet_tarihi . ' ' . ($fark >= 0 ? '+' : '') . $fark . ' day')),
+                        'nobet_tipi' => $n->nobet_tipi,
+                        'baslangic_saati' => $n->baslangic_saati,
+                        'bitis_saati' => $n->bitis_saati,
+                    ];
+                }
+                if (empty($satirlar)) {
+                    throw new Exception('Kaynak aralıkta kopyalanacak nöbet bulunamadı.');
+                }
+                $sonuc = $topluEkle($satirlar, 'kopyala', ($_POST['uyari_onay'] ?? '') === '1');
+                echo json_encode(['success' => true, 'status' => 'success', 'message' => count($sonuc['eklenen']) . ' nöbet kopyalandı, ' . count($sonuc['atlanan']) . ' kayıt atlandı.'] + $sonuc);
+                break;
+
+            case 'dagitim-oneri':
+                $bas = $tarihGecerli($_POST['baslangic'] ?? '');
+                $bit = $tarihGecerli($_POST['bitis'] ?? '');
+                if (!$bas || !$bit || $bit < $bas || (strtotime($bit) - strtotime($bas)) > 62 * 86400) {
+                    throw new Exception('Tarih aralığı geçersiz (en fazla 62 gün).');
+                }
+                $gunler = $_POST['gunler'] ?? [1, 2, 3, 4, 5, 6, 7];
+                if (!is_array($gunler)) {
+                    $gunler = explode(',', (string) $gunler);
+                }
+                $gunler = array_values(array_filter(array_map('intval', $gunler), fn($g) => $g >= 1 && $g <= 7));
+                if (empty($gunler)) {
+                    throw new Exception('En az bir gün seçiniz.');
+                }
+
+                $secili = $_POST['personel_ids'] ?? [];
+                if (!is_array($secili)) {
+                    $secili = $secili === '' ? [] : explode(',', (string) $secili);
+                }
+                $seciliIdler = array_values(array_filter(array_map(fn($x) => (int) Security::decrypt($x), $secili)));
+
+                $adaylar = [];
+                foreach ($Personel->all(true, 'nobet') as $pr) {
+                    if (!empty($seciliIdler) && !in_array((int) $pr->id, $seciliIdler, true)) {
+                        continue;
+                    }
+                    $adaylar[] = ['id' => (int) $pr->id, 'ad' => $pr->adi_soyadi, 'departman' => $pr->departman];
+                }
+                if (empty($adaylar)) {
+                    throw new Exception('Dağıtım için uygun personel bulunamadı.');
+                }
+                $idListesi = array_column($adaylar, 'id');
+
+                $mevcut = [];
+                foreach ($Nobet->getAralikNobetleri($bas, $bit) as $n) {
+                    $mevcut[$n->nobet_tarihi][] = (int) $n->personel_id;
+                }
+
+                $oneri = \App\Service\NobetDagitimService::oner([
+                    'personeller' => $adaylar,
+                    'baslangic' => $bas,
+                    'bitis' => $bit,
+                    'gunler' => $gunler,
+                    'kisi_sayisi' => (int) ($_POST['kisi_sayisi'] ?? 1),
+                    'strateji' => $_POST['strateji'] ?? 'adil',
+                    'aylik_limit' => (int) ($_POST['aylik_limit'] ?? 0),
+                    'ardisik_engel' => ($_POST['ardisik_engel'] ?? '1') === '1',
+                    'izinler' => $Nobet->getIzinliGunler($bas, $bit, $idListesi),
+                    'mevcut' => $mevcut,
+                    'gecmis' => $Nobet->getDagitimGecmisSayilari(date('Y-m-d', strtotime($bas . ' -90 day')), date('Y-m-d', strtotime($bas . ' -1 day'))),
+                ]);
+
+                $adlar = array_column($adaylar, 'ad', 'id');
+                $atamalar = [];
+                foreach ($oneri['atamalar'] as $a) {
+                    $atamalar[] = [
+                        'personel_id' => Security::encrypt($a['personel_id']),
+                        'ad' => $adlar[$a['personel_id']] ?? '',
+                        'tarih' => $a['tarih'],
+                        'tarih_tr' => date('d.m.Y', strtotime($a['tarih'])),
+                        'gun' => ['', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'][(int) date('N', strtotime($a['tarih']))],
+                        'ozel_gun' => $a['ozel_gun'],
+                    ];
+                }
+                $ozet = [];
+                foreach ($oneri['ozet'] as $pid => $adet) {
+                    $ozet[] = ['ad' => $adlar[$pid] ?? '', 'adet' => $adet];
+                }
+                usort($ozet, fn($a, $b) => $b['adet'] <=> $a['adet']);
+                echo json_encode([
+                    'success' => true,
+                    'status' => 'success',
+                    'atamalar' => $atamalar,
+                    'ozet' => $ozet,
+                    'bos_kalan' => array_map(fn($d) => date('d.m.Y', strtotime($d)), $oneri['bos_kalan']),
+                ]);
+                break;
+
+            case 'dagitim-kaydet':
+                $liste = json_decode((string) ($_POST['atamalar'] ?? '[]'), true);
+                if (!is_array($liste) || empty($liste) || count($liste) > 400) {
+                    throw new Exception('Kaydedilecek atama bulunamadı.');
+                }
+                $satirlar = [];
+                foreach ($liste as $a) {
+                    $pid = (int) Security::decrypt($a['personel_id'] ?? '');
+                    if ($pid > 0) {
+                        $satirlar[] = ['personel_id' => $pid, 'tarih' => (string) ($a['tarih'] ?? ''), 'nobet_tipi' => 'standart'];
+                    }
+                }
+                $sonuc = $topluEkle($satirlar, 'dagitim', ($_POST['uyari_onay'] ?? '') === '1');
+                echo json_encode(['success' => true, 'status' => 'success', 'message' => count($sonuc['eklenen']) . ' nöbet kaydedildi, ' . count($sonuc['atlanan']) . ' kayıt atlandı.'] + $sonuc);
+                break;
+
+            case 'get-bordro-ozeti':
+                $ay = (string) ($_POST['ay'] ?? date('Y-m'));
+                if (!preg_match('/^\d{4}-\d{2}$/', $ay)) {
+                    throw new Exception('Geçersiz ay.');
+                }
+                $rows = $Nobet->getBordroOzeti($ay . '-01', date('Y-m-t', strtotime($ay . '-01')));
+                echo json_encode(['success' => true, 'status' => 'success', 'data' => $rows]);
+                break;
+
+            case 'get-adalet-raporu':
+                $yil = (int) ($_POST['yil'] ?? date('Y'));
+                if ($yil < 2000 || $yil > 2100) {
+                    throw new Exception('Geçersiz yıl.');
+                }
+                $pivot = [];
+                foreach ($Nobet->getAdaletRaporu($yil) as $r) {
+                    $pid = (int) $r->personel_id;
+                    if (!isset($pivot[$pid])) {
+                        $pivot[$pid] = ['ad' => $r->adi_soyadi, 'departman' => $r->departman, 'aylar' => array_fill(1, 12, 0), 'toplam' => 0, 'ozel_gun' => 0];
+                    }
+                    $pivot[$pid]['aylar'][(int) $r->ay] = (int) $r->sayi;
+                    $pivot[$pid]['toplam'] += (int) $r->sayi;
+                    $pivot[$pid]['ozel_gun'] += (int) $r->ozel_gun;
+                }
+                $personeller = array_values($pivot);
+                $toplamlar = array_column($personeller, 'toplam');
+                $adet = count($toplamlar);
+                $ortalama = $adet ? array_sum($toplamlar) / $adet : 0;
+                $varyans = 0;
+                foreach ($toplamlar as $t) {
+                    $varyans += ($t - $ortalama) ** 2;
+                }
+                $sapma = $adet ? sqrt($varyans / $adet) : 0;
+                $skor = $ortalama > 0 ? max(0, (int) round(100 * (1 - $sapma / $ortalama))) : 100;
+                usort($personeller, fn($a, $b) => $b['toplam'] <=> $a['toplam']);
+                echo json_encode([
+                    'success' => true,
+                    'status' => 'success',
+                    'personeller' => $personeller,
+                    'ortalama' => round($ortalama, 1),
+                    'sapma' => round($sapma, 2),
+                    'skor' => $skor,
+                    'en_az' => $adet ? min($toplamlar) : 0,
+                    'en_cok' => $adet ? max($toplamlar) : 0,
+                ]);
+                break;
+
+            case 'send-yarin-hatirlatma':
+                $yarin = date('Y-m-d', strtotime('+1 day'));
+                $pushService = new \App\Service\PushNotificationService();
+                $gonderilen = 0;
+                $basarisiz = 0;
+                $kayitlar = $Nobet->getYarinNobetleri($yarin);
+                foreach ($kayitlar as $k) {
+                    $payload = [
+                        'title' => '⏰ Nöbet Hatırlatması',
+                        'body' => "Sayın {$k->adi_soyadi}, yarın (" . date('d.m.Y', strtotime($yarin)) . ") nöbetçi olduğunuzu hatırlatmak isteriz.",
+                        'url' => '?page=nobet'
+                    ];
+                    try {
+                        if ($pushService->sendToPersonel((int) $k->personel_id, $payload) === true) {
+                            $gonderilen++;
+                        } else {
+                            $basarisiz++;
+                        }
+                    } catch (\Throwable $e) {
+                        error_log('Yarın nöbet hatırlatma hatası: ' . $e->getMessage());
+                        $basarisiz++;
+                    }
+                }
+                $SystemLog->logAction($userId, 'Nöbet Hatırlatma', "Yarınki nöbetçilere hatırlatma gönderildi: {$gonderilen} başarılı, {$basarisiz} başarısız.");
+                echo json_encode(['success' => true, 'status' => 'success', 'message' => count($kayitlar) === 0 ? 'Yarın için onaylı nöbet bulunamadı.' : "{$gonderilen} personele hatırlatma gönderildi" . ($basarisiz ? ", {$basarisiz} personele gönderilemedi (push aboneliği olmayabilir)." : '.')]);
                 break;
 
             default:

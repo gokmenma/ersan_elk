@@ -1361,7 +1361,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             'mobil_imza' => 'Mobil İmza ile Onayla',
                             default => 'E-İmza ile İmzala',
                         };
-                        $actionItems .= '<a href="index?p=evrak-takip/giden-evrak&amp;id=' . $esc($encryptedId) . '&amp;islem=imzala" class="dropdown-item d-flex align-items-center gap-2" title="' . $signActionLabel . '"><i class="bx bx-check text-success"></i><span>' . $signActionLabel . '</span></a><button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-e-imza-iade" data-id="' . $esc($encryptedId) . '" title="Düzeltilmek Üzere İade Et"><i class="bx bx-undo text-warning"></i><span>Düzeltilmek Üzere İade Et</span></button>';
+                        if (in_array($approvalType, ['islak_imza', 'mobil_imza'], true)) {
+                            $actionItems .= '<a href="index?p=evrak-takip/giden-evrak&amp;id=' . $esc($encryptedId) . '&amp;islem=imzala" class="dropdown-item d-flex align-items-center gap-2" title="' . $signActionLabel . '"><i class="bx bx-check text-success"></i><span>' . $signActionLabel . '</span></a>';
+                        } else {
+                            $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-e-imza-onayla" data-id="' . $esc($encryptedId) . '" title="' . $signActionLabel . '"><i class="bx bx-check text-success"></i><span>' . $signActionLabel . '</span></button>';
+                        }
+                        $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-e-imza-iade" data-id="' . $esc($encryptedId) . '" title="Düzeltilmek Üzere İade Et"><i class="bx bx-undo text-warning"></i><span>Düzeltilmek Üzere İade Et</span></button>';
                     }
                     if ($type === 'giden' && !$isKep) $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 btn-onay-tarihce" data-id="' . $esc($encryptedId) . '" data-subject="' . $esc($evrak->konu ?: 'Resmî Yazı') . '" title="Onay Tarihçesi"><i class="bx bx-history text-secondary"></i><span>Onay Tarihçesi</span></button>';
                     if ($locked && $approvalStatus === 'onay_bekliyor' && (int) ($evrak->olusturan_kullanici_id ?? 0) === $currentUserId) $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-e-imza-geri-al" data-id="' . $esc($encryptedId) . '" title="Evrakı Üzerime Geri Al"><i class="bx bx-revision text-info"></i><span>Evrakı Üzerime Geri Al</span></button>';

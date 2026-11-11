@@ -1739,3 +1739,64 @@ div[id$="-table_wrapper"] .dataTables_info {
 .fc-event-unapproved:hover {
   opacity: 1;
 }
+
+
+/* ============================================
+       PLANLAMA ARAÇ SETİ (mod butonları, ızgara, ısı haritası)
+       ============================================ */
+.mode-buttons { display: flex; gap: 4px; background: #f4f4f5; padding: 4px; border-radius: 8px; }
+.mode-buttons .btn { padding: 6px 10px; font-size: 14px; line-height: 1; border-radius: 8px; border: none; background: transparent; color: #71717a; transition: all .2s ease; }
+.mode-buttons .btn:hover { color: #18181b; }
+.mode-buttons .btn.active { background: #fff; color: #18181b; box-shadow: 0 1px 3px rgba(0, 0, 0, .1); }
+[data-bs-theme="dark"] .mode-buttons { background: #191e22 !important; }
+[data-bs-theme="dark"] .mode-buttons .btn { color: #adb5bd !important; }
+[data-bs-theme="dark"] .mode-buttons .btn.active { background: #282f36 !important; color: #eff2f7 !important; }
+
+.nobet-kpi-click { cursor: pointer; transition: transform .15s ease, box-shadow .15s ease; }
+.nobet-kpi-click:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0, 0, 0, .08); }
+.nobet-kpi-click:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
+
+#nobet-calendar .fc-daygrid-day.nobet-bos-gun .fc-daygrid-day-top::before {
+  content: ""; width: 7px; height: 7px; border-radius: 50%; background: #ef4444; margin: 6px 0 0 6px; align-self: flex-start; opacity: .85;
+}
+#nobet-calendar .fc-daygrid-day.nobet-bos-gun.fc-day-other .fc-daygrid-day-top::before { display: none; }
+#nobet-calendar.nobet-heat-on .fc-daygrid-day[data-heat="0"] { background: rgba(239, 68, 68, .07); }
+#nobet-calendar.nobet-heat-on .fc-daygrid-day[data-heat="1"] { background: rgba(59, 130, 246, .08); }
+#nobet-calendar.nobet-heat-on .fc-daygrid-day[data-heat="2"] { background: rgba(59, 130, 246, .18); }
+#nobet-calendar.nobet-heat-on .fc-daygrid-day[data-heat="3"] { background: rgba(59, 130, 246, .30); }
+#nobet-calendar.nobet-heat-on .fc-daygrid-day[data-heat="4"] { background: rgba(37, 99, 235, .42); }
+#nobet-calendar .fc-daygrid-day.nobet-flash { animation: nobetFlash 1.1s ease-in-out 2; }
+@keyframes nobetFlash { 0%, 100% { box-shadow: inset 0 0 0 0 rgba(245, 158, 11, 0); } 50% { box-shadow: inset 0 0 0 3px rgba(245, 158, 11, .9); } }
+#nobet-grid thead th.nobet-flash { animation: nobetFlash 1.1s ease-in-out 2; }
+
+#nobet-grid { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0 12px 8px; }
+.nobet-grid-tools { display: flex; justify-content: space-between; align-items: center; padding: 10px 4px; flex-wrap: wrap; gap: 8px; }
+.nobet-grid-legend { font-size: 11px; color: #64748b; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.nobet-grid-legend .lg { display: inline-block; min-width: 22px; text-align: center; padding: 1px 4px; border-radius: 5px; font-weight: 700; color: #fff; margin-left: 6px; }
+.lg.n, .gchip.tip-standart { background: #3b82f6; }
+.lg.hs, .gchip.tip-hafta_sonu { background: #8b5cf6; }
+.lg.rt, .gchip.tip-resmi_tatil { background: #ef4444; }
+.lg.oz, .gchip.tip-ozel { background: #f59e0b; }
+.nobet-grid-scroll { flex: 1; min-height: 0; overflow: auto; border: 1px solid #e5e7eb; border-radius: 10px; }
+.nobet-grid-table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 12px; }
+.nobet-grid-table th, .nobet-grid-table td { border-right: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; text-align: center; padding: 4px 2px; min-width: 30px; background: #fff; }
+.nobet-grid-table thead th { position: sticky; top: 0; z-index: 2; background: #f8fafc; font-weight: 700; color: #475569; }
+.nobet-grid-table thead th small { display: block; font-weight: 500; color: #94a3b8; font-size: 10px; }
+.nobet-grid-table .sticky-col { position: sticky; left: 0; z-index: 1; min-width: 170px; text-align: left; padding-left: 10px; background: #fff; }
+.nobet-grid-table thead .sticky-col { z-index: 3; background: #f8fafc; }
+.nobet-grid-table .gname { font-weight: 600; color: #1e293b; white-space: nowrap; }
+.nobet-grid-table .sticky-col small { color: #94a3b8; font-size: 10px; }
+.nobet-grid-table th.wk, .nobet-grid-table td.wk { background: #f8fafc; }
+.nobet-grid-table th.bos { background: #fee2e2; color: #b91c1c; }
+.nobet-grid-table th.today { box-shadow: inset 0 -3px 0 #3b82f6; }
+.nobet-grid-table tfoot td { position: sticky; bottom: 0; background: #f8fafc; font-weight: 700; }
+.nobet-grid-table tfoot td.bos-cell { background: #fee2e2; color: #b91c1c; }
+.nobet-grid-table td.gtotal { font-weight: 700; background: #f8fafc; }
+.nobet-grid-table td.gempty { cursor: pointer; }
+.nobet-grid-table td.gempty:hover { background: #eff6ff; }
+.gchip { display: inline-block; min-width: 24px; padding: 1px 4px; border-radius: 6px; color: #fff; font-weight: 700; font-size: 11px; cursor: pointer; }
+.gchip.pending { opacity: .7; outline: 2px dashed rgba(0, 0, 0, .35); outline-offset: -2px; }
+[data-bs-theme="dark"] .nobet-grid-table th, [data-bs-theme="dark"] .nobet-grid-table td, [data-bs-theme="dark"] .nobet-grid-table .sticky-col { background: #1f262d; border-color: #2c353d; color: #cbd5e1; }
+[data-bs-theme="dark"] .nobet-grid-table thead th, [data-bs-theme="dark"] .nobet-grid-table tfoot td, [data-bs-theme="dark"] .nobet-grid-table td.gtotal { background: #191e22; }
+[data-bs-theme="dark"] .nobet-grid-table .gname { color: #e2e8f0; }
+[data-bs-theme="dark"] .nobet-grid-scroll { border-color: #2c353d; }
