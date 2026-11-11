@@ -10,6 +10,8 @@ class IhbarModel extends Model
 {
     public const IHBAR_TURLERI = ['Abonesiz', 'Kaçak', 'Pasif', 'Usülsüz'];
 
+    public const ILCELER = ['Afşin', 'Andırın', 'Çağlayancerit', 'Dulkadiroğlu', 'Ekinözü', 'Elbistan', 'Göksun', 'Nurhak', 'Onikişubat', 'Pazarcık', 'Türkoğlu'];
+
     protected $table = 'ihbarlar';
 
     const UPLOAD_DIR = 'uploads/ihbar';
@@ -462,6 +464,32 @@ class IhbarModel extends Model
         $stmt = $this->db->prepare("SELECT personel_id FROM ihbar_atamalar WHERE ihbar_id = ? AND silinme_tarihi IS NULL");
         $stmt->execute([$ihbarId]);
         return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    }
+
+    public function personelErisebilirMi(int $ihbarId, int $personelId, int $firmaId): bool
+    {
+        $stmt = $this->db->prepare("SELECT i.id
+            FROM ihbarlar i
+            LEFT JOIN ihbar_atamalar a ON a.ihbar_id = i.id AND a.personel_id = ? AND a.silinme_tarihi IS NULL
+            WHERE i.id = ? AND i.firma_id = ? AND i.silinme_tarihi IS NULL
+              AND (i.bildiren_personel_id = ? OR a.personel_id IS NOT NULL)
+            LIMIT 1");
+        $stmt->execute([$personelId, $ihbarId, $firmaId, $personelId]);
+        return (bool) $stmt->fetchColumn();
+    }
+
+    public function getPersonelMedyasi(int $fotoId, int $personelId, int $firmaId): ?array
+    {
+        $stmt = $this->db->prepare("SELECT f.id, f.ihbar_id, f.medya_tipi, f.dosya_yolu, f.kucuk_yol
+            FROM ihbar_fotograflari f
+            INNER JOIN ihbarlar i ON i.id = f.ihbar_id
+            LEFT JOIN ihbar_atamalar a ON a.ihbar_id = i.id AND a.personel_id = ? AND a.silinme_tarihi IS NULL
+            WHERE f.id = ? AND i.firma_id = ? AND i.silinme_tarihi IS NULL
+              AND (i.bildiren_personel_id = ? OR a.personel_id IS NOT NULL)
+            LIMIT 1");
+        $stmt->execute([$personelId, $fotoId, $firmaId, $personelId]);
+        $satir = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $satir ?: null;
     }
 
     public function addNote(int $ihbarId, string $aciklama, string $ekleyenTip, int $ekleyenId): void

@@ -20,6 +20,29 @@ $isKacakKontrol = stripos($departman, 'Kaçak') !== false;
 
 $personelModel = new PersonelModel();
 
+if ((string) ($_GET['action'] ?? '') === 'performans') {
+    if ($isBuro) {
+        mobile_fail('Performans özeti bu personel için kullanılamıyor.', 403);
+    }
+    try {
+        $okumaSefi = false;
+        if ($isEndeksOkuma) {
+            foreach ($personelModel->getEkipGecmisi($personelId) as $gecmis) {
+                if ((int) ($gecmis->ekip_sefi_mi ?? 0) === 1 && (empty($gecmis->bitis_tarihi) || $gecmis->bitis_tarihi >= date('Y-m-d'))) {
+                    $okumaSefi = true;
+                    break;
+                }
+            }
+        }
+        $performans = (new \App\Model\PersonelPerformansModel())->getAnaSayfaPerformans($personel, (int) $personel->firma_id, $okumaSefi);
+        $performans['son_guncelleme'] = \App\Helper\Helper::getLastUpdateDate('yapilan_isler');
+        mobile_ok(['performans' => $performans]);
+    } catch (\Throwable $e) {
+        error_log('Mobil ana sayfa performans hatasi: ' . $e->getMessage());
+        mobile_fail('Performans özeti şu anda alınamıyor.', 500);
+    }
+}
+
 $isEkipSefi = false;
 if ($isEndeksOkuma && $isSef) {
     try {

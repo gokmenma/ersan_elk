@@ -96,7 +96,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         ]);
 
         $newId = (int) $model->getDb()->lastInsertId();
-        (new \App\Model\SystemLogModel())->logPersonelTalep($personelId, 'Genel Talep Oluşturma', $baslik . ' talebi oluşturuldu (Mobil)', $newId);
 
         // Bildirim süreci (sessiz hata yakalama)
         try {
@@ -128,7 +127,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                         $pushService->sendToUser($kullanici->id, [
                             'title' => "📣 Yeni {$baslik}",
                             'body' => ($talepEden->adi_soyadi ?? 'Personel') . " yeni bir talep oluşturdu.",
-                            'url' => \App\Helper\MobileSpa::url('/talepler'),
+                            'url' => 'mobile/index.php?p=talepler',
                         ], false, $prefType);
                     } catch (\Exception $pe) {
                         // ignore push err
@@ -165,7 +164,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             mobile_fail('Yalnızca beklemedeki talepler iptal edilebilir.', 409);
         }
 
-        (new \App\Model\SystemLogModel())->logPersonelTalep($personelId, 'Genel Talep İptal', 'Talep personel tarafından iptal edildi (Mobil)', $id);
         mobile_ok(['message' => 'Talep iptal edildi.']);
     }
 

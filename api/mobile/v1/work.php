@@ -3,6 +3,7 @@
 require_once __DIR__ . '/_bootstrap.php';
 
 use App\Helper\Helper;
+use App\Model\EkipTakibiModel;
 use App\Model\EndeksOkumaModel;
 use App\Model\KacakKontrolModel;
 use App\Model\Model;
@@ -86,6 +87,10 @@ if ($isKacakKontrol) {
     $availableTabs[] = ['key' => 'endeks', 'label' => 'Endeks Okuma'];
 }
 
+if ($isOkumaSefi) {
+    $availableTabs[] = ['key' => 'ekip', 'label' => 'Ekip Takibi'];
+}
+
 // Varsayılan sekme
 if ($isKacakKontrol && $hasKacak) {
     $defaultTab = 'kacak';
@@ -98,8 +103,63 @@ if ($isKacakKontrol && $hasKacak) {
 $input = mobile_input();
 $action = (string) ($input['action'] ?? 'get_data');
 
+$ekipBolgesi = static function () use ($PersonelModel, $personelId, $isOkumaSefi): string {
+    if (!$isOkumaSefi) {
+        mobile_fail('Bu işlem için yetkiniz bulunmuyor.', 403);
+    }
+
+    $sefEkipKoduId = null;
+    foreach ($PersonelModel->getEkipGecmisi($personelId) as $g) {
+        if (((int) ($g->ekip_sefi_mi ?? 0)) === 1 && (empty($g->bitis_tarihi) || $g->bitis_tarihi >= date('Y-m-d'))) {
+            $sefEkipKoduId = $g->ekip_kodu_id;
+            break;
+        }
+    }
+    if (!$sefEkipKoduId) {
+        mobile_fail('Ekip şefi kaydı bulunamadı.', 403);
+    }
+
+    $ekipKodu = (new TanimlamalarModel())->find($sefEkipKoduId);
+    $bolge = trim((string) ($ekipKodu->ekip_bolge ?? ''));
+    if ($bolge === '') {
+        mobile_fail('Ekip kodunun bölge bilgisi tanımlı değil.', 422);
+    }
+
+    return $bolge;
+};
+
 try {
     switch ($action) {
+        case 'ekip_data': {
+            $bolge = $ekipBolgesi();
+            $isDate = static fn(string $v): bool => (bool) preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) && strtotime($v) !== false;
+            $startDate = (string) ($input['start_date'] ?? '');
+            $endDate = (string) ($input['end_date'] ?? '');
+            if (!$isDate($startDate)) $startDate = date('Y-m-01');
+            if (!$isDate($endDate)) $endDate = date('Y-m-d');
+            if ($startDate > $endDate) {
+                [$startDate, $endDate] = [$endDate, $startDate];
+            }
+
+            $bolgeEkipleri = (new TanimlamalarModel())->getEkipKodlariByBolgeAll($bolge);
+            $ekipler = (new EkipTakibiModel())->getEkipPerformansi($bolgeEkipleri, $firmaId, $startDate, $endDate);
+
+            mobile_ok([
+                'bolge' => $bolge,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'is_single_day' => $startDate === $endDate,
+                'ekipler' => $ekipler,
+            ]);
+            break;
+        }
+
+        case 'ekip_delayed': {
+            $bolge = $ekipBolgesi();
+            mobile_ok(['geciken' => (new EkipTakibiModel())->getGecikenOkumalar($bolge, $firmaId)]);
+            break;
+        }
+
         case 'defter_list': {
             $startDate = (string) ($input['start_date'] ?? date('Y-m-01'));
             $endDate = (string) ($input['end_date'] ?? date('Y-m-d'));
@@ -209,6 +269,7 @@ try {
                 'result' => [
                     'name' => $defter_mahalle,
                     'code' => $tur_adi,
+                    'region' => $defter_bolge,
                     'total_subscribers' => $total_subscribers,
                     'breakdown' => $breakdown,
                     'status_summary' => $statusSummary,
@@ -270,6 +331,9 @@ try {
         case 'get_data':
         default: {
             $selectedTab = (string) ($input['tab'] ?? $defaultTab);
+            if (!in_array($selectedTab, array_column($availableTabs, 'key'), true) || $selectedTab === 'ekip') {
+                $selectedTab = $defaultTab;
+            }
             $startDate = (string) ($input['start_date'] ?? date('Y-m-01'));
             $endDate = (string) ($input['end_date'] ?? date('Y-m-d'));
             $workType = (string) ($input['work_type'] ?? '');
@@ -353,6 +417,21 @@ try {
                 $stmt->execute([$personelId, $firmaId, $startOfMonth, $endOfMonth]);
                 $monthlyEndeks = (int) ($stmt->fetch(PDO::FETCH_OBJ)->toplam ?? 0);
             }
+
+            // Günlük & Aylık Kaçak Kontrol (onaylanmış + bekleyen)
+            $sqlKacakKpi = "SELECT SUM(COALESCE(sayi, 1)) AS toplam
+                            FROM kacak_kontrol
+                            WHERE (bildiren_personel_id = ? OR FIND_IN_SET(?, personel_ids))
+                              AND firma_id = ?
+                              AND silinme_tarihi IS NULL
+                              AND onay_durumu IN ('onaylandi', 'beklemede')
+                              AND NOT (durum = 'iptal' AND hakedisten_dus = 1)
+                              AND tarih BETWEEN ? AND ?";
+            $stmt = $db->prepare($sqlKacakKpi);
+            $stmt->execute([$personelId, $personelId, $firmaId, $today, $today]);
+            $dailyKacak = (int) ($stmt->fetch(PDO::FETCH_OBJ)->toplam ?? 0);
+            $stmt->execute([$personelId, $personelId, $firmaId, $startOfMonth, $endOfMonth]);
+            $monthlyKacak = (int) ($stmt->fetch(PDO::FETCH_OBJ)->toplam ?? 0);
 
             // Filtre Seçenekleri
             $workTypes = [];
@@ -563,6 +642,8 @@ try {
                     'monthly_jobs' => $monthlyCount,
                     'daily_endeks' => $dailyEndeks,
                     'monthly_endeks' => $monthlyEndeks,
+                    'daily_kacak' => $dailyKacak,
+                    'monthly_kacak' => $monthlyKacak,
                 ],
                 'stats' => $stats,
                 'items' => $items,
@@ -576,5 +657,5 @@ try {
     }
 } catch (\Throwable $e) {
     error_log('Mobil work.php genel hata: ' . $e->getMessage());
-    mobile_fail('İş takip verileri alınırken bir hata oluştu: ' . $e->getMessage(), 500);
+    mobile_fail('İş takip verileri alınırken bir hata oluştu.', 500);
 }

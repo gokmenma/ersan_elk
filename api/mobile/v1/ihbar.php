@@ -2,20 +2,32 @@
 
 require_once __DIR__ . '/_bootstrap.php';
 
-use App\Model\IhbarModel;
-use App\Model\PersonelModel;
-use App\Model\UserModel;
-use App\Model\BildirimModel;
-use App\Model\PersonelHareketleriModel;
-use App\Model\UserNotificationPreferenceModel;
-use App\Service\PushNotificationService;
+use App\Helper\MedyaServis;
 use App\Helper\Security;
+use App\Model\IhbarModel;
+use App\Model\PwaTransferModel;
+use App\Service\IhbarBildirimService;
 
 $personel = mobile_require_auth();
 $personelId = (int) $personel->id;
 $firmaId = (int) ($personel->firma_id ?? 1);
+
+if (!IhbarBildirimService::yetkiliMi($personel)) {
+    mobile_fail('İhbar işlemleri için yetkiniz bulunmuyor.', 403, ['code' => 'FORBIDDEN', 'transfer_error' => 'permission']);
+}
+
+if (session_status() === PHP_SESSION_NONE) {
+    @session_start();
+}
+$_SESSION['personel_id'] = $personelId;
+$_SESSION['firma_id'] = $firmaId;
+
+$hesapAnahtari = hash('sha256', 'pwa:' . $firmaId . ':' . $personelId);
 $ihbarModel = new IhbarModel();
+$servis = new IhbarBildirimService($ihbarModel);
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $input = mobile_input();
+$action = (string) ($input['action'] ?? '');
 
 $durumMap = [
     'yeni' => 'Yeni',
@@ -25,525 +37,225 @@ $durumMap = [
     'olumsuz' => 'Olumsuz',
 ];
 
-$ilceler = [
-    'Afşin',
-    'Andırın',
-    'Çağlayancerit',
-    'Dulkadiroğlu',
-    'Ekinözü',
-    'Elbistan',
-    'Göksun',
-    'Nurhak',
-    'Onikişubat',
-    'Pazarcık',
-    'Türkoğlu',
-];
+$medyaYolu = static fn(int $id, bool $kucuk = false): string => '/ihbar.php?action=photo' . ($kucuk ? '&boyut=kucuk' : '') . '&photo_id=' . $id;
 
-if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
-    $action = (string) ($input['action'] ?? '');
-
-    if ($action === 'create') {
-        $ilce = trim((string) ($input['ilce'] ?? ''));
-        if ($ilce === '') {
-            mobile_fail('İlçe seçimi zorunludur.', 422);
-        }
-
-        $mahalle = trim((string) ($input['mahalle'] ?? ''));
-        if ($mahalle === '') {
-            mobile_fail('Mahalle alanı zorunludur.', 422);
-        }
-
-        $aciklama = trim(strip_tags((string) ($input['aciklama'] ?? '')));
-        if ($aciklama === '') {
-            mobile_fail('İhbar açıklaması zorunludur.', 422);
-        }
-
-        $telefon = trim((string) ($input['telefon'] ?? ''));
-        $komsuAboneNo = trim((string) ($input['komsu_abone_no'] ?? ''));
-        $konumLink = trim((string) ($input['konum_link'] ?? ''));
-
-        $lat = isset($input['konum_lat']) && is_numeric($input['konum_lat']) ? (float) $input['konum_lat'] : null;
-        $lng = isset($input['konum_lng']) && is_numeric($input['konum_lng']) ? (float) $input['konum_lng'] : null;
-        $dogruluk = isset($input['konum_dogruluk']) && is_numeric($input['konum_dogruluk']) ? (float) $input['konum_dogruluk'] : null;
-
-        if (empty($konumLink) && ($lat === null || $lng === null)) {
-            mobile_fail('Konum bilgisi zorunludur.', 422);
-        }
-
-        $hasFiles = !empty($_FILES['fotograflar']) && !empty($_FILES['fotograflar']['name']);
-        $hasBase64 = !empty($input['base64_fotograflar']) && is_array($input['base64_fotograflar']);
-        if (!$hasFiles && !$hasBase64) {
-            mobile_fail('En az 1 adet fotoğraf yüklenmelidir.', 422);
-        }
-
-        if (empty($konumLink) && $lat !== null && $lng !== null) {
-            $konumLink = "https://maps.google.com/?q={$lat},{$lng}";
-        }
-
-        $ihbarDb = $ihbarModel->getDb();
-        $ihbarDb->beginTransaction();
-
-        try {
-            $ihbarId = $ihbarModel->create([
-                'ilce' => $ilce,
-                'mahalle' => $mahalle,
-                'telefon' => $telefon ?: null,
-                'komsu_abone_no' => $komsuAboneNo ?: null,
-                'aciklama' => $aciklama,
-                'konum_link' => $konumLink ?: null,
-                'konum_lat' => $lat,
-                'konum_lng' => $lng,
-                'konum_dogruluk' => $dogruluk,
-                'bildiren_personel_id' => $personelId,
-            ]);
-
-            // Görevdeki Kaçak personellerinden güncel konum talep et
-            try {
-                (new PersonelHareketleriModel())->requestKacakPersonelKonumlari($firmaId);
-            } catch (\Throwable $e) {
-                // ignore
-            }
-
-            // En yakın Kaçak personeline otomatik atama
-            $atananPersonelId = null;
-            if ($lat !== null && $lng !== null) {
-                try {
-                    $atananPersonelId = $ihbarModel->autoAssignNearest($ihbarId, $lat, $lng, $personelId);
-                } catch (\Throwable $e) {
-                    error_log('Mobile İhbar Otomatik Atama Hatası: ' . $e->getMessage());
-                }
-            }
-
-            // Multipart Dosya Yüklemeleri ($_FILES)
-            if (!empty($_FILES['fotograflar']) && !empty($_FILES['fotograflar']['name'])) {
-                $fileNames = is_array($_FILES['fotograflar']['name']) ? $_FILES['fotograflar']['name'] : [$_FILES['fotograflar']['name']];
-                $tmpNames = is_array($_FILES['fotograflar']['tmp_name']) ? $_FILES['fotograflar']['tmp_name'] : [$_FILES['fotograflar']['tmp_name']];
-                $errors = is_array($_FILES['fotograflar']['error']) ? $_FILES['fotograflar']['error'] : [$_FILES['fotograflar']['error']];
-                $sizes = is_array($_FILES['fotograflar']['size']) ? $_FILES['fotograflar']['size'] : [$_FILES['fotograflar']['size']];
-
-                $maxFiles = min(count($fileNames), IhbarModel::MAX_FOTO);
-                for ($i = 0; $i < $maxFiles; $i++) {
-                    if (($errors[$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-                        continue;
-                    }
-                    try {
-                        $fotoSonuc = IhbarModel::storeUploadedFoto([
-                            'name' => $fileNames[$i],
-                            'tmp_name' => $tmpNames[$i],
-                            'error' => $errors[$i],
-                            'size' => $sizes[$i],
-                        ], $ihbarId);
-
-                        $ihbarModel->addFotograf($ihbarId, $fotoSonuc['yol'], $fotoSonuc['kucuk']);
-                    } catch (\Throwable $e) {
-                        error_log("Mobile ihbar foto yükleme hatası (ihbar {$ihbarId}): " . $e->getMessage());
-                    }
-                }
-            }
-
-            // Base64 Fotoğraf Yüklemeleri (JSON gövdesinden)
-            if (!empty($input['base64_fotograflar']) && is_array($input['base64_fotograflar'])) {
-                $altDizin = IhbarModel::UPLOAD_DIR . '/' . date('Y/m');
-                $hedefDizin = PROJECT_ROOT . '/' . $altDizin;
-                if (!is_dir($hedefDizin) && !mkdir($hedefDizin, 0775, true) && !is_dir($hedefDizin)) {
-                    // devam et
-                }
-
-                $kalanFoto = max(0, IhbarModel::MAX_FOTO - $ihbarModel->countFotograflar($ihbarId));
-                $b64List = array_slice($input['base64_fotograflar'], 0, $kalanFoto);
-
-                foreach ($b64List as $bIndex => $b64Item) {
-                    try {
-                        $b64Data = is_string($b64Item) ? $b64Item : ($b64Item['data'] ?? '');
-                        if (str_contains($b64Data, ',')) {
-                            $b64Data = explode(',', $b64Data)[1];
-                        }
-                        $binary = base64_decode($b64Data, true);
-                        if ($binary === false || strlen($binary) < 10) {
-                            continue;
-                        }
-
-                        $fileName = 'ihbar_' . $ihbarId . '_' . time() . '_' . $bIndex . '.jpg';
-                        $fullPath = $hedefDizin . '/' . $fileName;
-                        file_put_contents($fullPath, $binary);
-
-                        $relPath = $altDizin . '/' . $fileName;
-                        $ihbarModel->addFotograf($ihbarId, $relPath, $relPath);
-                    } catch (\Throwable $e) {
-                        error_log("Mobile base64 foto hatası: " . $e->getMessage());
-                    }
-                }
-            }
-
-            // Video Yüklemeleri ($_FILES)
-            if (!empty($_FILES['videolar']) && !empty($_FILES['videolar']['name'])) {
-                $vNames = is_array($_FILES['videolar']['name']) ? $_FILES['videolar']['name'] : [$_FILES['videolar']['name']];
-                $vTmps = is_array($_FILES['videolar']['tmp_name']) ? $_FILES['videolar']['tmp_name'] : [$_FILES['videolar']['tmp_name']];
-                $vErrors = is_array($_FILES['videolar']['error']) ? $_FILES['videolar']['error'] : [$_FILES['videolar']['error']];
-                $vSizes = is_array($_FILES['videolar']['size']) ? $_FILES['videolar']['size'] : [$_FILES['videolar']['size']];
-                $vSureler = is_array($input['video_sureleri'] ?? null) ? $input['video_sureleri'] : [];
-                $vKapaklar = is_array($input['video_kapaklari'] ?? null) ? $input['video_kapaklari'] : [];
-
-                $maxV = min(count($vNames), IhbarModel::MAX_VIDEO);
-                for ($v = 0; $v < $maxV; $v++) {
-                    if (($vErrors[$v] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-                        continue;
-                    }
-                    try {
-                        $vSonuc = $ihbarModel->storeUploadedVideo(
-                            [
-                                'name' => $vNames[$v],
-                                'tmp_name' => $vTmps[$v],
-                                'error' => $vErrors[$v],
-                                'size' => $vSizes[$v],
-                            ],
-                            $ihbarId,
-                            isset($vSureler[$v]) && is_numeric($vSureler[$v]) ? (int) ceil((float) $vSureler[$v]) : null,
-                            isset($vKapaklar[$v]) ? (string) $vKapaklar[$v] : null
-                        );
-                        $ihbarModel->addVideo($ihbarId, $vSonuc['yol'], $vSonuc['kapak'], $vSonuc['sure_saniye']);
-                    } catch (\Throwable $e) {
-                        error_log("Mobile video yükleme hatası: " . $e->getMessage());
-                    }
-                }
-            }
-
-            $ihbarDb->commit();
-
-            // Bildirim Gönderimi
-            try {
-                $personelAdi = $personel->adi_soyadi ?? 'Personel';
-
-                // Otomatik atanan personele push bildirim
-                if ($atananPersonelId) {
-                    try {
-                        $pushService = new PushNotificationService();
-                        $pushService->sendToPersonel($atananPersonelId, [
-                            'title' => '📍 Yeni İhbar Atandı',
-                            'body' => 'Konumunuza en yakın yeni kaçak ihbarı size yönlendirildi.',
-                            'url' => 'ihbar?id=' . $ihbarId,
-                        ]);
-                    } catch (\Throwable $e) {
-                        // ignore
-                    }
-                }
-
-                // Sistem yöneticilerine bildirim
-                $userModel = new UserModel();
-                $sorumlular = $userModel->getInAppBildirimKullanicilari('ihbar');
-                foreach ($sorumlular as $sorumlu) {
-                    try {
-                        $bildirimModel = new BildirimModel();
-                        $bildirimModel->createNotificationWithPush(
-                            (int) $sorumlu->id,
-                            '📣 Yeni İhbar',
-                            $personelAdi . ' tarafından yeni bir ihbar bildirildi.',
-                            'index.php?p=ihbar/list&ihbar_id=' . $ihbarId,
-                            'alert-triangle',
-                            'danger',
-                            UserNotificationPreferenceModel::TYPE_IHBAR_CREATED
-                        );
-                    } catch (\Throwable $e) {
-                        // ignore
-                    }
-                }
-            } catch (\Throwable $e) {
-                error_log('Mobile İhbar Bildirim Gönderim Hatası: ' . $e->getMessage());
-            }
-
-            mobile_ok([
-                'message' => 'İhbarınız başarıyla kaydedildi.',
-                'id' => $ihbarId,
-            ]);
-        } catch (\Throwable $e) {
-            if ($ihbarDb->inTransaction()) {
-                $ihbarDb->rollBack();
-            }
-            mobile_fail($e->getMessage() ?: 'İhbar kaydedilirken hata oluştu.', 500);
+if ($method === 'GET' && $action === 'photo') {
+    $medya = $ihbarModel->getPersonelMedyasi((int) ($input['photo_id'] ?? 0), $personelId, $firmaId);
+    if (!$medya) {
+        mobile_fail('Belge bulunamadı veya erişim yetkiniz yok.', 404);
+    }
+    $kok = realpath(PROJECT_ROOT . '/' . IhbarModel::UPLOAD_DIR);
+    $adaylar = ($input['boyut'] ?? '') === 'kucuk' && !empty($medya['kucuk_yol'])
+        ? [$medya['kucuk_yol'], $medya['dosya_yolu']]
+        : [$medya['dosya_yolu']];
+    foreach ($adaylar as $aday) {
+        $dosya = realpath(PROJECT_ROOT . '/' . ltrim((string) $aday, '/'));
+        if ($kok && $dosya && str_starts_with($dosya, $kok . DIRECTORY_SEPARATOR) && is_file($dosya)) {
+            MedyaServis::gonder($dosya, 86400);
+            exit;
         }
     }
+    mobile_fail('Dosya sunucuda bulunamadı.', 404);
+}
 
-    if ($action === 'update') {
-        $id = (int) ($input['id'] ?? 0);
-        if ($id <= 0) {
-            mobile_fail('Geçersiz ihbar numarası.', 422);
-        }
+if (in_array($_GET['action'] ?? '', ['transfer_create', 'transfer_update', 'transfer_photo'], true) && empty($_POST) && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+    mobile_fail('Gönderilen dosya sunucu yükleme sınırını aşıyor.', 413, ['transfer_error' => 'validation']);
+}
 
-        $ilce = trim((string) ($input['ilce'] ?? ''));
-        if ($ilce === '') {
-            mobile_fail('İlçe seçimi zorunludur.', 422);
-        }
-
-        $mahalle = trim((string) ($input['mahalle'] ?? ''));
-        if ($mahalle === '') {
-            mobile_fail('Mahalle alanı zorunludur.', 422);
-        }
-
-        $aciklama = trim(strip_tags((string) ($input['aciklama'] ?? '')));
-        if ($aciklama === '') {
-            mobile_fail('Açıklama zorunludur.', 422);
-        }
-
-        $telefon = trim((string) ($input['telefon'] ?? ''));
-        $komsuAboneNo = trim((string) ($input['komsu_abone_no'] ?? ''));
-        $konumLink = trim((string) ($input['konum_link'] ?? ''));
-
-        $lat = isset($input['konum_lat']) && is_numeric($input['konum_lat']) ? (float) $input['konum_lat'] : null;
-        $lng = isset($input['konum_lng']) && is_numeric($input['konum_lng']) ? (float) $input['konum_lng'] : null;
-        $dogruluk = isset($input['konum_dogruluk']) && is_numeric($input['konum_dogruluk']) ? (float) $input['konum_dogruluk'] : null;
-
-        if (empty($konumLink) && ($lat === null || $lng === null)) {
-            mobile_fail('Konum bilgisi zorunludur.', 422);
-        }
-
-        if (empty($konumLink) && $lat !== null && $lng !== null) {
-            $konumLink = "https://maps.google.com/?q={$lat},{$lng}";
-        }
-
-        try {
-            $ihbarModel->updateByBildiren($id, $personelId, [
-                'ilce' => $ilce,
-                'mahalle' => $mahalle,
-                'telefon' => $telefon ?: null,
-                'komsu_abone_no' => $komsuAboneNo ?: null,
-                'aciklama' => $aciklama,
-                'konum_link' => $konumLink ?: null,
-                'konum_lat' => $lat,
-                'konum_lng' => $lng,
-                'konum_dogruluk' => $dogruluk,
-            ]);
-
-            // Ek fotoğraflar ($_FILES)
-            if (!empty($_FILES['fotograflar']) && !empty($_FILES['fotograflar']['name'])) {
-                $kalanKota = max(0, IhbarModel::MAX_FOTO - $ihbarModel->countFotograflar($id));
-                if ($kalanKota > 0) {
-                    $fileNames = is_array($_FILES['fotograflar']['name']) ? $_FILES['fotograflar']['name'] : [$_FILES['fotograflar']['name']];
-                    $tmpNames = is_array($_FILES['fotograflar']['tmp_name']) ? $_FILES['fotograflar']['tmp_name'] : [$_FILES['fotograflar']['tmp_name']];
-                    $errors = is_array($_FILES['fotograflar']['error']) ? $_FILES['fotograflar']['error'] : [$_FILES['fotograflar']['error']];
-                    $sizes = is_array($_FILES['fotograflar']['size']) ? $_FILES['fotograflar']['size'] : [$_FILES['fotograflar']['size']];
-
-                    $maxFiles = min(count($fileNames), $kalanKota);
-                    for ($i = 0; $i < $maxFiles; $i++) {
-                        if (($errors[$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-                            continue;
-                        }
-                        try {
-                            $fotoSonuc = IhbarModel::storeUploadedFoto([
-                                'name' => $fileNames[$i],
-                                'tmp_name' => $tmpNames[$i],
-                                'error' => $errors[$i],
-                                'size' => $sizes[$i],
-                            ], $id);
-                            $ihbarModel->addFotograf($id, $fotoSonuc['yol'], $fotoSonuc['kucuk']);
-                        } catch (\Throwable $e) {
-                            error_log('Mobile update foto yükleme hatası: ' . $e->getMessage());
-                        }
-                    }
-                }
-            }
-
-            mobile_ok(['message' => 'İhbar bilgileri güncellendi.', 'id' => $id]);
-        } catch (\Throwable $e) {
-            mobile_fail($e->getMessage(), 400);
-        }
+if ($method === 'POST' && in_array($action, ['transfer_create', 'transfer_update', 'transfer_photo'], true)) {
+    if (!hash_equals($hesapAnahtari, (string) ($input['hesap_anahtari'] ?? ''))) {
+        mobile_fail('Gönderim hesabı değişmiş. Kaydı oluşturan hesapla giriş yapın.', 403, ['transfer_error' => 'account']);
+    }
+    $islemAnahtari = (string) ($input['operation_key'] ?? '');
+    if (!preg_match('/^[a-zA-Z0-9_-]{1,100}$/D', $islemAnahtari)) {
+        mobile_fail('Geçersiz işlem anahtarı.', 422, ['transfer_error' => 'validation']);
     }
 
-    if ($action === 'add_note') {
-        $id = (int) ($input['id'] ?? 0);
-        $aciklama = trim(strip_tags((string) ($input['aciklama'] ?? $input['not'] ?? '')));
-
-        if ($id <= 0) {
-            mobile_fail('Geçersiz ihbar numarası.', 422);
+    $transfer = new PwaTransferModel($firmaId, $personelId);
+    $onbellektenDon = static function (?array $onbellek) use ($transfer): void {
+        if ($onbellek) {
+            $transfer->getDb()->rollBack();
+            mobile_ok(($onbellek['data'] ?? []) + ['message' => (string) ($onbellek['message'] ?? '')]);
         }
-        if ($aciklama === '') {
-            mobile_fail('Lütfen not içeriğini yazınız.', 422);
+    };
+    $tamamla = static function (array $veri, string $mesaj) use ($transfer): void {
+        $transfer->finish(['success' => true, 'data' => $veri, 'message' => $mesaj]);
+    };
+
+    try {
+        if ($action === 'transfer_create') {
+            $onbellektenDon($transfer->begin($islemAnahtari, 'mobileIhbarCreate'));
+            $veri = $servis->dogrula($input);
+            $sonuc = $servis->olustur($veri, $personelId, $_FILES['foto'] ?? []);
+            $yanit = ['target_token' => Security::encrypt($sonuc['id'])];
+            $tamamla($yanit, 'İhbarınız kaydedildi.');
+            $servis->bilgilendir($sonuc['id'], $sonuc['atanan_personel_id'], $firmaId, (string) ($personel->adi_soyadi ?? ''));
+            mobile_ok($yanit + ['message' => 'İhbarınız kaydedildi.']);
         }
 
-        $atananIds = $ihbarModel->getAtananPersonelIds($id);
-        $ihbar = $ihbarModel->getById($id);
-
-        if (!$ihbar) {
-            mobile_fail('İhbar kaydı bulunamadı.', 404);
+        if ($action === 'transfer_update') {
+            $kayitId = (int) ($input['kayit_id'] ?? 0);
+            $onbellektenDon($transfer->begin($islemAnahtari, 'mobileIhbarUpdate'));
+            $servis->duzenlenebilirKayit($kayitId, $personelId, $firmaId);
+            $transfer->lockRecord('ihbar', $kayitId);
+            $servis->duzenlenebilirKayit($kayitId, $personelId, $firmaId);
+            $servis->guncelle($kayitId, $personelId, $servis->dogrula($input));
+            $yanit = ['target_token' => Security::encrypt($kayitId)];
+            $tamamla($yanit, 'İhbar güncellendi.');
+            mobile_ok($yanit + ['message' => 'İhbar güncellendi.']);
         }
 
-        $yetkili = in_array($personelId, $atananIds, true) || (int) $ihbar->bildiren_personel_id === $personelId;
-        if (!$yetkili) {
-            mobile_fail('Bu ihbara not ekleme yetkiniz bulunmuyor.', 403);
+        $hedefId = (int) Security::decrypt((string) ($input['target_token'] ?? ''));
+        $transferAnahtari = (string) ($input['transfer_key'] ?? '');
+        $anaMakbuz = $transfer->receipt($transferAnahtari, 'mobileIhbarCreate') ?? $transfer->receipt($transferAnahtari, 'mobileIhbarUpdate');
+        if (!$anaMakbuz || $hedefId <= 0 || (int) Security::decrypt((string) ($anaMakbuz['data']['target_token'] ?? '')) !== $hedefId) {
+            mobile_fail('Dosya gönderimi bu ihbara ait değil.', 403, ['transfer_error' => 'permission']);
         }
-
-        $ihbarModel->addNote($id, $aciklama, 'personel', $personelId);
-        mobile_ok(['message' => 'İşlem notu eklendi.']);
+        if (!$servis->kayitSahibiMi($hedefId, $personelId, $firmaId)) {
+            mobile_fail('Bu ihbara dosya ekleme yetkiniz yok.', 403, ['transfer_error' => 'permission']);
+        }
+        $onbellektenDon($transfer->begin($islemAnahtari, 'mobileIhbarPhoto'));
+        $transfer->lockRecord('ihbar', $hedefId);
+        $servis->fotografEkle($hedefId, $_FILES['foto'] ?? []);
+        $yanit = ['target_token' => Security::encrypt($hedefId)];
+        $tamamla($yanit, 'Fotoğraf kaydedildi.');
+        mobile_ok($yanit + ['message' => 'Fotoğraf kaydedildi.']);
+    } catch (DomainException $e) {
+        $transfer->finish(['success' => false]);
+        mobile_fail($e->getMessage(), 422, ['transfer_error' => 'validation']);
+    } catch (Throwable $e) {
+        $transfer->finish(['success' => false]);
+        error_log('Mobil ihbar gönderimi action=' . $action . ' personel=' . $personelId . ' hata=' . get_class($e) . ': ' . $e->getMessage());
+        mobile_fail('Sunucu gönderimi tamamlayamadı; ihbar cihazda korunuyor.', 503, ['transfer_error' => 'temporary']);
     }
+}
 
-    if ($action === 'close') {
-        $id = (int) ($input['id'] ?? 0);
-        $durum = trim((string) ($input['durum'] ?? ''));
-        $tutanakNo = trim((string) ($input['tutanak_no'] ?? ''));
-        $sebep = trim((string) ($input['sebep'] ?? ''));
-
-        if ($id <= 0) {
-            mobile_fail('Geçersiz ihbar numarası.', 422);
-        }
-        if (!in_array($durum, ['olumlu', 'olumsuz'], true)) {
-            mobile_fail('Sonuç durumu \'olumlu\' veya \'olumsuz\' olmalıdır.', 422);
-        }
-        if ($durum === 'olumlu' && empty($tutanakNo)) {
-            mobile_fail('Olumlu sonuç için tutanak numarası girilmelidir.', 422);
-        }
-        if ($durum === 'olumsuz' && empty($sebep)) {
-            mobile_fail('Olumsuz sonuç için işlem sebebi belirtilmelidir.', 422);
-        }
-
-        $atananIds = $ihbarModel->getAtananPersonelIds($id);
-        if (!in_array($personelId, $atananIds, true)) {
-            mobile_fail('Bu ihbarı yalnızca atanan personel sonuçlandırabilir.', 403);
-        }
-
-        try {
-            $ihbarModel->closeSonuc($id, $durum, $tutanakNo ?: null, $sebep ?: null, 'personel', $personelId);
-            mobile_ok(['message' => 'İhbar başarıyla sonuçlandırıldı.']);
-        } catch (\Throwable $e) {
-            mobile_fail($e->getMessage(), 400);
-        }
+if ($method === 'POST' && $action === 'add_note') {
+    $id = (int) ($input['id'] ?? 0);
+    $aciklama = trim(strip_tags((string) ($input['aciklama'] ?? '')));
+    if ($aciklama === '') {
+        mobile_fail('Lütfen not içeriğini yazınız.', 422);
     }
+    if (!$ihbarModel->personelErisebilirMi($id, $personelId, $firmaId)) {
+        mobile_fail('Bu ihbara not ekleme yetkiniz bulunmuyor.', 403);
+    }
+    try {
+        $ihbarModel->addNote($id, mb_substr($aciklama, 0, 1000), 'personel', $personelId);
+    } catch (Throwable $e) {
+        error_log('Mobil ihbar notu eklenemedi ihbar=' . $id . ': ' . $e->getMessage());
+        mobile_fail('Not kaydedilemedi. Lütfen tekrar deneyin.', 500);
+    }
+    mobile_ok(['message' => 'Not eklendi.']);
+}
 
+if ($method === 'POST' && $action === 'close') {
+    $id = (int) ($input['id'] ?? 0);
+    $durum = trim((string) ($input['durum'] ?? ''));
+    $tutanakNo = trim((string) ($input['tutanak_no'] ?? ''));
+    $sebep = trim(strip_tags((string) ($input['sebep'] ?? '')));
+
+    if (!in_array($durum, ['olumlu', 'olumsuz'], true)) {
+        mobile_fail('Lütfen sonucu seçiniz.', 422);
+    }
+    if ($durum === 'olumlu' && $tutanakNo === '') {
+        mobile_fail('Olumlu sonuç için tutanak numarası girilmelidir.', 422);
+    }
+    if ($durum === 'olumsuz' && $sebep === '') {
+        mobile_fail('Olumsuz sonuç için sebep yazılmalıdır.', 422);
+    }
+    if (!$ihbarModel->personelErisebilirMi($id, $personelId, $firmaId) || !in_array($personelId, $ihbarModel->getAtananPersonelIds($id), true)) {
+        mobile_fail('Bu ihbarı yalnızca yönlendirilen personel sonuçlandırabilir.', 403);
+    }
+    try {
+        $ihbarModel->closeSonuc($id, $durum, $tutanakNo ?: null, $sebep ?: null, 'personel', $personelId);
+    } catch (Throwable $e) {
+        error_log('Mobil ihbar sonuçlandırılamadı ihbar=' . $id . ': ' . $e->getMessage());
+        mobile_fail('İhbar sonuçlandırılamadı. Lütfen tekrar deneyin.', 500);
+    }
+    mobile_ok(['message' => 'İhbar sonuçlandırıldı.']);
+}
+
+if ($method === 'POST') {
     mobile_fail('Geçersiz işlem.', 404);
 }
 
-// GET - Tekil İhbar Detayı
-$detailId = (int) ($_GET['id'] ?? $input['id'] ?? 0);
-if ($detailId > 0) {
-    $ihbar = $ihbarModel->getById($detailId);
-    if (!$ihbar) {
-        mobile_fail('İhbar bulunamadı.', 404);
+$detayId = (int) ($input['id'] ?? 0);
+if ($detayId > 0) {
+    if (!$ihbarModel->personelErisebilirMi($detayId, $personelId, $firmaId)) {
+        mobile_fail('İhbar bulunamadı veya erişim yetkiniz yok.', 404);
     }
-
-    $atananIds = $ihbarModel->getAtananPersonelIds($detailId);
-    $duzenlenebilir = ((int) $ihbar->bildiren_personel_id === $personelId) && !in_array($ihbar->durum, ['olumlu', 'olumsuz'], true);
-    $atananMi = in_array($personelId, $atananIds, true);
-
-    $fotograflar = [];
-    foreach ($ihbar->fotograflar ?? [] as $f) {
-        $fotograflar[] = [
-            'id' => (int) $f->id,
-            'medya_tipi' => $f->medya_tipi ?? 'foto',
-            'sure_saniye' => $f->sure_saniye !== null ? (int) $f->sure_saniye : null,
-            'url' => mobile_asset_url($f->dosya_yolu),
-            'kucuk_url' => !empty($f->kucuk_yol) ? mobile_asset_url($f->kucuk_yol) : mobile_asset_url($f->dosya_yolu),
-            'created_at' => !empty($f->created_at) ? date('d.m.Y H:i', strtotime($f->created_at)) : '',
-        ];
-    }
-
-    $tarihce = [];
-    foreach ($ihbar->tarihce ?? [] as $t) {
-        $tarihce[] = [
-            'id' => (int) $t->id,
-            'tip' => $t->tip,
-            'aciklama' => $t->aciklama,
-            'ekleyen_adi' => $t->ekleyen_adi ?? 'Sistem',
-            'ekleyen_tip' => $t->ekleyen_tip,
-            'tarih' => !empty($t->created_at) ? date('d.m.Y H:i', strtotime($t->created_at)) : '',
-        ];
-    }
-
-    $atananEkip = [];
-    foreach ($ihbar->atanan_ekip ?? [] as $ae) {
-        $atananEkip[] = [
-            'personel_id' => (int) $ae->personel_id,
-            'adi_soyadi' => $ae->adi_soyadi,
-        ];
-    }
+    $ihbar = $ihbarModel->getById($detayId);
+    $atananIds = $ihbarModel->getAtananPersonelIds($detayId);
+    $sonuclandi = in_array($ihbar->durum, ['olumlu', 'olumsuz'], true);
 
     mobile_ok([
         'ihbar' => [
             'id' => (int) $ihbar->id,
-            'ilce' => $ihbar->ilce ?? '',
-            'mahalle' => $ihbar->mahalle ?? '',
-            'telefon' => $ihbar->telefon ?? '',
-            'komsu_abone_no' => $ihbar->komsu_abone_no ?? '',
-            'aciklama' => $ihbar->aciklama ?? '',
-            'konum_lat' => $ihbar->konum_lat ? (float) $ihbar->konum_lat : null,
-            'konum_lng' => $ihbar->konum_lng ? (float) $ihbar->konum_lng : null,
-            'konum_dogruluk' => $ihbar->konum_dogruluk ? (float) $ihbar->konum_dogruluk : null,
-            'konum_link' => $ihbar->konum_link ?? '',
+            'ihbar_turu' => (string) ($ihbar->ihbar_turu ?? ''),
+            'ilce' => (string) ($ihbar->ilce ?? ''),
+            'mahalle' => (string) ($ihbar->mahalle ?? ''),
+            'telefon' => (string) ($ihbar->telefon ?? ''),
+            'komsu_abone_no' => (string) ($ihbar->komsu_abone_no ?? ''),
+            'aciklama' => (string) ($ihbar->aciklama ?? ''),
+            'konum_lat' => $ihbar->konum_lat !== null ? (float) $ihbar->konum_lat : null,
+            'konum_lng' => $ihbar->konum_lng !== null ? (float) $ihbar->konum_lng : null,
+            'konum_dogruluk' => $ihbar->konum_dogruluk !== null ? (float) $ihbar->konum_dogruluk : null,
             'durum' => $ihbar->durum,
-            'durum_text' => $durumMap[$ihbar->durum] ?? ucfirst($ihbar->durum),
+            'durum_text' => $durumMap[$ihbar->durum] ?? ucfirst((string) $ihbar->durum),
             'tutanak_no' => $ihbar->tutanak_no ?? null,
             'olumsuz_sebep' => $ihbar->olumsuz_sebep ?? null,
-            'bildiren_personel_adi' => $ihbar->bildiren_personel_adi ?? '',
-            'tarih' => !empty($ihbar->created_at) ? date('d.m.Y H:i', strtotime($ihbar->created_at)) : '',
-            'duzenlenebilir' => $duzenlenebilir,
-            'atanan_mi' => $atananMi,
-            'atanan_ekip' => $atananEkip,
-            'fotograflar' => $fotograflar,
-            'tarihce' => $tarihce,
+            'bildiren_personel_adi' => (string) ($ihbar->bildiren_personel_adi ?? ''),
+            'tarih' => !empty($ihbar->created_at) ? date('Y-m-d H:i:s', strtotime($ihbar->created_at)) : '',
+            'duzenlenebilir' => (int) $ihbar->bildiren_personel_id === $personelId && !$sonuclandi,
+            'atanan_mi' => in_array($personelId, $atananIds, true),
+            'sonuclandirilabilir' => in_array($personelId, $atananIds, true) && !$sonuclandi,
+            'atanan_ekip' => array_map(static fn($a) => ['personel_id' => (int) $a->personel_id, 'adi_soyadi' => $a->adi_soyadi], $ihbar->atanan_ekip ?? []),
+            'fotograflar' => array_map(static fn($f) => [
+                'id' => (int) $f->id,
+                'medya_tipi' => $f->medya_tipi ?? 'foto',
+                'sure_saniye' => $f->sure_saniye !== null ? (int) $f->sure_saniye : null,
+                'url' => $medyaYolu((int) $f->id),
+                'kucuk_url' => $medyaYolu((int) $f->id, true),
+            ], $ihbar->fotograflar ?? []),
+            'tarihce' => array_map(static fn($t) => [
+                'id' => (int) $t->id,
+                'tip' => $t->tip,
+                'aciklama' => $t->aciklama,
+                'ekleyen_adi' => $t->ekleyen_adi ?? 'Sistem',
+                'tarih' => !empty($t->created_at) ? date('Y-m-d H:i:s', strtotime($t->created_at)) : '',
+            ], $ihbar->tarihce ?? []),
         ],
     ]);
 }
 
-// GET - Liste & İstatistikler
-$gelenRaw = $ihbarModel->getPersoneleAtananIhbarlar($personelId);
-$bildirdiklerimRaw = $ihbarModel->getPersonelinIhbarlari($personelId);
-
-$formatItem = function ($item, bool $isBildirdiklerim = false) use ($durumMap, $personelId) {
-    $durum = mb_strtolower((string) ($item->durum ?? 'yeni'), 'UTF-8');
-    $duzenlenebilir = $isBildirdiklerim && !in_array($durum, ['olumlu', 'olumsuz'], true);
-
+$bicimle = static function ($item, bool $benim) use ($durumMap): array {
+    $durum = (string) ($item->durum ?? 'yeni');
     return [
         'id' => (int) $item->id,
-        'ilce' => $item->ilce ?? '',
-        'mahalle' => $item->mahalle ?? '',
-        'telefon' => $item->telefon ?? '',
-        'komsu_abone_no' => $item->komsu_abone_no ?? '',
-        'aciklama' => $item->aciklama ?? '',
+        'ihbar_turu' => (string) ($item->ihbar_turu ?? ''),
+        'ilce' => (string) ($item->ilce ?? ''),
+        'mahalle' => (string) ($item->mahalle ?? ''),
+        'aciklama' => (string) ($item->aciklama ?? ''),
         'durum' => $durum,
         'durum_text' => $durumMap[$durum] ?? ucfirst($durum),
         'atanan_ekip_adi' => $item->atanan_ekip_adi ?? null,
-        'tarih' => !empty($item->created_at) ? date('d.m.Y H:i', strtotime($item->created_at)) : '',
-        'duzenlenebilir' => $duzenlenebilir,
-        'konum_lat' => $item->konum_lat ? (float) $item->konum_lat : null,
-        'konum_lng' => $item->konum_lng ? (float) $item->konum_lng : null,
+        'tarih' => !empty($item->created_at) ? date('Y-m-d H:i:s', strtotime($item->created_at)) : '',
+        'duzenlenebilir' => $benim && !in_array($durum, ['olumlu', 'olumsuz'], true),
+        'konum_lat' => $item->konum_lat !== null ? (float) $item->konum_lat : null,
+        'konum_lng' => $item->konum_lng !== null ? (float) $item->konum_lng : null,
     ];
 };
 
-$gelenList = array_map(fn($item) => $formatItem($item, false), $gelenRaw);
-$bildirdiklerimList = array_map(fn($item) => $formatItem($item, true), $bildirdiklerimRaw);
-
-$toplam = count($gelenList) + count($bildirdiklerimList);
-$bekleyen = 0;
-$olumlu = 0;
-$olumsuz = 0;
-
-$allUnique = [];
-foreach (array_merge($gelenList, $bildirdiklerimList) as $row) {
-    $allUnique[$row['id']] = $row;
-}
-
-foreach ($allUnique as $row) {
-    if (in_array($row['durum'], ['yeni', 'yonlendirildi', 'islemde'], true)) {
-        $bekleyen++;
-    } elseif ($row['durum'] === 'olumlu') {
-        $olumlu++;
-    } elseif ($row['durum'] === 'olumsuz') {
-        $olumsuz++;
-    }
-}
+$gelen = array_map(static fn($i) => $bicimle($i, false), $ihbarModel->getPersoneleAtananIhbarlar($personelId));
+$bildirdiklerim = array_map(static fn($i) => $bicimle($i, true), $ihbarModel->getPersonelinIhbarlari($personelId));
 
 mobile_ok([
-    'stats' => [
-        'toplam' => count($allUnique),
-        'bekleyen' => $bekleyen,
-        'olumlu' => $olumlu,
-        'olumsuz' => $olumsuz,
-        'gelen_sayisi' => count($gelenList),
-        'bildirdiklerim_sayisi' => count($bildirdiklerimList),
-    ],
-    'gelen' => $gelenList,
-    'bildirdiklerim' => $bildirdiklerimList,
-    'ilceler' => $ilceler,
+    'hesap_anahtari' => $hesapAnahtari,
+    'gelen' => $gelen,
+    'bildirdiklerim' => $bildirdiklerim,
+    'ilceler' => IhbarModel::ILCELER,
+    'turler' => IhbarModel::IHBAR_TURLERI,
     'limits' => [
         'max_foto' => IhbarModel::MAX_FOTO,
-        'max_video' => IhbarModel::MAX_VIDEO,
-        'video_max_sure' => IhbarModel::VIDEO_MAX_SURE,
     ],
 ]);

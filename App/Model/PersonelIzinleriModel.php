@@ -404,6 +404,321 @@ class PersonelIzinleriModel extends Model
         return $start->diff($end)->days + 1;
     }
 
+    public function hasActiveOverlap(int $personelId, string $baslangic, string $bitis, ?int $excludeId = null): bool
+    {
+        $sql = "SELECT COUNT(*)
+             FROM {$this->table}
+             WHERE personel_id = :personel_id
+               AND silinme_tarihi IS NULL
+               AND LOWER(onay_durumu) IN ('beklemede', 'onaylandi', 'onaylandı', 'kabuledildi')
+               AND baslangic_tarihi <= :bitis
+               AND bitis_tarihi >= :baslangic";
+        $params = [
+            'personel_id' => $personelId,
+            'baslangic' => $baslangic,
+            'bitis' => $bitis,
+        ];
+        if ($excludeId !== null && $excludeId > 0) {
+            $sql .= " AND id != :exclude_id";
+            $params['exclude_id'] = $excludeId;
+        }
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+
+        return (int) $stmt->fetchColumn() > 0;
+    }
+
+
+
+    public function countHourlyLeaveConflicts(int $personelId, string $gun, string $baslangicSaati, float $izinSaati, ?int $excludeId = null): int
+    {
+        $sql = "SELECT baslangic_saati, izin_saati FROM {$this->table}
+                WHERE personel_id = :personel_id
+                AND silinme_tarihi IS NULL
+                AND LOWER(onay_durumu) IN ('beklemede', 'onaylandi', 'onaylandı', 'kabuledildi')
+                AND baslangic_tarihi <= :gun AND bitis_tarihi >= :gun2";
+        $params = [':personel_id' => $personelId, ':gun' => $gun, ':gun2' => $gun];
+        if ($excludeId !== null && $excludeId > 0) {
+            $sql .= " AND id != :exclude_id";
+            $params[':exclude_id'] = $excludeId;
+        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+
+        $yeniBas = $this->saatDakika($baslangicSaati);
+        $yeniBit = $yeniBas + (int) round($izinSaati * 60);
+        $sayi = 0;
+        foreach ($stmt->fetchAll(\PDO::FETCH_OBJ) as $row) {
+            if ($row->baslangic_saati === null || $row->izin_saati === null) {
+                $sayi++;
+                continue;
+            }
+            $mevcutBas = $this->saatDakika((string) $row->baslangic_saati);
+            $mevcutBit = $mevcutBas + (int) round(((float) $row->izin_saati) * 60);
+            if ($yeniBas < $mevcutBit && $yeniBit > $mevcutBas) {
+                $sayi++;
+            }
+        }
+        return $sayi;
+    }
+
+    private function saatDakika(string $time): int
+    {
+        $parts = explode(':', $time);
+        return ((int) $parts[0]) * 60 + (int) ($parts[1] ?? 0);
+    }
+
+    public function createPersonelTalebi(
+        int $personelId,
+        int $izinTipiId,
+        string $baslangic,
+        string $bitis,
+        string $aciklama,
+        ?string $baslangicSaati = null,
+        ?float $izinSaati = null
+    ): int {
+        $saatlik = $baslangicSaati !== null && $izinSaati !== null;
+        $toplamGun = $saatlik ? 0 : $this->hesaplaIzinGunu($baslangic, $bitis);
+        $kayit = [
+            'personel_id' => $personelId,
+            'izin_tipi_id' => $izinTipiId,
+            'baslangic_tarihi' => $baslangic,
+            'bitis_tarihi' => $bitis,
+            'toplam_gun' => $toplamGun,
+            'aciklama' => $aciklama,
+            'onay_durumu' => 'beklemede',
+            'olusturma_tarihi' => date('Y-m-d H:i:s'),
+        ];
+        if ($saatlik) {
+            $kayit['baslangic_saati'] = $baslangicSaati . ':00';
+            $kayit['izin_saati'] = $izinSaati;
+            $kayit['talep_baslangic_tarihi'] = $baslangic;
+            $kayit['talep_bitis_tarihi'] = $bitis;
+            $kayit['talep_gun'] = 0;
+            $kayit['talep_baslangic_saati'] = $baslangicSaati . ':00';
+            $kayit['talep_izin_saati'] = $izinSaati;
+            $kayit['yillik_izne_etki'] = 0;
+        }
+        $this->saveWithAttr($kayit);
+        $izinId = (int) $this->db->lastInsertId();
+
+        // İlk talep kaydını onay geçmişine de yansıt
+        if ($izinId > 0) {
+            try {
+                $userId = $this->resolveUserId($personelId);
+                $ip = $_SERVER['REMOTE_ADDR'] ?? null;
+                $onay = $this->db->prepare(
+                    "INSERT INTO izin_onaylari
+                        (izin_id, onaylayan_id, onay_durumu, onay_tarihi, aciklama, seviye_no, onay_ip)
+                     VALUES (:izin_id, :onaylayan_id, 'Beklemede', NOW(), 'İzin talebi oluşturuldu', 1, :onay_ip)"
+                );
+                $onay->execute([
+                    'izin_id' => $izinId,
+                    'onaylayan_id' => $userId,
+                    'onay_ip' => $ip,
+                ]);
+
+                if (class_exists(\App\Model\SystemLogModel::class)) {
+                    (new \App\Model\SystemLogModel())->logAction(
+                        $personelId,
+                        'İzin Talebi Oluşturuldu',
+                        "İzin ID: {$izinId}, Başlangıç: {$baslangic}, Bitiş: {$bitis}, Gün: {$toplamGun}",
+                        \App\Model\SystemLogModel::LEVEL_INFO
+                    );
+                }
+            } catch (\Throwable $t) {
+                error_log("createPersonelTalebi log error: " . $t->getMessage());
+            }
+        }
+
+        return $izinId;
+    }
+
+    public function updatePersonelTalebi(
+        int $izinId,
+        int $personelId,
+        int $izinTipiId,
+        string $baslangic,
+        string $bitis,
+        string $aciklama,
+        ?string $baslangicSaati = null,
+        ?float $izinSaati = null
+    ): bool {
+        $saatlik = $baslangicSaati !== null && $izinSaati !== null;
+        $izin = $this->find($izinId);
+        if (!$izin || (int) $izin->personel_id !== $personelId) {
+            return false;
+        }
+
+        $durum = mb_strtolower(trim((string) $izin->onay_durumu), 'UTF-8');
+        if ($durum !== 'beklemede' || !empty($izin->silinme_tarihi)) {
+            return false;
+        }
+
+        $tanimModel = new TanimlamalarModel();
+        $eskiTur = $tanimModel->find((int) $izin->izin_tipi_id);
+        $eskiTurAdi = $eskiTur->tur_adi ?? 'İzin';
+        $yeniTur = $tanimModel->find($izinTipiId);
+        $yeniTurAdi = $yeniTur->tur_adi ?? 'İzin';
+
+        $eskiBaslangic = $izin->baslangic_tarihi;
+        $eskiBitis = $izin->bitis_tarihi;
+        $eskiGun = (int) $izin->toplam_gun;
+        $yeniGun = $saatlik ? 0 : $this->hesaplaIzinGunu($baslangic, $bitis);
+
+        $degisiklikler = [];
+        if ((int) $izin->izin_tipi_id !== $izinTipiId) {
+            $degisiklikler[] = "Tür: {$eskiTurAdi} ➔ {$yeniTurAdi}";
+        }
+        if ($eskiBaslangic !== $baslangic || $eskiBitis !== $bitis) {
+            $degisiklikler[] = "Tarih: " . date('d.m.Y', strtotime($eskiBaslangic)) . "-" . date('d.m.Y', strtotime($eskiBitis)) . " ({$eskiGun} gün) ➔ " . date('d.m.Y', strtotime($baslangic)) . "-" . date('d.m.Y', strtotime($bitis)) . " ({$yeniGun} gün)";
+        }
+        if (trim((string) $izin->aciklama) !== trim($aciklama)) {
+            $degisiklikler[] = "Açıklama güncellendi";
+        }
+
+        $degisiklikOzet = !empty($degisiklikler) ? implode(', ', $degisiklikler) : 'Bilgiler güncellendi';
+        $logAciklama = "Talep güncellendi (" . $degisiklikOzet . ")";
+        if (!empty($aciklama)) {
+            $logAciklama .= " | Not: " . $aciklama;
+        }
+
+        $this->db->beginTransaction();
+        try {
+            $guncelleme = [
+                'id' => $izinId,
+                'izin_tipi_id' => $izinTipiId,
+                'baslangic_tarihi' => $baslangic,
+                'bitis_tarihi' => $bitis,
+                'toplam_gun' => $yeniGun,
+                'aciklama' => $aciklama,
+                'baslangic_saati' => $saatlik ? $baslangicSaati . ':00' : null,
+                'izin_saati' => $saatlik ? $izinSaati : null,
+            ];
+            if ($saatlik) {
+                $guncelleme['yillik_izne_etki'] = 0;
+            }
+            $this->saveWithAttr($guncelleme);
+
+            // Seviye no hesapla
+            $check = $this->db->prepare("SELECT MAX(seviye_no) as max_seviye FROM izin_onaylari WHERE izin_id = ?");
+            $check->execute([$izinId]);
+            $row = $check->fetch(\PDO::FETCH_OBJ);
+            $nextSeviye = ($row->max_seviye ?? 0) + 1;
+            $ip = $_SERVER['REMOTE_ADDR'] ?? null;
+            $userId = $this->resolveUserId($personelId);
+
+            $onay = $this->db->prepare(
+                "INSERT INTO izin_onaylari
+                    (izin_id, onaylayan_id, onay_durumu, onay_tarihi, aciklama, seviye_no, onay_ip)
+                 VALUES (:izin_id, :onaylayan_id, 'Güncellendi', NOW(), :aciklama, :seviye_no, :onay_ip)"
+            );
+            $onay->execute([
+                'izin_id' => $izinId,
+                'onaylayan_id' => $userId,
+                'aciklama' => $logAciklama,
+                'seviye_no' => $nextSeviye,
+                'onay_ip' => $ip,
+            ]);
+
+            $this->db->commit();
+
+            try {
+                if (class_exists(\App\Model\SystemLogModel::class)) {
+                    (new \App\Model\SystemLogModel())->logAction(
+                        $personelId,
+                        'İzin Talebi Güncellendi',
+                        "İzin ID: {$izinId}, Personel ID: {$personelId}, {$degisiklikOzet}",
+                        \App\Model\SystemLogModel::LEVEL_INFO
+                    );
+                }
+            } catch (\Throwable $t) {
+                error_log("SystemLog error on leave update: " . $t->getMessage());
+            }
+
+            return true;
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            error_log("Error in updatePersonelTalebi: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function cancelPendingPersonelTalebi(int $izinId, int $personelId, string $sebep = ''): bool
+    {
+        $sebep = trim($sebep);
+        $ekNot = $sebep !== '' ? ': ' . $sebep : '';
+        $this->db->beginTransaction();
+        $stmt = $this->db->prepare(
+            "UPDATE {$this->table}
+             SET onay_durumu = 'iptal edildi',
+                  aciklama = CONCAT(COALESCE(aciklama, ''), :iptal_notu)
+             WHERE id = :id
+               AND personel_id = :personel_id
+               AND LOWER(onay_durumu) = 'beklemede'
+               AND silinme_tarihi IS NULL"
+        );
+        $stmt->execute(['id' => $izinId, 'personel_id' => $personelId, 'iptal_notu' => ' (Personel tarafından iptal edildi' . $ekNot . ')']);
+        if ($stmt->rowCount() !== 1) {
+            $this->db->rollBack();
+            return false;
+        }
+        // Seviye no hesapla
+        $check = $this->db->prepare("SELECT MAX(seviye_no) as max_seviye FROM izin_onaylari WHERE izin_id = ?");
+        $check->execute([$izinId]);
+        $row = $check->fetch(\PDO::FETCH_OBJ);
+        $nextSeviye = ($row->max_seviye ?? 0) + 1;
+
+        $ip = $_SERVER['REMOTE_ADDR'] ?? null;
+        $userId = $this->resolveUserId($personelId);
+
+        $onay = $this->db->prepare(
+            "INSERT INTO izin_onaylari
+                (izin_id, onaylayan_id, onay_durumu, onay_tarihi, aciklama, seviye_no, onay_ip)
+             VALUES (:izin_id, :onaylayan_id, 'İptal Edildi', NOW(), :aciklama, :seviye_no, :onay_ip)"
+        );
+        $onay->execute([
+            'aciklama' => 'Personel tarafından iptal edildi' . $ekNot,
+            'izin_id' => $izinId,
+            'onaylayan_id' => $userId,
+            'seviye_no' => $nextSeviye,
+            'onay_ip' => $ip,
+        ]);
+        $this->db->commit();
+
+        try {
+            if (class_exists(\App\Model\SystemLogModel::class)) {
+                (new \App\Model\SystemLogModel())->logAction(
+                    $personelId,
+                    'İzin Talebi İptal Edildi',
+                    "İzin ID: {$izinId}, Personel ID: {$personelId}" . $ekNot,
+                    \App\Model\SystemLogModel::LEVEL_INFO
+                );
+            }
+        } catch (\Throwable $t) {
+            error_log("cancelPendingPersonelTalebi log error: " . $t->getMessage());
+        }
+
+        return true;
+    }
+
+    private function resolveUserId(int $personelId): ?int
+    {
+        if (!empty($_SESSION['user_id'])) {
+            return (int) $_SESSION['user_id'];
+        }
+        if ($personelId > 0) {
+            $uStmt = $this->db->prepare("SELECT id FROM users WHERE personel_id = ? LIMIT 1");
+            $uStmt->execute([$personelId]);
+            $uid = $uStmt->fetchColumn();
+            if ($uid) {
+                return (int) $uid;
+            }
+        }
+        return null;
+    }
+
     /**
      * Personelin izin hakedişlerini hesaplar
      * @param int $personel_id

@@ -177,6 +177,50 @@ class KmBildirimAiKontrolService
         return ['path' => $path, 'mime' => $mime];
     }
 
+    public function onOkuma(string $path, string $mime): array
+    {
+        $dataUrl = 'data:' . $mime . ';base64,' . base64_encode((string) file_get_contents($path));
+        $prompt = "Bu fotoğrafta bir aracın gösterge paneli olabilir. Toplam odometre ekranını bul; hız, devir, yakıt ve trip sayaçlarını odometreyle karıştırma. 'km' yazısının hemen solunda ve aynı satırda bulunan sayı odometredir; saat, sıcaklık ve tarih satırlarındaki sayıları seçme. Odometrede nokta veya virgülle ayrılmış ya da farklı renkli son hane varsa onu ondalık say ve atla; aksi halde tüm haneler tam kilometredir. Sol baştaki sıfırları temizle. Haneleri soldan sağa eksiksiz oku; bir hane gerçekten seçilemiyorsa odometer_km=null yap. Değeri tahmin etme. Güveni 0-100 arası ver.";
+        $payload = [
+            'model' => $this->model,
+            'messages' => [[
+                'role' => 'user',
+                'content' => [
+                    ['type' => 'text', 'text' => $prompt],
+                    ['type' => 'image_url', 'image_url' => ['url' => $dataUrl, 'detail' => 'high']],
+                ],
+            ]],
+            'temperature' => 0,
+            'response_format' => [
+                'type' => 'json_schema',
+                'json_schema' => [
+                    'name' => 'km_on_okuma',
+                    'strict' => true,
+                    'schema' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'dashboard_visible' => ['type' => 'boolean'],
+                            'odometer_km' => ['type' => ['integer', 'null']],
+                            'km_confidence' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 100],
+                        ],
+                        'required' => ['dashboard_visible', 'odometer_km', 'km_confidence'],
+                        'additionalProperties' => false,
+                    ],
+                ],
+            ],
+            'max_tokens' => 6300,
+            'reasoning_effort' => 'low',
+        ];
+
+        $data = $this->sendAiRequest($payload);
+        $km = isset($data['odometer_km']) ? (int) $data['odometer_km'] : 0;
+        $guven = (int) ($data['km_confidence'] ?? 0);
+        if (empty($data['dashboard_visible']) || $km <= 0 || $guven < 80) {
+            return ['km' => null, 'guven' => $guven];
+        }
+        return ['km' => $km, 'guven' => $guven];
+    }
+
     private function analyzeImage(array $image, object $bildirim): array
     {
         $dataUrl = 'data:' . $image['mime'] . ';base64,' . base64_encode((string) file_get_contents($image['path']));

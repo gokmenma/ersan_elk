@@ -482,6 +482,72 @@ class NobetModel extends Model
     }
 
     /**
+     * Personele gelen ve henüz cevaplanmamış değişim talebini getirir.
+     */
+    public function getGelenBekleyenDegisimTalebi(int $talepId, int $personelId): ?object
+    {
+        $stmt = $this->db->prepare(
+            "SELECT dt.*, n.nobet_tarihi
+             FROM nobet_degisim_talepleri dt
+             LEFT JOIN nobetler n ON n.id = dt.nobet_id
+             WHERE dt.id = :id AND dt.talep_edilen_id = :pid AND dt.durum = 'beklemede'"
+        );
+        $stmt->execute(['id' => $talepId, 'pid' => $personelId]);
+
+        return $stmt->fetch(PDO::FETCH_OBJ) ?: null;
+    }
+
+    /**
+     * Personelin kendi açtığı ve henüz cevaplanmamış değişim talebini getirir.
+     */
+    public function getKendiBekleyenDegisimTalebi(int $talepId, int $personelId): ?object
+    {
+        $stmt = $this->db->prepare(
+            "SELECT dt.*, n.nobet_tarihi
+             FROM nobet_degisim_talepleri dt
+             LEFT JOIN nobetler n ON n.id = dt.nobet_id
+             WHERE dt.id = :id AND dt.talep_eden_id = :pid AND dt.durum = 'beklemede'"
+        );
+        $stmt->execute(['id' => $talepId, 'pid' => $personelId]);
+
+        return $stmt->fetch(PDO::FETCH_OBJ) ?: null;
+    }
+
+    /**
+     * Personelin kendi bekleyen nöbet talebini getirir.
+     */
+    public function getKendiBekleyenNobetTalebi(int $talepId, int $personelId): ?object
+    {
+        $stmt = $this->db->prepare(
+            "SELECT * FROM {$this->table}
+             WHERE id = :id AND personel_id = :pid AND durum = 'talep_edildi' AND silinme_tarihi IS NULL"
+        );
+        $stmt->execute(['id' => $talepId, 'pid' => $personelId]);
+
+        return $stmt->fetch(PDO::FETCH_OBJ) ?: null;
+    }
+
+    /**
+     * Nöbet değişimi için seçilebilecek aktif Kesme-Açma personellerini getirir.
+     */
+    public function getDegisimAdaylari(int $firmaId, int $personelId): array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT id, adi_soyadi, departman FROM personel
+             WHERE firma_id = :firma_id
+               AND aktif_mi = 1
+               AND silinme_tarihi IS NULL
+               AND id != :personel_id
+               AND (disardan_sigortali = 0 OR FIND_IN_SET('nobet', gorunum_modulleri))
+               AND (departman LIKE '%Kesme%' OR departman LIKE '%Açma%')
+             ORDER BY adi_soyadi ASC"
+        );
+        $stmt->execute(['firma_id' => $firmaId, 'personel_id' => $personelId]);
+
+        return $stmt->fetchAll(PDO::FETCH_OBJ) ?: [];
+    }
+
+    /**
      * Personelin bu nöbet için bekleyen bir değişim talebi olup olmadığını kontrol eder
      */
     public function hasPendingDegisimTalebi($nobet_id, $talep_eden_id)

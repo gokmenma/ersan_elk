@@ -75,7 +75,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                         $pushService->sendToUser($kullanici->id, [
                             'title' => '💰 Yeni Avans Talebi',
                             'body' => $talepEdenAdi . ' ' . number_format($tutar, 2, ',', '.') . ' ₺ avans talep etti.',
-                            'url' => \App\Helper\MobileSpa::url('/talepler')
+                            'url' => 'mobile/index.php?p=talepler'
                         ], false, UserNotificationPreferenceModel::TYPE_ADVANCE_REQUEST);
                     }
                 } catch (\Throwable $t) {
@@ -85,8 +85,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         } catch (\Throwable $e) {
             error_log('Mobile avans bildirim ana hatasi: ' . $e->getMessage());
         }
-
-        (new \App\Model\SystemLogModel())->logPersonelTalep($personelId, 'Avans Talebi Oluşturma', number_format($tutar, 2, ',', '.') . ' TL avans talebi oluşturuldu (Mobil)', (int) $newId);
 
         mobile_ok([
             'message' => 'Avans talebiniz başarıyla oluşturuldu.',
@@ -114,7 +112,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             'aciklama' => $yeniAciklama,
         ]);
 
-        (new \App\Model\SystemLogModel())->logPersonelTalep($personelId, 'Avans Talebi İptal', 'Avans talebi personel tarafından iptal edildi (Mobil)', $id);
         mobile_ok(['message' => 'Avans talebiniz iptal edildi.']);
     }
 
@@ -151,7 +148,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             'aciklama' => $aciklama,
         ]);
 
-        (new \App\Model\SystemLogModel())->logPersonelTalep($personelId, 'Avans Talebi Güncelleme', number_format($tutar, 2, ',', '.') . ' TL olarak güncellendi (Mobil)', $id);
         mobile_ok(['message' => 'Avans talebiniz güncellendi.']);
     }
 

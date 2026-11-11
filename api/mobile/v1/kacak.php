@@ -6,11 +6,19 @@ use App\Helper\MedyaServis;
 use App\Helper\Security;
 use App\Model\KacakKontrolModel;
 use App\Model\PersonelModel;
+use App\Model\PwaTransferModel;
+use App\Service\KacakBildirimService;
 use App\Service\KacakTutanakAnalizService;
 
 $personel = mobile_require_auth();
 $personelId = (int) $personel->id;
 $firmaId = (int) ($personel->firma_id ?? 1);
+
+if (!KacakBildirimService::yetkiliMi($personel)) {
+    mobile_fail('Kaçak işlemleri için yetkiniz bulunmuyor.', 403, ['code' => 'FORBIDDEN', 'transfer_error' => 'permission']);
+}
+
+$hesapAnahtari = hash('sha256', 'pwa:' . $firmaId . ':' . $personelId);
 
 // Oturum ve servis uyumluluğu için
 if (session_status() === PHP_SESSION_NONE) {
@@ -117,7 +125,11 @@ if ($method === 'GET' && isset($input['id']) && is_numeric($input['id']) && (int
             'tur' => $kayit['tur'],
             'tutanak_no' => $kayit['tutanak_no'],
             'sayac_no' => $kayit['sayac_no'],
+            'sayac_markasi' => $kayit['sayac_markasi'] ?? null,
             'abone_adi' => $kayit['abone_adi'],
+            'abone_tc' => $kayit['abone_tc'] ?? null,
+            'abone_dogum_tarihi' => $kayit['abone_dogum_tarihi'] ?? null,
+            'abone_tel' => $kayit['abone_tel'] ?? null,
             'endeks' => $kayit['endeks'],
             'sayi' => (int) ($kayit['sayi'] ?? 1),
             'ekip_adi' => $kayit['ekip_adi'],
@@ -195,6 +207,7 @@ if ($method === 'GET') {
             'durum' => $k['durum'] ?: 'aktif',
             'onay_durumu' => $k['onay_durumu'] ?: 'beklemede',
             'foto_sayisi' => (int) ($k['foto_sayisi'] ?? 0),
+            'red_nedeni' => $k['red_nedeni'] ?? null,
             'is_own' => (int) $k['bildiren_personel_id'] === $personelId,
             'can_edit' => (int) $k['bildiren_personel_id'] === $personelId && $k['onay_durumu'] === 'beklemede' && $k['durum'] !== 'iptal',
         ];
@@ -206,6 +219,7 @@ if ($method === 'GET') {
         'istatistik' => $istatistik,
         'baslangic' => $baslangic,
         'bitis' => $bitis,
+        'hesap_anahtari' => $hesapAnahtari,
         'referanslar' => [
             'ilceler' => KacakKontrolModel::ILCELER,
             'turler' => KacakKontrolModel::TURLER,
@@ -288,6 +302,10 @@ if ($action === 'analyze') {
                 'tutanak_no' => $sonuc['tutanak_no'] ?? '',
                 'sayac_no' => $sonuc['sayac_no'] ?? '',
                 'abone_adi' => $sonuc['abone_adi'] ?? '',
+                'abone_tc' => $sonuc['abone_tc'] ?? '',
+                'abone_dogum_tarihi' => $sonuc['abone_dogum_tarihi'] ?? '',
+                'abone_tel' => $sonuc['abone_tel'] ?? '',
+                'sayac_markasi' => $sonuc['sayac_markasi'] ?? '',
                 'endeks' => $sonuc['endeks'] ?? '',
                 'sayi' => (int) ($sonuc['sayi'] ?? 1),
                 'aciklama' => $sonuc['aciklama'] ?? '',
@@ -297,12 +315,124 @@ if ($action === 'analyze') {
         ]);
     } catch (\Throwable $e) {
         error_log('Mobile Kaçak Tutanak Analiz Hatası: ' . $e->getMessage());
-        mobile_fail('Tutanak analiz edilemedi: ' . $e->getMessage(), 500);
+        mobile_fail('Tutanak şu anda okunamadı, lütfen alanları elle doldurun.', 500);
     }
 }
 
 // -------------------------------------------------------------------------
-// 4.2 YENİ KAÇAK BİLDİRİMİ OLUŞTURMA
+// 4.2 GÜVENİLİR GÖNDERİM (ÇEVRİMDIŞI KUYRUK)
+// -------------------------------------------------------------------------
+if (in_array($_GET['action'] ?? '', ['transfer_create', 'transfer_update', 'transfer_photo'], true) && empty($_POST) && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+    mobile_fail('Gönderilen dosya sunucu yükleme sınırını aşıyor.', 413, ['transfer_error' => 'validation']);
+}
+
+if (in_array($action, ['transfer_create', 'transfer_update', 'transfer_photo'], true)) {
+    if (!hash_equals($hesapAnahtari, (string) ($input['hesap_anahtari'] ?? ''))) {
+        mobile_fail('Gönderim hesabı değişmiş. Kaydı oluşturan hesapla giriş yapın.', 403, ['transfer_error' => 'account']);
+    }
+    $islemAnahtari = (string) ($input['operation_key'] ?? '');
+    if (!preg_match('/^[a-zA-Z0-9_-]{1,100}$/D', $islemAnahtari)) {
+        mobile_fail('Geçersiz işlem anahtarı.', 422, ['transfer_error' => 'validation']);
+    }
+
+    $servis = new KacakBildirimService($kacakModel);
+    $transfer = new PwaTransferModel($firmaId, $personelId);
+    $bitir = static function (bool $basarili, array $veri, string $mesaj, int $durum = 200) use ($transfer): void {
+        $transfer->finish(['success' => $basarili, 'data' => $veri, 'message' => $mesaj]);
+        if ($basarili) {
+            mobile_ok($veri + ['message' => $mesaj]);
+        }
+        mobile_fail($mesaj, $durum, $veri);
+    };
+
+    try {
+        if ($action === 'transfer_create') {
+            $onbellek = $transfer->begin($islemAnahtari, 'mobileKacakCreate');
+            if ($onbellek) {
+                $transfer->getDb()->rollBack();
+                mobile_ok(($onbellek['data'] ?? []) + ['message' => (string) ($onbellek['message'] ?? '')]);
+            }
+
+            $clientUuid = trim((string) ($input['client_uuid'] ?? ''));
+            if ($clientUuid === '') {
+                throw new DomainException('Kayıt anahtarı eksik.');
+            }
+            $oncekiId = $servis->oncekiKayitId($clientUuid);
+            if ($oncekiId) {
+                $bitir(true, ['target_token' => Security::encrypt($oncekiId), 'tekrar' => true], 'Bu bildirim daha önce iletilmişti.');
+            }
+
+            $veri = $servis->dogrula($input, $personelId);
+            $kacakId = $servis->olustur(
+                $veri,
+                $_FILES['tutanak_foto'] ?? [],
+                isset($input['tutanak_foto_cekim']) ? (string) $input['tutanak_foto_cekim'] : null,
+                $clientUuid,
+                isset($input['offline_olusturma']) ? (string) $input['offline_olusturma'] : null,
+                (int) ($input['beklenen_foto_sayisi'] ?? 1)
+            );
+            $servis->yoneticileriBilgilendir($kacakId, $veri, (string) ($personel->adi_soyadi ?? ''));
+            $bitir(true, ['target_token' => Security::encrypt($kacakId)], 'Kaçak bildirimi kaydedildi.');
+        }
+
+        if ($action === 'transfer_update') {
+            $kayitId = (int) ($input['kayit_id'] ?? 0);
+            $onbellek = $transfer->begin($islemAnahtari, 'mobileKacakUpdate');
+            if ($onbellek) {
+                $transfer->getDb()->rollBack();
+                mobile_ok(($onbellek['data'] ?? []) + ['message' => (string) ($onbellek['message'] ?? '')]);
+            }
+            $servis->duzenlenebilirKayit($kayitId, $personelId, $firmaId);
+            $transfer->lockRecord('kacak', $kayitId);
+            $servis->duzenlenebilirKayit($kayitId, $personelId, $firmaId);
+            $veri = $servis->dogrula($input, $personelId, $kayitId);
+            $servis->guncelle(
+                $kayitId,
+                $personelId,
+                $veri,
+                $_FILES['tutanak_foto'] ?? [],
+                isset($input['tutanak_foto_cekim']) ? (string) $input['tutanak_foto_cekim'] : null
+            );
+            $bitir(true, ['target_token' => Security::encrypt($kayitId)], 'Kaçak bildirimi güncellendi.');
+        }
+
+        $hedefId = (int) Security::decrypt((string) ($input['target_token'] ?? ''));
+        $transferAnahtari = (string) ($input['transfer_key'] ?? '');
+        $anaMakbuz = $transfer->receipt($transferAnahtari, 'mobileKacakCreate') ?? $transfer->receipt($transferAnahtari, 'mobileKacakUpdate');
+        if (!$anaMakbuz || $hedefId <= 0 || (int) Security::decrypt((string) ($anaMakbuz['data']['target_token'] ?? '')) !== $hedefId) {
+            mobile_fail('Dosya gönderimi bu bildirime ait değil.', 403, ['transfer_error' => 'permission']);
+        }
+        if (!$servis->kayitSahibiMi($hedefId, $personelId, $firmaId)) {
+            mobile_fail('Bu kayda dosya ekleme yetkiniz yok veya kayıt artık düzenlenemiyor.', 403, ['transfer_error' => 'permission']);
+        }
+
+        $onbellek = $transfer->begin($islemAnahtari, 'mobileKacakPhoto');
+        if ($onbellek) {
+            $transfer->getDb()->rollBack();
+            mobile_ok(($onbellek['data'] ?? []) + ['message' => (string) ($onbellek['message'] ?? '')]);
+        }
+        $transfer->lockRecord('kacak', $hedefId);
+        $servis->sahaFotografiEkle(
+            $hedefId,
+            $_FILES['foto'] ?? [],
+            isset($input['foto_cekim']) ? (string) $input['foto_cekim'] : null,
+            $personelId,
+            (int) ($input['sira'] ?? -1)
+        );
+        $kacakModel->syncExpectedPhotoCount($hedefId);
+        $bitir(true, ['target_token' => Security::encrypt($hedefId)], 'Fotoğraf kaydedildi.');
+    } catch (DomainException $e) {
+        $transfer->finish(['success' => false]);
+        mobile_fail($e->getMessage(), 422, ['transfer_error' => 'validation']);
+    } catch (Throwable $e) {
+        $transfer->finish(['success' => false]);
+        error_log('Mobil kaçak gönderimi action=' . $action . ' personel=' . $personelId . ' hata=' . get_class($e) . ': ' . $e->getMessage());
+        mobile_fail('Sunucu gönderimi tamamlayamadı; kayıt cihazda korunuyor.', 503, ['transfer_error' => 'temporary']);
+    }
+}
+
+// -------------------------------------------------------------------------
+// 4.3 YENİ KAÇAK BİLDİRİMİ OLUŞTURMA
 // -------------------------------------------------------------------------
 if ($action === 'create') {
     $tarih = !empty($input['tarih']) && strtotime((string) $input['tarih'])
@@ -383,7 +513,7 @@ if ($action === 'create') {
         'bildiren_personel_id' => $personelId,
         'durum' => 'aktif',
         'onay_durumu' => 'beklemede',
-        'kaynak' => 'mobil_app',
+        'kaynak' => 'pwa',
     ];
 
     $kacakId = $kacakModel->createRecord($kayitData);

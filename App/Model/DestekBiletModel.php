@@ -155,6 +155,29 @@ class DestekBiletModel extends Model
     }
 
     /**
+     * Yalnızca personelin kendi (personel_id eşleşen) biletlerini getirir.
+     */
+    public function getKendiBiletleri(int $personelId): array
+    {
+        if ($personelId <= 0) {
+            return [];
+        }
+
+        $stmt = $this->db->prepare(
+            "SELECT t.id, t.ref_no, t.konu, t.kategori, t.oncelik, t.durum, t.onay_durumu, t.onay_notu,
+                    t.olusturma_tarihi, t.guncelleme_tarihi,
+                    (SELECT COUNT(*) FROM {$this->messageTable} WHERE bilet_id = t.id) AS mesaj_sayisi
+             FROM {$this->table} t
+             WHERE t.personel_id = ?
+             ORDER BY t.guncelleme_tarihi DESC, t.id DESC
+             LIMIT 200"
+        );
+        $stmt->execute([$personelId]);
+
+        return $stmt->fetchAll(PDO::FETCH_OBJ) ?: [];
+    }
+
+    /**
      * Tüm biletleri getirir (Yönetici için)
      */
     public function getAllTickets($status = null, $approvalStatus = null, $search = null, $page = 1, $limit = 20)

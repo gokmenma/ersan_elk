@@ -286,5 +286,9 @@ function mobile_personel_ozet(object $personel): array
         'departman' => $personel->departman ?? '',
         'resim_url' => mobile_asset_url($resim),
         'saha_takibi' => (int) ($personel->saha_takibi ?? 0) === 1,
+        'moduller' => [
+            'kacak' => \App\Service\KacakBildirimService::yetkiliMi($personel),
+            'ihbar' => \App\Service\IhbarBildirimService::yetkiliMi($personel),
+        ],
     ];
 }
