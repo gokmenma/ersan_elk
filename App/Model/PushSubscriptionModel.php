@@ -171,4 +171,23 @@ class PushSubscriptionModel extends Model
         $stmt->execute([$personelId]);
         return (int) $stmt->fetchColumn() > 0;
     }
+
+    public function getAbonePersonelIds(int $firmaId): array
+    {
+        $stmt = $this->db->prepare("SELECT DISTINCT ps.personel_id FROM {$this->table} ps INNER JOIN personel p ON p.id = ps.personel_id WHERE p.firma_id = ? AND p.silinme_tarihi IS NULL");
+        $stmt->execute([$firmaId]);
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    }
+
+    public function filterFirmaPersonelIds(array $ids, int $firmaId): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), fn($v) => $v > 0)));
+        if (!$ids) {
+            return [];
+        }
+        $ph = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $this->db->prepare("SELECT id FROM personel WHERE firma_id = ? AND silinme_tarihi IS NULL AND id IN ({$ph})");
+        $stmt->execute(array_merge([$firmaId], $ids));
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    }
 }

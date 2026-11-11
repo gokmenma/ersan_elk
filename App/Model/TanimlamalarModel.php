@@ -453,6 +453,358 @@ class TanimlamalarModel extends Model
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
+    public function findIzinTuru(int $id, int $firma_id): ?object
+    {
+        $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE id = ? AND grup = 'izin_turu' AND firma_id = ? AND silinme_tarihi IS NULL");
+        $stmt->execute([$id, $firma_id]);
+        $row = $stmt->fetch(PDO::FETCH_OBJ);
+        return $row ?: null;
+    }
+
+    public function izinTuruSummary(int $firma_id): object
+    {
+        $stmt = $this->db->prepare("
+            SELECT
+                COUNT(*) AS toplam,
+                COALESCE(SUM(ucretli_mi = 1), 0) AS ucretli,
+                COALESCE(SUM(ucretli_mi = 0 OR ucretli_mi IS NULL), 0) AS ucretsiz,
+                COALESCE(SUM(personel_gorebilir = 1), 0) AS personel_gorebilir,
+                COALESCE(SUM(yetkili_onayina_tabi = 1), 0) AS onayli,
+                COALESCE(SUM(normal_mesai_sayilir = 1), 0) AS mesai_sayilir
+            FROM {$this->table}
+            WHERE grup = 'izin_turu' AND firma_id = ? AND silinme_tarihi IS NULL
+        ");
+        $stmt->execute([$firma_id]);
+        $s = $stmt->fetch(PDO::FETCH_OBJ);
+        return (object) [
+            'toplam' => (int) ($s->toplam ?? 0),
+            'ucretli' => (int) ($s->ucretli ?? 0),
+            'ucretsiz' => (int) ($s->ucretsiz ?? 0),
+            'personel_gorebilir' => (int) ($s->personel_gorebilir ?? 0),
+            'onayli' => (int) ($s->onayli ?? 0),
+            'mesai_sayilir' => (int) ($s->mesai_sayilir ?? 0),
+        ];
+    }
+
+    public function izinTuruAjaxList(array $params, int $firma_id): array
+    {
+        $draw = (int) ($params['draw'] ?? 0);
+        $start = max(0, (int) ($params['start'] ?? 0));
+        $length = (int) ($params['length'] ?? 25);
+        $length = $length < 1 ? 25 : min($length, 500);
+        $search = trim((string) ($params['search']['value'] ?? ''));
+        $statusFilter = (string) ($params['status_filter'] ?? 'all');
+        $columns = $params['columns'] ?? [];
+        $orders = $params['order'] ?? [];
+
+        $where = "grup = 'izin_turu' AND firma_id = :firma_id AND silinme_tarihi IS NULL";
+        $bind = [':firma_id' => $firma_id];
+
+        $statusMap = [
+            'ucretli' => 'ucretli_mi = 1',
+            'ucretsiz' => '(ucretli_mi = 0 OR ucretli_mi IS NULL)',
+            'personel' => 'personel_gorebilir = 1',
+            'onayli' => 'yetkili_onayina_tabi = 1',
+        ];
+        if (isset($statusMap[$statusFilter])) {
+            $where .= ' AND ' . $statusMap[$statusFilter];
+        }
+
+        if ($search !== '') {
+            $where .= ' AND (tur_adi LIKE :search OR kisa_kod LIKE :search OR aciklama LIKE :search)';
+            $bind[':search'] = '%' . $search . '%';
+        }
+
+        $textCols = [1 => 'tur_adi', 2 => 'kisa_kod', 8 => 'aciklama'];
+        $boolCols = [4 => 'ucretli_mi', 5 => 'normal_mesai_sayilir', 6 => 'personel_gorebilir', 7 => 'yetkili_onayina_tabi'];
+        $yesLabels = ['ücretli', 'evet', '1'];
+        $noLabels = ['ücretsiz', 'hayır', 'hayir', '0'];
+
+        foreach ($columns as $i => $column) {
+            $raw = trim((string) ($column['search']['value'] ?? ''));
+            if ($raw === '') {
+                continue;
+            }
+            $i = (int) $i;
+            $mode = 'contains';
+            $val = $raw;
+            if (strpos($raw, ':') !== false) {
+                [$mode, $val] = explode(':', $raw, 2);
+            }
+
+            if (isset($boolCols[$i])) {
+                $field = $boolCols[$i];
+                $parts = array_map(fn($p) => mb_strtolower(trim($p), 'UTF-8'), explode('|', $val));
+                $hasYes = (bool) array_intersect($parts, $yesLabels);
+                $hasNo = (bool) array_intersect($parts, $noLabels);
+                if ($hasYes && !$hasNo) {
+                    $where .= " AND {$field} = 1";
+                } elseif ($hasNo && !$hasYes) {
+                    $where .= " AND ({$field} = 0 OR {$field} IS NULL)";
+                }
+                continue;
+            }
+
+            if (isset($textCols[$i])) {
+                $field = $textCols[$i];
+                $p = ':col_' . $i;
+                if ($mode === 'equals') {
+                    $where .= " AND {$field} = {$p}";
+                    $bind[$p] = $val;
+                } elseif ($mode === 'multi') {
+                    $items = array_values(array_filter(explode('|', $val), fn($v) => $v !== ''));
+                    if ($items) {
+                        $ph = [];
+                        foreach ($items as $k => $item) {
+                            $ph[] = $p . '_' . $k;
+                            $bind[$p . '_' . $k] = $item;
+                        }
+                        $where .= " AND {$field} IN (" . implode(',', $ph) . ')';
+                    }
+                } elseif ($mode === 'startswith') {
+                    $where .= " AND {$field} LIKE {$p}";
+                    $bind[$p] = $val . '%';
+                } elseif ($mode === 'endswith') {
+                    $where .= " AND {$field} LIKE {$p}";
+                    $bind[$p] = '%' . $val;
+                } else {
+                    $where .= " AND {$field} LIKE {$p}";
+                    $bind[$p] = '%' . $val . '%';
+                }
+            }
+        }
+
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} WHERE grup = 'izin_turu' AND firma_id = ? AND silinme_tarihi IS NULL");
+        $stmt->execute([$firma_id]);
+        $recordsTotal = (int) $stmt->fetchColumn();
+
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} WHERE {$where}");
+        $stmt->execute($bind);
+        $recordsFiltered = (int) $stmt->fetchColumn();
+
+        $orderMap = [
+            1 => 'tur_adi', 2 => 'kisa_kod', 4 => 'ucretli_mi', 5 => 'normal_mesai_sayilir',
+            6 => 'personel_gorebilir', 7 => 'yetkili_onayina_tabi', 8 => 'aciklama',
+        ];
+        $orderBy = 'id DESC';
+        if (!empty($orders)) {
+            $idx = (int) ($orders[0]['column'] ?? -1);
+            $dir = strtoupper((string) ($orders[0]['dir'] ?? '')) === 'ASC' ? 'ASC' : 'DESC';
+            if (isset($orderMap[$idx])) {
+                $orderBy = "{$orderMap[$idx]} {$dir}, id DESC";
+            }
+        }
+
+        $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE {$where} ORDER BY {$orderBy} LIMIT {$start}, {$length}");
+        $stmt->execute($bind);
+        $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        $tw = [
+            'blue' => ['#dbeafe', '#2563eb'], 'amber' => ['#fef3c7', '#d97706'], 'red' => ['#fee2e2', '#dc2626'],
+            'pink' => ['#fce7f3', '#db2777'], 'gray' => ['#f3f4f6', '#4b5563'], 'green' => ['#dcfce7', '#16a34a'],
+            'purple' => ['#f3e8ff', '#9333ea'],
+        ];
+        $esc = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+        $badge = fn(bool $on, string $yesCls, string $yesTxt, string $noCls, string $noTxt) =>
+            '<span class="badge ' . ($on ? $yesCls : $noCls) . ' border rounded-pill px-2 py-1 font-size-11 fw-semibold">' . ($on ? $yesTxt : $noTxt) . '</span>';
+
+        $data = [];
+        $sira = $start + 1;
+        foreach ($rows as $row) {
+            $encId = Security::encrypt($row->id);
+
+            $bg = 'rgba(85, 110, 230, 0.1)';
+            $fg = '#556ee6';
+            foreach ($tw as $key => $colors) {
+                if (strpos((string) $row->renk, $key) !== false) {
+                    [$bg, $fg] = $colors;
+                    break;
+                }
+            }
+            $ikon = preg_match('/^[a-z0-9_]+$/', (string) $row->ikon) ? $row->ikon : 'event';
+
+            $flags = '';
+            if (!empty($row->resmi_tatil_calismasi)) {
+                $flags .= '<span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2 py-1 font-size-10 fw-semibold me-1">Resmi Tatil Çalışması</span>';
+            }
+            if (!empty($row->hafta_tatili_calismasi)) {
+                $flags .= '<span class="badge bg-purple-subtle border rounded-pill px-2 py-1 font-size-10 fw-semibold" style="color:#9333ea;background:#f3e8ff;border-color:#e9d5ff !important;">Hafta Tatili Çalışması</span>';
+            }
+
+            $actions = '<div class="d-flex align-items-center justify-content-center gap-1 action-btn-group">'
+                . '<button type="button" class="btn btn-sm btn-subtle-warning table-action-btn duzenle" data-id="' . $encId . '" title="Düzenle"><i class="bx bx-pencil"></i></button>'
+                . '<button type="button" class="btn btn-sm btn-subtle-danger table-action-btn sil" data-id="' . $encId . '" data-name="' . $esc($row->tur_adi) . '" title="Sil"><i class="bx bx-trash"></i></button>'
+                . '</div>';
+
+            $data[] = [
+                'sira' => '<div class="text-center font-size-12 fw-medium text-muted">' . $sira++ . '</div>',
+                'tur_adi' => '<div class="d-flex flex-column"><span class="fw-bold text-dark font-size-13">' . $esc($row->tur_adi) . '</span>' . ($flags !== '' ? '<div class="mt-1">' . $flags . '</div>' : '') . '</div>',
+                'kisa_kod' => '<div class="text-center"><span class="badge bg-light text-dark border font-size-12 px-2">' . $esc($row->kisa_kod) . '</span></div>',
+                'gorunum' => '<div class="d-flex align-items-center justify-content-center gap-2"><div class="d-flex align-items-center justify-content-center rounded-3" style="background-color:' . $bg . ';color:' . $fg . ';width:36px;height:36px;"><span class="material-symbols-outlined" style="font-size:22px;">' . $ikon . '</span></div><small class="text-muted font-size-11">' . $esc($ikon) . '</small></div>',
+                'ucretli_mi' => '<div class="text-center">' . $badge((int) $row->ucretli_mi === 1, 'bg-success-subtle text-success border-success-subtle', 'Ücretli', 'bg-danger-subtle text-danger border-danger-subtle', 'Ücretsiz') . '</div>',
+                'normal_mesai_sayilir' => '<div class="text-center">' . $badge((int) $row->normal_mesai_sayilir === 1, 'bg-success-subtle text-success border-success-subtle', 'Evet', 'bg-secondary-subtle text-secondary border-secondary-subtle', 'Hayır') . '</div>',
+                'personel_gorebilir' => '<div class="text-center">' . $badge((int) $row->personel_gorebilir === 1, 'bg-info-subtle text-info border-info-subtle', 'Evet', 'bg-secondary-subtle text-secondary border-secondary-subtle', 'Hayır') . '</div>',
+                'yetkili_onayina_tabi' => '<div class="text-center">' . $badge((int) $row->yetkili_onayina_tabi === 1, 'bg-warning-subtle text-warning border-warning-subtle', 'Evet', 'bg-secondary-subtle text-secondary border-secondary-subtle', 'Hayır') . '</div>',
+                'aciklama' => '<span class="text-muted font-size-12">' . $esc($row->aciklama) . '</span>',
+                'actions' => $actions,
+                'enc_id' => $encId,
+            ];
+        }
+
+        return [
+            'draw' => $draw,
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ];
+    }
+
+    public function findDemirbasKategorisi(int $id, int $firma_id): ?object
+    {
+        $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE id = ? AND grup = 'demirbas_kategorisi' AND firma_id = ? AND silinme_tarihi IS NULL");
+        $stmt->execute([$id, $firma_id]);
+        $row = $stmt->fetch(PDO::FETCH_OBJ);
+        return $row ?: null;
+    }
+
+    public function demirbasKategoriSummary(int $firma_id): object
+    {
+        $stmt = $this->db->prepare("
+            SELECT
+                COUNT(*) AS toplam,
+                COALESCE(SUM(x.adet > 0), 0) AS kullanimda,
+                COALESCE(SUM(x.adet = 0), 0) AS bos,
+                COALESCE(SUM(x.adet), 0) AS toplam_demirbas
+            FROM (
+                SELECT t.id, (
+                    SELECT COUNT(*) FROM demirbas d
+                    WHERE d.kategori_id = t.id AND d.firma_id = t.firma_id AND d.silinme_tarihi IS NULL
+                ) AS adet
+                FROM {$this->table} t
+                WHERE t.grup = 'demirbas_kategorisi' AND t.firma_id = ? AND t.silinme_tarihi IS NULL
+            ) x
+        ");
+        $stmt->execute([$firma_id]);
+        $s = $stmt->fetch(PDO::FETCH_OBJ);
+        return (object) [
+            'toplam' => (int) ($s->toplam ?? 0),
+            'kullanimda' => (int) ($s->kullanimda ?? 0),
+            'bos' => (int) ($s->bos ?? 0),
+            'toplam_demirbas' => (int) ($s->toplam_demirbas ?? 0),
+        ];
+    }
+
+    public function demirbasKategoriAjaxList(array $params, int $firma_id): array
+    {
+        $draw = (int) ($params['draw'] ?? 0);
+        $start = max(0, (int) ($params['start'] ?? 0));
+        $length = (int) ($params['length'] ?? 25);
+        $length = $length < 1 ? 25 : min($length, 500);
+        $search = trim((string) ($params['search']['value'] ?? ''));
+        $statusFilter = (string) ($params['status_filter'] ?? 'all');
+        $columns = $params['columns'] ?? [];
+        $orders = $params['order'] ?? [];
+
+        $adetSql = "(SELECT COUNT(*) FROM demirbas d WHERE d.kategori_id = t.id AND d.firma_id = t.firma_id AND d.silinme_tarihi IS NULL)";
+        $where = "t.grup = 'demirbas_kategorisi' AND t.firma_id = :firma_id AND t.silinme_tarihi IS NULL";
+        $bind = [':firma_id' => $firma_id];
+
+        if ($statusFilter === 'kullanimda') {
+            $where .= " AND {$adetSql} > 0";
+        } elseif ($statusFilter === 'bos') {
+            $where .= " AND {$adetSql} = 0";
+        }
+
+        if ($search !== '') {
+            $where .= ' AND (t.tur_adi LIKE :search OR t.aciklama LIKE :search)';
+            $bind[':search'] = '%' . $search . '%';
+        }
+
+        $textCols = [1 => 't.tur_adi', 2 => 't.aciklama'];
+        foreach ($columns as $i => $column) {
+            $raw = trim((string) ($column['search']['value'] ?? ''));
+            $i = (int) $i;
+            if ($raw === '' || !isset($textCols[$i])) {
+                continue;
+            }
+            $mode = 'contains';
+            $val = $raw;
+            if (strpos($raw, ':') !== false) {
+                [$mode, $val] = explode(':', $raw, 2);
+            }
+            $field = $textCols[$i];
+            $p = ':col_' . $i;
+            if ($mode === 'equals') {
+                $where .= " AND {$field} = {$p}";
+                $bind[$p] = $val;
+            } elseif ($mode === 'startswith') {
+                $where .= " AND {$field} LIKE {$p}";
+                $bind[$p] = $val . '%';
+            } elseif ($mode === 'endswith') {
+                $where .= " AND {$field} LIKE {$p}";
+                $bind[$p] = '%' . $val;
+            } else {
+                $where .= " AND {$field} LIKE {$p}";
+                $bind[$p] = '%' . $val . '%';
+            }
+        }
+
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} WHERE grup = 'demirbas_kategorisi' AND firma_id = ? AND silinme_tarihi IS NULL");
+        $stmt->execute([$firma_id]);
+        $recordsTotal = (int) $stmt->fetchColumn();
+
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} t WHERE {$where}");
+        $stmt->execute($bind);
+        $recordsFiltered = (int) $stmt->fetchColumn();
+
+        $orderMap = [1 => 't.tur_adi', 2 => 't.aciklama', 3 => 'adet', 4 => 't.id'];
+        $orderBy = 't.tur_adi ASC';
+        if (!empty($orders)) {
+            $idx = (int) ($orders[0]['column'] ?? -1);
+            $dir = strtoupper((string) ($orders[0]['dir'] ?? '')) === 'DESC' ? 'DESC' : 'ASC';
+            if (isset($orderMap[$idx])) {
+                $orderBy = "{$orderMap[$idx]} {$dir}, t.id DESC";
+            }
+        }
+
+        $stmt = $this->db->prepare("SELECT t.*, {$adetSql} AS adet FROM {$this->table} t WHERE {$where} ORDER BY {$orderBy} LIMIT {$start}, {$length}");
+        $stmt->execute($bind);
+        $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        $esc = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+        $data = [];
+        $sira = $start + 1;
+        foreach ($rows as $row) {
+            $encId = Security::encrypt($row->id);
+            $adet = (int) $row->adet;
+            $adetBadge = $adet > 0
+                ? '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">' . $adet . ' Demirbaş</span>'
+                : '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Kullanılmıyor</span>';
+
+            $actions = '<div class="d-flex align-items-center justify-content-center gap-1 action-btn-group">'
+                . '<button type="button" class="btn btn-sm btn-subtle-warning table-action-btn duzenle" data-id="' . $encId . '" title="Düzenle"><i class="bx bx-pencil"></i></button>'
+                . '<button type="button" class="btn btn-sm btn-subtle-danger table-action-btn sil" data-id="' . $encId . '" data-name="' . $esc($row->tur_adi) . '" title="Sil"><i class="bx bx-trash"></i></button>'
+                . '</div>';
+
+            $data[] = [
+                'sira' => '<div class="text-center font-size-12 fw-medium text-muted">' . $sira++ . '</div>',
+                'tur_adi' => '<span class="fw-bold text-dark font-size-13">' . $esc($row->tur_adi) . '</span>',
+                'aciklama' => '<span class="text-muted font-size-12">' . $esc($row->aciklama) . '</span>',
+                'adet' => '<div class="text-center">' . $adetBadge . '</div>',
+                'kayit_tarihi' => '<div class="text-center font-size-12">' . $esc($row->kayit_tarihi) . '</div>',
+                'actions' => $actions,
+                'enc_id' => $encId,
+            ];
+        }
+
+        return [
+            'draw' => $draw,
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ];
+    }
+
     public function getDemirbasKategorileri()
     {
         $sql = $this->db->prepare("SELECT * FROM $this->table WHERE grup = ? AND firma_id = ? AND silinme_tarihi IS NULL ORDER BY id DESC");

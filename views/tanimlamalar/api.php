@@ -844,85 +844,118 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-excel-yukle") {
     exit;
 }
 
+// İzin Türü Listesi (DataTables Ajax)
+if ($action === "izin-turu-liste") {
+    try {
+        echo json_encode($Tanimlamalar->izinTuruAjaxList($_POST, (int) $firma_id), JSON_UNESCAPED_UNICODE);
+    } catch (\Throwable $e) {
+        error_log("izin-turu-liste: " . $e->getMessage());
+        echo json_encode([
+            "draw" => (int) ($_POST["draw"] ?? 0),
+            "recordsTotal" => 0,
+            "recordsFiltered" => 0,
+            "data" => [],
+            "error" => "İzin türü listesi alınamadı."
+        ], JSON_UNESCAPED_UNICODE);
+    }
+    exit;
+}
+
+// İzin Türü Özet KPI
+if ($action === "izin-turu-ozet") {
+    try {
+        echo json_encode(["status" => "success", "summary" => $Tanimlamalar->izinTuruSummary((int) $firma_id)], JSON_UNESCAPED_UNICODE);
+    } catch (\Throwable $e) {
+        error_log("izin-turu-ozet: " . $e->getMessage());
+        echo json_encode(["status" => "error", "message" => "Özet alınamadı."], JSON_UNESCAPED_UNICODE);
+    }
+    exit;
+}
+
 // İzin Türü Kaydet
-if (isset($_POST["action"]) && $_POST["action"] == "izin-turu-kaydet") {
-    $id = Security::decrypt($_POST["izin_turu_id"]);
-    $son_kayit = null;
+if ($action === "izin-turu-kaydet") {
+    $id = (int) Security::decrypt($_POST["izin_turu_id"] ?? "");
     $plainId = 0;
     try {
+        $turAdi = trim((string) ($_POST["izin_turu"] ?? ""));
+        $kisaKod = trim((string) ($_POST["kisa_kod"] ?? ""));
+        if ($turAdi === "" || $kisaKod === "") {
+            echo json_encode(["status" => "error", "message" => "İzin türü ve kısa kod boş bırakılamaz."], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+        if ($id > 0 && !$Tanimlamalar->findIzinTuru($id, (int) $firma_id)) {
+            echo json_encode(["status" => "error", "message" => "İzin türü kaydı bulunamadı."], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
         $data = [
             "id" => $id,
             "type" => 0,
             "grup" => "izin_turu",
-            "tur_adi" => $_POST["izin_turu"],
-            "kisa_kod" => $_POST["kisa_kod"],
-            "aciklama" => $_POST["aciklama"],
+            "tur_adi" => $turAdi,
+            "kisa_kod" => $kisaKod,
+            "aciklama" => trim((string) ($_POST["aciklama"] ?? "")),
             "ucretli_mi" => (int) ($_POST["ucretli_mi"] ?? 0),
             "normal_mesai_sayilir" => (int) ($_POST["normal_mesai_sayilir"] ?? 0),
             "resmi_tatil_calismasi" => (int) ($_POST["resmi_tatil_calismasi"] ?? 0),
             "hafta_tatili_calismasi" => (int) ($_POST["hafta_tatili_calismasi"] ?? 0),
             "personel_gorebilir" => (int) ($_POST["personel_gorebilir"] ?? 0),
-            "renk" => $_POST["renk"],
-            "ikon" => $_POST["ikon"],
+            "renk" => (string) ($_POST["renk"] ?? ""),
+            "ikon" => (string) ($_POST["ikon"] ?? ""),
             "yetkili_onayina_tabi" => (int) ($_POST["yetkili_onayina_tabi"] ?? 0)
         ];
 
-        if ($id == 0) {
+        if ($id === 0) {
             $data["kayit_yapan"] = $_SESSION["id"] ?? 0;
-            $data["firma_id"] = $_SESSION["firma_id"];
+            $data["firma_id"] = $firma_id;
             $plainId = $Tanimlamalar->saveWithAttr($data);
         } else {
-            // Debug için logla (geçici)
-            // error_log("Updating ID $id with yetkili_onayina_tabi: " . $_POST["yetkili_onayina_tabi"]);
             $Tanimlamalar->saveWithAttr($data);
             $plainId = $id;
         }
 
-        $status = "success";
-        $message = "İşlem başarılı bir şekilde gerçekleştirildi.";
-
-    } catch (PDOException $ex) {
-        $status = "error";
-        $message = $ex->getMessage();
+        $res = ["status" => "success", "message" => "İşlem başarılı bir şekilde gerçekleştirildi.", "id" => $plainId, "is_update" => ($id !== 0)];
+    } catch (\Throwable $ex) {
+        error_log("izin-turu-kaydet: " . $ex->getMessage());
+        $res = ["status" => "error", "message" => "Kayıt sırasında bir hata oluştu."];
     }
-    $res = [
-        "status" => $status,
-        "message" => $message,
-        "son_kayit" => $son_kayit,
-        "id" => $plainId,
-        "is_update" => ($id != 0),
-        "data" => $data
-    ];
-
-    echo json_encode($res);
+    echo json_encode($res, JSON_UNESCAPED_UNICODE);
+    exit;
 }
 
 // İzin Türü Getir
-if (isset($_POST["action"]) && $_POST["action"] == "izin-turu-getir") {
-    $id = Security::decrypt($_POST["id"]);
+if ($action === "izin-turu-getir") {
+    $id = (int) Security::decrypt($_POST["id"] ?? "");
     try {
-        $data = $Tanimlamalar->find($id);
+        $data = $id > 0 ? $Tanimlamalar->findIzinTuru($id, (int) $firma_id) : null;
+        if (!$data) {
+            echo json_encode(["status" => "error", "message" => "İzin türü kaydı bulunamadı."], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
         $data->encrypted_id = $_POST["id"];
-        $status = "success";
-    } catch (PDOException $ex) {
-        $status = "error";
-        $data = null;
+        echo json_encode(["status" => "success", "data" => $data], JSON_UNESCAPED_UNICODE);
+    } catch (\Throwable $ex) {
+        error_log("izin-turu-getir: " . $ex->getMessage());
+        echo json_encode(["status" => "error", "message" => "Kayıt getirilemedi."], JSON_UNESCAPED_UNICODE);
     }
-    echo json_encode(["status" => $status, "data" => $data]);
+    exit;
 }
 
 // İzin Türü Sil
-if (isset($_POST["action"]) && $_POST["action"] == "izin-turu-sil") {
-    $id = Security::decrypt($_POST["id"]);
+if ($action === "izin-turu-sil") {
+    $id = (int) Security::decrypt($_POST["id"] ?? "");
     try {
+        if ($id <= 0 || !$Tanimlamalar->findIzinTuru($id, (int) $firma_id)) {
+            echo json_encode(["status" => "error", "message" => "İzin türü kaydı bulunamadı."], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
         $Tanimlamalar->softDelete($id);
-        $status = "success";
-        $message = "Kayıt silindi.";
-    } catch (PDOException $ex) {
-        $status = "error";
-        $message = $ex->getMessage();
+        echo json_encode(["status" => "success", "message" => "Kayıt silindi.", "deleted_id" => $id], JSON_UNESCAPED_UNICODE);
+    } catch (\Throwable $ex) {
+        error_log("izin-turu-sil: " . $ex->getMessage());
+        echo json_encode(["status" => "error", "message" => "Silme işlemi başarısız."], JSON_UNESCAPED_UNICODE);
     }
-    echo json_encode(["status" => $status, "message" => $message, "deleted_id" => $id]);
+    exit;
 }
 
 // Bölge Kurallarını Getir
@@ -1069,79 +1102,110 @@ if (isset($_POST["action"]) && $_POST["action"] == "unvan-ucretleri-getir") {
     exit;
 }
 
-// Demirbaş Kategorisi Kaydet
-if (isset($_POST["action"]) && $_POST["action"] == "demirbas-kategorisi-kaydet") {
-    $id = Security::decrypt($_POST["kategori_id"]);
-    $plainId = 0;
+// Demirbaş Kategorisi Listesi (DataTables Ajax)
+if ($action === "demirbas-kategorisi-liste") {
     try {
+        echo json_encode($Tanimlamalar->demirbasKategoriAjaxList($_POST, (int) $firma_id), JSON_UNESCAPED_UNICODE);
+    } catch (\Throwable $e) {
+        error_log("demirbas-kategorisi-liste: " . $e->getMessage());
+        echo json_encode([
+            "draw" => (int) ($_POST["draw"] ?? 0),
+            "recordsTotal" => 0,
+            "recordsFiltered" => 0,
+            "data" => [],
+            "error" => "Kategori listesi alınamadı."
+        ], JSON_UNESCAPED_UNICODE);
+    }
+    exit;
+}
+
+// Demirbaş Kategorisi Özet KPI
+if ($action === "demirbas-kategorisi-ozet") {
+    try {
+        echo json_encode(["status" => "success", "summary" => $Tanimlamalar->demirbasKategoriSummary((int) $firma_id)], JSON_UNESCAPED_UNICODE);
+    } catch (\Throwable $e) {
+        error_log("demirbas-kategorisi-ozet: " . $e->getMessage());
+        echo json_encode(["status" => "error", "message" => "Özet alınamadı."], JSON_UNESCAPED_UNICODE);
+    }
+    exit;
+}
+
+// Demirbaş Kategorisi Kaydet
+if ($action === "demirbas-kategorisi-kaydet") {
+    $id = (int) Security::decrypt($_POST["kategori_id"] ?? "");
+    try {
+        $ad = trim((string) ($_POST["kategori_adi"] ?? ""));
+        if ($ad === "") {
+            echo json_encode(["status" => "error", "message" => "Kategori adı boş bırakılamaz."], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+        if ($id > 0 && !$Tanimlamalar->findDemirbasKategorisi($id, (int) $firma_id)) {
+            echo json_encode(["status" => "error", "message" => "Kategori kaydı bulunamadı."], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
         $data = [
             "id" => $id,
             "type" => 0,
             "grup" => "demirbas_kategorisi",
-            "tur_adi" => $_POST["kategori_adi"],
-            "aciklama" => $_POST["aciklama"]
+            "tur_adi" => $ad,
+            "aciklama" => trim((string) ($_POST["aciklama"] ?? ""))
         ];
 
-        if ($id == 0) {
+        if ($id === 0) {
             $data["kayit_yapan"] = $_SESSION["id"] ?? 0;
-            $data["firma_id"] = $_SESSION["firma_id"];
+            $data["firma_id"] = $firma_id;
             $plainId = $Tanimlamalar->saveWithAttr($data);
         } else {
             $Tanimlamalar->saveWithAttr($data);
             $plainId = $id;
         }
 
-        $status = "success";
-        $message = "İşlem başarılı bir şekilde gerçekleştirildi.";
-
-    } catch (PDOException $ex) {
-        $status = "error";
-        $message = $ex->getMessage();
+        $res = ["status" => "success", "message" => "İşlem başarılı bir şekilde gerçekleştirildi.", "id" => $plainId, "is_update" => ($id !== 0)];
+    } catch (\Throwable $ex) {
+        error_log("demirbas-kategorisi-kaydet: " . $ex->getMessage());
+        $res = ["status" => "error", "message" => "Kayıt sırasında bir hata oluştu."];
     }
-    $res = [
-        "status" => $status,
-        "message" => $message,
-        "id" => $plainId,
-        "is_update" => ($id != 0)
-    ];
-
-    echo json_encode($res);
+    echo json_encode($res, JSON_UNESCAPED_UNICODE);
     exit;
 }
 
 // Demirbaş Kategorisi Getir
-if (isset($_POST["action"]) && $_POST["action"] == "demirbas-kategorisi-getir") {
-    $id = Security::decrypt($_POST["id"]);
+if ($action === "demirbas-kategorisi-getir") {
+    $id = (int) Security::decrypt($_POST["id"] ?? "");
     try {
-        $data = $Tanimlamalar->find($id);
+        $data = $id > 0 ? $Tanimlamalar->findDemirbasKategorisi($id, (int) $firma_id) : null;
+        if (!$data) {
+            echo json_encode(["status" => "error", "message" => "Kategori kaydı bulunamadı."], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
         $data->encrypted_id = $_POST["id"];
-        $status = "success";
-    } catch (PDOException $ex) {
-        $status = "error";
-        $data = null;
+        echo json_encode(["status" => "success", "data" => $data], JSON_UNESCAPED_UNICODE);
+    } catch (\Throwable $ex) {
+        error_log("demirbas-kategorisi-getir: " . $ex->getMessage());
+        echo json_encode(["status" => "error", "message" => "Kayıt getirilemedi."], JSON_UNESCAPED_UNICODE);
     }
-    echo json_encode(["status" => $status, "data" => $data]);
     exit;
 }
 
 // Demirbaş Kategorisi Sil
-if (isset($_POST["action"]) && $_POST["action"] == "demirbas-kategorisi-sil") {
-    $id = Security::decrypt($_POST["id"]);
+if ($action === "demirbas-kategorisi-sil") {
+    $id = (int) Security::decrypt($_POST["id"] ?? "");
     try {
-        // Kontrol et: Kategori kullanılıyor mu?
-        if ($Tanimlamalar->isDemirbasKategorisiKullaniliyor($id)) {
-            echo json_encode(["status" => "error", "message" => "Bu kategori demirbaşlar tarafından kullanılıyor. Önce ilgili demirbaşların kategorisini değiştirin veya silin."]);
+        if ($id <= 0 || !$Tanimlamalar->findDemirbasKategorisi($id, (int) $firma_id)) {
+            echo json_encode(["status" => "error", "message" => "Kategori kaydı bulunamadı."], JSON_UNESCAPED_UNICODE);
             exit;
         }
-
+        if ($Tanimlamalar->isDemirbasKategorisiKullaniliyor($id)) {
+            echo json_encode(["status" => "error", "message" => "Bu kategori demirbaşlar tarafından kullanılıyor. Önce ilgili demirbaşların kategorisini değiştirin veya silin."], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
         $Tanimlamalar->softDelete($id);
-        $status = "success";
-        $message = "Kayıt silindi.";
-    } catch (PDOException $ex) {
-        $status = "error";
-        $message = $ex->getMessage();
+        echo json_encode(["status" => "success", "message" => "Kayıt silindi.", "deleted_id" => $id], JSON_UNESCAPED_UNICODE);
+    } catch (\Throwable $ex) {
+        error_log("demirbas-kategorisi-sil: " . $ex->getMessage());
+        echo json_encode(["status" => "error", "message" => "Silme işlemi başarısız."], JSON_UNESCAPED_UNICODE);
     }
-    echo json_encode(["status" => $status, "message" => $message, "deleted_id" => $id]);
     exit;
 }
 

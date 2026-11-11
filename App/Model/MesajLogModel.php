@@ -312,4 +312,12 @@ class MesajLogModel extends Model
         }
         return $map;
     }
+
+    public function pushStats(int $firma_id): object
+    {
+        $stmt = $this->db->prepare("SELECT COUNT(*) AS toplam, COALESCE(SUM(created_at >= DATE_FORMAT(NOW(), '%Y-%m-01')), 0) AS bu_ay, MAX(created_at) AS son FROM {$this->table} WHERE firma_id = ? AND type = 'push'");
+        $stmt->execute([$firma_id]);
+        $r = $stmt->fetch(\PDO::FETCH_OBJ);
+        return (object) ['toplam' => (int) ($r->toplam ?? 0), 'bu_ay' => (int) ($r->bu_ay ?? 0), 'son' => $r->son ?? null];
+    }
 }

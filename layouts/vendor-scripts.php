@@ -174,7 +174,7 @@ if ($page == "hakedisler/hakedis-detay") {
     strpos($page, "site-yonetimi/") === 0 ||
     $page == "formlar/list" || $page == "formlar/manage" ||
     $page == "yardim/list" || $page == "yardim/user-list" ||
-    $page == "bildirim/list" ||
+    $page == "bildirim/list" || $page == "bildirim/gonder" ||
     $page == "raporlar/riskli-islemler" ||
     $page == "ihbar/list" ||
     $page == "kacak/list" ||

@@ -2309,3 +2309,13 @@
 ## 2026-11-11 — RN mobil API canlıya hazırlama
 - api/mobile/v1 ve Mobile* modelleri git ekarte alındı (exclude kaldırıldı); canlıda uç noktalar 404 veriyordu.
 - Prototip ağacındaki (ersan_rn_test) güncel API + gereken model/servis metotları main'e taşındı (commit 8c603985). Push ve canlı deploy kullanıcı onayına bağlı.
+
+## 2026-11-11 — RN iç sayfa başlık/özet kart standardı
+- ersan_rn_test/mobile-app: AppPageHeader PWA topbar tasarımına çevrildi (geri, eyebrow, avatar, daire aksiyon); AppSummaryCard eklendi.
+- Özet kart Talepler, Avans, Etkinlikler, KM, Nöbet, İzinler, Yardım, İcralar ekranlarına uygulandı; DESIGN_SYSTEM.md §4 güncellendi. Telefonda görsel doğrulama bekliyor (cihaz bağlı değildi).
+
+- İzin Türü sayfası (views/tanimlamalar/izin-turu.php) yeni sayfa standardına geçirildi: server-side DataTables, 4 KPI kartı, satır tıklama düzenleme; TanimlamalarModel::izinTuruAjaxList/izinTuruSummary/findIzinTuru, api aksiyonları izin-turu-liste/ozet; policy SQL: sql/2026_11_11_izin_turu_liste_ozet_policies.sql (çalıştırılmalı).
+
+- Demirbaş Kategorileri sayfası yeni sayfa standardına geçirildi (demirbasKategoriAjaxList/Summary, aksiyonlar demirbas-kategorisi-liste/ozet); policy SQL: sql/2026_11_11_demirbas_kategori_liste_ozet_policies.sql (çalıştırılmalı).
+
+- Bildirim Gönder sayfası (views/bildirim/gonder.php + js/gonder.js) yeni standarda ve daha kullanıcı dostu akışa geçirildi (3 adımlı form, canlı önizleme, şablonlar, görsel önizleme, gönderim geçmişi DataTable). API: debug_upload.txt yazımı kaldırıldı, toplu/seçili gönderim firma kapsamına alındı, hata detayı sızması kapatıldı. Policy SQL: sql/2026_11_11_bildirim_gonderim_gecmisi_policy.sql (çalıştırılmalı).

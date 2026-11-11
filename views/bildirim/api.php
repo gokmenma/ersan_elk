@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $permissionPolicy = new PermissionPolicyModel();
     if ($permissionPolicy->isReady()) {
         Gate::authorizeApiPolicy('bildirim/api', (string) $action);
-    } elseif (in_array($action, ['send-notification', 'test-notification', 'datatable-list'], true)
+    } elseif (in_array($action, ['send-notification', 'test-notification', 'datatable-list', 'gonderim-gecmisi'], true)
         && !Gate::allows('gorev-bildirimler')) {
         http_response_code(403);
         echo json_encode(['status' => 'error', 'message' => 'Bildirim yönetimi için yetkiniz bulunmamaktadır.']);
@@ -52,14 +52,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $baslik = trim($_POST['baslik'] ?? '');
                 $mesaj = trim($_POST['mesaj'] ?? '');
                 $hedef_sayfa = $_POST['hedef_sayfa'] ?? '';
+                $izinliHedefler = ['', 'puantaj', 'izin', 'bordro', 'avans', 'talep', 'zimmetler', 'icralar', 'km-bildirimleri', 'etkinlikler', 'yardim', 'ihbar', 'kacak', 'aparat', 'nobet', 'ekip-takibi', 'profil'];
+                if ($hedef_sayfa !== '') {
+                    parse_str((string) parse_url($hedef_sayfa, PHP_URL_QUERY), $hedefQuery);
+                    if (strpos($hedef_sayfa, 'index.php?page=') !== 0 || !in_array((string) ($hedefQuery['page'] ?? ''), $izinliHedefler, true)) {
+                        throw new Exception('Geçersiz hedef sayfa.');
+                    }
+                }
 
                 if (empty($baslik) || empty($mesaj)) {
                     throw new Exception('Başlık ve mesaj zorunludur.');
                 }
-
-                // DEBUG: Dosya bilgilerini logla
-                $debugLog = dirname(__DIR__, 2) . '/debug_upload.txt';
-                file_put_contents($debugLog, date('Y-m-d H:i:s') . " - FILES: " . print_r($_FILES, true) . "\n", FILE_APPEND);
 
                 // Resim Yükleme İşlemi
                 $imageUrl = null;
@@ -69,7 +72,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     // Klasör yoksa oluştur
                     if (!is_dir($uploadDir)) {
                         if (!@mkdir($uploadDir, 0755, true)) {
-                            throw new Exception('Yükleme klasörü oluşturulamadı: ' . $uploadDir);
+                            error_log('bildirim upload mkdir basarisiz: ' . $uploadDir);
+                            throw new Exception('Yükleme klasörü oluşturulamadı.');
                         }
                     }
 
@@ -93,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                     $allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
                     if (!in_array($mimeType, $allowedMimes)) {
-                        throw new Exception('Geçersiz dosya tipi: ' . $mimeType);
+                        throw new Exception('Geçersiz dosya tipi.');
                     }
 
                     if ($_FILES['resim']['size'] > 2 * 1024 * 1024) { // 2MB
@@ -143,18 +147,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     // icon'u payload'a eklemeyin - Service Worker varsayılan logoyu kullanacak
                 }
 
-                // DEBUG: Payload'ı logla
-                $debugLog = dirname(__DIR__, 2) . '/debug_upload.txt';
-                file_put_contents($debugLog, date('Y-m-d H:i:s') . " - PAYLOAD: " . json_encode($payload, JSON_UNESCAPED_SLASHES) . "\n", FILE_APPEND);
-
                 $gonderildi = 0;
                 $hata = 0;
 
                 if ($alici_tipi === 'toplu') {
                     // Tüm abonelere gönder
-                    $db = $subscriptionModel->getDb();
-                    $stmt = $db->query("SELECT DISTINCT personel_id FROM push_subscriptions");
-                    $personelIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+                    $personelIds = $subscriptionModel->getAbonePersonelIds((int) ($_SESSION['firma_id'] ?? 0));
 
                     foreach ($personelIds as $pid) {
                         try {
@@ -169,7 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 } else {
                     // Seçili personellere gönder
-                    $personelIds = $_POST['personel_ids'] ?? [];
+                    $personelIds = $subscriptionModel->filterFirmaPersonelIds((array) ($_POST['personel_ids'] ?? []), (int) ($_SESSION['firma_id'] ?? 0));
 
                     if (empty($personelIds)) {
                         throw new Exception('Lütfen en az bir personel seçin.');
@@ -224,12 +222,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'hata' => $hata
                 ];
 
-                // Debug için image URL'i de ekle
-                if ($imageUrl) {
-                    $response['debug_image_url'] = $imageUrl;
-                }
-
                 echo json_encode($response);
+                break;
+
+            case 'gonderim-gecmisi':
+                echo json_encode($mesajLogModel->ajaxList(array_merge($_POST, ['type' => 'push']), (int) ($_SESSION['firma_id'] ?? 0)), JSON_UNESCAPED_UNICODE);
                 break;
 
             case 'test-notification':
@@ -584,10 +581,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 throw new Exception('Geçersiz işlem.');
         }
     } catch (Throwable $e) {
+        error_log('bildirim/api [' . $action . ']: ' . $e->getMessage() . ' @' . basename($e->getFile()) . ':' . $e->getLine());
         echo json_encode([
             'status' => 'error',
-            'message' => $e->getMessage() . ' (' . basename($e->getFile()) . ':' . $e->getLine() . ')'
-        ]);
+            'message' => (get_class($e) === 'Exception') ? $e->getMessage() : 'İşlem sırasında bir hata oluştu.'
+        ], JSON_UNESCAPED_UNICODE);
     }
 } else {
     echo json_encode([

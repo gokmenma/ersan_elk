@@ -1,196 +1,165 @@
 <?php
 
 require_once dirname(__DIR__, 2) . '/Autoloader.php';
-use App\Helper\Security;
 use App\Helper\Form;
-
 use App\Model\TanimlamalarModel;
+
+$maintitle = "Tanımlamalar";
+$title = "İzin Türü Tanımlamaları";
+
 $Tanimlamalar = new TanimlamalarModel();
-
-$izinTurleri = $Tanimlamalar->getIzinTurleri();
-
+$summary = $Tanimlamalar->izinTuruSummary((int) ($_SESSION['firma_id'] ?? 0));
 ?>
+<script>try { document.documentElement.classList.toggle('izinturu-summary-hidden', localStorage.getItem('izinturu_summary_cards_state') === 'hidden'); } catch (e) {}</script>
+<style>
+#summaryCardsContainer { overflow: hidden; max-height: 1100px; opacity: 1; transition: max-height .3s ease, opacity .3s ease, margin .3s ease; }
+.izinturu-summary-hidden #summaryCardsContainer { max-height: 0 !important; opacity: 0; margin-top: 0 !important; margin-bottom: 0 !important; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { #summaryCardsContainer { transition: none; } }
+#izinTuruTable tbody tr { cursor: pointer; }
+</style>
 
-<!-- Material Icons -->
-<link rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+
+<?php include 'layouts/breadcrumb.php'; ?>
 
 <div class="container-fluid">
+    <div class="row align-items-center mb-3">
+        <div class="col-md-6 col-12 d-flex align-items-center gap-3">
+            <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 44px; height: 44px;">
+                <i class="bx bx-calendar-check fs-4 text-primary"></i>
+            </div>
+            <div>
+                <h4 class="mb-0 fw-bold text-dark font-size-16">İzin Türleri</h4>
+                <p class="text-muted mb-0 font-size-12">Personel izin taleplerinde kullanılan izin türleri, ücret ve puantaj kuralları</p>
+            </div>
+        </div>
 
-    <!-- start page title -->
-    <?php
-    $maintitle = "Ana Sayfa";
-    $title = "İzin Türü Tanımlamaları";
-    ?>
-    <?php include 'layouts/breadcrumb.php'; ?>
-    <!-- end page title -->
+        <div class="personel-action-toolbar col-md-6 col-12 d-flex align-items-center justify-content-md-end gap-2 mt-2 mt-md-0">
+            <button type="button" class="btn btn-primary top-action-btn shadow-sm text-white" id="actionEkle" data-bs-toggle="modal" data-bs-target="#actionModal">
+                <i class="bx bx-plus font-size-16"></i> Yeni İzin Türü
+            </button>
 
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header d-grid d-md-flex d-block">
-                    <div class="card-title col-md-8">
+            <button type="button" class="btn btn-outline-secondary bg-white top-icon-btn shadow-sm" id="btnToggleSummaryCards" title="Özet Kartları Göster/Gizle" aria-label="Özet kartlarını gizle" aria-expanded="true">
+                <i class="bx bx-chevron-up"></i>
+            </button>
+        </div>
+    </div>
 
-                        <h4 class="card-title">İzin Türleri Listesi</h4>
-                        <p class="card-title-desc">İzin türlerini görüntüleyebilir ve yeni izin türü
-                            ekleyebilirsiniz. Bu türler personel izin taleplerinde kullanılacaktır.
-                        </p>
+    <div class="row g-3 mb-3 summary-cards-group" id="summaryCardsContainer">
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">TOPLAM İZİN TÜRÜ</span>
+                        <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle"><i class="bx bx-layer"></i></div>
                     </div>
-
-                    <div class="col-md-4">
-                        <button type="button" id="actionEkle"
-                            class="btn btn-primary waves-effect btn-label waves-light float-end" data-bs-toggle="modal"
-                            data-bs-target="#actionModal"><i class="bx bx-plus label-icon"></i>Yeni Ekle
+                    <h3 class="summary-kpi-value my-1" id="kpi_toplam"><?php echo (int) $summary->toplam; ?></h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext" id="kpi_sub_toplam">Ücretli: <?php echo (int) $summary->ucretli; ?> | Ücretsiz: <?php echo (int) $summary->ucretsiz; ?></span>
+                        <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" data-status="all">
+                            <i class="bx bx-list-ul"></i> Tümü
                         </button>
                     </div>
-
-                </div>
-
-                <div class="card-body overflow-auto">
-
-
-                    <table id="actionTable" class="datatable table table-bordered nowrap w-100">
-                        <thead>
-                            <tr>
-                                <th class="text-center" style="width:5%">Sıra</th>
-                                <th class="text-center">İzin Türü</th>
-                                <th class="text-center" style="width:5%">Kısa Kod</th>
-                                <th class="text-center">Görünüm (PWA)</th>
-                                <th class="text-center" style="width:12%">Ücret Durumu</th>
-                                <th class="text-center" style="width:12%">Puantajda "X" (Çalışıyor) Say</th>
-                                <th class="text-center" style="width:12%">Personel Görebilir</th>
-                                <th class="text-center" style="width:12%">Yetkili Onayı</th>
-                                <th class="text-center">Açıklama</th>
-                                <th style="width:5%">İşlem</th>
-                            </tr>
-                        </thead>
-
-
-                        <tbody>
-
-                            <?php
-                            // Tailwind renklerini CSS stillerine çeviren fonksiyon
-                            function getStyleFromTailwind($tailwindClass)
-                            {
-                                if (strpos($tailwindClass, 'blue') !== false)
-                                    return 'background-color: #dbeafe; color: #2563eb;';
-                                if (strpos($tailwindClass, 'amber') !== false)
-                                    return 'background-color: #fef3c7; color: #d97706;';
-                                if (strpos($tailwindClass, 'red') !== false)
-                                    return 'background-color: #fee2e2; color: #dc2626;';
-                                if (strpos($tailwindClass, 'pink') !== false)
-                                    return 'background-color: #fce7f3; color: #db2777;';
-                                if (strpos($tailwindClass, 'gray') !== false)
-                                    return 'background-color: #f3f4f6; color: #4b5563;';
-                                if (strpos($tailwindClass, 'green') !== false)
-                                    return 'background-color: #dcfce7; color: #16a34a;';
-                                if (strpos($tailwindClass, 'purple') !== false)
-                                    return 'background-color: #f3e8ff; color: #9333ea;';
-                                return 'background-color: rgba(85, 110, 230, 0.1); color: #556ee6;'; // Varsayılan
-                            }
-
-                            $i = 0;
-                            foreach ($izinTurleri as $izinTuru) {
-                                $i++;
-                                $enc_id = Security::encrypt($izinTuru->id);
-
-                                // Ücret durumu badge
-                                $ucretBadge = $izinTuru->ucretli_mi == 1
-                                    ? '<span class="badge bg-success"><i class="bx bx-check me-1"></i>Ücretli</span>'
-                                    : '<span class="badge bg-danger"><i class="bx bx-x me-1"></i>Ücretsiz</span>';
-
-                                // Personel görebilir badge
-                                $gorebilirBadge = $izinTuru->personel_gorebilir == 1
-                                    ? '<span class="badge bg-info"><i class="bx bx-show me-1"></i>Evet</span>'
-                                    : '<span class="badge bg-secondary"><i class="bx bx-hide me-1"></i>Hayır</span>';
-
-                                // Yetkili onayına tabi badge
-                                $onayBadge = isset($izinTuru->yetkili_onayina_tabi) && $izinTuru->yetkili_onayina_tabi == 1
-                                    ? '<span class="badge bg-warning"><i class="bx bx-lock-alt me-1"></i>Evet</span>'
-                                    : '<span class="badge bg-light text-dark"><i class="bx bx-lock-open-alt me-1"></i>Hayır</span>';
-
-                                // Normal Mesai (Çalışıyor) Say
-                                $mesaiBadge = isset($izinTuru->normal_mesai_sayilir) && $izinTuru->normal_mesai_sayilir == 1
-                                    ? '<span class="badge bg-success"><i class="bx bx-check-double me-1"></i>Evet</span>'
-                                    : '<span class="badge bg-secondary"><i class="bx bx-minus me-1"></i>Hayır</span>';
-
-
-                                // Renk ve İkon önizleme
-                                $renkClass = $izinTuru->renk ?? 'bg-primary/10 text-primary';
-                                $ikonName = $izinTuru->ikon ?? 'event';
-                                $inlineStyle = getStyleFromTailwind($renkClass);
-
-                                $gorunumHtml = '
-                                <div class="d-flex align-items-center justify-content-center">
-                                    <div class="d-flex align-items-center justify-content-center rounded p-2" style="' . $inlineStyle . ' width: 40px; height: 40px;">
-                                        <span class="material-symbols-outlined" style="font-size: 24px;">' . $ikonName . '</span>
-                                    </div>
-                                    <div class="ms-2 text-start">
-                                        <small class="d-block text-muted" style="font-size: 10px;">' . $ikonName . '</small>
-                                    </div>
-                                </div>';
-                                ?>
-                                <tr id="row_<?php echo $izinTuru->id; ?>">
-                                    <td class="text-center">
-                                        <?php echo $izinTuru->id ?>
-                                    </td>
-                                    <td class="text-center">
-                                        <strong><?php echo $izinTuru->tur_adi ?></strong>
-                                    </td>
-                                    <td class="text-center">
-                                        <span
-                                            class="badge badge-soft-dark border font-size-12 px-2"><?php echo $izinTuru->kisa_kod ?></span>
-                                    </td>
-                                    <td class="text-center">
-                                        <?php echo $gorunumHtml; ?>
-                                    </td>
-                                    <td class="text-center">
-                                        <?php echo $ucretBadge ?>
-                                    </td>
-                                    <td class="text-center">
-                                        <?php echo $mesaiBadge ?>
-                                    </td>
-                                    <td class="text-center">
-                                        <?php echo $gorebilirBadge ?>
-                                    </td>
-                                    <td class="text-center">
-                                        <?php echo $onayBadge ?>
-                                    </td>
-                                    <td class="text-center">
-                                        <?php echo $izinTuru->aciklama ?>
-                                    </td>
-
-
-                                    <td class="text-center" style="width:5%">
-                                        <div class="flex-shrink-0">
-                                            <div class="dropdown align-self-start">
-                                                <a class="dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
-                                                    aria-haspopup="true" aria-expanded="false">
-                                                    <i class="bx bx-dots-vertical-rounded font-size-24 text-dark"></i>
-                                                </a>
-                                                <div class="dropdown-menu">
-                                                    <a href="#" class="dropdown-item duzenle"
-                                                        data-id="<?php echo $enc_id; ?>"><span
-                                                            class="mdi mdi-pencil font-size-18"></span>
-                                                        Düzenle</a>
-                                                    <a href="#" class="dropdown-item sil" data-id="<?php echo $enc_id; ?>">
-                                                        <span class="mdi mdi-delete font-size-18"></span>
-                                                        Sil</a>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            <?php } ?>
-                        </tbody>
-                    </table>
-
                 </div>
             </div>
-        </div> <!-- end col -->
-    </div> <!-- end row -->
+        </div>
 
-</div> <!-- container-fluid -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">ÜCRETLİ İZİNLER</span>
+                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle"><i class="bx bx-money"></i></div>
+                    </div>
+                    <h3 class="summary-kpi-value my-1 text-success" id="kpi_ucretli"><?php echo (int) $summary->ucretli; ?></h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext text-success fw-semibold">Maaştan kesilmeyen</span>
+                        <button type="button" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="ucretli">
+                            <i class="bx bx-check-circle"></i> Ücretli
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">ÜCRETSİZ İZİNLER</span>
+                        <div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle"><i class="bx bx-block"></i></div>
+                    </div>
+                    <h3 class="summary-kpi-value my-1 text-danger" id="kpi_ucretsiz"><?php echo (int) $summary->ucretsiz; ?></h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext text-danger fw-semibold">Maaştan kesilen</span>
+                        <button type="button" class="btn btn-sm btn-subtle-danger rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="ucretsiz">
+                            <i class="bx bx-minus-circle"></i> Ücretsiz
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-label">YETKİLİ ONAYLI</span>
+                        <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle"><i class="bx bx-lock-alt"></i></div>
+                    </div>
+                    <h3 class="summary-kpi-value my-1" id="kpi_onayli"><?php echo (int) $summary->onayli; ?></h3>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="summary-kpi-subtext" id="kpi_sub_personel">Personele açık: <?php echo (int) $summary->personel_gorebilir; ?></span>
+                        <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="onayli">
+                            <i class="bx bx-lock-alt"></i> Onaylı
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0" id="izinTuruListCard">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2">
+                <div class="bg-primary-subtle text-primary rounded-2 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                    <i class="bx bx-list-ul font-size-18"></i>
+                </div>
+                <div>
+                    <h5 class="card-title font-size-14 fw-bold mb-0 text-dark">İzin Türleri Listesi</h5>
+                    <p class="text-muted font-size-11 mb-0">Anlık filtreleme ve sıralama; satıra tıklayarak düzenleyebilirsiniz</p>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary bg-white shadow-sm" id="btnHeaderPrint" title="Yazdır">
+                    <i class="bx bx-printer font-size-14 me-1"></i> Yazdır
+                </button>
+            </div>
+        </div>
+
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table id="izinTuruTable" class="table table-bordered table-hover nowrap align-middle w-100 mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="text-center" style="width: 50px;" data-filter="none">Sıra</th>
+                            <th data-filter="string">İzin Türü</th>
+                            <th class="text-center" style="width: 90px;" data-filter="string">Kısa Kod</th>
+                            <th class="text-center" data-filter="none">Görünüm (PWA)</th>
+                            <th class="text-center" style="width: 110px;" data-filter="select" data-filter-options="Ücretli|Ücretsiz">Ücret Durumu</th>
+                            <th class="text-center" style="width: 130px;" data-filter="select" data-filter-options="Evet|Hayır">Puantajda "X" Say</th>
+                            <th class="text-center" style="width: 120px;" data-filter="select" data-filter-options="Evet|Hayır">Personel Görebilir</th>
+                            <th class="text-center" style="width: 110px;" data-filter="select" data-filter-options="Evet|Hayır">Yetkili Onayı</th>
+                            <th data-filter="string">Açıklama</th>
+                            <th class="text-center" style="width: 100px;" data-filter="none">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="modal fade" id="actionModal" tabindex="-1" aria-labelledby="actionModalLabel" aria-hidden="true">
     <div class="modal-dialog">
