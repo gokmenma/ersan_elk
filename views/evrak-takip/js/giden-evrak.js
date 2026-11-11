@@ -895,6 +895,7 @@ $(document).ready(function () {
     syncAttachmentFields();
     const data = new FormData(form[0]);
     data.delete("ek_dosyalari[]");
+    data.delete("ilgiGelenEvrakSelect");
     attachments.forEach(item => {
       if (item.type === "new") data.append("ek_dosyalari[" + item.key + "]", item.file, item.name);
     });
