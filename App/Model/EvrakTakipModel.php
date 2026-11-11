@@ -1227,7 +1227,7 @@ class EvrakTakipModel extends Model
         $sql = $this->db->prepare("
             SELECT MAX(
                 CASE
-                    WHEN evrak_no REGEXP '^[0-9]+$' THEN CAST(evrak_no AS UNSIGNED)
+                    WHEN evrak_no REGEXP '^[0-9]{1,8}$' THEN CAST(evrak_no AS UNSIGNED)
                     ELSE 0
                 END
             ) as max_no

@@ -2938,8 +2938,9 @@ $(document).ready(function () {
 });
 
 function applyUetsLock(locked) {
-  const textFields = ['input[name="tarih"]', 'input[name="evrak_no"]', 'input[name="kurum_adi"]', "#muhatap_alt_birim", "#muhatap_adres", "#ilgiler", "#ekler"];
+  const textFields = ['input[name="tarih"]', 'input[name="kurum_adi"]', "#muhatap_alt_birim", "#muhatap_adres", "#ilgiler", "#ekler"];
   textFields.forEach(function (selector) { $(selector).prop("readonly", locked); });
+  $('input[name="evrak_no"]').prop("readonly", true);
   $("#konu").prop("disabled", locked);
   $("#gelenEkDosyalari").prop("disabled", locked).closest(".mb-3").find(".btn-subtle-danger").toggle(!locked);
   $("#uetsKilitUyari").remove();
