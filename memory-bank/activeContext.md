@@ -3987,3 +3987,6 @@
 
 ## Evrak modalı yerel OCR ile otomatik doldurma
 - Gelen evrak modalına "Evraktan Otomatik Doldur" paneli eklendi (`views/evrak-takip/js/evrak-ocr.js`: pdf.js metin katmanı, yoksa Tesseract OCR; ayrıştırıcı trafik cezası tutanağından kurum, tarih, plaka, ceza tutarı okur). Dosya otomatik evrak ekine eklenir; okuma yalnızca tarayıcıda yapılır. Kesilecek Tutar etiketi taşmaması için eski haline döndürüldü.
+
+## Yönetici mobil (mobile-spa) evrak OCR
+- `src/services/evrak-ocr.js` (pdf.js metin katmanı, yoksa Tesseract) + EvrakView.vue formunda "Evraktan Otomatik Doldur" paneli; Tesseract dosyaları `mobile-spa/public/ocr/` altında (dist kökünde /ocr/). Dist yeniden derlendi.

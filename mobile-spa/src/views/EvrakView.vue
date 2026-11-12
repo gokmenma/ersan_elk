@@ -47,6 +47,7 @@ import {
 import TopBar from '../components/TopBar.vue'
 import { auth } from '../services/auth.js'
 import { evrakApi } from '../services/evrak.js'
+import { evrakAnaliz, evrakOku } from '../services/evrak-ocr.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -435,6 +436,7 @@ async function openCreateForm(type = 'gelen') {
   isEditing.value = false
   formError.value = ''
   selectedFiles.value = []
+  zimmetInfo.value = { state: 'idle', name: '' }
 
   formData.value = {
     id: '',
@@ -513,6 +515,7 @@ async function openEditForm(doc) {
   isEditing.value = true
   formError.value = ''
   selectedFiles.value = []
+  zimmetInfo.value = { state: 'idle', name: '' }
 
   // Detay verisi çek
   try {
@@ -547,6 +550,16 @@ async function openEditForm(doc) {
     }
 
     isFormOpen.value = true
+    if (formData.value.plaka) {
+      zimmetInfo.value = { state: 'loading', name: '' }
+      evrakApi.aracZimmet(formData.value.plaka, formData.value.tarih).then((res) => {
+        zimmetInfo.value = res.assignment
+          ? { state: 'found', name: String(res.assignment.adi_soyadi || '') }
+          : { state: 'none', name: '' }
+      }).catch(() => {
+        zimmetInfo.value = { state: 'error', name: '' }
+      })
+    }
   } catch (err) {
     showToast(err.message || 'Evrak bilgileri alınamadı.', 'error')
   }
@@ -578,11 +591,15 @@ function removeExistingAttachment(attId) {
 }
 
 // Plaka Değiştiğinde Zimmet Sorgulama
+const zimmetInfo = ref({ state: 'idle', name: '' })
+
 async function onPlakaChange() {
   const plaka = formData.value.plaka
   const tarih = formData.value.tarih
   formData.value.ilgili_personel_id = ''
+  zimmetInfo.value = { state: 'idle', name: '' }
   if (!plaka) return
+  zimmetInfo.value = { state: 'loading', name: '' }
 
   try {
     const res = await evrakApi.aracZimmet(plaka, tarih)
@@ -591,12 +608,111 @@ async function onPlakaChange() {
 
     if (res.assignment) {
       formData.value.ilgili_personel_id = res.assignment.personel_id
+      zimmetInfo.value = { state: 'found', name: String(res.assignment.adi_soyadi || '') }
       showToast(`Zimmetli sürücü bulundu: ${res.assignment.adi_soyadi}`, 'info')
     } else {
+      zimmetInfo.value = { state: 'none', name: '' }
       showToast('Seçilen tarihte araca zimmetli personel bulunamadı.', 'info')
     }
   } catch (e) {
+    zimmetInfo.value = { state: 'error', name: '' }
     console.error('Zimmet sorgu hatası:', e)
+  }
+}
+
+// Evraktan Otomatik Doldur (Yerel OCR)
+const ocrBusy = ref(false)
+const ocrProgress = ref(0)
+const ocrMessage = ref('')
+const ocrResult = ref(null)
+
+function ocrPlakaBul(plaka) {
+  const hedef = String(plaka || '').replace(/[^A-Z0-9]/gi, '').toUpperCase()
+  if (!hedef) return null
+  const arac = (meta.value.araclar || []).find(
+    (a) => String(a.plaka || '').replace(/[^A-Z0-9]/gi, '').toUpperCase() === hedef
+  )
+  return arac ? arac.plaka : null
+}
+
+function ocrTarihIso(tarih) {
+  const m = String(tarih || '').match(/^(\d{2})\.(\d{2})\.(\d{4})$/)
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : ''
+}
+
+async function handleOcrFile(e) {
+  const file = e.target.files && e.target.files[0]
+  e.target.value = ''
+  if (!file || ocrBusy.value) return
+  if (file.size > 10 * 1024 * 1024) {
+    ocrResult.value = { type: 'error', text: 'Dosya en fazla 10 MB olabilir.' }
+    return
+  }
+  ocrBusy.value = true
+  ocrProgress.value = 2
+  ocrMessage.value = 'Hazırlanıyor'
+  ocrResult.value = null
+  try {
+    const okunan = await evrakOku(file, (yuzde, mesaj) => {
+      ocrProgress.value = Math.round(yuzde)
+      ocrMessage.value = mesaj
+    })
+    const analiz = evrakAnaliz(okunan.metin)
+    const dolan = []
+    const eksik = []
+
+    if (analiz.kurum) {
+      formData.value.kurum_adi = analiz.kurum
+      dolan.push('Kurum')
+    } else {
+      eksik.push('Kurum')
+    }
+
+    if (analiz.trafik) {
+      formData.value.konu = 'Trafik Cezası'
+      dolan.push('Konu')
+      const iso = ocrTarihIso(analiz.tarih)
+      if (iso) {
+        formData.value.tarih = iso
+        dolan.push('Tarih')
+      } else {
+        eksik.push('Tarih')
+      }
+      const plaka = ocrPlakaBul(analiz.plaka)
+      if (plaka) {
+        formData.value.plaka = plaka
+        dolan.push('Plaka')
+        onPlakaChange()
+      } else {
+        eksik.push(analiz.plaka ? `Plaka (${analiz.plaka} araç listesinde yok)` : 'Plaka')
+      }
+      if (analiz.tutar) {
+        formData.value.ceza_tutari = analiz.tutar.toFixed(2)
+        onCezaTutariInput(formData.value.ceza_tutari)
+        dolan.push('Ceza Tutarı', 'Kesilecek Tutar (%25 indirimli)')
+      } else {
+        eksik.push('Ceza Tutarı')
+      }
+    }
+
+    if (!selectedFiles.value.some((f) => f.name === file.name && f.size === file.size)) {
+      selectedFiles.value.push(file)
+    }
+
+    if (!dolan.length) {
+      ocrResult.value = { type: 'warn', text: 'Belgeden okunabilen bilgi bulunamadı. Dosya ekler arasına eklendi; bilgileri elle giriniz.' }
+    } else {
+      let text = `${dolan.length} alan dolduruldu: ${dolan.join(', ')}.`
+      if (analiz.tutanakNo) text += ` Tutanak No: ${analiz.tutanakNo}.`
+      if (eksik.length) text += ` Okunamayan, elle giriniz: ${eksik.join(', ')}.`
+      text += ' Dosya ekler arasına eklendi. OCR hata yapabilir; bilgileri belgeyle karşılaştırıp kaydediniz.'
+      ocrResult.value = { type: 'ok', text }
+    }
+  } catch (err) {
+    console.error('Evrak OCR hatası:', err)
+    ocrResult.value = { type: 'error', text: 'Belge okunamadı. Dosyayı kontrol edip tekrar deneyiniz.' }
+  } finally {
+    ocrBusy.value = false
   }
 }
 
@@ -697,7 +813,7 @@ async function renderPreviewPdf(url) {
     if (!response.ok) throw new Error('PDF alınamadı')
     const blob = await response.blob()
     const pdfjs = await import('pdfjs-dist/build/pdf.min.mjs')
-    const { default: workerUrl } = await import('pdfjs-dist/build/pdf.worker.min.mjs?url')
+    const workerUrl = '/ocr/pdf.worker.min.js'
     pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
     const pdf = await pdfjs.getDocument({ data: new Uint8Array(await blob.arrayBuffer()) }).promise
     const target = previewPdfHost.value
@@ -2422,6 +2538,30 @@ onBeforeUnmount(stopMobileSignTimer)
           </header>
 
           <form class="evrak-form-body" @submit.prevent="saveForm">
+            <!-- Evraktan Otomatik Doldur (Yerel OCR) -->
+            <div class="evrak-ocr-panel">
+              <div class="evrak-section-label">
+                <Zap :size="15" /> EVRAKTAN OTOMATİK DOLDUR
+              </div>
+              <small class="evrak-ocr-hint">
+                Trafik cezası tutanağı gibi bir evrakı yükleyin; kurum, tarih, plaka ve ceza tutarı otomatik doldurulur.
+                Okuma yalnızca cihazınızda yapılır, belge dış servise gönderilmez.
+              </small>
+              <label class="evrak-btn evrak-btn--outline evrak-ocr-btn" :class="{ 'is-busy': ocrBusy }">
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.webp"
+                  class="hidden"
+                  :disabled="ocrBusy"
+                  @change="handleOcrFile"
+                />
+                <Zap :size="16" />
+                <span>{{ ocrBusy ? `${ocrMessage} (%${ocrProgress})` : 'Evrak Seç ve Oku' }}</span>
+              </label>
+              <div v-if="ocrBusy" class="evrak-ocr-bar"><span :style="{ width: ocrProgress + '%' }"></span></div>
+              <p v-if="ocrResult" class="evrak-ocr-result" :class="`evrak-ocr-result--${ocrResult.type}`">{{ ocrResult.text }}</p>
+            </div>
+
             <!-- Hata Uyarısı -->
             <div v-if="formError" class="evrak-returned-notice">
               <AlertCircle :size="18" />
@@ -2564,6 +2704,17 @@ onBeforeUnmount(stopMobileSignTimer)
                     {{ ar.plaka }} ({{ ar.marka_model }})
                   </option>
                 </select>
+                <div
+                  v-if="formData.plaka && zimmetInfo.state !== 'idle'"
+                  class="evrak-zimmet-info"
+                  :class="`evrak-zimmet-info--${zimmetInfo.state}`"
+                >
+                  <User :size="14" />
+                  <span v-if="zimmetInfo.state === 'loading'">Zimmetli sürücü sorgulanıyor...</span>
+                  <span v-else-if="zimmetInfo.state === 'found'">Zimmetli sürücü: <b>{{ zimmetInfo.name }}</b></span>
+                  <span v-else-if="zimmetInfo.state === 'none'">Bu tarihte zimmetli sürücü bulunamadı.</span>
+                  <span v-else>Zimmetli sürücü sorgulanamadı.</span>
+                </div>
               </div>
 
               <div class="evrak-form-grid-2">
@@ -3978,6 +4129,39 @@ onBeforeUnmount(stopMobileSignTimer)
   gap: 10px;
 }
 
+/* Zimmetli sürücü bilgisi */
+.evrak-zimmet-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #64748b;
+}
+.evrak-zimmet-info--found { color: #15803d; }
+.evrak-zimmet-info--none { color: #b45309; }
+.evrak-zimmet-info--error { color: #b91c1c; }
+
+/* Evraktan Otomatik Doldur (OCR) */
+.evrak-ocr-panel {
+  background: var(--dsx-bg-fffbeb);
+  border: 1px dashed var(--ds-primary, #3b82f6);
+  border-radius: var(--ds-radius-tile);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.evrak-ocr-hint { color: #64748b; line-height: 1.4; }
+.evrak-ocr-btn { cursor: pointer; justify-content: center; min-height: 44px; }
+.evrak-ocr-btn.is-busy { opacity: 0.7; pointer-events: none; }
+.evrak-ocr-bar { height: 4px; border-radius: 999px; background: rgba(100, 116, 139, 0.2); overflow: hidden; }
+.evrak-ocr-bar span { display: block; height: 100%; background: #3b82f6; transition: width 0.2s ease; }
+.evrak-ocr-result { margin: 0; font-size: 12px; line-height: 1.45; }
+.evrak-ocr-result--ok { color: #15803d; }
+.evrak-ocr-result--warn { color: #b45309; }
+.evrak-ocr-result--error { color: #b91c1c; }
+
 /* İmzacılar Seçici */
 .evrak-signers-selector {
   display: flex;
@@ -4129,6 +4313,16 @@ onBeforeUnmount(stopMobileSignTimer)
   display: flex;
   gap: 10px;
   margin-top: 10px;
+}
+.evrak-form-body > .evrak-form-footer {
+  position: sticky;
+  bottom: calc(-24px - var(--ds-safe-bottom));
+  z-index: 5;
+  margin: 10px -20px calc(-24px - var(--ds-safe-bottom));
+  padding: 12px 20px calc(12px + var(--ds-safe-bottom));
+  background: var(--dsx-bg-ffffff);
+  border-top: 1px solid var(--dsx-bg-e2e8f0, rgba(100, 116, 139, 0.2));
+  box-shadow: 0 -6px 16px rgba(15, 23, 42, 0.06);
 }
 
 /* Önizleme Modal */

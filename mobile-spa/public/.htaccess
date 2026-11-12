@@ -1,5 +1,7 @@
 Options -Indexes
 
+AddType text/javascript .mjs
+
 RewriteEngine On
 RewriteBase /
 RewriteRule ^index\.html$ - [L]

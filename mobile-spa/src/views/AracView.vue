@@ -709,7 +709,7 @@ const ruhsatPdfPages = ref(null)
 
 async function renderRuhsatPdf(blob) {
   const pdfjs = await import('pdfjs-dist/build/pdf.min.mjs')
-  const { default: workerUrl } = await import('pdfjs-dist/build/pdf.worker.min.mjs?url')
+  const workerUrl = '/ocr/pdf.worker.min.js'
   pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
   const pdf = await pdfjs.getDocument({ data: new Uint8Array(await blob.arrayBuffer()) }).promise
   await nextTick()

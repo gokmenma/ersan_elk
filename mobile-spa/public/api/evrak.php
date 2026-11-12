@@ -1296,7 +1296,11 @@ try {
         if (!$isEdit) {
             $payload['olusturan_kullanici_id'] = $currentUserId;
             $payload['onay_durumu'] = 'taslak';
-            $savedId = (int) $EvrakModel->createWithSequentialNo($payload);
+            $createdId = $EvrakModel->createWithSequentialNo($payload);
+            $savedId = is_numeric($createdId) ? (int) $createdId : (int) Security::decrypt((string) $createdId);
+            if ($savedId <= 0) {
+                throw new \Exception('Evrak kaydı oluşturulamadı.');
+            }
         } else {
             $EvrakModel->saveWithAttr($payload);
             $savedId = $rawId;

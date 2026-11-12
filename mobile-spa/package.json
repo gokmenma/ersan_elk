@@ -7,7 +7,8 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "postbuild": "ln -sfn ../../uploads dist/uploads && ln -sfn ../../../assets/images dist/assets/images",
-    "preview": "vite preview --host 0.0.0.0"
+    "preview": "vite preview --host 0.0.0.0",
+    "prebuild": "cp node_modules/pdfjs-dist/build/pdf.worker.min.mjs public/ocr/pdf.worker.min.js"
   },
   "dependencies": {
     "@lucide/vue": "^1.55.0",

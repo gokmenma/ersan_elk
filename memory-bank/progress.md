@@ -2336,3 +2336,4 @@
 - [x] Mobil SPA e-Fatura bildirimi ↔ menü rozeti çift yönlü okundu senkronu (dist yeniden derlendi).
 - [x] Evrak trafik cezası: mobil SPA tutar ayrıştırma hatası (x100) giderildi, kesilecek tutar etiketi netleştirildi.
 - [x] Evrak modalı OCR ile doldurma (PDF metin katmanı + OCR yedek) örnek tutanakla tarayıcıda doğrulandı.
+- [x] Yönetici mobil evrak formuna yerel OCR ile otomatik doldurma eklendi (dist derlendi).
