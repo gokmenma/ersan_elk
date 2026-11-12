@@ -2335,3 +2335,4 @@
 - [x] nobet/list araç seti: dağıtım, toplu ekle, kopyala, geçmiş/geri al, ızgara, ısı haritası, boş gün, yazdır, Excel, ICS, bordro özeti, adalet raporu, hatırlatma. Uçtan uca yerel testte çalıştı. Yapılmadı: ICS abonelik bağlantısı (oturumsuz erişim güvenlik kuralına aykırı).
 - [x] Mobil SPA e-Fatura bildirimi ↔ menü rozeti çift yönlü okundu senkronu (dist yeniden derlendi).
 - [x] Evrak trafik cezası: mobil SPA tutar ayrıştırma hatası (x100) giderildi, kesilecek tutar etiketi netleştirildi.
+- [x] Evrak modalı OCR ile doldurma (PDF metin katmanı + OCR yedek) örnek tutanakla tarayıcıda doğrulandı.

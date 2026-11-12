@@ -3984,3 +3984,6 @@
 
 ## Evrak trafik cezası tutar düzeltmesi
 - Mobil SPA `api/evrak.php` (public + dist) ceza/kesilecek tutarı noktayı binlik sayıp siliyordu (1500.00 → 150000); artık `$parseTutar` virgül varsa TR, yoksa nokta ondalık olarak ayrıştırır. Masaüstü modalda Kesilecek Tutar etiketi %25 indirimi belirtir.
+
+## Evrak modalı yerel OCR ile otomatik doldurma
+- Gelen evrak modalına "Evraktan Otomatik Doldur" paneli eklendi (`views/evrak-takip/js/evrak-ocr.js`: pdf.js metin katmanı, yoksa Tesseract OCR; ayrıştırıcı trafik cezası tutanağından kurum, tarih, plaka, ceza tutarı okur). Dosya otomatik evrak ekine eklenir; okuma yalnızca tarayıcıda yapılır. Kesilecek Tutar etiketi taşmaması için eski haline döndürüldü.

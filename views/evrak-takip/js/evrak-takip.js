@@ -78,6 +78,135 @@ $(document).ready(function () {
     gelenDosyalariGoster();
   });
 
+  function ocrSonucGoster(html, sinif) {
+    $("#evrakOcrSonuc").removeClass("d-none text-muted text-danger text-success text-warning").addClass(sinif).html(html);
+  }
+
+  function ocrKacir(metin) {
+    return $("<div>").text(metin).html();
+  }
+
+  function ocrAlanVurgula(selector) {
+    const kutu = $(selector).closest(".form-floating, .form-floating-select2");
+    kutu.addClass("evrak-ocr-doldu");
+    setTimeout(() => kutu.removeClass("evrak-ocr-doldu"), 1800);
+  }
+
+  function ocrPlakaBul(plaka) {
+    const hedef = String(plaka || "").replace(/[^A-Z0-9]/gi, "").toUpperCase();
+    let bulunan = null;
+    $("#plaka option").each(function () {
+      if (hedef && String($(this).val()).replace(/[^A-Z0-9]/gi, "").toUpperCase() === hedef) bulunan = $(this).val();
+    });
+    return bulunan;
+  }
+
+  async function evrakOcrOku() {
+    const dosya = ($("#evrakOcrDosya")[0].files || [])[0];
+    if (!dosya) {
+      ocrSonucGoster("Önce evrak dosyasını seçiniz.", "text-warning");
+      return;
+    }
+    if (dosya.size > 10 * 1024 * 1024) {
+      ocrSonucGoster("Dosya en fazla 10 MB olabilir.", "text-danger");
+      return;
+    }
+    if (!window.EvrakOcr) {
+      ocrSonucGoster("OCR bileşeni yüklenemedi. Sayfayı yenileyip tekrar deneyiniz.", "text-danger");
+      return;
+    }
+    const btn = $("#btnEvrakOcr");
+    const original = btn.html();
+    btn.prop("disabled", true).html('<span class="spinner-border spinner-border-sm me-2"></span>Okunuyor...');
+    const ilerleme = function (yuzde, mesaj) {
+      ocrSonucGoster(
+        '<div class="d-flex align-items-center gap-2"><span class="spinner-border spinner-border-sm"></span><span>' +
+          ocrKacir(mesaj) + " (%" + Math.round(yuzde) + ')</span></div><div class="progress mt-1" style="height:4px"><div class="progress-bar" style="width:' +
+          Math.round(yuzde) + '%"></div></div>',
+        "text-muted"
+      );
+    };
+    try {
+      const okunan = await window.EvrakOcr.oku(dosya, ilerleme);
+      const analiz = window.EvrakOcr.analiz(okunan.metin);
+      const dolan = [];
+      const eksik = [];
+
+      if (analiz.kurum) {
+        $("#kurum_adi").val(analiz.kurum).trigger("change");
+        ocrAlanVurgula("#kurum_adi");
+        dolan.push("Kurum");
+      } else {
+        eksik.push("Kurum");
+      }
+
+      if (analiz.trafik) {
+        if (!$("#konu option").filter(function () { return $(this).val() === "Trafik Cezası"; }).length) {
+          $("#konu").append(new Option("Trafik Cezası", "Trafik Cezası", false, false));
+        }
+        $("#konu").val("Trafik Cezası").trigger("change");
+        ocrAlanVurgula("#konu");
+        dolan.push("Konu");
+
+        if (analiz.tarih) {
+          const tarihEl = $('input[name="tarih"]');
+          if (tarihEl[0] && tarihEl[0]._flatpickr) tarihEl[0]._flatpickr.setDate(analiz.tarih, true, "d.m.Y");
+          else tarihEl.val(analiz.tarih).trigger("change");
+          ocrAlanVurgula('input[name="tarih"]');
+          dolan.push("Tarih");
+        } else {
+          eksik.push("Tarih");
+        }
+
+        $("#cezaHedefArac").prop("checked", true);
+        checkTrafficFineTarget();
+        const plakaDegeri = ocrPlakaBul(analiz.plaka);
+        if (plakaDegeri) {
+          $("#plaka").val(plakaDegeri).trigger("change");
+          ocrAlanVurgula("#plaka");
+          dolan.push("Plaka");
+        } else {
+          eksik.push(analiz.plaka ? "Plaka (" + analiz.plaka + " araç listesinde yok)" : "Plaka");
+        }
+
+        if (analiz.tutar) {
+          $("#ceza_tutari").val(analiz.tutar.toFixed(2)).trigger("change");
+          ocrAlanVurgula("#ceza_tutari");
+          ocrAlanVurgula("#tutar");
+          dolan.push("Ceza Tutarı", "Kesilecek Tutar (%25 indirimli)");
+        } else {
+          eksik.push("Ceza Tutarı");
+        }
+      }
+
+      const zatenVar = gelenDosyalar.some(item => item.type === "new" && item.name === dosya.name && item.size === dosya.size);
+      if (!zatenVar) {
+        gelenDosyalar.push({type: "new", key: "g" + gelenDosyaSirasi++, name: dosya.name, size: dosya.size, file: dosya});
+        gelenDosyalariGoster();
+      }
+      $("#evrakOcrDosya").val("");
+
+      if (!dolan.length) {
+        ocrSonucGoster("Belgeden okunabilen bilgi bulunamadı. Dosya evrak ekine eklendi; bilgileri elle giriniz.", "text-warning");
+        return;
+      }
+      ocrSonucGoster(
+        '<i class="bx bx-check-circle me-1"></i><b>' + dolan.length + " alan dolduruldu:</b> " + ocrKacir(dolan.join(", ")) +
+          (analiz.tutanakNo ? '<br><span class="text-muted">Tutanak No: ' + ocrKacir(analiz.tutanakNo) + "</span>" : "") +
+          (eksik.length ? '<br><span class="text-warning"><i class="bx bx-error-circle me-1"></i>Okunamayan, elle giriniz: ' + ocrKacir(eksik.join(", ")) + ".</span>" : "") +
+          '<br><span class="text-muted">Dosya evrak ekine eklendi. OCR hata yapabilir; bilgileri belgeyle karşılaştırıp kaydediniz.</span>',
+        "text-success"
+      );
+    } catch (hata) {
+      console.error("Evrak OCR hatası:", hata);
+      ocrSonucGoster("Belge okunamadı. Dosyayı kontrol edip tekrar deneyiniz.", "text-danger");
+    } finally {
+      btn.prop("disabled", false).html(original);
+    }
+  }
+
+  $(document).on("click", "#btnEvrakOcr", evrakOcrOku);
+
   function initEvrakSummernote() {
     const editor = $("#evrak_aciklama");
     if (!editor.length || typeof $.fn.summernote === "undefined" || editor.data("summernote")) return;
@@ -467,6 +596,7 @@ $(document).ready(function () {
     gelenDosyalar = [];
     silinenGelenDosyaIds = [];
     gelenDosyalariGoster();
+    $("#evrakOcrSonuc").addClass("d-none").empty();
     
     // Select2 Reset
     $(".evrak-select2, .evrak-select2-tags, .evrak-select2-multiple").val("").trigger("change");

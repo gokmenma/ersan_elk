@@ -1109,4 +1109,7 @@ body[data-layout-mode="dark"] #evrakImzaOnayAction {
 
 <script>window.evrakMobilImzaAktif = <?= \App\Service\MobilImzaPadesService::isEnabled((int) ($_SESSION['firma_id'] ?? 0)) ? 'true' : 'false'; ?>;</script>
 <script src="<?= Helper::assetVersion('views/evrak-takip/js/mobil-imza.js'); ?>"></script>
+<script src="assets/libs/pdfjs/pdf.min.js"></script>
+<script src="assets/libs/tesseract.js/tesseract.min.js"></script>
+<script src="<?= Helper::assetVersion('views/evrak-takip/js/evrak-ocr.js'); ?>"></script>
 <script src="<?= Helper::assetVersion('views/evrak-takip/js/evrak-takip.js'); ?>"></script>

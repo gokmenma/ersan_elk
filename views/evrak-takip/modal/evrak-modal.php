@@ -23,6 +23,29 @@ $araclar_list = $Evrak->getActiveVehicles();
                     <input type="hidden" name="id" id="evrak_id" value="">
                     <input type="hidden" name="action" value="evrak-kaydet">
 
+                    <div class="evrak-ocr-panel border border-dashed rounded-3 p-3 mb-4" id="evrakOcrPanel">
+                        <div class="d-flex align-items-start gap-3">
+                            <div class="bg-primary bg-opacity-10 text-primary rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 42px; height: 42px;">
+                                <i class="bx bx-scan fs-4"></i>
+                            </div>
+                            <div class="flex-grow-1 min-w-0">
+                                <div class="fw-bold">Evraktan Otomatik Doldur <span class="badge bg-success-subtle text-success ms-1 fw-normal"><i class="bx bx-lock-alt"></i> Yerel OCR</span></div>
+                                <div class="text-muted small mb-2">Evrakı (örn. trafik idari para cezası karar tutanağı) yükleyin; kurum, tarih, plaka ve ceza tutarı otomatik doldurulur. Okuma yalnızca tarayıcınızda yapılır, belge dış servise gönderilmez. Dosya evrak ekine de eklenir.</div>
+                                <div class="row g-2 align-items-center">
+                                    <div class="col-sm-8">
+                                        <input type="file" id="evrakOcrDosya" class="form-control form-control-sm shadow-none" accept=".pdf,.jpg,.jpeg,.png,.webp">
+                                    </div>
+                                    <div class="col-sm-4 d-grid">
+                                        <button type="button" class="btn btn-sm btn-dark fw-semibold rounded-pill" id="btnEvrakOcr">
+                                            <i class="bx bx-analyse me-1"></i>Oku ve Doldur
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="form-text mt-1">PDF, JPG, PNG veya WEBP, en fazla 10 MB. Taranmış belgelerde ilk okuma birkaç saniye sürebilir.</div>
+                                <div id="evrakOcrSonuc" class="small mt-2 d-none"></div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="row g-4">
                         <!-- Sol Kolon: Evrak Temel Bilgileri -->
                         <div class="col-md-6 border-end">
@@ -166,7 +189,7 @@ $araclar_list = $Evrak->getActiveVehicles();
                                         <?php echo Form::FormFloatInput('number', 'ceza_tutari', '', 'Ceza Tutarı (TL)', 'Ceza Tutarı', 'credit-card', 'form-control'); ?>
                                     </div>
                                     <div class="col-md-6 mb-0">
-                                        <?php echo Form::FormFloatInput('number', 'tutar', '', 'Kesilecek Tutar (TL)', 'Kesilecek Tutar (%25 İndirimli)', 'dollar-sign', 'form-control'); ?>
+                                        <?php echo Form::FormFloatInput('number', 'tutar', '', 'Kesilecek Tutar (TL)', 'Kesilecek Tutar', 'dollar-sign', 'form-control'); ?>
                                         <div class="small mt-1 px-1 text-muted" style="font-size: 10px;">Ceza tutarına göre otomatik %25 erken ödeme indirimi uygulanır; isterseniz elle değiştirebilirsiniz.</div>
                                     </div>
                                 </div>
@@ -345,4 +368,13 @@ body[data-layout-mode="dark"] .evrak-cevap-kutu {
     background-color: rgba(255, 255, 255, 0.04) !important;
     border-color: rgba(255, 255, 255, 0.1) !important;
 }
+</style>
+
+<style>
+    #evrakModal .evrak-ocr-panel { background: rgba(var(--bs-primary-rgb), 0.04); border-color: rgba(var(--bs-primary-rgb), 0.35) !important; }
+    #evrakModal .evrak-ocr-doldu { animation: evrakOcrVurgu 1.6s ease; border-radius: 0.5rem; }
+    @keyframes evrakOcrVurgu {
+        0% { box-shadow: 0 0 0 3px rgba(52, 195, 143, 0.55); }
+        100% { box-shadow: 0 0 0 0 rgba(52, 195, 143, 0); }
+    }
 </style>
