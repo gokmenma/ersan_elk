@@ -559,7 +559,7 @@ $(document).ready(function () {
   });
 
   const requestedTool = new URLSearchParams(window.location.search).get("arac");
-  if (requestedTool === "ai") {
+  if (requestedTool === "ai" || $("#aiOtomatikGelen").length) {
     $("#btnAiTaslakAc").trigger("click");
   } else if (requestedTool === "icra") {
     $("#btnIcraUstYaziAc").trigger("click");
@@ -662,7 +662,8 @@ $(document).ready(function () {
   $("#btnAiTaslakOlustur").on("click", function () {
     const file = $("#aiGelenEvrak")[0].files[0];
     const instruction = $("#aiTalimat").val().trim();
-    if (!file && !instruction) {
+    const otomatikGelenId = $("#aiOtomatikGelen").data("gelen-id") || "";
+    if (!file && !instruction && !otomatikGelenId) {
       Swal.fire("Eksik Bilgi", "Gelen evrakı seçin veya ne yazılacağını belirtin.", "warning");
       return;
     }
@@ -675,6 +676,7 @@ $(document).ready(function () {
     const originalHtml = button.html();
     const data = new FormData();
     if (file) data.append("gelen_evrak", file, file.name);
+    else if (otomatikGelenId) data.append("gelen_evrak_id", otomatikGelenId);
     data.append("talimat", instruction);
     button.prop("disabled", true).html('<span class="spinner-border spinner-border-sm me-2"></span>Evrak hazırlanıyor...');
 

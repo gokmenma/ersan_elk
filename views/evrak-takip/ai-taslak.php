@@ -5,6 +5,8 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
+use App\Helper\Security;
+use App\Model\EvrakTakipModel;
 use App\Model\MenuModel;
 use App\Model\SystemLogModel;
 use App\Service\EvrakAiTaslakService;
@@ -30,7 +32,25 @@ if (!(new MenuModel())->userCanAccessMenuLink($userId, 'evrak-takip/list')) {
 }
 
 try {
-    $draft = (new EvrakAiTaslakService())->create($_FILES['gelen_evrak'] ?? [], (string) ($_POST['talimat'] ?? ''));
+    $file = $_FILES['gelen_evrak'] ?? [];
+    $tmpPath = null;
+    $gelenParam = (string) ($_POST['gelen_evrak_id'] ?? '');
+    if (empty($file['tmp_name']) && $gelenParam !== '') {
+        $kaynak = (new EvrakTakipModel())->getAiKaynakDosya((int) Security::decrypt($gelenParam));
+        if (!$kaynak) {
+            throw new Exception('Gelen evrakın okunabilir bir dosyası bulunamadı. Dosyayı elle yükleyin.');
+        }
+        $tmpPath = tempnam(sys_get_temp_dir(), 'evrakai_');
+        file_put_contents($tmpPath, $kaynak['icerik']);
+        $file = ['tmp_name' => $tmpPath, 'name' => $kaynak['ad'], 'size' => strlen($kaynak['icerik']), 'error' => UPLOAD_ERR_OK];
+    }
+    try {
+        $draft = (new EvrakAiTaslakService())->create($file, (string) ($_POST['talimat'] ?? ''));
+    } finally {
+        if ($tmpPath !== null && is_file($tmpPath)) {
+            unlink($tmpPath);
+        }
+    }
     (new SystemLogModel())->logAction(
         $userId,
         'Yapay Zekâ ile Evrak Taslağı',

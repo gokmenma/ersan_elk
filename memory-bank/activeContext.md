@@ -3997,3 +3997,6 @@
 
 ## E-Fatura / Cari izolasyonu
 - E-Fatura ve Cari yetkileri yalnızca Süper Admin/Firma Sahibi rollerine ayrıldı (`permissions.superadmin=1`, politikalar `superadmin_only=1`, diğer rol atamaları silinir). SQL: sql/2026_11_12_efatura_cari_superadmin_izolasyonu.sql (çalıştırılmalı). views/kullanici-gruplari/api.php kaydet/kopyala akışı süper admin olmayan kullanıcıda gizli yetkileri korur/taşımaz.
+
+## Cevap Yaz: gelen evrakı yapay zekâ ile otomatik okuma
+- `giden-evrak?cevap_id=` sayfasında cevaplanan gelen evrakın dosyası varsa "Yapay Zekâ ile Oluştur" modalı otomatik açılır ve belge elle yüklenmeden okunur. `EvrakTakipModel::getAiKaynakDosya()` yetki/firma/yol denetimiyle dosyayı çözer (şifreliyse açar); `views/evrak-takip/ai-taslak.php` geçici dosyaya yazıp `EvrakAiTaslakService::create()`'e verir ve siler. Çağrı yalnızca "Taslağı Oluştur" butonuyla yapılır, taslak kaydedilmez. SQL gerekmez.

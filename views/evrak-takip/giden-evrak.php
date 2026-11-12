@@ -60,6 +60,7 @@ if ($icraParam !== '' && !$record) {
 }
 
 $cevapGelen = null;
+$cevapAiGelenId = '';
 $cevapParam = (string) ($_GET['cevap_id'] ?? '');
 if ($cevapParam !== '' && !$record) {
     $cevapGelenId = (int) Security::decrypt($cevapParam);
@@ -88,6 +89,9 @@ if ($cevapParam !== '' && !$record) {
             'personel_id' => $adayGelen->personel_id ?? '',
             'ilgili_personel_id' => $adayGelen->ilgili_personel_id ?? '',
         ];
+        if (!empty($adayGelen->dosya_yolu) || $Evrak->getAttachments((int) $adayGelen->id)) {
+            $cevapAiGelenId = Security::encrypt((int) $adayGelen->id);
+        }
     } else {
         error_log('Giden evrak cevap ön doldurma: geçersiz veya erişilemeyen gelen evrak.');
     }
@@ -844,6 +848,9 @@ window.gidenKepAutoStart = <?php echo $canSendKep && (string) ($_GET['kep_gonder
         <div class="modal-header"><div><h5 class="modal-title"><i data-feather="zap" class="icon-sm text-primary me-1"></i> Yapay Zekâ ile Evrak Oluştur</h5><div class="small text-muted mt-1">Gelen evrakı inceleyerek resmî cevap taslağı hazırlar.</div></div><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
         <div class="modal-body">
             <div class="alert alert-info small"><strong>Bilgi:</strong> Oluşturulan taslak doğrudan kaydedilmez. Alanlara aktarıldıktan sonra kontrol edip düzenleyebilirsiniz.</div>
+            <?php if ($cevapAiGelenId !== ''): ?>
+            <div class="alert alert-success small d-flex align-items-start gap-2" id="aiOtomatikGelen" data-gelen-id="<?= htmlspecialchars($cevapAiGelenId, ENT_QUOTES, 'UTF-8'); ?>"><i class="bx bx-file font-size-18"></i><div><strong>Cevaplanan evrak otomatik okunacak:</strong> <?= htmlspecialchars(trim((string) ($cevapGelen->evrak_no ?? '')) . ' — ' . trim((string) ($cevapGelen->konu ?? '')), ENT_QUOTES, 'UTF-8'); ?><div class="text-muted">Dosya yüklemenize gerek yok. Farklı bir belge okutmak isterseniz aşağıdan dosya seçebilirsiniz.</div></div></div>
+            <?php endif; ?>
             <div class="mb-3"><label for="aiGelenEvrak" class="form-label fw-semibold">Gelen Evrak</label><input type="file" id="aiGelenEvrak" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.webp"><div class="form-text">PDF, JPG, PNG veya WEBP — en fazla 12 MB</div></div>
             <div class="mb-2 small text-muted">Yazı; belge okunarak türü, dosya numarası ve borçlu/ilgili kişi tespit edilir, kişi personel kayıtlarıyla (T.C. kimlik no ile) eşleştirilir. Kayıtlarda olmayan bilgiler uydurulmaz, köşeli parantezle işaretlenir.</div>
             <div class="mb-2 d-flex flex-wrap gap-1" id="aiHizliSenaryolar">

@@ -2340,3 +2340,4 @@
 - [x] Giden evrak karşı kurum evrak no (masaüstü + mobil). Yapılmadı: giden-evrak.php detay sayfasında düzenleme, SQL canlıda çalıştırılmalı.
 - [x] Karşı kurum evrak tarihi (masaüstü + mobil); SQL çalıştırıldıktan sonra test edilecek.
 - [x] E-Fatura/Cari süper admin izolasyonu (SQL + grup kaydet/kopyala koruması). SQL canlıda çalıştırılmadı; DB erişimi olmadığından test edilemedi.
+- [x] Cevap Yaz: gelen evrak dosyası AI taslağına otomatik verildi (sözdizimi kontrolü yapıldı; gerçek AI çağrısı/tarayıcı testi yapılmadı — AI anahtarı gerekir).

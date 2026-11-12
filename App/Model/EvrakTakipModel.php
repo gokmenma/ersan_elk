@@ -995,6 +995,47 @@ class EvrakTakipModel extends Model
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
+    public function getAiKaynakDosya(int $evrakId): ?array
+    {
+        $evrak = $evrakId > 0 ? $this->getById($evrakId) : false;
+        if (!$evrak || ($evrak->evrak_tipi ?? '') !== 'gelen') {
+            return null;
+        }
+        $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
+        $adaylar = [];
+        foreach ($this->getAttachments($evrakId) as $ek) {
+            $adaylar[] = ['yol' => (string) $ek->dosya_yolu, 'ad' => (string) $ek->dosya_adi];
+        }
+        if (!empty($evrak->dosya_yolu)) {
+            $adaylar[] = ['yol' => (string) $evrak->dosya_yolu, 'ad' => basename((string) $evrak->dosya_yolu)];
+        }
+        $kok = realpath(dirname(__DIR__, 2) . '/uploads');
+        $sevk = new EvrakSevkModel();
+        $izinli = ['application/pdf', 'image/jpeg', 'image/png'];
+        foreach ($adaylar as $aday) {
+            $yol = ltrim(str_replace('\\', '/', $aday['yol']), '/');
+            if ($yol === '' || !str_starts_with($yol, 'uploads/') || !$kok) {
+                continue;
+            }
+            $gercek = realpath(dirname(__DIR__, 2) . '/' . $yol);
+            if (!$gercek || !is_file($gercek) || !str_starts_with($gercek, $kok . DIRECTORY_SEPARATOR)
+                || !$this->fileBelongsToFirm($yol, $firmaId) || !$sevk->canViewFilePath($yol, $firmaId)) {
+                continue;
+            }
+            $ham = (string) file_get_contents($gercek);
+            try {
+                $icerik = \App\Helper\Security::decryptFile($ham);
+            } catch (\Throwable $e) {
+                $icerik = $ham;
+            }
+            $mime = (string) (new \finfo(FILEINFO_MIME_TYPE))->buffer($icerik);
+            if (in_array($mime, $izinli, true)) {
+                return ['icerik' => $icerik, 'mime' => $mime, 'ad' => $aday['ad']];
+            }
+        }
+        return null;
+    }
+
     public static function fileUrl(string $path, string $name = ''): string
     {
         return 'views/evrak-takip/pdf.php?type=dosya&f=' . rawurlencode(\App\Helper\Security::encrypt(ltrim($path, '/')))
