@@ -1221,8 +1221,19 @@ try {
         $personelBildirimDurumu = !empty($_POST['personel_bildirim_durumu']) ? 1 : 0;
 
         $plaka = trim((string) ($_POST['plaka'] ?? '')) ?: null;
-        $cezaTutari = !empty($_POST['ceza_tutari']) ? (float) str_replace(['.', ','], ['', '.'], (string) $_POST['ceza_tutari']) : null;
-        $tutar = !empty($_POST['tutar']) ? (float) str_replace(['.', ','], ['', '.'], (string) $_POST['tutar']) : ($cezaTutari ?: null);
+        $parseTutar = static function ($value): ?float {
+            $value = trim((string) $value);
+            if ($value === '') {
+                return null;
+            }
+            if (strpos($value, ',') !== false) {
+                $value = str_replace(',', '.', str_replace('.', '', $value));
+            }
+            $amount = (float) $value;
+            return $amount > 0 ? $amount : null;
+        };
+        $cezaTutari = $parseTutar($_POST['ceza_tutari'] ?? '');
+        $tutar = $parseTutar($_POST['tutar'] ?? '') ?? $cezaTutari;
         $yaziTipi = (($_POST['yazi_tipi'] ?? 'times_new_roman') === 'arial') ? 'arial' : 'times_new_roman';
 
         // Giden evrak için imzacılar

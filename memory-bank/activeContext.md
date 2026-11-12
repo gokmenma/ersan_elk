@@ -3981,3 +3981,6 @@
 - Gelen e-fatura bildirimi okundu yapılınca (tek/tümü) `efatura_gelen` rozeti sunucuda görüldü işaretlenir (`notifications.php`).
 - Gelen faturalar sekmesi görülünce (`badges.php?action=seen`) `efatura/gelen-list` bağlantılı bildirimler okundu yapılır (`BildirimModel::markIncomingInvoiceNotificationsAsRead`).
 - İstemci: `markAsRead`/`markAllAsRead` sonrası `fetchBadges()`, `markSeen('efatura_gelen')` sonrası `fetchUnreadCount()`.
+
+## Evrak trafik cezası tutar düzeltmesi
+- Mobil SPA `api/evrak.php` (public + dist) ceza/kesilecek tutarı noktayı binlik sayıp siliyordu (1500.00 → 150000); artık `$parseTutar` virgül varsa TR, yoksa nokta ondalık olarak ayrıştırır. Masaüstü modalda Kesilecek Tutar etiketi %25 indirimi belirtir.

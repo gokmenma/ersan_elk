@@ -166,8 +166,8 @@ $araclar_list = $Evrak->getActiveVehicles();
                                         <?php echo Form::FormFloatInput('number', 'ceza_tutari', '', 'Ceza Tutarı (TL)', 'Ceza Tutarı', 'credit-card', 'form-control'); ?>
                                     </div>
                                     <div class="col-md-6 mb-0">
-                                        <?php echo Form::FormFloatInput('number', 'tutar', '', 'Kesilecek Tutar (TL)', 'Kesilecek Tutar', 'dollar-sign', 'form-control'); ?>
-                                        <div class="small mt-1 px-1 text-muted" style="font-size: 10px;">Boş bırakılırsa Ceza Tutarı geçerli olur.</div>
+                                        <?php echo Form::FormFloatInput('number', 'tutar', '', 'Kesilecek Tutar (TL)', 'Kesilecek Tutar (%25 İndirimli)', 'dollar-sign', 'form-control'); ?>
+                                        <div class="small mt-1 px-1 text-muted" style="font-size: 10px;">Ceza tutarına göre otomatik %25 erken ödeme indirimi uygulanır; isterseniz elle değiştirebilirsiniz.</div>
                                     </div>
                                 </div>
                             </div>
