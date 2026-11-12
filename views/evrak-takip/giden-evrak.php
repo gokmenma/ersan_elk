@@ -61,6 +61,7 @@ if ($icraParam !== '' && !$record) {
 
 $cevapGelen = null;
 $cevapAiGelenId = '';
+$cevapBaglam = [];
 $cevapParam = (string) ($_GET['cevap_id'] ?? '');
 if ($cevapParam !== '' && !$record) {
     $cevapGelenId = (int) Security::decrypt($cevapParam);
@@ -88,6 +89,12 @@ if ($cevapParam !== '' && !$record) {
             'ilgiler' => $cevapIlgi,
             'personel_id' => $adayGelen->personel_id ?? '',
             'ilgili_personel_id' => $adayGelen->ilgili_personel_id ?? '',
+        ];
+        $cevapBaglam = [
+            'gelen_evrak_no' => $gelenNo,
+            'gelen_evrak_tarihi' => $gelenTarih,
+            'gelen_kurum' => $gelenKurum,
+            'gelen_konu' => trim((string) $adayGelen->konu),
         ];
         if (!empty($adayGelen->dosya_yolu) || $Evrak->getAttachments((int) $adayGelen->id)) {
             $cevapAiGelenId = Security::encrypt((int) $adayGelen->id);
@@ -886,6 +893,28 @@ window.gidenKepAutoStart = <?php echo $canSendKep && (string) ($_GET['kep_gonder
     </div></div>
 </div>
 
+<div class="modal fade" id="icerikSablonModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content border-0 shadow">
+        <div class="modal-header"><div><h5 class="modal-title"><i data-feather="file-text" class="icon-sm text-primary me-1"></i> İçerik Şablonları</h5><div class="small text-muted mt-1">Yalnızca yazı metnini yükler; konu, muhatap, imzacı ve ekler değişmez.</div></div><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <div class="row g-3">
+                <div class="col-md-7"><div id="icerikSablonListesi" class="list-group"><div class="text-center text-muted py-4">Şablonlar yükleniyor...</div></div></div>
+                <div class="col-md-5 border-start">
+                    <label for="icerikSablonAdi" class="form-label fw-semibold">Şablon adı</label>
+                    <input type="text" id="icerikSablonAdi" class="form-control" maxlength="150" placeholder="Örn. Maaş haczi cevabı — çalışıyor">
+                    <div class="form-text mb-2">Editördeki mevcut metin bu adla saklanır. Aynı ad varsa güncellenir.</div>
+                    <button type="button" id="btnIcerikSablonKaydet" class="btn btn-primary w-100"><i data-feather="save" class="icon-xs me-1"></i> Mevcut İçeriği Şablon Olarak Kaydet</button>
+                    <hr>
+                    <div class="fw-semibold small mb-1">Değişkenler</div>
+                    <div class="form-text mb-2">Şablon metnine yazılır; uygularken formdan doldurulur, bulunamayan <b>[ETİKET]</b> olarak kalır. Tıklayınca imlece eklenir.</div>
+                    <div id="icerikDegiskenListesi" class="d-flex flex-wrap gap-1"></div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Kapat</button></div>
+    </div></div>
+</div>
+
 <div class="modal fade" id="modalUetsGonder" tabindex="-1" aria-labelledby="modalUetsGonderTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow border-0">
@@ -964,4 +993,5 @@ window.gidenKepAutoStart = <?php echo $canSendKep && (string) ($_GET['kep_gonder
 <?php include_once "modal/kep-settings-modal.php"; ?>
 
 <script src="<?php echo \App\Helper\Helper::assetVersion('views/evrak-takip/js/mobil-imza.js'); ?>"></script>
+<script>window.gidenCevapBaglam = <?= json_encode($cevapBaglam, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;</script>
 <script src="<?php echo \App\Helper\Helper::assetVersion('views/evrak-takip/js/giden-evrak.js'); ?>"></script>

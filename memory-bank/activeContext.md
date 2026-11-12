@@ -4001,3 +4001,8 @@
 ## Cevap Yaz: gelen evrakı yapay zekâ ile otomatik okuma
 - `giden-evrak?cevap_id=` sayfasında cevaplanan gelen evrakın dosyası varsa "Yapay Zekâ ile Oluştur" modalı otomatik açılır ve belge elle yüklenmeden okunur. `EvrakTakipModel::getAiKaynakDosya()` yetki/firma/yol denetimiyle dosyayı çözer (şifreliyse açar); `views/evrak-takip/ai-taslak.php` geçici dosyaya yazıp `EvrakAiTaslakService::create()`'e verir ve siler. Çağrı yalnızca "Taslağı Oluştur" butonuyla yapılır, taslak kaydedilmez. SQL gerekmez.
 - Cevap Yaz AI düzeltmesi: gelen evrak ekleri çoğunlukla e-imzalı PKCS#7 (DER `30 82/83`) paketidir; PDF içine gömülü durur ve finfo `application/octet-stream` döner. `EvrakTakipModel::imzaliPaketPdfCikar()` `%PDF-`…`%%EOF` aralığını çıkarıp PDF olarak AI'ya verir.
+
+## Giden evrak: İçerik Şablonları (yalnızca metin)
+- Editör araç çubuğuna "İçerik Şablonu" düğmesi (Summernote custom button) → `#icerikSablonModal`: listele, Yükle (değiştir) / Sona Ekle, sil, mevcut içeriği ada göre kaydet (aynı ad = güncelle). Tam evrak şablonları (`evrak_sablonlari`) ayrı kalır.
+- Değişkenler `{{personel_adi}}`, `{{ilgili_personel_adi}}`, `{{kurum}}`, `{{konu}}`, `{{ilgi}}`, `{{tarih}}`, `{{gelen_evrak_no}}`, `{{gelen_evrak_tarihi}}`, `{{gelen_kurum}}`, `{{gelen_konu}}`: uygularken formdan/`window.gidenCevapBaglam`'dan doldurulur, bulunamayan `[ETİKET]` kalır.
+- Model `EvrakIcerikSablonModel`, API `evrak-icerik-sablon-listele/kaydet/sil` (views/evrak-takip/api.php, her işlem sistem logu). SQL: sql/2026_11_12_evrak_icerik_sablonlari.sql (tablo + permission_policies, `evrak-takip/list` yetkisine bağlı; yerelde çalıştırıldı, canlıda çalıştırılmalı).

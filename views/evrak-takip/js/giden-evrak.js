@@ -362,8 +362,22 @@ $(document).ready(function () {
       ["color", ["color"]],
       ["para", ["ul", "ol", "paragraph"]],
       ["insert", ["link", "table", "hr"]],
-      ["view", ["fullscreen", "codeview"]]
+      ["view", ["fullscreen", "codeview"]],
+      ["sablon", ["icerikSablon"]]
     ],
+    buttons: {
+      icerikSablon: function (context) {
+        return $.summernote.ui.button({
+          contents: '<i class="bx bx-file-find"></i> İçerik Şablonu',
+          click: function () {
+            if (window.gidenEvrakKilitli) return;
+            $("#giden_evrak_icerik").summernote("saveRange");
+            $("#icerikSablonModal").modal("show");
+            yukleIcerikSablonlari();
+          }
+        }).render().attr("title", "Yalnızca yazı metnini şablondan yükle");
+      }
+    },
     callbacks: {
       onInit: function () {
         $("#gidenEvrakForm .note-editable").css({ fontFamily: '"Times New Roman", Times, serif', fontSize: "12pt" });
@@ -375,6 +389,126 @@ $(document).ready(function () {
       }
     }
   });
+
+
+  const ICERIK_DEGISKENLERI = {
+    personel_adi: { etiket: "Personel adı", deger: function () { return secilenSecenek("#personel_id") || secilenSecenek("#ilgili_personel_id"); } },
+    ilgili_personel_adi: { etiket: "İlgili personel adı", deger: function () { return secilenSecenek("#ilgili_personel_id"); } },
+    kurum: { etiket: "Muhatap kurum", deger: function () { return $.trim($("#kurum_adi").val() || ""); } },
+    konu: { etiket: "Konu", deger: function () { return $.trim($("#konu").val() || ""); } },
+    ilgi: { etiket: "İlgi", deger: function () { return $.trim($("#ilgiler").val() || ""); } },
+    tarih: { etiket: "Evrak tarihi", deger: function () { return $.trim($("#tarih").val() || ""); } },
+    gelen_evrak_no: { etiket: "Gelen evrak no", deger: function () { return (window.gidenCevapBaglam || {}).gelen_evrak_no || ""; } },
+    gelen_evrak_tarihi: { etiket: "Gelen evrak tarihi", deger: function () { return (window.gidenCevapBaglam || {}).gelen_evrak_tarihi || ""; } },
+    gelen_kurum: { etiket: "Gelen evrak kurumu", deger: function () { return (window.gidenCevapBaglam || {}).gelen_kurum || ""; } },
+    gelen_konu: { etiket: "Gelen evrak konusu", deger: function () { return (window.gidenCevapBaglam || {}).gelen_konu || ""; } }
+  };
+  let icerikSablonlari = [];
+
+  function secilenSecenek(selector) {
+    const el = $(selector);
+    if (!el.length || !el.val()) return "";
+    return $.trim(el.find("option:selected").text());
+  }
+
+  function icerikDegiskenleriniUygula(html) {
+    const eksik = [];
+    const sonuc = html.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, function (eslesme, anahtar) {
+      const tanim = ICERIK_DEGISKENLERI[anahtar];
+      if (!tanim) return eslesme;
+      const deger = tanim.deger();
+      if (deger) return escapeHtml(deger);
+      if (eksik.indexOf(tanim.etiket) === -1) eksik.push(tanim.etiket);
+      return "[" + tanim.etiket.toLocaleUpperCase("tr-TR") + "]";
+    });
+    return { html: sonuc, eksik: eksik };
+  }
+
+  function icerigeYerlestir(sablon, mod) {
+    const uygulanan = icerikDegiskenleriniUygula(sablon.icerik);
+    const editor = $("#giden_evrak_icerik");
+    const mevcut = editor.summernote("isEmpty") ? "" : editor.summernote("code");
+    editor.summernote("code", mod === "ekle" && mevcut ? mevcut + uygulanan.html : uygulanan.html);
+    $("#icerikSablonModal").modal("hide");
+    $("#gidenEvrakTabs button[data-bs-target='#gidenIcerikTab']").tab("show");
+    if (uygulanan.eksik.length) {
+      Swal.fire({ icon: "info", title: "Şablon yüklendi", html: "Şu bilgiler formda bulunamadı, metinde <b>[köşeli parantezle]</b> bırakıldı:<br>" + uygulanan.eksik.map(escapeHtml).join(", ") });
+    }
+  }
+
+  function icerikSablonUygula(sablon, mod) {
+    const editor = $("#giden_evrak_icerik");
+    if (mod === "degistir" && !editor.summernote("isEmpty")) {
+      Swal.fire({ title: "Mevcut metin değiştirilsin mi?", text: "Editördeki yazı \"" + sablon.adi + "\" şablonuyla değiştirilecek.", icon: "question", showCancelButton: true, confirmButtonText: "Değiştir", cancelButtonText: "Vazgeç" }).then(function (sonuc) {
+        if (sonuc.isConfirmed) icerigeYerlestir(sablon, mod);
+      });
+      return;
+    }
+    icerigeYerlestir(sablon, mod);
+  }
+
+  function yukleIcerikSablonlari() {
+    const liste = $("#icerikSablonListesi").html('<div class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span>Şablonlar yükleniyor...</div>');
+    $.post("views/evrak-takip/api.php", { action: "evrak-icerik-sablon-listele" }).done(function (response) {
+      if (response.status !== "success") { liste.html('<div class="alert alert-danger mb-0">' + escapeHtml(response.message || "Şablonlar yüklenemedi.") + "</div>"); return; }
+      icerikSablonlari = response.data || [];
+      liste.empty();
+      if (!icerikSablonlari.length) { liste.html('<div class="border rounded-3 text-center text-muted py-4">Henüz içerik şablonu yok.</div>'); return; }
+      icerikSablonlari.forEach(function (sablon) {
+        const ozet = $("<div>").html(sablon.icerik).text().replace(/\s+/g, " ").trim().substring(0, 110);
+        const satir = $('<div class="list-group-item d-flex flex-column gap-2"></div>');
+        $('<div class="overflow-hidden"></div>')
+          .append($('<div class="fw-bold text-dark text-truncate"></div>').text(sablon.adi))
+          .append($('<div class="small text-muted text-truncate"></div>').text(ozet))
+          .appendTo(satir);
+        const aksiyonlar = $('<div class="btn-group btn-group-sm align-self-end"></div>');
+        $('<button type="button" class="btn btn-outline-primary" title="Editördeki metnin yerine yükle">Yükle</button>').on("click", function () { icerikSablonUygula(sablon, "degistir"); }).appendTo(aksiyonlar);
+        $('<button type="button" class="btn btn-outline-secondary" title="Editördeki metnin sonuna ekle">Sona Ekle</button>').on("click", function () { icerikSablonUygula(sablon, "ekle"); }).appendTo(aksiyonlar);
+        $('<button type="button" class="btn btn-outline-danger" title="Şablonu sil"><i class="bx bx-trash"></i></button>').on("click", function () {
+          Swal.fire({ title: "Şablon silinsin mi?", text: sablon.adi, icon: "warning", showCancelButton: true, confirmButtonText: "Sil", cancelButtonText: "Vazgeç" }).then(function (sonuc) {
+            if (!sonuc.isConfirmed) return;
+            $.post("views/evrak-takip/api.php", { action: "evrak-icerik-sablon-sil", sablon_id: sablon.id }).done(function (cevap) {
+              if (cevap.status !== "success") { Swal.fire("Hata", cevap.message || "Şablon silinemedi.", "error"); return; }
+              yukleIcerikSablonlari();
+            }).fail(function () { Swal.fire("Hata", "Şablon silinemedi.", "error"); });
+          });
+        }).appendTo(aksiyonlar);
+        satir.append(aksiyonlar).appendTo(liste);
+      });
+    }).fail(function () { liste.html('<div class="alert alert-danger mb-0">Şablonlar yüklenemedi.</div>'); });
+  }
+
+  function kaydetIcerikSablonu() {
+    const ad = $.trim($("#icerikSablonAdi").val());
+    const editor = $("#giden_evrak_icerik");
+    if (!ad) { Swal.fire("Eksik Bilgi", "Şablon adı giriniz.", "warning"); return; }
+    if (editor.summernote("isEmpty")) { Swal.fire("Eksik Bilgi", "Editörde kaydedilecek metin yok.", "warning"); return; }
+    const gonder = function () {
+      $.post("views/evrak-takip/api.php", { action: "evrak-icerik-sablon-kaydet", sablon_adi: ad, icerik: editor.summernote("code") }).done(function (cevap) {
+        if (cevap.status !== "success") { Swal.fire("Hata", cevap.message || "Şablon kaydedilemedi.", "error"); return; }
+        $("#icerikSablonAdi").val("");
+        yukleIcerikSablonlari();
+        Swal.fire({ icon: "success", title: cevap.message || "Kaydedildi", timer: 1500, showConfirmButton: false });
+      }).fail(function () { Swal.fire("Hata", "Şablon kaydedilemedi.", "error"); });
+    };
+    if (icerikSablonlari.some(function (item) { return item.adi.toLocaleLowerCase("tr-TR") === ad.toLocaleLowerCase("tr-TR"); })) {
+      Swal.fire({ title: "Aynı adlı şablon var", text: "Mevcut şablonun içeriği güncellensin mi?", icon: "question", showCancelButton: true, confirmButtonText: "Güncelle", cancelButtonText: "Vazgeç" }).then(function (sonuc) { if (sonuc.isConfirmed) gonder(); });
+      return;
+    }
+    gonder();
+  }
+
+  Object.keys(ICERIK_DEGISKENLERI).forEach(function (anahtar) {
+    $('<button type="button" class="btn btn-sm btn-outline-secondary rounded-pill"></button>')
+      .attr("title", ICERIK_DEGISKENLERI[anahtar].etiket).text("{{" + anahtar + "}}")
+      .on("click", function () {
+        const editor = $("#giden_evrak_icerik");
+        editor.summernote("restoreRange");
+        editor.summernote("insertText", "{{" + anahtar + "}}");
+        editor.summernote("saveRange");
+      }).appendTo("#icerikDegiskenListesi");
+  });
+  $("#btnIcerikSablonKaydet").on("click", kaydetIcerikSablonu);
 
   function syncContent() {
     $("#giden_evrak_icerik").val($("#giden_evrak_icerik").summernote("code"));

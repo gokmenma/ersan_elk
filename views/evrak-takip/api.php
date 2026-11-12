@@ -7,6 +7,7 @@ require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 use App\Model\EvrakTakipModel;
 use App\Model\EvrakSablonModel;
+use App\Model\EvrakIcerikSablonModel;
 use App\Model\PersonelModel;
 use App\Model\UserModel;
 use App\Model\BildirimModel;
@@ -181,6 +182,48 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     throw new Exception('Şablon bulunamadı veya daha önce silinmiş.');
                 }
                 echo json_encode(['status' => 'success', 'message' => 'Şablon silindi.'], JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'evrak-icerik-sablon-listele':
+                $templates = array_map(static fn($row): array => [
+                    'id' => Security::encrypt((int) $row->id),
+                    'adi' => (string) $row->adi,
+                    'icerik' => (string) $row->icerik,
+                    'guncelleme_tarihi' => !empty($row->updated_at) ? date('d.m.Y H:i', strtotime($row->updated_at)) : '',
+                ], (new EvrakIcerikSablonModel())->getAllActive());
+                echo json_encode(['status' => 'success', 'data' => $templates], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                break;
+
+            case 'evrak-icerik-sablon-kaydet':
+                $templateName = trim((string) ($_POST['sablon_adi'] ?? ''));
+                if ($templateName === '' || mb_strlen($templateName) > 150) {
+                    throw new Exception('Şablon adı zorunludur ve en fazla 150 karakter olabilir.');
+                }
+                $templateHtml = RichTextSanitizer::sanitize((string) ($_POST['icerik'] ?? ''));
+                if (trim(strip_tags($templateHtml)) === '') {
+                    throw new Exception('Boş içerik şablon olarak kaydedilemez.');
+                }
+                if (strlen($templateHtml) > 200000) {
+                    throw new Exception('Şablon içeriği çok büyük.');
+                }
+                $saved = (new EvrakIcerikSablonModel())->saveByName($templateName, $templateHtml, $currentUserId);
+                (new SystemLogModel())->logAction(
+                    $currentUserId,
+                    $saved['guncellendi'] ? 'Evrak İçerik Şablonu Güncelleme' : 'Evrak İçerik Şablonu Oluşturma',
+                    'Şablon: ' . $templateName,
+                    SystemLogModel::LEVEL_INFO
+                );
+                echo json_encode(['status' => 'success', 'message' => $saved['guncellendi'] ? 'İçerik şablonu güncellendi.' : 'İçerik şablonu kaydedildi.'], JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'evrak-icerik-sablon-sil':
+                $templateId = $decryptId($_POST['sablon_id'] ?? '');
+                $deletedName = $templateId > 0 ? (new EvrakIcerikSablonModel())->softDeleteTemplate($templateId, $currentUserId) : null;
+                if ($deletedName === null) {
+                    throw new Exception('Şablon bulunamadı veya daha önce silinmiş.');
+                }
+                (new SystemLogModel())->logAction($currentUserId, 'Evrak İçerik Şablonu Silme', 'Şablon: ' . $deletedName, SystemLogModel::LEVEL_INFO);
+                echo json_encode(['status' => 'success', 'message' => 'İçerik şablonu silindi.'], JSON_UNESCAPED_UNICODE);
                 break;
 
             case 'evrak-kaydet':
