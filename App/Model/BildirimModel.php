@@ -192,6 +192,22 @@ class BildirimModel extends Model
         return $stmt->execute([$id, $userId]);
     }
 
+    public function isIncomingInvoiceNotification($id, $userId): bool
+    {
+        $stmt = $this->db->prepare("SELECT link FROM {$this->table} WHERE id = ? AND user_id = ? LIMIT 1");
+        $stmt->execute([(int) $id, (int) $userId]);
+        $link = $stmt->fetchColumn();
+        return is_string($link) && str_contains($link, 'efatura/gelen-list');
+    }
+
+    public function markIncomingInvoiceNotificationsAsRead($userId): bool
+    {
+        $stmt = $this->db->prepare(
+            "UPDATE {$this->table} SET is_read = 1 WHERE user_id = ? AND is_read = 0 AND link LIKE ?"
+        );
+        return $stmt->execute([(int) $userId, '%efatura/gelen-list%']);
+    }
+
     /**
      * Tümünü okundu işaretle
      */

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Helper\Security;
 use App\Model\BildirimModel;
+use App\Model\MobilRozetModel;
 use App\Model\PushSubscriptionModel;
 use App\Model\SystemLogModel;
 use App\Model\UserNotificationPreferenceModel;
@@ -161,13 +162,19 @@ try {
                 if ($id <= 0) {
                     notifResponse(['success' => false, 'message' => 'Geçersiz bildirim ID.'], 422);
                 }
+                $isInvoice = $bildirimModel->isIncomingInvoiceNotification($id, $currentUserId);
                 $bildirimModel->markAsRead($id, $currentUserId);
+                if ($isInvoice) {
+                    $bildirimModel->markIncomingInvoiceNotificationsAsRead($currentUserId);
+                    (new MobilRozetModel())->faturaGoruldu($currentUserId, (int) ($_SESSION['firma_id'] ?? $_SESSION['firm_id'] ?? 0), 'efatura_gelen');
+                }
                 $unreadCount = (int) $bildirimModel->getUnreadCount($currentUserId);
                 notifResponse(['success' => true, 'unread_count' => $unreadCount]);
                 break;
 
             case 'mark-all-read':
                 $bildirimModel->markAllAsRead($currentUserId);
+                (new MobilRozetModel())->faturaGoruldu($currentUserId, (int) ($_SESSION['firma_id'] ?? $_SESSION['firm_id'] ?? 0), 'efatura_gelen');
                 $systemLog->logAction($currentUserId, 'Bildirim Okundu', 'Tüm bildirimler okundu olarak işaretlendi.');
                 notifResponse(['success' => true, 'unread_count' => 0]);
                 break;

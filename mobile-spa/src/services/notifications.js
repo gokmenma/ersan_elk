@@ -78,6 +78,7 @@ export async function markAsRead(id) {
     if (data.success && typeof data.unread_count === 'number') {
       notificationsState.unreadCount = data.unread_count
     }
+    fetchBadges()
   } catch (e) {
     console.error('Okundu işaretleme hatası:', e)
   }
@@ -97,6 +98,7 @@ export async function markAllAsRead() {
     if (data.success) {
       notificationsState.unreadCount = 0
     }
+    fetchBadges()
   } catch (e) {
     console.error('Tümünü okundu işaretleme hatası:', e)
   }

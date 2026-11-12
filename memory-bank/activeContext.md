@@ -3976,3 +3976,8 @@
 - Yeni: `App/Service/NobetDagitimService.php` (adil/sıralı dağıtım), `NobetModel` geçmiş/geri al/çakışma/rapor metotları, `views/nobet/araclar-modallar.php`, `assets/nobet-araclar.js`, `cizelge-export.php` (Excel + ICS, `nobet/list` yetkisi).
 - API: çakışma uyarısı `status=warning` döner, `uyari_onay=1` ile geçilir (JS fetch kancası onay penceresi açar). Tüm yeni aksiyonlar `nobet/list` yetkisine SQL ile bağlı: `sql/2026_11_12_nobet_planlama_arac_seti.sql` (tablo `nobet_islem_gecmisi`).
 - Ayar: `nobet_aylik_limit` (Nöbet Ayarları modalı). Mod butonları: takvim / ızgara / ısı haritası. KPI: Boş Gün kartı, kartlar tıklanabilir.
+
+## Mobil SPA: e-Fatura bildirim ve menü rozeti senkronu
+- Gelen e-fatura bildirimi okundu yapılınca (tek/tümü) `efatura_gelen` rozeti sunucuda görüldü işaretlenir (`notifications.php`).
+- Gelen faturalar sekmesi görülünce (`badges.php?action=seen`) `efatura/gelen-list` bağlantılı bildirimler okundu yapılır (`BildirimModel::markIncomingInvoiceNotificationsAsRead`).
+- İstemci: `markAsRead`/`markAllAsRead` sonrası `fetchBadges()`, `markSeen('efatura_gelen')` sonrası `fetchUnreadCount()`.

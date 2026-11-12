@@ -1,5 +1,6 @@
 import { reactive } from 'vue'
 import { auth } from './auth.js'
+import { fetchUnreadCount } from './notifications.js'
 
 export const badgesState = reactive({
   counts: {},
@@ -50,6 +51,7 @@ export async function markSeen(key) {
       },
       body: JSON.stringify({ key }),
     })
+    if (key === 'efatura_gelen') fetchUnreadCount()
   } catch (e) {
     console.warn('Rozet görüldü işaretlenemedi:', e)
   }

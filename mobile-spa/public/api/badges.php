@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Model\AvansModel;
+use App\Model\BildirimModel;
 use App\Model\DestekModel;
 use App\Model\MobilRozetModel;
 use App\Model\PersonelIzinleriModel;
@@ -100,6 +101,9 @@ try {
         }
         if (in_array($key, MobilRozetModel::faturaAnahtarlari(), true)) {
             $rozetModel->faturaGoruldu($userId, $firmaId, $key);
+            if ($key === 'efatura_gelen') {
+                (new BildirimModel())->markIncomingInvoiceNotificationsAsRead($userId);
+            }
         } elseif (in_array($key, $idSetKeys, true)) {
             foreach (badgesIdSets($key, $rozetModel, $userId, $firmaId, $canAvans, $canIzin, $canAriza) as $setKey => $ids) {
                 $rozetModel->goruldu($userId, $firmaId, $setKey, $ids);
