@@ -96,7 +96,7 @@ class EvrakTakipModel extends Model
 
         $globalSearch = trim((string) ($params['search']['value'] ?? ''));
         if ($globalSearch !== '') {
-            $where[] = '(et.evrak_no LIKE :global_search OR et.konu LIKE :global_search OR et.kurum_adi LIKE :global_search OR p1.adi_soyadi LIKE :global_search OR p2.adi_soyadi LIKE :global_search OR u.adi_soyadi LIKE :global_search OR u.user_name LIKE :global_search)';
+            $where[] = '(et.evrak_no LIKE :global_search OR et.karsi_evrak_no LIKE :global_search OR et.konu LIKE :global_search OR et.kurum_adi LIKE :global_search OR p1.adi_soyadi LIKE :global_search OR p2.adi_soyadi LIKE :global_search OR u.adi_soyadi LIKE :global_search OR u.user_name LIKE :global_search)';
             $bindings['global_search'] = '%' . $globalSearch . '%';
         }
 
@@ -890,6 +890,91 @@ class EvrakTakipModel extends Model
              LIMIT " . max(1, min(1000, $limit))
         );
         $stmt->execute(array_merge([(int) $_SESSION['firma_id'], $evrakId], self::ONAY_ISLEMLERI));
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    public const KARSI_NO_ISLEMI = 'karsi_no_guncellendi';
+
+    public function saveKarsiEvrakNo(int $evrakId, int $firmaId, string $no, ?string $aciklama, int $userId, ?string $tarih = null): array
+    {
+        $tarih = $tarih !== null && preg_match('/^\d{4}-\d{2}-\d{2}$/', $tarih) ? $tarih : null;
+        $no = trim(mb_substr($no, 0, 100, 'UTF-8'));
+        $aciklama = $aciklama !== null ? trim(mb_substr($aciklama, 0, 500, 'UTF-8')) : null;
+        if ($aciklama === '') {
+            $aciklama = null;
+        }
+        if ($no === '') {
+            throw new \Exception('Karşı kurum evrak numarasını giriniz.');
+        }
+
+        $this->db->beginTransaction();
+        try {
+            $select = $this->db->prepare(
+                "SELECT id, evrak_tipi, karsi_evrak_no, karsi_evrak_tarihi, karsi_evrak_aciklama
+                 FROM {$this->table}
+                 WHERE id = :id AND firma_id = :firma_id AND silinme_tarihi IS NULL
+                 FOR UPDATE"
+            );
+            $select->execute(['id' => $evrakId, 'firma_id' => $firmaId]);
+            $evrak = $select->fetch(PDO::FETCH_OBJ);
+            if (!$evrak) {
+                throw new \Exception('Evrak bulunamadı.');
+            }
+            if (($evrak->evrak_tipi ?? '') !== 'giden') {
+                throw new \Exception('Karşı kurum evrak numarası yalnızca giden evraka girilebilir.');
+            }
+            $eskiNo = (string) ($evrak->karsi_evrak_no ?? '');
+            $eskiAciklama = (string) ($evrak->karsi_evrak_aciklama ?? '');
+            $eskiTarih = (string) ($evrak->karsi_evrak_tarihi ?? '');
+            if ($eskiNo === $no && $eskiAciklama === (string) $aciklama && $eskiTarih === (string) $tarih) {
+                $this->db->rollBack();
+                return ['degisti' => false, 'karsi_evrak_no' => $no, 'karsi_evrak_tarihi' => $tarih, 'karsi_evrak_aciklama' => $aciklama];
+            }
+
+            $update = $this->db->prepare(
+                "UPDATE {$this->table}
+                 SET karsi_evrak_no = :no, karsi_evrak_tarihi = :tarih, karsi_evrak_aciklama = :aciklama,
+                     karsi_evrak_guncelleyen_id = :user_id, karsi_evrak_guncelleme_tarihi = NOW()
+                 WHERE id = :id AND firma_id = :firma_id"
+            );
+            $update->execute(['no' => $no, 'tarih' => $tarih, 'aciklama' => $aciklama, 'user_id' => $userId > 0 ? $userId : null, 'id' => $evrakId, 'firma_id' => $firmaId]);
+
+            if ($eskiNo === '') {
+                $mesaj = 'Karşı kurum evrak no girildi: ' . $no;
+            } elseif ($eskiNo !== $no) {
+                $mesaj = 'Karşı kurum evrak no değiştirildi: ' . $eskiNo . ' → ' . $no;
+            } else {
+                $mesaj = 'Karşı kurum evrak bilgisi güncellendi (no: ' . $no . ')';
+            }
+            if ($eskiTarih !== (string) $tarih) {
+                $mesaj .= ' | Tarih: ' . ($eskiTarih !== '' ? date('d.m.Y', strtotime($eskiTarih)) : '-') . ' → ' . ($tarih !== null ? date('d.m.Y', strtotime($tarih)) : '-');
+            }
+            if ($eskiAciklama !== (string) $aciklama) {
+                $mesaj .= ' | Açıklama: ' . ($aciklama ?? '-');
+            }
+            $this->recordApprovalHistory($evrakId, self::KARSI_NO_ISLEMI, $userId, null, $mesaj, (string) ($_SERVER['REMOTE_ADDR'] ?? ''));
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        }
+        return ['degisti' => true, 'karsi_evrak_no' => $no, 'karsi_evrak_tarihi' => $tarih, 'karsi_evrak_aciklama' => $aciklama];
+    }
+
+    public function getKarsiEvrakNoGecmisi(int $evrakId, int $firmaId, int $limit = 100): array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT h.aciklama, h.created_at,
+                    COALESCE(NULLIF(u.adi_soyadi, ''), u.user_name) AS islem_yapan
+             FROM evrak_tarihce h
+             LEFT JOIN users u ON u.id = h.user_id
+             WHERE h.firma_id = :firma_id AND h.evrak_id = :evrak_id AND h.islem = :islem
+             ORDER BY h.created_at DESC, h.id DESC
+             LIMIT " . max(1, min(500, $limit))
+        );
+        $stmt->execute(['firma_id' => $firmaId, 'evrak_id' => $evrakId, 'islem' => self::KARSI_NO_ISLEMI]);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 

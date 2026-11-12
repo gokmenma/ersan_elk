@@ -3255,6 +3255,86 @@ $(function () {
       });
   });
 
+  function karsiTarihAyarla(deger) {
+    const el = $("#karsi_evrak_tarihi")[0];
+    if (!el) return;
+    if (!el._flatpickr && typeof $.fn.flatpickr === "function") $(el).flatpickr({ dateFormat: "d.m.Y", allowInput: true });
+    if (el._flatpickr) {
+      if (deger) el._flatpickr.setDate(deger, false, "d.m.Y");
+      else el._flatpickr.clear();
+    } else {
+      el.value = deger || "";
+    }
+  }
+
+  $(document).on("click", ".evrak-karsi-no", function () {
+    const id = $(this).data("id");
+    $("#karsiNoEvrakId").val(id);
+    $("#karsi_evrak_no, #karsi_evrak_aciklama").val("");
+    karsiTarihAyarla("");
+    $("#karsiNoKonu, #karsiNoKurum, #karsiNoBizimNo").text("-");
+    $("#karsiNoGecmis").html('<div class="text-muted py-2"><i class="bx bx-loader-alt bx-spin"></i> Yükleniyor...</div>');
+    if ($("#modalKarsiNo").parent()[0] !== document.body) $("#modalKarsiNo").appendTo("body");
+    $("#modalKarsiNo").modal("show");
+    $.post(sevkApi, { action: "evrak-karsi-no-getir", id: id }, null, "json")
+      .done(function (res) {
+        if (res.status !== "success") {
+          $("#karsiNoGecmis").html('<div class="alert alert-danger mb-0">' + escapeHtml(res.message || "Bilgi alınamadı.") + "</div>");
+          return;
+        }
+        const d = res.data;
+        $("#karsiNoKonu").text(d.konu || "-");
+        $("#karsiNoKurum").text(d.kurum_adi || "-");
+        $("#karsiNoBizimNo").text(d.evrak_no || "-");
+        $("#karsi_evrak_no").val(d.karsi_evrak_no || "");
+        $("#karsi_evrak_aciklama").val(d.karsi_evrak_aciklama || "");
+        karsiTarihAyarla(d.karsi_evrak_tarihi || "");
+        if (!(d.gecmis || []).length) {
+          $("#karsiNoGecmis").html('<div class="alert alert-light border text-center text-muted mb-0">Henüz karşı kurum numarası girilmemiş.</div>');
+          return;
+        }
+        let html = '<ul class="list-group list-group-flush border rounded-3">';
+        d.gecmis.forEach(function (r) {
+          html += '<li class="list-group-item py-2"><div class="d-flex justify-content-between gap-2"><strong class="font-size-12">' + escapeHtml(r.islem_yapan) + "</strong>" +
+            '<span class="font-size-12 text-muted text-nowrap">' + escapeHtml(r.tarih) + "</span></div>" +
+            '<div class="font-size-12 text-muted mt-1">' + escapeHtml(r.aciklama) + "</div></li>";
+        });
+        $("#karsiNoGecmis").html(html + "</ul>");
+      })
+      .fail(function () {
+        $("#karsiNoGecmis").html('<div class="alert alert-danger mb-0">Bilgi alınamadı.</div>');
+      });
+  });
+
+  $("#karsiNoForm").on("submit", function (e) {
+    e.preventDefault();
+    const no = String($("#karsi_evrak_no").val() || "").trim();
+    if (!no) {
+      Swal.fire("Eksik Bilgi", "Karşı kurum evrak numarasını giriniz.", "warning");
+      return;
+    }
+    const btn = $("#btnKarsiNoKaydet").prop("disabled", true);
+    $.post(sevkApi, {
+      action: "evrak-karsi-no-kaydet",
+      id: $("#karsiNoEvrakId").val(),
+      karsi_evrak_no: no,
+      karsi_evrak_tarihi: $("#karsi_evrak_tarihi").val(),
+      karsi_evrak_aciklama: $("#karsi_evrak_aciklama").val(),
+    }, null, "json")
+      .done(function (res) {
+        if (res.status === "success") {
+          $("#modalKarsiNo").modal("hide");
+          Swal.fire("Başarılı!", res.message, "success").then(() => location.reload());
+        } else {
+          Swal.fire("Hata!", res.message || "Kaydedilemedi.", "error");
+        }
+      })
+      .fail(function () {
+        Swal.fire("Hata!", "Sunucu ile iletişim kurulurken bir hata oluştu.", "error");
+      })
+      .always(function () { btn.prop("disabled", false); });
+  });
+
   $(document).on("click", ".btn-uets-tarihce", function () {
     const id = $(this).data("id");
     const full = String($(this).data("full")) === "1";

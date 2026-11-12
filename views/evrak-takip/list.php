@@ -1103,6 +1103,7 @@ body[data-layout-mode="dark"] #evrakImzaOnayAction {
 
 <?php include_once "modal/evrak-modal.php"; ?>
 <?php include_once "modal/uets-modals.php"; ?>
+<?php include_once "modal/karsi-no-modal.php"; ?>
 <?php if ($canSendKep) include_once "modal/kep-send-modal.php"; ?>
 <?php if ($canMobilImzaAyar) include_once "modal/mobil-imza-ayarlari-modal.php"; ?>
 <?php include_once "modal/kep-preview-modal.php"; ?>

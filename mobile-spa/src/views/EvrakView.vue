@@ -402,6 +402,7 @@ async function syncDetailKep() {
 
 async function openDetail(doc) {
   selectedDetail.value = doc
+  karsiNoEditing.value = false
   detailTab.value = 'info'
   showTeknikEkler.value = false
   showUetsSevk.value = false
@@ -617,6 +618,50 @@ async function onPlakaChange() {
   } catch (e) {
     zimmetInfo.value = { state: 'error', name: '' }
     console.error('Zimmet sorgu hatası:', e)
+  }
+}
+
+// Karşı Kurum Evrak No (giden evrak)
+const karsiNoEditing = ref(false)
+const karsiNoSaving = ref(false)
+const karsiNoForm = ref({ no: '', tarih: '', aciklama: '' })
+
+function startKarsiNoEdit() {
+  if (!selectedDetail.value) return
+  karsiNoForm.value = {
+    no: selectedDetail.value.karsi_evrak_no || '',
+    tarih: selectedDetail.value.karsi_evrak_tarihi || '',
+    aciklama: selectedDetail.value.karsi_evrak_aciklama || '',
+  }
+  karsiNoEditing.value = true
+}
+
+async function saveKarsiNo() {
+  if (!selectedDetail.value || karsiNoSaving.value) return
+  const no = karsiNoForm.value.no.trim()
+  if (!no) {
+    showToast('Karşı kurum evrak numarasını giriniz.', 'error')
+    return
+  }
+  karsiNoSaving.value = true
+  try {
+    const fd = new FormData()
+    fd.append('id', selectedDetail.value.id)
+    fd.append('karsi_evrak_no', no)
+    fd.append('karsi_evrak_tarihi', karsiNoForm.value.tarih || '')
+    fd.append('karsi_evrak_aciklama', karsiNoForm.value.aciklama.trim())
+    const res = await evrakApi.karsiNoKaydet(fd, auth.state.csrfToken)
+    Object.assign(selectedDetail.value, res.data || {})
+    const listed = items.value.find((entry) => entry.id === selectedDetail.value.id)
+    if (listed) Object.assign(listed, res.data || {})
+    karsiNoEditing.value = false
+    showToast(res.message || 'Karşı kurum evrak numarası kaydedildi.')
+    const detail = await evrakApi.detail(selectedDetail.value.id)
+    if (detail && detail.data) Object.assign(selectedDetail.value, { karsi_no_gecmis: detail.data.karsi_no_gecmis || [] })
+  } catch (err) {
+    showToast(err.message || 'Kaydedilemedi.', 'error')
+  } finally {
+    karsiNoSaving.value = false
   }
 }
 
@@ -1922,6 +1967,47 @@ onBeforeUnmount(stopMobileSignTimer)
                       <strong>{{ formatMoney(selectedDetail.tutar || selectedDetail.ceza_tutari) }}</strong>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              <!-- Karşı Kurum Evrak No (Giden Evrak) -->
+              <div
+                v-if="selectedDetail.evrak_tipi === 'giden' && (selectedDetail.karsi_evrak_no || selectedDetail.karsi_no_duzenlenebilir)"
+                class="evrak-detail-section"
+              >
+                <div class="evrak-section-header-flex">
+                  <span class="evrak-section-label">KARŞI KURUM EVRAK NO</span>
+                  <button
+                    v-if="selectedDetail.karsi_no_duzenlenebilir && !karsiNoEditing"
+                    type="button"
+                    class="evrak-preview-pill"
+                    @click="startKarsiNoEdit"
+                  >
+                    <Pencil :size="13" />
+                    <span>{{ selectedDetail.karsi_evrak_no ? 'Düzenle' : 'Numara Gir' }}</span>
+                  </button>
+                </div>
+                <div v-if="!karsiNoEditing" class="evrak-detail-card">
+                  <strong v-if="selectedDetail.karsi_evrak_no">{{ selectedDetail.karsi_evrak_no }}</strong>
+                  <small v-if="selectedDetail.karsi_evrak_tarihi_formatted" class="evrak-ocr-hint">Karşı kurum evrak tarihi: {{ selectedDetail.karsi_evrak_tarihi_formatted }}</small>
+                  <span v-else class="evrak-ocr-hint">Karşı kurum numarası henüz girilmemiş.</span>
+                  <small v-if="selectedDetail.karsi_evrak_aciklama" class="evrak-ocr-hint">{{ selectedDetail.karsi_evrak_aciklama }}</small>
+                </div>
+                <div v-else class="evrak-detail-card evrak-karsi-no-form">
+                  <input v-model="karsiNoForm.no" type="text" maxlength="100" class="evrak-input" placeholder="Karşı kurumun verdiği evrak no" />
+                  <input v-model="karsiNoForm.tarih" type="date" class="evrak-input" aria-label="Karşı kurum evrak tarihi" />
+                  <textarea v-model="karsiNoForm.aciklama" rows="2" maxlength="500" class="evrak-textarea" placeholder="Açıklama (opsiyonel)"></textarea>
+                  <div class="evrak-form-footer">
+                    <button type="button" class="evrak-btn evrak-btn--primary" :disabled="karsiNoSaving" @click="saveKarsiNo">
+                      <Check :size="16" /><span>{{ karsiNoSaving ? 'Kaydediliyor...' : 'Kaydet' }}</span>
+                    </button>
+                    <button type="button" class="evrak-btn evrak-btn--outline" @click="karsiNoEditing = false">İptal</button>
+                  </div>
+                </div>
+                <div v-if="selectedDetail.karsi_no_gecmis?.length" class="evrak-karsi-no-gecmis">
+                  <small v-for="(h, i) in selectedDetail.karsi_no_gecmis" :key="i">
+                    {{ h.tarih }} · {{ h.islem_yapan }} — {{ h.aciklama }}
+                  </small>
                 </div>
               </div>
 
@@ -4128,6 +4214,11 @@ onBeforeUnmount(stopMobileSignTimer)
   flex-direction: column;
   gap: 10px;
 }
+
+/* Karşı kurum evrak no */
+.evrak-karsi-no-form { display: flex; flex-direction: column; gap: 8px; }
+.evrak-karsi-no-form .evrak-form-footer { margin-top: 0; }
+.evrak-karsi-no-gecmis { display: flex; flex-direction: column; gap: 3px; color: #64748b; line-height: 1.4; }
 
 /* Zimmetli sürücü bilgisi */
 .evrak-zimmet-info {

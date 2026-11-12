@@ -280,6 +280,7 @@ function sessionPayload(): array
         'files_folders' => Gate::allows('dosya_yonetimi_klasor_yonet') || Gate::isSuperAdmin(),
         'incoming_documents' => mobileCan(['evrak-takip/gelen-evrak']),
         'outgoing_documents' => mobileCan(['evrak-takip/giden-evrak']),
+        'outgoing_karsi_no' => mobileCan(['evrak-takip/karsi-evrak-no']),
         'shifts' => mobileCan(['yonetici_onayi']),
         'shift_schedule' => mobileCan(['nobet/list']),
         'payroll' => mobileCan(['bordro/list']),

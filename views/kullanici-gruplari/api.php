@@ -246,6 +246,18 @@ if ($_POST['action'] == 'savePermissions') {
         // 3. Adım (Filtreleme): Gelen yetkileri, sadece kullanıcının grubunun izin verdikleriyle sınırla.
         // Bu, birinin formdan fazladan yetki göndermesini engeller.
         $validPermissionsToSync = array_intersect($submittedPermissions, $allowedGroupPermissions);
+        if (!$User->isSuperAdmin()) {
+            $korunanStmt = $UserPermissions->getDb()->prepare(
+                "SELECT urp.permission_id FROM user_role_permissions urp
+                 INNER JOIN permissions p ON p.id = urp.permission_id
+                 WHERE urp.role_id = ? AND p.superadmin = 1"
+            );
+            $korunanStmt->execute([$roleID]);
+            $validPermissionsToSync = array_values(array_unique(array_merge(
+                $validPermissionsToSync,
+                array_map('intval', $korunanStmt->fetchAll(PDO::FETCH_COLUMN))
+            )));
+        }
 
         // 4. Adım: Modeli çağırarak veritabanını senkronize et
         $UserPermissions->syncUserPermissions($roleID, $validPermissionsToSync);
@@ -405,6 +417,22 @@ if ($_POST['action'] == 'copyPermissions') {
 
         // Kaynak rolün yetkilerini al
         $sourcePermissions = $UserPermissions->getUserPermissions($sourceRoleID);
+
+        if (!$User->isSuperAdmin()) {
+            $gizliStmt = $UserPermissions->getDb()->prepare("SELECT id FROM permissions WHERE superadmin = 1");
+            $gizliStmt->execute();
+            $gizliIds = array_map('intval', $gizliStmt->fetchAll(PDO::FETCH_COLUMN));
+            $hedefKorunanStmt = $UserPermissions->getDb()->prepare(
+                "SELECT urp.permission_id FROM user_role_permissions urp
+                 INNER JOIN permissions p ON p.id = urp.permission_id
+                 WHERE urp.role_id = ? AND p.superadmin = 1"
+            );
+            $hedefKorunanStmt->execute([$targetRoleID]);
+            $sourcePermissions = array_values(array_unique(array_merge(
+                array_diff(array_map('intval', $sourcePermissions), $gizliIds),
+                array_map('intval', $hedefKorunanStmt->fetchAll(PDO::FETCH_COLUMN))
+            )));
+        }
 
         // Hedef role kopyala
         $UserPermissions->syncUserPermissions($targetRoleID, $sourcePermissions);

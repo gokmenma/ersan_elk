@@ -3990,3 +3990,10 @@
 
 ## Yönetici mobil (mobile-spa) evrak OCR
 - `src/services/evrak-ocr.js` (pdf.js metin katmanı, yoksa Tesseract) + EvrakView.vue formunda "Evraktan Otomatik Doldur" paneli; Tesseract dosyaları `mobile-spa/public/ocr/` altında (dist kökünde /ocr/). Dist yeniden derlendi.
+
+## Giden evrak: Karşı Kurum Evrak No
+- İmzalı giden evrakın içeriğine dokunmadan karşı kurumun verdiği evrak no + açıklama ayrı sütunlarda (`evrak_takip.karsi_evrak_no/karsi_evrak_aciklama`) tutulur; her değişiklik `evrak_tarihce` (islem=karsi_no_guncellendi) ve sistem loguna yazılır. Yetki: `evrak-takip/karsi-evrak-no` (süper admin/firma sahibine otomatik). SQL: sql/2026_11_12_giden_evrak_karsi_kurum_no.sql (çalıştırılmalı). Masaüstü: liste işlem menüsü + modal/karsi-no-modal.php; mobil: EvrakView detay çekmecesi, API karsi-no-kaydet.
+- Karşı kurum evrak tarihi (opsiyonel, `karsi_evrak_tarihi` DATE) eklendi; SQL: sql/2026_11_12_giden_evrak_karsi_kurum_tarihi.sql. Masaüstü modal + liste hücresi + mobil çekmece/API güncellendi.
+
+## E-Fatura / Cari izolasyonu
+- E-Fatura ve Cari yetkileri yalnızca Süper Admin/Firma Sahibi rollerine ayrıldı (`permissions.superadmin=1`, politikalar `superadmin_only=1`, diğer rol atamaları silinir). SQL: sql/2026_11_12_efatura_cari_superadmin_izolasyonu.sql (çalıştırılmalı). views/kullanici-gruplari/api.php kaydet/kopyala akışı süper admin olmayan kullanıcıda gizli yetkileri korur/taşımaz.

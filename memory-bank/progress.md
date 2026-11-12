@@ -2337,3 +2337,6 @@
 - [x] Evrak trafik cezası: mobil SPA tutar ayrıştırma hatası (x100) giderildi, kesilecek tutar etiketi netleştirildi.
 - [x] Evrak modalı OCR ile doldurma (PDF metin katmanı + OCR yedek) örnek tutanakla tarayıcıda doğrulandı.
 - [x] Yönetici mobil evrak formuna yerel OCR ile otomatik doldurma eklendi (dist derlendi).
+- [x] Giden evrak karşı kurum evrak no (masaüstü + mobil). Yapılmadı: giden-evrak.php detay sayfasında düzenleme, SQL canlıda çalıştırılmalı.
+- [x] Karşı kurum evrak tarihi (masaüstü + mobil); SQL çalıştırıldıktan sonra test edilecek.
+- [x] E-Fatura/Cari süper admin izolasyonu (SQL + grup kaydet/kopyala koruması). SQL canlıda çalıştırılmadı; DB erişimi olmadığından test edilemedi.

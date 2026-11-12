@@ -83,6 +83,19 @@ $decryptId = static function ($value): int {
     return is_numeric($d) ? (int) $d : 0;
 };
 
+$karsiNoYetkisi = Gate::allows('evrak-takip/karsi-evrak-no');
+$karsiNoDuzenlenebilir = static function (object $evrak, string $onayDurumu, int $onayToplam) use ($karsiNoYetkisi): bool {
+    if (!$karsiNoYetkisi || ($evrak->evrak_tipi ?? '') !== 'giden') {
+        return false;
+    }
+    $kepIleti = (($evrak->kaynak_tipi ?? '') === 'kep' || !empty($evrak->kep_mesaj_id))
+        && !(empty($evrak->ust_yazi_gerekli_degil) || $onayToplam > 0);
+    if ($kepIleti) {
+        return false;
+    }
+    return $onayDurumu === 'onaylandi' || (!empty($evrak->ust_yazi_gerekli_degil) && $onayToplam === 0);
+};
+
 $evrakEkMime = static function (string $name, string $mime): string {
     if ($mime !== '' && $mime !== 'application/octet-stream') {
         return $mime;
@@ -460,6 +473,11 @@ try {
                 'plaka' => (string) ($row->plaka ?: ''),
                 'ceza_tutari' => !empty($row->ceza_tutari) ? (float) $row->ceza_tutari : null,
                 'tutar' => !empty($row->tutar) ? (float) $row->tutar : null,
+                'karsi_evrak_no' => (string) ($row->karsi_evrak_no ?? ''),
+                'karsi_evrak_tarihi' => (string) ($row->karsi_evrak_tarihi ?? ''),
+                'karsi_evrak_tarihi_formatted' => !empty($row->karsi_evrak_tarihi) ? date('d.m.Y', strtotime((string) $row->karsi_evrak_tarihi)) : '',
+                'karsi_evrak_aciklama' => (string) ($row->karsi_evrak_aciklama ?? ''),
+                'karsi_no_duzenlenebilir' => $karsiNoDuzenlenebilir($row, (string) $onayDurumu, (int) ($onayInfo['toplam'] ?? 0)),
                 'attachments_count' => $anaEkSayisi,
                 'attachments_teknik_count' => count($attachmentsList) - $anaEkSayisi,
                 'attachments' => $attachmentsList,
@@ -729,6 +747,18 @@ try {
             'plaka' => (string) ($evrak->plaka ?: ''),
             'ceza_tutari' => !empty($evrak->ceza_tutari) ? (float) $evrak->ceza_tutari : null,
             'tutar' => !empty($evrak->tutar) ? (float) $evrak->tutar : null,
+            'karsi_evrak_no' => (string) ($evrak->karsi_evrak_no ?? ''),
+            'karsi_evrak_tarihi' => (string) ($evrak->karsi_evrak_tarihi ?? ''),
+            'karsi_evrak_tarihi_formatted' => !empty($evrak->karsi_evrak_tarihi) ? date('d.m.Y', strtotime((string) $evrak->karsi_evrak_tarihi)) : '',
+            'karsi_evrak_aciklama' => (string) ($evrak->karsi_evrak_aciklama ?? ''),
+            'karsi_no_duzenlenebilir' => $karsiNoDuzenlenebilir($evrak, (string) $onayDurumu, count($approvalSteps)),
+            'karsi_no_gecmis' => ($karsiNoYetkisi && ($evrak->evrak_tipi ?? '') === 'giden')
+                ? array_map(static fn(object $h): array => [
+                    'islem_yapan' => (string) ($h->islem_yapan ?? 'Sistem'),
+                    'aciklama' => (string) ($h->aciklama ?? ''),
+                    'tarih' => $h->created_at ? date('d.m.Y H:i', strtotime((string) $h->created_at)) : '',
+                ], $EvrakModel->getKarsiEvrakNoGecmisi((int) $evrak->id, $firmaId))
+                : [],
             'onay_durumu' => $onayDurumu,
             'sira_bende' => $siraBende,
             'can_revoke' => $canRevoke,
@@ -1122,6 +1152,48 @@ try {
     // -------------------------------------------------------------
     // 7. EVRAK KAYDET / GÜNCELLE (POST save)
     // -------------------------------------------------------------
+    if ($method === 'POST' && $action === 'karsi-no-kaydet') {
+        verifyCsrfToken();
+        if (!$karsiNoYetkisi) {
+            evrakApiResponse(['success' => false, 'message' => 'Karşı kurum evrak numarası girme yetkiniz bulunmuyor.'], 403);
+        }
+        $evrakId = $decryptId($_POST['id'] ?? '');
+        $evrak = $evrakId > 0 ? $EvrakModel->getById($evrakId) : false;
+        if (!$evrak || $evrak->evrak_tipi !== 'giden') {
+            evrakApiResponse(['success' => false, 'message' => 'Giden evrak bulunamadı.'], 404);
+        }
+        $onayToplam = count($EvrakModel->getApprovalDetailMap([$evrakId])[$evrakId] ?? []);
+        if (!$karsiNoDuzenlenebilir($evrak, (string) ($evrak->onay_durumu ?? 'taslak'), $onayToplam)) {
+            evrakApiResponse(['success' => false, 'message' => 'Bu evrak için karşı kurum numarası şu an girilemez.'], 422);
+        }
+        $kayit = $EvrakModel->saveKarsiEvrakNo(
+            $evrakId,
+            $firmaId,
+            (string) ($_POST['karsi_evrak_no'] ?? ''),
+            isset($_POST['karsi_evrak_aciklama']) ? (string) $_POST['karsi_evrak_aciklama'] : null,
+            $currentUserId,
+            !empty($_POST['karsi_evrak_tarihi']) ? Date::Ymd((string) $_POST['karsi_evrak_tarihi']) : null
+        );
+        if ($kayit['degisti']) {
+            (new SystemLogModel())->logAction(
+                $currentUserId,
+                'Karşı Kurum Evrak No Güncellendi',
+                "Evrak ID: {$evrakId}, Karşı Kurum No: " . $kayit['karsi_evrak_no'],
+                SystemLogModel::LEVEL_INFO
+            );
+        }
+        evrakApiResponse([
+            'success' => true,
+            'message' => $kayit['degisti'] ? 'Karşı kurum evrak numarası kaydedildi.' : 'Değişiklik yok.',
+            'data' => [
+                'karsi_evrak_no' => $kayit['karsi_evrak_no'],
+                'karsi_evrak_tarihi' => (string) ($kayit['karsi_evrak_tarihi'] ?? ''),
+                'karsi_evrak_tarihi_formatted' => !empty($kayit['karsi_evrak_tarihi']) ? date('d.m.Y', strtotime((string) $kayit['karsi_evrak_tarihi'])) : '',
+                'karsi_evrak_aciklama' => (string) ($kayit['karsi_evrak_aciklama'] ?? ''),
+            ],
+        ]);
+    }
+
     if ($method === 'POST' && $action === 'personel-ata') {
         verifyCsrfToken();
         if (!Gate::allows('evrak-takip/gelen-evrak')) {

@@ -1241,6 +1241,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $kepSentMap = (new KepMesajModel())->getSentEvrakIdMap((int) $_SESSION['firma_id'], $ids);
                 $canSendKep = Gate::allows('evrak-takip/kep');
                 $canGidenEvrak = Gate::allows('evrak-takip/giden-evrak');
+                $canKarsiNo = Gate::allows('evrak-takip/karsi-evrak-no');
                 $uetsFullAccess = (new \App\Model\EvrakSevkModel())->hasFullAccess();
                 $uetsReadIds = array_flip((new \App\Model\EvrakSevkModel())->readEvrakIds((int) $_SESSION['firma_id'], $currentUserId, $ids));
                 $esc = static fn($value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
@@ -1293,7 +1294,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                     $detailUrl = ($type === 'gelen' || $isKep) ? 'javascript:void(0);' : 'index?p=evrak-takip/giden-evrak&amp;id=' . $esc($encryptedId);
                     $detailClass = $isKep ? ' btn-kep-onizle' : ($type === 'gelen' ? ' evrak-duzenle' : '');
-                    $subjectHtml = '<div class="d-flex flex-column"><a href="' . $detailUrl . '" class="fw-bold text-dark font-size-13 text-decoration-none evrak-konu-text' . $detailClass . '" data-id="' . $esc($encryptedId) . '">' . $esc($evrak->konu ?: '-') . '</a><span class="text-muted font-size-11"><i class="bx bx-hash"></i> ' . $esc($evrak->evrak_no ?: '-') . '</span>' . (($type === 'giden' && !$isKep && empty($evrak->ust_yazi_gerekli_degil)) ? '<button type="button" class="btn btn-sm btn-subtle-danger rounded-pill px-2 py-0 mt-1 align-self-start font-size-11 fw-semibold evrak-pdf-goruntule" data-id="' . $esc($encryptedId) . '" title="Evrakı PDF olarak önizle"><i class="bx bx-file-blank"></i> PDF</button>' : '') . '</div>';
+                    $subjectHtml = '<div class="d-flex flex-column"><a href="' . $detailUrl . '" class="fw-bold text-dark font-size-13 text-decoration-none evrak-konu-text' . $detailClass . '" data-id="' . $esc($encryptedId) . '">' . $esc($evrak->konu ?: '-') . '</a><span class="text-muted font-size-11"><i class="bx bx-hash"></i> ' . $esc($evrak->evrak_no ?: '-') . '</span>' . (($type === 'giden' && !empty($evrak->karsi_evrak_no)) ? '<span class="text-success font-size-11 fw-semibold" title="' . $esc($evrak->karsi_evrak_aciklama ?? '') . '"><i class="bx bx-link-alt"></i> Karşı No: ' . $esc($evrak->karsi_evrak_no) . (!empty($evrak->karsi_evrak_tarihi) ? ' (' . date('d.m.Y', strtotime((string) $evrak->karsi_evrak_tarihi)) . ')' : '') . '</span>' : '') . (($type === 'giden' && !$isKep && empty($evrak->ust_yazi_gerekli_degil)) ? '<button type="button" class="btn btn-sm btn-subtle-danger rounded-pill px-2 py-0 mt-1 align-self-start font-size-11 fw-semibold evrak-pdf-goruntule" data-id="' . $esc($encryptedId) . '" title="Evrakı PDF olarak önizle"><i class="bx bx-file-blank"></i> PDF</button>' : '') . '</div>';
                     $personHtml = static function ($name, $personId, $kind, $lastDate, $encryptedId, $esc): string {
                         if (empty($name)) return '<span class="text-muted small">-</span>';
                         return '<div class="d-flex align-items-center"><span class="font-size-12 fw-semibold text-dark text-truncate" style="max-width:130px">' . $esc($name) . '</span><button type="button" class="btn btn-link text-primary p-0 ms-1 evrak-bildir-manuel" data-id="' . $esc($encryptedId) . '" data-personel-id="' . (int) $personId . '" data-type="' . $esc($kind) . '" data-last-notified="' . $esc($lastDate) . '" title="Bildirim ve Mail Gönder"><i class="bx bx-bell font-size-14"></i></button></div>';
@@ -1339,6 +1340,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                     if ($type === 'gelen' && $canGidenEvrak) {
                         $actionItems .= '<a href="index?p=evrak-takip/giden-evrak&amp;cevap_id=' . $esc($encryptedId) . '" class="dropdown-item d-flex align-items-center gap-2" title="Cevap Yaz"><i class="bx bx-reply text-success"></i><span>Cevap Yaz</span></a>';
+                    }
+                    if ($type === 'giden' && !$isKep && $canKarsiNo && ($approvalStatus === 'onaylandi' || !$hasApprovalFlow)) {
+                        $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-karsi-no" data-id="' . $esc($encryptedId) . '" title="Karşı Kurum Evrak No"><i class="bx bx-link-alt text-success"></i><span>' . (empty($evrak->karsi_evrak_no) ? 'Karşı Kurum No Gir' : 'Karşı Kurum No Düzenle') . '</span></button>';
                     }
                     if ($kepSent) $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 btn-kep-onizle-menu" data-id="' . $esc($encryptedId) . '" title="KEP İletisi ve Delil Önizleme"><i class="bx bx-mail-send text-primary"></i><span>KEP İletisi ve Delil Önizleme</span></button>';
                     if (\App\Model\EvrakSevkModel::isRestricted($evrak)) {
@@ -1799,6 +1803,51 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'goruldu' => $r->goruldu_at ? date('d.m.Y H:i:s', strtotime($r->goruldu_at)) : '',
                     'iletildi' => $r->iletildi_at ? date('d.m.Y H:i:s', strtotime($r->iletildi_at)) : '',
                 ], $chain)], JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'evrak-karsi-no-getir':
+                $evrakId = $decryptId((string) ($_POST['id'] ?? ''));
+                $evrak = $evrakId > 0 ? $Model->getById($evrakId) : null;
+                if (!$evrak || ($evrak->evrak_tipi ?? '') !== 'giden') {
+                    throw new Exception('Giden evrak bulunamadı.');
+                }
+                echo json_encode(['status' => 'success', 'data' => [
+                    'konu' => (string) ($evrak->konu ?? ''),
+                    'kurum_adi' => (string) ($evrak->kurum_adi ?? ''),
+                    'evrak_no' => (string) ($evrak->evrak_no ?? ''),
+                    'karsi_evrak_no' => (string) ($evrak->karsi_evrak_no ?? ''),
+                    'karsi_evrak_tarihi' => !empty($evrak->karsi_evrak_tarihi) ? date('d.m.Y', strtotime((string) $evrak->karsi_evrak_tarihi)) : '',
+                    'karsi_evrak_aciklama' => (string) ($evrak->karsi_evrak_aciklama ?? ''),
+                    'gecmis' => array_map(static fn(object $r): array => [
+                        'islem_yapan' => (string) ($r->islem_yapan ?? 'Sistem'),
+                        'aciklama' => (string) ($r->aciklama ?? ''),
+                        'tarih' => $r->created_at ? date('d.m.Y H:i', strtotime($r->created_at)) : '',
+                    ], $Model->getKarsiEvrakNoGecmisi($evrakId, (int) $_SESSION['firma_id'])),
+                ]], JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'evrak-karsi-no-kaydet':
+                $evrakId = $decryptId((string) ($_POST['id'] ?? ''));
+                if ($evrakId <= 0 || !$Model->getById($evrakId)) {
+                    throw new Exception('Evrak bulunamadı.');
+                }
+                $kayit = $Model->saveKarsiEvrakNo(
+                    $evrakId,
+                    (int) $_SESSION['firma_id'],
+                    (string) ($_POST['karsi_evrak_no'] ?? ''),
+                    isset($_POST['karsi_evrak_aciklama']) ? (string) $_POST['karsi_evrak_aciklama'] : null,
+                    $currentUserId,
+                    !empty($_POST['karsi_evrak_tarihi']) ? Date::Ymd((string) $_POST['karsi_evrak_tarihi']) : null
+                );
+                if ($kayit['degisti']) {
+                    (new SystemLogModel())->logAction(
+                        $currentUserId,
+                        'Karşı Kurum Evrak No Güncellendi',
+                        "Evrak ID: {$evrakId}, Karşı Kurum No: " . $kayit['karsi_evrak_no'],
+                        SystemLogModel::LEVEL_INFO
+                    );
+                }
+                echo json_encode(['status' => 'success', 'message' => $kayit['degisti'] ? 'Karşı kurum evrak numarası kaydedildi.' : 'Değişiklik yok.', 'data' => $kayit], JSON_UNESCAPED_UNICODE);
                 break;
 
             case 'evrak-tarihce':
