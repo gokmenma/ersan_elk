@@ -4000,3 +4000,4 @@
 
 ## Cevap Yaz: gelen evrakı yapay zekâ ile otomatik okuma
 - `giden-evrak?cevap_id=` sayfasında cevaplanan gelen evrakın dosyası varsa "Yapay Zekâ ile Oluştur" modalı otomatik açılır ve belge elle yüklenmeden okunur. `EvrakTakipModel::getAiKaynakDosya()` yetki/firma/yol denetimiyle dosyayı çözer (şifreliyse açar); `views/evrak-takip/ai-taslak.php` geçici dosyaya yazıp `EvrakAiTaslakService::create()`'e verir ve siler. Çağrı yalnızca "Taslağı Oluştur" butonuyla yapılır, taslak kaydedilmez. SQL gerekmez.
+- Cevap Yaz AI düzeltmesi: gelen evrak ekleri çoğunlukla e-imzalı PKCS#7 (DER `30 82/83`) paketidir; PDF içine gömülü durur ve finfo `application/octet-stream` döner. `EvrakTakipModel::imzaliPaketPdfCikar()` `%PDF-`…`%%EOF` aralığını çıkarıp PDF olarak AI'ya verir.

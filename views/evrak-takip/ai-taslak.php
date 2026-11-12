@@ -36,9 +36,10 @@ try {
     $tmpPath = null;
     $gelenParam = (string) ($_POST['gelen_evrak_id'] ?? '');
     if (empty($file['tmp_name']) && $gelenParam !== '') {
-        $kaynak = (new EvrakTakipModel())->getAiKaynakDosya((int) Security::decrypt($gelenParam));
+        $evrakModel = new EvrakTakipModel();
+        $kaynak = $evrakModel->getAiKaynakDosya((int) Security::decrypt($gelenParam));
         if (!$kaynak) {
-            throw new Exception('Gelen evrakın okunabilir bir dosyası bulunamadı. Dosyayı elle yükleyin.');
+            throw new Exception($evrakModel->aiKaynakHatasi);
         }
         $tmpPath = tempnam(sys_get_temp_dir(), 'evrakai_');
         file_put_contents($tmpPath, $kaynak['icerik']);

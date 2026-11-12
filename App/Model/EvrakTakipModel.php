@@ -995,8 +995,12 @@ class EvrakTakipModel extends Model
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
+    public string $aiKaynakHatasi = '';
+
     public function getAiKaynakDosya(int $evrakId): ?array
     {
+        $this->aiKaynakHatasi = 'Gelen evrakın okunabilir bir dosyası bulunamadı. Dosyayı elle yükleyin.';
+        $diskteYok = 0;
         $evrak = $evrakId > 0 ? $this->getById($evrakId) : false;
         if (!$evrak || ($evrak->evrak_tipi ?? '') !== 'gelen') {
             return null;
@@ -1018,7 +1022,11 @@ class EvrakTakipModel extends Model
                 continue;
             }
             $gercek = realpath(dirname(__DIR__, 2) . '/' . $yol);
-            if (!$gercek || !is_file($gercek) || !str_starts_with($gercek, $kok . DIRECTORY_SEPARATOR)
+            if (!$gercek || !is_file($gercek)) {
+                $diskteYok++;
+                continue;
+            }
+            if (!str_starts_with($gercek, $kok . DIRECTORY_SEPARATOR)
                 || !$this->fileBelongsToFirm($yol, $firmaId) || !$sevk->canViewFilePath($yol, $firmaId)) {
                 continue;
             }
@@ -1029,11 +1037,35 @@ class EvrakTakipModel extends Model
                 $icerik = $ham;
             }
             $mime = (string) (new \finfo(FILEINFO_MIME_TYPE))->buffer($icerik);
+            if (!in_array($mime, $izinli, true)) {
+                $gomulu = $this->imzaliPaketPdfCikar($icerik);
+                if ($gomulu !== null) {
+                    $icerik = $gomulu;
+                    $mime = 'application/pdf';
+                }
+            }
             if (in_array($mime, $izinli, true)) {
                 return ['icerik' => $icerik, 'mime' => $mime, 'ad' => $aday['ad']];
             }
         }
+        if ($diskteYok > 0 && $diskteYok === count($adaylar)) {
+            $this->aiKaynakHatasi = 'Evrakın dosyası sunucuda (uploads klasöründe) bulunamadı. Dosyayı elle yükleyin.';
+        }
         return null;
+    }
+
+    private function imzaliPaketPdfCikar(string $icerik): ?string
+    {
+        if ($icerik === '' || $icerik[0] !== "\x30") {
+            return null;
+        }
+        $baslangic = strpos($icerik, '%PDF-');
+        $bitis = strrpos($icerik, '%%EOF');
+        if ($baslangic === false || $bitis === false || $bitis <= $baslangic) {
+            return null;
+        }
+        $pdf = substr($icerik, $baslangic, $bitis + 5 - $baslangic);
+        return (new \finfo(FILEINFO_MIME_TYPE))->buffer($pdf) === 'application/pdf' ? $pdf : null;
     }
 
     public static function fileUrl(string $path, string $name = ''): string

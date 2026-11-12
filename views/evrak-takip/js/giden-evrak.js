@@ -506,6 +506,19 @@ $(document).ready(function () {
     });
   });
 
+  $("#evrakAiModal, #icraUstYaziModal").appendTo("body");
+
+  $("#evrakAiModal").on("shown.bs.modal", function () {
+    const modal = this;
+    const katmanla = function () {
+      const backdrops = $(".modal-backdrop");
+      backdrops.not(":last").remove();
+      const zIndex = backdrops.length ? parseInt($(".modal-backdrop").last().css("z-index"), 10) || 1050 : 1050;
+      modal.style.setProperty("z-index", String(zIndex + 20), "important");
+    };
+    [0, 60, 200, 400].forEach(function (ms) { setTimeout(katmanla, ms); });
+  });
+
   $("#btnAiTaslakAc").on("click", function () {
     $("#evrakAiModal").modal("show");
   });
@@ -560,7 +573,8 @@ $(document).ready(function () {
 
   const requestedTool = new URLSearchParams(window.location.search).get("arac");
   if (requestedTool === "ai" || $("#aiOtomatikGelen").length) {
-    $("#btnAiTaslakAc").trigger("click");
+    const aiAc = function () { setTimeout(function () { $("#btnAiTaslakAc").trigger("click"); }, 350); };
+    if (document.readyState === "complete") aiAc(); else $(window).one("load", aiAc);
   } else if (requestedTool === "icra") {
     $("#btnIcraUstYaziAc").trigger("click");
   }
