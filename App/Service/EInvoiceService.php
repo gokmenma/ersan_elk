@@ -310,7 +310,7 @@ class EInvoiceService
                             libxml_clear_errors();
                             libxml_use_internal_errors($prevErrorHandling);
                             if (!empty($transformedHtml)) {
-                                return self::decodeEmbeddedHtmlTags($transformedHtml);
+                                return self::fitXsltHtmlToPage(self::decodeEmbeddedHtmlTags($transformedHtml));
                             }
                         }
                     }
@@ -440,7 +440,7 @@ class EInvoiceService
             try {
                 $edmHtml = $this->client($firmId)->getInvoiceHtml($invoice['ettn'], $invoice['yon'] === 'GELEN' ? 'IN' : 'OUT');
                 if (!empty($edmHtml) && (str_contains($edmHtml, '<html') || str_contains($edmHtml, '<table') || str_contains($edmHtml, '<div'))) {
-                    return self::decodeEmbeddedHtmlTags($edmHtml);
+                    return self::fitXsltHtmlToPage(self::decodeEmbeddedHtmlTags($edmHtml));
                 }
             } catch (\Throwable $e) {
                 // EDM'den alınamazsa yerel kurumsal şablon ile devam et
@@ -1322,6 +1322,27 @@ class EInvoiceService
         $cleaned = strip_tags($cleaned, $allowedTags);
 
         return trim($cleaned);
+    }
+
+    public static function fitXsltHtmlToPage(string $html): string
+    {
+        if ($html === '' || !str_contains($html, 'lineTableTr')) {
+            return $html;
+        }
+
+        $html = preg_replace_callback('#<tr\s+class="lineTableTr"[^>]*>(.*?)</tr>#is', function ($m) {
+            $metin = html_entity_decode(strip_tags($m[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $metin = preg_replace('/[\s\x{00A0}]+/u', '', $metin);
+            return $metin === '' ? '' : $m[0];
+        }, $html) ?? $html;
+
+        $html = preg_replace('#(<div[^>]*style="[^"]*?)height:\s*\d+pt;?#i', '$1min-height:0;', $html, 1) ?? $html;
+
+        $css = '<style type="text/css">@page{size:A4 portrait;margin:6mm 8mm}@media print{body{margin:0!important;padding:0!important}#budgetContainerTable,#lineTable{page-break-inside:avoid}}</style>';
+        if (stripos($html, '</head>') !== false) {
+            return preg_replace('#</head>#i', $css . '</head>', $html, 1) ?? $html;
+        }
+        return $css . $html;
     }
 
     /**
