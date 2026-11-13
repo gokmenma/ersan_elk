@@ -14,6 +14,12 @@ final class RichTextSanitizer
         'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'a', 'hr'
     ];
 
+    private const DROPPED_TAGS = [
+        'script', 'style', 'iframe', 'object', 'embed', 'form', 'input', 'button',
+        'textarea', 'select', 'noscript', 'svg', 'math', 'img', 'video', 'audio',
+        'link', 'meta', 'head', 'title', 'template'
+    ];
+
     private const ALLOWED_ATTRIBUTES = ['href', 'title', 'target', 'style', 'colspan', 'rowspan'];
 
     public static function sanitize(?string $html): string
@@ -57,6 +63,15 @@ final class RichTextSanitizer
             if ($node instanceof DOMElement) {
                 $tag = strtolower($node->tagName);
                 if (!in_array($tag, self::ALLOWED_TAGS, true)) {
+                    if (!in_array($tag, self::DROPPED_TAGS, true)) {
+                        $first = $node->firstChild;
+                        while ($node->firstChild !== null) {
+                            $parent->insertBefore($node->firstChild, $node);
+                        }
+                        $parent->removeChild($node);
+                        $node = $first ?? $next;
+                        continue;
+                    }
                     $parent->removeChild($node);
                     $node = $next;
                     continue;
@@ -110,6 +125,9 @@ final class RichTextSanitizer
                     } elseif (stripos($value, 'times new roman') !== false || stripos($value, 'times') !== false) {
                         $safe['font-family'] = 'Times New Roman';
                     }
+                    continue;
+                }
+                if ($property === 'color' && preg_match('/^(#f[0-9a-f]{2}[0-9a-f]{0,3}|#fff(fff)?|white|rgba?\(\s*2[3-5]\d\s*,\s*2[3-5]\d\s*,\s*2[3-5]\d.*)$/i', $value)) {
                     continue;
                 }
                 $safe[$property] = $value;
