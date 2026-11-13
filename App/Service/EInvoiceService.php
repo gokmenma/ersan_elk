@@ -1330,10 +1330,29 @@ class EInvoiceService
             return $html;
         }
 
-        $html = preg_replace_callback('#<tr\s+class="lineTableTr"[^>]*>(.*?)</tr>#is', function ($m) {
-            $metin = html_entity_decode(strip_tags($m[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-            $metin = preg_replace('/[\s\x{00A0}]+/u', '', $metin);
-            return $metin === '' ? '' : $m[0];
+        $bosMu = static function (string $satir): bool {
+            $metin = html_entity_decode(strip_tags($satir), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            return preg_replace('/[\s\x{00A0}]+/u', '', $metin) === '';
+        };
+        $minSatir = 5;
+        $dolu = 0;
+        preg_match_all('#<tr\s+class="lineTableTr"[^>]*>(.*?)</tr>#is', $html, $tum);
+        foreach ($tum[1] as $i => $icerik) {
+            if ($i > 0 && !$bosMu($icerik)) {
+                $dolu++;
+            }
+        }
+        $korunacakBos = max(0, $minSatir - $dolu);
+
+        $html = preg_replace_callback('#<tr\s+class="lineTableTr"[^>]*>(.*?)</tr>#is', function ($m) use ($bosMu, &$korunacakBos) {
+            if (!$bosMu($m[1])) {
+                return $m[0];
+            }
+            if ($korunacakBos > 0) {
+                $korunacakBos--;
+                return str_replace('<tr class="lineTableTr"', '<tr class="lineTableTr" style="height:22px"', $m[0]);
+            }
+            return '';
         }, $html) ?? $html;
 
         $html = preg_replace('#(<div[^>]*style="[^"]*?)height:\s*\d+pt;?#i', '$1min-height:0;', $html, 1) ?? $html;
