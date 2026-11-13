@@ -89,6 +89,11 @@ class FirmaModel extends Model
             $out['logo_yolu'] = (string) $data['logo_yolu'];
         }
         $out['firma_iban'] = (string) ($data['firma_iban'] ?? '');
+        foreach (['il', 'ilce', 'ulke', 'email', 'fax'] as $ekAlan) {
+            if (array_key_exists($ekAlan, $data)) {
+                $out[$ekAlan] = trim((string) $data[$ekAlan]);
+            }
+        }
 
         if (isset($data['id']) && (int) $data['id'] > 0) {
             $out['id'] = (int) $data['id'];
@@ -109,6 +114,164 @@ class FirmaModel extends Model
         }
 
         return $this->saveWithAttr($normalized);
+    }
+
+    /** Kullanıcının erişebileceği firma kimlikleri; null tüm firmalar anlamına gelir */
+    public function izinliFirmaIdleri(int $userId): ?array
+    {
+        $stmt = $this->db->prepare("SELECT firma_ids FROM users WHERE id = :id");
+        $stmt->execute(['id' => $userId]);
+        $raw = trim((string) $stmt->fetchColumn());
+        if ($raw === '') {
+            return null;
+        }
+        $ids = array_values(array_unique(array_filter(array_map('intval', explode(',', $raw)), fn($v) => $v > 0)));
+        return $ids === [] ? null : $ids;
+    }
+
+    private function yonetimKapsami(?array $izinliIds, string $alias = 'f'): array
+    {
+        $where = "{$alias}.silinme_tarihi IS NULL";
+        $bind = [];
+        if ($izinliIds !== null) {
+            $ph = [];
+            foreach ($izinliIds as $i => $id) {
+                $ph[] = ":izin_{$i}";
+                $bind["izin_{$i}"] = (int) $id;
+            }
+            $where .= $ph === [] ? " AND 1 = 0" : " AND {$alias}.id IN (" . implode(',', $ph) . ")";
+        }
+        return [$where, $bind];
+    }
+
+    private function eksikBilgiSql(): string
+    {
+        $bos = fn(string $c) => "(f.{$c} IS NULL OR TRIM(f.{$c}) = '' OR TRIM(f.{$c}) = '0')";
+        return implode(' OR ', array_map($bos, ['vergi_no', 'vergi_dairesi', 'telefon', 'adres', 'email', 'il', 'ilce']));
+    }
+
+    public function getForYonetim(int $id, ?array $izinliIds): ?array
+    {
+        [$where, $bind] = $this->yonetimKapsami($izinliIds);
+        $stmt = $this->db->prepare("SELECT f.* FROM {$this->table} f WHERE {$where} AND f.id = :id LIMIT 1");
+        $stmt->execute($bind + ['id' => $id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
+    }
+
+    public function ajaxList(array $params, ?array $izinliIds): array
+    {
+        $draw = (int) ($params['draw'] ?? 1);
+        $start = max(0, (int) ($params['start'] ?? 0));
+        $length = (int) ($params['length'] ?? 25);
+        $length = $length < 1 ? 25 : min($length, 500);
+        $search = trim((string) ($params['search']['value'] ?? ''));
+
+        [$scope, $scopeBind] = $this->yonetimKapsami($izinliIds);
+        $where = $scope;
+        $bind = $scopeBind;
+
+        $durum = (string) ($params['status_filter'] ?? 'all');
+        if ($durum === 'varsayilan') {
+            $where .= ' AND f.varsayilan_mi = 1';
+        } elseif ($durum === 'eksik') {
+            $where .= ' AND (' . $this->eksikBilgiSql() . ')';
+        } elseif ($durum === 'tam') {
+            $where .= ' AND NOT (' . $this->eksikBilgiSql() . ')';
+        }
+
+        if ($search !== '') {
+            $where .= ' AND (f.firma_adi LIKE :search OR f.firma_unvan LIKE :search OR f.vergi_no LIKE :search OR f.telefon LIKE :search OR f.email LIKE :search OR f.firma_kodu LIKE :search)';
+            $bind['search'] = "%{$search}%";
+        }
+
+        $colMap = [
+            0 => 'f.firma_adi',
+            1 => 'f.firma_unvan',
+            2 => 'f.vergi_no',
+            3 => 'f.vergi_dairesi',
+            4 => 'f.telefon',
+            5 => 'f.email',
+            6 => 'f.il',
+        ];
+        foreach (($params['columns'] ?? []) as $i => $column) {
+            $val = trim((string) ($column['search']['value'] ?? ''));
+            if ($val === '' || !isset($colMap[(int) $i])) {
+                continue;
+            }
+            if (strpos($val, ':') !== false) {
+                [, $val] = explode(':', $val, 2);
+                $val = trim(explode('|', $val)[0]);
+                if ($val === '') {
+                    continue;
+                }
+            }
+            $name = 'col_' . (int) $i;
+            $where .= " AND {$colMap[(int) $i]} LIKE :{$name}";
+            $bind[$name] = "%{$val}%";
+        }
+
+        $total = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} f WHERE {$scope}");
+        $total->execute($scopeBind);
+        $recordsTotal = (int) $total->fetchColumn();
+
+        $filtered = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} f WHERE {$where}");
+        $filtered->execute($bind);
+        $recordsFiltered = (int) $filtered->fetchColumn();
+
+        $orderIdx = (int) ($params['order'][0]['column'] ?? 0);
+        $orderDir = strtoupper((string) ($params['order'][0]['dir'] ?? 'ASC')) === 'DESC' ? 'DESC' : 'ASC';
+        $orderBy = $colMap[$orderIdx] ?? 'f.firma_adi';
+
+        $stmt = $this->db->prepare(
+            "SELECT f.id, f.firma_adi, f.firma_kodu, f.firma_unvan, f.vergi_no, f.vergi_dairesi, f.telefon,
+                    f.email, f.il, f.ilce, f.adres, f.varsayilan_mi, f.logo_yolu, f.firma_iban
+             FROM {$this->table} f WHERE {$where} ORDER BY {$orderBy} {$orderDir}, f.id ASC LIMIT :start, :length"
+        );
+        foreach ($bind as $k => $v) {
+            $stmt->bindValue($k, $v);
+        }
+        $stmt->bindValue('start', $start, PDO::PARAM_INT);
+        $stmt->bindValue('length', $length, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $data = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $row['enc_id'] = Security::encrypt((string) $row['id']);
+            unset($row['id']);
+            $data[] = $row;
+        }
+
+        return [
+            'draw' => $draw,
+            'recordsTotal' => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ];
+    }
+
+    public function summary(?array $izinliIds): object
+    {
+        [$scope, $bind] = $this->yonetimKapsami($izinliIds);
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(*) AS toplam,
+                    SUM(CASE WHEN f.varsayilan_mi = 1 THEN 1 ELSE 0 END) AS varsayilan,
+                    SUM(CASE WHEN (" . $this->eksikBilgiSql() . ") THEN 1 ELSE 0 END) AS eksik,
+                    SUM(CASE WHEN f.logo_yolu IS NOT NULL AND f.logo_yolu <> '' THEN 1 ELSE 0 END) AS logolu
+             FROM {$this->table} f WHERE {$scope}"
+        );
+        $stmt->execute($bind);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        $toplam = (int) ($row['toplam'] ?? 0);
+        $eksik = (int) ($row['eksik'] ?? 0);
+
+        return (object) [
+            'toplam' => $toplam,
+            'varsayilan' => (int) ($row['varsayilan'] ?? 0),
+            'eksik' => $eksik,
+            'tam' => $toplam - $eksik,
+            'logolu' => (int) ($row['logolu'] ?? 0),
+        ];
     }
 
     /** Firma get (id) */

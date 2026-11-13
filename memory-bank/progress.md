@@ -2345,3 +2345,4 @@
 - [x] Mobil SPA iade faturası kesme (fatura kartı + önizleme; kaynak fatura kalemleriyle taslak). dist yeniden derlendi.
 
 - [x] Mobil SPA Operasyonlar kartı "Dönem" sekmesi: sözleşme hedefi/yapılan/kalan/oran (2026-11-13)
+- [x] Firma Yönetimi sayfası (Yönetim menüsü, yetki+menü SQL'i). Yerelde tarayıcıyla liste/özet/düzenleme modalı doğrulandı; kaydet/sil/varsayılan yap ve yetkisiz kullanıcı akışı denenmedi, SQL canlıda çalıştırılmalı.

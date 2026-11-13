@@ -184,6 +184,7 @@ if ($page == "hakedisler/hakedis-detay") {
     strpos($page, "efatura/") === 0 ||
     $page == "menu-yonetimi/list" ||
     $page == "yedekleme/list" ||
+    $page == "firma-yonetimi/list" ||
     $page == "dosya-yonetimi/list"
 ) { ?>
 

@@ -4019,3 +4019,8 @@
 - Mobil `FaturaView.vue`: gelen/giden fatura kartında ve önizleme başlığında "İade Faturası Kes" (Undo2) butonu; yalnız `invoice_create` yetkisi, taslak/iptal/iade olmayan faturalarda.
 - `mobile-spa/public/api/fatura.php`: yeni `return_draft` aksiyonu (`efatura/olustur` + görüntüleme yetkisi); `EInvoiceModel::getIncomingInvoiceForReturn(..., $anyDirection)` GIDEN'i de destekler.
 - `save_draft` mobil alanları normalize eder (senaryo→fatura_profili, seri→seri_no, saat, aciklama→urun_hizmet_adi); sihirbaz adım 2'de iade edilen fatura no/tarih alanları.
+
+## 2026-11-13 — Firma Yönetimi sayfası (Yönetim grubu)
+- `views/firma-yonetimi/list.php` + `api.php`: firma kartı listesi (DataTables, KPI kartları), ekle/düzenle modalı (Genel & Vergi, Adres & İletişim, Logo & IBAN), varsayılan yap, soft delete. Kullanıcının `users.firma_ids` kapsamıyla sınırlı (boşsa tümü); yeni firma yalnız kapsamsız kullanıcıya açık.
+- `FirmaModel`: `ajaxList`, `summary`, `getForYonetim`, `izinliFirmaIdleri`; `normalizeSaveData` yeni alanları (il, ilce, ulke, email, fax) yalnız istekte geliyorsa yazar (firma-secim.php bozulmaz).
+- Yetki `firma-yonetimi/list` (sayfa + API politikaları, Süper Admin rollerine otomatik atanır). SQL: sql/2026_11_13_firma_yonetimi.sql (`firmalar` tablosuna il/ilce/ulke/email/fax kolonları da ekler; yerelde çalıştırıldı, canlıda çalıştırılmalı). E-Fatura `supplier()` bu kolonları zaten okuyordu.
