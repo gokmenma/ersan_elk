@@ -558,7 +558,7 @@ class EInvoiceModel extends Model
                 'alici_unvan', 'alici_vkn_tckn', 'fatura_tarihi', 'odenecek_tutar',
                 'satir_toplami', 'kdv_matrahi', 'hesaplanan_kdv', 'tevkifat_tutari',
                 'fatura_profili', 'fatura_tipi', 'belge_turu', 'edm_durum', 'zarf_id',
-                'earsiv_rapor_durum', 'earsiv_rapor_aciklama', 'earsiv_iptal_rapor_durum', 'earsiv_iptal_rapor_aciklama', 'islem_belirsiz'
+                'alici_posta_kutusu', 'earsiv_rapor_durum', 'earsiv_rapor_aciklama', 'earsiv_iptal_rapor_durum', 'earsiv_iptal_rapor_aciklama', 'islem_belirsiz'
             ];
 
             foreach ($allowed as $field) {

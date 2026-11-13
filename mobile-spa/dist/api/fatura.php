@@ -529,6 +529,19 @@ try {
             faturaApiResponse(['success' => false, 'message' => 'Geçersiz fatura kimliği.'], 400);
         }
 
+        $draftForSend = $invoiceModel->getInvoiceById($invoiceId, $firmId);
+        if ($draftForSend && ($draftForSend['belge_turu'] ?? '') === 'EFATURA' && trim((string)($draftForSend['alici_posta_kutusu'] ?? '')) === '') {
+            $receiver = $invoiceService->checkTaxpayer($firmId, (string)$draftForSend['alici_vkn_tckn']);
+            $defaultAlias = trim((string)($receiver['default_alias'] ?? ''));
+            if (!empty($receiver['is_einvoice_user']) && $defaultAlias !== '') {
+                $invoiceModel->updateInvoiceStatus($invoiceId, $firmId, ['alici_posta_kutusu' => $defaultAlias]);
+            } elseif (empty($receiver['is_einvoice_user'])) {
+                faturaApiResponse(['success' => false, 'message' => 'Alıcı GİB e-Fatura mükellefi değil. Faturayı E-Arşiv olarak düzenleyin.'], 422);
+            } else {
+                faturaApiResponse(['success' => false, 'message' => 'Alıcının aktif bir e-Fatura posta kutusu (PK) etiketi bulunamadı.'], 422);
+            }
+        }
+
         $sendRes = $invoiceService->sendInvoice($invoiceId, $firmId);
         if ($sendRes['success']) {
             faturaApiResponse([

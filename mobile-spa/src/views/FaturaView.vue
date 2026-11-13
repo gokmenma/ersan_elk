@@ -58,6 +58,7 @@ import {
   setFaturaTab,
 } from '../services/fatura.js'
 import { auth } from '../services/auth.js'
+import Swal from 'sweetalert2'
 import TopBar from '../components/TopBar.vue'
 
 const router = useRouter()
@@ -784,9 +785,18 @@ async function submitCommercialResponse() {
 // TASLAK İŞLEMLERİ (GÖNDER / SİL)
 // ----------------------------------------------------
 async function sendDraft(inv) {
-  if (!confirm(`"${inv.alici_unvan || 'Taslak'}" faturası EDM ve GİB sistemine iletilecektir. Onaylıyor musunuz?`)) {
-    return
-  }
+  const confirmation = await Swal.fire({
+    title: 'Fatura GİB\'e gönderilsin mi?',
+    text: `"${inv.alici_unvan || 'Taslak'}" faturası EDM ve GİB sistemine iletilecektir.`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#059669',
+    cancelButtonColor: '#64748b',
+    confirmButtonText: 'Evet, Gönder',
+    cancelButtonText: 'Vazgeç',
+    reverseButtons: true,
+  })
+  if (!confirmation.isConfirmed) return
 
   showToast('EDM sistemine iletiliyor...', 'success')
   try {
@@ -801,9 +811,18 @@ async function sendDraft(inv) {
 }
 
 async function deleteDraft(inv) {
-  if (!confirm(`Bu taslak faturayı silmek istediğinizden emin misiniz?`)) {
-    return
-  }
+  const confirmation = await Swal.fire({
+    title: 'Taslak silinsin mi?',
+    text: 'Bu taslak fatura silinecek.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#ef4444',
+    cancelButtonColor: '#64748b',
+    confirmButtonText: 'Evet, Sil',
+    cancelButtonText: 'Vazgeç',
+    reverseButtons: true,
+  })
+  if (!confirmation.isConfirmed) return
 
   try {
     const res = await faturaApi.deleteDraft(inv.encrypted_id, auth.state.csrfToken)
