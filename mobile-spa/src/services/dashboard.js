@@ -115,3 +115,10 @@ export async function syncDailyOperations() {
   return { results, dashboard: freshDashboard }
 }
 
+
+export async function getContractProgress() {
+  const response = await fetch('/api/dashboard.php?section=contract_progress', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+  const payload = await response.json().catch(() => ({ success: false, message: 'Sunucudan geçersiz yanıt alındı.' }))
+  if (!response.ok || !payload.success) throw new Error(payload.message || 'Sözleşme gerçekleşme verileri alınamadı.')
+  return payload.data || {}
+}

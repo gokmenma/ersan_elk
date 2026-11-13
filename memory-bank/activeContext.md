@@ -1,5 +1,13 @@
 # Active Context
 
+## Mobil SPA — Operasyonlar Kartı "Dönem" (Sözleşme Gerçekleşme) Görünümü (2026-11-13)
+- Ana sayfadaki Operasyonlar kartına Gün/Ay yanına **Dönem** sekmesi eklendi; sözleşme süresince hedef, yapılan, kalan ve gerçekleşme oranı gösterilir.
+- Veri kaynağı: aktif `hakedis_sozlesmeler` kaydı; hedef = `hakedis_kalemleri.miktari`, hakediş gerçekleşmesi = taslak olmayan `hakedis_miktarlari` toplamı. Yapılan = hakediş toplamı + son hakediş bitişinden bugüne canlı operasyon sayıları (ay içi + aradaki ayların boşluğu).
+- Kart–poz eşlemesi `MobileDashboardModel::CONTRACT_ITEM_POZ`: reading=KASKİ-01, sealing=KASKİ-03, meter_change=KASKİ-04, cut_open=KASKİ-05, illegal=KASKİ-07. İhbar için sözleşme kalemi yok.
+- API: `mobile-spa/public/api/dashboard.php?section=contract_progress` (yalnızca `puantaj/raporlar` ve `kacak_islemleri` yetkisine göre ilgili anahtarlar döner). Model: `HakedisSozlesmeModel::operasyonHedefleri`, `MobileDashboardModel::contractProgress`.
+- `EndeksOkumaModel/PuantajModel/SayacDegisimModel::getMonthlyStats` (ve `getKacakMonthlyStats`) opsiyonel `$baslangic, $bitis` parametresi aldı (varsayılan: bu ay; geriye uyumlu).
+- Arayüz: `HomeView.vue` (Dönem butonu, ilerleme çubuğu), `design-system.css` (`.op-progress*`, `.op-contract-*`), `services/dashboard.js` (`getContractProgress`). `vite build` geçici dizine doğrulandı; `dist/` yeniden derlenmedi.
+
 ## Bordro — Bordro Detay Modalı Koyu Mod (Dark Mode) Renk Düzeltmesi (2026-11-07)
 - `bordro/list` sayfasındaki Bordro Detay modalında koyu temada (`data-bs-theme="dark"` ve `data-theme-preset="macos-dark"`) oluşan renk ve kontrast uyumsuzlukları giderildi.
 - **Tespit Edilen Sorunlar**:
@@ -4006,3 +4014,8 @@
 - Editör araç çubuğuna "İçerik Şablonu" düğmesi (Summernote custom button) → `#icerikSablonModal`: listele, Yükle (değiştir) / Sona Ekle, sil, mevcut içeriği ada göre kaydet (aynı ad = güncelle). Tam evrak şablonları (`evrak_sablonlari`) ayrı kalır.
 - Değişkenler `{{personel_adi}}`, `{{ilgili_personel_adi}}`, `{{kurum}}`, `{{konu}}`, `{{ilgi}}`, `{{tarih}}`, `{{gelen_evrak_no}}`, `{{gelen_evrak_tarihi}}`, `{{gelen_kurum}}`, `{{gelen_konu}}`: uygularken formdan/`window.gidenCevapBaglam`'dan doldurulur, bulunamayan `[ETİKET]` kalır.
 - Model `EvrakIcerikSablonModel`, API `evrak-icerik-sablon-listele/kaydet/sil` (views/evrak-takip/api.php, her işlem sistem logu). SQL: sql/2026_11_12_evrak_icerik_sablonlari.sql (tablo + permission_policies, `evrak-takip/list` yetkisine bağlı; yerelde çalıştırıldı, canlıda çalıştırılmalı).
+
+## 2026-11-13 — Mobil SPA iade faturası
+- Mobil `FaturaView.vue`: gelen/giden fatura kartında ve önizleme başlığında "İade Faturası Kes" (Undo2) butonu; yalnız `invoice_create` yetkisi, taslak/iptal/iade olmayan faturalarda.
+- `mobile-spa/public/api/fatura.php`: yeni `return_draft` aksiyonu (`efatura/olustur` + görüntüleme yetkisi); `EInvoiceModel::getIncomingInvoiceForReturn(..., $anyDirection)` GIDEN'i de destekler.
+- `save_draft` mobil alanları normalize eder (senaryo→fatura_profili, seri→seri_no, saat, aciklama→urun_hizmet_adi); sihirbaz adım 2'de iade edilen fatura no/tarih alanları.

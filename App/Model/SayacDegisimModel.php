@@ -551,11 +551,11 @@ class SayacDegisimModel extends Model
     /**
      * Aylık sayaç değişim sayısını çeker
      */
-    public function getMonthlyStats()
+    public function getMonthlyStats(?string $baslangic = null, ?string $bitis = null)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $buAy = date('Y-m-01');
-        $sonGun = date('Y-m-t');
+        $buAy = $baslangic ?? date('Y-m-01');
+        $sonGun = $bitis ?? date('Y-m-t');
 
         $sql = "SELECT ROUND(SUM(CASE WHEN pay.personel_sayisi > 0 THEN 1.0 / pay.personel_sayisi ELSE 0 END), 4) as sayac_degisimi
                 FROM {$this->table} t

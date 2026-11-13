@@ -2342,3 +2342,6 @@
 - [x] E-Fatura/Cari süper admin izolasyonu (SQL + grup kaydet/kopyala koruması). SQL canlıda çalıştırılmadı; DB erişimi olmadığından test edilemedi.
 - [x] Cevap Yaz: gelen evrak dosyası AI taslağına otomatik verildi (sözdizimi kontrolü yapıldı; gerçek AI çağrısı/tarayıcı testi yapılmadı — AI anahtarı gerekir).
 - [x] Giden evrak içerik şablonları (yalnızca metin + değişkenler); yerelde tarayıcıyla kaydet/yükle doğrulandı, silme arayüzü elle denenmedi, SQL canlıda çalıştırılmalı.
+- [x] Mobil SPA iade faturası kesme (fatura kartı + önizleme; kaynak fatura kalemleriyle taslak). dist yeniden derlendi.
+
+- [x] Mobil SPA Operasyonlar kartı "Dönem" sekmesi: sözleşme hedefi/yapılan/kalan/oran (2026-11-13)

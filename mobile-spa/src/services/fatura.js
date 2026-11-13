@@ -98,6 +98,9 @@ export const faturaApi = {
   calculate(lines) {
     return request('calculate', { method: 'POST', body: { lines } })
   },
+  returnDraft(id) {
+    return request('return_draft', { params: { id } })
+  },
   saveDraft(data, csrfToken) {
     return request('save_draft', { method: 'POST', body: data, csrfToken })
   },

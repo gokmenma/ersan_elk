@@ -492,11 +492,11 @@ class EndeksOkumaModel extends Model
         return $result->toplam ?? 0;
     }
 
-    public function getMonthlyStats()
+    public function getMonthlyStats(?string $baslangic = null, ?string $bitis = null)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $buAy = date('Y-m-01');
-        $sonGun = date('Y-m-t');
+        $buAy = $baslangic ?? date('Y-m-01');
+        $sonGun = $bitis ?? date('Y-m-t');
 
         $sql = "SELECT SUM(okunan_abone_sayisi) as toplam 
                 FROM $this->table 

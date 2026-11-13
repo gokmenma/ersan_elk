@@ -270,4 +270,53 @@ class HakedisSozlesmeModel extends Model
 
         return $summary;
     }
+
+    public function operasyonHedefleri(int $firma_id, array $pozNolar): ?array
+    {
+        if ($pozNolar === []) {
+            return null;
+        }
+
+        $stmt = $this->db->prepare("SELECT id, isin_adi, sozlesme_tarihi, yer_teslim_tarihi, isin_bitecegi_tarih
+            FROM {$this->table}
+            WHERE firma_id = :firma_id AND durum = 'aktif' AND silinme_tarihi IS NULL
+            ORDER BY sozlesme_tarihi DESC, id DESC
+            LIMIT 1");
+        $stmt->execute([':firma_id' => $firma_id]);
+        $sozlesme = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$sozlesme) {
+            return null;
+        }
+
+        $sozlesmeId = (int) $sozlesme['id'];
+        $pozYer = implode(',', array_fill(0, count($pozNolar), '?'));
+        $stmtKalem = $this->db->prepare("SELECT k.poz_no, k.miktari AS hedef, COALESCE(SUM(m.miktar), 0) AS hakedis
+            FROM hakedis_kalemleri k
+            LEFT JOIN (
+                SELECT hm.kalem_id, hm.miktar
+                FROM hakedis_miktarlari hm
+                INNER JOIN hakedis_donemleri d ON d.id = hm.hakedis_donem_id
+                WHERE d.sozlesme_id = ? AND d.silinme_tarihi IS NULL AND d.durum <> 'taslak'
+            ) m ON m.kalem_id = k.id
+            WHERE k.sozlesme_id = ? AND k.silinme_tarihi IS NULL AND k.poz_no IN ($pozYer)
+            GROUP BY k.id, k.poz_no, k.miktari");
+        $stmtKalem->execute(array_merge([$sozlesmeId, $sozlesmeId], array_values($pozNolar)));
+
+        $kalemler = [];
+        foreach ($stmtKalem->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $kalemler[(string) $row['poz_no']] = [
+                'hedef' => (float) $row['hedef'],
+                'hakedis' => (float) $row['hakedis'],
+            ];
+        }
+
+        $stmtSon = $this->db->prepare("SELECT MAX(is_yapilan_ayin_son_gunu)
+            FROM hakedis_donemleri
+            WHERE sozlesme_id = :sozlesme_id AND silinme_tarihi IS NULL AND durum <> 'taslak'");
+        $stmtSon->execute([':sozlesme_id' => $sozlesmeId]);
+        $sozlesme['son_hakedis_bitis'] = $stmtSon->fetchColumn() ?: null;
+        $sozlesme['kalemler'] = $kalemler;
+
+        return $sozlesme;
+    }
 }

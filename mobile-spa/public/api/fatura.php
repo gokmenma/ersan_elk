@@ -369,6 +369,46 @@ try {
         ]);
     }
 
+    // 10b. İADE FATURASI TASLAĞI HAZIRLA (kaynak faturadan)
+    if ($method === 'GET' && $action === 'return_draft') {
+        if (!Gate::allows('efatura/olustur')) {
+            faturaApiResponse(['success' => false, 'message' => 'İade faturası oluşturma yetkiniz bulunmuyor.'], 403);
+        }
+
+        $rawId = Security::decrypt((string)($_GET['id'] ?? $_GET['invoice_id'] ?? ''));
+        $sourceId = ($rawId && is_numeric($rawId)) ? (int)$rawId : 0;
+        if ($sourceId <= 0) {
+            faturaApiResponse(['success' => false, 'message' => 'Geçersiz fatura kimliği.'], 400);
+        }
+
+        $source = $invoiceModel->getInvoiceById($sourceId, $firmId);
+        if (!$source) {
+            faturaApiResponse(['success' => false, 'message' => 'Fatura kaydı bulunamadı.'], 404);
+        }
+        requireInvoiceViewAccess($source);
+
+        $sourceStatus = strtoupper((string)($source['entegrator_durum_kodu'] ?? ''));
+        if (in_array($sourceStatus, ['TASLAK', 'IPTAL'], true)) {
+            faturaApiResponse(['success' => false, 'message' => 'Taslak veya iptal edilmiş faturaya iade faturası düzenlenemez.'], 422);
+        }
+        if (strtoupper((string)($source['fatura_tipi'] ?? '')) === 'IADE') {
+            faturaApiResponse(['success' => false, 'message' => 'İade faturasına iade faturası düzenlenemez.'], 422);
+        }
+
+        $draft = $invoiceModel->getIncomingInvoiceForReturn($sourceId, $firmId, true);
+        if (!$draft) {
+            faturaApiResponse(['success' => false, 'message' => 'İade taslağı hazırlanamadı.'], 404);
+        }
+        if (!empty($draft['cari_id'])) {
+            $draft['cari_id'] = Security::encrypt((string)$draft['cari_id']);
+        }
+        unset($draft['source_invoice_id']);
+
+        error_log(sprintf('[mobile-fatura] iade taslağı hazırlandı user=%d firm=%d kaynak=%d', $currentUserId, $firmId, $sourceId));
+
+        faturaApiResponse(['success' => true, 'data' => $draft]);
+    }
+
     // 11. TASLAK FATURA KAYDET / GÜNCELLE
     if ($method === 'POST' && $action === 'save_draft') {
         verifyCsrfToken();
@@ -379,6 +419,34 @@ try {
         $payload = json_decode(file_get_contents('php://input'), true) ?: $_POST;
         $header = $payload['header'] ?? [];
         $lines = $payload['lines'] ?? [];
+
+        if (is_array($header)) {
+            if (empty($header['fatura_profili'])) {
+                $header['fatura_profili'] = in_array($header['senaryo'] ?? '', ['TICARIFATURA', 'TEMELFATURA', 'EARSIVFATURA'], true)
+                    ? $header['senaryo']
+                    : 'TICARIFATURA';
+            }
+            if (($header['belge_turu'] ?? '') === 'EARSIV') {
+                $header['fatura_profili'] = 'EARSIVFATURA';
+            } elseif (($header['fatura_tipi'] ?? '') === 'IADE') {
+                $header['fatura_profili'] = 'TEMELFATURA';
+            }
+            if (empty($header['duzenleme_saati']) && !empty($header['fatura_saati'])) {
+                $time = (string)$header['fatura_saati'];
+                $header['duzenleme_saati'] = strlen($time) === 5 ? $time . ':00' : $time;
+            }
+            if (empty($header['seri_no']) && !empty($header['seri'])) {
+                $header['seri_no'] = $header['seri'];
+            }
+        }
+        if (is_array($lines)) {
+            foreach ($lines as &$normLine) {
+                if (is_array($normLine) && !isset($normLine['urun_hizmet_adi']) && isset($normLine['aciklama'])) {
+                    $normLine['urun_hizmet_adi'] = $normLine['aciklama'];
+                }
+            }
+            unset($normLine);
+        }
 
         if (!is_array($header) || !is_array($lines) || empty($lines)) {
             faturaApiResponse(['success' => false, 'message' => 'Faturaya en az bir kalem eklenmelidir.'], 400);

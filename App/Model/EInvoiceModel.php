@@ -361,12 +361,13 @@ class EInvoiceModel extends Model
     /**
      * Gelen Faturadan İade Faturası Taslağı Oluşturmak İçin Fatura ve Kalem Bilgilerini Getirir
      */
-    public function getIncomingInvoiceForReturn(int $invoiceId, int $firmId): ?array
+    public function getIncomingInvoiceForReturn(int $invoiceId, int $firmId, bool $anyDirection = false): ?array
     {
         try {
+            $directionSql = $anyDirection ? "yon IN ('GELEN', 'GIDEN')" : "yon = 'GELEN'";
             $stmt = $this->db->prepare("
                 SELECT * FROM faturalar 
-                WHERE id = :id AND firm_id = :firm_id AND yon = 'GELEN' AND deleted_at IS NULL
+                WHERE id = :id AND firm_id = :firm_id AND $directionSql AND deleted_at IS NULL
                 LIMIT 1
             ");
             $stmt->execute(['id' => $invoiceId, 'firm_id' => $firmId]);
@@ -470,6 +471,7 @@ class EInvoiceModel extends Model
 
                 $formattedLines[] = [
                     'urun_hizmet_adi'  => $itemText,
+                    'aciklama'         => $itemText,
                     'mal_hizmet_adi'   => $itemText,
                     'urun_kodu'        => $l['urun_kodu'] ?? '',
                     'miktar'           => $l['miktar'] ?? '1.00',

@@ -82,6 +82,25 @@ if (($_GET['section'] ?? '') === 'kesme_comparison') {
     }
 }
 
+if (($_GET['section'] ?? '') === 'contract_progress') {
+    $allowedKeys = [];
+    if ($permissions['reports']) {
+        $allowedKeys = ['reading', 'cut_open', 'meter_change', 'sealing'];
+    }
+    if ($permissions['illegal']) {
+        $allowedKeys[] = 'illegal';
+    }
+    if ($allowedKeys === []) {
+        dashboardResponse(['success' => false, 'message' => 'Bu verilere erişim yetkiniz yok.'], 403);
+    }
+    try {
+        dashboardResponse(['success' => true, 'data' => $model->contractProgress($allowedKeys)]);
+    } catch (Throwable $error) {
+        error_log('Mobile contract progress API: ' . $error->getMessage());
+        dashboardResponse(['success' => false, 'message' => 'Sözleşme gerçekleşme verileri alınamadı.'], 500);
+    }
+}
+
 try {
     $data = [
         'announcements' => $model->announcements(),

@@ -955,11 +955,11 @@ class PuantajModel extends Model
         return $stmt->fetch(PDO::FETCH_OBJ);
     }
 
-    public function getMonthlyStats()
+    public function getMonthlyStats(?string $baslangic = null, ?string $bitis = null)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $buAy = date('Y-m-01');
-        $sonGun = date('Y-m-t');
+        $buAy = $baslangic ?? date('Y-m-01');
+        $sonGun = $bitis ?? date('Y-m-t');
 
         $sql = "SELECT 
                     SUM(CASE WHEN tn.rapor_sekmesi = 'kesme' AND tn.is_turu_ucret > 0 THEN t.sonuclanmis ELSE 0 END) as kesme_acma,
@@ -997,11 +997,11 @@ class PuantajModel extends Model
         return $stmt->fetch(PDO::FETCH_OBJ);
     }
 
-    public function getKacakMonthlyStats()
+    public function getKacakMonthlyStats(?string $baslangic = null, ?string $bitis = null)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $buAy = date('Y-m-01');
-        $sonGun = date('Y-m-t');
+        $buAy = $baslangic ?? date('Y-m-01');
+        $sonGun = $bitis ?? date('Y-m-t');
 
         $sql = "SELECT 
                     COALESCE(SUM(sayi), 0) as toplam,

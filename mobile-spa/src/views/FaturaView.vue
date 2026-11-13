@@ -41,6 +41,7 @@ import {
   Trash2,
   TrendingDown,
   TrendingUp,
+  Undo2,
   User,
   Wallet,
   X,
@@ -127,6 +128,7 @@ const previewLoading = ref(false)
 const previewTitle = ref('Fatura Önizleme')
 const previewEncId = ref('')
 const previewInvoice = ref(null)
+const returnLoadingId = ref(null)
 const previewHtmlContent = ref('')
 const previewIframeRef = ref(null)
 const viewerViewportRef = ref(null)
@@ -931,6 +933,8 @@ async function openNewInvoiceWizard(draftToEdit = null) {
       para_birimi: draftToEdit.para_birimi || 'TRY',
       doviz_kuru: 1,
       notlar: draftToEdit.notlar || '',
+      iade_fatura_no: draftToEdit.iade_fatura_no || '',
+      iade_fatura_tarihi: draftToEdit.iade_fatura_tarihi || '',
     }
   } else {
     invoiceHeader.value = {
@@ -951,6 +955,8 @@ async function openNewInvoiceWizard(draftToEdit = null) {
       para_birimi: 'TRY',
       doviz_kuru: 1,
       notlar: '',
+      iade_fatura_no: '',
+      iade_fatura_tarihi: '',
     }
     invoiceLines.value = [
       {
@@ -969,6 +975,73 @@ async function openNewInvoiceWizard(draftToEdit = null) {
 
   isWizardOpen.value = true
   loadSerialsAndProducts()
+}
+
+function canCreateReturn(inv) {
+  if (!inv || !inv.encrypted_id || !auth.state.permissions.invoice_create) return false
+  const status = String(inv.entegrator_durum_kodu || '').toUpperCase()
+  if (status === 'TASLAK' || status === 'IPTAL') return false
+  return String(inv.fatura_tipi || '').toUpperCase() !== 'IADE'
+}
+
+async function openReturnInvoiceWizard(inv) {
+  if (!canCreateReturn(inv) || returnLoadingId.value) return
+  returnLoadingId.value = inv.encrypted_id
+  try {
+    const res = await faturaApi.returnDraft(inv.encrypted_id)
+    if (!res.success || !res.data) {
+      throw new Error(res.message || 'İade taslağı hazırlanamadı.')
+    }
+    const d = res.data
+    isPreviewOpen.value = false
+    await openNewInvoiceWizard()
+    wizardEditId.value = null
+    invoiceHeader.value = {
+      ...invoiceHeader.value,
+      cari_id: d.cari_id || '',
+      alici_unvan: d.alici_unvan || '',
+      alici_vkn_tckn: d.alici_vkn_tckn || '',
+      alici_vergi_dairesi: d.alici_vergi_dairesi || '',
+      alici_adres: d.alici_adres || '',
+      alici_il: d.alici_il || '',
+      alici_ilce: d.alici_ilce || '',
+      alici_eposta: d.alici_eposta || '',
+      alici_posta_kutusu: d.alici_posta_kutusu || '',
+      belge_turu: d.belge_turu || 'EFATURA',
+      fatura_tipi: 'IADE',
+      senaryo: d.belge_turu === 'EARSIV' ? 'EARSIVFATURA' : 'TEMELFATURA',
+      para_birimi: d.para_birimi || 'TRY',
+      doviz_kuru: Number(d.doviz_kuru) || 1,
+      iade_fatura_no: d.iade_fatura_no || '',
+      iade_fatura_tarihi: d.iade_fatura_tarihi || '',
+      notlar: d.notlar || '',
+    }
+    const lines = Array.isArray(d.satirlar) ? d.satirlar : []
+    invoiceLines.value = lines.map((l) => ({
+      mal_hizmet_id: '',
+      aciklama: l.aciklama || l.urun_hizmet_adi || '',
+      urun_hizmet_adi: l.aciklama || l.urun_hizmet_adi || '',
+      urun_kodu: l.urun_kodu || '',
+      miktar: Number(l.miktar) || 1,
+      birim: l.birim || 'C62',
+      birim_fiyat: Number(l.birim_fiyat) || 0,
+      iskonto_orani: Number(l.iskonto_orani) || 0,
+      kdv_orani: Number(l.kdv_orani) || 0,
+      kdv_tutari: 0,
+      mal_hizmet_tutari: 0,
+      tevkifat_kodu: l.tevkifat_kodu || '',
+      tevkifat_orani: l.tevkifat_orani || '0',
+      istisna_kodu: l.istisna_kodu || '',
+      istisna_aciklama: l.istisna_aciklama || '',
+    }))
+    if (!invoiceLines.value.length) addLine()
+    recalcLines()
+    wizardStep.value = 2
+  } catch (err) {
+    showToast(err.message || 'İade taslağı hazırlanamadı.', 'error')
+  } finally {
+    returnLoadingId.value = null
+  }
 }
 
 async function loadSerialsAndProducts() {
@@ -1114,6 +1187,14 @@ function nextWizardStep() {
   if (wizardStep.value === 1) {
     if (!invoiceHeader.value.alici_unvan || !invoiceHeader.value.alici_vkn_tckn) {
       showToast('Lütfen Alıcı Ünvanı ve VKN/TCKN bilgilerini doldurun.', 'error')
+      return
+    }
+  }
+  if (wizardStep.value === 2 && invoiceHeader.value.fatura_tipi === 'IADE') {
+    const today = new Date().toISOString().slice(0, 10)
+    const rd = invoiceHeader.value.iade_fatura_tarihi
+    if (!String(invoiceHeader.value.iade_fatura_no || '').trim() || !/^\d{4}-\d{2}-\d{2}$/.test(rd || '') || rd > today) {
+      showToast('İade edilen fatura numarası ve geçerli tarihi girin.', 'error')
       return
     }
   }
@@ -2173,6 +2254,20 @@ onBeforeUnmount(() => {
                   </button>
                 </template>
 
+                <button
+                  v-if="canCreateReturn(inv)"
+                  type="button"
+                  class="fatura-icon-action-btn fatura-icon-action-btn--warning"
+                  :class="{ 'is-loading': returnLoadingId === inv.encrypted_id }"
+                  :disabled="!!returnLoadingId"
+                  title="İade Faturası Kes"
+                  aria-label="İade Faturası Kes"
+                  @click="openReturnInvoiceWizard(inv)"
+                >
+                  <Undo2 v-if="returnLoadingId !== inv.encrypted_id" :size="15" />
+                  <RefreshCw v-else :size="14" class="is-spinning" />
+                </button>
+
                 <!-- PDF Paylaş (İkon Buton) -->
                 <button
                   type="button"
@@ -2242,6 +2337,20 @@ onBeforeUnmount(() => {
                   <RefreshCw v-else :size="15" class="is-spinning" />
                 </button>
               </template>
+
+              <button
+                v-if="canCreateReturn(previewInvoice)"
+                type="button"
+                class="fatura-icon-btn"
+                :class="{ 'is-loading': returnLoadingId === previewInvoice.encrypted_id }"
+                :disabled="!!returnLoadingId"
+                title="İade Faturası Kes"
+                aria-label="İade Faturası Kes"
+                @click="openReturnInvoiceWizard(previewInvoice)"
+              >
+                <Undo2 v-if="returnLoadingId !== previewInvoice.encrypted_id" :size="17" />
+                <RefreshCw v-else :size="15" class="is-spinning" />
+              </button>
 
               <button
                 type="button"
@@ -2936,6 +3045,17 @@ onBeforeUnmount(() => {
                       <option value="USD">USD ($)</option>
                       <option value="EUR">EUR (€)</option>
                     </select>
+                  </div>
+                </div>
+
+                <div v-if="invoiceHeader.fatura_tipi === 'IADE'" class="fatura-form-grid-2">
+                  <div class="fatura-form-field">
+                    <label>İade Edilen Fatura No</label>
+                    <input v-model="invoiceHeader.iade_fatura_no" type="text" maxlength="50" />
+                  </div>
+                  <div class="fatura-form-field">
+                    <label>İade Edilen Fatura Tarihi</label>
+                    <input v-model="invoiceHeader.iade_fatura_tarihi" type="date" />
                   </div>
                 </div>
 
@@ -4706,6 +4826,11 @@ onBeforeUnmount(() => {
   color: var(--ds-danger-ink);
   background: var(--ds-danger-soft);
   border-color: rgba(239, 68, 68, 0.2);
+}
+.fatura-icon-action-btn--warning {
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.35);
 }
 .fatura-icon-action-btn--sync {
   color: var(--dsx-fg-0284c7);

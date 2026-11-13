@@ -55,7 +55,7 @@ import {
 } from '@lucide/vue'
 import TopBar from '../components/TopBar.vue'
 import { auth } from '../services/auth.js'
-import { getDashboard, getEndeksComparison, getKesmeComparison, readDashboardCache, saveDashboardSettings, syncDailyOperations, writeDashboardCache } from '../services/dashboard.js'
+import { getContractProgress, getDashboard, getEndeksComparison, getKesmeComparison, readDashboardCache, saveDashboardSettings, syncDailyOperations, writeDashboardCache } from '../services/dashboard.js'
 import { notificationsState, toggleNotificationsDrawer } from '../services/notifications.js'
 import { canGlobalSearch, openSearchSheet } from '../services/search.js'
 
@@ -74,7 +74,11 @@ watch(quickActionsModalTab, async () => {
 })
 const selectedAnnouncement = ref(null)
 const leaveSheetOpen = ref(false)
-const operationsMode = ref('daily') // 'daily' | 'monthly'
+const operationsMode = ref('daily') // 'daily' | 'monthly' | 'contract'
+const contractData = ref(null)
+const contractLoading = ref(false)
+const contractError = ref('')
+let contractLoadedAt = 0
 const isSavingSettings = ref(false)
 const isSyncingOperations = ref(false)
 const toastMessage = ref('')
@@ -506,6 +510,39 @@ const operationLinks = {
   sealing: '/raporlar?tab=muhurleme',
   illegal: '/raporlar?tab=kacakkontrol',
   notice: '/ihbar',
+}
+
+async function loadContractProgress(force = false) {
+  if (contractLoading.value) return
+  if (!force && contractData.value && Date.now() - contractLoadedAt < 60000) return
+  contractLoading.value = true
+  contractError.value = ''
+  try {
+    contractData.value = await getContractProgress()
+    contractLoadedAt = Date.now()
+  } catch (reason) {
+    contractError.value = reason.message
+  } finally {
+    contractLoading.value = false
+  }
+}
+
+watch(operationsMode, (mode) => {
+  if (mode === 'contract') loadContractProgress()
+})
+
+const contractPeriod = computed(() => contractData.value?.period || null)
+
+function contractItem(key) {
+  return contractData.value?.items?.[key] || null
+}
+
+function trNumber(value, fraction = 0) {
+  return Number(value || 0).toLocaleString('tr-TR', { maximumFractionDigits: fraction })
+}
+
+function contractBarWidth(item) {
+  return `${Math.min(Math.max(Number(item.oran) || 0, 0), 100)}%`
 }
 
 function goToOperation(item) {
@@ -1650,6 +1687,15 @@ onMounted(() => {
                     >
                       Ay
                     </button>
+                    <button
+                      type="button"
+                      class="op-mode-btn"
+                      :class="{ 'is-active': operationsMode === 'contract' }"
+                      title="Sözleşme dönemi toplamı, kalan ve gerçekleşme oranı"
+                      @click="operationsMode = 'contract'"
+                    >
+                      Dönem
+                    </button>
                   </div>
                   <!-- Tek Dokunuşla Günlük Operasyonları Online Sorgula -->
                   <button
@@ -1679,6 +1725,19 @@ onMounted(() => {
                 </div>
               </div>
 
+              <p v-if="operationsMode === 'contract'" class="op-contract-note">
+                <template v-if="contractLoading && !contractData">Sözleşme verileri yükleniyor…</template>
+                <template v-else-if="contractError && !contractData">
+                  {{ contractError }}
+                  <button type="button" class="endeks-retry" @click="loadContractProgress(true)">Tekrar dene</button>
+                </template>
+                <template v-else-if="!contractPeriod">Aktif sözleşme veya hedef miktar bulunamadı.</template>
+                <template v-else>
+                  Sözleşme dönemi: <b>{{ contractPeriod.start }} – {{ contractPeriod.end }}</b>
+                  <template v-if="contractPeriod.last_hakedis"> · Son hakediş: <b>{{ contractPeriod.last_hakedis }}</b></template>
+                </template>
+              </p>
+
               <div class="operations-grid">
                 <article
                   v-for="item in operations"
@@ -1694,13 +1753,41 @@ onMounted(() => {
                     <span class="op-label">{{ item.label }}</span>
                   </header>
 
-                  <div class="operation-tile-bottom">
+                  <div v-if="operationsMode === 'contract'" class="operation-tile-bottom">
+                    <template v-if="contractItem(item.key)">
+                      <strong class="op-stat-num">{{ trNumber(contractItem(item.key).yapilan) }}</strong>
+                      <span class="op-stat-badge">Yapılan</span>
+                      <div class="op-progress" role="progressbar" :aria-valuenow="Math.min(contractItem(item.key).oran, 100)" aria-valuemin="0" aria-valuemax="100">
+                        <span
+                          class="op-progress-fill"
+                          :class="{ 'is-complete': contractItem(item.key).oran >= 100 }"
+                          :style="{ width: contractBarWidth(contractItem(item.key)) }"
+                        ></span>
+                      </div>
+                      <div class="op-contract-meta">
+                        <span>Hedef <b>{{ trNumber(contractItem(item.key).hedef) }}</b></span>
+                        <span>Kalan <b>{{ trNumber(contractItem(item.key).kalan) }}</b></span>
+                      </div>
+                      <div class="op-contract-split">
+                        Hakediş {{ trNumber(contractItem(item.key).hakedis) }} + Güncel {{ trNumber(contractItem(item.key).guncel) }}
+                      </div>
+                    </template>
+                    <template v-else>
+                      <strong class="op-stat-num">-</strong>
+                      <span class="op-stat-badge">{{ contractLoading ? 'Yükleniyor…' : 'Sözleşme hedefi yok' }}</span>
+                    </template>
+                  </div>
+                  <div v-else class="operation-tile-bottom">
                     <strong class="op-stat-num">{{ operationsMode === 'daily' ? item.daily : item.monthly }}</strong>
                     <span class="op-stat-badge">{{ operationsMode === 'daily' ? 'Bugün' : 'Bu ay' }}</span>
                   </div>
 
                   <footer class="op-footer-row">
-                    <span v-if="item.last_update" class="op-last-update">
+                    <span v-if="operationsMode === 'contract'" class="op-contract-rate">
+                      <template v-if="contractItem(item.key)">%{{ trNumber(contractItem(item.key).oran, 1) }}</template>
+                      <template v-else>-</template>
+                    </span>
+                    <span v-else-if="item.last_update" class="op-last-update">
                       <Clock :size="10" />
                       {{ item.last_update }}
                     </span>

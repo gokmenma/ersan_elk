@@ -372,6 +372,78 @@ class MobileDashboardModel
         ];
     }
 
+    private const CONTRACT_ITEM_POZ = [
+        'reading' => 'KASKİ-01',
+        'sealing' => 'KASKİ-03',
+        'meter_change' => 'KASKİ-04',
+        'cut_open' => 'KASKİ-05',
+        'illegal' => 'KASKİ-07',
+    ];
+
+    public function contractProgress(array $allowedKeys): array
+    {
+        $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
+        $keys = array_values(array_intersect(array_keys(self::CONTRACT_ITEM_POZ), $allowedKeys));
+        if ($firmaId <= 0 || $keys === []) return ['period' => null, 'items' => []];
+
+        return $this->safely(function () use ($firmaId, $keys): array {
+            $pozlar = array_map(static fn(string $key): string => self::CONTRACT_ITEM_POZ[$key], $keys);
+            $sozlesme = (new HakedisSozlesmeModel())->operasyonHedefleri($firmaId, $pozlar);
+            if (!$sozlesme) return ['period' => null, 'items' => []];
+
+            $today = date('Y-m-d');
+            $sonHakedis = $sozlesme['son_hakedis_bitis'] ?? null;
+            $baslangic = $sonHakedis
+                ? date('Y-m-d', strtotime($sonHakedis . ' +1 day'))
+                : ($sozlesme['yer_teslim_tarihi'] ?: $sozlesme['sozlesme_tarihi'] ?: $today);
+            $guncel = ['reading' => 0, 'sealing' => 0, 'meter_change' => 0, 'cut_open' => 0, 'illegal' => 0];
+
+            if ($baslangic <= $today) {
+                if (array_intersect($keys, ['reading'])) {
+                    $guncel['reading'] = (int) round((float) (new EndeksOkumaModel())->getMonthlyStats($baslangic, $today));
+                }
+                if (array_intersect($keys, ['sealing', 'cut_open'])) {
+                    $puantaj = (new PuantajModel())->getMonthlyStats($baslangic, $today);
+                    $guncel['sealing'] = (int) round((float) ($puantaj->muhurleme ?? 0));
+                    $guncel['cut_open'] = (int) round((float) ($puantaj->kesme_acma ?? 0));
+                }
+                if (in_array('meter_change', $keys, true)) {
+                    $guncel['meter_change'] = (int) round((float) ((new SayacDegisimModel())->getMonthlyStats($baslangic, $today)->sayac_degisimi ?? 0));
+                }
+                if (in_array('illegal', $keys, true)) {
+                    $guncel['illegal'] = (int) round((float) ((new PuantajModel())->getKacakMonthlyStats($baslangic, $today)->toplam ?? 0));
+                }
+            }
+
+            $items = [];
+            foreach ($keys as $key) {
+                $kalem = $sozlesme['kalemler'][self::CONTRACT_ITEM_POZ[$key]] ?? null;
+                if (!$kalem || $kalem['hedef'] <= 0) continue;
+                $hedef = (int) round($kalem['hedef']);
+                $hakedis = (int) round($kalem['hakedis']);
+                $yapilan = $hakedis + $guncel[$key];
+                $items[$key] = [
+                    'hedef' => $hedef,
+                    'hakedis' => $hakedis,
+                    'guncel' => $guncel[$key],
+                    'yapilan' => $yapilan,
+                    'kalan' => max($hedef - $yapilan, 0),
+                    'oran' => round($yapilan / $hedef * 100, 1),
+                ];
+            }
+
+            $fmt = static fn(?string $date): ?string => $date ? date('d.m.Y', strtotime($date)) : null;
+            return [
+                'period' => [
+                    'start' => $fmt($sozlesme['yer_teslim_tarihi'] ?: $sozlesme['sozlesme_tarihi']),
+                    'end' => $fmt($sozlesme['isin_bitecegi_tarih']),
+                    'last_hakedis' => $fmt($sonHakedis),
+                ],
+                'items' => $items,
+            ];
+        }, ['period' => null, 'items' => []]);
+    }
+
     public function endeksComparison(): array
     {
         $data = (new EndeksOkumaModel())->getMonthlyComparisonByDay();
