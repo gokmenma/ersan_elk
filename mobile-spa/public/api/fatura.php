@@ -709,6 +709,8 @@ try {
 
     faturaApiResponse(['success' => false, 'message' => 'Desteklenmeyen işlem veya HTTP yöntemi.'], 400);
 
+} catch (\InvalidArgumentException $e) {
+    faturaApiResponse(['success' => false, 'message' => $e->getMessage()], 422);
 } catch (\Throwable $e) {
     error_log('Mobile SPA Fatura API Hatası: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
     faturaApiResponse([

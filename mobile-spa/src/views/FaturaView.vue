@@ -933,6 +933,7 @@ async function openNewInvoiceWizard(draftToEdit = null) {
       para_birimi: draftToEdit.para_birimi || 'TRY',
       doviz_kuru: 1,
       notlar: draftToEdit.notlar || '',
+      alici_posta_kutusu: draftToEdit.alici_posta_kutusu || '',
       iade_fatura_no: draftToEdit.iade_fatura_no || '',
       iade_fatura_tarihi: draftToEdit.iade_fatura_tarihi || '',
     }
@@ -955,6 +956,7 @@ async function openNewInvoiceWizard(draftToEdit = null) {
       para_birimi: 'TRY',
       doviz_kuru: 1,
       notlar: '',
+      alici_posta_kutusu: '',
       iade_fatura_no: '',
       iade_fatura_tarihi: '',
     }
@@ -1106,13 +1108,21 @@ async function checkTaxpayerStatus(vkn) {
   try {
     const res = await faturaApi.checkTaxpayer(v, auth.state.csrfToken)
     if (res.success && res.data) {
-      taxpayerInfo.value = res.data
-      if (res.data.is_taxpayer) {
+      const isTaxpayer = !!(res.data.is_einvoice_user ?? res.data.is_taxpayer)
+      taxpayerInfo.value = { ...res.data, is_taxpayer: isTaxpayer }
+      const isReturn = invoiceHeader.value.fatura_tipi === 'IADE'
+      if (isTaxpayer) {
         invoiceHeader.value.belge_turu = 'EFATURA'
-        invoiceHeader.value.senaryo = 'TICARIFATURA'
+        invoiceHeader.value.senaryo = isReturn ? 'TEMELFATURA' : 'TICARIFATURA'
+        const aliases = Array.isArray(res.data.aliases) ? res.data.aliases : []
+        const current = invoiceHeader.value.alici_posta_kutusu
+        if (!current || !aliases.includes(current)) {
+          invoiceHeader.value.alici_posta_kutusu = res.data.default_alias || aliases[0] || ''
+        }
       } else {
         invoiceHeader.value.belge_turu = 'EARSIV'
         invoiceHeader.value.senaryo = 'EARSIVFATURA'
+        invoiceHeader.value.alici_posta_kutusu = ''
       }
     }
   } catch (e) {
@@ -1218,6 +1228,9 @@ function prevWizardStep() {
 async function saveWizardInvoice(sendDirect = false) {
   wizardSubmitting.value = true
   try {
+    if (invoiceHeader.value.belge_turu === 'EFATURA' && !invoiceHeader.value.alici_posta_kutusu) {
+      await checkTaxpayerStatus(invoiceHeader.value.alici_vkn_tckn)
+    }
     const payload = {
       header: invoiceHeader.value,
       lines: invoiceLines.value,
@@ -3358,7 +3371,7 @@ onBeforeUnmount(() => {
   top: max(16px, var(--ds-safe-top));
   left: 20px;
   right: 20px;
-  z-index: 1200;
+  z-index: 3000;
   display: flex;
   align-items: center;
   gap: 10px;
