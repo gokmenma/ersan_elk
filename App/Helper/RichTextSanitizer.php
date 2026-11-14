@@ -111,6 +111,7 @@ final class RichTextSanitizer
     {
         $allowed = ['text-align', 'font-family', 'font-size', 'font-weight', 'font-style', 'text-decoration', 'color', 'background-color'];
         $safe = [];
+        $fontTouched = false;
 
         foreach (explode(';', $style) as $declaration) {
             if (!str_contains($declaration, ':')) {
@@ -119,27 +120,49 @@ final class RichTextSanitizer
             [$property, $value] = array_map('trim', explode(':', $declaration, 2));
             $property = strtolower($property);
             if (in_array($property, $allowed, true) && !preg_match('/url\s*\(|expression|javascript:/i', $value)) {
+                if (in_array($property, ['font-family', 'font-size', 'font-weight', 'color'], true)) {
+                    $fontTouched = true;
+                }
                 if ($property === 'font-family') {
                     if (stripos($value, 'arial') !== false) {
                         $safe['font-family'] = 'Arial';
-                    } elseif (stripos($value, 'times new roman') !== false || stripos($value, 'times') !== false) {
-                        $safe['font-family'] = 'Times New Roman';
                     }
                     continue;
                 }
-                if ($property === 'color' && preg_match('/^(#f[0-9a-f]{2}[0-9a-f]{0,3}|#fff(fff)?|white|rgba?\(\s*2[3-5]\d\s*,\s*2[3-5]\d\s*,\s*2[3-5]\d.*)$/i', $value)) {
+                if ($property === 'font-size' || $property === 'font-weight') {
+                    continue;
+                }
+                if ($property === 'color' && self::isNeutralColor($value)) {
                     continue;
                 }
                 $safe[$property] = $value;
             }
         }
 
-        if (($safe['font-family'] ?? '') === 'Arial') {
-            $safe['font-size'] = '11pt';
-        } elseif (($safe['font-family'] ?? '') === 'Times New Roman') {
-            $safe['font-size'] = '12pt';
+        if ($fontTouched) {
+            $arial = ($safe['font-family'] ?? '') === 'Arial';
+            $safe['font-family'] = $arial ? 'Arial' : 'Times New Roman';
+            $safe['font-size'] = $arial ? '11pt' : '12pt';
         }
 
         return implode('; ', array_map(fn($property, $value) => $property . ': ' . $value, array_keys($safe), $safe));
+    }
+
+    private static function isNeutralColor(string $value): bool
+    {
+        $value = strtolower(trim($value));
+        if (in_array($value, ['white', 'black', 'gray', 'grey', 'inherit', 'initial', 'unset', 'currentcolor', 'transparent'], true)) {
+            return true;
+        }
+        if (preg_match('/^#([0-9a-f])([0-9a-f])([0-9a-f])$/', $value, $m)) {
+            return $m[1] === $m[2] && $m[2] === $m[3];
+        }
+        if (preg_match('/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/', $value, $m)) {
+            return $m[1] === $m[2] && $m[2] === $m[3];
+        }
+        if (preg_match('/^rgba?\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)/', $value, $m)) {
+            return max($m[1], $m[2], $m[3]) - min($m[1], $m[2], $m[3]) < 24;
+        }
+        return false;
     }
 }

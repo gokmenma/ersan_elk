@@ -1336,24 +1336,23 @@ class EInvoiceService
         };
         $minSatir = 5;
         $dolu = 0;
-        preg_match_all('#<tr\s+class="lineTableTr"[^>]*>(.*?)</tr>#is', $html, $tum);
-        foreach ($tum[1] as $i => $icerik) {
-            if ($i > 0 && !$bosMu($icerik)) {
-                $dolu++;
-            }
-        }
-        $korunacakBos = max(0, $minSatir - $dolu);
-
-        $html = preg_replace_callback('#<tr\s+class="lineTableTr"[^>]*>(.*?)</tr>#is', function ($m) use ($bosMu, &$korunacakBos) {
+        $kolon = 10;
+        $html = preg_replace_callback('#<tr\s+class="lineTableTr"[^>]*>(.*?)</tr>#is', function ($m) use ($bosMu, &$dolu, &$kolon) {
             if (!$bosMu($m[1])) {
+                $dolu++;
+                $kolon = max(1, (int) preg_match_all('#<t[dh][\s>]#i', $m[1]));
                 return $m[0];
-            }
-            if ($korunacakBos > 0) {
-                $korunacakBos--;
-                return str_replace('<tr class="lineTableTr"', '<tr class="lineTableTr" style="height:22px"', $m[0]);
             }
             return '';
         }, $html) ?? $html;
+
+        $eksik = $minSatir - max(0, $dolu - 1);
+        $p = strpos($html, 'id="lineTable"');
+        $q = $p === false ? false : strpos($html, '</table>', $p);
+        if ($eksik > 0 && $q !== false) {
+            $bosSatir = '<tr class="lineTableTr" style="height:22px">' . str_repeat('<td class="lineTableTd">&nbsp;</td>', $kolon) . '</tr>';
+            $html = substr($html, 0, $q) . str_repeat($bosSatir, $eksik) . substr($html, $q);
+        }
 
         $html = preg_replace('#(<div[^>]*style="[^"]*?)height:\s*\d+pt;?#i', '$1min-height:0;', $html, 1) ?? $html;
 
