@@ -3009,6 +3009,9 @@ $(document).ready(function () {
         return Swal.fire("Hata", res.message || "KEP iletisi detayları yüklenemedi.", "error");
       }
       renderKepPreview(res.data);
+      if (evrakDataTable) {
+        evrakDataTable.ajax.reload(null, false);
+      }
     }).fail(function (xhr) {
       modal.modal("hide");
       Swal.fire("Hata", xhr.responseJSON?.message || "Sunucu ile iletişim kurulamadı.", "error");

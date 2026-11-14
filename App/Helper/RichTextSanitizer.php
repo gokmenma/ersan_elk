@@ -111,7 +111,6 @@ final class RichTextSanitizer
     {
         $allowed = ['text-align', 'font-family', 'font-size', 'font-weight', 'font-style', 'text-decoration', 'color', 'background-color'];
         $safe = [];
-        $fontTouched = false;
 
         foreach (explode(';', $style) as $declaration) {
             if (!str_contains($declaration, ':')) {
@@ -120,16 +119,7 @@ final class RichTextSanitizer
             [$property, $value] = array_map('trim', explode(':', $declaration, 2));
             $property = strtolower($property);
             if (in_array($property, $allowed, true) && !preg_match('/url\s*\(|expression|javascript:/i', $value)) {
-                if (in_array($property, ['font-family', 'font-size', 'font-weight', 'color'], true)) {
-                    $fontTouched = true;
-                }
-                if ($property === 'font-family') {
-                    if (stripos($value, 'arial') !== false) {
-                        $safe['font-family'] = 'Arial';
-                    }
-                    continue;
-                }
-                if ($property === 'font-size' || $property === 'font-weight') {
+                if (in_array($property, ['font-family', 'font-size', 'font-weight'], true)) {
                     continue;
                 }
                 if ($property === 'color' && self::isNeutralColor($value)) {
@@ -137,12 +127,6 @@ final class RichTextSanitizer
                 }
                 $safe[$property] = $value;
             }
-        }
-
-        if ($fontTouched) {
-            $arial = ($safe['font-family'] ?? '') === 'Arial';
-            $safe['font-family'] = $arial ? 'Arial' : 'Times New Roman';
-            $safe['font-size'] = $arial ? '11pt' : '12pt';
         }
 
         return implode('; ', array_map(fn($property, $value) => $property . ': ' . $value, array_keys($safe), $safe));

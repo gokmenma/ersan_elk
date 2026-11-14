@@ -1333,7 +1333,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $evidenceTime = !empty($latestEvidence['olay_zamani'])
                             ? date('d.m.Y H:i', strtotime((string) $latestEvidence['olay_zamani']))
                             : '';
-                        $kepStatusHtml = '<span class="badge ' . $evidenceStatus['class'] . ' border rounded-pill px-2 py-1 font-size-10 fw-semibold" title="Son KEP durumu' . ($evidenceTime !== '' ? ': ' . $esc($evidenceTime) : '') . '"><i class="bx ' . $evidenceStatus['icon'] . '"></i> ' . $evidenceStatus['label'] . '</span>';
+                        $kepStatusHtml = '<span role="button" tabindex="0" class="badge btn-kep-onizle ' . $evidenceStatus['class'] . ' border rounded-pill px-2 py-1 font-size-10 fw-semibold" style="cursor:pointer" data-id="' . $esc($encryptedId) . '" title="Son KEP durumu' . ($evidenceTime !== '' ? ': ' . $esc($evidenceTime) : '') . ' — tıklayarak PTT\'den güncelleyin"><i class="bx ' . $evidenceStatus['icon'] . '"></i> ' . $evidenceStatus['label'] . '</span>';
                     }
                     $detailUrl = ($type === 'gelen' || $isKep) ? 'javascript:void(0);' : 'index?p=evrak-takip/giden-evrak&amp;id=' . $esc($encryptedId);
                     $detailClass = $isKep ? ' btn-kep-onizle' : ($type === 'gelen' ? ' evrak-duzenle' : '');
