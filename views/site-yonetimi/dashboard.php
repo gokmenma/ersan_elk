@@ -47,11 +47,10 @@ $title = 'Dashboard';
     <div class="row g-3 mb-3 summary-cards-group" id="summaryCardsContainer">
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0"><div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="summary-kpi-label">TOPLAM HİZMET</span>
-                    <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle"><i class="bx bx-wrench"></i></div>
-                </div>
-                <h3 class="summary-kpi-value my-1" id="stat_toplam">-</h3>
+                <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM HİZMET</span><h3 class="summary-kpi-value my-1" id="stat_toplam">-</h3></div>
+<div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle"><i class="bx bx-wrench"></i></div>
+</div>
                 <div class="d-flex justify-content-between align-items-center">
                     <span class="summary-kpi-subtext">Silinenler hariç</span>
                     <a href="index.php?p=site-yonetimi/hizmetler" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 d-flex align-items-center gap-1 summary-pill-btn d-none" data-izin="hizmet"><i class="bx bx-layer"></i> Tümü</a>
@@ -60,11 +59,10 @@ $title = 'Dashboard';
         </div>
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0"><div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="summary-kpi-label">YAYINDAKİ</span>
-                    <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle"><i class="bx bx-broadcast"></i></div>
-                </div>
-                <h3 class="summary-kpi-value my-1 text-success" id="stat_yayinda">-</h3>
+                <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">YAYINDAKİ</span><h3 class="summary-kpi-value my-1 text-success" id="stat_yayinda">-</h3></div>
+<div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle"><i class="bx bx-broadcast"></i></div>
+</div>
                 <div class="d-flex justify-content-between align-items-center">
                     <span class="summary-kpi-subtext text-success fw-semibold">Sitede görünüyor</span>
                     <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Canlı</span>
@@ -73,11 +71,10 @@ $title = 'Dashboard';
         </div>
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0"><div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="summary-kpi-label">TASLAK</span>
-                    <div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle"><i class="bx bx-edit"></i></div>
-                </div>
-                <h3 class="summary-kpi-value my-1" id="stat_taslak">-</h3>
+                <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TASLAK</span><h3 class="summary-kpi-value my-1" id="stat_taslak">-</h3></div>
+<div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle"><i class="bx bx-edit"></i></div>
+</div>
                 <div class="d-flex justify-content-between align-items-center">
                     <span class="summary-kpi-subtext">Henüz yayınlanmadı</span>
                     <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Bekliyor</span>
@@ -86,11 +83,10 @@ $title = 'Dashboard';
         </div>
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0"><div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="summary-kpi-label">GÖRSELİ OLMAYAN</span>
-                    <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle"><i class="bx bx-image"></i></div>
-                </div>
-                <h3 class="summary-kpi-value my-1" id="stat_gorselsiz">-</h3>
+                <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">GÖRSELİ OLMAYAN</span><h3 class="summary-kpi-value my-1" id="stat_gorselsiz">-</h3></div>
+<div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle"><i class="bx bx-image"></i></div>
+</div>
                 <div class="d-flex justify-content-between align-items-center">
                     <span class="summary-kpi-subtext text-muted">Görsel eklenmeli</span>
                     <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Eksik</span>

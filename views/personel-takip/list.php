@@ -103,13 +103,12 @@ try {
         <div class="col-12 col-sm-6 col-xl">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">ŞU AN GÖREVDE</span>
-                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">ŞU AN GÖREVDE</span><h3 class="summary-kpi-value my-1 text-success"><span class="counter-value" id="stat-gorevde">0</span></h3></div>
+<div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
                             <i class="bx bx-run"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-success"><span class="counter-value" id="stat-gorevde">0</span></h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-success fw-semibold">Aktif Saha Görevi</span>
                     </div>
@@ -121,13 +120,12 @@ try {
         <div class="col-12 col-sm-6 col-xl">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">GÖREVİ TAMAMLADI</span>
-                        <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">GÖREVİ TAMAMLADI</span><h3 class="summary-kpi-value my-1 text-primary"><span class="counter-value" id="stat-tamamladi">0</span></h3></div>
+<div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
                             <i class="bx bx-check-circle"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-primary"><span class="counter-value" id="stat-tamamladi">0</span></h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-primary fw-semibold">Görevi Bitenler</span>
                     </div>
@@ -139,13 +137,12 @@ try {
         <div class="col-12 col-sm-6 col-xl">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">HENÜZ BAŞLAMADI</span>
-                        <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">HENÜZ BAŞLAMADI</span><h3 class="summary-kpi-value my-1 text-warning"><span class="counter-value" id="stat-baslamadi">0</span></h3></div>
+<div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
                             <i class="bx bx-time-five"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-warning"><span class="counter-value" id="stat-baslamadi">0</span></h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-warning fw-semibold">Giriş Yapmayanlar</span>
                     </div>
@@ -157,13 +154,12 @@ try {
         <div class="col-12 col-sm-6 col-xl">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label" id="lblIzinli">BUGÜN İZİNLİ</span>
-                        <div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label" id="lblIzinli">BUGÜN İZİNLİ</span><h3 class="summary-kpi-value my-1 text-info"><span class="counter-value" id="stat-izinli">0</span></h3></div>
+<div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
                             <i class="bx bx-calendar-minus"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-info"><span class="counter-value" id="stat-izinli">0</span></h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-info fw-semibold">İzinli Personeller</span>
                     </div>
@@ -175,13 +171,12 @@ try {
         <div class="col-12 col-sm-6 col-xl">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">GEÇ KALANLAR</span>
-                        <div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">GEÇ KALANLAR</span><h3 class="summary-kpi-value my-1 text-danger"><span class="counter-value text-danger" id="stat-gec-kalan">0</span></h3></div>
+<div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
                             <i class="bx bx-alarm-exclamation"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-danger"><span class="counter-value text-danger" id="stat-gec-kalan">0</span></h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-danger fw-semibold">Mesaiye Geç Kalan</span>
                     </div>

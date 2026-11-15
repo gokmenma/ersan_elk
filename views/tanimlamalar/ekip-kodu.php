@@ -107,13 +107,12 @@ $title = "Ekip Kodu Tanımlamaları";
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">TOPLAM EKİP KODU</span>
-                        <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM EKİP KODU</span><h3 class="summary-kpi-value my-1" id="stat_toplam_ekip"><?php echo $totalEkipler; ?></h3></div>
+<div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
                             <i class="bx bx-id-card"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1" id="stat_toplam_ekip"><?php echo $totalEkipler; ?></h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext" id="stat_sub_durum">Dolu: <?php echo $doluEkipler; ?> | Boşta: <?php echo $bostaEkipler; ?></span>
                         <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" data-status="all">
@@ -128,13 +127,12 @@ $title = "Ekip Kodu Tanımlamaları";
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">DOLU EKİPLER</span>
-                        <div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">DOLU EKİPLER</span><h3 class="summary-kpi-value my-1 text-danger" id="stat_dolu_ekip"><?php echo $doluEkipler; ?></h3></div>
+<div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
                             <i class="bx bx-user-check"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-danger" id="stat_dolu_ekip"><?php echo $doluEkipler; ?></h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-danger fw-semibold" id="stat_sub_dolu_sayi">Personel Atanmış</span>
                         <button type="button" class="btn btn-sm btn-subtle-danger rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="dolu">
@@ -149,13 +147,12 @@ $title = "Ekip Kodu Tanımlamaları";
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">BOŞTA EKİPLER</span>
-                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">BOŞTA EKİPLER</span><h3 class="summary-kpi-value my-1 text-success" id="stat_bosta_ekip"><?php echo $bostaEkipler; ?></h3></div>
+<div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
                             <i class="bx bx-user-plus"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-success" id="stat_bosta_ekip"><?php echo $bostaEkipler; ?></h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-success fw-semibold" id="stat_sub_bosta_sayi">Atamaya Hazır</span>
                         <button type="button" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="bosta">
@@ -170,13 +167,12 @@ $title = "Ekip Kodu Tanımlamaları";
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">TOPLAM BÖLGE</span>
-                        <div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM BÖLGE</span><h3 class="summary-kpi-value my-1 text-info" id="stat_toplam_bolge"><?php echo $toplamBolgeSayisi; ?></h3></div>
+<div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
                             <i class="bx bx-map-pin"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-info" id="stat_toplam_bolge"><?php echo $toplamBolgeSayisi; ?></h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-muted" id="stat_sub_coklu_sayi">Çoklu: <?php echo $cokluEkipler; ?> Ekip</span>
                         <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">

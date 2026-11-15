@@ -47,11 +47,10 @@ $summary = $Tanimlamalar->demirbasKategoriSummary((int) ($_SESSION['firma_id'] ?
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">TOPLAM KATEGORİ</span>
-                        <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle"><i class="bx bx-layer"></i></div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1" id="kpi_toplam"><?php echo (int) $summary->toplam; ?></h3>
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM KATEGORİ</span><h3 class="summary-kpi-value my-1" id="kpi_toplam"><?php echo (int) $summary->toplam; ?></h3></div>
+<div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle"><i class="bx bx-layer"></i></div>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext" id="kpi_sub_toplam">Kullanımda: <?php echo (int) $summary->kullanimda; ?> | Boş: <?php echo (int) $summary->bos; ?></span>
                         <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" data-status="all">
@@ -65,11 +64,10 @@ $summary = $Tanimlamalar->demirbasKategoriSummary((int) ($_SESSION['firma_id'] ?
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">KULLANIMDA</span>
-                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle"><i class="bx bx-check-circle"></i></div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-success" id="kpi_kullanimda"><?php echo (int) $summary->kullanimda; ?></h3>
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">KULLANIMDA</span><h3 class="summary-kpi-value my-1 text-success" id="kpi_kullanimda"><?php echo (int) $summary->kullanimda; ?></h3></div>
+<div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle"><i class="bx bx-check-circle"></i></div>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-success fw-semibold">Demirbaşı olan kategoriler</span>
                         <button type="button" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="kullanimda">
@@ -83,11 +81,10 @@ $summary = $Tanimlamalar->demirbasKategoriSummary((int) ($_SESSION['firma_id'] ?
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">KULLANILMAYAN</span>
-                        <div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle"><i class="bx bx-folder-open"></i></div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-danger" id="kpi_bos"><?php echo (int) $summary->bos; ?></h3>
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">KULLANILMAYAN</span><h3 class="summary-kpi-value my-1 text-danger" id="kpi_bos"><?php echo (int) $summary->bos; ?></h3></div>
+<div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle"><i class="bx bx-folder-open"></i></div>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-danger fw-semibold">Silinebilir kategoriler</span>
                         <button type="button" class="btn btn-sm btn-subtle-danger rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="bos">
@@ -101,11 +98,10 @@ $summary = $Tanimlamalar->demirbasKategoriSummary((int) ($_SESSION['firma_id'] ?
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">TOPLAM DEMİRBAŞ</span>
-                        <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle"><i class="bx bx-package"></i></div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1" id="kpi_demirbas"><?php echo (int) $summary->toplam_demirbas; ?></h3>
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM DEMİRBAŞ</span><h3 class="summary-kpi-value my-1" id="kpi_demirbas"><?php echo (int) $summary->toplam_demirbas; ?></h3></div>
+<div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle"><i class="bx bx-package"></i></div>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext">Kategorilere bağlı kayıt</span>
                         <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Demirbaş</span>

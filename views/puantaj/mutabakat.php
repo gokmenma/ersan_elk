@@ -79,29 +79,37 @@ $sources=[
   <div id="summaryCardsContainer" class="row g-3 mb-3">
     <div class="col-12 col-sm-6 col-xl-3">
       <div class="card summary-kpi-card h-100 mb-0"><div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-        <div class="d-flex justify-content-between align-items-center"><span class="summary-kpi-label">TOPLAM FARK</span><div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle"><i class="bx bx-git-compare"></i></div></div>
-        <h3 class="summary-kpi-value my-1" id="sumTotal">0</h3>
+        <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM FARK</span><h3 class="summary-kpi-value my-1" id="sumTotal">0</h3></div>
+<div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle"><i class="bx bx-git-compare"></i></div>
+</div>
         <div class="d-flex justify-content-between align-items-center gap-2"><span class="summary-kpi-subtext" id="sumTotalSub">—</span><button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 status-quick-filter summary-pill-btn" data-status="all"><i class="bx bx-layer"></i> Tümü</button></div>
       </div></div>
     </div>
     <div class="col-12 col-sm-6 col-xl-3">
       <div class="card summary-kpi-card h-100 mb-0"><div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-        <div class="d-flex justify-content-between align-items-center"><span class="summary-kpi-label">ONAY BEKLEYEN</span><div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle"><i class="bx bx-time-five"></i></div></div>
-        <h3 class="summary-kpi-value my-1 text-warning" id="sumOpen">0</h3>
+        <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">ONAY BEKLEYEN</span><h3 class="summary-kpi-value my-1 text-warning" id="sumOpen">0</h3></div>
+<div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle"><i class="bx bx-time-five"></i></div>
+</div>
         <div class="d-flex justify-content-between align-items-center gap-2"><span class="summary-kpi-subtext">İncelenip uygulanması gereken</span><button type="button" class="btn btn-sm btn-subtle-warning rounded-pill px-2 py-0 status-quick-filter summary-pill-btn active" data-status="acik"><i class="bx bx-filter-alt"></i> Göster</button></div>
       </div></div>
     </div>
     <div class="col-12 col-sm-6 col-xl-3">
       <div class="card summary-kpi-card h-100 mb-0"><div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-        <div class="d-flex justify-content-between align-items-center"><span class="summary-kpi-label">UYGULANAN</span><div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle"><i class="bx bx-check-double"></i></div></div>
-        <h3 class="summary-kpi-value my-1 text-success" id="sumApplied">0</h3>
+        <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">UYGULANAN</span><h3 class="summary-kpi-value my-1 text-success" id="sumApplied">0</h3></div>
+<div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle"><i class="bx bx-check-double"></i></div>
+</div>
         <div class="d-flex justify-content-between align-items-center gap-2"><span class="summary-kpi-subtext">Puantaja yazılmış farklar</span><button type="button" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 status-quick-filter summary-pill-btn" data-status="uygulandi"><i class="bx bx-filter-alt"></i> Göster</button></div>
       </div></div>
     </div>
     <div class="col-12 col-sm-6 col-xl-3">
       <div class="card summary-kpi-card h-100 mb-0"><div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-        <div class="d-flex justify-content-between align-items-center"><span class="summary-kpi-label">NET MİKTAR ETKİSİ</span><div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle"><i class="bx bx-trending-up"></i></div></div>
-        <h3 class="summary-kpi-value my-1" id="sumNet">0</h3>
+        <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">NET MİKTAR ETKİSİ</span><h3 class="summary-kpi-value my-1" id="sumNet">0</h3></div>
+<div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle"><i class="bx bx-trending-up"></i></div>
+</div>
         <div class="d-flex justify-content-between align-items-center gap-2"><span class="summary-kpi-subtext" id="sumNetSub">Bekleyen farklar uygulanırsa</span></div>
       </div></div>
     </div>

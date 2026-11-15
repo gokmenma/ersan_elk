@@ -122,13 +122,13 @@ if ($action == "cari-ajax-list") {
                 : '<span class="text-muted">-</span>';
 
             $formattedData[] = [
-                "id" => '<span class="fw-semibold text-muted font-size-12">' . $row->id . '</span>',
-                "CariAdi" => '<span class="fw-bold text-dark font-size-13" style="color: #0f172a;">' . htmlspecialchars($row->CariAdi, ENT_QUOTES, 'UTF-8') . '</span>',
-                "firma" => $row->firma ? '<span class="fw-medium text-secondary font-size-12">' . htmlspecialchars($row->firma, ENT_QUOTES, 'UTF-8') . '</span>' : '<span class="text-muted">-</span>',
-                "vkn_tckn" => !empty($row->vkn_tckn) ? '<span class="fw-semibold text-dark font-size-12">' . htmlspecialchars($row->vkn_tckn, ENT_QUOTES, 'UTF-8') . '</span>' : '<span class="text-muted">-</span>',
-                "Telefon" => $row->Telefon ? '<span class="fw-medium text-dark font-size-12">' . htmlspecialchars($row->Telefon, ENT_QUOTES, 'UTF-8') . '</span>' : '<span class="text-muted">-</span>',
-                "il_ilce" => '<span class="fw-medium text-secondary font-size-12">' . $il_ilce_str . '</span>',
-                "bakiye" => '<span class="fw-bold font-size-13" style="' . ($bakiye < 0 ? 'color: #dc2626 !important;' : ($bakiye > 0 ? 'color: #16a34a !important;' : 'color: #0f172a !important;')) . '">' . Helper::formattedMoney(abs($bakiye)) . 
+                "id" => '<span class="row-index-badge">' . (int) $row->id . '</span>',
+                "CariAdi" => '<span class="cari-ad-text">' . htmlspecialchars($row->CariAdi, ENT_QUOTES, 'UTF-8') . '</span>',
+                "firma" => $row->firma ? '<span class="font-size-12 text-secondary">' . htmlspecialchars($row->firma, ENT_QUOTES, 'UTF-8') . '</span>' : '<span class="text-muted">-</span>',
+                "vkn_tckn" => !empty($row->vkn_tckn) ? '<span class="font-size-12">' . htmlspecialchars($row->vkn_tckn, ENT_QUOTES, 'UTF-8') . '</span>' : '<span class="text-muted">-</span>',
+                "Telefon" => $row->Telefon ? '<span class="font-size-12"><i class="bx bx-phone text-success me-1"></i>' . htmlspecialchars($row->Telefon, ENT_QUOTES, 'UTF-8') . '</span>' : '<span class="text-muted">-</span>',
+                "il_ilce" => $il_ilce_str === '-' ? '<span class="text-muted">-</span>' : '<span class="badge-group">' . htmlspecialchars($il_ilce_str, ENT_QUOTES, 'UTF-8') . '</span>',
+                "bakiye" => '<span class="fw-bold font-size-13 text-nowrap" style="' . ($bakiye < 0 ? 'color: #dc2626 !important;' : ($bakiye > 0 ? 'color: #16a34a !important;' : 'color: #0f172a !important;')) . '">' . Helper::formattedMoney(abs($bakiye)) . 
                             ($bakiye < 0 ? ' (B)' : ($bakiye > 0 ? ' (A)' : '')) . '</span>',
                 "actions" => $actions
             ];
@@ -816,7 +816,7 @@ if ($action == "tum-hareketler-ajax-list") {
                 : '<span class="text-muted">-</span>';
 
             $formattedData[] = [
-                "id" => '<span class="fw-semibold text-muted font-size-12">' . $row->id . '</span>',
+                "id" => '<span class="row-index-badge">' . (int) $row->id . '</span>',
                 "islem_tarihi" => $tarihHtml,
                 "CariAdi" => $cariHtml,
                 "islem_turu" => $typeBadge,

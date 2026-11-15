@@ -128,13 +128,12 @@ html[data-theme-preset="macos-dark"] h4.text-dark {
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">TOPLAM MAL / HİZMET</span>
-                        <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM MAL / HİZMET</span><h3 class="summary-kpi-value my-1" id="stat_toplam_kalem">0</h3></div>
+<div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
                             <i class="bx bx-package"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1" id="stat_toplam_kalem">0</h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext" id="stat_sub_mal_hizmet">Mal: 0 | Hizmet: 0</span>
                         <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" data-status="all">
@@ -149,13 +148,12 @@ html[data-theme-preset="macos-dark"] h4.text-dark {
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">TİCARİ MALLAR</span>
-                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TİCARİ MALLAR</span><h3 class="summary-kpi-value my-1 text-success" id="stat_mal_sayisi">0</h3></div>
+<div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
                             <i class="bx bx-box"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-success" id="stat_mal_sayisi">0</h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-success fw-semibold">Fiziksel Ürünler</span>
                         <button type="button" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="mal">
@@ -170,13 +168,12 @@ html[data-theme-preset="macos-dark"] h4.text-dark {
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">HİZMET / İŞÇİLİK</span>
-                        <div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">HİZMET / İŞÇİLİK</span><h3 class="summary-kpi-value my-1 text-info" id="stat_hizmet_sayisi">0</h3></div>
+<div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
                             <i class="bx bx-wrench"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-info" id="stat_hizmet_sayisi">0</h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-info fw-semibold">Hizmet & Faaliyetler</span>
                         <button type="button" class="btn btn-sm btn-subtle-info rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="hizmet">
@@ -191,13 +188,12 @@ html[data-theme-preset="macos-dark"] h4.text-dark {
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">AKTİF TANIMLAR</span>
-                        <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">AKTİF TANIMLAR</span><h3 class="summary-kpi-value my-1 text-warning" id="stat_aktif_kalem">0</h3></div>
+<div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
                             <i class="bx bx-check-shield"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-warning" id="stat_aktif_kalem">0</h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-warning fw-semibold" id="stat_pasif_kalem">Pasif: 0</span>
                         <button type="button" class="btn btn-sm btn-subtle-warning rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="aktif">

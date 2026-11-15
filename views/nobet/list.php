@@ -443,13 +443,12 @@ $title = 'Nöbet Planlama';
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0 nobet-kpi-click" data-kpi="toplam" role="button" tabindex="0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">TOPLAM NÖBET</span>
-                        <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM NÖBET</span><h3 class="summary-kpi-value my-1" id="stat-total">0</h3></div>
+<div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
                             <i class="bx bx-calendar-check"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1" id="stat-total">0</h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext" id="stat-total-sub">Görünen dönem planı</span>
                     </div>
@@ -459,13 +458,12 @@ $title = 'Nöbet Planlama';
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0 nobet-kpi-click" data-kpi="bugun" role="button" tabindex="0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">BUGÜN NÖBETÇİ</span>
-                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">BUGÜN NÖBETÇİ</span><h3 class="summary-kpi-value my-1 text-success text-truncate" id="stat-today" style="font-size:20px;">-</h3></div>
+<div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
                             <i class="bx bx-user-check"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-success text-truncate" id="stat-today" style="font-size:20px;">-</h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext">Güncel görevli personel</span>
                     </div>
@@ -475,13 +473,12 @@ $title = 'Nöbet Planlama';
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0 nobet-kpi-click" data-kpi="talep" role="button" tabindex="0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">BEKLEYEN TALEPLER</span>
-                        <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">BEKLEYEN TALEPLER</span><h3 class="summary-kpi-value my-1" id="stat-pending">0</h3></div>
+<div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
                             <i class="bx bx-transfer-alt"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1" id="stat-pending">0</h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext">Onay bekleyen değişimler</span>
                     </div>
@@ -491,13 +488,12 @@ $title = 'Nöbet Planlama';
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0 nobet-kpi-click" data-kpi="bos" role="button" tabindex="0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">BOŞ GÜN</span>
-                        <div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">BOŞ GÜN</span><h3 class="summary-kpi-value my-1" id="stat-bos">0</h3></div>
+<div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
                             <i class="bx bx-calendar-week"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1" id="stat-bos">0</h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext">Nöbetçisi olmayan günler</span>
                     </div>

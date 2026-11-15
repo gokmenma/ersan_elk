@@ -486,13 +486,12 @@ html[data-theme-preset="macos-dark"] #summaryCardsContainer .summary-kpi-card, [
                 <div class="col-12 col-sm-6 col-xl-3">
                     <div class="card summary-kpi-card h-100 mb-0">
                         <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="summary-kpi-label">TOPLAM ARAÇ</span>
-                                <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
+                            <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM ARAÇ</span><h3 class="summary-kpi-value my-1"><?php echo (int) ($aracStats->toplam_arac ?? 0); ?> Adet</h3></div>
+<div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
                                     <i class="bx bx-car"></i>
                                 </div>
-                            </div>
-                            <h3 class="summary-kpi-value my-1"><?php echo (int) ($aracStats->toplam_arac ?? 0); ?> Adet</h3>
+</div>
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="summary-kpi-subtext">Pasif: <?php echo (int) ($aracStats->pasif_arac ?? 0); ?> | İkame: <?php echo (int) ($aracStats->ikame_arac ?? 0); ?></span>
                                 <a href="index.php?p=arac-takip/list&filter=tumu" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 d-flex align-items-center gap-1 summary-pill-btn <?php echo $filter === 'tumu' ? 'active' : ''; ?>">
@@ -506,13 +505,12 @@ html[data-theme-preset="macos-dark"] #summaryCardsContainer .summary-kpi-card, [
                 <div class="col-12 col-sm-6 col-xl-3">
                     <div class="card summary-kpi-card h-100 mb-0">
                         <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="summary-kpi-label">AKTİF ARAÇ</span>
-                                <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                            <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">AKTİF ARAÇ</span><h3 class="summary-kpi-value my-1 text-success"><?php echo (int) ($aracStats->aktif_arac ?? 0); ?> Adet</h3></div>
+<div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
                                     <i class="bx bx-check-circle"></i>
                                 </div>
-                            </div>
-                            <h3 class="summary-kpi-value my-1 text-success"><?php echo (int) ($aracStats->aktif_arac ?? 0); ?> Adet</h3>
+</div>
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="summary-kpi-subtext text-success fw-semibold">Zimmetli: <?php echo (int) $zimmetliSayi; ?> | Boşta: <?php echo (int) ($aracStats->bosta_arac ?? 0); ?></span>
                                 <a href="index.php?p=arac-takip/list" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 d-flex align-items-center gap-1 summary-pill-btn <?php echo empty($filter) ? 'active' : ''; ?>">
@@ -526,13 +524,12 @@ html[data-theme-preset="macos-dark"] #summaryCardsContainer .summary-kpi-card, [
                 <div class="col-12 col-sm-6 col-xl-3">
                     <div class="card summary-kpi-card h-100 mb-0">
                         <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="summary-kpi-label">SÜRESİ GEÇEN EVRAK</span>
-                                <div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
+                            <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">SÜRESİ GEÇEN EVRAK</span><h3 class="summary-kpi-value my-1 text-danger"><?php echo $evrakBitenToplam; ?> Adet</h3></div>
+<div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
                                     <i class="bx bx-error-circle"></i>
                                 </div>
-                            </div>
-                            <h3 class="summary-kpi-value my-1 text-danger"><?php echo $evrakBitenToplam; ?> Adet</h3>
+</div>
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="summary-kpi-subtext">
                                     <a href="index.php?p=arac-takip/list&filter=muayene" class="text-danger text-decoration-none">Muayene: <?php echo (int) ($evrakStats->muayene_biten ?? 0); ?></a> |
@@ -547,13 +544,12 @@ html[data-theme-preset="macos-dark"] #summaryCardsContainer .summary-kpi-card, [
                 <div class="col-12 col-sm-6 col-xl-3">
                     <div class="card summary-kpi-card h-100 mb-0">
                         <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="summary-kpi-label">YAKLAŞAN EVRAK (30 GÜN)</span>
-                                <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                            <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">YAKLAŞAN EVRAK (30 GÜN)</span><h3 class="summary-kpi-value my-1 text-warning"><?php echo $evrakYaklasanToplam; ?> Adet</h3></div>
+<div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
                                     <i class="bx bx-time-five"></i>
                                 </div>
-                            </div>
-                            <h3 class="summary-kpi-value my-1 text-warning"><?php echo $evrakYaklasanToplam; ?> Adet</h3>
+</div>
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="summary-kpi-subtext">
                                     <a href="index.php?p=arac-takip/list&filter=muayene_yaklasan" class="text-warning text-decoration-none">Muayene: <?php echo (int) ($evrakStats->muayene_yaklasan ?? 0); ?></a> |
@@ -690,13 +686,12 @@ html[data-theme-preset="macos-dark"] #summaryCardsContainer .summary-kpi-card, [
                                 <div class="col-12 col-sm-6 col-xl-3">
                                     <div class="card summary-kpi-card h-100 mb-0">
                                         <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <span class="summary-kpi-label">TOPLAM YAKIT</span>
-                                                <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                                            <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM YAKIT</span><h3 class="summary-kpi-value my-1" id="yakit-toplam-litre"><?php echo number_format($yakitStats->toplam_litre ?? 0, 0, ',', '.'); ?> <span style="font-size: 0.85rem; font-weight: 600;">L</span></h3></div>
+<div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
                                                     <i class="bx bx-gas-pump"></i>
                                                 </div>
-                                            </div>
-                                            <h3 class="summary-kpi-value my-1" id="yakit-toplam-litre"><?php echo number_format($yakitStats->toplam_litre ?? 0, 0, ',', '.'); ?> <span style="font-size: 0.85rem; font-weight: 600;">L</span></h3>
+</div>
                                             <span class="summary-kpi-subtext">Seçili dönem toplam litre</span>
                                         </div>
                                     </div>
@@ -704,13 +699,12 @@ html[data-theme-preset="macos-dark"] #summaryCardsContainer .summary-kpi-card, [
                                 <div class="col-12 col-sm-6 col-xl-3">
                                     <div class="card summary-kpi-card h-100 mb-0">
                                         <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <span class="summary-kpi-label">TOPLAM NET MALİYET</span>
-                                                <div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
+                                            <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM NET MALİYET</span><h3 class="summary-kpi-value my-1 text-primary" id="yakit-toplam-maliyet"><?php echo number_format($yakitStats->toplam_tutar ?? 0, 2, ',', '.'); ?> <span style="font-size: 0.85rem; font-weight: 600;">₺</span></h3></div>
+<div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
                                                     <i class="bx bx-money"></i>
                                                 </div>
-                                            </div>
-                                            <h3 class="summary-kpi-value my-1 text-primary" id="yakit-toplam-maliyet"><?php echo number_format($yakitStats->toplam_tutar ?? 0, 2, ',', '.'); ?> <span style="font-size: 0.85rem; font-weight: 600;">₺</span></h3>
+</div>
                                             <span class="summary-kpi-subtext">İskonto sonrası toplam tutar</span>
                                         </div>
                                     </div>
@@ -718,13 +712,12 @@ html[data-theme-preset="macos-dark"] #summaryCardsContainer .summary-kpi-card, [
                                 <div class="col-12 col-sm-6 col-xl-3">
                                     <div class="card summary-kpi-card h-100 mb-0">
                                         <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <span class="summary-kpi-label">ORT. BİRİM FİYAT</span>
-                                                <div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
+                                            <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">ORT. BİRİM FİYAT</span><h3 class="summary-kpi-value my-1" id="yakit-ortalama-fiyat"><?php echo number_format($yakitStats->ortalama_birim_fiyat ?? 0, 2, ',', '.'); ?> <span style="font-size: 0.85rem; font-weight: 600;">₺</span></h3></div>
+<div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
                                                     <i class="bx bx-purchase-tag"></i>
                                                 </div>
-                                            </div>
-                                            <h3 class="summary-kpi-value my-1" id="yakit-ortalama-fiyat"><?php echo number_format($yakitStats->ortalama_birim_fiyat ?? 0, 2, ',', '.'); ?> <span style="font-size: 0.85rem; font-weight: 600;">₺</span></h3>
+</div>
                                             <span class="summary-kpi-subtext">Litre başına ortalama</span>
                                         </div>
                                     </div>
@@ -732,13 +725,12 @@ html[data-theme-preset="macos-dark"] #summaryCardsContainer .summary-kpi-card, [
                                 <div class="col-12 col-sm-6 col-xl-3">
                                     <div class="card summary-kpi-card h-100 mb-0">
                                         <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <span class="summary-kpi-label">TOPLAM KAYIT</span>
-                                                <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                                            <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM KAYIT</span><h3 class="summary-kpi-value my-1 text-warning" id="yakit-kayit-sayisi"><?php echo (int) ($yakitStats->toplam_kayit ?? 0); ?></h3></div>
+<div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
                                                     <i class="bx bx-list-ul"></i>
                                                 </div>
-                                            </div>
-                                            <h3 class="summary-kpi-value my-1 text-warning" id="yakit-kayit-sayisi"><?php echo (int) ($yakitStats->toplam_kayit ?? 0); ?></h3>
+</div>
                                             <span class="summary-kpi-subtext">Yakıt kayıt sayısı</span>
                                         </div>
                                     </div>
@@ -863,13 +855,12 @@ html[data-theme-preset="macos-dark"] #summaryCardsContainer .summary-kpi-card, [
                                 <div class="col-12 col-sm-6 col-xl-4">
                                     <div class="card summary-kpi-card h-100 mb-0">
                                         <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <span class="summary-kpi-label">TOPLAM YOL</span>
-                                                <div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
+                                            <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM YOL</span><h3 class="summary-kpi-value my-1" id="km-toplam-yol"><?php echo number_format($kmStats->toplam_km ?? 0, 0, ',', '.'); ?> <span style="font-size: 0.85rem; font-weight: 600;">km</span></h3></div>
+<div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
                                                     <i class="bx bx-trending-up"></i>
                                                 </div>
-                                            </div>
-                                            <h3 class="summary-kpi-value my-1" id="km-toplam-yol"><?php echo number_format($kmStats->toplam_km ?? 0, 0, ',', '.'); ?> <span style="font-size: 0.85rem; font-weight: 600;">km</span></h3>
+</div>
                                             <span class="summary-kpi-subtext">Seçili dönem toplam yol</span>
                                         </div>
                                     </div>
@@ -877,13 +868,12 @@ html[data-theme-preset="macos-dark"] #summaryCardsContainer .summary-kpi-card, [
                                 <div class="col-12 col-sm-6 col-xl-4">
                                     <div class="card summary-kpi-card h-100 mb-0">
                                         <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <span class="summary-kpi-label">GÜNLÜK ORT. YOL</span>
-                                                <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                                            <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">GÜNLÜK ORT. YOL</span><h3 class="summary-kpi-value my-1 text-success" id="km-ortalama-yol"><?php echo number_format($kmStats->ortalama_gunluk_km ?? 0, 1, ',', '.'); ?> <span style="font-size: 0.85rem; font-weight: 600;">km</span></h3></div>
+<div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
                                                     <i class="bx bx-stats"></i>
                                                 </div>
-                                            </div>
-                                            <h3 class="summary-kpi-value my-1 text-success" id="km-ortalama-yol"><?php echo number_format($kmStats->ortalama_gunluk_km ?? 0, 1, ',', '.'); ?> <span style="font-size: 0.85rem; font-weight: 600;">km</span></h3>
+</div>
                                             <span class="summary-kpi-subtext">Günlük ortalama</span>
                                         </div>
                                     </div>
@@ -891,13 +881,12 @@ html[data-theme-preset="macos-dark"] #summaryCardsContainer .summary-kpi-card, [
                                 <div class="col-12 col-sm-6 col-xl-4">
                                     <div class="card summary-kpi-card h-100 mb-0">
                                         <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <span class="summary-kpi-label">TOPLAM KAYIT</span>
-                                                <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                                            <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM KAYIT</span><h3 class="summary-kpi-value my-1 text-warning" id="km-kayit-sayisi"><?php echo (int) ($kmStats->toplam_kayit ?? 0); ?></h3></div>
+<div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
                                                     <i class="bx bx-list-check"></i>
                                                 </div>
-                                            </div>
-                                            <h3 class="summary-kpi-value my-1 text-warning" id="km-kayit-sayisi"><?php echo (int) ($kmStats->toplam_kayit ?? 0); ?></h3>
+</div>
                                             <span class="summary-kpi-subtext">KM kayıt sayısı</span>
                                         </div>
                                     </div>
@@ -1002,13 +991,12 @@ html[data-theme-preset="macos-dark"] #summaryCardsContainer .summary-kpi-card, [
                                 <div class="col-12 col-sm-6 col-xl-4">
                                     <div class="card summary-kpi-card h-100 mb-0">
                                         <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <span class="summary-kpi-label">TOPLAM SERVİS KAYDI</span>
-                                                <div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
+                                            <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM SERVİS KAYDI</span><h3 class="summary-kpi-value my-1" id="servis-toplam-kayit">0</h3></div>
+<div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
                                                     <i class="bx bx-wrench"></i>
                                                 </div>
-                                            </div>
-                                            <h3 class="summary-kpi-value my-1" id="servis-toplam-kayit">0</h3>
+</div>
                                             <span class="summary-kpi-subtext">Seçili dönem servis kaydı</span>
                                         </div>
                                     </div>
@@ -1016,13 +1004,12 @@ html[data-theme-preset="macos-dark"] #summaryCardsContainer .summary-kpi-card, [
                                 <div class="col-12 col-sm-6 col-xl-4">
                                     <div class="card summary-kpi-card h-100 mb-0">
                                         <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <span class="summary-kpi-label">SERVİSTEKİ ARAÇLAR</span>
-                                                <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                                            <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">SERVİSTEKİ ARAÇLAR</span><h3 class="summary-kpi-value my-1 text-warning" id="servis-servisteki-arac">0</h3></div>
+<div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
                                                     <i class="bx bx-time"></i>
                                                 </div>
-                                            </div>
-                                            <h3 class="summary-kpi-value my-1 text-warning" id="servis-servisteki-arac">0</h3>
+</div>
                                             <span class="summary-kpi-subtext">Güncel durum</span>
                                         </div>
                                     </div>
@@ -1030,13 +1017,12 @@ html[data-theme-preset="macos-dark"] #summaryCardsContainer .summary-kpi-card, [
                                 <div class="col-12 col-sm-6 col-xl-4">
                                     <div class="card summary-kpi-card h-100 mb-0">
                                         <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <span class="summary-kpi-label">TOPLAM SERVİS MALİYETİ</span>
-                                                <div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
+                                            <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM SERVİS MALİYETİ</span><h3 class="summary-kpi-value my-1 text-danger" id="servis-toplam-maliyet">0.00 <span style="font-size: 0.85rem; font-weight: 600;">₺</span></h3></div>
+<div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
                                                     <i class="bx bx-wallet"></i>
                                                 </div>
-                                            </div>
-                                            <h3 class="summary-kpi-value my-1 text-danger" id="servis-toplam-maliyet">0.00 <span style="font-size: 0.85rem; font-weight: 600;">₺</span></h3>
+</div>
                                             <span class="summary-kpi-subtext">Toplam servis tutarı</span>
                                         </div>
                                     </div>

@@ -166,13 +166,12 @@ $nobetTipleri = [
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">TOPLAM BEKLEYEN</span>
-                        <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM BEKLEYEN</span><h3 class="summary-kpi-value my-1" id="stat_toplam_bekleyen"><?= (int) ($stats->total_bekleyen ?? 0) ?></h3></div>
+<div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
                             <i class="bx bx-hourglass"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1" id="stat_toplam_bekleyen"><?= (int) ($stats->total_bekleyen ?? 0) ?></h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext" id="stat_sub_toplam">Onay bekleyen toplam nöbet</span>
                         <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" data-filter-type="all">
@@ -187,13 +186,12 @@ $nobetTipleri = [
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">HAFTA SONU</span>
-                        <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">HAFTA SONU</span><h3 class="summary-kpi-value my-1 text-warning" id="stat_hs_bekleyen"><?= (int) ($stats->hafta_sonu_bekleyen ?? 0) ?></h3></div>
+<div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
                             <i class="bx bx-calendar-week"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-warning" id="stat_hs_bekleyen"><?= (int) ($stats->hafta_sonu_bekleyen ?? 0) ?></h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-muted">Hafta sonu nöbetleri</span>
                         <button type="button" class="btn btn-sm btn-subtle-warning rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-filter-type="hafta_sonu">
@@ -208,13 +206,12 @@ $nobetTipleri = [
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">RESMİ TATİL</span>
-                        <div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">RESMİ TATİL</span><h3 class="summary-kpi-value my-1 text-danger" id="stat_rt_bekleyen"><?= (int) ($stats->resmi_tatil_bekleyen ?? 0) ?></h3></div>
+<div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
                             <i class="bx bx-flag"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-danger" id="stat_rt_bekleyen"><?= (int) ($stats->resmi_tatil_bekleyen ?? 0) ?></h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-muted">Resmi tatil nöbetleri</span>
                         <button type="button" class="btn btn-sm btn-subtle-danger rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-filter-type="resmi_tatil">
@@ -229,13 +226,12 @@ $nobetTipleri = [
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">HAFTA İÇİ</span>
-                        <div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">HAFTA İÇİ</span><h3 class="summary-kpi-value my-1 text-info" id="stat_hi_bekleyen"><?= (int) ($stats->hafta_ici_bekleyen ?? 0) ?></h3></div>
+<div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
                             <i class="bx bx-calendar"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-info" id="stat_hi_bekleyen"><?= (int) ($stats->hafta_ici_bekleyen ?? 0) ?></h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-muted">Hafta içi nöbet kayıtları</span>
                         <button type="button" class="btn btn-sm btn-subtle-info rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-filter-type="hafta_ici">

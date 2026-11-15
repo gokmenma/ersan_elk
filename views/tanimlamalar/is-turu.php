@@ -112,13 +112,12 @@ $title = "İş Türü Tanımlamaları";
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">TOPLAM İŞ TÜRÜ</span>
-                        <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM İŞ TÜRÜ</span><h3 class="summary-kpi-value my-1" id="stat_toplam_isturu"><?php echo $totalIsTurleri; ?></h3></div>
+<div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
                             <i class="bx bx-briefcase"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1" id="stat_toplam_isturu"><?php echo $totalIsTurleri; ?></h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext" id="stat_sub_ucret" title="Ücretli: <?php echo $ucretliSayisi; ?> | Ücretsiz: <?php echo $ucretsizSayisi; ?>">Olumlu: <strong class="text-success"><?php echo $olumluSayisi; ?></strong> | Olumsuz: <strong class="text-danger"><?php echo $olumsuzSayisi; ?></strong></span>
                         <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" data-rapor="all">
@@ -133,13 +132,12 @@ $title = "İş Türü Tanımlamaları";
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">ENDEKS OKUMA</span>
-                        <div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">ENDEKS OKUMA</span><h3 class="summary-kpi-value my-1 text-info" id="stat_okuma_sayi"><?php echo $okumaSayisi; ?></h3></div>
+<div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
                             <i class="bx bx-book-open"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-info" id="stat_okuma_sayi"><?php echo $okumaSayisi; ?></h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-info fw-semibold">Endeks Okuma İşlemleri</span>
                         <button type="button" class="btn btn-sm btn-subtle-info rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-rapor="okuma">
@@ -154,13 +152,12 @@ $title = "İş Türü Tanımlamaları";
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">KESME / AÇMA</span>
-                        <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">KESME / AÇMA</span><h3 class="summary-kpi-value my-1 text-warning" id="stat_kesme_sayi"><?php echo $kesmeSayisi; ?></h3></div>
+<div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
                             <i class="bx bx-cut"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-warning" id="stat_kesme_sayi"><?php echo $kesmeSayisi; ?></h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-warning fw-semibold">Kesme/Açma İşlemleri</span>
                         <button type="button" class="btn btn-sm btn-subtle-warning rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-rapor="kesme">
@@ -175,13 +172,12 @@ $title = "İş Türü Tanımlamaları";
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">SÖKME / DİĞER</span>
-                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">SÖKME / DİĞER</span><h3 class="summary-kpi-value my-1 text-success" id="stat_sokme_sayi"><?php echo $sokmeDigerSayisi; ?></h3></div>
+<div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
                             <i class="bx bx-wrench"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-success" id="stat_sokme_sayi"><?php echo $sokmeDigerSayisi; ?></h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-success fw-semibold">Sayaç & Kontrol İşlemleri</span>
                         <button type="button" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-rapor="sokme">

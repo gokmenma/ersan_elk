@@ -189,13 +189,12 @@ $title = "Evrak Listesi";
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">TOPLAM EVRAK</span>
-                        <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM EVRAK</span><h3 class="summary-kpi-value my-1" id="stat_toplam_evrak"><?= $stats->toplam_evrak ?? 0; ?> Adet</h3></div>
+<div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
                             <i class="bx bx-file"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1" id="stat_toplam_evrak"><?= $stats->toplam_evrak ?? 0; ?> Adet</h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext" id="stat_sub_toplam">Gelen: <?= $stats->gelen_evrak ?? 0; ?> | Giden: <?= $stats->giden_evrak ?? 0; ?></span>
                         <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" data-filter-tip="all">
@@ -210,13 +209,12 @@ $title = "Evrak Listesi";
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">GELEN EVRAK</span>
-                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">GELEN EVRAK</span><h3 class="summary-kpi-value my-1 text-success" id="stat_gelen_evrak"><?= $stats->gelen_evrak ?? 0; ?> Adet</h3></div>
+<div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
                             <i class="bx bx-down-arrow-circle"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-success" id="stat_gelen_evrak"><?= $stats->gelen_evrak ?? 0; ?> Adet</h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-success fw-semibold" id="stat_sub_gelen">Giriş Kayıtları</span>
                         <button type="button" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-filter-tip="gelen">
@@ -231,13 +229,12 @@ $title = "Evrak Listesi";
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">GİDEN EVRAK</span>
-                        <div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">GİDEN EVRAK</span><h3 class="summary-kpi-value my-1 text-danger" id="stat_giden_evrak"><?= $stats->giden_evrak ?? 0; ?> Adet</h3></div>
+<div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
                             <i class="bx bx-up-arrow-circle"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-danger" id="stat_giden_evrak"><?= $stats->giden_evrak ?? 0; ?> Adet</h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-danger fw-semibold" id="stat_sub_giden">Çıkış Kayıtları</span>
                         <button type="button" class="btn btn-sm btn-subtle-danger rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-filter-tip="giden">
@@ -252,13 +249,12 @@ $title = "Evrak Listesi";
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">CEVAP BEKLEYEN</span>
-                        <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">CEVAP BEKLEYEN</span><h3 class="summary-kpi-value my-1 text-warning" id="stat_cevap_bekleyen"><?= $stats->cevap_bekleyen ?? 0; ?> Adet</h3></div>
+<div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
                             <i class="bx bx-time-five"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-warning" id="stat_cevap_bekleyen"><?= $stats->cevap_bekleyen ?? 0; ?> Adet</h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-warning fw-semibold" id="stat_sub_cevap">Bekleyen Evraklar</span>
                         <button type="button" class="btn btn-sm btn-subtle-warning rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-filter-tip="cevap_bekleyen">

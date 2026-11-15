@@ -40,11 +40,10 @@ $title = 'Başvurular';
     <div class="row g-3 mb-3 summary-cards-group" id="summaryCardsContainer">
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0"><div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="summary-kpi-label">TOPLAM BAŞVURU</span>
-                    <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle"><i class="bx bx-group"></i></div>
-                </div>
-                <h3 class="summary-kpi-value my-1" id="stat_toplam">0</h3>
+                <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM BAŞVURU</span><h3 class="summary-kpi-value my-1" id="stat_toplam">0</h3></div>
+<div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle"><i class="bx bx-group"></i></div>
+</div>
                 <div class="d-flex justify-content-between align-items-center">
                     <span class="summary-kpi-subtext" id="stat_sub_toplam">Son 7 gün: 0</span>
                     <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" data-status="all"><i class="bx bx-layer"></i> Tümü</button>
@@ -53,11 +52,10 @@ $title = 'Başvurular';
         </div>
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0"><div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="summary-kpi-label">DEĞERLENDİRME BEKLEYEN</span>
-                    <div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle"><i class="bx bx-time-five"></i></div>
-                </div>
-                <h3 class="summary-kpi-value my-1" id="stat_bekleyen">0</h3>
+                <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">DEĞERLENDİRME BEKLEYEN</span><h3 class="summary-kpi-value my-1" id="stat_bekleyen">0</h3></div>
+<div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle"><i class="bx bx-time-five"></i></div>
+</div>
                 <div class="d-flex justify-content-between align-items-center">
                     <span class="summary-kpi-subtext" id="stat_sub_bekleyen">AI hata/bekleyen: 0</span>
                     <button type="button" class="btn btn-sm btn-subtle-info rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="bekleyen"><i class="bx bx-time"></i> Bekleyen</button>
@@ -66,11 +64,10 @@ $title = 'Başvurular';
         </div>
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0"><div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="summary-kpi-label">AI OLUMLU ADAY</span>
-                    <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle"><i class="bx bx-like"></i></div>
-                </div>
-                <h3 class="summary-kpi-value my-1 text-success" id="stat_ai_olumlu">0</h3>
+                <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">AI OLUMLU ADAY</span><h3 class="summary-kpi-value my-1 text-success" id="stat_ai_olumlu">0</h3></div>
+<div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle"><i class="bx bx-like"></i></div>
+</div>
                 <div class="d-flex justify-content-between align-items-center">
                     <span class="summary-kpi-subtext text-success fw-semibold" id="stat_sub_ai">Belirsiz: 0 | Olumsuz: 0</span>
                     <button type="button" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 etiket-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-etiket="olumlu"><i class="bx bx-check-circle"></i> Olumlu</button>
@@ -79,11 +76,10 @@ $title = 'Başvurular';
         </div>
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0"><div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="summary-kpi-label">PERSONELE DÖNÜŞEN</span>
-                    <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle"><i class="bx bx-id-card"></i></div>
-                </div>
-                <h3 class="summary-kpi-value my-1" id="stat_donusen">0</h3>
+                <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">PERSONELE DÖNÜŞEN</span><h3 class="summary-kpi-value my-1" id="stat_donusen">0</h3></div>
+<div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle"><i class="bx bx-id-card"></i></div>
+</div>
                 <div class="d-flex justify-content-between align-items-center">
                     <span class="summary-kpi-subtext" id="stat_sub_puan">Ort. AI puanı: -</span>
                     <button type="button" class="btn btn-sm btn-subtle-warning rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="personele_donustu"><i class="bx bx-user-plus"></i> Dönüşen</button>

@@ -77,13 +77,12 @@ $title = "Kullanıcı Listesi";
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">TOPLAM KULLANICI</span>
-                        <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM KULLANICI</span><h3 class="summary-kpi-value my-1" id="stat_toplam"><?= $toplamKullanici; ?> Kişi</h3></div>
+<div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
                             <i class="bx bx-user"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1" id="stat_toplam"><?= $toplamKullanici; ?> Kişi</h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext" id="stat_sub_toplam">Aktif: <?= $aktifSayisi; ?> | Pasif: <?= $pasifSayisi; ?></span>
                         <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" data-filter-durum="all">
@@ -98,13 +97,12 @@ $title = "Kullanıcı Listesi";
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">AKTİF HESAPLAR</span>
-                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">AKTİF HESAPLAR</span><h3 class="summary-kpi-value my-1 text-success" id="stat_aktif"><?= $aktifSayisi; ?> Kişi</h3></div>
+<div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
                             <i class="bx bx-check-circle"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-success" id="stat_aktif"><?= $aktifSayisi; ?> Kişi</h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-success fw-semibold">Erişime Açık</span>
                         <button type="button" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-filter-durum="Aktif">
@@ -119,13 +117,12 @@ $title = "Kullanıcı Listesi";
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">PASİF HESAPLAR</span>
-                        <div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">PASİF HESAPLAR</span><h3 class="summary-kpi-value my-1 text-danger" id="stat_pasif"><?= $pasifSayisi; ?> Kişi</h3></div>
+<div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
                             <i class="bx bx-x-circle"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-danger" id="stat_pasif"><?= $pasifSayisi; ?> Kişi</h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-danger fw-semibold">Erişime Kapalı</span>
                         <button type="button" class="btn btn-sm btn-subtle-danger rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-filter-durum="Pasif">
@@ -140,13 +137,12 @@ $title = "Kullanıcı Listesi";
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">İZİN ONAY YETKİSİ</span>
-                        <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">İZİN ONAY YETKİSİ</span><h3 class="summary-kpi-value my-1 text-warning" id="stat_izin"><?= $izinOnayciSayisi; ?> Kişi</h3></div>
+<div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
                             <i class="bx bx-check-shield"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-warning" id="stat_izin"><?= $izinOnayciSayisi; ?> Kişi</h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-warning fw-semibold">Onay Sırası Tanımlı</span>
                         <button type="button" class="btn btn-sm btn-subtle-warning rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-filter-durum="izin_onay">

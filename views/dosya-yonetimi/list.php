@@ -173,11 +173,10 @@ tr:hover .ad-duzenle, .dosya-row:hover .ad-duzenle, .dosya-tile:hover .ad-duzenl
     <div class="row g-3 mb-3 summary-cards-group" id="summaryCardsContainer">
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0"><div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="summary-kpi-label">TOPLAM DOSYA</span>
-                    <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle"><i class="bx bx-file"></i></div>
-                </div>
-                <h3 class="summary-kpi-value my-1" id="stat_toplam_dosya">0</h3>
+                <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM DOSYA</span><h3 class="summary-kpi-value my-1" id="stat_toplam_dosya">0</h3></div>
+<div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle"><i class="bx bx-file"></i></div>
+</div>
                 <div class="d-flex justify-content-between align-items-center">
                     <span class="summary-kpi-subtext">Erişebildiğiniz dosyalar</span>
                     <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" id="btnTumDosyalar"><i class="bx bx-layer"></i> Tümü</button>
@@ -186,11 +185,10 @@ tr:hover .ad-duzenle, .dosya-row:hover .ad-duzenle, .dosya-tile:hover .ad-duzenl
         </div>
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0"><div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="summary-kpi-label">KLASÖR</span>
-                    <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle"><i class="bx bx-folder"></i></div>
-                </div>
-                <h3 class="summary-kpi-value my-1 text-success" id="stat_toplam_klasor">0</h3>
+                <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">KLASÖR</span><h3 class="summary-kpi-value my-1 text-success" id="stat_toplam_klasor">0</h3></div>
+<div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle"><i class="bx bx-folder"></i></div>
+</div>
                 <div class="d-flex justify-content-between align-items-center">
                     <span class="summary-kpi-subtext text-success fw-semibold">Toplam klasör</span>
                 </div>
@@ -198,11 +196,10 @@ tr:hover .ad-duzenle, .dosya-row:hover .ad-duzenle, .dosya-tile:hover .ad-duzenl
         </div>
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0"><div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="summary-kpi-label">BU AY YÜKLENEN</span>
-                    <div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle"><i class="bx bx-calendar-check"></i></div>
-                </div>
-                <h3 class="summary-kpi-value my-1 text-info" id="stat_bu_ay">0</h3>
+                <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">BU AY YÜKLENEN</span><h3 class="summary-kpi-value my-1 text-info" id="stat_bu_ay">0</h3></div>
+<div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle"><i class="bx bx-calendar-check"></i></div>
+</div>
                 <div class="d-flex justify-content-between align-items-center">
                     <span class="summary-kpi-subtext">Bu ay eklenen dosya</span>
                 </div>
@@ -210,11 +207,10 @@ tr:hover .ad-duzenle, .dosya-row:hover .ad-duzenle, .dosya-tile:hover .ad-duzenl
         </div>
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0"><div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="summary-kpi-label">TOPLAM BOYUT</span>
-                    <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle"><i class="bx bx-hdd"></i></div>
-                </div>
-                <h3 class="summary-kpi-value my-1" id="stat_toplam_boyut">0 MB</h3>
+                <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM BOYUT</span><h3 class="summary-kpi-value my-1" id="stat_toplam_boyut">0 MB</h3></div>
+<div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle"><i class="bx bx-hdd"></i></div>
+</div>
                 <div class="d-flex justify-content-between align-items-center">
                     <span class="summary-kpi-subtext text-muted">Disk kullanımı</span>
                     <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Arşiv</span>

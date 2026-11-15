@@ -2346,3 +2346,5 @@
 
 - [x] Mobil SPA Operasyonlar kartı "Dönem" sekmesi: sözleşme hedefi/yapılan/kalan/oran (2026-11-13)
 - [x] Firma Yönetimi sayfası (Yönetim menüsü, yetki+menü SQL'i). Yerelde tarayıcıyla liste/özet/düzenleme modalı doğrulandı; kaydet/sil/varsayılan yap ve yetkisiz kullanıcı akışı denenmedi, SQL canlıda çalıştırılmalı.
+- [x] Aydınoğulları design system CSS'i varsayılan yapıldı (2026-11-15); yalnız Cari sayfasında tarayıcıyla doğrulandı.
+- [x] AGENTS.md §15 yeni sayfa standardı + KPI yapısı 48 sayfaya uygulandı (2026-11-15); Evrak Takip ve Gelir-Gider tarayıcıda görüldü

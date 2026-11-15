@@ -59,11 +59,10 @@ $gunFmt = fn($v) => rtrim(rtrim(number_format((float) $v, 1, ',', '.'), '0'), ',
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">AKTİF PERSONEL</span>
-                        <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle"><i class="bx bx-group"></i></div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1" id="kpi_toplam"><?php echo (int) $summary->toplam_personel; ?></h3>
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">AKTİF PERSONEL</span><h3 class="summary-kpi-value my-1" id="kpi_toplam"><?php echo (int) $summary->toplam_personel; ?></h3></div>
+<div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle"><i class="bx bx-group"></i></div>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext" id="kpi_sub_toplam">Hakedişi olan: <?php echo (int) $summary->hakedisi_olan; ?> | Yok: <?php echo (int) $summary->hakedis_yok; ?></span>
                         <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" data-status="all">
@@ -77,11 +76,10 @@ $gunFmt = fn($v) => rtrim(rtrim(number_format((float) $v, 1, ',', '.'), '0'), ',
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">KULLANILABİLİR İZNİ OLAN</span>
-                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle"><i class="bx bx-check-circle"></i></div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-success" id="kpi_kullanilabilir"><?php echo (int) $summary->kullanilabilir; ?></h3>
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">KULLANILABİLİR İZNİ OLAN</span><h3 class="summary-kpi-value my-1 text-success" id="kpi_kullanilabilir"><?php echo (int) $summary->kullanilabilir; ?></h3></div>
+<div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle"><i class="bx bx-check-circle"></i></div>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-success fw-semibold">Kalan bakiyesi bulunan</span>
                         <button type="button" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="kullanilabilir">
@@ -95,11 +93,10 @@ $gunFmt = fn($v) => rtrim(rtrim(number_format((float) $v, 1, ',', '.'), '0'), ',
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">İZNİ TÜKENEN</span>
-                        <div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle"><i class="bx bx-block"></i></div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-danger" id="kpi_tukendi"><?php echo (int) $summary->tukendi; ?></h3>
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">İZNİ TÜKENEN</span><h3 class="summary-kpi-value my-1 text-danger" id="kpi_tukendi"><?php echo (int) $summary->tukendi; ?></h3></div>
+<div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle"><i class="bx bx-block"></i></div>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext" id="kpi_sub_yok">Hakedişi olmayan: <?php echo (int) $summary->hakedis_yok; ?></span>
                         <button type="button" class="btn btn-sm btn-subtle-danger rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="tukendi">
@@ -113,11 +110,10 @@ $gunFmt = fn($v) => rtrim(rtrim(number_format((float) $v, 1, ',', '.'), '0'), ',
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">TOPLAM KALAN İZİN (GÜN)</span>
-                        <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle"><i class="bx bx-calendar"></i></div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1" id="kpi_kalan"><?php echo htmlspecialchars($gunFmt($summary->toplam_kalan), ENT_QUOTES, 'UTF-8'); ?></h3>
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM KALAN İZİN (GÜN)</span><h3 class="summary-kpi-value my-1" id="kpi_kalan"><?php echo htmlspecialchars($gunFmt($summary->toplam_kalan), ENT_QUOTES, 'UTF-8'); ?></h3></div>
+<div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle"><i class="bx bx-calendar"></i></div>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext" id="kpi_sub_kalan">Hakediş: <?php echo htmlspecialchars($gunFmt($summary->toplam_hakedis), ENT_QUOTES, 'UTF-8'); ?> | Kullanılan: <?php echo htmlspecialchars($gunFmt($summary->toplam_kullanilan), ENT_QUOTES, 'UTF-8'); ?></span>
                         <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="hakedis_yok">

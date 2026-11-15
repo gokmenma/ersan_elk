@@ -49,11 +49,10 @@ $summary = $Tanimlamalar->izinTuruSummary((int) ($_SESSION['firma_id'] ?? 0));
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">TOPLAM İZİN TÜRÜ</span>
-                        <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle"><i class="bx bx-layer"></i></div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1" id="kpi_toplam"><?php echo (int) $summary->toplam; ?></h3>
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM İZİN TÜRÜ</span><h3 class="summary-kpi-value my-1" id="kpi_toplam"><?php echo (int) $summary->toplam; ?></h3></div>
+<div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle"><i class="bx bx-layer"></i></div>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext" id="kpi_sub_toplam">Ücretli: <?php echo (int) $summary->ucretli; ?> | Ücretsiz: <?php echo (int) $summary->ucretsiz; ?></span>
                         <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" data-status="all">
@@ -67,11 +66,10 @@ $summary = $Tanimlamalar->izinTuruSummary((int) ($_SESSION['firma_id'] ?? 0));
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">ÜCRETLİ İZİNLER</span>
-                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle"><i class="bx bx-money"></i></div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-success" id="kpi_ucretli"><?php echo (int) $summary->ucretli; ?></h3>
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">ÜCRETLİ İZİNLER</span><h3 class="summary-kpi-value my-1 text-success" id="kpi_ucretli"><?php echo (int) $summary->ucretli; ?></h3></div>
+<div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle"><i class="bx bx-money"></i></div>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-success fw-semibold">Maaştan kesilmeyen</span>
                         <button type="button" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="ucretli">
@@ -85,11 +83,10 @@ $summary = $Tanimlamalar->izinTuruSummary((int) ($_SESSION['firma_id'] ?? 0));
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">ÜCRETSİZ İZİNLER</span>
-                        <div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle"><i class="bx bx-block"></i></div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-danger" id="kpi_ucretsiz"><?php echo (int) $summary->ucretsiz; ?></h3>
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">ÜCRETSİZ İZİNLER</span><h3 class="summary-kpi-value my-1 text-danger" id="kpi_ucretsiz"><?php echo (int) $summary->ucretsiz; ?></h3></div>
+<div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle"><i class="bx bx-block"></i></div>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-danger fw-semibold">Maaştan kesilen</span>
                         <button type="button" class="btn btn-sm btn-subtle-danger rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="ucretsiz">
@@ -103,11 +100,10 @@ $summary = $Tanimlamalar->izinTuruSummary((int) ($_SESSION['firma_id'] ?? 0));
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">YETKİLİ ONAYLI</span>
-                        <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle"><i class="bx bx-lock-alt"></i></div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1" id="kpi_onayli"><?php echo (int) $summary->onayli; ?></h3>
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">YETKİLİ ONAYLI</span><h3 class="summary-kpi-value my-1" id="kpi_onayli"><?php echo (int) $summary->onayli; ?></h3></div>
+<div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle"><i class="bx bx-lock-alt"></i></div>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext" id="kpi_sub_personel">Personele açık: <?php echo (int) $summary->personel_gorebilir; ?></span>
                         <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="onayli">

@@ -258,13 +258,12 @@ $aylar = [
             <div class="col-12 col-md-4">
                 <div class="card summary-kpi-card h-100 mb-0">
                     <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="summary-kpi-label">İŞ ARTIŞI / AZALIŞI</span>
-                            <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                        <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">İŞ ARTIŞI / AZALIŞI</span><h3 class="summary-kpi-value my-1 text-warning" id="stat_is_artis">0,00 ₺</h3></div>
+<div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
                                 <i class="bx bx-trending-up"></i>
                             </div>
-                        </div>
-                        <h3 class="summary-kpi-value my-1 text-warning" id="stat_is_artis">0,00 ₺</h3>
+</div>
                         <span class="summary-kpi-subtext" id="stat_is_artis_sub">-</span>
                     </div>
                 </div>
@@ -272,13 +271,12 @@ $aylar = [
             <div class="col-12 col-md-4">
                 <div class="card summary-kpi-card h-100 mb-0">
                     <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="summary-kpi-label">TAMAMLANAN HAKEDİŞ</span>
-                            <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                        <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TAMAMLANAN HAKEDİŞ</span><h3 class="summary-kpi-value my-1 text-success" id="stat_tamamlanan_hakedis">0,00 ₺</h3></div>
+<div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
                                 <i class="bx bx-check-double"></i>
                             </div>
-                        </div>
-                        <h3 class="summary-kpi-value my-1 text-success" id="stat_tamamlanan_hakedis">0,00 ₺</h3>
+</div>
                         <span class="summary-kpi-subtext" id="stat_tamamlanan_hakedis_sub">-</span>
                     </div>
                 </div>
@@ -286,13 +284,12 @@ $aylar = [
             <div class="col-12 col-md-4">
                 <div class="card summary-kpi-card h-100 mb-0">
                     <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="summary-kpi-label">TASLAK HAKEDİŞ</span>
-                            <div class="summary-kpi-icon bg-secondary-subtle text-secondary border border-secondary-subtle">
+                        <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TASLAK HAKEDİŞ</span><h3 class="summary-kpi-value my-1 text-secondary" id="stat_taslak_hakedis">0,00 ₺</h3></div>
+<div class="summary-kpi-icon bg-secondary-subtle text-secondary border border-secondary-subtle">
                                 <i class="bx bx-edit"></i>
                             </div>
-                        </div>
-                        <h3 class="summary-kpi-value my-1 text-secondary" id="stat_taslak_hakedis">0,00 ₺</h3>
+</div>
                         <span class="summary-kpi-subtext" id="stat_taslak_hakedis_sub">-</span>
                     </div>
                 </div>

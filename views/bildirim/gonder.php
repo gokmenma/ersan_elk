@@ -102,11 +102,10 @@ $sonGonderim = $stats->son ? date('d.m.Y H:i', strtotime($stats->son)) : 'Henüz
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">AKTİF PERSONEL</span>
-                        <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle"><i class="bx bx-group"></i></div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1"><?= $toplamPersonel ?></h3>
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">AKTİF PERSONEL</span><h3 class="summary-kpi-value my-1"><?= $toplamPersonel ?></h3></div>
+<div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle"><i class="bx bx-group"></i></div>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext">Bildirim gönderilebilecek havuz</span>
                         <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 summary-pill-btn d-flex align-items-center gap-1" id="btnPickAll">
@@ -120,11 +119,10 @@ $sonGonderim = $stats->son ? date('d.m.Y H:i', strtotime($stats->son)) : 'Henüz
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">ABONE PERSONEL</span>
-                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle"><i class="bx bx-check-circle"></i></div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-success"><?= $aboneSayisi ?></h3>
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">ABONE PERSONEL</span><h3 class="summary-kpi-value my-1 text-success"><?= $aboneSayisi ?></h3></div>
+<div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle"><i class="bx bx-check-circle"></i></div>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-success fw-semibold">Bildirim alabilen</span>
                         <button type="button" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 summary-pill-btn d-flex align-items-center gap-1" id="btnPickSubscribers">
@@ -138,11 +136,10 @@ $sonGonderim = $stats->son ? date('d.m.Y H:i', strtotime($stats->son)) : 'Henüz
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">ABONE OLMAYAN</span>
-                        <div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle"><i class="bx bx-bell-off"></i></div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-danger"><?= $toplamPersonel - $aboneSayisi ?></h3>
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">ABONE OLMAYAN</span><h3 class="summary-kpi-value my-1 text-danger"><?= $toplamPersonel - $aboneSayisi ?></h3></div>
+<div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle"><i class="bx bx-bell-off"></i></div>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-danger fw-semibold">Uygulamada izin vermemiş</span>
                     </div>
@@ -153,11 +150,10 @@ $sonGonderim = $stats->son ? date('d.m.Y H:i', strtotime($stats->son)) : 'Henüz
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">BU AY GÖNDERİLEN</span>
-                        <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle"><i class="bx bx-send"></i></div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1" id="kpi_bu_ay"><?= (int) $stats->bu_ay ?></h3>
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">BU AY GÖNDERİLEN</span><h3 class="summary-kpi-value my-1" id="kpi_bu_ay"><?= (int) $stats->bu_ay ?></h3></div>
+<div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle"><i class="bx bx-send"></i></div>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext" id="kpi_son">Son: <?= htmlspecialchars($sonGonderim, ENT_QUOTES, 'UTF-8') ?></span>
                         <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Toplam: <span id="kpi_toplam"><?= (int) $stats->toplam ?></span></span>

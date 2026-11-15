@@ -203,13 +203,12 @@ $summary = $SozlesmeDonem->summary($firma_id);
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">TOPLAM DÖNEM</span>
-                        <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM DÖNEM</span><h3 class="summary-kpi-value my-1 text-primary" id="kpi_toplam"><?php echo $summary->toplam_donem; ?></h3></div>
+<div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
                             <i class="bx bx-layer"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-primary" id="kpi_toplam"><?php echo $summary->toplam_donem; ?></h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext" id="kpi_sub_toplam">Aktif: <?php echo $summary->aktif_sayi; ?> | Pasif: <?php echo $summary->pasif_sayi; ?></span>
                         <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2.5 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" data-status="all">
@@ -224,15 +223,14 @@ $summary = $SozlesmeDonem->summary($firma_id);
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">YÜRÜRLÜKTEKİ DÖNEM</span>
-                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">YÜRÜRLÜKTEKİ DÖNEM</span><h3 class="summary-kpi-value my-1 text-success font-size-15 text-truncate" id="kpi_aktif_adi" title="<?php echo htmlspecialchars($summary->aktif_donem_adi); ?>">
+                        <?php echo htmlspecialchars($summary->aktif_donem_adi); ?>
+                    </h3></div>
+<div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
                             <i class="bx bx-check-shield"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-success font-size-15 text-truncate" id="kpi_aktif_adi" title="<?php echo htmlspecialchars($summary->aktif_donem_adi); ?>">
-                        <?php echo htmlspecialchars($summary->aktif_donem_adi); ?>
-                    </h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-success fw-semibold" id="kpi_aktif_tarih"><?php echo $summary->aktif_donem_tarih; ?></span>
                         <button type="button" class="btn btn-sm btn-subtle-success rounded-pill px-2.5 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="aktif">
@@ -247,13 +245,12 @@ $summary = $SozlesmeDonem->summary($firma_id);
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">PASİF DÖNEMLER</span>
-                        <div class="summary-kpi-icon bg-secondary-subtle text-secondary border border-secondary-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">PASİF DÖNEMLER</span><h3 class="summary-kpi-value my-1 text-secondary" id="kpi_pasif"><?php echo $summary->pasif_sayi; ?></h3></div>
+<div class="summary-kpi-icon bg-secondary-subtle text-secondary border border-secondary-subtle">
                             <i class="bx bx-history"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-secondary" id="kpi_pasif"><?php echo $summary->pasif_sayi; ?></h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext" id="kpi_sub_pasif">Tamamlanmış / Pasif Kayıtlar</span>
                         <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-2.5 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="pasif">
@@ -268,13 +265,8 @@ $summary = $SozlesmeDonem->summary($firma_id);
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">AKTİF DÖNEM SÜRESİ</span>
-                        <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
-                            <i class="bx bx-time-five"></i>
-                        </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-dark" id="kpi_kalan_gun">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">AKTİF DÖNEM SÜRESİ</span><h3 class="summary-kpi-value my-1 text-dark" id="kpi_kalan_gun">
                         <?php 
                         if ($summary->aktif_kalan_gun > 0) {
                             echo $summary->aktif_kalan_gun . ' <span class="font-size-14 text-muted fw-normal">Gün Kaldı</span>';
@@ -284,7 +276,11 @@ $summary = $SozlesmeDonem->summary($firma_id);
                             echo '<span class="text-danger font-size-15">Süre Doldu</span>';
                         }
                         ?>
-                    </h3>
+                    </h3></div>
+<div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                            <i class="bx bx-time-five"></i>
+                        </div>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext">Sözleşme Bitiş Takibi</span>
                         <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill font-size-11 px-2">Yürürlükte</span>

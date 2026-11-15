@@ -41,11 +41,10 @@ $durumOptions = ['yeni' => 'Yeni', 'okundu' => 'Okundu', 'cevaplandi' => 'Cevapl
     <div class="row g-3 mb-3 summary-cards-group" id="summaryCardsContainer">
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0"><div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="summary-kpi-label">TOPLAM MESAJ</span>
-                    <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle"><i class="bx bx-envelope"></i></div>
-                </div>
-                <h3 class="summary-kpi-value my-1" id="stat_toplam">0</h3>
+                <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM MESAJ</span><h3 class="summary-kpi-value my-1" id="stat_toplam">0</h3></div>
+<div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle"><i class="bx bx-envelope"></i></div>
+</div>
                 <div class="d-flex justify-content-between align-items-center">
                     <span class="summary-kpi-subtext" id="stat_sub_toplam">Okundu: 0 | Cevaplandı: 0</span>
                     <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" data-status="all"><i class="bx bx-layer"></i> Tümü</button>
@@ -54,11 +53,10 @@ $durumOptions = ['yeni' => 'Yeni', 'okundu' => 'Okundu', 'cevaplandi' => 'Cevapl
         </div>
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0"><div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="summary-kpi-label">YENİ (OKUNMAMIŞ)</span>
-                    <div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle"><i class="bx bx-bell"></i></div>
-                </div>
-                <h3 class="summary-kpi-value my-1 text-danger" id="stat_yeni">0</h3>
+                <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">YENİ (OKUNMAMIŞ)</span><h3 class="summary-kpi-value my-1 text-danger" id="stat_yeni">0</h3></div>
+<div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle"><i class="bx bx-bell"></i></div>
+</div>
                 <div class="d-flex justify-content-between align-items-center">
                     <span class="summary-kpi-subtext text-danger fw-semibold">Yanıt bekliyor</span>
                     <button type="button" class="btn btn-sm btn-subtle-danger rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="yeni"><i class="bx bx-bell"></i> Yeni</button>
@@ -67,11 +65,10 @@ $durumOptions = ['yeni' => 'Yeni', 'okundu' => 'Okundu', 'cevaplandi' => 'Cevapl
         </div>
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0"><div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="summary-kpi-label">OKUNDU</span>
-                    <div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle"><i class="bx bx-show"></i></div>
-                </div>
-                <h3 class="summary-kpi-value my-1" id="stat_okundu">0</h3>
+                <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">OKUNDU</span><h3 class="summary-kpi-value my-1" id="stat_okundu">0</h3></div>
+<div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle"><i class="bx bx-show"></i></div>
+</div>
                 <div class="d-flex justify-content-between align-items-center">
                     <span class="summary-kpi-subtext">Henüz yanıtlanmadı</span>
                     <button type="button" class="btn btn-sm btn-subtle-info rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="okundu"><i class="bx bx-show"></i> Okundu</button>
@@ -80,11 +77,10 @@ $durumOptions = ['yeni' => 'Yeni', 'okundu' => 'Okundu', 'cevaplandi' => 'Cevapl
         </div>
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0"><div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="summary-kpi-label">CEVAPLANDI</span>
-                    <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle"><i class="bx bx-check-double"></i></div>
-                </div>
-                <h3 class="summary-kpi-value my-1 text-success" id="stat_cevaplandi">0</h3>
+                <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">CEVAPLANDI</span><h3 class="summary-kpi-value my-1 text-success" id="stat_cevaplandi">0</h3></div>
+<div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle"><i class="bx bx-check-double"></i></div>
+</div>
                 <div class="d-flex justify-content-between align-items-center">
                     <span class="summary-kpi-subtext text-success fw-semibold">Tamamlanan</span>
                     <button type="button" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="cevaplandi"><i class="bx bx-check-circle"></i> Cevaplandı</button>

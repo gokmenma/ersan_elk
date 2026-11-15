@@ -48,13 +48,12 @@ $title = "Gönderim Geçmişi";
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label"><?= $label ?></span>
-                        <div class="summary-kpi-icon bg-<?= $color ?>-subtle text-<?= $color ?> border border-<?= $color ?>-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label"><?= $label ?></span><h3 class="summary-kpi-value my-1" id="stat_<?= $key ?>">0</h3></div>
+<div class="summary-kpi-icon bg-<?= $color ?>-subtle text-<?= $color ?> border border-<?= $color ?>-subtle">
                             <i class="bx <?= $icon ?>"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1" id="stat_<?= $key ?>">0</h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext" id="stat_sub_<?= $key ?>">&nbsp;</span>
                         <button type="button" class="btn btn-sm <?= $btnClass ?> rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn <?= $active ?>" data-type="<?= $filter ?>">

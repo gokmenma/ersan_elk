@@ -148,13 +148,12 @@ $title = "Talep Yönetimi";
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">TOPLAM BEKLEYEN</span>
-                        <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM BEKLEYEN</span><h3 class="summary-kpi-value my-1 text-warning"><?= (int) $toplamCount ?></h3></div>
+<div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
                             <i class="bx bx-bell"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-warning"><?= (int) $toplamCount ?></h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext">İşlem Bekleyen Talepler</span>
                         <button type="button" class="btn btn-sm btn-subtle-warning rounded-pill px-2 py-0 summary-pill-btn tab-switch-btn <?= $currentTab == 'dashboard' ? 'active' : '' ?>" data-tab-target="#tabDashboard">
@@ -169,13 +168,12 @@ $title = "Talep Yönetimi";
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">AVANS TALEPLERİ</span>
-                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">AVANS TALEPLERİ</span><h3 class="summary-kpi-value my-1 text-success"><?= (int) $avansCount ?></h3></div>
+<div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
                             <i class="bx bx-money"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-success"><?= (int) $avansCount ?></h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-success fw-semibold">Bekleyen Avans Onayı</span>
                         <?php if ($canAvans): ?>
@@ -192,13 +190,12 @@ $title = "Talep Yönetimi";
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">İZİN TALEPLERİ</span>
-                        <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">İZİN TALEPLERİ</span><h3 class="summary-kpi-value my-1 text-primary"><?= (int) $izinCount ?></h3></div>
+<div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
                             <i class="bx bx-calendar-check"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-primary"><?= (int) $izinCount ?></h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-primary fw-semibold">Bekleyen İzin Onayı</span>
                         <?php if ($canIzin): ?>
@@ -215,13 +212,12 @@ $title = "Talep Yönetimi";
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">GENEL TALEPLER</span>
-                        <div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">GENEL TALEPLER</span><h3 class="summary-kpi-value my-1 text-info"><?= (int) $talepCount ?></h3></div>
+<div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
                             <i class="bx bx-message-square-detail"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-info"><?= (int) $talepCount ?></h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext text-info fw-semibold">Destek & Arıza Bildirimi</span>
                         <?php if ($canAriza): ?>

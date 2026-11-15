@@ -97,13 +97,12 @@ html[data-theme-preset="macos-dark"] .status-filter-group .nav-link:hover { back
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">BEKLEYEN DEĞİŞİM</span>
-                        <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">BEKLEYEN DEĞİŞİM</span><h3 class="summary-kpi-value my-1 text-warning" id="stat-degisim-bekleyen">0</h3></div>
+<div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
                             <i class="bx bx-transfer-alt"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-warning" id="stat-degisim-bekleyen">0</h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext">Onay bekleyen değişim talepleri</span>
                         <button type="button" class="btn btn-sm btn-subtle-warning rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" data-tab="#degisim-talepler">
@@ -117,13 +116,12 @@ html[data-theme-preset="macos-dark"] .status-filter-group .nav-link:hover { back
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">MAZERET BİLDİRİMİ</span>
-                        <div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">MAZERET BİLDİRİMİ</span><h3 class="summary-kpi-value my-1 text-danger" id="stat-mazeret-bekleyen">0</h3></div>
+<div class="summary-kpi-icon bg-danger-subtle text-danger border border-danger-subtle">
                             <i class="bx bx-error-circle"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-danger" id="stat-mazeret-bekleyen">0</h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext">İşlem bekleyen mazeretler</span>
                         <button type="button" class="btn btn-sm btn-subtle-danger rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-tab="#mazeret-bildirimleri">
@@ -137,13 +135,12 @@ html[data-theme-preset="macos-dark"] .status-filter-group .nav-link:hover { back
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">SEÇİLİ AY ONAYLANAN</span>
-                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">SEÇİLİ AY ONAYLANAN</span><h3 class="summary-kpi-value my-1 text-success" id="stat-onaylanan">0</h3></div>
+<div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
                             <i class="bx bx-check-circle"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-success" id="stat-onaylanan">0</h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext">Başarıyla tamamlanan talepler</span>
                         <button type="button" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 d-flex align-items-center gap-1 summary-pill-btn" id="btnQuickGecmis">
@@ -157,13 +154,12 @@ html[data-theme-preset="macos-dark"] .status-filter-group .nav-link:hover { back
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">SEÇİLİ AY REDDEDİLEN</span>
-                        <div class="summary-kpi-icon bg-secondary-subtle text-secondary border border-secondary-subtle">
+                    <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">SEÇİLİ AY REDDEDİLEN</span><h3 class="summary-kpi-value my-1 text-secondary" id="stat-reddedilen">0</h3></div>
+<div class="summary-kpi-icon bg-secondary-subtle text-secondary border border-secondary-subtle">
                             <i class="bx bx-x-circle"></i>
                         </div>
-                    </div>
-                    <h3 class="summary-kpi-value my-1 text-secondary" id="stat-reddedilen">0</h3>
+</div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext">Reddedilen talepler</span>
                         <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Toplam</span>

@@ -47,33 +47,37 @@ $title = 'İşe Alım Dashboard';
     <div class="row g-3 mb-3 summary-cards-group" id="summaryCardsContainer">
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0"><div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                <div class="d-flex justify-content-between align-items-center"><span class="summary-kpi-label">TOPLAM BAŞVURU</span>
-                    <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle"><i class="bx bx-group"></i></div></div>
-                <h3 class="summary-kpi-value my-1" id="k_toplam">0</h3>
+                <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">TOPLAM BAŞVURU</span><h3 class="summary-kpi-value my-1" id="k_toplam">0</h3></div>
+<div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle"><i class="bx bx-group"></i></div>
+</div>
                 <span class="summary-kpi-subtext" id="k_toplam_alt">Son 7 gün: 0</span>
             </div></div>
         </div>
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0"><div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                <div class="d-flex justify-content-between align-items-center"><span class="summary-kpi-label">DEĞERLENDİRME BEKLEYEN</span>
-                    <div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle"><i class="bx bx-time-five"></i></div></div>
-                <h3 class="summary-kpi-value my-1" id="k_bekleyen">0</h3>
+                <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">DEĞERLENDİRME BEKLEYEN</span><h3 class="summary-kpi-value my-1" id="k_bekleyen">0</h3></div>
+<div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle"><i class="bx bx-time-five"></i></div>
+</div>
                 <span class="summary-kpi-subtext" id="k_bekleyen_alt">AI hata/bekleyen: 0</span>
             </div></div>
         </div>
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0"><div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                <div class="d-flex justify-content-between align-items-center"><span class="summary-kpi-label">AI OLUMLU ADAY</span>
-                    <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle"><i class="bx bx-like"></i></div></div>
-                <h3 class="summary-kpi-value my-1 text-success" id="k_olumlu">0</h3>
+                <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">AI OLUMLU ADAY</span><h3 class="summary-kpi-value my-1 text-success" id="k_olumlu">0</h3></div>
+<div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle"><i class="bx bx-like"></i></div>
+</div>
                 <span class="summary-kpi-subtext" id="k_olumlu_alt">Ortalama puan: -</span>
             </div></div>
         </div>
         <div class="col-12 col-sm-6 col-xl-3">
             <div class="card summary-kpi-card h-100 mb-0"><div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
-                <div class="d-flex justify-content-between align-items-center"><span class="summary-kpi-label">PERSONELE DÖNÜŞEN</span>
-                    <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle"><i class="bx bx-id-card"></i></div></div>
-                <h3 class="summary-kpi-value my-1" id="k_donusen">0</h3>
+                <div class="d-flex justify-content-between align-items-start">
+<div><span class="summary-kpi-label">PERSONELE DÖNÜŞEN</span><h3 class="summary-kpi-value my-1" id="k_donusen">0</h3></div>
+<div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle"><i class="bx bx-id-card"></i></div>
+</div>
                 <span class="summary-kpi-subtext" id="k_donusen_alt">Dönüşüm oranı: %0</span>
             </div></div>
         </div>
