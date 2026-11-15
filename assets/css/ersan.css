@@ -242,7 +242,7 @@ html:not([data-theme-preset="macos-dark"]):not([data-bs-theme="dark"]):not([data
 html:not([data-theme-preset="macos-dark"]):not([data-bs-theme="dark"]):not([data-theme-mode="dark"]) body .summary-kpi-card:not(:has(> .card-header)) { box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06) !important; border-color: #e2e8f0 !important; }
 html:not([data-theme-preset="macos-dark"]):not([data-bs-theme="dark"]):not([data-theme-mode="dark"]) body .summary-kpi-card:has(> .card-header) { box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06) !important; }
 html:not([data-theme-preset="macos-dark"]):not([data-bs-theme="dark"]):not([data-theme-mode="dark"]) body div.flex-shrink-0[style*="width: 44px"][style*="height: 44px"] { box-shadow: 0 2px 8px rgba(15, 23, 42, 0.1) !important; background: #ffffff !important; }
-html:not([data-theme-preset="macos-dark"]):not([data-bs-theme="dark"]):not([data-theme-mode="dark"]) body table.dataTable.table-bordered tbody td { border-left: 1px solid var(--border-subtle) !important; border-right: 1px solid var(--border-subtle) !important; border-bottom: 0 !important; }
+html:not([data-theme-preset="macos-dark"]):not([data-bs-theme="dark"]):not([data-theme-mode="dark"]) body table.dataTable.table-bordered tbody td { border-left: 1px solid var(--border-default) !important; border-right: 1px solid var(--border-default) !important; border-bottom: 0 !important; }
 html:not([data-theme-preset="macos-dark"]):not([data-bs-theme="dark"]):not([data-theme-mode="dark"]) body table.dataTable.table-bordered thead th { border-left: 1px solid var(--border-default) !important; border-right: 1px solid var(--border-default) !important; }
 html:not([data-theme-preset="macos-dark"]):not([data-bs-theme="dark"]):not([data-theme-mode="dark"]) body table.dataTable tbody td { font-weight: 400; }
 .cari-ad-text { font-size: 13px; font-weight: 500; color: var(--text-title); }
@@ -250,3 +250,8 @@ html:not([data-theme-preset="macos-dark"]):not([data-bs-theme="dark"]):not([data
 /* Başlık satırı üst çizgisi yumuşak; filtre satırı kenar boşluğu dar */
 html:not([data-theme-preset="macos-dark"]):not([data-bs-theme="dark"]):not([data-theme-mode="dark"]) body table.dataTable thead tr { border-color: #eef2f6 !important; }
 html:not([data-theme-preset="macos-dark"]):not([data-bs-theme="dark"]):not([data-theme-mode="dark"]) body table.dataTable thead tr.dt-filter-row th, html:not([data-theme-preset="macos-dark"]):not([data-bs-theme="dark"]):not([data-theme-mode="dark"]) body table.dataTable thead .dt-filter-row > th { padding: 4px 2px !important; }
+
+html:not([data-theme-preset="macos-dark"]):not([data-bs-theme="dark"]):not([data-theme-mode="dark"]) body table.dataTable tbody tr { border-color: var(--border-default) !important; }
+
+html:not([data-theme-preset="macos-dark"]):not([data-bs-theme="dark"]):not([data-theme-mode="dark"]) body table.dataTable tbody td { border-top: 1px solid var(--border-default) !important; }
+html:not([data-theme-preset="macos-dark"]):not([data-bs-theme="dark"]):not([data-theme-mode="dark"]) body table.dataTable tbody tr:last-child td { border-bottom: 1px solid var(--border-default) !important; }
