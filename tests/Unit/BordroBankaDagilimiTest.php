@@ -1160,6 +1160,38 @@ final class BordroBankaDagilimiTest extends TestCase
         );
     }
 
+    public function testMaasaDahilRtcEkHakedisiSozlesmeUzerineEklenir(): void
+    {
+        $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();
+        $row = (object) [
+            'hesaplama_detay' => json_encode([
+                'maas_durumu' => 'Net',
+                'ek_odemeler' => [[
+                    'id' => 0,
+                    'kod' => 'resmi_tatil_calisma',
+                    'etiket' => 'Resmi Tatil Çalışması (Net)',
+                    'tutar' => 1100,
+                    'net_etki' => 1100,
+                    'resmi_banka_net' => 935.85,
+                    'resmi_alacagina_dahil' => 1,
+                ]],
+            ], JSON_UNESCAPED_UNICODE),
+        ];
+        $hesap = ['maasDurumu' => 'Net', 'toplamAlacagi' => 34101.88, 'yuvarlamaFarki' => 1.88];
+
+        $ozet = $model->getSozlesmeAlacagiKalemleri($hesap, $row);
+
+        self::assertSame(34101.88, $ozet['toplam']);
+        self::assertSame(
+            [
+                ['etiket' => 'Sözleşme Hakedişi', 'tutar' => 33000.0],
+                ['etiket' => 'Resmi Tatil Çalışması (Net)', 'tutar' => 1100.0],
+                ['etiket' => 'Yuvarlama Farkı', 'tutar' => 1.88],
+            ],
+            $ozet['kalemler']
+        );
+    }
+
     public function testResmiTabanRtcVeFazlaMesaiIcinTamamlanir(): void
     {
         $model = (new ReflectionClass(BordroPersonelModel::class))->newInstanceWithoutConstructor();

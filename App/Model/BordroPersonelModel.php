@@ -1825,6 +1825,7 @@ class BordroPersonelModel extends Model
         $rtcBrutGosterim = 0.0;
         $htcBrutGosterim = 0.0;
         $htcResmiBrutGosterim = 0.0;
+        $rtcEkOdemeGosterim = 0.0;
         $rtcHtcBankaNetiGosterim = 0.0;
         if ($this->cachedParametreModel === null) {
             $this->cachedParametreModel = new \App\Model\BordroParametreModel();
@@ -1834,6 +1835,10 @@ class BordroPersonelModel extends Model
             $resmiDahilEkToplam += $gunlukAsgari * ($rtcGun + $htcGun);
             if ($rtcGun > 0) {
                 $rtcBrutGosterim = round($gunlukAsgari * $rtcGun, 2);
+                if ($isInclusive) {
+                    $rtcEkOdemeGosterim = round(round($maasTutari / 30, 4) * $rtcGun, 2);
+                    $rawEkOdeme += $rtcEkOdemeGosterim;
+                }
             }
             if ($htcGun > 0) {
                 $htcEkOdemeGosterim = round($maasTutari / 30, 4) * $htcGun;
@@ -1847,6 +1852,9 @@ class BordroPersonelModel extends Model
         // HTÇ'nin ham/brüt karşılığı ile bankaya resmi olarak yatan net karşılığı arasındaki fark
         // (elden'e gitmesi yerine) yemek havuzuna yönlendirilir; günlük yemek istisna limitini aşarsa kalan yine elden'e gider.
         $htcNetFazlaGosterim = $htcGun > 0 ? round($htcEkOdemeGosterim - $htcResmiBrutGosterim, 2) : 0.0;
+        if ($rtcEkOdemeGosterim > 0) {
+            $htcNetFazlaGosterim = round($htcNetFazlaGosterim + max(0.0, $rtcEkOdemeGosterim - $rtcBrutGosterim), 2);
+        }
 
         // "Maaşa Dahil" personelde HTÇ'nin asgariyi aşan net fazlası yemek havuzuna yönlendiriliyor (htcNetFazlaGosterim);
         // bu kısmı vergi/ödeme hesabına da katmak çifte sayım olur. Bu yüzden vergi/ödeme hesabında HTÇ için
@@ -1951,7 +1959,7 @@ class BordroPersonelModel extends Model
             $hariciEkOdemeForDahil = max(0.0, $bankayaTasinabilirEkOdemeGosterim);
             $bankaKarsilanabilirEkOdemeGosterim = $bankayaTasinabilirEkOdemeGosterim;
             if ($isNet && !$isPrimUsulu) {
-                $sozlesmeHakedisi = $this->rtcHtcIleYukseltilmisHakedis($sozlesmeHakedisi, $asgariUcretNet, $calismaGunu, $rtcHtcBankaNetiGosterim, $bankaMahsupEdilebilirEkOdemeGosterim);
+                $sozlesmeHakedisi = $this->rtcHtcIleYukseltilmisHakedis($sozlesmeHakedisi, $asgariUcretNet, $calismaGunu, $rtcHtcBankaNetiGosterim, $bankaMahsupEdilebilirEkOdemeGosterim + $rtcEkOdemeGosterim);
             }
             $puantajHedefToplamiDahil = $isPrimUsulu 
                 ? $primUsuluPuantajHedefToplami 
@@ -7213,11 +7221,15 @@ class BordroPersonelModel extends Model
         $rtcHedefNetHesap = 0.0;
         $htcResmiHedefNetHesap = 0.0;
         $htcEkOdeme = 0.0;
+        $rtcEkOdeme = 0.0;
         if ($rtcGunHesap > 0 || $htcGunHesap > 0) {
             $gunlukAsgariHesap = round(floatval($genelAyarlarMap['asgari_ucret_net'] ?? 17002.12) / 30, 4);
             $gunlukAsgariBrutHesap = round(floatval($genelAyarlarMap['asgari_ucret_brut'] ?? 33030.00) / 30, 4);
             $resmiDahilEkToplam += $gunlukAsgariHesap * ($rtcGunHesap + $htcGunHesap);
             if ($rtcGunHesap > 0) {
+                if ($this->hasMaasaDahilSosyalYardim($kayit)) {
+                    $rtcEkOdeme = round(round($nominalBrutMaas / 30, 4) * $rtcGunHesap, 2);
+                }
                 $rtcBrutHesap = round($gunlukAsgariBrutHesap * $rtcGunHesap, 2);
                 // RTÇ günü için garanti edilen "ele geçen" hedef: asgari ücretin günlük neti (gross-up bazı)
                 $rtcHedefNetHesap = round($gunlukAsgariHesap * $rtcGunHesap, 2);
@@ -7441,6 +7453,9 @@ class BordroPersonelModel extends Model
             if ($htcGunHesap > 0) {
                 $htcNetFazlaHesap = round($htcEkOdeme - floatval($rtcHtcSonuc['htc']['net']), 2);
             }
+            if ($rtcEkOdeme > 0) {
+                $htcNetFazlaHesap = round($htcNetFazlaHesap + max(0.0, $rtcEkOdeme - floatval($rtcHtcSonuc['rtc']['net'])), 2);
+            }
         }
 
         $actualDamgaVergisiOrani = ($genelAyarlarMap['damga_vergisi_orani'] ?? 0.759) / 100;
@@ -7529,7 +7544,7 @@ class BordroPersonelModel extends Model
 
                 $sozlesmeHakedisi = $this->getSozlesmeHakedisi($kayit->personel_id ?? $kayit->id, $nominalBrutMaas, $maasHesapGunu, $donemBaslangicTarihi ?? $donemTarihi ?? date('Y-m-01'));
                 if ($isNetMaas && !$isPrimUsulu) {
-                    $sozlesmeHakedisi = $this->rtcHtcIleYukseltilmisHakedis($sozlesmeHakedisi, floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50), $maasHesapGunu, $rtcHtcBankaNetiHesap, max(0.0, $bankaMahsupEdilebilirEkOdeme + $htcEkOdeme));
+                    $sozlesmeHakedisi = $this->rtcHtcIleYukseltilmisHakedis($sozlesmeHakedisi, floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50), $maasHesapGunu, $rtcHtcBankaNetiHesap, max(0.0, $bankaMahsupEdilebilirEkOdeme + $htcEkOdeme + $rtcEkOdeme));
                 }
 
                 // HTÇ resmi yemek matrahını etkilememeli — yalnızca RTÇ yemek kapasitesini azaltır
@@ -7658,7 +7673,7 @@ class BordroPersonelModel extends Model
                 $targetNetHakedis = $sozlesmeHakedisiCalc;
             }
             if ($isNetMaas && !$isPrimUsulu) {
-                $bankaKarsilanabilirEkOdemeHesap = max(0.0, $bankaMahsupEdilebilirEkOdeme + $htcEkOdeme);
+                $bankaKarsilanabilirEkOdemeHesap = max(0.0, $bankaMahsupEdilebilirEkOdeme + $htcEkOdeme + $rtcEkOdeme);
                 $sozlesmeHakedisiCalc = $this->rtcHtcIleYukseltilmisHakedis($sozlesmeHakedisiCalc, floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50), $maasHesapGunu, $rtcHtcBankaNetiHesap, $bankaKarsilanabilirEkOdemeHesap);
                 $targetNetHakedis = $this->rtcHtcIleYukseltilmisHakedis($targetNetHakedis, floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50), $maasHesapGunu, $rtcHtcBankaNetiHesap, $bankaKarsilanabilirEkOdemeHesap);
             }
@@ -7743,12 +7758,14 @@ class BordroPersonelModel extends Model
                     + $bankayaTasinabilirEkOdeme
                     + $eldenTasinabilirEkOdeme
                     + $htcEkOdeme
+                    + $rtcEkOdeme
                     + $yuvarlamaFarki;
             } else {
                 $hedefHakedisDahilEk = $targetNetHakedis
                     + $bankayaTasinabilirEkOdeme
                     + $eldenTasinabilirEkOdeme
                     + $htcEkOdeme
+                    + $rtcEkOdeme
                     + $netMaasPuantajHakedisi
                     + ($karisikMaasOzeti !== null ? $primUsuluPuantajHedefToplami : 0.0)
                     + $yuvarlamaFarki;
@@ -7938,6 +7955,29 @@ class BordroPersonelModel extends Model
                     'resmi_banka_net' => round($htcResmiHedefNetHesap, 2),
                     'resmi_alacagina_dahil' => 1,
                     'gun_sayisi' => $htcGunHesap,
+                ];
+            }
+        }
+
+        if ($rtcEkOdeme > 0) {
+            $rtcSnapshotVar = false;
+            foreach ($ekOdemeDetaylari as $ekOdemeDetay) {
+                $ekOdemeKodu = mb_strtolower((string) ($ekOdemeDetay['kod'] ?? ''), 'UTF-8');
+                if (strpos($ekOdemeKodu, 'resmi_tatil') !== false) {
+                    $rtcSnapshotVar = true;
+                    break;
+                }
+            }
+            if (!$rtcSnapshotVar) {
+                $ekOdemeDetaylari[] = [
+                    'id' => 0,
+                    'kod' => 'resmi_tatil_calisma',
+                    'etiket' => 'Resmi Tatil Çalışması (Net)',
+                    'tutar' => round($rtcEkOdeme, 2),
+                    'net_etki' => round($rtcEkOdeme, 2),
+                    'resmi_banka_net' => round($rtcHedefNetHesap, 2),
+                    'resmi_alacagina_dahil' => 1,
+                    'gun_sayisi' => $rtcGunHesap,
                 ];
             }
         }

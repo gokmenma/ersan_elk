@@ -1826,6 +1826,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                               </tr>';
                 }
 
+                if ($isInclusive && $rtcGunModal > 0) {
+                    $rtcEkGosterim = 0.0;
+                    $rtcDetayModal = json_decode((string) ($bp->hesaplama_detay ?? ''), true);
+                    foreach (($rtcDetayModal['ek_odemeler'] ?? []) as $rtcEkKalem) {
+                        $rtcEkKod = is_array($rtcEkKalem) ? mb_strtolower((string) ($rtcEkKalem['kod'] ?? ''), 'UTF-8') : '';
+                        if (strpos($rtcEkKod, 'resmi_tatil') !== false) {
+                            $rtcEkGosterim += (float) ($rtcEkKalem['tutar'] ?? 0);
+                        }
+                    }
+                    if ($rtcEkGosterim > 0) {
+                        $rtcGunlukUcret = round($rtcEkGosterim / $rtcGunModal, 2);
+                        $html .= '<tr class="parent-row">
+                                <td><div class="d-flex align-items-center"><i class="bx bx-calendar-star me-2 text-success"></i><span>Resmi Tatil Çalışma<span class="calculation-note">' . number_format($rtcGunlukUcret, 2, ',', '.') . ' ₺ × ' . $rtcGunModal . ' gün</span></span><span class="badge fw-normal ms-2 bg-success">' . $rtcGunModal . ' Gün</span></div></td>
+                                <td class="text-end fw-semibold text-success">+' . number_format($rtcEkGosterim, 2, ',', '.') . ' ₺</td>
+                              </tr>';
+                    }
+                }
+
                 if ($toplamYuvarlamaFarki != 0) {
                     $html .= '<tr class="parent-row">
                                 <td><i class="bx bx-infinite me-2 text-muted opacity-75"></i>Yuvarlama Farkı</td>

@@ -191,9 +191,9 @@ hedefHakedis = (hedef_net_maas_tutari / 30) * maasHesapGunu
 yemekUstLimiti = max(0, hedefHakedis - asgariHakedis - esYardimi - resmiRtcNet - resmiFazlaMesaiNet + htcNetFazla)
 ```
 
-Yemek yardimi bu üst limitten hesaplanir. RTÇ'nin banka üzerinden ödenen resmî neti sözleşme netinin
-bileşenidir; yemek yardımını veya toplam hakedişi sözleşme netinin üzerine çıkaramaz
-(istisna: asagidaki RTÇ/HTÇ taban yukseltme kurali). HTÇ bu kuralin disindadir — bkz. HTÇ Kurali.
+Yemek yardimi bu üst limitten hesaplanir. RTÇ'nin banka üzerinden ödenen resmî neti (asgari net / 30 × gün)
+yemek üst limitinden düşülür; ancak RTÇ de HTÇ gibi sözleşme netinin ÜZERİNE ayrıca eklenir
+(bkz. "RTÇ Ek Hakediş Kuralı"). Böylece tam ay çalışan personelde RTÇ günü sözleşme içinde erimez.
 
 Sistem günlük tutarı yukarı yuvarlar, sonra günlük limitle sınırlar. Bu sıra değiştirilemez:
 
@@ -289,6 +289,24 @@ Ornek (sozlesme neti 33.000 ₺, tam ay, HTÇ = 1 gun):
 | **Toplam hakedis** | **33.025,50** | **34.111,35** |
 
 HTÇ'nin tamami bankadan odenir; yemek yardimi azalmaz, aksine `htcNetFazla` kadar artar.
+
+### RTÇ Ek Hakediş Kuralı (2026-11-16)
+
+Maaşa dahil yardım profilindeki personelde RTÇ günü, HTÇ ile aynı biçimde sözleşme netinin üzerine ayrıca hak edilir:
+
+```text
+rtcEkOdeme   = (maas_tutari / 30) * rtcGun          (personelin kendi günlüğü; sözleşme tarafı)
+rtcResmiNet  = (asgari_ucret_net / 30) * rtcGun     (resmî banka kalemi; gross-up ile garanti edilir)
+rtcNetFazla  = max(0, rtcEkOdeme - rtcResmiNet)     (yemek havuzuna eklenir; günlük yemek tavanını aşan bakiye elden kalır)
+
+toplamHakedis = sozlesmeHakedisi + rtcEkOdeme + hariciEkOdeme + htcEkOdeme + yuvarlamaFarki
+```
+
+- `rtcEkOdeme`, `bankaKarsilanabilirEkOdeme` mahsubuna dahildir; taban yükseltme kuralı bu tutarı iki kez ödemez.
+- Kayıt snapshot'ına `resmi_tatil_calisma` kodlu, `tutar = rtcEkOdeme`, `resmi_banka_net = rtcResmiNet` ek kalemi yazılır. Sözleşme kartında "Resmi Tatil Çalışma" satırı olarak gösterilir.
+- Maaşa dahil olmayan (net/brüt) personelde RTÇ zaten resmî net olarak toplam alacağa eklendiği için bu kural uygulanmaz.
+- Bu kuraldan önce hesaplanmış snapshot'lar (`resmi_tatil_calisma` ek kalemi yok) değişmez; yeni kural yalnız dönem yetkili biçimde açılıp bordro yeniden hesaplandığında uygulanır (Bölüm 5.1).
+- Örnek (sözleşme 33.000 ₺, 30 gün, RTÇ = 1 gün, puantaj fazla mesai 4 saat): toplam hakediş 33.010,03 ₺ iken 34.101,88 ₺ olur (33.000 + 1.100 RTÇ + 1,88 yuvarlama); resmî RTÇ neti 935,85 ₺ bankada kalır.
 
 ### RTÇ/HTÇ Taban Yukseltme Kurali
 
@@ -654,7 +672,7 @@ edilen kısımdır. `elden_tutardan` kesintisi ana kesinti kartından gizlenemez
 
 - `[Puantaj Fazla Mesai]` kalemi (arife otomasyonu dahil) sözleşme hakedişine eklenmez; snapshot'ta `net_etki = 0`, resmî tutarı `resmi_banka_net` olarak saklanır. Banka tarafında `Fazla Mesai Ücreti (Net)` olarak ödenir ve toplam hakedişi artırmaz; aynı tutar yemek üst limitinden düşülür, elden/yemek ile dengelenir.
 - RTÇ resmî neti de sözleşme netinin bileşeni olduğundan yemek üst limitinden düşülür. Böylece resmî kartta yemek yardımı `tam lira günlük × fiilî gün` olarak kalır; banka tavanı kırpması küsurat üretmez.
-- RTÇ sözleşme kartında hiçbir maaş türünde satır olarak çizilmez. Hakediş resmî tabanın (asgari + RTÇ + fazla mesai + hafta içi nöbet resmî neti + yardımlar) altında kalırsa toplam hakediş resmî tabana tamamlanır; resmî kalemler banka tavanında kırpılmaz.
+- Maaşa dahil personelde RTÇ ek hakedişi sözleşme kartında `Resmi Tatil Çalışma` satırı olarak çizilir (RTÇ Ek Hakediş Kuralı); diğer maaş türlerinde satır çizilmez. Hakediş resmî tabanın (asgari + RTÇ + fazla mesai + hafta içi nöbet resmî neti + yardımlar) altında kalırsa toplam hakediş resmî tabana tamamlanır; resmî kalemler banka tavanında kırpılmaz.
 - Resmî kartta RTÇ `Resmi Tatil Çalışması (Net)`, fazla mesai ise `Fazla Mesai Ücreti (Net)` satırında gösterilir; fazla mesai açılımı `Nöbetten Gelen` ve `Puantaj Fazla Mesaisi` kaynaklarını saat ve tutarla ayırır.
 - Bu kural yalnız yeniden hesaplanan bordrolara uygulanır. Eski snapshot'larda fazla mesai hakedişi `Nöbet Ödemeleri` altında `Puantaj Nöbeti` olarak görünür; kayıtlı tutarlar değişmez. Elle girilen `mesai` ek ödemeleri bu kuralın dışındadır.
 

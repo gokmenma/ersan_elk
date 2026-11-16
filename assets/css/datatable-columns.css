@@ -45,10 +45,15 @@ table.dataTable.dt-colman-fixed {
   min-width: 100%;
 }
 
-table.dataTable.dt-colman-fixed th,
 table.dataTable.dt-colman-fixed td {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+table.dataTable.dt-colman-fixed th {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .dt-colman-menu {

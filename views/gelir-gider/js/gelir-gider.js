@@ -155,11 +155,20 @@ $(document).ready(function() {
 
     // 8. Excel Dışa Aktarma Butonları
     $('#btnHeaderExportExcel, #btnDropdownExportExcel, #exportExcel').on('click', function() {
-        const yil = $('#filterYil').val() || '';
-        const ay = $('#filterAy').val() || '';
-        const search = (gelirGiderTable) ? gelirGiderTable.search() : '';
-        const exportUrl = `views/gelir-gider/export-excel.php?yil=${encodeURIComponent(yil)}&ay=${encodeURIComponent(ay)}&tip=${encodeURIComponent(currentTipFilter)}&search=${encodeURIComponent(search)}`;
-        window.open(exportUrl, '_blank');
+        const tableParams = (gelirGiderTable && gelirGiderTable.ajax.params()) || {};
+        const payload = {
+            yil: $('#filterYil').val() || '',
+            ay: $('#filterAy').val() || '',
+            tip: currentTipFilter || '',
+            search: { value: (gelirGiderTable ? gelirGiderTable.search() : '') },
+            order: tableParams.order || [],
+            columns: (tableParams.columns || []).map(function(c) {
+                return { data: c.data, name: c.name, search: { value: (c.search && c.search.value) || '' } };
+            })
+        };
+        const $form = $('<form method="POST" target="_blank" action="views/gelir-gider/export-excel.php"></form>');
+        $('<input type="hidden" name="filtreler">').val(JSON.stringify(payload)).appendTo($form);
+        $form.appendTo('body').trigger('submit').remove();
     });
 
     // 9. Tabloyu Yazdır Butonu

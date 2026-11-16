@@ -354,6 +354,12 @@ class GelirGiderModel extends Model
         $mode = $parts[0];
         $value = $parts[1];
 
+        $baseColumn = substr(strrchr('.' . $column, '.'), 1);
+        if (in_array($baseColumn, ['tarih', 'kayit_tarihi'], true)) {
+            $this->processDateFilter($column, $mode, $value, $query, $params, $idx);
+            return;
+        }
+
         // Tutar gibi varchar kolonlar için sayısal karşılaştırma gerekebilir
         $isNumericCol = strpos($column, 'tutar') !== false || strpos($column, 'bakiye') !== false;
         $compareCol = $isNumericCol ? "CAST({$column} AS DECIMAL(15,2))" : $column;
@@ -434,6 +440,75 @@ class GelirGiderModel extends Model
                 $params[":col_search_{$idx}"] = $value;
                 break;
         }
+    }
+
+    private function parseFilterDate($value)
+    {
+        $value = trim((string)$value);
+        if (preg_match('/^(\d{1,2})\.(\d{1,2})\.(\d{4})/', $value, $m)) {
+            return sprintf('%04d-%02d-%02d', $m[3], $m[2], $m[1]);
+        }
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})/', $value, $m)) {
+            return $m[1] . '-' . $m[2] . '-' . $m[3];
+        }
+        return null;
+    }
+
+    private function processDateFilter($column, $mode, $value, &$query, &$params, $idx)
+    {
+        $dateCol = "DATE({$column})";
+        $parts = explode('|', $value);
+        $d1 = $this->parseFilterDate($parts[0] ?? '');
+        $d2 = $this->parseFilterDate($parts[1] ?? '');
+
+        if ($mode === 'null') {
+            $query .= " AND {$column} IS NULL";
+            return;
+        }
+        if ($mode === 'not_null') {
+            $query .= " AND {$column} IS NOT NULL";
+            return;
+        }
+        if ($d1 === null) {
+            $query .= " AND 1 = 0";
+            return;
+        }
+
+        $p1 = ":col_search_{$idx}_1";
+        switch ($mode) {
+            case 'not_equals':
+                $query .= " AND {$dateCol} != {$p1}";
+                break;
+            case 'before':
+            case 'less_equal':
+                $query .= " AND {$dateCol} <= {$p1}";
+                break;
+            case 'less_than':
+                $query .= " AND {$dateCol} < {$p1}";
+                break;
+            case 'after':
+            case 'greater_equal':
+                $query .= " AND {$dateCol} >= {$p1}";
+                break;
+            case 'greater_than':
+                $query .= " AND {$dateCol} > {$p1}";
+                break;
+            case 'between':
+                if ($d2 === null) {
+                    $query .= " AND {$dateCol} >= {$p1}";
+                } else {
+                    $p2 = ":col_search_{$idx}_2";
+                    if ($d2 < $d1) {
+                        [$d1, $d2] = [$d2, $d1];
+                    }
+                    $query .= " AND {$dateCol} BETWEEN {$p1} AND {$p2}";
+                    $params[$p2] = $d2;
+                }
+                break;
+            default:
+                $query .= " AND {$dateCol} = {$p1}";
+        }
+        $params[$p1] = $d1;
     }
 
     /**

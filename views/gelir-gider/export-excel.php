@@ -14,18 +14,27 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 
+use App\Service\Gate;
+
+if (!Gate::allows('gelir_gider_takibi')) {
+    http_response_code(403);
+    exit('Yetkisiz erişim.');
+}
+
 $GelirGider = new GelirGiderModel();
 
-$yil = $_GET['yil'] ?? '';
-$ay = $_GET['ay'] ?? '';
-$tip = $_GET['tip'] ?? '';
-$search = $_GET['search'] ?? '';
+$filtreler = json_decode((string)($_POST['filtreler'] ?? ''), true);
+if (!is_array($filtreler)) {
+    $filtreler = [];
+}
 
 $params = [
-    'yil' => $yil,
-    'ay' => $ay,
-    'tip' => $tip,
-    'search' => ['value' => $search],
+    'yil' => $filtreler['yil'] ?? '',
+    'ay' => $filtreler['ay'] ?? '',
+    'tip' => $filtreler['tip'] ?? '',
+    'search' => ['value' => (string)($filtreler['search']['value'] ?? '')],
+    'order' => is_array($filtreler['order'] ?? null) ? $filtreler['order'] : [],
+    'columns' => is_array($filtreler['columns'] ?? null) ? $filtreler['columns'] : [],
     'length' => 100000,
     'start' => 0
 ];
