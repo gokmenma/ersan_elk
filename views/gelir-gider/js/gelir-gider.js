@@ -939,13 +939,36 @@ $(document).on('click', '#btnUploadExcel', function() {
         success: function(response) {
             const data = typeof response === 'string' ? JSON.parse(response) : response;
             if (data.status === 'success') {
-                Swal.fire({ 
-                    icon: 'success', 
-                    title: 'Başarılı', 
-                    text: data.message,
+                const atlananlar = Array.isArray(data.atlananlar) ? data.atlananlar : [];
+                const swalOpts = {
+                    icon: atlananlar.length ? 'warning' : 'success',
+                    title: atlananlar.length ? 'Yükleme Tamamlandı' : 'Başarılı',
                     customClass: { confirmButton: 'btn btn-primary' },
                     buttonsStyling: false
-                });
+                };
+                if (atlananlar.length) {
+                    const esc = (v) => $('<div>').text(v === null || v === undefined ? '' : v).html();
+                    const rows = atlananlar.map(a => `<tr>
+                        <td class="text-center">${esc(a.satir)}</td>
+                        <td>${esc(a.neden)}</td>
+                        <td class="text-nowrap">${esc(a.tarih)}</td>
+                        <td>${esc(a.hesap_adi)}</td>
+                        <td class="text-end text-nowrap">${esc(a.tutar)}</td>
+                        <td>${esc(a.aciklama)}</td>
+                    </tr>`).join('');
+                    const fazla = (data.atlanan_toplam || 0) > atlananlar.length
+                        ? `<div class="text-muted font-size-12 mt-2">İlk ${atlananlar.length} satır gösteriliyor (toplam ${esc(data.atlanan_toplam)}).</div>` : '';
+                    swalOpts.width = 960;
+                    swalOpts.html = `<div class="mb-2">${esc(data.message)}</div>
+                        <div class="text-start" style="max-height:360px;overflow:auto;">
+                        <table class="table table-sm table-bordered font-size-12 mb-0">
+                            <thead class="table-light"><tr><th>Excel Satırı</th><th>Neden</th><th>Tarih</th><th>Hesap</th><th>Tutar</th><th>Açıklama</th></tr></thead>
+                            <tbody>${rows}</tbody>
+                        </table></div>${fazla}`;
+                } else {
+                    swalOpts.text = data.message;
+                }
+                Swal.fire(swalOpts);
                 $('#importExcelModal').modal('hide');
                 $('#importExcelForm').trigger('reset');
                 reloadGelirGiderTable();

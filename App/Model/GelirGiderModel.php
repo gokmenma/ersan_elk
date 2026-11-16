@@ -622,6 +622,23 @@ class GelirGiderModel extends Model
         return $this->db->query($sql)->fetchAll(PDO::FETCH_COLUMN);
     }
 
+    private function atlananSatir($satirNo, string $neden, $tarih, $hesap, $tutar, $aciklama): array
+    {
+        $tarihStr = '';
+        if (!empty($tarih)) {
+            $time = is_numeric($tarih) ? false : strtotime((string)$tarih);
+            $tarihStr = $time ? date('d.m.Y', $time) : (string)$tarih;
+        }
+        return [
+            'satir' => (int)$satirNo,
+            'neden' => $neden,
+            'tarih' => $tarihStr,
+            'hesap_adi' => mb_substr((string)$hesap, 0, 80, 'UTF-8'),
+            'tutar' => number_format((float)$tutar, 2, ',', '.'),
+            'aciklama' => mb_substr((string)$aciklama, 0, 120, 'UTF-8')
+        ];
+    }
+
     /**
      * Excel dosyasından gelir-gider kayıtlarını içe aktarır
      *
@@ -709,6 +726,8 @@ class GelirGiderModel extends Model
             $insertData = [];
             $seenHashes = [];
             $skipped = 0;
+            $atlananlar = [];
+            $satirNolar = [];
 
             foreach ($rows as $rowIndex => $row) {
                 // Boş satır kontrolü
@@ -730,6 +749,7 @@ class GelirGiderModel extends Model
                 $rawAciklama = trim((string)($row[$idxAciklama] ?? ''));
 
                 if ($tutar <= 0 && empty($rawHesap) && empty($rawKategori) && empty($rawAciklama)) {
+                    $atlananlar[] = $this->atlananSatir($rowIndex + 2, 'Geçersiz satır (tutar, hesap, kategori ve açıklama boş)', $rawTarih ?? null, $rawHesap, $tutar, $rawAciklama);
                     $skipped++;
                     continue;
                 }
@@ -797,10 +817,12 @@ class GelirGiderModel extends Model
 
                 $data['duplicate_hash'] = $this->buildExcelDuplicateHash($data);
                 if (isset($seenHashes[$data['duplicate_hash']])) {
+                    $atlananlar[] = $this->atlananSatir($rowIndex + 2, 'Dosya içinde aynı satır tekrarlanıyor', $data['tarih'], $rawHesap, $tutar, $rawAciklama);
                     $skipped++;
                     continue;
                 }
                 $seenHashes[$data['duplicate_hash']] = true;
+                $satirNolar[] = $rowIndex + 2;
                 $insertData[] = $data;
             }
 
@@ -852,7 +874,8 @@ class GelirGiderModel extends Model
             ");
 
             $imported = 0;
-            foreach ($insertData as $data) {
+            foreach ($insertData as $insertIndex => $data) {
+                $satirNo = $satirNolar[$insertIndex] ?? 0;
                 $existsStmt->execute([
                     'duplicate_hash' => $data['duplicate_hash'],
                     'type' => $data['type'],
@@ -866,6 +889,7 @@ class GelirGiderModel extends Model
                     'banka_adi' => $data['banka_adi']
                 ]);
                 if ($existsStmt->fetchColumn()) {
+                    $atlananlar[] = $this->atlananSatir($satirNo, 'Sistemde aynı kayıt zaten mevcut', $data['tarih'], $data['hesap_adi'], $data['tutar'], $data['aciklama']);
                     $skipped++;
                     continue;
                 }
@@ -876,6 +900,7 @@ class GelirGiderModel extends Model
                     $imported++;
                 } catch (\PDOException $insertException) {
                     if ($insertException->getCode() === '23000') {
+                        $atlananlar[] = $this->atlananSatir($satirNo, 'Sistemde aynı kayıt zaten mevcut', $data['tarih'], $data['hesap_adi'], $data['tutar'], $data['aciklama']);
                         $skipped++;
                         continue;
                     }
@@ -900,7 +925,9 @@ class GelirGiderModel extends Model
                 'status' => 'success',
                 'message' => $imported . ' kayıt yüklendi, ' . $skipped . ' mükerrer/geçersiz satır atlandı.',
                 'count' => $imported,
-                'duplicate_count' => $skipped
+                'duplicate_count' => $skipped,
+                'atlananlar' => array_slice($atlananlar, 0, 500),
+                'atlanan_toplam' => count($atlananlar)
             ];
         } catch (\Throwable $e) {
             if ($this->db->inTransaction()) {
