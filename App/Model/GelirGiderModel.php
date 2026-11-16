@@ -69,14 +69,59 @@ class GelirGiderModel extends Model
         return $sql->fetch(PDO::FETCH_OBJ);
     }
 
+    private function birlesikCocukIdleri(array $ids): array
+    {
+        $cocukIdleri = [];
+        $bsmvCocuk = $this->bsmvCocukKosulu('g');
+        $parentStmt = $this->db->prepare("SELECT g.id, g.type, g.tarih, g.kategori, g.hesap_adi, g.aciklama, NOT {$bsmvCocuk} AS ana_kayit
+            FROM {$this->table} g WHERE g.id = :id AND g.silinme_tarihi IS NULL");
+        $eftStmt = $this->db->prepare("SELECT ec.id FROM {$this->table} ec
+            WHERE ec.silinme_tarihi IS NULL AND ec.id > :id AND ec.type = :type AND ec.tarih = :tarih
+              AND ec.kategori = :kategori AND ec.hesap_adi <=> :hesap AND ec.aciklama <=> :aciklama
+            ORDER BY ec.id LIMIT 1");
+        $bsmvStmt = $this->db->prepare("SELECT bc.id FROM {$this->table} bc
+            WHERE bc.silinme_tarihi IS NULL AND bc.id > :id AND bc.type = :type AND bc.tarih = :tarih
+              AND bc.kategori = :kategori AND bc.aciklama = CONCAT('BSMV ', :aciklama)
+            ORDER BY bc.id LIMIT 1");
+
+        foreach ($ids as $id) {
+            $parentStmt->execute(['id' => $id]);
+            $parent = $parentStmt->fetch(PDO::FETCH_OBJ);
+            if (!$parent || !(int)$parent->ana_kayit) {
+                continue;
+            }
+            $cocuk = false;
+            if ($parent->kategori === 'EFT ÜCRETİ') {
+                $eftStmt->execute([
+                    'id' => $parent->id, 'type' => $parent->type, 'tarih' => $parent->tarih,
+                    'kategori' => $parent->kategori, 'hesap' => $parent->hesap_adi, 'aciklama' => $parent->aciklama
+                ]);
+                $cocuk = $eftStmt->fetchColumn();
+            }
+            if (!$cocuk) {
+                $bsmvStmt->execute([
+                    'id' => $parent->id, 'type' => $parent->type, 'tarih' => $parent->tarih,
+                    'kategori' => $parent->kategori, 'aciklama' => (string)$parent->aciklama
+                ]);
+                $cocuk = $bsmvStmt->fetchColumn();
+            }
+            if ($cocuk) {
+                $cocukIdleri[] = (int)$cocuk;
+            }
+        }
+        return $cocukIdleri;
+    }
+
     public function delete($id, $decrypt = true)
     {
         if ($decrypt) {
             $id = Security::decrypt($id);
         }
         $userId = $_SESSION['id'] ?? 0;
-        $stmt = $this->db->prepare("UPDATE {$this->table} SET silinme_tarihi = NOW(), silen_kullanici = :uid, duplicate_hash = NULL WHERE id = :id");
-        return $stmt->execute(['uid' => $userId, 'id' => $id]);
+        $silinecekler = array_values(array_unique(array_merge([(int)$id], $this->birlesikCocukIdleri([(int)$id]))));
+        $inClause = implode(',', array_fill(0, count($silinecekler), '?'));
+        $stmt = $this->db->prepare("UPDATE {$this->table} SET silinme_tarihi = NOW(), silen_kullanici = ?, duplicate_hash = NULL WHERE id IN ($inClause)");
+        return $stmt->execute(array_merge([$userId], $silinecekler));
     }
 
     public function bulkDelete(array $ids, $userId = 0)
@@ -88,6 +133,7 @@ class GelirGiderModel extends Model
             if ($dec > 0) $cleanIds[] = $dec;
         }
         if (empty($cleanIds)) return false;
+        $cleanIds = array_values(array_unique(array_merge($cleanIds, $this->birlesikCocukIdleri($cleanIds))));
 
         $inClause = implode(',', array_fill(0, count($cleanIds), '?'));
         $sql = "UPDATE {$this->table} SET silinme_tarihi = NOW(), silen_kullanici = ?, duplicate_hash = NULL WHERE id IN ($inClause)";
