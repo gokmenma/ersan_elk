@@ -983,11 +983,11 @@ onMounted(() => {
         <!-- Üst Satır: Başlık & Hakediş/Kesinti Özeti -->
         <div class="payroll-hero-top">
           <span class="dark-pill-tag">
-            <span class="bento-status-dot"></span> TOPLAM NET DAĞITIM
+            <span class="bento-status-dot"></span> TOPLAM HAKEDİŞ
           </span>
           <div class="payroll-hero-stats">
             <span class="hero-stat-item">
-              Hakediş: <strong>{{ formatMoney(summary.alacak) }}</strong>
+              Net Ödenecek: <strong>{{ formatMoney(summary.net) }}</strong>
             </span>
             <span class="hero-stat-item hero-stat-item--deduct">
               Kesinti: <strong>-{{ formatMoney(summary.kesinti) }}</strong>
@@ -998,8 +998,8 @@ onMounted(() => {
         <!-- Orta Satır: Büyük Net Tutar -->
         <div class="payroll-hero-mid">
           <div class="payroll-hero-amount-wrap">
-            <strong class="payroll-hero-amount">{{ formatMoney(summary.net) }}</strong>
-            <span class="payroll-hero-sublabel">ele geçen net toplam</span>
+            <strong class="payroll-hero-amount">{{ formatMoney(summary.alacak) }}</strong>
+            <span class="payroll-hero-sublabel">toplam hakediş tutarı</span>
           </div>
           <span class="payroll-personnel-badge">
             <Users :size="12" />
