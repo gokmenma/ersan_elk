@@ -659,9 +659,17 @@ class GelirGiderModel extends Model
                 return ['status' => 'error', 'message' => 'Excel dosyasının özeti oluşturulamadı.', 'count' => 0];
             }
 
-            $fileCheck = $this->db->prepare("SELECT id FROM gelir_gider_excel_imports WHERE file_hash = :file_hash LIMIT 1");
+            $fileCheck = $this->db->prepare("SELECT i.id,
+                    (SELECT COUNT(*) FROM {$this->table} g WHERE g.excel_import_id = i.id AND g.silinme_tarihi IS NULL) AS aktif_kayit
+                FROM gelir_gider_excel_imports i WHERE i.file_hash = :file_hash LIMIT 1");
             $fileCheck->execute(['file_hash' => $fileHash]);
-            if ($fileCheck->fetchColumn()) {
+            $oncekiYukleme = $fileCheck->fetch(PDO::FETCH_OBJ);
+            if ($oncekiYukleme && (int)$oncekiYukleme->aktif_kayit === 0) {
+                $release = $this->db->prepare("UPDATE gelir_gider_excel_imports SET file_hash = SHA2(CONCAT(file_hash, '-iptal-', id), 256) WHERE id = :id");
+                $release->execute(['id' => $oncekiYukleme->id]);
+                $oncekiYukleme = false;
+            }
+            if ($oncekiYukleme) {
                 return [
                     'status' => 'error',
                     'message' => 'Bu Excel dosyası daha önce yüklenmiş. Aynı dosya tekrar içe aktarılamaz.',
