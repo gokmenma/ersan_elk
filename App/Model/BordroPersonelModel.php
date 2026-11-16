@@ -1157,6 +1157,7 @@ class BordroPersonelModel extends Model
         $snapshotKesintiDetayiVar = false;
         $snapshotKesintiKanalBilgisiVar = false;
         $snapshotHtcKalemiVar = false;
+        $snapshotRtcKalemiVar = false;
         $donemBaslangic = (string) ($detay['donem']['baslangic'] ?? '');
         foreach (($detay['ek_odemeler'] ?? []) as $ekOdeme) {
             if (!is_array($ekOdeme)) {
@@ -1174,6 +1175,9 @@ class BordroPersonelModel extends Model
             $kod = mb_strtolower((string) ($ekOdeme['kod'] ?? ''), 'UTF-8');
             if (strpos($kod, 'hafta_tatili') !== false) {
                 $snapshotHtcKalemiVar = true;
+            }
+            if (strpos($kod, 'resmi_tatil') !== false) {
+                $snapshotRtcKalemiVar = true;
             }
             $guncelParametre = $kod !== '' ? $this->getParametreCached($kod, $donemBaslangic ?: date('Y-m-01')) : null;
             $resmiAlacakDahil = $this->isSnapshotResmiAlacakKalemi($ekOdeme, $kod, $guncelParametre);
@@ -1271,7 +1275,7 @@ class BordroPersonelModel extends Model
             $htcGun = $this->getOzelCalismaGunSayisi((int) $p->personel_id, $donemBaslangic, $donemBitis, 'hafta_tatili_calismasi');
         }
         $gunlukAsgariNet = round($asgariNet / 30, 2);
-        if ($rtcGun > 0) {
+        if ($rtcGun > 0 && !$snapshotRtcKalemiVar) {
             $snapshotBankaDetaylari[] = [
                 'etiket' => 'Resmi Tatil Çalışması (Net)',
                 'tutar' => round($gunlukAsgariNet * $rtcGun, 2),
@@ -1955,7 +1959,7 @@ class BordroPersonelModel extends Model
             // HTÇ sözleşme dışı ek ödeme — yemek matrahını etkilememeli
             $htcResmiTutarDagilim = $htcGun > 0 ? round($asgariUcretNet / 30, 4) * $htcGun : 0.0;
             $htcEkOdemeTutarDagilim = $htcGun > 0 ? round($maasTutari / 30, 4) * $htcGun : 0.0;
-            $resmiDahilForDahil = max(0.0, $resmiDahilEkToplam - $htcResmiTutarDagilim);
+            $resmiDahilForDahil = max(0.0, $resmiDahilEkToplam - $htcResmiTutarDagilim - ($rtcEkOdemeGosterim > 0 ? $rtcBrutGosterim : 0.0));
             $hariciEkOdemeForDahil = max(0.0, $bankayaTasinabilirEkOdemeGosterim);
             $bankaKarsilanabilirEkOdemeGosterim = $bankayaTasinabilirEkOdemeGosterim;
             if ($isNet && !$isPrimUsulu) {
@@ -7549,7 +7553,7 @@ class BordroPersonelModel extends Model
 
                 // HTÇ resmi yemek matrahını etkilememeli — yalnızca RTÇ yemek kapasitesini azaltır
                 $htcResmiTutarHesapDagilim = $htcGunHesap > 0 ? round(floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50) / 30, 4) * $htcGunHesap : 0.0;
-                $resmiDahilForDagilimHesap = max(0.0, $resmiDahilEkToplam - $htcResmiTutarHesapDagilim);
+                $resmiDahilForDagilimHesap = max(0.0, $resmiDahilEkToplam - $htcResmiTutarHesapDagilim - ($rtcEkOdeme > 0 ? floatval($rtcHedefNetHesap) : 0.0));
                 $dahilDagilimPreIcra = $this->hesaplaMaasaDahilYardimDagilimi(
                     $kayit,
                     $asgariUcretNet,
@@ -7678,7 +7682,7 @@ class BordroPersonelModel extends Model
                 $targetNetHakedis = $this->rtcHtcIleYukseltilmisHakedis($targetNetHakedis, floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50), $maasHesapGunu, $rtcHtcBankaNetiHesap, $bankaKarsilanabilirEkOdemeHesap);
             }
             $htcResmiTutarHesapDagilim2 = $htcGunHesap > 0 ? round(floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50) / 30, 4) * $htcGunHesap : 0.0;
-            $resmiDahilForDagilimHesap2 = max(0.0, $resmiDahilEkToplam - $htcResmiTutarHesapDagilim2);
+            $resmiDahilForDagilimHesap2 = max(0.0, $resmiDahilEkToplam - $htcResmiTutarHesapDagilim2 - ($rtcEkOdeme > 0 ? floatval($rtcHedefNetHesap) : 0.0));
             $puantajHedefToplamiDahil = ($isPrimUsuluDahilYardim || $karisikMaasOzeti !== null)
                 ? $primUsuluPuantajHedefToplami
                 : ($netMaasPuantajHakedisi > 0 ? $netMaasPuantajHakedisi : 0.0);
@@ -7710,7 +7714,7 @@ class BordroPersonelModel extends Model
                     + max(0, $yemekHavuzunaTasinabilirEkOdeme)
                     + max(0, $htcNetFazlaHesap), 2);
             $yardimlarIcinKalanSozlesmeLimiti = max(0, round(
-                $yemekTavanHedefi - $asgariSozlesmePayi - floatval($rtcHedefNetHesap ?? 0) - $resmiFazlaMesaiYemekDusumu,
+                $yemekTavanHedefi - $asgariSozlesmePayi - ($rtcEkOdeme > 0 ? 0.0 : floatval($rtcHedefNetHesap ?? 0)) - $resmiFazlaMesaiYemekDusumu,
                 2
             ));
             $yemekHamToplam = min($hesaplananYemekToplam, $yardimlarIcinKalanSozlesmeLimiti);

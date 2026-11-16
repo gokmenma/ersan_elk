@@ -306,7 +306,8 @@ toplamHakedis = sozlesmeHakedisi + rtcEkOdeme + hariciEkOdeme + htcEkOdeme + yuv
 - Kayıt snapshot'ına `resmi_tatil_calisma` kodlu, `tutar = rtcEkOdeme`, `resmi_banka_net = rtcResmiNet` ek kalemi yazılır. Sözleşme kartında "Resmi Tatil Çalışma" satırı olarak gösterilir.
 - Maaşa dahil olmayan (net/brüt) personelde RTÇ zaten resmî net olarak toplam alacağa eklendiği için bu kural uygulanmaz.
 - Bu kuraldan önce hesaplanmış snapshot'lar (`resmi_tatil_calisma` ek kalemi yok) değişmez; yeni kural yalnız dönem yetkili biçimde açılıp bordro yeniden hesaplandığında uygulanır (Bölüm 5.1).
-- Örnek (sözleşme 33.000 ₺, 30 gün, RTÇ = 1 gün, puantaj fazla mesai 4 saat): toplam hakediş 33.010,03 ₺ iken 34.101,88 ₺ olur (33.000 + 1.100 RTÇ + 1,88 yuvarlama); resmî RTÇ neti 935,85 ₺ bankada kalır.
+- RTÇ üste eklendiği için `rtcResmiNet` yemek üst limitinden ve `resmiDahilEkToplam` düşümünden **çıkarılır** (yalnız `rtcEkOdeme > 0` iken); resmî RTÇ neti resmî alacağa ayrıca eklenir, yemek yardımı RTÇ yüzünden azalmaz. Fazla mesai düşümü değişmez.
+- Örnek (sözleşme 33.000 ₺, 30 gün, RTÇ = 1 gün, puantaj fazla mesai 4 saat): toplam hakediş 33.010,03 ₺ iken 34.102,03 ₺ olur (33.000 + 1.100 RTÇ + 2,03 yuvarlama). Resmî alacak 34.102,03 ₺ = 28.075,50 asgari + 4.342,00 yemek + 935,85 RTÇ + 748,68 fazla mesai; elden 0 ₺.
 
 ### RTÇ/HTÇ Taban Yukseltme Kurali
 
