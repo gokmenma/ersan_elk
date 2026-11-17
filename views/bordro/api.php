@@ -2140,17 +2140,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     (string) $donem->baslangic_tarihi,
                     (string) $donem->bitis_tarihi
                 );
-                if ($mutabakatBlok !== null) {
-                    echo json_encode([
-                        'status' => 'validation_error',
-                        'title' => 'Puantaj Mutabakatı Tamamlanmadı',
-                        'message' => $mutabakatBlok,
-                        'error_count' => 1,
-                        'errors' => [['personel' => 'Dönem mutabakatı', 'detay' => $mutabakatBlok]],
-                    ], JSON_UNESCAPED_UNICODE);
-                    break;
-                }
-
                 // Mali/snapshot tutarsızlıkları hukuki kayıt bütünlüğü nedeniyle
                 // bloklayıcıdır ve force_close ile geçilemez.
                 $kapanisHatalari = array_merge(
@@ -2183,6 +2172,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 // Döneme ait onaylanmamış avans ve izinleri kontrol et
                 $warnings = [];
+                if ($mutabakatBlok !== null) {
+                    $warnings[] = $mutabakatBlok;
+                    $farkSatirlari = (new PuantajMutabakatModel())->openDifferenceBreakdown((int) ($_SESSION['firma_id'] ?? 0), substr((string) $donem->baslangic_tarihi, 0, 7));
+                    foreach (array_slice($farkSatirlari, 0, 40) as $farkSatiri) {
+                        $warnings[] = '— ' . $farkSatiri;
+                    }
+                    if (count($farkSatirlari) > 40) {
+                        $warnings[] = '— ve ' . (count($farkSatirlari) - 40) . ' kayıt daha (Puantaj Mutabakatı sayfasından inceleyin)';
+                    }
+                }
 
                 // Onaylanmamış avansları kontrol et
                 $avansQuery = $BordroDonem->getDb()->prepare("
@@ -2244,7 +2243,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if (!empty($warnings) && !$forceClose) {
                     echo json_encode([
                         'status' => 'warning',
-                        'message' => 'Bu döneme ait bekleyen talepler var:',
+                        'message' => 'Dönem kapatılmadan önce dikkat edilmesi gereken durumlar var:',
                         'warnings' => $warnings,
                         'donem_id' => $donem_id
                     ]);
@@ -2262,6 +2261,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $message = 'Dönem kapatıldı ve değişmez bordro arşivi oluşturuldu (Sürüm ' . (int) $arsivSonucu['surum_no'] . ').';
                 if (!empty($warnings)) {
                     $message .= ' (Uyarılar göz ardı edildi)';
+                    $SystemLog->logAction($userId, 'Maaş Dönem Kapama', "Dönem uyarılar göz ardı edilerek kapatıldı (ID: $donem_id): " . implode(' | ', $warnings), SystemLogModel::LEVEL_IMPORTANT);
                 }
 
                 echo json_encode([

@@ -1139,14 +1139,14 @@ $(document).ready(function () {
           response.warnings.forEach(function (w) {
             warningHtml +=
               '<li class="text-warning"><i class="bx bx-error me-1"></i>' +
-              w +
+              escapeBordroHtml(w) +
               "</li>";
           });
           warningHtml += "</ul></div>";
 
           Swal.fire({
             icon: "warning",
-            title: "Bekleyen Talepler Var!",
+            title: "Dikkat Edilmesi Gerekenler Var!",
             html: warningHtml,
             showCancelButton: true,
             showDenyButton: true,
