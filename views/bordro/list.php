@@ -2309,7 +2309,8 @@ if (!empty($dbGelirler)) {
             Object.keys(obj || {}).forEach(function(d) {
                 var v = obj[d];
                 if (Array.isArray(v)) { v.forEach(function(x) { t += parseFloat(x.saat) || 0; }); }
-                else { t += parseFloat(pick ? v[pick] : v) || 0; }
+                else if (v !== null && typeof v === 'object') { t += parseFloat(pick ? v[pick] : v) || 0; }
+                else { t += parseFloat(v) || 0; }
             });
             return t;
         };
