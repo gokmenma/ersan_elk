@@ -901,6 +901,28 @@ $(document).ready(function () {
     toggleOldDetailPanel(this);
   });
 
+  window.addEventListener("click", function (event) {
+    const button = event.target.closest ? event.target.closest(".btn-sozlesme-parca-detay") : null;
+    if (!button) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const template = document.getElementById(button.dataset.template || "");
+    if (!template) return;
+    const title = document.createElement("div");
+    title.textContent = "Sözleşme Hakedişi Detayı";
+    const subtitle = document.createElement("div");
+    subtitle.className = "font-size-13 text-muted fw-normal mt-1";
+    subtitle.textContent = button.dataset.personel || "";
+    title.appendChild(subtitle);
+    Swal.fire({
+      title: title,
+      html: template.innerHTML,
+      customClass: { popup: "swal-sozlesme-detay" },
+      showCloseButton: true,
+      confirmButtonText: "Kapat",
+    });
+  }, true);
+
   $(document).on("keydown", ".calculation-toggle", function (event) {
     if (event.key !== "Enter" && event.key !== " ") return;
     event.preventDefault();

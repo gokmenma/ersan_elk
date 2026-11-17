@@ -70,6 +70,26 @@ maasHesapGunu = aktifTakvimGun - ucretsizIzinGunu - raporGunu
 - Ucretli izin ve genel tatil maas gununu azaltmaz.
 - Gorev gecmisi varsa aktif gun, donem icindeki gecerli gorev gecmisi gunleriyle sinirlanir.
 
+### Donem Ici Farkli Ucretli Gorev Gecisi (2026-11-17)
+
+Donem icinde birden fazla sabit ucretli (prim usulu olmayan) ve **farkli maas tutarli**, birbiriyle
+**cakismayan** gorev gecmisi kaydi varsa sozlesme hakedisi ortalama gunluk ucretle hesaplanmaz:
+
+```text
+parca_gunu      = parcadaki aktif takvim gunleri - parcadaki ucretsiz izin/rapor gunleri
+sozlesmeHakedisi = SUM(parca_maasi / 30 * parca_gunu)
+```
+
+- Parca gunleri toplami `maasHesapGunu` ile esitlenir; fazla gun (31. gun) son parcadan dusulur,
+  eksik gun (subat tam ay) son parcaya eklenir.
+- Hesabin geri kalani icin efektif aylik ucret `sozlesmeHakedisi / maasHesapGunu * 30` kullanilir;
+  boylece yemek tavani, banka/elden dagilimi ve vergi yollari ayni tutari gorur.
+- HTÇ/RTÇ ek hakedisi her gun icin o tarihin denk geldigi gorev parcasinin gunluk ucretiyle hesaplanir.
+- Snapshot: `hesaplama_detay.sozlesme_parcalari` (gorev, tarih araligi, gun, gunluk, tutar) ve
+  HTÇ/RTÇ ek odeme kalemlerinde `gun_detay` (tarih, gunluk, gorev). Detay modali bu alanlardan okur;
+  alan bulunmayan eski snapshot eski gosterimiyle aynen kalir.
+- Cakisan gorev gecmisi, ayni ucretli parcalar veya prim usulu iceren gecislerde eski hesap korunur.
+
 ## Maas Turleri
 
 ### Brut Maas

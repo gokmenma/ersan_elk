@@ -511,6 +511,145 @@ class BordroPersonelModel extends Model
         return ['sabit_hakedis' => round($sabitHakedis, 2), 'sabit_gun' => $sabitGun, 'has_prim' => true];
     }
 
+    /** Dönem içinde farklı sabit ücretli görev parçalarında ücretli günleri parçasına göre dağıtır. */
+    private function hesaplaParcaliSabitMaasDagilimi(
+        array $kayitlar,
+        string $donemBaslangic,
+        string $donemBitis,
+        int $maasHesapGunu,
+        array $eksikTarihler,
+        ?array $aktifTarihler,
+        ?string $iseGiris,
+        ?string $istenCikis,
+        float $varsayilanMaas
+    ): ?array {
+        if ($maasHesapGunu <= 0 || count($kayitlar) < 2) {
+            return null;
+        }
+
+        $parcalar = [];
+        $maaslar = [];
+        $atananGunler = [];
+        foreach ($kayitlar as $kayit) {
+            if (stripos((string) ($kayit->maas_durumu ?? ''), 'prim') !== false) {
+                return null;
+            }
+            $bas = max($donemBaslangic, (string) ($kayit->baslangic_tarihi ?? $donemBaslangic));
+            $bitisRaw = $kayit->bitis_tarihi ?? null;
+            $bit = $this->isValidDateValue($bitisRaw) ? min($donemBitis, (string) $bitisRaw) : $donemBitis;
+            $basTs = strtotime($bas);
+            $bitTs = strtotime($bit);
+            if ($basTs === false || $bitTs === false || $basTs > $bitTs) {
+                continue;
+            }
+
+            $maas = floatval($kayit->maas_tutari ?? 0);
+            if ($maas <= 0) {
+                $maas = $varsayilanMaas;
+            }
+            $gun = 0;
+            for ($ts = $basTs; $ts <= $bitTs; $ts = strtotime('+1 day', $ts)) {
+                $tarih = date('Y-m-d', $ts);
+                if (isset($atananGunler[$tarih])) {
+                    return null;
+                }
+                $atananGunler[$tarih] = true;
+                if ($aktifTarihler !== null && !isset($aktifTarihler[$tarih])) {
+                    continue;
+                }
+                if ($aktifTarihler === null) {
+                    if ($this->isValidDateValue($iseGiris) && $tarih < (string) $iseGiris) {
+                        continue;
+                    }
+                    if ($this->isValidDateValue($istenCikis) && $tarih > (string) $istenCikis) {
+                        continue;
+                    }
+                }
+                if (isset($eksikTarihler[$tarih])) {
+                    continue;
+                }
+                $gun++;
+            }
+
+            $maaslar[(string) round($maas, 2)] = true;
+            $parcalar[] = [
+                'id' => isset($kayit->id) ? (int) $kayit->id : null,
+                'gorev' => (string) ($kayit->gorev ?? ''),
+                'maas_durumu' => (string) ($kayit->maas_durumu ?? ''),
+                'maas_tutari' => round($maas, 2),
+                'baslangic' => date('Y-m-d', $basTs),
+                'bitis' => date('Y-m-d', $bitTs),
+                'gun' => $gun,
+            ];
+        }
+
+        if (count($parcalar) < 2 || count($maaslar) < 2) {
+            return null;
+        }
+
+        $toplamGun = array_sum(array_column($parcalar, 'gun'));
+        if ($toplamGun <= 0) {
+            return null;
+        }
+        $fark = $maasHesapGunu - $toplamGun;
+        for ($i = count($parcalar) - 1; $fark < 0 && $i >= 0; $i--) {
+            $dus = min($parcalar[$i]['gun'], -$fark);
+            $parcalar[$i]['gun'] -= $dus;
+            $fark += $dus;
+        }
+        if ($fark > 0) {
+            for ($i = count($parcalar) - 1; $i >= 0; $i--) {
+                if ($parcalar[$i]['gun'] > 0 || $i === 0) {
+                    $parcalar[$i]['gun'] += $fark;
+                    break;
+                }
+            }
+        }
+
+        $toplam = 0.0;
+        foreach ($parcalar as &$parca) {
+            $parca['gunluk'] = round($parca['maas_tutari'] / 30, 4);
+            $parca['tutar'] = round($parca['maas_tutari'] / 30 * $parca['gun'], 2);
+            $toplam += $parca['tutar'];
+        }
+        unset($parca);
+        $toplam = round($toplam, 2);
+
+        return [
+            'parcalar' => $parcalar,
+            'gun' => $maasHesapGunu,
+            'toplam' => $toplam,
+            'efektif_maas' => $toplam / $maasHesapGunu * 30,
+        ];
+    }
+
+    private function parcaliGunlukUcret(?array $dagilim, string $tarih, float $varsayilanGunluk): float
+    {
+        foreach (($dagilim['parcalar'] ?? []) as $parca) {
+            if ($tarih >= $parca['baslangic'] && $tarih <= $parca['bitis']) {
+                return round($parca['maas_tutari'] / 30, 4);
+            }
+        }
+        return round($varsayilanGunluk, 4);
+    }
+
+    private function ozelCalismaGunDetayi(?array $dagilim, array $tarihler, float $varsayilanGunluk): array
+    {
+        $detay = [];
+        foreach ($tarihler as $tarih) {
+            $gunluk = $this->parcaliGunlukUcret($dagilim, (string) $tarih, $varsayilanGunluk);
+            $gorev = '';
+            foreach (($dagilim['parcalar'] ?? []) as $parca) {
+                if ($tarih >= $parca['baslangic'] && $tarih <= $parca['bitis']) {
+                    $gorev = $parca['gorev'];
+                    break;
+                }
+            }
+            $detay[] = ['tarih' => (string) $tarih, 'gunluk' => $gunluk, 'gorev' => $gorev];
+        }
+        return $detay;
+    }
+
     private function getIzinlerRows(int $personelId, string $donemBaslangic, string $donemBitis): array
     {
         $rangeKey = $donemBaslangic . '|' . $donemBitis;
@@ -5776,6 +5915,11 @@ class BordroPersonelModel extends Model
      */
     public function getOzelCalismaGunSayisi(int $personel_id, string $donem_baslangic, string $donem_bitis, string $flagKolonu): int
     {
+        return count($this->getOzelCalismaTarihleri($personel_id, $donem_baslangic, $donem_bitis, $flagKolonu));
+    }
+
+    public function getOzelCalismaTarihleri(int $personel_id, string $donem_baslangic, string $donem_bitis, string $flagKolonu): array
+    {
         if (!in_array($flagKolonu, ['resmi_tatil_calismasi', 'hafta_tatili_calismasi'], true)) {
             throw new \InvalidArgumentException('Geçersiz özel çalışma türü.');
         }
@@ -5824,7 +5968,9 @@ class BordroPersonelModel extends Model
             }
         }
 
-        return count($tarihler);
+        $liste = array_keys($tarihler);
+        sort($liste);
+        return $liste;
     }
 
     /**
@@ -6502,6 +6648,30 @@ class BordroPersonelModel extends Model
         } elseif ($mevcutToplam > $maasHesapGunu) {
             // Eğer fazlaysa (manuel giriş hatası vb) normal günden düşelim
             $normGun = max(0, $normGun - ($mevcutToplam - $maasHesapGunu));
+        }
+
+        $parcaliSabitMaas = null;
+        if ($karisikMaasOzeti === null && !$isPrimUsulu && count($gecmisKayitlar) > 1) {
+            $parcaliSabitMaas = $this->hesaplaParcaliSabitMaasDagilimi(
+                $gecmisKayitlar,
+                $kayit->baslangic_tarihi,
+                $kayit->bitis_tarihi,
+                (int) $maasHesapGunu,
+                $this->getMaasEksikGunTarihleri((int) $kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi),
+                $calismaGecmisiAktifTarihler,
+                $kayit->ise_giris_tarihi ?? null,
+                $kayit->isten_cikis_tarihi ?? null,
+                $isNetMaas
+                    ? floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50)
+                    : floatval($genelAyarlarMap['asgari_ucret_brut'] ?? 33030.00)
+            );
+            if ($parcaliSabitMaas !== null) {
+                $nominalBrutMaas = $parcaliSabitMaas['efektif_maas'];
+                $kayit->maas_tutari = $nominalBrutMaas;
+                if ($isNetMaas && !$this->hasMaasaDahilSosyalYardim($kayit)) {
+                    $kayit->hedef_net_maas_tutari = $nominalBrutMaas;
+                }
+            }
         }
 
         // Ücretsiz izin günü varsa brüt maaşı düşür (Günlük ücret × izin günü kadar)
@@ -7226,13 +7396,33 @@ class BordroPersonelModel extends Model
         $htcResmiHedefNetHesap = 0.0;
         $htcEkOdeme = 0.0;
         $rtcEkOdeme = 0.0;
+        $htcGunDetayi = [];
+        $rtcGunDetayi = [];
+        if ($parcaliSabitMaas !== null) {
+            if ($htcGunHesap > 0) {
+                $htcGunDetayi = $this->ozelCalismaGunDetayi(
+                    $parcaliSabitMaas,
+                    $this->getOzelCalismaTarihleri((int) $kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi, 'hafta_tatili_calismasi'),
+                    $nominalBrutMaas / 30
+                );
+            }
+            if ($rtcGunHesap > 0) {
+                $rtcGunDetayi = $this->ozelCalismaGunDetayi(
+                    $parcaliSabitMaas,
+                    $this->getOzelCalismaTarihleri((int) $kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi, 'resmi_tatil_calismasi'),
+                    $nominalBrutMaas / 30
+                );
+            }
+        }
         if ($rtcGunHesap > 0 || $htcGunHesap > 0) {
             $gunlukAsgariHesap = round(floatval($genelAyarlarMap['asgari_ucret_net'] ?? 17002.12) / 30, 4);
             $gunlukAsgariBrutHesap = round(floatval($genelAyarlarMap['asgari_ucret_brut'] ?? 33030.00) / 30, 4);
             $resmiDahilEkToplam += $gunlukAsgariHesap * ($rtcGunHesap + $htcGunHesap);
             if ($rtcGunHesap > 0) {
                 if ($this->hasMaasaDahilSosyalYardim($kayit)) {
-                    $rtcEkOdeme = round(round($nominalBrutMaas / 30, 4) * $rtcGunHesap, 2);
+                    $rtcEkOdeme = !empty($rtcGunDetayi)
+                        ? round(array_sum(array_column($rtcGunDetayi, 'gunluk')), 2)
+                        : round(round($nominalBrutMaas / 30, 4) * $rtcGunHesap, 2);
                 }
                 $rtcBrutHesap = round($gunlukAsgariBrutHesap * $rtcGunHesap, 2);
                 // RTÇ günü için garanti edilen "ele geçen" hedef: asgari ücretin günlük neti (gross-up bazı)
@@ -7240,7 +7430,9 @@ class BordroPersonelModel extends Model
             }
         }
         if ($htcGunHesap > 0) {
-            $htcEkOdeme = round($nominalBrutMaas / 30, 4) * $htcGunHesap;
+            $htcEkOdeme = !empty($htcGunDetayi)
+                ? array_sum(array_column($htcGunDetayi, 'gunluk'))
+                : round($nominalBrutMaas / 30, 4) * $htcGunHesap;
             $htcResmiBrutHesap = round($gunlukAsgariBrutHesap * $htcGunHesap, 2);
             // HTÇ (Maaşa Dahil) günü için garanti edilen "ele geçen" hedef: asgari ücretin günlük neti
             $htcResmiHedefNetHesap = round($gunlukAsgariHesap * $htcGunHesap, 2);
@@ -7959,6 +8151,7 @@ class BordroPersonelModel extends Model
                     'resmi_banka_net' => round($htcResmiHedefNetHesap, 2),
                     'resmi_alacagina_dahil' => 1,
                     'gun_sayisi' => $htcGunHesap,
+                    'gun_detay' => $htcGunDetayi,
                 ];
             }
         }
@@ -7982,6 +8175,7 @@ class BordroPersonelModel extends Model
                     'resmi_banka_net' => round($rtcHedefNetHesap, 2),
                     'resmi_alacagina_dahil' => 1,
                     'gun_sayisi' => $rtcGunHesap,
+                    'gun_detay' => $rtcGunDetayi,
                 ];
             }
         }
@@ -7992,6 +8186,7 @@ class BordroPersonelModel extends Model
             'departman' => $kayit->departman ?? '',
             'gorev_gecmisi_parcali' => !empty($kayit->gorev_gecmisi_parcali),
             'gorev_gecmisi_parcalar' => $kayit->gorev_gecmisi_parcalar ?? [],
+            'sozlesme_parcalari' => $parcaliSabitMaas['parcalar'] ?? [],
             'maas_durumu' => $maasDurumuRaw,
             'is_net_maas' => $isNetMaas,
             'is_prim_usulu' => $isPrimUsulu,

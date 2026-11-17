@@ -1,5 +1,13 @@
 # Progress
 
+## 2026-11-17 — Bordro: Farklı Ücretli Görev Geçişinde Parça Bazlı Hakediş ve HTÇ
+- [x] Sözleşme hakedişi görev parçası bazında gün × ücret
+- [x] HTÇ/RTÇ denk gelen görevin günlük ücretiyle
+- [x] Detay modalında parça ve tarih kırılımı; eski snapshot gösterimi değişmedi
+- [x] Birim testler (`BordroGorevGecmisiTest`)
+- [ ] Ekim 2026 bordrosunda ilgili personelin yeniden hesaplanması (kullanıcı)
+- [ ] ORHAN KISACIK / TUNCAY DAL çakışan görev geçmişi kayıtlarının düzeltilmesi
+
 ## 2026-11-07 — Bordro: Bordro Detay Modalı Koyu Mod (Dark Mode) Düzeltmesi
 - [x] `bordro/list` detay modalında hem standart tema (`data-bs-theme="dark"`) hem de macOS Dark preset (`data-theme-preset="macos-dark"`) için tam koyu mod desteği sağlandı.
 - [x] Kartların beyaz arkaplan almasına neden olan hardcoded `.bg-white` ve inline stiller temizlendi.

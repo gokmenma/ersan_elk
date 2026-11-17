@@ -1,5 +1,11 @@
 # Active Context
 
+## Bordro — Dönem İçi Farklı Ücretli Görev Geçişi (2026-11-17)
+- Dönem içinde farklı sabit ücretli, çakışmasız görev geçmişi parçalarında sözleşme hakedişi parça bazlı (`gün × maaş/30`) hesaplanır; HTÇ/RTÇ günü denk geldiği görevin günlük ücretiyle ödenir.
+- Model: `BordroPersonelModel::hesaplaParcaliSabitMaasDagilimi`, `ozelCalismaGunDetayi`, `getOzelCalismaTarihleri`; snapshot alanları `sozlesme_parcalari` ve HTÇ/RTÇ `gun_detay`.
+- Görünüm: `views/bordro/api.php` (get-detail-old: günlük ücret/sözleşme maaşı parçalı, sözleşme hakedişi alt satırları, HTÇ tarih satırları), `partials/detay-api.php` HTÇ popover.
+- Etki: 829 kayıtlık karşılaştırmada yalnız 3 kayıt (1935 Yusuf Korçak Ekim, 1658 ve 1675 Ağustos-kapalı) değişti; çakışan görev geçmişi olan ORHAN KISACIK ve TUNCAY DAL eski hesapta bırakıldı (veri düzeltmesi gerekli). Mevcut snapshot gösterimleri değişmez; yeni hesap yalnız yeniden hesaplamada uygulanır.
+
 ## Mobil SPA — Operasyonlar Kartı "Dönem" (Sözleşme Gerçekleşme) Görünümü (2026-11-13)
 - Ana sayfadaki Operasyonlar kartına Gün/Ay yanına **Dönem** sekmesi eklendi; sözleşme süresince hedef, yapılan, kalan ve gerçekleşme oranı gösterilir.
 - Veri kaynağı: aktif `hakedis_sozlesmeler` kaydı; hedef = `hakedis_kalemleri.miktari`, hakediş gerçekleşmesi = taslak olmayan `hakedis_miktarlari` toplamı. Yapılan = hakediş toplamı + son hakediş bitişinden bugüne canlı operasyon sayıları (ay içi + aradaki ayların boşluğu).

@@ -1097,6 +1097,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 $tumEkOdemeler = $BordroPersonel->getDonemEkOdemeleriListe($bp->personel_id, $bp->donem_id);
                 $detayData = json_decode($bp->hesaplama_detay ?? '', true);
+                $sozlesmeParcalari = array_values(array_filter(
+                    is_array($detayData['sozlesme_parcalari'] ?? null) ? $detayData['sozlesme_parcalari'] : [],
+                    static fn($parca) => is_array($parca) && intval($parca['gun'] ?? 0) > 0
+                ));
+                $htcSnapshotKalemi = null;
+                foreach (($detayData['ek_odemeler'] ?? []) as $snapshotEkOdeme) {
+                    if (is_array($snapshotEkOdeme) && ($snapshotEkOdeme['kod'] ?? '') === 'hafta_tatili_calisma') {
+                        $htcSnapshotKalemi = $snapshotEkOdeme;
+                        break;
+                    }
+                }
                 $snapshotEkOdemeNetleri = [];
                 foreach (($detayData['ek_odemeler'] ?? []) as $snapshotEkOdeme) {
                     if (isset($snapshotEkOdeme['id'], $snapshotEkOdeme['net_etki'])) {
@@ -1295,6 +1306,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // ============================================================
                 $html = '<style>
                     .bordro-compact-view { font-family: "Inter", system-ui, -apple-system, sans-serif; }
+                    .swal2-popup.swal-sozlesme-detay { width: 760px !important; max-width: calc(100vw - 32px) !important; }
                     .bordro-compact-view .main-card { background: #ffffff; border-radius: 16px; border: 1.5px solid #cbd5e1; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
                     .bordro-compact-view .header-glass { background: #ffffff; border: 1.5px solid #cbd5e1; padding: 15px 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
                     .bordro-compact-view .card-header-tint { padding: 14px 20px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #cbd5e1; }
@@ -1598,7 +1610,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             </button>
                             <div class="badge bg-light text-dark border py-2 px-3 d-flex flex-column align-items-end">
                                 <small class="text-muted opacity-75" style="font-size: 10px;">GÜNLÜK ÜCRET</small>
-                                <span class="fw-bold text-primary">' . ($gunlukUcret > 0 ? number_format($gunlukUcret, 2, ',', '.') . ' ₺' : '-') . '</span>
+                                <span class="fw-bold text-primary">' . (!empty($sozlesmeParcalari)
+                                    ? implode(' / ', array_map(static fn($g) => number_format((float) $g, 2, ',', '.'), array_values(array_unique(array_map(static fn($p) => round(floatval($p['maas_tutari'] ?? 0) / 30, 2), $sozlesmeParcalari))))) . ' ₺'
+                                    : ($gunlukUcret > 0 ? number_format($gunlukUcret, 2, ',', '.') . ' ₺' : '-')) . '</span>
                             </div>
                             <div class="badge bg-light text-dark border py-2 px-3 d-flex flex-column align-items-end">
                                 <small class="text-muted opacity-75" style="font-size: 10px;">MAAŞ TİPİ</small>
@@ -1606,7 +1620,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             </div>
                             <div class="badge bg-light text-dark border py-2 px-3 d-flex flex-column align-items-end">
                                 <small class="text-muted opacity-75" style="font-size: 10px;">SÖZLEŞME MAAŞI</small>
-                                <span class="fw-bold">' . ($nominalMaas ? number_format($nominalMaas, 2, ',', '.') . ' ₺' : '-') . '</span>
+                                <span class="fw-bold">' . (!empty($sozlesmeParcalari)
+                                    ? implode(' / ', array_map(static fn($m) => number_format((float) $m, 2, ',', '.'), array_values(array_unique(array_map(static fn($p) => round(floatval($p['maas_tutari'] ?? 0), 2), $sozlesmeParcalari))))) . ' ₺'
+                                    : ($nominalMaas ? number_format($nominalMaas, 2, ',', '.') . ' ₺' : '-')) . '</span>
                             </div>
                             <div class="badge bg-light text-dark border py-2 px-3 d-flex flex-column align-items-end">
                                 <small class="text-muted opacity-75" style="font-size: 10px;">' . ($isPrimUsulu ? 'PUANTAJ HAKEDİŞİ' : 'SÖZLEŞME HAKEDİŞİ') . '</small>
@@ -1668,14 +1684,37 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if ($sozlesmeHakedisToplamGosterim > 0 || $isPrimUsulu) {
                         $anaHakedisEtiketi = $isPrimUsulu ? 'Puantaj Hakedişi' : 'Sözleşme Hakedişi';
                         $anaHakedisIkonu = $isPrimUsulu ? 'bx-briefcase' : 'bx-file';
+                        $sozlesmeParcaliGosterim = !$isPrimUsulu && !empty($sozlesmeParcalari);
                         $anaHakedisAciklamasi = $isPrimUsulu
                             ? 'Dönem puantaj kazancı'
-                            : number_format($gunlukUcret, 2, ',', '.') . ' ₺ × ' . $calismaGunu . ' gün';
+                            : ($sozlesmeParcaliGosterim
+                                ? count(array_unique(array_map(static fn($p) => round(floatval($p['maas_tutari'] ?? 0), 2), $sozlesmeParcalari))) . ' farklı ücret · ' . $calismaGunu . ' gün'
+                                : number_format($gunlukUcret, 2, ',', '.') . ' ₺ × ' . $calismaGunu . ' gün');
+                        $sozlesmeDetayButonu = '';
+                        if ($sozlesmeParcaliGosterim) {
+                            $sozlesmeDetaySablonId = 'sozlesmeParcaDetay_' . intval($bp->id);
+                            $sozlesmeDetaySatirlari = '';
+                            foreach ($sozlesmeParcalari as $sozlesmeParcasi) {
+                                $parcaAraligi = date('d.m.Y', strtotime((string) $sozlesmeParcasi['baslangic'])) . ' – ' . date('d.m.Y', strtotime((string) $sozlesmeParcasi['bitis']));
+                                $sozlesmeDetaySatirlari .= '<tr>
+                                        <td class="text-start"><div class="fw-semibold">' . htmlspecialchars((string) ($sozlesmeParcasi['gorev'] ?? ''), ENT_QUOTES, 'UTF-8') . '</div><small class="text-muted text-nowrap">' . htmlspecialchars($parcaAraligi, ENT_QUOTES, 'UTF-8') . '</small></td>
+                                        <td class="text-end text-nowrap">' . number_format(floatval($sozlesmeParcasi['maas_tutari'] ?? 0), 2, ',', '.') . ' ₺</td>
+                                        <td class="text-end text-nowrap">' . number_format(floatval($sozlesmeParcasi['maas_tutari'] ?? 0) / 30, 2, ',', '.') . ' ₺</td>
+                                        <td class="text-center">' . intval($sozlesmeParcasi['gun']) . '</td>
+                                        <td class="text-end text-nowrap fw-semibold">' . number_format(floatval($sozlesmeParcasi['tutar'] ?? 0), 2, ',', '.') . ' ₺</td>
+                                      </tr>';
+                            }
+                            $html .= '<template id="' . $sozlesmeDetaySablonId . '"><div class="table-responsive"><table class="table table-sm table-bordered align-middle mb-0 font-size-13">
+                                    <thead class="table-light"><tr><th class="text-start">Görev / Tarih</th><th class="text-end">Aylık Ücret</th><th class="text-end">Günlük</th><th class="text-center text-nowrap">Gün</th><th class="text-end">Tutar</th></tr></thead>
+                                    <tbody>' . $sozlesmeDetaySatirlari . '</tbody>
+                                    <tfoot><tr class="fw-bold"><td class="text-start" colspan="3">Toplam</td><td class="text-center">' . array_sum(array_map(static fn($p) => intval($p['gun']), $sozlesmeParcalari)) . '</td><td class="text-end text-nowrap">' . number_format(array_sum(array_map(static fn($p) => floatval($p['tutar'] ?? 0), $sozlesmeParcalari)), 2, ',', '.') . ' ₺</td></tr></tfoot>
+                                </table></div></template>';
+                            $sozlesmeDetayButonu = '<button type="button" class="btn btn-sm btn-subtle-primary btn-sozlesme-parca-detay me-2 py-0 px-2 font-size-11" data-template="' . $sozlesmeDetaySablonId . '" data-personel="' . htmlspecialchars((string) ($personel->adi_soyadi ?? ''), ENT_QUOTES, 'UTF-8') . '" title="Görev bazlı hakediş detayı"><i class="bx bx-detail me-1"></i>Detay</button>';
+                        }
                         $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collBaseId . '" aria-expanded="false">
-                                    <td><div class="d-flex align-items-center"><i class="bx ' . $anaHakedisIkonu . ' me-2 text-dark opacity-75"></i><span>' . $anaHakedisEtiketi . '<span class="calculation-note">' . $anaHakedisAciklamasi . '</span></span>' . ($isPrimUsulu ? $puantajBaslikDetay : '') . '<span class="badge bg-light text-dark fw-normal ms-2">' . $calismaGunu . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
-                                    <td class="text-end fw-bold text-dark">' . number_format($sozlesmeHakedisToplamGosterim, 2, ',', '.') . ' ₺</td>
+                                    <td><div class="d-flex align-items-center"><i class="bx ' . $anaHakedisIkonu . ' me-2 text-dark opacity-75"></i><span>' . $anaHakedisEtiketi . '<span class="calculation-note">' . htmlspecialchars($anaHakedisAciklamasi, ENT_QUOTES, 'UTF-8') . '</span></span>' . ($isPrimUsulu ? $puantajBaslikDetay : '') . '<span class="badge bg-light text-dark fw-normal ms-2">' . $calismaGunu . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
+                                    <td class="text-end fw-bold text-dark' . ($sozlesmeParcaliGosterim ? ' text-nowrap' : '') . '">' . $sozlesmeDetayButonu . number_format($sozlesmeHakedisToplamGosterim, 2, ',', '.') . ' ₺</td>
                                   </tr>';
-
                         if ($sozlesmeTabanGosterim > 0 && !$asgariMatrarhGoster) {
                             $html .= '<tr class="child-row collapse ' . $collBaseId . '">
                                         <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Asgari Ücret Tabanı</td>
@@ -1818,12 +1857,30 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 // RTÇ / HTÇ satırları
                 if ($htcGunModal > 0 && $nominalMaas > 0) {
-                    $htcToplamTutar = round($nominalMaas / 30 * $htcGunModal, 2);
+                    $htcGunDetayModal = is_array($htcSnapshotKalemi['gun_detay'] ?? null) ? $htcSnapshotKalemi['gun_detay'] : [];
+                    $htcToplamTutar = !empty($htcGunDetayModal) && isset($htcSnapshotKalemi['tutar'])
+                        ? round(floatval($htcSnapshotKalemi['tutar']), 2)
+                        : round($nominalMaas / 30 * $htcGunModal, 2);
+                    $htcNotGruplari = [];
+                    foreach ($htcGunDetayModal as $htcGunKalemi) {
+                        $htcGunlukAnahtar = number_format(floatval($htcGunKalemi['gunluk'] ?? 0), 2, ',', '.');
+                        $htcNotGruplari[$htcGunlukAnahtar] = ($htcNotGruplari[$htcGunlukAnahtar] ?? 0) + 1;
+                    }
+                    $htcNotMetni = !empty($htcNotGruplari)
+                        ? implode(' + ', array_map(static fn($gunluk, $adet) => $gunluk . ' ₺ × ' . $adet . ' gün', array_keys($htcNotGruplari), $htcNotGruplari))
+                        : number_format($gunlukUcret, 2, ',', '.') . ' ₺ × ' . $htcGunModal . ' gün';
                     $collHtc = "cHTC_" . $bp->id;
                     $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collHtc . '" aria-expanded="false">
-                                <td><div class="d-flex align-items-center"><i class="bx bx-calendar-x me-2 text-purple" style="color:#7367f0"></i><span>Hafta Tatili Çalışma<span class="calculation-note">' . number_format($gunlukUcret, 2, ',', '.') . ' ₺ × ' . $htcGunModal . ' gün</span></span><span class="badge fw-normal ms-2" style="background:#7367f0;color:#fff">' . $htcGunModal . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
+                                <td><div class="d-flex align-items-center"><i class="bx bx-calendar-x me-2 text-purple" style="color:#7367f0"></i><span>Hafta Tatili Çalışma<span class="calculation-note">' . htmlspecialchars($htcNotMetni, ENT_QUOTES, 'UTF-8') . '</span></span><span class="badge fw-normal ms-2" style="background:#7367f0;color:#fff">' . $htcGunModal . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
                                 <td class="text-end fw-semibold" style="color:#7367f0">+' . number_format($htcToplamTutar, 2, ',', '.') . ' ₺</td>
                               </tr>';
+                    foreach ($htcGunDetayModal as $htcGunKalemi) {
+                        $htcTarihTs = strtotime((string) ($htcGunKalemi['tarih'] ?? ''));
+                        $html .= '<tr class="child-row collapse ' . $collHtc . '">
+                                    <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>' . ($htcTarihTs ? date('d.m.Y', $htcTarihTs) : '-') . ' <small class="text-muted">' . htmlspecialchars((string) ($htcGunKalemi['gorev'] ?? ''), ENT_QUOTES, 'UTF-8') . '</small></td>
+                                    <td class="text-end pe-4">' . number_format(floatval($htcGunKalemi['gunluk'] ?? 0), 2, ',', '.') . ' ₺</td>
+                                  </tr>';
+                    }
                 }
 
                 if ($isInclusive && $rtcGunModal > 0) {

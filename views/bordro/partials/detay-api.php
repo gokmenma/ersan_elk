@@ -1473,13 +1473,29 @@ $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + 
                     $brutDetayKalan = max(0.0, round($brutDetayKalan - $sozlesmeDetayTutar, 2));
                 }
 
+                $htcParcaliKalem = null;
+                foreach ((json_decode((string) ($bp->hesaplama_detay ?? ''), true)['ek_odemeler'] ?? []) as $htcAdayKalem) {
+                    if (is_array($htcAdayKalem) && ($htcAdayKalem['kod'] ?? '') === 'hafta_tatili_calisma' && !empty($htcAdayKalem['gun_detay']) && isset($htcAdayKalem['tutar'])) {
+                        $htcParcaliKalem = $htcAdayKalem;
+                        break;
+                    }
+                }
                 $htcHakEdilenTutar = $htcGunModal > 0
-                    ? round(($nominalMaas / 30) * $htcGunModal, 2)
+                    ? ($htcParcaliKalem !== null ? round(floatval($htcParcaliKalem['tutar']), 2) : round(($nominalMaas / 30) * $htcGunModal, 2))
                     : 0.0;
                 $htcBrutDetayTutar = min($brutDetayKalan, max(0.0, $htcHakEdilenTutar));
                 if ($htcBrutDetayTutar > 0) {
                     $htcGunluk = round($nominalMaas / 30, 2);
-                    $brutToplamDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Hafta Tatili Çalışma Hakedişi<small style="display:block;color:#94a3b8;">' . $htcGunModal . ' gün × ' . number_format($htcGunluk, 2, ',', '.') . ' ₺</small></span><span class="pop-row-val val-green">+' . number_format($htcBrutDetayTutar, 2, ',', '.') . ' ₺</span></div>';
+                    $htcFormul = $htcGunModal . ' gün × ' . number_format($htcGunluk, 2, ',', '.') . ' ₺';
+                    if ($htcParcaliKalem !== null) {
+                        $htcFormulGruplari = [];
+                        foreach ($htcParcaliKalem['gun_detay'] as $htcGunKalemi) {
+                            $htcAnahtar = number_format(floatval($htcGunKalemi['gunluk'] ?? 0), 2, ',', '.');
+                            $htcFormulGruplari[$htcAnahtar] = ($htcFormulGruplari[$htcAnahtar] ?? 0) + 1;
+                        }
+                        $htcFormul = implode(' + ', array_map(static fn($g, $a) => $a . ' gün × ' . $g . ' ₺', array_keys($htcFormulGruplari), $htcFormulGruplari));
+                    }
+                    $brutToplamDetayHtml .= '<div class="pop-row"><span class="pop-row-title">Hafta Tatili Çalışma Hakedişi<small style="display:block;color:#94a3b8;">' . htmlspecialchars($htcFormul, ENT_QUOTES, 'UTF-8') . '</small></span><span class="pop-row-val val-green">+' . number_format($htcBrutDetayTutar, 2, ',', '.') . ' ₺</span></div>';
                     $brutDetayKalan = max(0.0, round($brutDetayKalan - $htcBrutDetayTutar, 2));
                 }
 
