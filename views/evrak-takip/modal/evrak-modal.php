@@ -54,6 +54,7 @@ $araclar_list = $Evrak->getActiveVehicles();
                                     <i data-feather="info" style="width: 14px; height: 14px;"></i>
                                 </span>
                                 <h6 class="mb-0 fw-bold">Evrak Detayları</h6>
+                                <span id="evrakKilitRozet" class="badge bg-secondary-subtle text-secondary border rounded-pill ms-2 d-none"><i class="bx bx-lock-alt"></i> Salt okunur</span>
                             </div>
                             
                             <div class="mb-3">
@@ -229,9 +230,9 @@ $araclar_list = $Evrak->getActiveVehicles();
                             <div class="mb-3">
                                 <input type="hidden" name="ek_duzen_json" id="gelen_ek_duzen_json" value="[]">
                                 <input type="hidden" name="silinen_ek_ids_json" id="gelen_silinen_ek_ids_json" value="[]">
-                                <label for="gelenEkDosyalari" class="form-label small fw-bold text-muted">Evrak Dosyaları</label>
+                                <label for="gelenEkDosyalari" class="form-label small fw-bold text-muted"><i class="bx bx-paperclip"></i> Evrak Dosyaları</label>
                                 <input type="file" id="gelenEkDosyalari" class="form-control" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.odt,.ods">
-                                <div class="form-text">Birden fazla dosya seçebilirsiniz. Her dosya en fazla 10 MB olabilir.</div>
+                                <div class="form-text" id="gelenEkDosyalariYardim">Birden fazla dosya seçebilirsiniz. Her dosya en fazla 10 MB olabilir.</div>
                                 <div id="mevcutDosya" class="mt-2" style="display:none;">
                                     <a href="#" target="_blank" class="btn btn-sm btn-soft-info w-100 fw-bold border-dashed rounded-3">
                                         <i data-feather="eye" class="icon-xs me-1"></i> Mevcut Dosyayı Gör
@@ -368,6 +369,31 @@ body[data-layout-mode="dark"] .evrak-cevap-kutu {
     background-color: rgba(255, 255, 255, 0.04) !important;
     border-color: rgba(255, 255, 255, 0.1) !important;
 }
+</style>
+
+<style>
+    #evrakModal .uets-kilit-uyari { padding: 14px 16px; border-radius: 12px; background: #fff8e6; border: 1px solid #fde7a8; color: #7a5b00; }
+    #evrakModal .uets-kilit-ikon { width: 36px; height: 36px; border-radius: 10px; background: #fdebb0; display: inline-flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+    #evrakModal .modal-body { overflow-x: hidden; }
+    #evrakModal #gelenEvrakDosyaListesi { grid-template-columns: minmax(0, 1fr); }
+    #evrakModal .evrak-dosya-kart > .min-w-0 { min-width: 0; }
+    #evrakModal.uets-kilitli .uets-kilit-uyari { margin-bottom: 1rem !important; padding: 10px 14px; }
+    #evrakModal.uets-kilitli .modal-body { padding-top: 1rem !important; padding-bottom: .5rem !important; }
+    #evrakModal .uets-ozet-kart { border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; overflow: hidden; }
+    #evrakModal .uets-ozet-satir { display: flex; gap: 12px; padding: 10px 14px; border-bottom: 1px solid #eef2f6; align-items: baseline; }
+    #evrakModal .uets-ozet-satir:last-child { border-bottom: 0; }
+    #evrakModal .uets-ozet-etiket { flex: 0 0 104px; font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; color: #64748b; }
+    #evrakModal .uets-ozet-etiket i { margin-right: 5px; font-size: 14px; vertical-align: -2px; }
+    #evrakModal .uets-ozet-deger { font-size: 13px; font-weight: 500; color: #1e293b; word-break: break-word; min-width: 0; }
+    html[data-theme-preset="macos-dark"] #evrakModal .uets-ozet-kart, body[data-layout-mode="dark"] #evrakModal .uets-ozet-kart { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.1); }
+    html[data-theme-preset="macos-dark"] #evrakModal .uets-ozet-satir, body[data-layout-mode="dark"] #evrakModal .uets-ozet-satir { border-bottom-color: rgba(255,255,255,.08); }
+    html[data-theme-preset="macos-dark"] #evrakModal .uets-ozet-deger, body[data-layout-mode="dark"] #evrakModal .uets-ozet-deger { color: #f1f5f9; }
+    #evrakModal.uets-kilitli .col-md-6:not(.border-end) { background: rgba(var(--bs-primary-rgb), .03); border-radius: 12px; padding: 14px 16px 4px; }
+    #evrakModal .evrak-dosya-kart { background: #f8fafc; border-color: #e2e8f0 !important; transition: background .15s, border-color .15s; }
+    #evrakModal .evrak-dosya-kart:hover { background: #f1f5f9; border-color: #cbd5e1 !important; }
+    html[data-theme-preset="macos-dark"] #evrakModal .uets-kilit-uyari, body[data-layout-mode="dark"] #evrakModal .uets-kilit-uyari { background: rgba(250,204,21,.08); border-color: rgba(250,204,21,.25); color: #fde68a; }
+    html[data-theme-preset="macos-dark"] #evrakModal .uets-kilit-ikon, body[data-layout-mode="dark"] #evrakModal .uets-kilit-ikon { background: rgba(250,204,21,.15); }
+    html[data-theme-preset="macos-dark"] #evrakModal .evrak-dosya-kart, body[data-layout-mode="dark"] #evrakModal .evrak-dosya-kart { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.1) !important; }
 </style>
 
 <style>

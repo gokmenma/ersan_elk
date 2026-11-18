@@ -236,7 +236,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if (!$existingDocument) {
                         throw new Exception('Evrak bulunamadı.');
                     }
-                    if (($existingDocument->onay_durumu ?? 'taslak') !== 'taslak') {
+                    if (($existingDocument->evrak_tipi ?? '') === 'giden' && ($existingDocument->onay_durumu ?? 'taslak') !== 'taslak') {
                         throw new Exception('Elektronik imza onay süreci başlamış evrak değiştirilemez.');
                     }
                     if (\App\Model\EvrakSevkModel::isRestricted($existingDocument)) {
@@ -600,7 +600,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'id' => $real_id,
                     'ekler' => implode("\n", array_map(fn($attachment) => $attachment->dosya_adi, $currentAttachments)),
                 ]);
-                $Model->resetApprovalWorkflow($real_id, array_map(fn($user) => (int) $user->id, $validSigners));
+                if (($data['evrak_tipi'] ?? 'gelen') === 'giden') {
+                    $Model->resetApprovalWorkflow($real_id, array_map(fn($user) => (int) $user->id, $validSigners));
+                }
 
                 // Trafik Cezası Otomatik Kesinti Ekleme (Yalnızca Gelen Evrak için)
                 $evrak_tipi = $data['evrak_tipi'] ?? 'gelen';

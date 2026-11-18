@@ -38,19 +38,19 @@ $(document).ready(function () {
   function gelenDosyalariGoster() {
     const list = $("#gelenEvrakDosyaListesi").empty();
     gelenDosyalar.forEach((item, index) => {
-      const card = $("<div>").addClass("border rounded-3 p-2 bg-light d-flex align-items-center gap-2");
+      const card = $("<div>").addClass("evrak-dosya-kart border rounded-3 p-2 d-flex align-items-center gap-2");
       const icon = $("<span>").addClass("badge bg-info-subtle text-info p-2 rounded-circle")
         .append($("<i>").addClass("bx bx-file font-size-16"));
       const info = $("<div>").addClass("flex-grow-1 min-w-0");
-      $("<div>").addClass("fw-bold small text-truncate").text(item.name).appendTo(info);
+      $("<div>").addClass("fw-bold small text-truncate").attr("title", item.name).text(item.name).appendTo(info);
       const detail = item.type === "existing" || item.type === "primary"
-        ? [item.date ? new Date(item.date.replace(" ", "T")).toLocaleString("tr-TR") : "", item.user || "Bilinmeyen Kullanıcı"]
+        ? [item.date ? new Date(item.date.replace(" ", "T")).toLocaleString("tr-TR") : "", item.user && item.user !== "Bilinmeyen Kullanıcı" ? item.user : ""]
         : ["Henüz kaydedilmedi", "Ekleyen: siz"];
       $("<div>").addClass("text-muted").css("font-size", "11px")
-        .text(detail.filter(Boolean).join(" • ") + " • " + formatGelenDosyaBoyutu(item.size)).appendTo(info);
+        .text(detail.filter(Boolean).concat(item.size ? [formatGelenDosyaBoyutu(item.size)] : []).join(" • ")).appendTo(info);
       const actions = $("<div>").addClass("d-flex gap-1 flex-shrink-0");
       if ((item.type === "existing" || item.type === "primary") && item.path) {
-        $("<a>").addClass("btn btn-sm btn-subtle-info").attr({href: item.url || item.path, target: "_blank", title: "Görüntüle"})
+        $("<a>").addClass("btn btn-sm btn-subtle-info").attr({href: item.url || item.path, target: "_blank", title: "Dosyayı görüntüle"})
           .append($("<i>").addClass("bx bx-show font-size-14")).appendTo(actions);
       }
       const removeButton = $("<button type='button'>").addClass("btn btn-sm btn-subtle-danger").attr("title", "Listeden kaldır")
@@ -3091,9 +3091,35 @@ function applyUetsLock(locked) {
   $('input[name="evrak_no"]').prop("readonly", true);
   $("#konu").prop("disabled", locked);
   $("#gelenEkDosyalari").prop("disabled", locked).closest(".mb-3").find(".btn-subtle-danger").toggle(!locked);
+  $("#gelenEkDosyalari, #gelenEkDosyalariYardim").toggleClass("d-none", locked);
+  $("#evrakModal").toggleClass("uets-kilitli", locked);
+  $("#evrakKilitRozet").toggleClass("d-none", !locked);
+  $("#btnEvrakKaydet").text(locked ? "Kaydet" : "Bilgileri Kaydet");
+  $("#evrakOcrPanel").toggleClass("d-none", locked);
+  const saltOkunurAlanlar = $('input[name="tarih"]').closest(".mb-3")
+    .add($('input[name="evrak_no"]').closest(".mb-3"))
+    .add($("#konu").closest(".mb-3"))
+    .add($('input[name="kurum_adi"]').closest(".mb-3"));
+  saltOkunurAlanlar.toggleClass("d-none", locked);
+  $("#tipGelen").closest(".mb-3").toggleClass("d-none", locked);
+  $("#uetsOzetKart").remove();
+  if (locked) {
+    const esc = function (v) { return $("<div>").text(v == null || v === "" ? "-" : String(v)).html(); };
+    const konu = $("#konu option:selected").text() || $("#konu").val();
+    const satir = function (etiket, deger, ikon) {
+      return '<div class="uets-ozet-satir"><span class="uets-ozet-etiket"><i class="bx ' + ikon + '"></i>' + etiket + '</span><span class="uets-ozet-deger">' + esc(deger) + "</span></div>";
+    };
+    const ozet = '<div id="uetsOzetKart" class="uets-ozet-kart mb-3">' +
+      satir("Konu", konu, "bx-text") +
+      satir("Kurum", $('input[name="kurum_adi"]').val(), "bx-buildings") +
+      satir("Evrak No", $('input[name="evrak_no"]').val(), "bx-hash") +
+      satir("Evrak Tarihi", $('input[name="tarih"]').val(), "bx-calendar") +
+      "</div>";
+    $("#tipGelen").closest(".mb-3").after(ozet);
+  }
   $("#uetsKilitUyari").remove();
   if (locked) {
-    $("#evrakModal .modal-body").first().prepend('<div id="uetsKilitUyari" class="alert alert-warning font-size-12 mb-3"><i class="bx bx-lock-alt me-1"></i> Bu evrak UETS ile gelen bir tebligattır. İçeriği, dosyaları ve tarihi değiştirilemez; yalnızca ilgili personel, cevap ve termin bilgileri güncellenebilir.</div>');
+    $("#evrakModal .modal-body").first().prepend('<div id="uetsKilitUyari" class="uets-kilit-uyari d-flex align-items-start gap-3 mb-4"><span class="uets-kilit-ikon"><i class="bx bx-lock-alt"></i></span><div><div class="fw-bold">UETS tebligatı — içerik korumalı</div><div class="font-size-12 text-muted mt-1">Evrakın içeriği, dosyaları ve tarihi değiştirilemez. <strong>İlgili personel, cevap durumu ve termin</strong> bilgilerini sağ taraftan güncelleyebilirsiniz.</div></div></div>');
   }
 }
 
