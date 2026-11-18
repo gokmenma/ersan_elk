@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-18 — Demirbaş: Liste Sayfası Açılış Hızlandırma
+- [x] Özet kartları yalnız demirbaş satırlarıyla hesaplanıyor (~3,1 sn → ~0,22 sn)
+- [x] Eski/yeni HTML çıktısı karşılaştırıldı, aynı
+
 ## 2026-11-17 — Bordro: Farklı Ücretli Görev Geçişinde Parça Bazlı Hakediş ve HTÇ
 - [x] Sözleşme hakedişi görev parçası bazında gün × ücret
 - [x] HTÇ/RTÇ denk gelen görevin günlük ücretiyle

@@ -18,21 +18,14 @@ $Zimmet = new DemirbasZimmetModel();
 $Hareket = new DemirbasHareketModel();
 $Personel = new PersonelModel();
 
-$tumDemirbaslar = $Demirbas->getAllWithCategory();
 $kategoriler = $Tanimlamalar->getDemirbasKategorileri();
 $personeller = $Personel->all(false, 'demirbas');
 $zimmetStats = $Zimmet->getStats();
 
-// Otomatik zimmet ayarı yapılmış demirbaşları getir
-$sqlAyarlar = $Demirbas->db->prepare("SELECT * FROM demirbas WHERE (otomatik_zimmet_is_emri_ids IS NOT NULL OR otomatik_iade_is_emri_ids IS NOT NULL OR otomatik_zimmetten_dus_is_emri_ids IS NOT NULL) AND firma_id = ?");
-$sqlAyarlar->execute([$_SESSION['firma_id']]);
-$ayarYapilmisDemirbaslar = $sqlAyarlar->fetchAll(PDO::FETCH_OBJ);
-
 // ====== SAYAÇ VE APARAT KATEGORİ ID'LERİ (Daha Sağlıklı Tespit) ======
 $sayacKatIds = [];
 $aparatKatIds = [];
-$tumKategoriler = $Tanimlamalar->getDemirbasKategorileri();
-foreach ($tumKategoriler as $kat) {
+foreach ($kategoriler as $kat) {
     $katAdiLower = mb_strtolower($kat->tur_adi, 'UTF-8');
     if (str_contains($katAdiLower, 'sayaç') || str_contains($katAdiLower, 'sayac')) {
         $sayacKatIds[] = (string) $kat->id;
@@ -43,64 +36,54 @@ foreach ($tumKategoriler as $kat) {
 }
 
 // ====== DEMİRBAŞ, SAYAÇ VE APARAT LİSTELERİNİ AYIR ======
-$demirbaslar = [];
-$sayaclar = [];
-$aparatlar = [];
 $stokOzeti = (object) ['toplam_cesit' => 0, 'toplam_adet' => 0, 'stokta_kalan' => 0, 'zimmetli_adet' => 0];
 
 // Kategori bazlı envanter raporu için veriler
 $kategoriEnvanteri = [];
 
-foreach ($tumDemirbaslar as $item) {
-    if (!empty($sayacKatIds) && in_array($item->kategori_id, $sayacKatIds)) {
-        $sayaclar[] = $item;
-    } elseif (!empty($aparatKatIds) && in_array($item->kategori_id, $aparatKatIds)) {
-        $aparatlar[] = $item;
-    } else {
-        $demirbaslar[] = $item;
+$envanterSatirlari = $Demirbas->getEnvanterOzetSatirlari(array_merge($sayacKatIds, $aparatKatIds));
+foreach ($envanterSatirlari as $item) {
+    $rowMiktar = (int)($item->miktar ?? 1);
+    $rowKalan = (int)($item->kalan_miktar ?? 0);
+    $rowKalan = ($rowKalan > $rowMiktar) ? $rowMiktar : $rowKalan; // Cap at miktar to prevent calculation errors
+    $rowZimmetli = $rowMiktar - $rowKalan;
 
-        $rowMiktar = (int)($item->miktar ?? 1);
-        $rowKalan = (int)($item->kalan_miktar ?? 0);
-        $rowKalan = ($rowKalan > $rowMiktar) ? $rowMiktar : $rowKalan; // Cap at miktar to prevent calculation errors
-        $rowZimmetli = $rowMiktar - $rowKalan;
+    $durum = strtolower($item->durum ?? 'aktif');
+    $is_serviste = ($durum == 'arizali');
+    $is_hurda = str_contains($durum, 'hurda');
+    $is_active = (!$is_serviste && !$is_hurda);
 
-        $durum = strtolower($item->durum ?? 'aktif');
-        $is_serviste = ($durum == 'arizali');
-        $is_hurda = str_contains($durum, 'hurda');
-        $is_active = (!$is_serviste && !$is_hurda);
+    // Stok özetini genel hesapla
+    $stokOzeti->toplam_cesit++;
+    $stokOzeti->toplam_adet += $rowMiktar;
+    
+    if ($is_active) {
+        $stokOzeti->stokta_kalan += $rowKalan;
+        $stokOzeti->zimmetli_adet += $rowZimmetli;
+    }
 
-        // Stok özetini genel hesapla
-        $stokOzeti->toplam_cesit++;
-        $stokOzeti->toplam_adet += $rowMiktar;
-        
-        if ($is_active) {
-            $stokOzeti->stokta_kalan += $rowKalan;
-            $stokOzeti->zimmetli_adet += $rowZimmetli;
-        }
-
-        // Kategori bazlı envantere ekle
-        $katAdi = empty($item->kategori_adi) ? 'Kategorisiz' : $item->kategori_adi;
-        if (!isset($kategoriEnvanteri[$katAdi])) {
-            $kategoriEnvanteri[$katAdi] = [
-                'cesit' => 0,
-                'toplam' => 0,
-                'bosta' => 0,
-                'zimmetli' => 0,
-                'serviste' => 0,
-                'hurda' => 0
-            ];
-        }
-        $kategoriEnvanteri[$katAdi]['cesit']++;
-        $kategoriEnvanteri[$katAdi]['toplam'] += $rowMiktar;
-        
-        if ($is_active) {
-            $kategoriEnvanteri[$katAdi]['bosta'] += $rowKalan;
-            $kategoriEnvanteri[$katAdi]['zimmetli'] += $rowZimmetli;
-        } elseif ($is_serviste) {
-            $kategoriEnvanteri[$katAdi]['serviste'] += $rowMiktar;
-        } elseif ($is_hurda) {
-            $kategoriEnvanteri[$katAdi]['hurda'] += $rowMiktar;
-        }
+    // Kategori bazlı envantere ekle
+    $katAdi = empty($item->kategori_adi) ? 'Kategorisiz' : $item->kategori_adi;
+    if (!isset($kategoriEnvanteri[$katAdi])) {
+        $kategoriEnvanteri[$katAdi] = [
+            'cesit' => 0,
+            'toplam' => 0,
+            'bosta' => 0,
+            'zimmetli' => 0,
+            'serviste' => 0,
+            'hurda' => 0
+        ];
+    }
+    $kategoriEnvanteri[$katAdi]['cesit']++;
+    $kategoriEnvanteri[$katAdi]['toplam'] += $rowMiktar;
+    
+    if ($is_active) {
+        $kategoriEnvanteri[$katAdi]['bosta'] += $rowKalan;
+        $kategoriEnvanteri[$katAdi]['zimmetli'] += $rowZimmetli;
+    } elseif ($is_serviste) {
+        $kategoriEnvanteri[$katAdi]['serviste'] += $rowMiktar;
+    } elseif ($is_hurda) {
+        $kategoriEnvanteri[$katAdi]['hurda'] += $rowMiktar;
     }
 }
 

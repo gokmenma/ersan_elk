@@ -39,6 +39,33 @@ class DemirbasModel extends Model
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
+    public function getEnvanterOzetSatirlari(array $haricKategoriIds = [])
+    {
+        $haricSql = '';
+        $params = [$_SESSION['firma_id']];
+        if (!empty($haricKategoriIds)) {
+            $haricSql = ' AND (d.kategori_id IS NULL OR d.kategori_id NOT IN (' . implode(',', array_fill(0, count($haricKategoriIds), '?')) . '))';
+            $params = array_merge($params, array_values($haricKategoriIds));
+        }
+
+        $sql = $this->db->prepare("
+            SELECT
+                d.durum,
+                k.tur_adi as kategori_adi,
+                COALESCE(d.miktar, 1) as miktar,
+                (COALESCE(d.miktar, 1)
+                    - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0)
+                    + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND h2.silinme_tarihi IS NULL), 0)
+                ) as kalan_miktar
+            FROM {$this->table} d
+            LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
+            WHERE d.firma_id = ? AND d.silinme_tarihi IS NULL{$haricSql}
+            ORDER BY d.kayit_tarihi DESC
+        ");
+        $sql->execute($params);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
     /**
      * Stokta kalan demirbaşları getirir
      */
