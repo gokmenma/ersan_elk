@@ -958,27 +958,40 @@ $(document).ready(function () {
     $("#kepPackageSummary").text(hasCoverLetter ? "Resmî üst yazı PDF’i ve ekler gönderilecek." : "Yalnızca eklenen belgeler gönderilecek.");
   }
 
+  const DIS_KANALLAR = {
+    posta: "Evrak <b>posta (PTT / kargo)</b> ile gönderilecek. Kaydettikten sonra çıktısını alıp ıslak imzayla gönderebilir, takip numarasını aşağıya yazabilirsiniz.",
+    uyap: "Cevap <b>UYAP</b> üzerinden gönderilir. UYAP'tan gönderdiğiniz cevap dosyasını (PDF/UDF) <b>Ekler</b> sekmesine yükleyin, üst yazı hazırlamayacaksanız <b>İçerik</b> sekmesinde \"Üst Yazı Gerekli Değil\"i işaretleyin.",
+    elden: "Evrak <b>elden teslim</b> edilecek. Teslim aldığına dair imzalı nüshayı <b>Ekler</b> sekmesine yükleyebilirsiniz."
+  };
+
   function applyDeliveryChannel(channel) {
-    channel = channel === "kep" ? "kep" : "normal";
+    channel = ["kep", "posta", "uyap", "elden"].includes(channel) ? channel : "normal";
     $("#gonderim_kanali").val(channel);
+    if ($("#gonderim_turu_secimi").val() !== channel) $("#gonderim_turu_secimi").val(channel).trigger("change.select2");
     $(".gonderim-channel-card").removeClass("active").filter(`[data-channel="${channel}"]`).addClass("active");
     $("#kepComposerPanel").toggleClass("d-none", channel !== "kep");
-    $("#islakImzaOnayaSunItem").toggleClass("d-none", channel !== "normal");
+    $("#gidenKepAliciPanel").toggleClass("d-none", channel !== "kep");
+    $("#islakImzaOnayaSunItem").toggleClass("d-none", channel === "kep");
+    const dis = !!DIS_KANALLAR[channel];
+    $("#gidenDisGonderimPanel").toggleClass("d-none", !dis);
+    if (dis) $("#gidenDisGonderimBilgi").html(DIS_KANALLAR[channel]);
     $("#btnGidenKepHizliGonder").toggleClass("d-none", channel !== "kep" && !window.gidenKepCanSendApproved);
     updateKepPackageSummary();
     adjustGidenEvrakLayout();
   }
 
+  $(document).on("click", "#btnDisGonderimCevapYukle", function () {
+    $("#gidenEvrakTabs button[data-bs-target='#gidenEklerTab']").tab("show");
+    setTimeout(function () { $("#ek_dosyalari").trigger("focus").trigger("click"); }, 200);
+  });
+
   $(document).on("click", ".gonderim-channel-card:not(:disabled)", function () {
     applyDeliveryChannel($(this).data("channel"));
   });
   $(document).on("change", "#gonderim_turu_secimi", function () {
-    const channel = $(this).val() === "kep" ? "kep" : "normal";
-    applyDeliveryChannel(channel);
-    $("#gidenKepAliciPanel").toggleClass("d-none", channel !== "kep");
+    applyDeliveryChannel($(this).val());
   });
   applyDeliveryChannel($("#gonderim_kanali").val());
-  $("#gidenKepAliciPanel").toggleClass("d-none", $("#gonderim_kanali").val() !== "kep");
 
   function moveAttachment(index, direction) {
     const target = index + direction;
@@ -1596,7 +1609,7 @@ $(document).ready(function () {
   $("#btnIslakImzaOnayaSun").on("click", function () {
     syncContent();
     if (!validateForm()) return;
-    if ($("#gonderim_kanali").val() !== "normal") return Swal.fire("Uygun Değil", "Islak imza akışı yalnız Normal Gönderim türünde kullanılabilir.", "warning");
+    if ($("#gonderim_kanali").val() === "kep") return Swal.fire("Uygun Değil", "Islak imza akışı KEP gönderim türünde kullanılamaz.", "warning");
     if (!$("#imza_kullanici_ids").val()?.length) {
       $("#gidenEvrakTabs button[data-bs-target='#gidenImzaTab']").tab("show");
       return Swal.fire("Eksik Bilgi", "Islak imza onayı için en az bir imza yetkilisi seçmelisiniz.", "warning");

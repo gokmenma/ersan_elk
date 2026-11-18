@@ -217,7 +217,8 @@ if ($record) {
         ];
     }
 }
-$gonderimKanali = $record && (($record->gonderim_kanali ?? 'normal') === 'kep' || !empty($record->kep_mesaj_id) || !empty($kepMesaj)) ? 'kep' : 'normal';
+$kayitliKanal = (string) ($record->gonderim_kanali ?? 'normal');
+$gonderimKanali = $record && ($kayitliKanal === 'kep' || !empty($record->kep_mesaj_id) || !empty($kepMesaj)) ? 'kep' : (in_array($kayitliKanal, ['posta', 'uyap', 'elden'], true) ? $kayitliKanal : 'normal');
 $onayTuru = (string) ($record->onay_turu ?? 'eimza');
 $onayTuruMetni = match ($onayTuru) {
     'islak_imza' => 'ıslak imza',
@@ -225,7 +226,12 @@ $onayTuruMetni = match ($onayTuru) {
     default => 'elektronik imza',
 };
 $kepAlicilarValue = (string) ($value('kep_alicilar', '') ?: $value('alici_kep', ''));
-$gonderimTuruOptions = ['normal' => 'Normal Gönderim'];
+$gonderimTuruOptions = [
+    'normal' => 'Normal Gönderim',
+    'posta' => 'Posta ile Gönderim (PTT / Kargo)',
+    'uyap' => 'UYAP Üzerinden Gönderim',
+    'elden' => 'Elden Teslim',
+];
 if ($canSendKep || $gonderimKanali === 'kep') {
     $gonderimTuruOptions['kep'] = 'Kayıtlı Elektronik Posta (KEP)';
 }
@@ -470,6 +476,13 @@ if ($canSendKep || $gonderimKanali === 'kep') {
                                     <?php echo Form::FormFloatInput('text', 'konu', $value('konu'), 'Konu', 'Konu', 'type', 'form-control', true); ?>
                                     <?php echo Form::FormFloatInput('text', 'kurum_adi', $value('kurum_adi'), 'Muhatap', 'Muhatap Kurum / Kişi', 'home', 'form-control', true); ?>
                                     <?php echo Form::FormSelect2('gonderim_turu_secimi', $gonderimTuruOptions, $gonderimKanali, 'Evrak Gönderim Türü', 'send', 'key', '', 'form-select giden-select2'); ?>
+                                    <div id="gidenDisGonderimPanel" class="gonderim-dis-panel <?php echo in_array($gonderimKanali, ['posta', 'uyap', 'elden'], true) ? '' : 'd-none'; ?>">
+                                        <div id="gidenDisGonderimBilgi" class="small mb-2"></div>
+                                        <?php echo Form::FormFloatInput('text', 'gonderim_referans_no', $value('gonderim_referans_no'), 'UYAP evrak no / PTT barkod no', 'Gönderim Referans No (İsteğe Bağlı)', 'hash', 'form-control', false, 120, 'off'); ?>
+                                        <div class="d-flex flex-wrap gap-2 mt-2">
+                                            <button type="button" id="btnDisGonderimCevapYukle" class="btn btn-sm btn-outline-primary"><i class="bx bx-upload me-1"></i>Gönderilen Cevabı Yükle</button>
+                                        </div>
+                                    </div>
                                     <div id="gidenKepAliciPanel" class="<?php echo $gonderimKanali === 'kep' ? '' : 'd-none'; ?>">
                                         <?php echo Form::FormFloatTextarea('kep_alicilar', $kepAlicilarValue, 'kurum@hs01.kep.tr', 'Alıcı KEP Adresi', 'at-sign', 'form-control font-monospace', false, '74px', 2); ?>
                                         <div class="d-flex align-items-center justify-content-between mt-1 gap-2">
@@ -522,7 +535,7 @@ if ($canSendKep || $gonderimKanali === 'kep') {
                                         </span>
                                     </button>
                                 </li>
-                                <li id="islakImzaOnayaSunItem" class="<?php echo $gonderimKanali === 'normal' ? '' : 'd-none'; ?>">
+                                <li id="islakImzaOnayaSunItem" class="<?php echo $gonderimKanali !== 'kep' ? '' : 'd-none'; ?>">
                                     <button type="button" class="dropdown-item d-flex align-items-start gap-2 py-2" id="btnIslakImzaOnayaSun">
                                         <i class="bx bx-pen icon-xs text-warning mt-1"></i>
                                         <span>
@@ -680,6 +693,7 @@ if ($canSendKep || $gonderimKanali === 'kep') {
     .imza-vekil-satir .form-control { height: 34px; font-size: 12.5px; }
     .imza-hizli { flex: 0 0 auto; height: 34px; padding: 0 10px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; color: #475569; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
     .imza-hizli:hover { background: #e2e8f0; }
+    .gonderim-dis-panel { border: 1px dashed #cbd5e1; border-radius: 10px; background: #f8fafc; padding: 10px 12px; }
     .ilgi-satir { align-items: center; }
     .ilgi-tut { flex: 0 0 auto; cursor: grab; color: #94a3b8; font-size: 18px; line-height: 1; }
     .ilgi-pdf { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; border: 0; background: #fee2e2; color: #dc2626; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; padding: 0; }

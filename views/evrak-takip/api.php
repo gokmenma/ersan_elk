@@ -269,10 +269,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $data['ust_yazi_gerekli_degil'] = $ustYaziGerekliDegil;
 
                 $gonderimKanali = (string) ($data['gonderim_kanali'] ?? 'normal');
-                if (!in_array($gonderimKanali, ['normal', 'kep'], true)) {
+                if (!in_array($gonderimKanali, ['normal', 'kep', 'posta', 'uyap', 'elden'], true)) {
                     throw new Exception('Gönderim kanalı geçersiz.');
                 }
                 $data['gonderim_kanali'] = $gonderimKanali;
+                $gonderimReferans = mb_substr(trim((string) ($data['gonderim_referans_no'] ?? '')), 0, 120);
+                if (in_array($gonderimKanali, ['posta', 'uyap', 'elden'], true)) {
+                    $data['gonderim_referans_no'] = $gonderimReferans !== '' ? $gonderimReferans : null;
+                } else {
+                    unset($data['gonderim_referans_no']);
+                }
                 $kepAlicilar = array_values(array_unique(array_filter(array_map('trim', preg_split('/[;,\r\n]+/', (string) ($data['kep_alicilar'] ?? '')) ?: []))));
                 if ($gonderimKanali === 'kep') {
                     if ($permissionPolicy->isReady()) {
@@ -1401,7 +1407,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if ($type === 'giden' && !$isKep && !$locked && $hasSigners) {
                         $actionItems .= '<div class="dropdown-divider"></div><button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-onaya-sun" data-action="evrak-e-imza-onaya-sun" data-tur="E-İmza" data-id="' . $esc($encryptedId) . '" title="E-İmza ile Onaya Sun"><i class="bx bx-send text-primary"></i><span>E-İmza ile Onaya Sun</span></button>';
                         $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-onaya-sun" data-action="evrak-mobil-imza-onaya-sun" data-tur="Mobil İmza" data-id="' . $esc($encryptedId) . '" title="Mobil İmza ile Onaya Sun"><i class="bx bx-mobile-alt text-info"></i><span>Mobil İmza ile Onaya Sun</span></button>';
-                        if (($evrak->gonderim_kanali ?? 'normal') === 'normal') {
+                        if (($evrak->gonderim_kanali ?? 'normal') !== 'kep') {
                             $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-onaya-sun" data-action="evrak-islak-imza-onaya-sun" data-tur="Islak İmza" data-id="' . $esc($encryptedId) . '" title="Islak İmza ile Onaya Sun"><i class="bx bx-pen text-warning"></i><span>Islak İmza ile Onaya Sun</span></button>';
                         }
                         $actionItems .= '<div class="dropdown-divider"></div>';
