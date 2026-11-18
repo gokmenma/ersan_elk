@@ -3,6 +3,8 @@
 ## 2026-11-18 — Demirbaş: Liste Sayfası Açılış Hızlandırma
 - [x] Özet kartları yalnız demirbaş satırlarıyla hesaplanıyor (~3,1 sn → ~0,22 sn)
 - [x] Eski/yeni HTML çıktısı karşılaştırıldı, aynı
+- [x] Gizli sekme tabloları tembel kurulum, demirbaş tablosu autoWidth kapalı, liste API'sinde oturum kilidi bırakılıyor (tablo hazır olma ~5,4–8 sn → ~4,1–5 sn yerelde; açılıştaki API isteği 6 → 2)
+- [ ] Gizli panelleri/modalleri sunucuda çizmeyerek DOM'u küçültmek, `demirbas.js` çift yüklemesini kaldırmak
 
 ## 2026-11-17 — Bordro: Farklı Ücretli Görev Geçişinde Parça Bazlı Hakediş ve HTÇ
 - [x] Sözleşme hakedişi görev parçası bazında gün × ücret

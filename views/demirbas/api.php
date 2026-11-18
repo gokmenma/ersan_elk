@@ -103,6 +103,10 @@ if ($permissionPolicy->isReady()) {
     exit;
 }
 
+if (in_array($action, ['demirbas-listesi', 'zimmet-listesi', 'servis-listesi', 'hareket-gecmisi'], true)) {
+    session_write_close();
+}
+
 // JSON yanıt helper
 function jsonResponse($status, $message, $data = null)
 {
@@ -1314,7 +1318,7 @@ if ($action == "bulk-hareket-sil") {
 }
 
 // Tekil Hareket Sil
-if ($action == "hareket-sil") {
+if ($action == "hareket-sil" || $action == "gecmis-hareket-sil") {
     Gate::can('demirbas_toplu_islem_sil');
     $id = $_POST["hareket_id"] ?? $_POST["id"] ?? null;
     if (!$id) jsonResponse("error", "Geçersiz hareket ID.");
@@ -3264,8 +3268,42 @@ if ($action == "hareket-gecmisi") {
             $isDemirbasAparat = str_contains(mb_strtolower($katAdi2, 'UTF-8'), 'aparat');
 
             // Eğer POST içinde start ve length varsa DataTable server-side talebidir
+            if (($_POST['export'] ?? '') === 'excel') {
+                $exp = $Hareket->getDemirbasHareketleriDatatable(array_merge($_POST, ['start' => 0, 'length' => 0]), $demirbas_id, $isDemirbasAparat);
+                $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+                $sheet = $spreadsheet->getActiveSheet();
+                $sheet->setTitle('İşlem Geçmişi');
+                $basliklar = ['İşlem Tipi', 'Miktar', 'Tarih', 'İlgili Personel', 'Açıklama', 'İşlem Yapan'];
+                foreach ($basliklar as $i => $baslik) {
+                    $sheet->setCellValue([$i + 1, 1], $baslik);
+                }
+                $satir = 2;
+                foreach ($exp['data'] as $h) {
+                    $sheet->setCellValue([1, $satir], (string) $h->hareket_tipi);
+                    $sheet->setCellValue([2, $satir], $h->miktar);
+                    $sheet->setCellValue([3, $satir], date('d.m.Y', strtotime($h->tarih)));
+                    $sheet->setCellValue([4, $satir], (string) ($h->personel_adi ?? ''));
+                    $sheet->setCellValue([5, $satir], (string) ($h->aciklama ?? ''));
+                    $sheet->setCellValue([6, $satir], (string) ($h->islem_yapan_adi ?? ''));
+                    $satir++;
+                }
+                $sheet->getStyle('A1:F1')->getFont()->setBold(true);
+                foreach (range('A', 'F') as $kolon) {
+                    $sheet->getColumnDimension($kolon)->setAutoSize(true);
+                }
+                if (ob_get_length()) {
+                    ob_end_clean();
+                }
+                header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                header('Content-Disposition: attachment; filename="demirbas_islem_gecmisi_' . $demirbas_id . '_' . date('Y-m-d') . '.xlsx"');
+                header('Cache-Control: max-age=0');
+                \PhpOffice\PhpSpreadsheet\IOFactory::createWriter($spreadsheet, 'Xlsx')->save('php://output');
+                exit;
+            }
+
             if (isset($_POST['draw'])) {
                 $result = $Hareket->getDemirbasHareketleriDatatable($_POST, $demirbas_id, $isDemirbasAparat);
+                $silebilir = Gate::allows('demirbas_toplu_islem_sil');
 
                 $data = [];
                 foreach ($result['data'] as $h) {
@@ -3279,7 +3317,8 @@ if ($action == "hareket-gecmisi") {
                         $tarih_format,
                         $h->personel_adi ?? '-',
                         '<span class="small">' . ($h->aciklama ?? '') . '</span>',
-                        '<div class="text-end small">' . ($h->islem_yapan_adi ?? $kaynak_badge ?? '-') . '</div>'
+                        '<div class="text-end small">' . ($h->islem_yapan_adi ?? $kaynak_badge ?? '-') . '</div>',
+                        $silebilir ? '<div class="text-center"><button type="button" class="btn btn-soft-danger btn-sm gecmis-hareket-sil" data-id="' . (int) $h->id . '" title="Sil"><i class="bx bx-trash"></i></button></div>' : ''
                     ];
                 }
 

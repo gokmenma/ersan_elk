@@ -1132,6 +1132,20 @@ $(document).ready(function () {
           });
         } else if (response.status === "warning") {
           // Bekleyen avans/izin uyarısı
+          const mutabakatUyarisi = response.warnings.some(function (w) {
+            return /mutabakat|^— /i.test(String(w));
+          });
+          const talepUyarisi = response.warnings.some(function (w) {
+            return /onaylanmamış (avans|izin)/i.test(String(w));
+          });
+          const incelemeHedefi =
+            mutabakatUyarisi && !talepUyarisi
+              ? "index.php?p=puantaj/mutabakat"
+              : "index.php?p=talepler/list";
+          const incelemeEtiketi =
+            mutabakatUyarisi && !talepUyarisi
+              ? "Mutabakatı İncele"
+              : "Talepleri İncele";
           let warningHtml =
             '<div class="text-start"><p class="mb-2">' +
             response.message +
@@ -1156,14 +1170,13 @@ $(document).ready(function () {
             confirmButtonText: '<i class="bx bx-lock me-1"></i>Yine de Kapat',
             denyButtonText: '<i class="bx bx-x me-1"></i>İptal',
             cancelButtonText:
-              '<i class="bx bx-check-circle me-1"></i>Talepleri İncele',
+              '<i class="bx bx-check-circle me-1"></i>' + incelemeEtiketi,
           }).then((result) => {
             if (result.isConfirmed) {
               // Zorla kapat
               donemDurumGuncelle(action, isChecked, true);
             } else if (result.dismiss === Swal.DismissReason.cancel) {
-              // Talepleri İncele tıklandığında talepler sayfasına git
-              window.location.href = "index.php?p=talepler/list";
+              window.location.href = incelemeHedefi;
             } else {
               $("#switchDonemDurum").prop("checked", false);
             }

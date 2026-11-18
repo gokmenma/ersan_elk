@@ -27,6 +27,7 @@
                                 <th>İlgili Personel</th>
                                 <th>Açıklama</th>
                                 <th class="text-end">İşlem Yapan</th>
+                                <th class="text-center">İşlem</th>
                             </tr>
                         </thead>
                         <tbody id="demirbasGecmisBody">
@@ -36,6 +37,7 @@
                 </div>
             </div>
             <div class="modal-footer border-top py-2">
+                <button type="button" id="btnGecmisExcel" class="btn btn-success btn-sm fw-bold px-3 me-auto"><i class="bx bx-spreadsheet me-1"></i> Excel'e Aktar</button>
                 <button type="button" class="btn btn-secondary btn-sm fw-bold px-4"
                     data-bs-dismiss="modal">Kapat</button>
             </div>

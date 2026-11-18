@@ -182,7 +182,7 @@ $(document).ready(function () {
       const $btn = $(this);
       
       // Dropdown toggle ana butonunu atla
-      if ($btn.hasClass('dropdown-toggle') && $btn.siblings('.dropdown-menu').length) {
+      if (($btn.hasClass('dropdown-toggle') || $btn.attr('data-bs-toggle') === 'dropdown') && $btn.siblings('.dropdown-menu').length) {
         return;
       }
 
@@ -261,8 +261,7 @@ $(document).ready(function () {
       metaUserHtml = `<div class="cm-meta-user"><i class="bx bx-user-circle text-primary font-size-14"></i> <span class="text-truncate">${metaText}</span></div>`;
     }
 
-    const menuHeader = `<div class="cm-header"><i class="bx bx-layer text-primary me-2 font-size-15"></i> <span class="text-truncate">${dtEscapeHtml(rowTitle)}</span></div>` + metaUserHtml;
-    const fullMenuHtml = menuHeader + menuItemsHtml;
+    const fullMenuHtml = metaUserHtml + menuItemsHtml;
 
     let $contextMenu = $('#customContextMenu');
     if (!$contextMenu.length) {
@@ -311,7 +310,7 @@ $(document).ready(function () {
     if (targetRef) {
       const $targetBtn = $('[data-cm-ref="' + targetRef + '"]');
       if ($targetBtn.length) {
-        if ($targetBtn.is('a') && $targetBtn.attr('href') && $targetBtn.attr('href') !== '#') {
+        if ($targetBtn.is('a') && $targetBtn.attr('href') && $targetBtn.attr('href') !== '#' && $targetBtn.attr('href').trim().toLowerCase().indexOf('javascript:') !== 0) {
           const href = $targetBtn.attr('href');
           const target = $targetBtn.attr('target');
           if (target === '_blank') {

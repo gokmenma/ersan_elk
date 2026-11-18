@@ -4,6 +4,8 @@
 - `views/demirbas/list.php` özet kartları için firmanın tüm demirbaş+sayaç+aparat kayıtlarını (`getAllWithCategory`, ~31 bin satır, satır başına alt sorgular) çekiyordu; süre ~3 sn.
 - Yeni `DemirbasModel::getEnvanterOzetSatirlari($haricKategoriIds)` yalnız sayaç/aparat dışı satırları ve gerekli kolonları getirir (`kayit_tarihi DESC` sıralaması kategori envanteri sırası için korunur).
 - Kullanılmayan `$ayarYapilmisDemirbaslar` sorgusu ve tekrar eden kategori sorgusu kaldırıldı. HTML çıktısı eskisiyle birebir aynı; süre ~0,22 sn.
+- İkinci tur (tarayıcı): `list.php` içindeki görünmeyen sekme panellerinin (sayaç, aparat, servis, zimmet) tabloları açılışta kurulup veri çekiyordu. `demirbas.js` `lazyDataTable()` aktif olmayan sekmedeki tabloyu sekme açılana kadar kurmaz; o sırada değişkende çağrıları yutan `deferredTableStub()` (Proxy) durur. Demirbaş tablosunda `autoWidth: false` (DataTables `_fnConvertToWidth` büyük DOM'da her sütun için zorunlu layout yapıyordu). `api.php` liste aksiyonlarında yetki kontrolünden sonra `session_write_close()`.
+- Kalan: sayfa HTML'i ~626 KB / ~10 bin DOM elemanı (modaller ~2 bin, gizli paneller ~1 bin); `demirbas.js` sayfada iki kez yükleniyor (`list.php` + `layouts/vendor-scripts.php`, ikinci kopya `koliListesi` hatası verip çalışmıyor).
 
 ## Bordro — Dönem İçi Farklı Ücretli Görev Geçişi (2026-11-17)
 - Dönem içinde farklı sabit ücretli, çakışmasız görev geçmişi parçalarında sözleşme hakedişi parça bazlı (`gün × maaş/30`) hesaplanır; HTÇ/RTÇ günü denk geldiği görevin günlük ücretiyle ödenir.

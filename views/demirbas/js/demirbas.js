@@ -7,10 +7,39 @@ var demirbasTable,
   aparatTable,
   servisTable;
 
+function deferredTableStub() {
+  var stub = new Proxy(function () {
+    return stub;
+  }, {
+    get: function (target, key) {
+      if (key === "then" || typeof key === "symbol") return undefined;
+      return stub;
+    },
+  });
+  return stub;
+}
+
+function lazyDataTable(selector, options) {
+  var $table = $(selector);
+  var $pane = $table.closest(".tab-pane");
+  if (!$pane.length || $pane.hasClass("active")) {
+    return $table.DataTable(options);
+  }
+  var paneId = $pane.attr("id");
+  var globalName = selector.replace(/^#/, "");
+  $(document).on("shown.bs.tab.lazy-" + globalName, function (e) {
+    if ($(e.target).attr("data-bs-target") !== "#" + paneId) return;
+    $(document).off("shown.bs.tab.lazy-" + globalName);
+    window[globalName] = $table.DataTable(options);
+  });
+  return deferredTableStub();
+}
+
 // ============== SAYFA YÜKLENDİĞİNDE ==============
 $(document).ready(function () {
   let demirbasOptions = {
     ...getDatatableOptions(),
+    autoWidth: false,
     serverSide: true,
     ajax: {
       url: zimmetUrl,
@@ -86,12 +115,12 @@ $(document).ready(function () {
   };
 
   if ($("#demirbasTable").length) {
-    demirbasTable = $("#demirbasTable").DataTable(demirbasOptions);
+    demirbasTable = lazyDataTable("#demirbasTable", demirbasOptions);
   }
 
   // Zimmet tablosu DataTable
   if ($("#zimmetTable").length) {
-    zimmetTable = $("#zimmetTable").DataTable({
+    zimmetTable = lazyDataTable("#zimmetTable", {
       ...getDatatableOptions(),
       serverSide: true,
       ajax: {
@@ -227,7 +256,7 @@ $(document).ready(function () {
         }
       },
     };
-    sayacTable = $("#sayacTable").DataTable(sayacOptions);
+    sayacTable = lazyDataTable("#sayacTable", sayacOptions);
   }
 
   // Sayaç filtre butonları olay dinleyicisi
@@ -318,7 +347,7 @@ $(document).ready(function () {
         }
       },
     };
-    aparatTable = $("#aparatTable").DataTable(aparatOptions);
+    aparatTable = lazyDataTable("#aparatTable", aparatOptions);
   }
 
   // Aparat filtre butonları olay dinleyicisi
@@ -332,7 +361,7 @@ $(document).ready(function () {
 
   // Servis Tablosu
   if ($("#servisTable").length) {
-    servisTable = $("#servisTable").DataTable(
+    servisTable = lazyDataTable("#servisTable",
       applyLengthStateSave({
         ...getDatatableOptions(),
         serverSide: true,
@@ -3357,11 +3386,13 @@ $(document).on("click", ".kaskiye-detay-btn", function (e) {
     });
 });
 // ============== DEMİRBAŞ İŞLEM GEÇMİŞİ ==============
+var gecmisDemirbasId = 0;
 $(document).on("click", ".demirbas-gecmis", function (e) {
   e.preventDefault();
   console.log("Demirbaş geçmiş butonu tıklandı");
   let demirbasId = $(this).data("raw-id");
   let name = $(this).data("name");
+  gecmisDemirbasId = demirbasId;
 
   // Modal'ı kontrol et, yoksa dinamik oluşturup body'ye ekle
   let modalEl = $("#demirbasGecmisModal");
@@ -3395,6 +3426,7 @@ $(document).on("click", ".demirbas-gecmis", function (e) {
                                     <th>İlgili Personel</th>
                                     <th>Açıklama</th>
                                     <th class="text-end">İşlem Yapan</th>
+                                    <th class="text-center">İşlem</th>
                                 </tr>
                             </thead>
                             <tbody id="demirbasGecmisBody">
@@ -3404,6 +3436,7 @@ $(document).on("click", ".demirbas-gecmis", function (e) {
                     </div>
                 </div>
                 <div class="modal-footer border-top py-2">
+                    <button type="button" id="btnGecmisExcel" class="btn btn-success btn-sm fw-bold px-3 me-auto"><i class="bx bx-spreadsheet me-1"></i> Excel'e Aktar</button>
                     <button type="button" class="btn btn-secondary btn-sm fw-bold px-4"
                         data-bs-dismiss="modal">Kapat</button>
                 </div>
@@ -3471,8 +3504,58 @@ $(document).on("click", ".demirbas-gecmis", function (e) {
       { orderable: true }, // İlgili Personel
       { orderable: true }, // Açıklama
       { orderable: true }, // İşlem Yapan
+      { orderable: false, searchable: false }, // İşlem
     ],
   });
+});
+
+$(document).on("click", ".gecmis-hareket-sil", function () {
+  let hareketId = $(this).data("id");
+  Swal.fire({
+    title: "Emin misiniz?",
+    text: "Bu hareket kaydı silinecek ve işlem geri alınacak!",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#d33",
+    confirmButtonText: "Evet, Sil",
+    cancelButtonText: "İptal",
+  }).then(function (result) {
+    if (!result.isConfirmed) return;
+    $.post(
+      zimmetUrl,
+      { action: "gecmis-hareket-sil", hareket_id: hareketId },
+      function (res) {
+        if (res.status === "success") {
+          Swal.fire("Silindi", res.message, "success");
+          $("#demirbasGecmisTable").DataTable().ajax.reload(null, false);
+          [demirbasTable, sayacTable, aparatTable, zimmetTable, servisTable].forEach(function (t) {
+            if (t && t.ajax) t.ajax.reload(null, false);
+          });
+        } else {
+          Swal.fire("Hata", res.message, "error");
+        }
+      },
+      "json",
+    );
+  });
+});
+
+$(document).on("click", "#btnGecmisExcel", function () {
+  let dt = $("#demirbasGecmisTable").DataTable();
+  let order = dt.order()[0] || [2, "desc"];
+  let form = $("<form>", { method: "POST", action: zimmetUrl, target: "_blank" });
+  let fields = {
+    action: "hareket-gecmisi",
+    export: "excel",
+    demirbas_id: gecmisDemirbasId,
+    "search[value]": dt.search(),
+    "order[0][column]": order[0],
+    "order[0][dir]": order[1],
+  };
+  $.each(fields, function (k, v) {
+    form.append($("<input>", { type: "hidden", name: k, value: v }));
+  });
+  form.appendTo("body").trigger("submit").remove();
 });
 
 // Zimmet filtresi tıklandığında tabloyu yenile
