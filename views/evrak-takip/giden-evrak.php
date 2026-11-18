@@ -235,20 +235,33 @@ if ($canSendKep || $gonderimKanali === 'kep') {
     <?php $maintitle = 'Evrak Takip'; $title = $record ? 'Giden Evrak Düzenle' : 'Yeni Giden Evrak'; include 'layouts/breadcrumb.php'; ?>
 
     <?php if ($cevapGelen): ?>
-        <div class="alert alert-info d-flex align-items-start border-0 shadow-sm mb-3">
-            <i class="bx bx-reply font-size-20 me-2"></i>
-            <div>
-                <div class="fw-bold">Gelen evraka cevap hazırlanıyor</div>
-                <div class="small">
-                    <?php echo htmlspecialchars(trim(($cevapGelen->evrak_no ?: '-') . ' — ' . $cevapGelen->konu), ENT_QUOTES, 'UTF-8'); ?>
-                    (<?php echo htmlspecialchars((string) $cevapGelen->kurum_adi, ENT_QUOTES, 'UTF-8'); ?>).
-                    Muhatap, konu ve ilgi alanları gelen evraktan dolduruldu; kayıt sonrasında gelen evrak "cevap verildi" olarak işaretlenir.
+        <div class="cevap-banner mb-3">
+            <span class="cevap-banner-ikon"><i class="bx bx-reply"></i></span>
+            <div class="flex-grow-1 min-w-0">
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                    <span class="fw-bold">Gelen evraka cevap hazırlanıyor</span>
                     <?php if (!empty($cevapGelen->cevap_verildi_mi)): ?>
-                        <span class="fw-semibold text-warning-emphasis">Bu evrak daha önce cevaplandı olarak işaretlenmiş.</span>
+                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold"><i class="bx bx-error-circle"></i> Daha önce cevaplandı olarak işaretlenmiş</span>
                     <?php endif; ?>
                 </div>
+                <div class="cevap-banner-bilgi">
+                    <span><i class="bx bx-hash"></i> <?php echo htmlspecialchars((string) ($cevapGelen->evrak_no ?: '-'), ENT_QUOTES, 'UTF-8'); ?></span>
+                    <span class="text-truncate" title="<?php echo htmlspecialchars((string) $cevapGelen->konu, ENT_QUOTES, 'UTF-8'); ?>"><i class="bx bx-text"></i> <?php echo htmlspecialchars((string) $cevapGelen->konu, ENT_QUOTES, 'UTF-8'); ?></span>
+                    <span><i class="bx bx-buildings"></i> <?php echo htmlspecialchars((string) $cevapGelen->kurum_adi, ENT_QUOTES, 'UTF-8'); ?></span>
+                </div>
+                <div class="cevap-banner-not">Muhatap, konu ve ilgi alanları bu evraktan dolduruldu. Kayıt sonrasında gelen evrak "cevap verildi" olarak işaretlenir.</div>
             </div>
         </div>
+        <style>
+            .cevap-banner { display: flex; gap: 14px; align-items: flex-start; padding: 14px 16px; background: #fff; border: 1px solid #e2e8f0; border-left: 4px solid #0891b2; border-radius: 12px; box-shadow: 0 2px 10px rgba(15,23,42,.05); }
+            .cevap-banner-ikon { width: 40px; height: 40px; border-radius: 10px; background: #ecfeff; color: #0891b2; display: inline-flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+            .cevap-banner-bilgi { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: #334155; }
+            .cevap-banner-bilgi span { display: inline-flex; align-items: center; gap: 5px; min-width: 0; max-width: 100%; }
+            .cevap-banner-bilgi i { color: #64748b; }
+            .cevap-banner-not { margin-top: 4px; font-size: 12px; color: #64748b; }
+            html[data-theme-preset="macos-dark"] .cevap-banner, body[data-layout-mode="dark"] .cevap-banner { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.1); border-left-color: #22d3ee; }
+            html[data-theme-preset="macos-dark"] .cevap-banner-bilgi, body[data-layout-mode="dark"] .cevap-banner-bilgi { color: #e2e8f0; }
+        </style>
     <?php endif; ?>
 
     <?php if ($kilitli): ?>
@@ -311,8 +324,8 @@ if ($canSendKep || $gonderimKanali === 'kep') {
                     <?php if (!$kilitli): ?><button type="button" id="btnEvrakSablonlari" class="btn btn-outline-secondary"><i data-feather="copy" class="icon-xs me-1"></i> Şablonlar</button><?php endif; ?>
                     <button type="button" id="btnIcraUstYaziAc" class="btn btn-outline-success me-2"><i data-feather="file-plus" class="icon-xs me-1"></i> İcra Üst Yazısı</button>
                     <button type="button" id="btnAiTaslakAc" class="btn btn-outline-primary me-2"><i data-feather="zap" class="icon-xs me-1"></i> Yapay Zekâ ile Oluştur</button>
-                    <?php if ($solLogoPath): ?><img src="<?php echo htmlspecialchars($solLogoPath, ENT_QUOTES, 'UTF-8'); ?>" alt="Sol logo" style="max-width:52px;max-height:45px;object-fit:contain" title="Sol Logo"><?php endif; ?>
-                    <?php if ($sagLogoPath): ?><img src="<?php echo htmlspecialchars($sagLogoPath, ENT_QUOTES, 'UTF-8'); ?>" alt="Sağ logo" style="max-width:52px;max-height:45px;object-fit:contain" title="Sağ Logo"><?php endif; ?>
+                    <?php if ($solLogoPath): ?><img src="<?php echo htmlspecialchars($solLogoPath, ENT_QUOTES, 'UTF-8'); ?>" alt="Sol logo" onerror="this.remove()" style="max-width:52px;max-height:45px;object-fit:contain" title="Sol Logo"><?php endif; ?>
+                    <?php if ($sagLogoPath): ?><img src="<?php echo htmlspecialchars($sagLogoPath, ENT_QUOTES, 'UTF-8'); ?>" alt="Sağ logo" onerror="this.remove()" style="max-width:52px;max-height:45px;object-fit:contain" title="Sağ Logo"><?php endif; ?>
                 </div>
             </div>
             <div class="card-body p-0">
@@ -690,7 +703,8 @@ if ($canSendKep || $gonderimKanali === 'kep') {
     .ilgi-opt-alt { font-size: 11px; opacity: .75; }
 </style>
 <style>
-.giden-action-bar{position:fixed;left:250px;right:0;bottom:0;z-index:1020;margin:0}
+.giden-action-bar{position:fixed;left:250px;right:0;bottom:0;z-index:1020;margin:0;transition:left .2s ease}
+@media(min-width:992px){body[data-sidebar-size="sm"] .giden-action-bar{left:60px}}
 #gidenEvrakForm>.card{margin-bottom:0}
 #imzaDurumListesi>div:last-child{border-bottom:0!important}
 #gidenEvrakForm.evrak-kilitli .note-editable{background:#f8f9fa}

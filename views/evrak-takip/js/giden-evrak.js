@@ -1262,7 +1262,12 @@ $(document).ready(function () {
     const noteStatusbarHeight = $("#gidenIcerikTab .note-statusbar").outerHeight() || 0;
     const noteFormTextHeight = $("#gidenIcerikTab .form-text").outerHeight(true) || 28;
 
-    const noteEditableHeight = Math.max(180, availableTabContentHeight - noteToolbarHeight - noteStatusbarHeight - noteFormTextHeight - 16);
+    let digerBloklarYuksekligi = 0;
+    $("#gidenIcerikTab").children(":visible").not("#editorContainer").each(function () {
+      digerBloklarYuksekligi += $(this).outerHeight(true) || 0;
+    });
+
+    const noteEditableHeight = Math.max(180, availableTabContentHeight - digerBloklarYuksekligi - noteToolbarHeight - noteStatusbarHeight - noteFormTextHeight - 16);
 
     $("#gidenEvrakForm .note-editable").css({
       "height": noteEditableHeight + "px",
@@ -2249,6 +2254,6 @@ $(document).ready(function () {
   if (new URLSearchParams(window.location.search).get("islem") === "imzala" && $("#btnEImzaOnayla, #btnIslakImzaOnayla, #btnMobilImzaOnayla").length) {
     window.setTimeout(() => $("#btnEImzaOnayla, #btnIslakImzaOnayla, #btnMobilImzaOnayla").first().trigger("click"), 350);
   }
-  $(window).on("resize orientationchange", adjustGidenEvrakLayout);
+  $(window).on("resize orientationchange load", adjustGidenEvrakLayout);
   $("#gidenEvrakTabs button").on("shown.bs.tab", adjustGidenEvrakLayout);
 });
