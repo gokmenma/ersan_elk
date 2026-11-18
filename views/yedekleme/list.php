@@ -11,7 +11,7 @@ if (!Gate::isSuperAdmin()) {
 }
 
 $maintitle = 'Yönetim';
-$title = 'Veritabanı Yedekleri';
+$title = 'Sistem Yedekleri';
 $csrfToken = Security::csrf();
 ?>
 <script>try { document.documentElement.classList.toggle('yedekleme-summary-hidden', localStorage.getItem('yedekleme_summary_cards_state') === 'hidden'); } catch (e) {}</script>
@@ -43,14 +43,14 @@ $csrfToken = Security::csrf();
                 <i class="bx bx-data fs-4 text-primary"></i>
             </div>
             <div>
-                <h4 class="mb-0 fw-bold text-dark font-size-16">Veritabanı Yedekleri</h4>
-                <p class="text-muted mb-0 font-size-12">Yerel ve Google Drive yedekleri, elle yedekleme ve geri yükleme testleri</p>
+                <h4 class="mb-0 fw-bold text-dark font-size-16">Sistem Yedekleri</h4>
+                <p class="text-muted mb-0 font-size-12">Veritabanı ve kullanıcı dosyası yedekleri, Google Drive kopyaları, geri yükleme testleri</p>
             </div>
         </div>
 
         <div class="personel-action-toolbar col-md-6 col-12 d-flex align-items-center justify-content-md-end gap-2 mt-2 mt-md-0">
             <button type="button" class="btn btn-primary top-action-btn shadow-sm text-white yedek-is-btn" data-is="yedek_tam">
-                <i class="bx bx-plus font-size-16"></i> Tam Yedek Al
+                <i class="bx bx-plus font-size-16"></i> Veritabanı Yedeği Al
             </button>
 
             <div class="dropdown d-inline-block">
@@ -61,6 +61,14 @@ $csrfToken = Security::csrf();
                     <button type="button" class="dropdown-item d-flex align-items-center yedek-is-btn" data-is="yedek_artimli">
                         <i class="bx bx-git-commit me-2 text-primary font-size-16"></i> Artımlı Yedek Al
                     </button>
+                    <div class="dropdown-divider"></div>
+                    <button type="button" class="dropdown-item d-flex align-items-center yedek-is-btn" data-is="dosya_yedek_tam">
+                        <i class="bx bx-folder me-2 text-warning font-size-16"></i> Dosya Tam Yedeği Al
+                    </button>
+                    <button type="button" class="dropdown-item d-flex align-items-center yedek-is-btn" data-is="dosya_yedek_artimli">
+                        <i class="bx bx-folder-plus me-2 text-info font-size-16"></i> Dosya Artımlı Yedeği Al
+                    </button>
+                    <div class="dropdown-divider"></div>
                     <button type="button" class="dropdown-item d-flex align-items-center yedek-is-btn" data-is="drive_senkron">
                         <i class="bx bxl-google me-2 text-success font-size-16"></i> Google Drive'a Gönder
                     </button>
@@ -87,9 +95,14 @@ $csrfToken = Security::csrf();
 </div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="summary-kpi-subtext" id="kpiToplamAlt">Tam: - | Artımlı: -</span>
+                        <div class="d-flex gap-1">
                         <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" data-status="all">
                             <i class="bx bx-layer"></i> Tümü
                         </button>
+                        <button type="button" class="btn btn-sm btn-subtle-warning rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-status="dosya">
+                            <i class="bx bx-folder"></i> Dosya
+                        </button>
+                        </div>
                     </div>
                 </div>
             </div>

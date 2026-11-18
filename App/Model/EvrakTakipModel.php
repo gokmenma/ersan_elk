@@ -1480,6 +1480,21 @@ class EvrakTakipModel extends Model
         ]);
     }
 
+    public function getCevapYazilari(int $gelenId): array
+    {
+        $sql = $this->db->prepare("
+            SELECT et.id, et.evrak_no, et.konu, et.kurum_adi, et.tarih, et.aciklama, et.onay_durumu
+            FROM {$this->table} et
+            WHERE et.ilgili_evrak_id = :gelen_id
+              AND et.evrak_tipi = 'giden'
+              AND et.firma_id = :firma_id
+              AND et.silinme_tarihi IS NULL
+            ORDER BY et.tarih DESC, et.id DESC
+        ");
+        $sql->execute(['gelen_id' => $gelenId, 'firma_id' => $_SESSION['firma_id']]);
+        return $sql->fetchAll(\PDO::FETCH_OBJ);
+    }
+
     /**
      * Evrakı cevaplandı olarak işaretler
      */

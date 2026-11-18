@@ -53,6 +53,19 @@ $(function () {
 
     const testMetni = (test) => ({ basarili: 'Başarılı', sayimsiz: 'Yüklendi', farkli: 'Fark var', hata: 'Hatalı' }[test?.sonuc] || 'Test edilmedi');
 
+    const TIPLER = {
+        tam: ['primary', 'VT Tam', 'bx-data'],
+        artimli: ['secondary', 'VT Artımlı', 'bx-git-commit'],
+        dosya_tam: ['warning', 'Dosya Tam', 'bx-folder'],
+        dosya_artimli: ['info', 'Dosya Artımlı', 'bx-folder-plus']
+    };
+    const tipRozeti = (tip) => {
+        const [renk, metin, ikon] = TIPLER[tip] || TIPLER.artimli;
+        return rozet(renk, metin, ikon);
+    };
+    const tipMetni = (tip) => (TIPLER[tip] || TIPLER.artimli)[1];
+    const dosyaYedegiMi = (satir) => satir.grup === 'dosya';
+
     const konumMetni = (satir) => satir.yerel && satir.drive ? 'Yerel + Drive' : (satir.yerel ? 'Yalnız Yerel' : 'Yalnız Drive');
 
     const ozetGorunumunuGuncelle = () => {
@@ -74,7 +87,8 @@ $(function () {
     $.fn.dataTable.ext.search.push(function (settings, data, index) {
         if (settings.nTable.id !== 'yedeklemeTable' || durumFiltresi === 'all') return true;
         const satir = settings.aoData[index]._aData;
-        if (durumFiltresi === 'tam') return satir.tip === 'tam';
+        if (durumFiltresi === 'tam') return satir.tip === 'tam' || satir.tip === 'dosya_tam';
+        if (durumFiltresi === 'dosya') return satir.grup === 'dosya';
         if (durumFiltresi === 'drive_eksik') return satir.yerel && !satir.drive;
         return true;
     });
@@ -110,9 +124,7 @@ $(function () {
         columns: [
             {
                 data: 'tip',
-                render: (v, type) => type === 'display'
-                    ? (v === 'tam' ? rozet('primary', 'Tam', 'bx-data') : rozet('secondary', 'Artımlı', 'bx-git-commit'))
-                    : (v === 'tam' ? 'Tam' : 'Artımlı')
+                render: (v, type) => type === 'display' ? tipRozeti(v) : tipMetni(v)
             },
             {
                 data: 'zaman',
@@ -151,7 +163,10 @@ $(function () {
                     const ad = esc(satir.ad);
                     let html = `<div class="d-flex align-items-center justify-content-center gap-1 action-btn-group">
                         <button type="button" class="btn btn-subtle-primary table-action-btn yedek-detay" data-dosya="${ad}" title="Detay"><i class="bx bx-file-find font-size-14"></i></button>`;
-                    if (satir.yerel) {
+                    if (satir.yerel && dosyaYedegiMi(satir)) {
+                        html += `<button type="button" class="btn btn-subtle-warning table-action-btn yedek-dogrula" data-dosya="${ad}" title="Bütünlük Doğrulama"><i class="bx bx-check-shield font-size-14"></i></button>
+                            <button type="button" class="btn btn-subtle-info table-action-btn yedek-indir" data-dosya="${ad}" title="İndir"><i class="bx bx-download font-size-14"></i></button>`;
+                    } else if (satir.yerel) {
                         html += `<button type="button" class="btn btn-subtle-warning table-action-btn yedek-test" data-dosya="${ad}" title="Geri Yükleme Testi"><i class="bx bx-test-tube font-size-14"></i></button>
                             <button type="button" class="btn btn-subtle-info table-action-btn yedek-indir" data-dosya="${ad}" title="İndir"><i class="bx bx-download font-size-14"></i></button>`;
                     } else {
@@ -166,11 +181,11 @@ $(function () {
     function ozetiCiz(json) {
         const o = json.ozet;
         $('#kpiToplam').text(o.toplam.toLocaleString('tr-TR'));
-        $('#kpiToplamAlt').text(`Tam: ${o.tam_adet} | Artımlı: ${o.artimli_adet} | Yerel: ${boyutYaz(o.yerel_boyut)}`);
+        $('#kpiToplamAlt').text(`VT: ${o.vt_adet} | Dosya: ${o.dosya_adet} | Yerel: ${boyutYaz(o.yerel_boyut)}`);
 
         if (o.son_yedek) {
             $('#kpiSonYedek').text(onceYaz(o.son_yedek.zaman));
-            $('#kpiSonYedekAlt').text(`${o.son_yedek.tip === 'tam' ? 'Tam' : 'Artımlı'} · ${tarihYaz(o.son_yedek.zaman)}`);
+            $('#kpiSonYedekAlt').text(`VT ${o.son_yedek.tip === 'tam' ? 'tam' : 'artımlı'} · ${tarihYaz(o.son_yedek.zaman)} | Dosya: ${o.dosya_son_kontrol ? onceYaz(o.dosya_son_kontrol) : 'yok'}`);
             const saat = (Date.now() - new Date(o.son_yedek.zaman.replace(' ', 'T')).getTime()) / 3600000;
             $('#kpiSonYedek').toggleClass('text-success', saat <= 26).toggleClass('text-danger', saat > 26);
         } else {
@@ -198,7 +213,9 @@ $(function () {
         const uyarilar = [];
         if (!o.drive_yapilandirildi) uyarilar.push("Google Drive uzak kopyası kapalı; yedekler yalnızca bu sunucuda duruyor. Kurulum: <code>cron/YEDEKLEME.md</code>");
         if (!o.test_vt_tanimli) uyarilar.push('Geri yükleme testi için <code>.env</code> içinde <code>YEDEK_TEST_VT</code> tanımlanmalı.');
-        if (o.son_yedek && (Date.now() - new Date(o.son_yedek.zaman.replace(' ', 'T')).getTime()) / 3600000 > 26) uyarilar.push('Son 26 saattir yedek alınmamış; cron görevini kontrol edin.');
+        if (o.son_yedek && (Date.now() - new Date(o.son_yedek.zaman.replace(' ', 'T')).getTime()) / 3600000 > 26) uyarilar.push('Son 26 saattir veritabanı yedeği alınmamış; cron görevini kontrol edin.');
+        if (!o.dosya_son_kontrol) uyarilar.push('Kullanıcı dosyalarının (uploads, files, storage) hiç yedeği yok. <code>cron/dosya_yedek.php</code> cron görevini ekleyin veya İşlemler menüsünden Dosya Tam Yedeği alın.');
+        else if ((Date.now() - new Date(o.dosya_son_kontrol.replace(' ', 'T')).getTime()) / 3600000 > 26) uyarilar.push('Son 26 saattir dosya yedeği kontrolü yapılmamış; <code>cron/dosya_yedek.php</code> görevini kontrol edin.');
         if (o.bos_alan !== null && o.bos_alan < 2 * 1024 * 1024 * 1024) uyarilar.push(`Yedek dizininde boş alan az: ${boyutYaz(o.bos_alan)}`);
         $('#yedekUyari').toggleClass('d-none', uyarilar.length === 0).toggleClass('d-flex', uyarilar.length > 0)
             .html(uyarilar.length ? `<i class="bx bx-error font-size-18"></i><div>${uyarilar.join('<br>')}</div>` : '');
@@ -256,7 +273,7 @@ $(function () {
         log.html((is.log || []).map((s) => `<span class="log-zaman">${esc(s.z)}</span> <span class="log-${esc(s.s)}">${esc(s.m)}</span>`).join('\n'));
         if (enAltta) log.scrollTop(log[0].scrollHeight);
 
-        $('.yedek-is-btn, .yedek-test, .yedek-drive-al').prop('disabled', calisiyor);
+        $('.yedek-is-btn, .yedek-test, .yedek-dogrula, .yedek-drive-al').prop('disabled', calisiyor);
 
         if (calisiyor && !isZamanlayici) {
             isZamanlayici = setInterval(isDurumunuSorgula, 2000);
@@ -306,7 +323,9 @@ $(function () {
     const isOnaylari = {
         yedek_tam: 'Veritabanının <b>tam yedeği</b> alınacak. Büyük tablolarda birkaç dakika sürebilir; uygulama bu sırada çalışmaya devam eder.',
         yedek_artimli: 'Son yedekten bu yana değişen kayıtların <b>artımlı yedeği</b> alınacak.',
-        drive_senkron: "Drive'da olmayan yerel yedekler şifrelenip <b>Google Drive</b>'a yüklenecek."
+        drive_senkron: "Drive'da olmayan yerel veritabanı ve dosya yedekleri şifrelenip <b>Google Drive</b>'a yüklenecek.",
+        dosya_yedek_tam: 'Kullanıcı dosyalarının (uploads, files, storage, personel fotoğrafları) <b>tam yedeği</b> alınacak. Birkaç dakika sürebilir.',
+        dosya_yedek_artimli: 'Son dosya yedeğinden bu yana eklenen, değişen ve silinen dosyaların <b>artımlı yedeği</b> alınacak.'
     };
 
     $('.yedek-is-btn').on('click', function () {
@@ -321,6 +340,13 @@ $(function () {
             `<div class="text-start font-size-13"><p class="mb-2"><code>${esc(dosya)}</code> yedeği (artımlıysa bağlı olduğu tam yedekle birlikte) <b>ayrı test veritabanına</b> yüklenecek ve tablo satır sayıları doğrulanacak.</p><p class="mb-0 text-muted">Canlı veritabanına dokunulmaz. Test sonunda test veritabanı boşaltılır.</p></div>`);
     });
 
+    $('#yedeklemeTable').on('click', '.yedek-dogrula', function (e) {
+        e.stopPropagation();
+        const dosya = $(this).data('dosya');
+        isBaslat('dosya_dogrula', dosya,
+            `<div class="text-start font-size-13"><p class="mb-2"><code>${esc(dosya)}</code> arşivinin SHA-256 özeti yedek anındaki değerle karşılaştırılacak ve arşiv baştan sona açılarak manifestteki dosya sayısı ile boyutu doğrulanacak.</p><p class="mb-0 text-muted">Hiçbir dosyaya yazılmaz.</p></div>`);
+    });
+
     $('#yedeklemeTable').on('click', '.yedek-drive-al', function (e) {
         e.stopPropagation();
         const dosya = $(this).data('dosya');
@@ -332,7 +358,7 @@ $(function () {
         const dosya = $(this).data('dosya');
         Swal.fire({
             title: 'Yedek indirilsin mi?',
-            html: '<div class="text-start font-size-13">Bu dosya <b>tüm firmaların</b> personel, maaş ve kimlik verilerini içerir. İndirme işlemi kritik seviyede loglanır.<br><br>Dosyayı yalnızca güvenli bir cihazda saklayın.</div>',
+            html: '<div class="text-start font-size-13">Bu dosya <b>tüm firmaların</b> personel, maaş, kimlik verilerini ve/veya yüklenen belgelerini içerir. İndirme işlemi kritik seviyede loglanır.<br><br>Dosyayı yalnızca güvenli bir cihazda saklayın.</div>',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'İndir',
@@ -360,22 +386,34 @@ $(function () {
 
     function detayGoster(satir) {
         $('#yedekDetayDosya').text(satir.ad);
+        const dosyaMi = dosyaYedegiMi(satir);
         const bilgi = [
-            ['Tip', satir.tip === 'tam' ? 'Tam yedek' : 'Artımlı yedek'],
+            ['Tip', tipMetni(satir.tip) + ' yedek'],
             ['Yedek zamanı', tarihYaz(satir.zaman)],
             ['Boyut', boyutYaz(satir.boyut) + (satir.drive_boyut ? ` (Drive şifreli: ${boyutYaz(satir.drive_boyut)})` : '')],
             ['Konum', konumMetni(satir)],
-            ['Bağlı tam yedek', satir.temel || (satir.tip === 'tam' ? '—' : 'Bilinmiyor')]
+            ['Bağlı tam yedek', satir.temel || (satir.tip === 'tam' || satir.tip === 'dosya_tam' ? '—' : 'Bilinmiyor')]
         ];
+        if (dosyaMi && satir.dosya_adet != null) {
+            bilgi.push(['Arşivdeki dosya', Number(satir.dosya_adet).toLocaleString('tr-TR')]);
+            if (satir.tip === 'dosya_artimli') bilgi.push(['Silinen olarak işaretlenen', Number(satir.silinen_adet || 0).toLocaleString('tr-TR')]);
+        }
         let html = `<table class="table table-sm table-borderless font-size-13 mb-3"><tbody>${bilgi.map(([k, v]) => `<tr><td class="text-muted" style="width:160px">${esc(k)}</td><td class="text-break">${esc(v)}</td></tr>`).join('')}</tbody></table>`;
-        html += '<h6 class="fw-bold font-size-13 mb-2">Son Geri Yükleme Testi</h6><div id="yedekDetayTest" class="font-size-12 text-muted">Yükleniyor...</div>';
+        html += `<h6 class="fw-bold font-size-13 mb-2">${dosyaMi ? 'Son Bütünlük Doğrulaması' : 'Son Geri Yükleme Testi'}</h6><div id="yedekDetayTest" class="font-size-12 text-muted">Yükleniyor...</div>`;
         $('#yedekDetayIcerik').html(html);
         bootstrap.Modal.getOrCreateInstance(document.getElementById('yedekDetayModal')).show();
 
         $.post(API, { action: 'test-detay', dosya: satir.ad, csrf_token: csrf }, function (res) {
             const t = res.test;
             if (!t) {
-                $('#yedekDetayTest').text('Bu yedek henüz test edilmedi.');
+                $('#yedekDetayTest').text(dosyaMi ? 'Bu arşiv henüz doğrulanmadı.' : 'Bu yedek henüz test edilmedi.');
+                return;
+            }
+            if (dosyaMi) {
+                let ic = `<div class="d-flex align-items-center gap-2 mb-2">${testRozeti(t)}<span>${esc(tarihYaz(t.zaman))} · ${esc(t.sure)} sn</span></div>`;
+                if (t.hata) ic += `<div class="alert alert-danger py-2 font-size-12 mb-0">${esc(t.hata)}</div>`;
+                else ic += `<div class="text-success">${Number(t.dosya_adet || 0).toLocaleString('tr-TR')} dosya (${boyutYaz(t.toplam_boyut)}) açıldı; ${t.sha_kontrol ? 'SHA-256 özeti ve ' : ''}manifest ile birebir eşleşti.</div>`;
+                $('#yedekDetayTest').removeClass('text-muted').html(ic);
                 return;
             }
             let ic = `<div class="d-flex align-items-center gap-2 mb-2">${testRozeti(t)}<span>${esc(tarihYaz(t.zaman))} · ${esc(t.sure)} sn${t.tablo_sayisi ? ' · ' + esc(t.tablo_sayisi) + ' tablo · ' + Number(t.toplam_satir || 0).toLocaleString('tr-TR') + ' satır' : ''}</span></div>`;

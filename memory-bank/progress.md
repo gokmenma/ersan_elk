@@ -2363,3 +2363,9 @@
 - [x] Aydınoğulları design system CSS'i varsayılan yapıldı (2026-11-15); yalnız Cari sayfasında tarayıcıyla doğrulandı.
 - [x] AGENTS.md §15 yeni sayfa standardı + KPI yapısı 48 sayfaya uygulandı (2026-11-15); Evrak Takip ve Gelir-Gider tarayıcıda görüldü
 - [x] RTÇ ek hakedişi (maaşa dahil) sözleşme üstüne eklendi (2026-11-16); id 1927 örneğinde 33.010,03 → 34.101,88, liste=kayıt doğrulandı (işlem geri alındı). Büro personeline otomatik RTÇ kuralı açık.
+
+## 2026-11-18 — Kullanıcı dosyaları yedeği
+- [x] DosyaYedekService (tam/artımlı tar.gz, doğrulama, geri yükleme, rotasyon, Drive şifreli kopya)
+- [x] cron/dosya_yedek.php, cron/dosya_restore.php; klasor_yedekleme.php sarmalayıcı
+- [x] Sistem Yedekleri arayüzüne dosya yedekleri
+- [ ] Canlı: BACKUP_DIR, cron görevleri, Drive .env, YEDEK_TEST_VT, ilk tam yedekler ve doğrulama

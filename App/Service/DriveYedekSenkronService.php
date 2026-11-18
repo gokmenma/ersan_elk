@@ -35,18 +35,50 @@ class DriveYedekSenkronService
 
     public function senkronize(string $dizin, string $vt, int $saklamaGun, callable $log, ?int $artimliSaklamaGun = null): array
     {
-        $artimliSinir = $artimliSaklamaGun !== null ? date('Y-m-d H:i:s', time() - $artimliSaklamaGun * 86400) : null;
-        $uzak = [];
-        foreach ($this->uzakYedekler($vt) as $dosya) {
-            $uzak[$dosya['name']] = $dosya;
-        }
-
         $yerel = [];
         foreach (glob($dizin . "/{tam,artimli}_{$vt}_*.sql.gz", GLOB_BRACE) ?: [] as $dosya) {
             $bilgi = $this->adCoz(basename($dosya) . self::UZANTI, $vt);
             if ($bilgi !== []) {
                 $yerel[$dosya] = $bilgi;
             }
+        }
+
+        return $this->esitle($yerel, $this->uzakYedekler($vt), $saklamaGun, $log, $artimliSaklamaGun);
+    }
+
+    public function dosyaSenkronize(string $dizin, int $saklamaGun, callable $log, ?int $artimliSaklamaGun = null): array
+    {
+        $yerel = [];
+        foreach (glob($dizin . '/dosya_{tam,artimli}_*.tar.gz', GLOB_BRACE) ?: [] as $dosya) {
+            $bilgi = $this->dosyaAdCoz(basename($dosya) . self::UZANTI);
+            if ($bilgi !== []) {
+                $yerel[$dosya] = $bilgi;
+            }
+        }
+
+        return $this->esitle($yerel, $this->uzakDosyaYedekleri(), $saklamaGun, $log, $artimliSaklamaGun);
+    }
+
+    public function uzakDosyaYedekleri(): array
+    {
+        $liste = [];
+        foreach ($this->drive->listele($this->klasorId) as $dosya) {
+            $bilgi = $this->dosyaAdCoz((string) $dosya['name']);
+            if ($bilgi !== []) {
+                $liste[] = $dosya + $bilgi;
+            }
+        }
+        usort($liste, static fn(array $a, array $b): int => strcmp($a['zaman'], $b['zaman']));
+
+        return $liste;
+    }
+
+    private function esitle(array $yerel, array $uzakListe, int $saklamaGun, callable $log, ?int $artimliSaklamaGun): array
+    {
+        $artimliSinir = $artimliSaklamaGun !== null ? date('Y-m-d H:i:s', time() - $artimliSaklamaGun * 86400) : null;
+        $uzak = [];
+        foreach ($uzakListe as $dosya) {
+            $uzak[$dosya['name']] = $dosya;
         }
         ksort($yerel);
 
@@ -157,6 +189,15 @@ class DriveYedekSenkronService
         }
 
         return end($tamlar)['zaman'];
+    }
+
+    private function dosyaAdCoz(string $ad): array
+    {
+        if (!str_ends_with($ad, self::UZANTI)) {
+            return [];
+        }
+        $bilgi = DosyaYedekService::adCoz(substr($ad, 0, -strlen(self::UZANTI)));
+        return $bilgi ?? [];
     }
 
     private function adCoz(string $ad, string $vt): array

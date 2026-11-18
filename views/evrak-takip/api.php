@@ -1342,7 +1342,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         if (empty($name)) return '<span class="text-muted small">-</span>';
                         return '<div class="d-flex align-items-center"><span class="font-size-12 fw-semibold text-dark text-truncate" style="max-width:130px">' . $esc($name) . '</span><button type="button" class="btn btn-link text-primary p-0 ms-1 evrak-bildir-manuel" data-id="' . $esc($encryptedId) . '" data-personel-id="' . (int) $personId . '" data-type="' . $esc($kind) . '" data-last-notified="' . $esc($lastDate) . '" title="Bildirim ve Mail Gönder"><i class="bx bx-bell font-size-14"></i></button></div>';
                     };
-                    $replyHtml = $reply === '-' ? '<span class="text-muted small">-</span>' : '<span class="badge ' . ($reply === 'EVET' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning') . ' border rounded-pill px-2 py-1 font-size-11 fw-semibold">' . $reply . '</span>';
+                    $replyHtml = $reply === '-' ? '<span class="text-muted small">-</span>' : '<span class="badge ' . ($reply === 'EVET' ? 'bg-success-subtle text-success btn-cevap-goster' : 'bg-warning-subtle text-warning') . ' border rounded-pill px-2 py-1 font-size-11 fw-semibold"' . ($reply === 'EVET' ? ' role="button" style="cursor:pointer" title="Verilen cevabı göster" data-id="' . $esc($encryptedId) . '"' : '') . '>' . $reply . '</span>';
                     $flowItems = '';
                     foreach ($approvalDetailMap[(int) $evrak->id] ?? [] as $signature) {
                         $flowItems .= '<li><strong>' . (int) $signature['sira'] . '. ' . $esc($signature['adi_soyadi']) . '</strong> — ' . ($signature['durum'] === 'onaylandi' ? 'İmzalandı' : 'Bekliyor') . '</li>';
@@ -1891,6 +1891,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     );
                 }
                 echo json_encode(['status' => 'success', 'message' => $kayit['degisti'] ? 'Karşı kurum evrak numarası kaydedildi.' : 'Değişiklik yok.', 'data' => $kayit], JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'evrak-cevap-yazilari':
+                $gelenId = $decryptId((string) ($_POST['id'] ?? ''));
+                $gelen = $Model->getById($gelenId);
+                if (!$gelen || ($gelen->evrak_tipi ?? '') !== 'gelen') {
+                    throw new Exception('Evrak bulunamadı.');
+                }
+                echo json_encode(['status' => 'success', 'data' => [
+                    'evrak_no' => (string) ($gelen->evrak_no ?? ''),
+                    'konu' => (string) ($gelen->konu ?? ''),
+                    'cevap_tarihi' => !empty($gelen->cevap_tarihi) ? date('d.m.Y', strtotime($gelen->cevap_tarihi)) : '',
+                    'cevaplar' => array_map(static fn(object $r): array => [
+                        'evrak_no' => (string) ($r->evrak_no ?? ''),
+                        'konu' => (string) ($r->konu ?? ''),
+                        'kurum_adi' => (string) ($r->kurum_adi ?? ''),
+                        'tarih' => !empty($r->tarih) ? date('d.m.Y', strtotime($r->tarih)) : '',
+                        'metin' => RichTextSanitizer::sanitize((string) ($r->aciklama ?? '')),
+                    ], $Model->getCevapYazilari($gelenId)),
+                ]], JSON_UNESCAPED_UNICODE);
                 break;
 
             case 'evrak-tarihce':

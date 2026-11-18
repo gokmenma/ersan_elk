@@ -1,7 +1,22 @@
-# Veritabanı Yedekleme ve Geri Yükleme
+# Sistem Yedekleme ve Geri Yükleme
 
-Tek veritabanı (`.env` içindeki `DB_NAME`) için akışlı, sıkıştırılmış, artımlı yedekleme sistemi.
-`mysqldump`/`exec()` gerektirmez, paylaşımlı hostingde çalışır.
+İki ayrı yedek akışı vardır; ikisi de `mysqldump`/`exec()`/`rsync` gerektirmez, paylaşımlı hostingde çalışır,
+aynı yedek dizinini, aynı Google Drive klasörünü ve aynı **Yönetim → Sistem Yedekleri** sayfasını kullanır:
+
+1. **Veritabanı** (`.env` içindeki `DB_NAME`): `cron/db_backup.php` → `tam_*.sql.gz` / `artimli_*.sql.gz`
+2. **Kullanıcı dosyaları** (yüklenen belgeler, fotoğraflar, faturalar): `cron/dosya_yedek.php` →
+   `dosya_tam_*.tar.gz` / `dosya_artimli_*.tar.gz` (ayrıntı: [Kullanıcı dosyaları yedeği](#kullanıcı-dosyaları-yedeği))
+
+## Canlıda aktifleştirme kontrol listesi
+
+1. `.env` → `BACKUP_DIR=/home/KULLANICI/yedekler` (web kökü dışında, yazılabilir dizin).
+2. cPanel **Cron Jobs** ekranına iki görev ekleyin ([Crontab](#crontab)).
+3. Google Drive uzak kopyası için `.env` GDRIVE_* ve `YEDEK_SIFRELEME_ANAHTARI` ([Kurulum](#kurulum-bir-kez)).
+   Anahtarı sunucu dışında da saklayın.
+4. `.env` → `YEDEK_TEST_VT` (geri yükleme testi için boş bir veritabanı).
+5. Sistem Yedekleri sayfasından **Veritabanı Yedeği Al** ve **İşlemler → Dosya Tam Yedeği Al** ile ilk tam yedekleri alın;
+   ardından dosya yedeğinde **Bütünlük Doğrulama**, veritabanı yedeğinde **Geri Yükleme Testi** çalıştırın.
+6. Ertesi gün sayfada uyarı kalmadığını (son 26 saatte iki yedek de alınmış) ve rapor mailinin geldiğini kontrol edin.
 
 ## Dosyalar
 
@@ -14,7 +29,7 @@ Tek veritabanı (`.env` içindeki `DB_NAME`) için akışlı, sıkıştırılmı
 | `cron/yedekleme_ayar.php` | Ayarlar (dizin, saklama süresi, artımlı tablo listesi) |
 | `cron/db_backup.php` | Yedek alma (CLI) |
 | `cron/db_restore.php` | Geri yükleme (CLI) |
-| `views/yedekleme/` | Veritabanı Yedekleri sayfası (yalnız Süper Admin) |
+| `views/yedekleme/` | Sistem Yedekleri sayfası (yalnız Süper Admin) |
 | `<yedek_dizini>/durum.json` | Artımlı yedek işaretleri, şema özeti, son Drive senkronu |
 | `<yedek_dizini>/is_durumu.json` | Arayüzden başlatılan son işin durumu ve logu |
 | `<yedek_dizini>/geri_yukleme_testleri.json` | Son 30 geri yükleme testinin sonucu |
@@ -83,7 +98,7 @@ yedekler sırayla uygulanır. Her dosya uygulanmadan önce bütünlük açısın
 ### Yedek doğrulama tatbikatı (geri yükleme testi)
 
 Yedeğin gerçekten geri yüklenebildiği düzenli olarak sınanmalıdır. En kolay yol
-**Yönetim → Veritabanı Yedekleri** sayfasındaki satır işlemi **Geri Yükleme Testi**'dir:
+**Yönetim → Sistem Yedekleri** (menüde eski adıyla “Veritabanı Yedekleri”) sayfasındaki satır işlemi **Geri Yükleme Testi**'dir:
 
 1. Seçilen yedek (artımlıysa bağlı tam yedek + aradaki artımlılar) doğrulanır.
 2. `.env` içindeki `YEDEK_TEST_VT` veritabanına **ayrı bir PDO bağlantısıyla** yüklenir; canlı
@@ -153,7 +168,11 @@ cPanel → **Cron Jobs** → *Common Settings: Once Per Two Hours* (`0 */2 * * *
 
 ```
 0 */2 * * *  /usr/local/bin/php /home/KULLANICI/public_html/ersan_elk/cron/db_backup.php --sessiz >> /home/KULLANICI/public_html/ersan_elk/cron/logs/backup_cron.log 2>&1
+30 1,13 * * *  /usr/local/bin/php /home/KULLANICI/public_html/ersan_elk/cron/dosya_yedek.php --sessiz >> /home/KULLANICI/public_html/ersan_elk/cron/logs/dosya_yedek_cron.log 2>&1
 ```
+
+Dosya yedeği günde iki kez (01:30 ve 13:30) yeterlidir; değişiklik yoksa arşiv oluşturmaz. Eski
+`cron/klasor_yedekleme.php` görevi tanımlıysa artık `dosya_yedek.php`'yi çağırır, kaldırılması gerekmez.
 
 PHP yolu sunucuya göre değişebilir (`which php` veya cPanel'deki örnek komut). Pazar günü ilk
 çalışmada tam, diğer tüm çalışmalarda artımlı yedek alınır; olası veri kaybı en fazla 2 saattir.
@@ -236,19 +255,73 @@ yedekleri indirir, MD5 ve şifre bütünlüğünü doğrulayıp yedek dizinine a
 
 ## Yönetim arayüzü
 
-**Yönetim → Veritabanı Yedekleri** (`index.php?p=yedekleme/list`). Erişim yalnız
+**Yönetim → Sistem Yedekleri** (menüde eski adıyla “Veritabanı Yedekleri”) (`index.php?p=yedekleme/list`). Erişim yalnız
 `Gate::isSuperAdmin()` rollerine açıktır (Süper Admin ve Firma Sahibi); yetki kaydı
 `sql/2026_10_22_add_yedekleme_yonetimi_menu_and_permissions.sql` ile oluşturulur.
 
 - Özet kartları: toplam yedek, son yedek, Google Drive durumu, son geri yükleme testi.
-- Liste: yerel dizin ve Drive birlikte; konum, son test sonucu ve satır işlemleri
-  (Detay, Geri Yükleme Testi, İndir, Drive'dan Yerele Al).
-- Elle **Tam / Artımlı Yedek Al** ve **Google Drive'a Gönder**.
+- Liste: veritabanı ve dosya yedekleri, yerel dizin ve Drive birlikte; tip (VT Tam/Artımlı, Dosya Tam/Artımlı),
+  konum, son test/doğrulama sonucu ve satır işlemleri (Detay, Geri Yükleme Testi veya Bütünlük Doğrulama, İndir,
+  Drive'dan Yerele Al). Toplam kartındaki **Dosya** düğmesi yalnız dosya yedeklerini süzer.
+- Elle **Veritabanı Yedeği Al**, **İşlemler → Artımlı Yedek / Dosya Tam / Dosya Artımlı Yedeği Al** ve
+  **Google Drive'a Gönder** (veritabanı ve dosya yedeklerini birlikte senkronlar).
+- Dosya yedeği hiç alınmamışsa veya son 26 saatte kontrol edilmemişse sayfa uyarı gösterir.
 - Uzun işler yanıt döndükten sonra arka planda sürer; sayfa 2 saniyede bir durumu ve logu çeker.
   Sunucu süreci öldürürse iş "Yarıda kaldı" olarak işaretlenir ve kilit serbest kalır.
 - İndirme POST + CSRF ile yapılır ve `system_logs` tablosuna kritik seviyede yazılır; kayıt
   yazılamazsa indirme başlamaz.
 - Canlı veritabanına geri yükleme arayüzde **yoktur**; yalnız `cron/db_restore.php` ile yapılır.
+
+## Kullanıcı dosyaları yedeği
+
+| Dosya | Görev |
+|---|---|
+| `App/Service/DosyaYedekService.php` | Tarama, tar.gz arşiv yazma/okuma, doğrulama, zincir, geri yükleme, rotasyon, Drive senkronu |
+| `cron/dosya_yedek.php` | Yedek alma ve doğrulama (CLI) |
+| `cron/dosya_restore.php` | Geri yükleme ve Drive'dan alma (CLI) |
+| `<yedek_dizini>/dosya_durum.json` | Son yedek, arşivlerin SHA-256 özetleri, doğrulama sonuçları |
+| `<yedek_dizini>/dosya_envanter.json.gz` | Son yedekteki dosya listesi (boyut + mtime), artımlı karşılaştırma için |
+| `<yedek_dizini>/.dosya.lock` | Aynı anda tek dosya yedeği çalışmasını sağlayan kilit |
+
+Yedeklenen dizinler `yedekleme_ayar.php` → `dosya_kaynaklari`: `uploads`, `files`, `storage/dosya-yonetimi`,
+`storage/invoices`, `storage/mobil-imza`, `assets/images/users` (personel fotoğrafları), `assets/images/demirbas`,
+`assets/belgeler`. Yeniden üretilebilen `storage/cache`, `storage/temp_exports`, `storage/tessdata` dahil değildir.
+Yeni bir yükleme dizini eklendiğinde bu listeye de eklenmelidir.
+
+```bash
+php cron/dosya_yedek.php              # Pazar ilk çalışmada tam, diğerlerinde artımlı
+php cron/dosya_yedek.php --tam
+php cron/dosya_yedek.php --artimli --drivesiz --mailsiz
+php cron/dosya_yedek.php --liste
+php cron/dosya_yedek.php --dogrula=dosya_tam_2026-11-18_01-30-00.tar.gz
+```
+
+- **Tam**: tüm dosyalar. **Artımlı**: envantere göre yeni/değişen dosyalar + silinen dosyaların listesi.
+  Değişiklik yoksa arşiv oluşturulmaz, yalnız son kontrol zamanı güncellenir.
+- Arşiv standart tar.gz'dir (`tar -tzf` ile açılır). Son kayıt `.yedek/manifest.json`: tip, bağlı tam yedek,
+  dosya sayısı/boyutu, klasör listesi (boş klasörler dahil), silinen ve okunamayan dosyalar.
+- Okuma izni olmayan dosya/klasörler uyarıyla loglanır ve rapor mailine girer; cron, dosyaların sahibi olan
+  kullanıcıyla çalışmalıdır.
+- Arşiv önce `.tmp` olarak yazılır, kapanınca yerine taşınır, SHA-256 özeti `dosya_durum.json`'a kaydedilir.
+- **Bütünlük Doğrulama**: SHA-256 karşılaştırması + arşivin baştan sona açılıp manifestle eşleştirilmesi.
+- Rotasyon: yerelde `dosya_saklama_gun` (14), Drive'da `dosya_drive_saklama_gun` (60) gün; artımlılar Drive'da 14 gün.
+- Drive'a `dosya_*.tar.gz.enc` adıyla, veritabanı yedekleriyle aynı AES-256-GCM anahtarıyla şifrelenip yüklenir.
+
+### Dosya geri yükleme
+
+```bash
+php cron/dosya_restore.php --liste
+php cron/dosya_restore.php --zaman="2026-11-18 13:30:00"                         # kuru çalışma (plan)
+php cron/dosya_restore.php --zaman="2026-11-18 13:30:00" --onayla                # <yedek_dizini>/geri_yukleme/<zaman>/ altına açar
+php cron/dosya_restore.php --zaman="..." --yol=uploads/personel_evraklar --onayla # yalnız bir klasör
+php cron/dosya_restore.php --zaman="..." --canli --onayla                        # doğrudan uygulama dizinine yazar
+php cron/dosya_restore.php --drive-al --zaman="..."                              # Drive'dan indirip yedek dizinine açar
+```
+
+Varsayılan hedef canlı dizin **değildir**; önce ayrı klasöre açıp kontrol edin, sonra gerekli dosyaları taşıyın
+veya `--canli` kullanın. Zincir: o ana kadarki son tam yedek + ona bağlı artımlılar sırayla uygulanır, artımlılardaki
+silinen dosyalar hedeften de silinir. Her arşiv uygulanmadan önce SHA-256 ile doğrulanır; arşivdeki `..` veya mutlak
+yol içeren kayıtlar işlemi durdurur. Canlı geri yükleme `system_logs`'a kritik seviyede yazılır.
 
 ## Sınırlar
 

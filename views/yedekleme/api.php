@@ -117,7 +117,7 @@ try {
             try {
                 (new SystemLogModel())->logAction(
                     $kullaniciId,
-                    'Veritabani Yedek Indirme',
+                    \App\Service\DosyaYedekService::dosyaAdiGecerliMi($ad) ? 'Dosya Yedek Indirme' : 'Veritabani Yedek Indirme',
                     sprintf('Yedek dosyasi tarayicidan indirildi: %s (%s MB, IP: %s)', $ad,
                         number_format(filesize($yol) / 1048576, 2), $_SERVER['REMOTE_ADDR'] ?? '-'),
                     SystemLogModel::LEVEL_CRITICAL

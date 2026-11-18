@@ -483,7 +483,7 @@ $title = "Evrak Listesi";
                                 <td class="text-center">
                                     <?php if ($evrakTipi === 'gelen'): ?>
                                         <?php if ($evrak->cevap_verildi_mi): ?>
-                                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold" title="Cevap Tarihi: <?= $evrak->cevap_tarihi ? date('d.m.Y', strtotime($evrak->cevap_tarihi)) : '-'; ?>">
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold btn-cevap-goster" role="button" style="cursor:pointer" data-id="<?= htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" title="Cevap Tarihi: <?= $evrak->cevap_tarihi ? date('d.m.Y', strtotime($evrak->cevap_tarihi)) : '-'; ?>">
                                                 EVET
                                             </span>
                                         <?php else: ?>
@@ -1100,6 +1100,7 @@ body[data-layout-mode="dark"] #evrakImzaOnayAction {
 <?php include_once "modal/evrak-modal.php"; ?>
 <?php include_once "modal/uets-modals.php"; ?>
 <?php include_once "modal/karsi-no-modal.php"; ?>
+<?php include_once "modal/cevap-yazisi-modal.php"; ?>
 <?php if ($canSendKep) include_once "modal/kep-send-modal.php"; ?>
 <?php if ($canMobilImzaAyar) include_once "modal/mobil-imza-ayarlari-modal.php"; ?>
 <?php include_once "modal/kep-preview-modal.php"; ?>

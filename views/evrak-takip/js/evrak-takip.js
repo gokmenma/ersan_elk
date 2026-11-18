@@ -3076,7 +3076,7 @@ $(document).ready(function () {
 
   // Tablo Satırı Tıklaması KEP Koruma
   $("#evrakTable tbody").on("click", "tr", function (e) {
-    if ($(e.target).closest("a, button, input, .dropdown, .popover, .action-btn-group, .evrak-imza-onizle, .e-imza-rozet").length) return;
+    if ($(e.target).closest("a, button, input, .dropdown, .popover, .action-btn-group, .evrak-imza-onizle, .e-imza-rozet, .btn-cevap-goster").length) return;
     const kepBtn = $(this).find(".btn-kep-onizle");
     if (kepBtn.length) {
       e.preventDefault();
@@ -3385,5 +3385,33 @@ $(function () {
       });
       $("#uetsDenetimIzi").html(html + "</tbody></table></div>");
     });
+  });
+});
+
+$(document).on("click", ".btn-cevap-goster", function (e) {
+  e.preventDefault();
+  e.stopPropagation();
+  const id = $(this).data("id");
+  const esc = function (v) { return $("<div>").text(v == null ? "" : String(v)).html(); };
+  const $body = $("#cevapYazisiBody").html('<div class="text-muted py-3 text-center"><i class="bx bx-loader-alt bx-spin"></i> Yükleniyor...</div>');
+  bootstrap.Modal.getOrCreateInstance(document.getElementById("modalCevapYazisi")).show();
+  $.post("views/evrak-takip/api.php", { action: "evrak-cevap-yazilari", id: id }, null, "json").done(function (res) {
+    if (res.status !== "success") {
+      $body.html('<div class="alert alert-warning mb-0">' + esc(res.message || "Cevap bilgisi alınamadı.") + "</div>");
+      return;
+    }
+    const d = res.data;
+    let html = '<div class="bg-light border rounded-3 p-2 mb-3 font-size-13"><strong>Gelen Evrak:</strong> ' + esc(d.evrak_no) + " — " + esc(d.konu) + (d.cevap_tarihi ? ' <span class="text-muted">(Cevap tarihi: ' + esc(d.cevap_tarihi) + ")</span>" : "") + "</div>";
+    if (!d.cevaplar.length) {
+      html += '<div class="alert alert-light border text-muted mb-0">Bu evrak cevaplandı olarak işaretlenmiş ancak sisteme bağlı bir cevap yazısı bulunamadı.</div>';
+    }
+    d.cevaplar.forEach(function (c) {
+      html += '<div class="border rounded-3 mb-3"><div class="px-3 py-2 border-bottom bg-light font-size-12 fw-semibold">' +
+        esc(c.evrak_no || "-") + " · " + esc(c.tarih) + " · " + esc(c.kurum_adi) + (c.konu ? "<div class=\"fw-normal text-muted\">" + esc(c.konu) + "</div>" : "") +
+        '</div><div class="p-3 font-size-13">' + (c.metin || '<span class="text-muted">Cevap metni yok.</span>') + "</div></div>";
+    });
+    $body.html(html);
+  }).fail(function () {
+    $body.html('<div class="alert alert-danger mb-0">Cevap bilgisi alınamadı.</div>');
   });
 });

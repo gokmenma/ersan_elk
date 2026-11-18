@@ -14,6 +14,9 @@ class YedekYonetimService
         'drive_senkron' => 'Google Drive Senkronu',
         'geri_yukleme_testi' => 'Geri Yükleme Testi',
         'drive_indir' => "Drive'dan Yerele Alma",
+        'dosya_yedek_tam' => 'Dosya Tam Yedeği',
+        'dosya_yedek_artimli' => 'Dosya Artımlı Yedeği',
+        'dosya_dogrula' => 'Dosya Yedeği Doğrulama',
     ];
 
     private const IS_DOSYASI = 'is_durumu.json';
@@ -22,6 +25,7 @@ class YedekYonetimService
     private const LOG_LIMIT = 300;
 
     private VeritabaniYedekService $yedek;
+    private DosyaYedekService $dosyaYedek;
     private string $dizin;
     private $kilit = null;
     private ?array $is = null;
@@ -29,10 +33,16 @@ class YedekYonetimService
     public function __construct()
     {
         $this->yedek = new VeritabaniYedekService();
+        $this->dosyaYedek = new DosyaYedekService();
         $this->dizin = $this->yedek->yedekDizini();
     }
 
     public static function dosyaAdiGecerliMi(string $ad): bool
+    {
+        return self::vtDosyasiMi($ad) || DosyaYedekService::dosyaAdiGecerliMi($ad);
+    }
+
+    public static function vtDosyasiMi(string $ad): bool
     {
         return (bool) preg_match('/^(tam|artimli)_[A-Za-z0-9_]+_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.sql\.gz$/', $ad);
     }
@@ -77,11 +87,36 @@ class YedekYonetimService
                 'yerel' => true,
                 'drive' => false,
                 'drive_boyut' => null,
+                'grup' => 'vt',
             ];
         }
 
+        $dogrulamalar = [];
+        foreach ($this->dosyaYedek->yedekler() as $y) {
+            $satirlar[$y['ad']] = [
+                'ad' => $y['ad'],
+                'tip' => 'dosya_' . $y['tip'],
+                'zaman' => $y['zaman'],
+                'temel' => $y['meta']['temel'] ?? null,
+                'boyut' => $y['boyut'],
+                'yerel' => true,
+                'drive' => false,
+                'drive_boyut' => null,
+                'grup' => 'dosya',
+                'dosya_adet' => $y['meta']['dosya_adet'] ?? null,
+                'silinen_adet' => $y['meta']['silinen_adet'] ?? null,
+            ];
+            if ($y['dogrulama'] !== null) {
+                $dogrulamalar[$y['ad']] = $y['dogrulama'];
+            }
+        }
+
         $drive = $this->driveListesi($driveYenile);
-        foreach ($drive['dosyalar'] as $uzak) {
+        $uzaklar = array_merge(
+            array_map(static fn($u) => $u + ['grup' => 'vt'], $drive['dosyalar']),
+            array_map(static fn($u) => ['grup' => 'dosya', 'tip' => 'dosya_' . $u['tip']] + $u, $drive['dosya_dosyalar'] ?? [])
+        );
+        foreach ($uzaklar as $uzak) {
             $ad = substr($uzak['name'], 0, -4);
             if (!isset($satirlar[$ad])) {
                 $satirlar[$ad] = [
@@ -91,6 +126,7 @@ class YedekYonetimService
                     'temel' => null,
                     'boyut' => (int) ($uzak['size'] ?? 0),
                     'yerel' => false,
+                    'grup' => $uzak['grup'],
                 ];
             }
             $satirlar[$ad]['drive'] = true;
@@ -98,7 +134,7 @@ class YedekYonetimService
         }
 
         foreach ($satirlar as $ad => &$satir) {
-            $satir['test'] = $testler[$ad] ?? null;
+            $satir['test'] = $satir['grup'] === 'dosya' ? ($dogrulamalar[$ad] ?? null) : ($testler[$ad] ?? null);
         }
         unset($satir);
 
@@ -115,8 +151,10 @@ class YedekYonetimService
     public function ozet(array $liste): array
     {
         $durum = $this->yedek->durumOku();
+        $dosyaDurum = $this->dosyaYedek->durumOku();
         $testler = (new VeritabaniGeriYuklemeService($this->dizin))->testGecmisi();
         $yerel = array_filter($liste['satirlar'], static fn($s) => $s['yerel']);
+        $dosyaSatirlari = array_filter($liste['satirlar'], static fn($s) => $s['grup'] === 'dosya');
 
         return [
             'toplam' => count($liste['satirlar']),
@@ -124,6 +162,7 @@ class YedekYonetimService
             'yerel_boyut' => array_sum(array_column($yerel, 'boyut')),
             'tam_adet' => count(array_filter($liste['satirlar'], static fn($s) => $s['tip'] === 'tam')),
             'artimli_adet' => count(array_filter($liste['satirlar'], static fn($s) => $s['tip'] === 'artimli')),
+            'vt_adet' => count($liste['satirlar']) - count($dosyaSatirlari),
             'drive_adet' => count(array_filter($liste['satirlar'], static fn($s) => $s['drive'])),
             'drive_eksik' => count(array_filter($yerel, static fn($s) => !$s['drive'])),
             'drive_yapilandirildi' => DriveYedekSenkronService::yapilandirildi(),
@@ -131,6 +170,10 @@ class YedekYonetimService
             'son_yedek' => $durum['son_yedek'] ?? null,
             'son_tam' => $durum['son_tam'] ?? null,
             'son_drive' => $durum['son_drive'] ?? null,
+            'dosya_adet' => count($dosyaSatirlari),
+            'dosya_boyut' => array_sum(array_column(array_filter($dosyaSatirlari, static fn($s) => $s['yerel']), 'boyut')),
+            'dosya_son_yedek' => $dosyaDurum['son_yedek'] ?? null,
+            'dosya_son_kontrol' => $dosyaDurum['son_kontrol'] ?? null,
             'son_test' => $testler[0] ?? null,
             'test_gecmisi' => array_slice(array_map(static function ($t) {
                 unset($t['farklar']);
@@ -144,6 +187,9 @@ class YedekYonetimService
 
     public function testDetayi(string $ad): ?array
     {
+        if (DosyaYedekService::dosyaAdiGecerliMi($ad)) {
+            return $this->dosyaYedek->durumOku()['dogrulamalar'][$ad] ?? null;
+        }
         foreach ((new VeritabaniGeriYuklemeService($this->dizin))->testGecmisi() as $test) {
             if ($test['dosya'] === $ad) {
                 return $test;
@@ -185,6 +231,15 @@ class YedekYonetimService
         if ($tip === 'geri_yukleme_testi') {
             if (trim((string) ($_ENV['YEDEK_TEST_VT'] ?? '')) === '') {
                 throw new DomainException('Geri yükleme testi için .env içinde YEDEK_TEST_VT tanımlanmalı.');
+            }
+            if (!self::vtDosyasiMi((string) ($parametre['dosya'] ?? ''))) {
+                throw new DomainException('Geri yükleme testi yalnızca veritabanı yedeklerinde yapılabilir.');
+            }
+            $this->yerelDosyaYolu((string) ($parametre['dosya'] ?? ''));
+        }
+        if ($tip === 'dosya_dogrula') {
+            if (!DosyaYedekService::dosyaAdiGecerliMi((string) ($parametre['dosya'] ?? ''))) {
+                throw new DomainException('Doğrulama yalnızca dosya yedeklerinde yapılabilir.');
             }
             $this->yerelDosyaYolu((string) ($parametre['dosya'] ?? ''));
         }
@@ -244,8 +299,28 @@ class YedekYonetimService
 
                 case 'drive_senkron':
                     $sonuc = $this->yedek->driveSenkronize($this->vt(), $kullaniciId, $log);
-                    $basarili = ($sonuc['durum'] ?? '') === 'tamam';
+                    $dosyaSonuc = $this->dosyaYedek->driveSenkronize($kullaniciId, $log);
+                    $basarili = ($sonuc['durum'] ?? '') === 'tamam' && ($dosyaSonuc['durum'] ?? '') === 'tamam';
                     $this->driveOnbellekSil();
+                    break;
+
+                case 'dosya_yedek_tam':
+                case 'dosya_yedek_artimli':
+                    $sonuc = $this->dosyaYedek->yedekAl([
+                        'tam' => $this->is['tip'] === 'dosya_yedek_tam',
+                        'artimli' => $this->is['tip'] === 'dosya_yedek_artimli',
+                        'kullanici_id' => $kullaniciId,
+                    ], $log);
+                    if (!empty($sonuc['atlandi'])) {
+                        throw new DomainException('Zamanlanmış dosya yedeği şu anda çalışıyor; bitince tekrar deneyin.');
+                    }
+                    $basarili = $sonuc['basarili'];
+                    $this->driveOnbellekSil();
+                    break;
+
+                case 'dosya_dogrula':
+                    $sonuc = $this->dosyaYedek->dogrula($this->is['parametre']['dosya'], $log, $kullaniciId);
+                    $basarili = $sonuc['sonuc'] === 'basarili';
                     break;
 
                 case 'geri_yukleme_testi':
@@ -278,7 +353,8 @@ class YedekYonetimService
         }
 
         $servis = new DriveYedekSenkronService();
-        foreach ($servis->uzakYedekler($this->vt()) as $uzak) {
+        $uzaklar = DosyaYedekService::dosyaAdiGecerliMi($ad) ? $servis->uzakDosyaYedekleri() : $servis->uzakYedekler($this->vt());
+        foreach ($uzaklar as $uzak) {
             if ($uzak['name'] === $ad . '.enc') {
                 $this->isLogu("Drive'dan indiriliyor: {$uzak['name']}");
                 $servis->indirVeCoz($uzak, $this->dizin);
@@ -301,14 +377,16 @@ class YedekYonetimService
         $onbellek = $this->dizin . '/' . self::DRIVE_ONBELLEK;
         if (!$yenile && is_file($onbellek) && filemtime($onbellek) > time() - self::DRIVE_ONBELLEK_SURE) {
             $veri = json_decode((string) file_get_contents($onbellek), true);
-            if (is_array($veri)) {
+            if (is_array($veri) && array_key_exists('dosya_dosyalar', $veri)) {
                 return $veri;
             }
         }
 
         try {
+            $servis = new DriveYedekSenkronService();
             $veri = [
-                'dosyalar' => (new DriveYedekSenkronService())->uzakYedekler($this->vt()),
+                'dosyalar' => $servis->uzakYedekler($this->vt()),
+                'dosya_dosyalar' => $servis->uzakDosyaYedekleri(),
                 'durum' => 'tamam',
                 'hata' => null,
                 'zaman' => date('Y-m-d H:i:s'),
@@ -335,7 +413,11 @@ class YedekYonetimService
         }
         $this->isYaz($this->is);
 
-        $logDosya = in_array($this->is['tip'], ['geri_yukleme_testi'], true) ? 'restore.log' : 'backup.log';
+        $logDosya = match (true) {
+            $this->is['tip'] === 'geri_yukleme_testi' => 'restore.log',
+            str_starts_with($this->is['tip'], 'dosya_') => 'dosya_yedek.log',
+            default => 'backup.log',
+        };
         @file_put_contents(
             dirname(__DIR__, 2) . '/cron/logs/' . $logDosya,
             '[' . date('Y-m-d H:i:s') . "] [$seviye] [ARAYUZ] $mesaj" . PHP_EOL,
@@ -352,7 +434,7 @@ class YedekYonetimService
 
     private function addanZaman(string $ad): string
     {
-        if (preg_match('/_(\d{4}-\d{2}-\d{2})_(\d{2})-(\d{2})-(\d{2})\.sql\.gz$/', $ad, $m)) {
+        if (preg_match('/_(\d{4}-\d{2}-\d{2})_(\d{2})-(\d{2})-(\d{2})\.(sql|tar)\.gz$/', $ad, $m)) {
             return "{$m[1]} {$m[2]}:{$m[3]}:{$m[4]}";
         }
         return '';
