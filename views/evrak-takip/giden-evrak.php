@@ -261,7 +261,7 @@ if ($canSendKep || $gonderimKanali === 'kep') {
             .cevap-banner-not { margin-top: 4px; font-size: 12px; color: #64748b; }
             html[data-theme-preset="macos-dark"] .cevap-banner, body[data-layout-mode="dark"] .cevap-banner { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.1); border-left-color: #22d3ee; }
             html[data-theme-preset="macos-dark"] .cevap-banner-bilgi, body[data-layout-mode="dark"] .cevap-banner-bilgi { color: #e2e8f0; }
-        </style>
+</style>
     <?php endif; ?>
 
     <?php if ($kilitli): ?>
@@ -332,8 +332,11 @@ if ($canSendKep || $gonderimKanali === 'kep') {
                 <div class="row g-0">
                     <div class="col-xl-8 border-end">
                         <ul class="nav nav-tabs px-3 pt-3" id="gidenEvrakTabs" role="tablist">
+                            <li class="nav-item"><button class="nav-link fw-bold" data-bs-toggle="tab" data-bs-target="#gidenIlgiTab" type="button"><i data-feather="link" class="icon-xs me-1"></i> İlgi <span class="badge bg-light text-muted border ms-1" id="ilgiSekmeSayisi">0</span></button></li>
                             <li class="nav-item"><button class="nav-link active fw-bold" data-bs-toggle="tab" data-bs-target="#gidenIcerikTab" type="button"><i data-feather="file-text" class="icon-xs me-1"></i> İçerik</button></li>
                             <li class="nav-item"><button class="nav-link fw-bold" data-bs-toggle="tab" data-bs-target="#gidenEklerTab" type="button"><i data-feather="paperclip" class="icon-xs me-1"></i> Ekler</button></li>
+                            <li class="nav-item"><button class="nav-link fw-bold" data-bs-toggle="tab" data-bs-target="#gidenImzaTab" type="button"><i data-feather="edit-3" class="icon-xs me-1"></i> İmza <span id="imzaSecimSayac" class="badge bg-light text-muted border ms-1">0/3</span></button></li>
+                            <li class="nav-item ms-auto"><button class="nav-link fw-bold" data-bs-toggle="tab" data-bs-target="#gidenIliskiliTab" type="button"><i data-feather="users" class="icon-xs me-1"></i> Zimmet</button></li>
                         </ul>
                         <div class="tab-content p-3">
                             <div class="tab-pane fade show active" id="gidenIcerikTab">
@@ -366,6 +369,53 @@ if ($canSendKep || $gonderimKanali === 'kep') {
                                     <div class="form-text mt-2">Varsayılan Times New Roman 12 puntodur. Summernote içindeki yazı tipi değişiklikleri PDF'e aktarılır.</div>
                                 </div>
                             </div>
+                            <div class="tab-pane fade" id="gidenIlgiTab">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <span class="small fw-bold text-uppercase text-muted">İlgi Tanımı</span>
+                                    <span class="badge bg-light text-muted border" id="ilgiSayisi">0 ilgi</span>
+                                </div>
+                                <div class="ilgi-ekle-kutu mb-3">
+                                    <div class="small text-muted mb-1"><i class="bx bx-search-alt me-1"></i>Gelen evraklardan ara ve seçerek ekle (<?php echo count($gelenEvraklar); ?> evrak)</div>
+                                    <?php echo Form::FormSelect2('ilgiGelenEvrakSelect', $ilgiOptions, '', 'Gelen Evrak Seç', 'file-plus', 'key', '', 'form-select ilgi-select2', false, 'width:100%', '', 'ilgiGelenEvrakSelect'); ?>
+                                </div>
+                                <div id="ilgiBosUyari" class="alert alert-warning small d-none">Henüz ilgi eklenmemiş. Aşağıdan gelen evrak seçebilir veya serbest metin yazabilirsiniz.</div>
+                                <div id="ilgiListe" class="ilgi-liste mb-3"></div>
+                                <?php echo Form::FormFloatTextarea('ilgiler', $value('ilgiler'), 'İlgi — Her satıra bir kayıt', 'Serbest İlgi Metni (her satıra bir kayıt)', 'link', 'form-control', false, '110px'); ?>
+                                <div class="form-text mb-2">Yukarıdaki listeyle eş zamanlıdır; elle de yazabilirsiniz. Satırları sürükleyerek veya okla sıralayabilirsiniz. PDF'de a), b), c) şeklinde sıralanır.</div>
+                            </div>
+                            <div class="tab-pane fade" id="gidenImzaTab">
+                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <span class="small fw-bold text-uppercase text-muted" style="font-size:0.7rem">İmza Yetkilileri</span>
+                                            <span class="small text-muted" style="font-size:0.7rem"><i class="bx bx-info-circle me-1"></i>En fazla 3 imza</span>
+                                        </div>
+
+                                        <div id="imzaSeciciContainer" class="ilgi-ekle-kutu mb-3">
+                                            <div class="small text-muted mb-1"><i class="bx bx-search-alt me-1"></i>İmza yetkilisi seçerek ekle (en fazla 3)</div>
+                                            <?php
+                                            $imzaOptions = ['' => '+ İmza Yetkilisi Seç ve Ekle...'];
+                                            foreach ($signingUsersList as $su) {
+                                                $imzaOptions[$su['id']] = $su['name'] . ($su['title'] ? ' — ' . $su['title'] : '');
+                                            }
+                                            echo Form::FormSelect2('imza_kullanici_ekle_select', $imzaOptions, '', 'İmza Yetkilisi Seç', 'edit-3', 'key', '', 'form-select giden-select2', false, 'width:100%', '', 'imza_kullanici_ekle_select');
+                                            ?>
+                                        </div>
+
+                                        <!-- İnteraktif İmza Kartları Listesi -->
+                                        <div id="imzaSiraListesi" class="d-flex flex-column gap-2"></div>
+
+                                        <!-- Gizli Senkronizasyon Alanları (Form POST & Validation İçin) -->
+                                        <select name="imza_kullanici_ids[]" id="imza_kullanici_ids" multiple class="d-none"></select>
+                                        <input type="hidden" name="kimin_adina_1" id="kimin_adina_1" value="<?php echo htmlspecialchars($savedKiminAdina[0] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                                        <input type="hidden" name="kimin_adina_2" id="kimin_adina_2" value="<?php echo htmlspecialchars($savedKiminAdina[1] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                                        <input type="hidden" name="kimin_adina_3" id="kimin_adina_3" value="<?php echo htmlspecialchars($savedKiminAdina[2] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                            </div>
+                            <div class="tab-pane fade" id="gidenIliskiliTab">
+                                <div class="d-grid gap-3" style="max-width:640px">
+                                         <input type="hidden" name="ilgili_evrak_id" id="ilgili_evrak_id" value="<?php echo htmlspecialchars((string) $selectedRelated, ENT_QUOTES, 'UTF-8'); ?>">
+                                        <?php echo Form::FormSelect2('personel_id', $personelOptions, $value('personel_id'), 'Zimmetlenen Personel', 'user-check', 'key', '', 'form-select giden-select2'); ?>
+                                        <?php echo Form::FormSelect2('ilgili_personel_id', $personelOptions, $value('ilgili_personel_id'), 'İlgili Personel', 'user', 'key', '', 'form-select giden-select2'); ?>
+                                </div>
+                            </div>
                             <div class="tab-pane fade" id="gidenEklerTab">
                                 <div class="border rounded-3 p-3">
                                     <div class="d-flex align-items-center justify-content-between mb-3"><span class="fw-bold">Seç ve Ekle</span><i data-feather="plus" class="icon-sm"></i></div>
@@ -377,6 +427,10 @@ if ($canSendKep || $gonderimKanali === 'kep') {
                                 </div>
                                 <div id="ekBosUyari" class="alert alert-warning small">Henüz eklenmiş belge bulunmuyor.</div>
                                 <div id="ekDosyaListesi" class="border rounded-3 overflow-hidden"></div>
+                                <div class="mt-3">
+                                    <?php echo Form::FormFloatTextarea('ekler', $value('ekler'), 'Ekler — Her satıra bir kayıt', 'Ek Metni (İsteğe Bağlı)', 'paperclip', 'form-control', false, '90px'); ?>
+                                    <div class="form-text">Resmî yazıda Ek alanının görünmesini istiyorsanız doldurunuz; her satır ayrı bir ek olarak yazılır.</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -430,101 +484,6 @@ if ($canSendKep || $gonderimKanali === 'kep') {
                                     <?php echo Form::FormFloatInput('text', 'muhatap_alt_birim', $value('muhatap_alt_birim'), 'Muhatap Alt Birimi', 'Alt Birim / Bölüm', 'layers'); ?>
                                     <?php echo Form::FormFloatTextarea('muhatap_adres', $value('muhatap_adres'), 'Muhatap Adresi', 'Muhatap Adresi', 'map-pin', 'form-control', false, '90px'); ?>
                                 </div>
-                            </div>
-
-                            <!-- Diğer Alanlar İçin Akordeon (İmza, İlişkili Evrak/Personel, İlgi/Ekler) -->
-                            <div class="accordion" id="gidenDigerAlanlarAccordion">
-                                <!-- Akordeon 1: İmza Yetkilileri -->
-                                <div class="accordion-item border rounded-3 mb-2 overflow-hidden bg-white shadow-none">
-                                    <h2 class="accordion-header" id="headingImzaYetkilileri">
-                                        <button class="accordion-button collapsed py-2.5 px-3 shadow-none giden-accordion-btn bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#collapseImzaYetkilileri" aria-expanded="false" aria-controls="collapseImzaYetkilileri">
-                                            <div class="d-flex align-items-center w-100">
-                                                <i class="bx bx-edit font-size-16 me-2 text-muted"></i>
-                                                <span class="small fw-bold text-uppercase text-muted">İmza Yetkilileri</span>
-                                                <span id="imzaSecimSayac" class="badge rounded-pill bg-light text-muted border fw-bold text-uppercase ms-auto me-2 px-2 py-1" style="font-size:9.5px;">0/3 SEÇİLDİ</span>
-                                                <i class="bx bx-plus font-size-16 text-muted accordion-icon"></i>
-                                            </div>
-                                        </button>
-                                    </h2>
-                                    <div id="collapseImzaYetkilileri" class="accordion-collapse collapse" aria-labelledby="headingImzaYetkilileri">
-                                        <div class="accordion-body p-3 pt-2">
-                                            <div class="d-flex align-items-center justify-content-end mb-2">
-                                                <span class="small text-muted" style="font-size:0.7rem"><i class="bx bx-info-circle me-1"></i>En fazla 3 imza</span>
-                                            </div>
-
-                                            <div id="imzaSeciciContainer" class="mb-2">
-                                                <select id="imza_kullanici_ekle_select" class="form-select giden-select2" style="width:100%">
-                                                    <option value="">+ İmza Yetkilisi Seç ve Ekle...</option>
-                                                    <?php foreach ($signingUsersList as $su): ?>
-                                                        <option value="<?php echo htmlspecialchars($su['id'], ENT_QUOTES, 'UTF-8'); ?>" data-name="<?php echo htmlspecialchars($su['name'], ENT_QUOTES, 'UTF-8'); ?>" data-title="<?php echo htmlspecialchars($su['title'], ENT_QUOTES, 'UTF-8'); ?>">
-                                                            <?php echo htmlspecialchars($su['name'] . ($su['title'] ? ' — ' . $su['title'] : ''), ENT_QUOTES, 'UTF-8'); ?>
-                                                        </option>
-                                                    <?php endforeach; ?>
-                                                </select>
-                                            </div>
-
-                                            <!-- İnteraktif İmza Kartları Listesi -->
-                                            <div id="imzaSiraListesi" class="d-flex flex-column gap-2"></div>
-
-                                            <!-- Gizli Senkronizasyon Alanları (Form POST & Validation İçin) -->
-                                            <select name="imza_kullanici_ids[]" id="imza_kullanici_ids" multiple class="d-none"></select>
-                                            <input type="hidden" name="kimin_adina_1" id="kimin_adina_1" value="<?php echo htmlspecialchars($savedKiminAdina[0] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
-                                            <input type="hidden" name="kimin_adina_2" id="kimin_adina_2" value="<?php echo htmlspecialchars($savedKiminAdina[1] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
-                                            <input type="hidden" name="kimin_adina_3" id="kimin_adina_3" value="<?php echo htmlspecialchars($savedKiminAdina[2] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Akordeon 2: İlişkili Evrak ve Personel -->
-                                <div class="accordion-item border rounded-3 mb-2 overflow-hidden bg-white shadow-none">
-                                    <h2 class="accordion-header" id="headingIliskiliKayitlar">
-                                        <button class="accordion-button collapsed py-2.5 px-3 shadow-none giden-accordion-btn bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#collapseIliskiliKayitlar" aria-expanded="false" aria-controls="collapseIliskiliKayitlar">
-                                            <div class="d-flex align-items-center w-100">
-                                                <i class="bx bx-link font-size-16 me-2 text-muted"></i>
-                                                <span class="small fw-bold text-uppercase text-muted">İlişkili Evrak ve Personel</span>
-                                                <i class="bx bx-plus font-size-16 text-muted accordion-icon ms-auto"></i>
-                                            </div>
-                                        </button>
-                                    </h2>
-                                    <div id="collapseIliskiliKayitlar" class="accordion-collapse collapse" aria-labelledby="headingIliskiliKayitlar">
-                                        <div class="accordion-body p-3 pt-2 d-grid gap-2">
-                                             <input type="hidden" name="ilgili_evrak_id" id="ilgili_evrak_id" value="<?php echo htmlspecialchars((string) $selectedRelated, ENT_QUOTES, 'UTF-8'); ?>">
-                                            <?php echo Form::FormSelect2('personel_id', $personelOptions, $value('personel_id'), 'Zimmetlenen Personel', 'user-check', 'key', '', 'form-select giden-select2'); ?>
-                                            <?php echo Form::FormSelect2('ilgili_personel_id', $personelOptions, $value('ilgili_personel_id'), 'İlgili Personel', 'user', 'key', '', 'form-select giden-select2'); ?>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Akordeon 3: İlgi ve Ek Metinleri -->
-                                <div class="accordion-item border rounded-3 mb-2 overflow-hidden bg-white shadow-none">
-                                    <h2 class="accordion-header" id="headingIlgiEkMetinleri">
-                                        <button class="accordion-button collapsed py-2.5 px-3 shadow-none giden-accordion-btn bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#collapseIlgiEkMetinleri" aria-expanded="false" aria-controls="collapseIlgiEkMetinleri">
-                                            <div class="d-flex align-items-center w-100">
-                                                <i class="bx bx-paperclip font-size-16 me-2 text-muted"></i>
-                                                <span class="small fw-bold text-uppercase text-muted">İlgi ve Ek Metinleri</span>
-                                                <i class="bx bx-plus font-size-16 text-muted accordion-icon ms-auto"></i>
-                                            </div>
-                                        </button>
-                                    </h2>
-                                    <div id="collapseIlgiEkMetinleri" class="accordion-collapse collapse" aria-labelledby="headingIlgiEkMetinleri">
-                                        <div class="accordion-body p-3 pt-2 d-grid gap-2">
-                                            <div class="d-flex align-items-center justify-content-between">
-                                                <span class="small fw-bold text-uppercase text-muted" style="font-size:0.7rem">İlgi Tanımı</span>
-                                                <span class="badge bg-light text-muted border" id="ilgiSayisi">0 ilgi</span>
-                                            </div>
-                                            <div id="ilgiListe" class="ilgi-liste"></div>
-                                            <div class="ilgi-ekle-kutu">
-                                                <div class="small text-muted mb-1"><i class="bx bx-search-alt me-1"></i>Gelen evraklardan ara ve seçerek ekle (<?php echo count($gelenEvraklar); ?> evrak)</div>
-                                                <?php echo Form::FormSelect2('ilgiGelenEvrakSelect', $ilgiOptions, '', 'Gelen Evrak Seç', 'bx bx-file-plus', 'key', '', 'form-select ilgi-select2', false, 'width:100%', '', 'ilgiGelenEvrakSelect'); ?>
-                                            </div>
-                                            <?php echo Form::FormFloatTextarea('ilgiler', $value('ilgiler'), 'İlgi — Her satıra bir kayıt', 'Serbest İlgi Metni (her satıra bir kayıt)', 'link', 'form-control', false, '95px'); ?>
-                                            <div class="form-text mt-n2 mb-2">Yukarıdaki listeyle eş zamanlıdır; elle de yazabilirsiniz. PDF'de a), b), c) şeklinde sıralanır.</div>
-                                            <?php echo Form::FormFloatTextarea('ekler', $value('ekler'), 'Ekler — Her satıra bir kayıt', 'Ek Metni (İsteğe Bağlı)', 'paperclip', 'form-control', false, '80px'); ?>
-                                            <div class="form-text mt-n2">Resmî yazıda Ek alanının görünmesini istiyorsanız doldurunuz.</div>
-                                        </div>
-                                    </div>
-                                </div>
-
                             </div>
                         </div>
                     </div>
@@ -697,6 +656,30 @@ if ($canSendKep || $gonderimKanali === 'kep') {
     .ilgi-satir { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border: 1px solid var(--bs-border-color, #e3e6ef); border-radius: 10px; background: var(--bs-body-bg, #fff); }
     .ilgi-harf { flex: 0 0 24px; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; background: var(--bs-primary-bg-subtle, #e7ebff); color: var(--bs-primary, #556ee6); }
     .ilgi-metin { flex: 1; min-width: 0; font-size: 12.5px; line-height: 1.4; word-break: break-word; }
+    #gidenEvrakTabs .nav-link .badge, #gidenEvrakTabs .nav-link.active .badge { background-color: #e2e8f0 !important; color: #334155 !important; }
+    #gidenEvrakTabs .nav-link #imzaSecimSayac.bg-primary-subtle { background-color: #dbeafe !important; color: #1d4ed8 !important; }
+    #gidenEvrakTabs .nav-link #imzaSecimSayac.bg-success-subtle { background-color: #dcfce7 !important; color: #15803d !important; }
+    .imza-bos { text-align: center; padding: 28px 16px; border: 1px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; color: #475569; }
+    .imza-bos i { display: block; font-size: 30px; color: #64748b; margin-bottom: 6px; }
+    .imza-kart { display: flex; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; overflow: hidden; }
+    .imza-kart-sira { flex: 0 0 34px; display: flex; align-items: center; justify-content: center; background: #475569; color: #fff; font-weight: 700; font-size: 14px; }
+    .imza-kart-govde { flex: 1; min-width: 0; padding: 12px 14px; display: grid; gap: 10px; }
+    .imza-kart-ust { display: flex; align-items: center; gap: 10px; }
+    .imza-avatar { flex: 0 0 38px; width: 38px; height: 38px; border-radius: 50%; background: #e2e8f0; color: #334155; font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; }
+    .imza-ad { font-size: 14px; font-weight: 600; color: #0f172a; }
+    .imza-unvan { font-size: 12px; color: #64748b; }
+    .imza-konum-rozet { flex: 0 0 auto; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: #eef2f7; color: #475569; border: 1px solid #e2e8f0; }
+    .imza-islem { flex: 0 0 auto; display: inline-flex; gap: 4px; }
+    .imza-islem button { width: 28px; height: 28px; border-radius: 50%; border: 1px solid #e2e8f0; background: #fff; color: #475569; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; padding: 0; }
+    .imza-islem button:hover:not(:disabled) { background: #f1f5f9; }
+    .imza-islem button:disabled { opacity: .35; cursor: default; }
+    .imza-islem .imza-sil { color: #dc2626; border-color: #fecaca; }
+    .imza-islem .imza-sil:hover { background: #fee2e2 !important; }
+    .imza-vekil-etiket { font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 4px; display: block; }
+    .imza-vekil-satir { display: flex; gap: 6px; align-items: center; }
+    .imza-vekil-satir .form-control { height: 34px; font-size: 12.5px; }
+    .imza-hizli { flex: 0 0 auto; height: 34px; padding: 0 10px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; color: #475569; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+    .imza-hizli:hover { background: #e2e8f0; }
     .ilgi-satir { align-items: center; }
     .ilgi-tut { flex: 0 0 auto; cursor: grab; color: #94a3b8; font-size: 18px; line-height: 1; }
     .ilgi-pdf { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; border: 0; background: #fee2e2; color: #dc2626; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; padding: 0; }
@@ -724,9 +707,9 @@ if ($canSendKep || $gonderimKanali === 'kep') {
 #evrakAiContextMenu{position:fixed;z-index:1090;min-width:220px;display:none}
 #evrakAiContextMenu .dropdown-item{cursor:pointer;padding:.65rem .9rem}
 .ai-secim-onizleme{max-height:130px;overflow:auto;white-space:pre-wrap}
-.giden-meta-panel::-webkit-scrollbar,#gidenEklerTab::-webkit-scrollbar,#gidenEvrakForm .note-editable::-webkit-scrollbar{width:6px}
-.giden-meta-panel::-webkit-scrollbar-thumb,#gidenEklerTab::-webkit-scrollbar-thumb,#gidenEvrakForm .note-editable::-webkit-scrollbar-thumb{background-color:rgba(0,0,0,0.15);border-radius:4px}
-.giden-meta-panel::-webkit-scrollbar-thumb:hover,#gidenEklerTab::-webkit-scrollbar-thumb:hover,#gidenEvrakForm .note-editable::-webkit-scrollbar-thumb:hover{background-color:rgba(0,0,0,0.3)}
+.giden-meta-panel::-webkit-scrollbar,#gidenEklerTab::-webkit-scrollbar,#gidenImzaTab::-webkit-scrollbar,#gidenIliskiliTab::-webkit-scrollbar,#gidenIlgiTab::-webkit-scrollbar,#gidenEvrakForm .note-editable::-webkit-scrollbar{width:6px}
+.giden-meta-panel::-webkit-scrollbar-thumb,#gidenEklerTab::-webkit-scrollbar-thumb,#gidenIlgiTab::-webkit-scrollbar-thumb,#gidenEvrakForm .note-editable::-webkit-scrollbar-thumb{background-color:rgba(0,0,0,0.15);border-radius:4px}
+.giden-meta-panel::-webkit-scrollbar-thumb:hover,#gidenEklerTab::-webkit-scrollbar-thumb:hover,#gidenIlgiTab::-webkit-scrollbar-thumb:hover,#gidenEvrakForm .note-editable::-webkit-scrollbar-thumb:hover{background-color:rgba(0,0,0,0.3)}
 #gidenDigerAlanlarAccordion .accordion-button{background-color:#fff;border-radius:6px;font-family:inherit}
 #gidenDigerAlanlarAccordion .accordion-button:not(.collapsed){background-color:#f8f9fa;box-shadow:none}
 #gidenDigerAlanlarAccordion .accordion-button:not(.collapsed) .text-muted{color:#556ee6!important}

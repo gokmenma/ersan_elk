@@ -46,7 +46,7 @@ $(document).ready(function () {
     // 3. Sayaç rozetini güncelle
     const count = selectedSigners.length;
     const badge = $("#imzaSecimSayac");
-    badge.text(count + "/3 SEÇİLDİ");
+    badge.text(count + "/3");
     if (count === 3) {
       badge.removeClass("bg-light text-muted bg-primary-subtle text-primary").addClass("bg-success-subtle text-success");
     } else if (count === 0) {
@@ -87,72 +87,50 @@ $(document).ready(function () {
     const container = $("#imzaSiraListesi").empty();
     if (!selectedSigners || selectedSigners.length === 0) {
       container.html(`
-        <div class="p-3 text-muted small text-center bg-light-subtle border border-dashed rounded-3">
-          <i class="bx bx-user-plus font-size-20 d-block mb-1 text-primary"></i>
-          Henüz imza yetkilisi seçilmedi.<br>
-          <span class="text-muted font-size-11">Yukarıdaki listeden en fazla 3 yetkili ekleyebilirsiniz.</span>
+        <div class="imza-bos">
+          <i class="bx bx-user-plus"></i>
+          <div class="fw-semibold">Henüz imza yetkilisi seçilmedi</div>
+          <div class="small text-muted">Yukarıdaki listeden en fazla 3 yetkili ekleyebilirsiniz.</div>
         </div>
       `);
       return;
     }
 
     const total = selectedSigners.length;
+    const konumlar = total === 1 ? ["Sol"] : (total === 2 ? ["Sol", "Sağ"] : ["Sol", "Orta", "Sağ"]);
+    const isLocked = window.gidenEvrakKilitli;
 
     selectedSigners.forEach((signer, index) => {
-      let posText = "Sol";
-      if (total === 2) {
-        posText = index === 0 ? "Sol" : "Sağ";
-      } else if (total === 3) {
-        posText = index === 0 ? "Sol" : (index === 1 ? "Orta" : "Sağ");
-      }
-
       const initials = getSignerInitials(signer.name);
-      const isLocked = window.gidenEvrakKilitli;
 
       const card = $(`
-        <div class="card border shadow-none mb-0 signer-card" style="background:#fff; border-radius:8px; border-color:#e2e8f0!important;" data-id="${escapeHtml(signer.id)}">
-          <div class="card-body p-2.5">
-            <div class="d-flex align-items-center justify-content-between mb-1.5">
-              <div class="d-flex align-items-center gap-1.5">
-                <span class="badge bg-primary text-white fw-bold px-2 py-1" style="font-size:10px;">
-                  ${index + 1}. İmza (${posText})
-                </span>
+        <div class="signer-card imza-kart" data-id="${escapeHtml(signer.id)}">
+          <div class="imza-kart-sira">${index + 1}</div>
+          <div class="imza-kart-govde">
+            <div class="imza-kart-ust">
+              <div class="imza-avatar">${initials}</div>
+              <div class="min-w-0 flex-grow-1">
+                <div class="imza-ad text-truncate">${escapeHtml(signer.name)}</div>
+                <div class="imza-unvan text-truncate">${escapeHtml(signer.title || "Ünvan belirtilmedi")}</div>
               </div>
+              <span class="imza-konum-rozet">${konumlar[index]}</span>
               ${!isLocked ? `
-                <div class="btn-group btn-group-sm">
-                  <button type="button" class="btn btn-outline-secondary btn-sm px-1.5 py-0 btn-signer-move" data-index="${index}" data-dir="-1" title="Yukarı / Sola Taşı" ${index === 0 ? 'disabled' : ''} style="font-size:11px">
-                    <i class="bx bx-chevron-up"></i>
-                  </button>
-                  <button type="button" class="btn btn-outline-secondary btn-sm px-1.5 py-0 btn-signer-move" data-index="${index}" data-dir="1" title="Aşağı / Sağa Taşı" ${index === total - 1 ? 'disabled' : ''} style="font-size:11px">
-                    <i class="bx bx-chevron-down"></i>
-                  </button>
-                  <button type="button" class="btn btn-outline-danger btn-sm px-1.5 py-0 btn-signer-remove" data-index="${index}" title="Kaldır" style="font-size:11px">
-                    <i class="bx bx-trash"></i>
-                  </button>
+                <div class="imza-islem">
+                  <button type="button" class="btn-signer-move" data-index="${index}" data-dir="-1" title="Öne / Sola taşı" ${index === 0 ? 'disabled' : ''}><i class="bx bx-chevron-up"></i></button>
+                  <button type="button" class="btn-signer-move" data-index="${index}" data-dir="1" title="Arkaya / Sağa taşı" ${index === total - 1 ? 'disabled' : ''}><i class="bx bx-chevron-down"></i></button>
+                  <button type="button" class="btn-signer-remove imza-sil" data-index="${index}" title="Kaldır"><i class="bx bx-x"></i></button>
                 </div>
               ` : ''}
             </div>
-
-            <div class="d-flex align-items-center gap-2 mb-2">
-              <div class="avatar-xs rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style="width:30px;height:30px;font-size:11px;">
-                ${initials}
+            <div class="imza-vekil">
+              <label class="imza-vekil-etiket" title="İmza bloğunda adın üzerinde yer alacak temsil ibaresi"><i class="bx bx-user-check"></i> Kimin adına</label>
+              <div class="imza-vekil-satir">
+                <input type="text" class="form-control form-control-sm signer-kimin-adina-input" data-index="${index}" placeholder="Boş bırakılırsa görünmez (örn: Firma Yetkilisi a.)" value="${escapeHtml(signer.kimin_adina || '')}" ${isLocked ? 'disabled' : ''}>
+                ${!isLocked ? `
+                  <button type="button" class="btn-quick-kimin-adina imza-hizli" data-index="${index}" data-text="Firma Yetkilisi a." title="'Firma Yetkilisi a.' yaz">Firma Yetkilisi a.</button>
+                  <button type="button" class="btn-quick-kimin-adina imza-hizli" data-index="${index}" data-text="" title="Temizle"><i class="bx bx-eraser"></i></button>
+                ` : ''}
               </div>
-              <div class="min-w-0 flex-grow-1">
-                <div class="fw-bold text-dark text-truncate" style="font-size:12.5px;">${escapeHtml(signer.name)}</div>
-                <div class="text-muted small text-truncate" style="font-size:11px;">${escapeHtml(signer.title || "Ünvan belirtilmedi")}</div>
-              </div>
-            </div>
-
-            <div class="input-group input-group-sm">
-              <span class="input-group-text bg-light text-muted px-2 py-0" style="font-size:10.5px;" title="İmza bloğunda adın üzerinde yer alacak temsil ibaresi">
-                <i class="bx bx-user-check me-1 text-primary"></i>Kimin Adına:
-              </span>
-              <input type="text" class="form-control form-control-sm signer-kimin-adina-input py-0" data-index="${index}" style="font-size:11px; height:28px;" placeholder="Örn: Firma Yetkilisi a." value="${escapeHtml(signer.kimin_adina || '')}" ${isLocked ? 'disabled' : ''}>
-              ${!isLocked ? `
-                <button type="button" class="btn btn-light btn-sm px-2 py-0 btn-quick-kimin-adina" data-index="${index}" data-text="Firma Yetkilisi a." title="'Firma Yetkilisi a.' olarak ayarla" style="font-size:10.5px;">
-                  Firma Yetkilisi a.
-                </button>
-              ` : ''}
             </div>
           </div>
         </div>
@@ -220,9 +198,9 @@ $(document).ready(function () {
   $(document).on("click", ".btn-quick-kimin-adina", function () {
     const index = parseInt($(this).data("index"), 10);
     const text = $(this).data("text") || "";
-    const input = $(this).closest(".input-group").find(".signer-kimin-adina-input");
+    const input = $(this).closest(".imza-vekil-satir").find(".signer-kimin-adina-input");
     const currentVal = input.val().trim();
-    const newVal = (currentVal === text) ? "" : text;
+    const newVal = text !== "" && currentVal === text ? "" : text;
     input.val(newVal).trigger("change");
   });
 
@@ -257,6 +235,8 @@ $(document).ready(function () {
   function ilgiListeCiz() {
     const lines = ilgiSatirlari();
     $("#ilgiSayisi").text(lines.length + " ilgi");
+    $("#ilgiSekmeSayisi").text(lines.length);
+    $("#ilgiBosUyari").toggleClass("d-none", lines.length > 0);
     $("#ilgiListe").html(lines.map(function (line, i) {
       const evrakId = ilgiEvrakHaritasi[line];
       const pdfBtn = evrakId
@@ -1117,6 +1097,7 @@ $(document).ready(function () {
     const data = new FormData(form[0]);
     data.delete("ek_dosyalari[]");
     data.delete("ilgiGelenEvrakSelect");
+    data.delete("imza_kullanici_ekle_select");
     attachments.forEach(item => {
       if (item.type === "new") data.append("ek_dosyalari[" + item.key + "]", item.file, item.name);
     });
@@ -1153,8 +1134,8 @@ $(document).ready(function () {
       $("#ustYaziMetinBilgisi").removeClass("d-none");
       $("#editorContainer").addClass("d-none");
       $("#btnIcraUstYaziAc, #btnAiTaslakAc").addClass("d-none");
-      // Üst yazı gerekli değil iken akordeonları kapat
-      $("#collapseImzaYetkilileri, #collapseIliskiliKayitlar, #collapseIlgiEkMetinleri").collapse("hide");
+
+      
       if (isUserAction === true) {
         $("#gidenEvrakTabs button[data-bs-target='#gidenEklerTab']").tab("show");
       }
@@ -1165,11 +1146,11 @@ $(document).ready(function () {
         $("#btnIcraUstYaziAc, #btnAiTaslakAc").removeClass("d-none");
       }
       if (isUserAction === true) {
-        $("#collapseImzaYetkilileri").collapse("show");
+        $("#gidenEvrakTabs button[data-bs-target='#gidenImzaTab']").tab("show");
         $("#gidenEvrakTabs button[data-bs-target='#gidenIcerikTab']").tab("show");
       } else {
         if (selectedSigners && selectedSigners.length > 0) {
-          $("#collapseImzaYetkilileri").collapse("show");
+          $("#gidenEvrakTabs button[data-bs-target='#gidenImzaTab']").tab("show");
         }
       }
     }
@@ -1223,7 +1204,7 @@ $(document).ready(function () {
     }
     if (!ustYaziGerekliDegil) {
       if (!$("#imza_kullanici_ids").val()?.length) {
-        $("#collapseImzaYetkilileri").collapse("show");
+        $("#gidenEvrakTabs button[data-bs-target='#gidenImzaTab']").tab("show");
         Swal.fire("Eksik Bilgi", "En az bir imza yetkilisi seçiniz.", "warning");
         return false;
       }
@@ -1284,7 +1265,7 @@ $(document).ready(function () {
     if (window.innerWidth < 992) {
       $(".giden-meta-panel").css({ "height": "", "max-height": "", "overflow-y": "" });
       $("#gidenEvrakForm .note-editable").css({ "height": "450px", "max-height": "", "overflow-y": "" });
-      $("#gidenEklerTab").css({ "height": "", "max-height": "", "overflow-y": "" });
+      $("#gidenEklerTab, #gidenIlgiTab, #gidenImzaTab, #gidenIliskiliTab").css({ "height": "", "max-height": "", "overflow-y": "" });
       $("#gidenEvrakForm > .card").css({ "height": "", "max-height": "" });
       return;
     }
@@ -1332,7 +1313,7 @@ $(document).ready(function () {
       "overflow-y": "auto"
     });
 
-    $("#gidenEklerTab").css({
+    $("#gidenEklerTab, #gidenIlgiTab, #gidenImzaTab, #gidenIliskiliTab").css({
       "height": availableTabContentHeight + "px",
       "max-height": availableTabContentHeight + "px",
       "overflow-y": "auto"
@@ -1565,7 +1546,7 @@ $(document).ready(function () {
     syncContent();
     if (!validateForm()) return;
     if (!$("#imza_kullanici_ids").val()?.length) {
-      $("#collapseImzaYetkilileri").collapse("show");
+      $("#gidenEvrakTabs button[data-bs-target='#gidenImzaTab']").tab("show");
       Swal.fire("Eksik Bilgi", "E-İmza ile onaya sunmak için en az bir imza yetkilisi seçmelisiniz.", "warning");
       return;
     }
@@ -1617,7 +1598,7 @@ $(document).ready(function () {
     if (!validateForm()) return;
     if ($("#gonderim_kanali").val() !== "normal") return Swal.fire("Uygun Değil", "Islak imza akışı yalnız Normal Gönderim türünde kullanılabilir.", "warning");
     if (!$("#imza_kullanici_ids").val()?.length) {
-      $("#collapseImzaYetkilileri").collapse("show");
+      $("#gidenEvrakTabs button[data-bs-target='#gidenImzaTab']").tab("show");
       return Swal.fire("Eksik Bilgi", "Islak imza onayı için en az bir imza yetkilisi seçmelisiniz.", "warning");
     }
     Swal.fire({
@@ -1663,7 +1644,7 @@ $(document).ready(function () {
     syncContent();
     if (!validateForm()) return;
     if (!$("#imza_kullanici_ids").val()?.length) {
-      $("#collapseImzaYetkilileri").collapse("show");
+      $("#gidenEvrakTabs button[data-bs-target='#gidenImzaTab']").tab("show");
       return Swal.fire("Eksik Bilgi", "Mobil imza onayı için en az bir imza yetkilisi seçmelisiniz.", "warning");
     }
     Swal.fire({

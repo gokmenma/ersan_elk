@@ -341,6 +341,7 @@ class YedeklemeModel extends Model
 
     public function yedekOturumuAc(): void
     {
+        $this->uzunIslemZamanAsimlari();
         $this->db->exec("SET SESSION FOREIGN_KEY_CHECKS = 0");
         $this->db->exec("SET SESSION UNIQUE_CHECKS = 0");
         $this->db->exec("SET SESSION SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO'");
@@ -373,8 +374,29 @@ class YedeklemeModel extends Model
         }
     }
 
+    public function uzunIslemZamanAsimlari(): void
+    {
+        foreach ([
+            'SET SESSION net_write_timeout = 3600',
+            'SET SESSION net_read_timeout = 3600',
+            'SET SESSION wait_timeout = 28800',
+            'SET SESSION max_statement_time = 0',
+            'SET SESSION max_execution_time = 0',
+        ] as $sql) {
+            try {
+                $this->db->exec($sql);
+            } catch (\PDOException $e) {
+                if ((int) ($e->errorInfo[1] ?? 0) === 1193) {
+                    continue;
+                }
+                error_log('[yedekleme] Oturum ayari uygulanamadi (' . $sql . '): ' . $e->getMessage());
+            }
+        }
+    }
+
     public function tutarliOkumaBaslat(): void
     {
+        $this->uzunIslemZamanAsimlari();
         $this->db->exec("SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ");
         $this->db->exec("START TRANSACTION WITH CONSISTENT SNAPSHOT");
     }
