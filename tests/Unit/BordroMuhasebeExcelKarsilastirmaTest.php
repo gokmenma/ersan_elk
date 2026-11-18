@@ -60,6 +60,19 @@ final class BordroMuhasebeExcelKarsilastirmaTest extends TestCase
         self::assertSame(785965,$rows[0]['alanlar']['yemek']);self::assertSame(3587550,$rows[0]['alanlar']['banka']);
     }
 
+    public function testUcretliIzinSutunuOlmayanMuhasebeBordrosuOkunurVeAlanKarsilastirmadanCikarilir(): void
+    {
+        $book=new Spreadsheet();$sheet=$book->getActiveSheet();$sheet->setTitle('2026-EKİM AYI MAAŞ BORDROSU');
+        $headers=['#','Adı Soyadı','TCKN','Kanun','Ücret G/S','T.Gün','SSK M.','SSK İşçi','İşs.P.İşçi','G.V.M','Gel.Ver.','Öz.Kesinti','Damga V','N.Ödenen','Normal Gün','','Hafta Tatili','','Fazla Mesai','','Yemek','','Bayram','','Tatil Mesaisi','','Aile','','Rapor','','İmza'];
+        $sheet->fromArray($headers,null,'A10');
+        $sheet->fromArray(['001','ABDULLAH DOĞAN','11522818356','00000','33.030,00G','030','35,386.28','4,954.08','353.86','30,078.34','300.42','0.00','77.54','37,560.03','26G','28,626.00','4G','4,404.00','','1,047.23','','7,859.65','','1,309.05'],null,'A11');
+        (new Xlsx($book))->save($this->path);$book->disconnectWorksheets();
+        $service=new BordroMuhasebeExcelKarsilastirmaService();$method=new ReflectionMethod($service,'exceliOku');[$rows,$meta]=$method->invoke($service,$this->path);
+        self::assertSame('muhasebe_bordro',$meta['format']);self::assertCount(1,$rows);
+        self::assertArrayNotHasKey('ucretli_izin_gun',$meta['alanlar']);self::assertArrayNotHasKey('ucretli_izin_gun',$rows[0]['alanlar']);
+        self::assertSame(26,$rows[0]['alanlar']['normal_gun']);self::assertSame(785965,$rows[0]['alanlar']['yemek']);self::assertSame(3756003,$rows[0]['alanlar']['banka']);
+    }
+
     public function testExcelOzetindeAlanKisiSayisiPersonelBasinaBenzersizdir(): void
     {
         $result=['sonuclar'=>[

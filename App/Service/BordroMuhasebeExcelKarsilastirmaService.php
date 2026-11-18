@@ -31,7 +31,8 @@ final class BordroMuhasebeExcelKarsilastirmaService
     {
         [$muhasebe,$meta]=$this->exceliOku($this->dosyayiDogrula($file));
         [$sistem,$donem]=$this->sistemSatirlari($firmaId,$donemId);
-        $alanKeys=array_keys($meta['format']==='muhasebe_bordro'?self::MUHASEBE_BORDRO_ALANLARI:self::ALANLAR);
+        $alanlar=$meta['alanlar'];unset($meta['alanlar']);
+        $alanKeys=array_keys($alanlar);
         $sonuclar=[]; $used=[];
         foreach($muhasebe as $excel){
             [$key,$sys,$match]=$this->eslesenSistemSatiri($excel,$sistem,$used);
@@ -48,7 +49,7 @@ final class BordroMuhasebeExcelKarsilastirmaService
         foreach($sonuclar as $row)$sayilar[$row['durum']]++;
         return ['meta'=>$meta+['dosya_adi'=>basename((string)($file['name']??'muhasebe.xlsx'))],
             'donem'=>['id'=>(int)$donem->id,'adi'=>(string)$donem->donem_adi],'sayilar'=>$sayilar,
-            'alanlar'=>$meta['format']==='muhasebe_bordro'?self::MUHASEBE_BORDRO_ALANLARI:self::ALANLAR,'sonuclar'=>$sonuclar];
+            'alanlar'=>$alanlar,'sonuclar'=>$sonuclar];
     }
 
     private function dosyayiDogrula(array $file): string
@@ -75,7 +76,7 @@ final class BordroMuhasebeExcelKarsilastirmaService
         for($r=$header+1;$r<=$sheet->getHighestDataRow();$r++){
             $name=trim((string)$sheet->getCell([$cols['ad'],$r])->getFormattedValue());
             if($name===''||str_starts_with($this->normalizeBaslik($name),'toplam'))continue;
-            $fieldLabels=$format==='muhasebe_bordro'?self::MUHASEBE_BORDRO_ALANLARI:self::ALANLAR;
+            $fieldLabels=$format==='muhasebe_bordro'?array_intersect_key(self::MUHASEBE_BORDRO_ALANLARI,$cols):self::ALANLAR;
             $fields=[];foreach($fieldLabels as $key=>$label)$fields[$key]=in_array($key,self::GUNLER,true)?$this->gun($sheet,$cols[$key],$r):$this->para($sheet,$cols[$key],$r);
             $tc=preg_replace('/\D+/','',(string)$sheet->getCell([$cols['tc'],$r])->getFormattedValue());
             if($format==='muhasebe_bordro'&&strlen($tc)!==11)continue;
@@ -83,7 +84,8 @@ final class BordroMuhasebeExcelKarsilastirmaService
         }
         $title=$sheet->getTitle();$book->disconnectWorksheets();
         if(!$rows)throw new DomainException('Mutabakat sayfasında karşılaştırılabilir personel satırı bulunamadı.');
-        return [$rows,['sayfa'=>$title,'excel_satir_sayisi'=>count($rows),'format'=>$format]];
+        $alanlar=$format==='muhasebe_bordro'?array_intersect_key(self::MUHASEBE_BORDRO_ALANLARI,$cols):self::ALANLAR;
+        return [$rows,['sayfa'=>$title,'excel_satir_sayisi'=>count($rows),'format'=>$format,'alanlar'=>$alanlar]];
     }
 
     private function basliklariBul(Worksheet $sheet): array
@@ -108,14 +110,15 @@ final class BordroMuhasebeExcelKarsilastirmaService
         $aliases=['ad'=>['adı soyadı'],'tc'=>['tckn'],'toplam_gun'=>['t.gün'],'normal_gun'=>['normal gün'],
             'hafta_tatili_gun'=>['hafta tatili'],'ucretli_izin_gun'=>['ücretli izin'],
             'rapor_gun'=>['rapor'],'yemek'=>['yemek'],'banka'=>['n.ödenen']];
+        $optional=['ucretli_izin_gun','rapor_gun'];
+        $required=array_diff(array_keys($aliases),$optional);
         for($r=1;$r<=min(40,$sheet->getHighestDataRow());$r++){
             $found=[];$max=Coordinate::columnIndexFromString($sheet->getHighestDataColumn());
             for($c=1;$c<=$max;$c++){
                 $v=$this->normalizeBaslik((string)$sheet->getCell([$c,$r])->getFormattedValue());
                 foreach($aliases as $key=>$vals)if(!isset($found[$key])&&in_array($v,array_map([$this,'normalizeBaslik'],$vals),true))$found[$key]=$c;
             }
-            if(count($found)===count($aliases)){
-                // Muhasebe şablonunda kazanç tutarı, gün/adet başlığının sağındaki kolondadır.
+            if(!array_diff($required,array_keys($found))){
                 $found['yemek']++;
                 return[$r,$found];
             }

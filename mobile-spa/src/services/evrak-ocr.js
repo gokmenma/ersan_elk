@@ -134,6 +134,15 @@ async function ocrOku(canvaslar, ilerleme) {
   return metin
 }
 
+function pdfMetniAnlamli(metin) {
+  const duz = tr(metin).toLowerCase()
+  const kelimeler = duz.match(/\b(ve|bir|bu|ile|icin|tarih|tarihi|sayi|konu|ilgi|dair|olarak|madde|plaka|ceza|tutari|adi|soyadi)\b/g) || []
+  if (kelimeler.length < 6) return false
+  const bozuk = (String(metin).match(/[\u0080-\u00ff](?![\u011e\u011f\u0130\u0131\u015e\u015f])/g) || []).length
+  const harf = (String(metin).match(/[A-Za-z\u011e\u011f\u0130\u0131\u015e\u015f\u00c7\u00e7\u00d6\u00f6\u00dc\u00fc]/g) || []).length
+  return harf > 0 && bozuk / harf < 0.08
+}
+
 export async function evrakOku(file, ilerleme) {
   const rapor = typeof ilerleme === 'function' ? ilerleme : () => {}
   rapor(4, 'Belge açılıyor')
@@ -141,11 +150,11 @@ export async function evrakOku(file, ilerleme) {
     const pdf = await pdfAc(file)
     try {
       const metin = await pdfMetniOku(pdf)
-      if (metin.replace(/\s+/g, '').length >= 120) {
+      if (metin.replace(/\s+/g, '').length >= 120 && pdfMetniAnlamli(metin)) {
         rapor(95, 'Belge metni okundu')
         return { metin, yontem: 'pdf' }
       }
-      rapor(8, 'Taranmış belge, OCR uygulanıyor')
+      rapor(8, 'Belge görsel olarak okunuyor (OCR)')
       return { metin: await ocrOku(await pdfCanvaslari(pdf), rapor), yontem: 'ocr' }
     } finally {
       if (typeof pdf.destroy === 'function') await pdf.destroy()
@@ -198,6 +207,19 @@ export function evrakAnaliz(metin) {
       }
     }
   }
+  if (!sonuc.kurum && sonuc.trafik) {
+    var sehir = null;
+    duzSatirlar.forEach(function (s, i) {
+      if (!sehir) {
+        var e = s.match(/^([A-Z]{4,})\s*[|!]?\s*ADMINISTRATIVE/);
+        if (e) sehir = satirlar[i].substr(0, e[1].length);
+      }
+    });
+    if (sehir && /Ceza\s+Islemleri\s+Buro/i.test(duz)) {
+      var ad = sehir.toLocaleLowerCase("tr");
+      sonuc.kurum = ad.charAt(0).toLocaleUpperCase("tr") + ad.slice(1) + " Ceza İşlemleri Büro Amirliği";
+    }
+  }
   if (!sonuc.kurum) {
     for (var j = 0; j < Math.min(duzSatirlar.length, 15); j++) {
       if (/(MUDURLUGU|BASKANLIGI|MAHKEMESI|SAVCILIGI|BAKANLIGI|KAYMAKAMLIGI|VALILIGI|BELEDIYESI)/i.test(duzSatirlar[j])) {
@@ -209,6 +231,10 @@ export function evrakAnaliz(metin) {
 
   var tarih = duz.match(/Tarihi\s*\(Date\)[^\d]{0,120}(\d{2})[./](\d{2})[./](\d{4})/i);
   if (tarih) sonuc.tarih = tarih[1] + "." + tarih[2] + "." + tarih[3];
+  if (!sonuc.tarih) {
+    var tarih2 = duz.match(/(\d{2})[-.\/](\d{2})[-.\/](20\d{2})\s*[|\]\[!]?\s*\d{2}[:.]\d{2}/);
+    if (tarih2) sonuc.tarih = tarih2[1] + "." + tarih2[2] + "." + tarih2[3];
+  }
 
   var plaka = duz.match(/Plaka\s+No[^\n\d]{0,120}?(\d{2})\s?([A-Z]{1,3})\s?(\d{2,4})\b/i);
   if (plaka) sonuc.plaka = (plaka[1] + plaka[2] + plaka[3]).toUpperCase();
@@ -216,6 +242,10 @@ export function evrakAnaliz(metin) {
   var tutar = duz.match(/Toplam\s+Ceza\s+Tutari[^\d\n]{0,60}?(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?|\d+(?:[.,]\d{1,2})?)/i)
     || duz.match(/Ceza\s+Tutari\s*TL[^\d\n]{0,60}?(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?|\d+(?:[.,]\d{1,2})?)/i);
   if (tutar) sonuc.tutar = sayiyaCevir(tutar[1]);
+  if (!sonuc.tutar) {
+    var tutar2 = duz.match(/Ceza\s+Tutari\s*\(?TL\)?[^\n\d]*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/i);
+    if (tutar2) sonuc.tutar = sayiyaCevir(tutar2[4]);
+  }
 
   var seri = duz.match(/Seri\s+No[^\n]{0,20}?\)\s*([A-Z]{1,4})\b/i);
   var sira = duz.match(/Sira\s+No[^\n]{0,25}?\)\s*(\d{4,})/i);

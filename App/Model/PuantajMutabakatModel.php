@@ -320,6 +320,33 @@ class PuantajMutabakatModel extends Model
         return hash('sha256',json_encode($normalized,JSON_UNESCAPED_UNICODE));
     }
 
+    public function openDifferenceBreakdown(int $firmaId, string $period): array
+    {
+        $stmt=$this->db->prepare('SELECT id FROM puantaj_mutabakat_donem WHERE firma_id=? AND donem=?');
+        $stmt->execute([$firmaId,$period]);
+        $periodId=(int)$stmt->fetchColumn();
+        if ($periodId<=0) return [];
+        [$from,$bind]=$this->differenceScope($firmaId,$periodId,null);
+        $rows=$this->db->prepare("SELECT f.kaynak,f.eski_miktar,f.yeni_miktar,f.eski_payload_json,f.yeni_payload_json $from AND f.durum='acik'");
+        $rows->execute($bind);
+        $labels=['okuma'=>'Endeks Okuma','kesme'=>'Kesme/Açma','sayac'=>'Sayaç Sökme-Takma','muhurleme'=>'Mühürleme'];
+        $groups=[];
+        foreach ($rows->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $name=trim(str_ireplace('ER-SAN ELEKTRİK','',self::describeDifference($row)['kayit']));
+            $key=$row['kaynak'].'|'.$name;
+            $groups[$key]??=['kaynak'=>$labels[$row['kaynak']]??$row['kaynak'],'kayit'=>$name,'adet'=>0,'net'=>0.0];
+            $groups[$key]['adet']++;
+            $groups[$key]['net']+=(float)$row['yeni_miktar']-(float)$row['eski_miktar'];
+        }
+        uasort($groups,static fn(array $a,array $b): int => $b['adet']<=>$a['adet']);
+        $lines=[];
+        foreach ($groups as $g) {
+            $net=rtrim(rtrim(number_format($g['net'],2,',','.'),'0'),',');
+            $lines[]=sprintf('%s · %s: %d fark (net %s)',$g['kaynak'],$g['kayit'],$g['adet'],($g['net']>0?'+':'').$net);
+        }
+        return $lines;
+    }
+
     public function closureBlockReason(int $firmaId, string $startDate, string $endDate): ?string
     {
         $period = substr($startDate, 0, 7);
