@@ -149,6 +149,9 @@ $title = "Evrak Listesi";
                     <button type="button" class="dropdown-item d-flex align-items-center" id="btnDropdownExportExcel">
                         <i class="bx bx-file me-2 font-size-16 text-success"></i> Excel'e Aktar
                     </button>
+                    <button type="button" class="dropdown-item d-flex align-items-center" id="btnDropdownPrint">
+                        <i class="bx bx-printer me-2 font-size-16 text-secondary"></i> Listeyi Yazdır
+                    </button>
                     <div class="dropdown-divider"></div>
                     <?php if ($canUetsYonet): ?>
                     <button type="button" class="dropdown-item d-flex align-items-center" id="btnUetsSync">
@@ -310,12 +313,6 @@ $title = "Evrak Listesi";
                         <i class="bx bx-edit-alt text-secondary font-size-15"></i> <span class="font-size-12">Taslak</span>
                     </button>
                 </div>
-                <button type="button" class="btn btn-sm btn-subtle-success px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderExportExcel" title="Excel'e Aktar">
-                    <i class="bx bx-file font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Excel</span>
-                </button>
-                <button type="button" class="btn btn-sm btn-subtle-secondary px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderPrint" title="Tabloyu Yazdır">
-                    <i class="bx bx-printer font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Yazdır</span>
-                </button>
                 <span class="d-inline-block" data-dt-colman-for="evrakTable" data-dt-colman-style="outline"></span>
             </div>
         </div>

@@ -894,6 +894,23 @@ function openGidenEvrakPdf(doc) {
   })
 }
 
+function openEklerPdf(doc) {
+  if (!doc?.ekler_pdf_url) return
+  openFilePreview({
+    url: doc.ekler_pdf_url,
+    name: `${doc.evrak_no || 'Evrak'}_Ekler.pdf`,
+    mime: 'application/pdf',
+  })
+}
+
+function openCevapPdf(cevap) {
+  openFilePreview({
+    url: cevap.pdf_url,
+    name: `${cevap.evrak_no || 'Cevap'}_Cevap_Yazisi.pdf`,
+    mime: 'application/pdf',
+  })
+}
+
 // E-İmza Onaya Sunma
 async function triggerOnayaSun(doc) {
   if (!confirm(`"${doc.konu}" konulu evrak elektronik imza onayına sunulacak. Devam etmek istiyor musunuz?`)) {
@@ -1616,6 +1633,18 @@ onBeforeUnmount(stopMobileSignTimer)
                 <span>KEP Önizle</span>
               </button>
 
+              <!-- Gelen Evrak ve Ekleri Tek PDF -->
+              <button
+                v-if="item.evrak_tipi === 'gelen' && item.ekler_pdf_url"
+                type="button"
+                class="evrak-preview-pill"
+                title="Evrak ve eklerini tek PDF olarak göster"
+                @click="openEklerPdf(item)"
+              >
+                <FileText :size="14" />
+                <span>PDF</span>
+              </button>
+
               <!-- Normal Giden Evrak ise Resmi Yazı PDF Önizle -->
               <button
                 v-else-if="item.evrak_tipi === 'giden'"
@@ -2063,10 +2092,41 @@ onBeforeUnmount(stopMobileSignTimer)
                 </div>
               </div>
 
+              <div v-if="selectedDetail.cevaplar?.length" class="evrak-detail-section">
+                <span class="evrak-section-label">VERİLEN CEVAP ({{ selectedDetail.cevaplar.length }})</span>
+                <div class="evrak-files-grid">
+                  <div
+                    v-for="cevap in selectedDetail.cevaplar"
+                    :key="cevap.id"
+                    class="evrak-file-tile"
+                    @click="openCevapPdf(cevap)"
+                  >
+                    <div class="evrak-file-icon">
+                      <FileText :size="20" class="text-coral" />
+                    </div>
+                    <div class="evrak-file-meta">
+                      <strong class="truncate">{{ cevap.evrak_no }} · {{ cevap.tarih_formatted }}</strong>
+                      <small class="truncate">{{ cevap.konu }}</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div class="evrak-detail-section">
-                <span class="evrak-section-label">
-                  EKLER ({{ detailAnaEkler.length }}<template v-if="detailTeknikEkler.length"> + {{ detailTeknikEkler.length }} teknik</template>)
-                </span>
+                <div class="evrak-section-header-flex">
+                  <span class="evrak-section-label">
+                    EKLER ({{ detailAnaEkler.length }}<template v-if="detailTeknikEkler.length"> + {{ detailTeknikEkler.length }} teknik</template>)
+                  </span>
+                  <button
+                    v-if="selectedDetail.ekler_pdf_url"
+                    type="button"
+                    class="evrak-preview-pill"
+                    @click="openEklerPdf(selectedDetail)"
+                  >
+                    <FileText :size="13" />
+                    <span>Tümünü Tek PDF Göster</span>
+                  </button>
+                </div>
                 <div v-if="!selectedDetail.attachments?.length" class="evrak-no-files">
                   Ek dosya yüklenmemiş.
                 </div>

@@ -230,8 +230,10 @@ try {
             exit('Geçersiz evrak ID.');
         }
 
-        // Delegate to existing tested pdf.php renderer
         $_GET['id'] = Security::encrypt($id);
+        if (($_GET['birlesik'] ?? '') === '1') {
+            $_GET['type'] = 'ekler_birlesik';
+        }
         require $projectRoot . '/views/evrak-takip/pdf.php';
         exit;
     }
@@ -482,6 +484,8 @@ try {
                 'attachments_teknik_count' => count($attachmentsList) - $anaEkSayisi,
                 'attachments' => $attachmentsList,
                 'pdf_url' => ($row->evrak_tipi === 'giden') ? '/api/evrak.php?action=pdf&id=' . urlencode($encId) : null,
+                'ekler_pdf_url' => ($row->evrak_tipi === 'gelen' && (!empty($row->dosya_yolu) || count($attachmentsList) > 0))
+                    ? '/api/evrak.php?action=pdf&birlesik=1&id=' . urlencode($encId) : null,
             ];
         }
 
@@ -773,6 +777,18 @@ try {
             'imza_kullanici_ids' => array_map(fn($uid) => Security::encrypt((int) $uid), json_decode((string) ($evrak->imza_kullanici_ids ?? '[]'), true) ?: []),
             'attachments' => $attachmentList,
             'pdf_url' => ($evrak->evrak_tipi === 'giden') ? '/api/evrak.php?action=pdf&id=' . urlencode($encId) : null,
+            'ekler_pdf_url' => ($evrak->evrak_tipi === 'gelen' && (!empty($evrak->dosya_yolu) || count($attachmentList) > 0))
+                ? '/api/evrak.php?action=pdf&birlesik=1&id=' . urlencode($encId) : null,
+            'cevaplar' => $isGelen ? array_map(static function (object $c): array {
+                $cEnc = Security::encrypt((int) $c->id);
+                return [
+                    'id' => $cEnc,
+                    'evrak_no' => (string) ($c->evrak_no ?: '-'),
+                    'konu' => (string) ($c->konu ?: ''),
+                    'tarih_formatted' => !empty($c->tarih) ? date('d.m.Y', strtotime((string) $c->tarih)) : '',
+                    'pdf_url' => '/api/evrak.php?action=pdf&id=' . urlencode($cEnc),
+                ];
+            }, $EvrakModel->getCevapYazilari($id)) : [],
         ];
 
         $sevkModel = new \App\Model\EvrakSevkModel();

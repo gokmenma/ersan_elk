@@ -1155,30 +1155,78 @@ $(document).ready(function () {
     }
   });
 
-  // Excel ve Yazdır Butonları
-  $("#btnHeaderExportExcel, #btnDropdownExportExcel").on("click", function () {
-    // Basit ve güvenli HTML tablosundan Excel indirme
-    const table = document.getElementById("evrakTable");
-    if (!table) return;
-    
-    // Geçici klon oluşturarak işlem sütununu çıkart
-    const clone = table.cloneNode(true);
-    $(clone).find("th:last-child, td:last-child").remove();
-    
-    const html = clone.outerHTML;
-    const blob = new Blob(["\ufeff", html], { type: "application/vnd.ms-excel" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "evrak_listesi_" + new Date().toISOString().slice(0, 10) + ".xls";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const EXPORT_BASLIKLAR = ["#", "Tip", "KEP Durumu", "Tarih", "Konu / Evrak No", "Gelen/Giden Kurum", "İşlem Yapan Personel", "Zimmetli (Ofis)", "İlgili Personel", "Cevap", "E-İmza", "Dosya"];
+
+  function hucreMetni(html) {
+    const kap = document.createElement("div");
+    kap.innerHTML = String(html == null ? "" : html);
+    kap.querySelectorAll("style, script, .dropdown-menu").forEach(function (el) { el.remove(); });
+    return (kap.textContent || "").replace(/\s+/g, " ").trim();
+  }
+
+  async function tumSatirlariGetir() {
+    if (!evrakDataTable) throw new Error("Tablo hazır değil.");
+    const temel = evrakDataTable.ajax.params();
+    const satirlar = [];
+    let baslangic = 0;
+    let toplam = null;
+    while (toplam === null || baslangic < toplam) {
+      const istek = Object.assign({}, temel, { start: baslangic, length: 100, draw: 0 });
+      const yanit = await $.ajax({ url: api_url, type: "POST", data: istek, dataType: "json" });
+      toplam = Number(yanit.recordsFiltered) || 0;
+      const veri = yanit.data || [];
+      if (!veri.length) break;
+      veri.forEach(function (satir) {
+        satirlar.push(EXPORT_BASLIKLAR.map(function (_, i) { return hucreMetni(satir[i]); }));
+      });
+      baslangic += veri.length;
+    }
+    return satirlar;
+  }
+
+  function exportDurumGoster(metin) {
+    Swal.fire({ title: metin, allowOutsideClick: false, showConfirmButton: false, didOpen: function () { Swal.showLoading(); } });
+  }
+
+  $(document).on("click", "#btnHeaderExportExcel, #btnDropdownExportExcel", async function () {
+    exportDurumGoster("Excel hazırlanıyor...");
+    try {
+      const satirlar = await tumSatirlariGetir();
+      if (!satirlar.length) { Swal.fire("Bilgi", "Aktarılacak kayıt bulunamadı.", "info"); return; }
+      if (typeof XLSX === "undefined") {
+        await $.ajax({ url: "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js", dataType: "script", cache: true });
+      }
+      const sayfa = XLSX.utils.aoa_to_sheet([EXPORT_BASLIKLAR].concat(satirlar));
+      sayfa["!cols"] = [6, 14, 16, 12, 44, 32, 22, 20, 22, 12, 14, 12].map(function (w) { return { wch: w }; });
+      const kitap = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(kitap, sayfa, "Evrak Listesi");
+      XLSX.writeFile(kitap, "evrak_listesi_" + new Date().toISOString().slice(0, 10) + ".xlsx");
+      Swal.close();
+    } catch (e) {
+      console.error(e);
+      Swal.fire("Hata", "Excel dosyası oluşturulamadı.", "error");
+    }
   });
 
-  $("#btnHeaderPrint").on("click", function () {
-    window.print();
+  $(document).on("click", "#btnHeaderPrint, #btnDropdownPrint", async function () {
+    exportDurumGoster("Liste hazırlanıyor...");
+    try {
+      const satirlar = await tumSatirlariGetir();
+      if (!satirlar.length) { Swal.fire("Bilgi", "Yazdırılacak kayıt bulunamadı.", "info"); return; }
+      const esc = function (v) { return $("<div>").text(v).html(); };
+      const baslik = "<tr>" + EXPORT_BASLIKLAR.map(function (h) { return "<th>" + esc(h) + "</th>"; }).join("") + "</tr>";
+      const govde = satirlar.map(function (s) { return "<tr>" + s.map(function (h) { return "<td>" + esc(h) + "</td>"; }).join("") + "</tr>"; }).join("");
+      const pencere = window.open("", "_blank");
+      if (!pencere) { Swal.fire("Uyarı", "Açılır pencere engellendi. Lütfen izin verin.", "warning"); return; }
+      pencere.document.write('<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Evrak Listesi</title><style>@page{size:A4 landscape;margin:10mm}body{font-family:Arial,sans-serif;font-size:10px;color:#111}h1{font-size:15px;margin:0 0 4px}p{margin:0 0 10px;color:#555}table{width:100%;border-collapse:collapse}th,td{border:1px solid #999;padding:4px 5px;text-align:left;vertical-align:top}th{background:#eee;font-weight:700}thead{display:table-header-group}tr{page-break-inside:avoid}</style></head><body><h1>Evrak Listesi</h1><p>' + esc(new Date().toLocaleString("tr-TR")) + " — " + satirlar.length + ' kayıt</p><table><thead>' + baslik + "</thead><tbody>" + govde + "</tbody></table></body></html>");
+      pencere.document.close();
+      pencere.focus();
+      Swal.close();
+      setTimeout(function () { try { pencere.print(); } catch (e) {} }, 400);
+    } catch (e) {
+      console.error(e);
+      Swal.fire("Hata", "Liste yazdırılamadı.", "error");
+    }
   });
 
   // PDF Önizleme İşlemleri
