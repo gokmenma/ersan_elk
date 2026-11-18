@@ -1336,6 +1336,12 @@ $(document).on("click", ".duzenle", function (e) {
       .then((data) => {
         if (data.status === "success") {
           var d = data.data;
+          $("#demirbasResimOnizleme").attr(
+            "src",
+            d.resim_yolu
+              ? d.resim_yolu
+              : "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23f8f9fa'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='12' fill='%236c757d'>Görsel Yok</text></svg>",
+          );
           for (var key in d) {
             if ($("#" + key).length) {
               if (key === "edinme_tutari" && d[key]) {
