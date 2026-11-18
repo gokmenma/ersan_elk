@@ -3393,25 +3393,37 @@ $(document).on("click", ".btn-cevap-goster", function (e) {
   e.stopPropagation();
   const id = $(this).data("id");
   const esc = function (v) { return $("<div>").text(v == null ? "" : String(v)).html(); };
-  const $body = $("#cevapYazisiBody").html('<div class="text-muted py-3 text-center"><i class="bx bx-loader-alt bx-spin"></i> Yükleniyor...</div>');
-  bootstrap.Modal.getOrCreateInstance(document.getElementById("modalCevapYazisi")).show();
+  const $modal = $("#modalCevapYazisi");
+  const openPdf = function (cevapId) {
+    bootstrap.Modal.getOrCreateInstance($modal[0]).hide();
+    
+    $('<span class="evrak-pdf-goruntule d-none"></span>').data("id", cevapId).appendTo("body").trigger("click").remove();
+  };
   $.post("views/evrak-takip/api.php", { action: "evrak-cevap-yazilari", id: id }, null, "json").done(function (res) {
     if (res.status !== "success") {
-      $body.html('<div class="alert alert-warning mb-0">' + esc(res.message || "Cevap bilgisi alınamadı.") + "</div>");
+      Swal.fire("Hata!", res.message || "Cevap bilgisi alınamadı.", "error");
       return;
     }
     const d = res.data;
+    if (d.cevaplar.length === 1) {
+      openPdf(d.cevaplar[0].id);
+      return;
+    }
     let html = '<div class="bg-light border rounded-3 p-2 mb-3 font-size-13"><strong>Gelen Evrak:</strong> ' + esc(d.evrak_no) + " — " + esc(d.konu) + (d.cevap_tarihi ? ' <span class="text-muted">(Cevap tarihi: ' + esc(d.cevap_tarihi) + ")</span>" : "") + "</div>";
     if (!d.cevaplar.length) {
       html += '<div class="alert alert-light border text-muted mb-0">Bu evrak cevaplandı olarak işaretlenmiş ancak sisteme bağlı bir cevap yazısı bulunamadı.</div>';
     }
     d.cevaplar.forEach(function (c) {
-      html += '<div class="border rounded-3 mb-3"><div class="px-3 py-2 border-bottom bg-light font-size-12 fw-semibold">' +
-        esc(c.evrak_no || "-") + " · " + esc(c.tarih) + " · " + esc(c.kurum_adi) + (c.konu ? "<div class=\"fw-normal text-muted\">" + esc(c.konu) + "</div>" : "") +
-        '</div><div class="p-3 font-size-13">' + (c.metin || '<span class="text-muted">Cevap metni yok.</span>') + "</div></div>";
+      html += '<div class="d-flex justify-content-between align-items-center border rounded-3 p-2 mb-2"><div class="font-size-13"><div class="fw-semibold">' + esc(c.evrak_no || "-") + " · " + esc(c.tarih) + '</div><div class="text-muted font-size-12">' + esc(c.konu) + '</div></div><button type="button" class="btn btn-sm btn-subtle-primary btn-cevap-pdf" data-id="' + esc(c.id) + '"><i class="bx bx-show"></i> PDF</button></div>';
     });
-    $body.html(html);
+    $("#cevapYazisiBody").html(html);
+    bootstrap.Modal.getOrCreateInstance($modal[0]).show();
   }).fail(function () {
-    $body.html('<div class="alert alert-danger mb-0">Cevap bilgisi alınamadı.</div>');
+    Swal.fire("Hata!", "Cevap bilgisi alınamadı.", "error");
   });
+});
+
+$(document).on("click", ".btn-cevap-pdf", function () {
+  bootstrap.Modal.getOrCreateInstance(document.getElementById("modalCevapYazisi")).hide();
+  $('<span class="evrak-pdf-goruntule d-none"></span>').data("id", $(this).data("id")).appendTo("body").trigger("click").remove();
 });

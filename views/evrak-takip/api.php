@@ -1904,6 +1904,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'konu' => (string) ($gelen->konu ?? ''),
                     'cevap_tarihi' => !empty($gelen->cevap_tarihi) ? date('d.m.Y', strtotime($gelen->cevap_tarihi)) : '',
                     'cevaplar' => array_map(static fn(object $r): array => [
+                        'id' => Security::encrypt((int) $r->id),
                         'evrak_no' => (string) ($r->evrak_no ?? ''),
                         'konu' => (string) ($r->konu ?? ''),
                         'kurum_adi' => (string) ($r->kurum_adi ?? ''),
