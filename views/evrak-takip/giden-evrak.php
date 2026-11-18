@@ -851,26 +851,64 @@ window.gidenKepAutoStart = <?php echo $canSendKep && (string) ($_GET['kep_gonder
 </div>
 
 <div class="modal fade" id="evrakAiModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content border-0 shadow">
-        <div class="modal-header"><div><h5 class="modal-title"><i data-feather="zap" class="icon-sm text-primary me-1"></i> Yapay Zekâ ile Evrak Oluştur</h5><div class="small text-muted mt-1">Gelen evrakı inceleyerek resmî cevap taslağı hazırlar.</div></div><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-        <div class="modal-body">
-            <div class="alert alert-info small"><strong>Bilgi:</strong> Oluşturulan taslak doğrudan kaydedilmez. Alanlara aktarıldıktan sonra kontrol edip düzenleyebilirsiniz.</div>
-            <?php if ($cevapAiGelenId !== ''): ?>
-            <div class="alert alert-success small d-flex align-items-start gap-2" id="aiOtomatikGelen" data-gelen-id="<?= htmlspecialchars($cevapAiGelenId, ENT_QUOTES, 'UTF-8'); ?>"><i class="bx bx-file font-size-18"></i><div><strong>Cevaplanan evrak otomatik okunacak:</strong> <?= htmlspecialchars(trim((string) ($cevapGelen->evrak_no ?? '')) . ' — ' . trim((string) ($cevapGelen->konu ?? '')), ENT_QUOTES, 'UTF-8'); ?><div class="text-muted">Dosya yüklemenize gerek yok. Farklı bir belge okutmak isterseniz aşağıdan dosya seçebilirsiniz.</div></div></div>
-            <?php endif; ?>
-            <div class="mb-3"><label for="aiGelenEvrak" class="form-label fw-semibold">Gelen Evrak</label><input type="file" id="aiGelenEvrak" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.webp"><div class="form-text">PDF, JPG, PNG veya WEBP — en fazla 12 MB</div></div>
-            <div class="mb-2 small text-muted">Yazı; belge okunarak türü, dosya numarası ve borçlu/ilgili kişi tespit edilir, kişi personel kayıtlarıyla (T.C. kimlik no ile) eşleştirilir. Kayıtlarda olmayan bilgiler uydurulmaz, köşeli parantezle işaretlenir.</div>
-            <div class="mb-2 d-flex flex-wrap gap-1" id="aiHizliSenaryolar">
-                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-ai-senaryo="Personel şirketimizde halen çalışmaktadır. Haciz müzekkeresi işleme alınmış olup kesintiler yasal sınırlar içinde yapılarak icra dairesi hesabına yatırılacaktır.">Çalışıyor — kesinti yapılacak</button>
-                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-ai-senaryo="Personel şirketimizden ayrılmıştır. Ayrılış tarihini ve varsa ayrılışta yapılacak ödemeler üzerindeki haczi belirt.">Personel ayrıldı</button>
-                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-ai-senaryo="Personel kayıtlarımızda bulunmamaktadır, bu nedenle haciz uygulanamamıştır. Kişi şirketimiz personeli değildir.">Personelimiz değil</button>
-                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-ai-senaryo="Personelin sırada bekleyen başka icra dosyaları bulunduğundan bu dosyadaki kesintiye sıra geldiğinde başlanacaktır.">Sırada bekliyor</button>
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content border-0 shadow">
+        <div class="modal-header py-3">
+            <div class="d-flex align-items-center gap-3">
+                <span class="ai-modal-ikon"><i class="bx bx-bolt-circle"></i></span>
+                <div><h5 class="modal-title mb-0">Yapay Zekâ ile Evrak Oluştur</h5><div class="small text-muted">Gelen evrakı inceleyerek resmî cevap taslağı hazırlar.</div></div>
             </div>
-            <div><label for="aiTalimat" class="form-label fw-semibold">Ek talimat <span class="text-muted fw-normal">(isteğe bağlı)</span></label><textarea id="aiTalimat" class="form-control" rows="5" maxlength="4000" placeholder="Boş bırakırsanız belgenin talebine ve personel kayıtlarına göre cevap hazırlanır. Örnek: Kesintiye bu ay başlanacağını belirt."></textarea></div>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
         </div>
-        <div class="modal-footer justify-content-between"><button type="button" id="btnAiTemizle" class="btn btn-outline-secondary"><i class="bx bx-refresh me-1"></i> Temizle</button><div><button type="button" class="btn btn-light me-1" data-bs-dismiss="modal">Vazgeç</button><button type="button" id="btnAiTaslakOlustur" class="btn btn-primary px-4"><i data-feather="zap" class="icon-xs me-1"></i> Taslağı Oluştur</button></div></div>
+        <div class="modal-body p-4">
+            <div class="ai-adim">
+                <div class="ai-adim-baslik"><span class="ai-adim-no">1</span> Kaynak belge</div>
+                <?php if ($cevapAiGelenId !== ''): ?>
+                <div class="ai-kaynak-kart" id="aiOtomatikGelen" data-gelen-id="<?= htmlspecialchars($cevapAiGelenId, ENT_QUOTES, 'UTF-8'); ?>">
+                    <span class="ai-kaynak-ikon"><i class="bx bx-file"></i></span>
+                    <div class="flex-grow-1" style="min-width:0">
+                        <div class="fw-semibold text-truncate" title="<?= htmlspecialchars(trim((string) ($cevapGelen->evrak_no ?? '')) . ' — ' . trim((string) ($cevapGelen->konu ?? '')), ENT_QUOTES, 'UTF-8'); ?>"><?= htmlspecialchars(trim((string) ($cevapGelen->evrak_no ?? '')) . ' — ' . trim((string) ($cevapGelen->konu ?? '')), ENT_QUOTES, 'UTF-8'); ?></div>
+                        <div class="small text-muted">Cevaplanan evrak otomatik okunacak, dosya yüklemenize gerek yok.</div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-link text-decoration-none flex-shrink-0" id="btnAiFarkliBelge">Farklı belge seç</button>
+                </div>
+                <?php endif; ?>
+                <div id="aiDosyaAlani" class="<?= $cevapAiGelenId !== '' ? 'd-none mt-2' : ''; ?>">
+                    <input type="file" id="aiGelenEvrak" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.webp">
+                    <div class="form-text">PDF, JPG, PNG veya WEBP — en fazla 12 MB</div>
+                </div>
+            </div>
+            <div class="ai-adim">
+                <div class="ai-adim-baslik"><span class="ai-adim-no">2</span> Cevabın yönü <span class="text-muted fw-normal">(isteğe bağlı)</span></div>
+                <div class="mb-2 d-flex flex-wrap gap-2" id="aiHizliSenaryolar">
+                    <button type="button" class="ai-chip" data-ai-senaryo="Personel şirketimizde halen çalışmaktadır. Haciz müzekkeresi işleme alınmış olup kesintiler yasal sınırlar içinde yapılarak icra dairesi hesabına yatırılacaktır."><i class="bx bx-user-check"></i> Çalışıyor — kesinti yapılacak</button>
+                    <button type="button" class="ai-chip" data-ai-senaryo="Personel şirketimizden ayrılmıştır. Ayrılış tarihini ve varsa ayrılışta yapılacak ödemeler üzerindeki haczi belirt."><i class="bx bx-log-out"></i> Personel ayrıldı</button>
+                    <button type="button" class="ai-chip" data-ai-senaryo="Personel kayıtlarımızda bulunmamaktadır, bu nedenle haciz uygulanamamıştır. Kişi şirketimiz personeli değildir."><i class="bx bx-user-x"></i> Personelimiz değil</button>
+                    <button type="button" class="ai-chip" data-ai-senaryo="Personelin sırada bekleyen başka icra dosyaları bulunduğundan bu dosyadaki kesintiye sıra geldiğinde başlanacaktır."><i class="bx bx-time-five"></i> Sırada bekliyor</button>
+                </div>
+                <textarea id="aiTalimat" class="form-control" rows="4" maxlength="4000" placeholder="Boş bırakırsanız belgenin talebine ve personel kayıtlarına göre cevap hazırlanır. Örnek: Kesintiye bu ay başlanacağını belirt."></textarea>
+                <div class="d-flex justify-content-between small text-muted mt-1"><span>Hazır seçeneklere tıklayınca metin eklenir; düzenleyebilirsiniz.</span><span id="aiTalimatSayac">0 / 4000</span></div>
+            </div>
+            <div class="ai-not"><i class="bx bx-info-circle"></i><span>Belge okunarak tür, dosya numarası ve borçlu/ilgili kişi tespit edilir; kişi T.C. kimlik no ile personel kayıtlarıyla eşleştirilir. Kayıtlarda olmayan bilgiler uydurulmaz, köşeli parantezle işaretlenir. Taslak doğrudan kaydedilmez; alanlara aktarıldıktan sonra kontrol edip düzenleyebilirsiniz.</span></div>
+        </div>
+        <div class="modal-footer justify-content-between"><button type="button" id="btnAiTemizle" class="btn btn-link text-muted text-decoration-none"><i class="bx bx-refresh me-1"></i> Temizle</button><div><button type="button" class="btn btn-light me-1" data-bs-dismiss="modal">Vazgeç</button><button type="button" id="btnAiTaslakOlustur" class="btn btn-primary px-4"><i data-feather="zap" class="icon-xs me-1"></i> Taslağı Oluştur</button></div></div>
     </div></div>
 </div>
+<style>
+    #evrakAiModal .ai-modal-ikon { width: 44px; height: 44px; border-radius: 12px; background: #eef2f6; color: #475569; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
+    #evrakAiModal .ai-adim { margin-bottom: 1.25rem; }
+    #evrakAiModal .ai-adim-baslik { font-weight: 700; font-size: 13px; margin-bottom: .6rem; display: flex; align-items: center; gap: 8px; }
+    #evrakAiModal .ai-adim-no { width: 22px; height: 22px; border-radius: 50%; background: #475569; color: #fff; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; }
+    #evrakAiModal .ai-kaynak-kart { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid #bbf7d0; background: #f0fdf4; border-radius: 12px; }
+    #evrakAiModal .ai-kaynak-ikon { width: 36px; height: 36px; border-radius: 10px; background: #dcfce7; color: #15803d; display: inline-flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+    #evrakAiModal .ai-chip { border: 1px solid #e2e8f0; background: #fff; color: #334155; border-radius: 999px; padding: 6px 12px; font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px; transition: background .15s, border-color .15s; }
+    #evrakAiModal .ai-chip:hover { background: #f1f5f9; border-color: #cbd5e1; }
+    #evrakAiModal .ai-chip.aktif { background: #475569; border-color: #475569; color: #fff; }
+    #evrakAiModal .ai-not { display: flex; gap: 8px; padding: 10px 12px; border-radius: 10px; background: #f8fafc; border: 1px solid #eef2f6; font-size: 12px; color: #64748b; }
+    #evrakAiModal .ai-not i { font-size: 16px; margin-top: 1px; }
+    html[data-theme-preset="macos-dark"] #evrakAiModal .ai-chip, body[data-layout-mode="dark"] #evrakAiModal .ai-chip { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.12); color: #e2e8f0; }
+    html[data-theme-preset="macos-dark"] #evrakAiModal .ai-not, body[data-layout-mode="dark"] #evrakAiModal .ai-not { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.08); }
+    html[data-theme-preset="macos-dark"] #evrakAiModal .ai-kaynak-kart, body[data-layout-mode="dark"] #evrakAiModal .ai-kaynak-kart { background: rgba(34,197,94,.08); border-color: rgba(34,197,94,.25); }
+</style>
 
 <div class="modal fade no-upgrade" id="gidenPdfModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered"><div class="modal-content border-0 shadow">

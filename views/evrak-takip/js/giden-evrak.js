@@ -772,15 +772,29 @@ $(document).ready(function () {
       });
   });
 
+  const aiSayacGuncelle = function () {
+    $("#aiTalimatSayac").text($("#aiTalimat").val().length + " / 4000");
+  };
   $("#aiHizliSenaryolar").on("click", "[data-ai-senaryo]", function () {
     const metin = $(this).data("ai-senaryo");
     const alan = $("#aiTalimat");
     alan.val(alan.val().trim() ? alan.val().trim() + "\n" + metin : metin).trigger("focus");
+    $(this).addClass("aktif");
+    aiSayacGuncelle();
+  });
+  $("#aiTalimat").on("input", aiSayacGuncelle);
+  $("#btnAiFarkliBelge").on("click", function () {
+    $("#aiDosyaAlani").toggleClass("d-none");
+  });
+  $("#aiTalimat").on("keydown", function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") $("#btnAiTaslakOlustur").trigger("click");
   });
 
   $("#btnAiTemizle").on("click", function () {
     $("#aiGelenEvrak").val("");
     $("#aiTalimat").val("");
+    $("#aiHizliSenaryolar .ai-chip").removeClass("aktif");
+    aiSayacGuncelle();
   });
 
   $("#btnFormuTemizle").on("click", function () {
