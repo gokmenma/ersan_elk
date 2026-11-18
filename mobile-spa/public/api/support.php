@@ -196,7 +196,11 @@ try {
         $status = (string) ($input['status'] ?? '');
         if (!$conversation || !in_array($status, ['acik', 'beklemede', 'cozuldu', 'kapali'], true)) supportResponse(['success' => false, 'message' => 'Geçersiz konuşma veya durum.'], 422);
         $model->updateStatus($id, $status);
-        if (in_array($status, ['cozuldu', 'kapali'], true)) $model->sendSystemMessage($id, '✅ Konuşma kapatıldı. İyi günler dileriz!');
+        if (in_array($status, ['cozuldu', 'kapali'], true)) {
+            $closerName = trim((string) ($_SESSION['user']->adi_soyadi ?? $_SESSION['user']->user_name ?? 'Yönetici'));
+            $closeVerb = $status === 'cozuldu' ? 'çözüldü olarak işaretlendi' : 'kapatıldı';
+            $model->sendSystemMessage($id, '✅ Konuşma ' . $closerName . ' (yönetici) tarafından ' . $closeVerb . '. İyi günler dileriz!');
+        }
         supportResponse(['success' => true]);
     }
 

@@ -4694,7 +4694,7 @@ try {
             }
 
             $DestekModel->updateStatus($konusmaId, 'kapali');
-            $DestekModel->sendSystemMessage($konusmaId, '✅ Konuşma kapatıldı. İyi günler dileriz!');
+            $DestekModel->sendSystemMessage($konusmaId, '🔒 Konuşma ' . trim((string) ($personel->adi_soyadi ?? 'Personel')) . ' (personel) tarafından kapatıldı.');
 
             response(true, null, 'Konuşma kapatıldı');
             break;
@@ -4719,9 +4719,9 @@ try {
             $DestekModel->updateStatus($konusmaId, $durum);
 
             if ($durum === 'cozuldu') {
-                $DestekModel->sendSystemMessage($konusmaId, '✅ Konuşma personel tarafından çözüldü olarak işaretlendi.');
+                $DestekModel->sendSystemMessage($konusmaId, '✅ Konuşma ' . trim((string) ($personel->adi_soyadi ?? 'Personel')) . ' (personel) tarafından çözüldü olarak işaretlendi.');
             } else {
-                $DestekModel->sendSystemMessage($konusmaId, '🔒 Konuşma personel tarafından kapatıldı.');
+                $DestekModel->sendSystemMessage($konusmaId, '🔒 Konuşma ' . trim((string) ($personel->adi_soyadi ?? 'Personel')) . ' (personel) tarafından kapatıldı.');
             }
 
             response(true, null, $durum === 'cozuldu' ? 'Konuşma çözüldü' : 'Konuşma kapatıldı');

@@ -206,7 +206,9 @@ try {
 
             // Kapanma mesajı gönder
             if ($durum === 'cozuldu' || $durum === 'kapali') {
-                $destekModel->sendSystemMessage($konusmaId, '✅ Konuşma kapatıldı. İyi günler dileriz!');
+                $kapatanAdi = trim((string) ($_SESSION['user']->adi_soyadi ?? $_SESSION['user']->user_name ?? 'Yönetici'));
+                $kapatmaFiili = $durum === 'cozuldu' ? 'çözüldü olarak işaretlendi' : 'kapatıldı';
+                $destekModel->sendSystemMessage($konusmaId, '✅ Konuşma ' . $kapatanAdi . ' (yönetici) tarafından ' . $kapatmaFiili . '. İyi günler dileriz!');
             }
 
             echo json_encode(['status' => 'success']);

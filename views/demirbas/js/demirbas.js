@@ -3391,6 +3391,31 @@ $(document).on("click", ".kaskiye-detay-btn", function (e) {
       Swal.fire("Hata!", "Veri çekilirken bir hata oluştu.", "error");
     });
 });
+$(document).on("click", ".demirbas-img-thumb", function (e) {
+  e.preventDefault();
+  e.stopPropagation();
+  var src = $(this).attr("src");
+  if (!src) return;
+  var name = $(this).closest("tr").find("td:nth-child(5)").text().trim();
+  $("#demirbasImgLightbox").remove();
+  var $box = $(
+    '<div id="demirbasImgLightbox" style="position:fixed;inset:0;z-index:20000;background:rgba(15,23,42,.82);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;cursor:zoom-out;">' +
+      '<button type="button" aria-label="Kapat" style="position:absolute;top:16px;right:20px;width:40px;height:40px;border:0;border-radius:50%;background:#fff;font-size:22px;line-height:1;cursor:pointer;">&times;</button>' +
+      '<img alt="" style="max-width:92vw;max-height:80vh;object-fit:contain;border-radius:8px;box-shadow:0 10px 40px rgba(0,0,0,.5);background:#fff;">' +
+      '<div class="demirbas-lightbox-title" style="margin-top:12px;color:#fff;font-weight:600;font-size:15px;text-align:center;"></div>' +
+      "</div>",
+  );
+  $box.find("img").attr("src", src).attr("alt", name || "Demirbaş görseli");
+  $box.find(".demirbas-lightbox-title").text(name);
+  $box.on("click", function () {
+    $box.remove();
+  });
+  $("body").append($box);
+});
+$(document).on("keydown", function (e) {
+  if (e.key === "Escape") $("#demirbasImgLightbox").remove();
+});
+
 // ============== DEMİRBAŞ İŞLEM GEÇMİŞİ ==============
 var gecmisDemirbasId = 0;
 $(document).on("click", ".demirbas-gecmis", function (e) {
