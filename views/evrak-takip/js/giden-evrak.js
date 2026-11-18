@@ -235,12 +235,38 @@ $(document).ready(function () {
   const ilgiEscape = (v) => $("<div>").text(v == null ? "" : String(v)).html();
   const ilgiSatirlari = () => $("#ilgiler").val().split("\n").map(l => l.trim()).filter(l => l !== "");
 
+  function ilgiMetni(evrakNo, tarih, kurum, yedek) {
+    if (tarih && evrakNo) return kurum ? `${tarih} tarihli ve ${kurum}'nın ${evrakNo} sayılı yazısı.` : `${tarih} tarihli ve ${evrakNo} sayılı yazınız.`;
+    if (tarih) return `${tarih} tarihli yazınız.`;
+    if (evrakNo) return `${evrakNo} sayılı yazınız.`;
+    return yedek || "";
+  }
+
+  const ilgiEvrakHaritasi = {};
+  ilgiGelenSelect.find("option").each(function () {
+    const o = $(this);
+    if (!o.val()) return;
+    const metin = ilgiMetni((o.data("no") || "").toString().trim(), (o.data("tarih") || "").toString().trim(), (o.data("kurum") || "").toString().trim(), o.text().trim());
+    if (metin && !ilgiEvrakHaritasi[metin]) ilgiEvrakHaritasi[metin] = o.val();
+  });
+
+  function ilgiYaz(lines) {
+    $("#ilgiler").val(lines.join("\n")).trigger("input").trigger("change");
+  }
+
   function ilgiListeCiz() {
     const lines = ilgiSatirlari();
     $("#ilgiSayisi").text(lines.length + " ilgi");
     $("#ilgiListe").html(lines.map(function (line, i) {
-      return '<div class="ilgi-satir"><span class="ilgi-harf">' + ilgiHarf(i).replace(")", "") + '</span><span class="ilgi-metin">' + ilgiEscape(line) +
-        '</span><button type="button" class="ilgi-sil" data-index="' + i + '" title="Kaldır"><i class="bx bx-x"></i></button></div>';
+      const evrakId = ilgiEvrakHaritasi[line];
+      const pdfBtn = evrakId
+        ? '<button type="button" class="ilgi-pdf" data-id="' + ilgiEscape(evrakId) + '" title="Bu ilgi evrakını PDF olarak göster"><i class="bx bxs-file-pdf"></i></button>'
+        : "";
+      return '<div class="ilgi-satir" draggable="true" data-index="' + i + '"><span class="ilgi-tut" title="Sıralamak için sürükleyin"><i class="bx bx-grid-vertical"></i></span>' +
+        '<span class="ilgi-harf">' + ilgiHarf(i).replace(")", "") + '</span><span class="ilgi-metin">' + ilgiEscape(line) + '</span>' + pdfBtn +
+        '<span class="ilgi-sira-btn"><button type="button" class="ilgi-yukari" data-index="' + i + '" title="Yukarı taşı"' + (i === 0 ? " disabled" : "") + '><i class="bx bx-chevron-up"></i></button>' +
+        '<button type="button" class="ilgi-asagi" data-index="' + i + '" title="Aşağı taşı"' + (i === lines.length - 1 ? " disabled" : "") + '><i class="bx bx-chevron-down"></i></button></span>' +
+        '<button type="button" class="ilgi-sil" data-index="' + i + '" title="Kaldır"><i class="bx bx-x"></i></button></div>';
     }).join(""));
   }
 
@@ -248,15 +274,55 @@ $(document).ready(function () {
     const lines = ilgiSatirlari();
     if (!text || lines.includes(text)) return false;
     lines.push(text);
-    $("#ilgiler").val(lines.join("\n")).trigger("input").trigger("change");
+    ilgiYaz(lines);
     return true;
+  }
+
+  function ilgiTasi(from, to) {
+    const lines = ilgiSatirlari();
+    if (from === to || from < 0 || to < 0 || from >= lines.length || to >= lines.length) return;
+    lines.splice(to, 0, lines.splice(from, 1)[0]);
+    ilgiYaz(lines);
   }
 
   $("#ilgiler").on("input change", ilgiListeCiz);
   $(document).on("click", ".ilgi-sil", function () {
     const lines = ilgiSatirlari();
     lines.splice(parseInt($(this).data("index"), 10), 1);
-    $("#ilgiler").val(lines.join("\n")).trigger("input").trigger("change");
+    ilgiYaz(lines);
+  });
+  $(document).on("click", ".ilgi-yukari", function () {
+    const i = parseInt($(this).data("index"), 10);
+    ilgiTasi(i, i - 1);
+  });
+  $(document).on("click", ".ilgi-asagi", function () {
+    const i = parseInt($(this).data("index"), 10);
+    ilgiTasi(i, i + 1);
+  });
+  $(document).on("click", ".ilgi-pdf", function () {
+    requestPdf({ url: "views/evrak-takip/pdf.php?type=ekler_birlesik&id=" + encodeURIComponent($(this).data("id")), type: "GET" });
+  });
+
+  let ilgiSurukleIndex = null;
+  $("#ilgiListe").on("dragstart", ".ilgi-satir", function (e) {
+    ilgiSurukleIndex = parseInt($(this).data("index"), 10);
+    $(this).addClass("ilgi-surukleniyor");
+    e.originalEvent.dataTransfer.effectAllowed = "move";
+    e.originalEvent.dataTransfer.setData("text/plain", String(ilgiSurukleIndex));
+  }).on("dragover", ".ilgi-satir", function (e) {
+    if (ilgiSurukleIndex === null) return;
+    e.preventDefault();
+    $("#ilgiListe .ilgi-satir").removeClass("ilgi-hedef");
+    $(this).addClass("ilgi-hedef");
+  }).on("drop", ".ilgi-satir", function (e) {
+    e.preventDefault();
+    const hedef = parseInt($(this).data("index"), 10);
+    const kaynak = ilgiSurukleIndex;
+    ilgiSurukleIndex = null;
+    if (kaynak !== null) ilgiTasi(kaynak, hedef);
+  }).on("dragend", ".ilgi-satir", function () {
+    ilgiSurukleIndex = null;
+    $("#ilgiListe .ilgi-satir").removeClass("ilgi-surukleniyor ilgi-hedef");
   });
   ilgiListeCiz();
 
@@ -288,16 +354,7 @@ $(document).ready(function () {
     const tarih = (selectedOpt.data("tarih") || "").toString().trim();
     const kurum = (selectedOpt.data("kurum") || "").toString().trim();
 
-    let formattedText = "";
-    if (tarih && evrakNo) {
-      formattedText = kurum ? `${tarih} tarihli ve ${kurum}'nın ${evrakNo} sayılı yazısı.` : `${tarih} tarihli ve ${evrakNo} sayılı yazınız.`;
-    } else if (tarih) {
-      formattedText = `${tarih} tarihli yazınız.`;
-    } else if (evrakNo) {
-      formattedText = `${evrakNo} sayılı yazınız.`;
-    } else {
-      formattedText = selectedOpt.text().trim();
-    }
+    const formattedText = ilgiMetni(evrakNo, tarih, kurum, selectedOpt.text().trim());
 
     $("#ilgili_evrak_id").val(ilgiGelenSelect.val());
     const eklendi = ilgiEkle(formattedText);

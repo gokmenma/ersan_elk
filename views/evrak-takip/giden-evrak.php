@@ -697,6 +697,16 @@ if ($canSendKep || $gonderimKanali === 'kep') {
     .ilgi-satir { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border: 1px solid var(--bs-border-color, #e3e6ef); border-radius: 10px; background: var(--bs-body-bg, #fff); }
     .ilgi-harf { flex: 0 0 24px; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; background: var(--bs-primary-bg-subtle, #e7ebff); color: var(--bs-primary, #556ee6); }
     .ilgi-metin { flex: 1; min-width: 0; font-size: 12.5px; line-height: 1.4; word-break: break-word; }
+    .ilgi-satir { align-items: center; }
+    .ilgi-tut { flex: 0 0 auto; cursor: grab; color: #94a3b8; font-size: 18px; line-height: 1; }
+    .ilgi-pdf { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; border: 0; background: #fee2e2; color: #dc2626; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; padding: 0; }
+    .ilgi-pdf:hover { background: #dc2626; color: #fff; }
+    .ilgi-sira-btn { flex: 0 0 auto; display: inline-flex; flex-direction: column; }
+    .ilgi-sira-btn button { border: 0; background: transparent; color: #64748b; padding: 0; line-height: 1; font-size: 16px; }
+    .ilgi-sira-btn button:hover:not(:disabled) { color: #0f172a; }
+    .ilgi-sira-btn button:disabled { opacity: .3; cursor: default; }
+    .ilgi-surukleniyor { opacity: .45; }
+    .ilgi-hedef { border-color: #475569 !important; box-shadow: 0 0 0 2px rgba(71,85,105,.25); }
     .ilgi-sil { flex: 0 0 auto; border: 0; background: transparent; color: var(--bs-danger, #f46a6a); padding: 0 2px; line-height: 1; font-size: 18px; }
     .ilgi-ekle-kutu { padding: 10px; border: 1px dashed var(--bs-border-color, #ced4da); border-radius: 10px; background: var(--bs-tertiary-bg, #f8f9fb); }
     .ilgi-opt-baslik { font-weight: 600; font-size: 12.5px; }
