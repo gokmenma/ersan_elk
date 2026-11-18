@@ -185,6 +185,50 @@ try {
         exit;
     }
 
+    if ($downloadType === 'ekler_birlesik') {
+        $birlesikId = (int) Security::decrypt((string) ($_GET['id'] ?? ''));
+        $gelenEvrak = $birlesikId > 0 ? $model->getById($birlesikId) : false;
+        if (!$gelenEvrak || ($gelenEvrak->evrak_tipi ?? '') !== 'gelen') {
+            throw new RuntimeException('Evrak bulunamadı.');
+        }
+        if (\App\Model\EvrakSevkModel::isRestricted($gelenEvrak) && !(new \App\Model\EvrakSevkModel())->canViewMesaj(
+            (new \App\Model\UetsMesajModel())->getById((int) ($gelenEvrak->uets_mesaj_id ?? 0), $firmaId)
+        )) {
+            throw new RuntimeException('Bu evrakı görüntüleme yetkiniz yok.');
+        }
+        $parcalar = $model->getBirlesikEkParcalari($birlesikId);
+        if ($parcalar === []) {
+            throw new RuntimeException('Birleştirilecek PDF veya görsel ek bulunamadı.');
+        }
+        $geciciDosyalar = [];
+        try {
+            $ekYollari = [];
+            foreach ($parcalar as $i => $parca) {
+                $uzanti = ['application/pdf' => 'pdf', 'image/jpeg' => 'jpg', 'image/png' => 'png', 'image/gif' => 'gif'][$parca['mime']];
+                $gecici = sys_get_temp_dir() . '/ekbirlesik_' . bin2hex(random_bytes(8)) . '.' . $uzanti;
+                file_put_contents($gecici, $parca['icerik']);
+                $geciciDosyalar[] = $gecici;
+                $ekYollari[] = ['path' => $gecici, 'name' => $parca['ad'], 'type' => $parca['mime']];
+            }
+            $birlesikPdf = (new EvrakPdfService())->render((object) [
+                'evrak_no' => $gelenEvrak->evrak_no,
+                'konu' => $gelenEvrak->konu,
+                'ust_yazi_gerekli_degil' => 1,
+                'ek_dosya_yollari' => $ekYollari,
+            ]);
+        } finally {
+            foreach ($geciciDosyalar as $gecici) {
+                @unlink($gecici);
+            }
+        }
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: inline; filename="evrak-ekleri.pdf"');
+        header('Content-Length: ' . strlen($birlesikPdf));
+        header('Cache-Control: private, no-store, max-age=0');
+        echo $birlesikPdf;
+        exit;
+    }
+
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $personelId = (int) ($_POST['personel_id'] ?? 0);
         $ilgiliPersonelId = (int) ($_POST['ilgili_personel_id'] ?? 0);

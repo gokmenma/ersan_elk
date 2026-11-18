@@ -1054,7 +1054,56 @@ class EvrakTakipModel extends Model
         return null;
     }
 
-    private function imzaliPaketPdfCikar(string $icerik): ?string
+    public function getBirlesikEkParcalari(int $evrakId): array
+    {
+        $evrak = $evrakId > 0 ? $this->getById($evrakId) : false;
+        if (!$evrak) {
+            return [];
+        }
+        $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
+        $adaylar = [];
+        if (!empty($evrak->dosya_yolu)) {
+            $adaylar[] = ['yol' => (string) $evrak->dosya_yolu, 'ad' => basename((string) $evrak->dosya_yolu)];
+        }
+        foreach ($this->getAttachments($evrakId) as $ek) {
+            $adaylar[] = ['yol' => (string) $ek->dosya_yolu, 'ad' => (string) $ek->dosya_adi];
+        }
+        $kok = realpath(dirname(__DIR__, 2) . '/uploads');
+        $sevk = new EvrakSevkModel();
+        $gorulen = [];
+        $parcalar = [];
+        foreach ($adaylar as $aday) {
+            $yol = ltrim(str_replace('\\', '/', $aday['yol']), '/');
+            if ($yol === '' || isset($gorulen[$yol]) || !str_starts_with($yol, 'uploads/') || !$kok) {
+                continue;
+            }
+            $gorulen[$yol] = true;
+            $gercek = realpath(dirname(__DIR__, 2) . '/' . $yol);
+            if (!$gercek || !is_file($gercek) || !str_starts_with($gercek, $kok . DIRECTORY_SEPARATOR)
+                || !$this->fileBelongsToFirm($yol, $firmaId) || !$sevk->canViewFilePath($yol, $firmaId)) {
+                continue;
+            }
+            $ham = (string) file_get_contents($gercek);
+            try {
+                $icerik = \App\Helper\Security::decryptFile($ham);
+            } catch (\Throwable $e) {
+                $icerik = $ham;
+            }
+            $mime = (string) (new \finfo(FILEINFO_MIME_TYPE))->buffer($icerik);
+            if (!in_array($mime, ['application/pdf', 'image/jpeg', 'image/png', 'image/gif'], true)) {
+                $gomulu = $this->imzaliPaketPdfCikar($icerik);
+                if ($gomulu === null) {
+                    continue;
+                }
+                $icerik = $gomulu;
+                $mime = 'application/pdf';
+            }
+            $parcalar[] = ['icerik' => $icerik, 'mime' => $mime, 'ad' => $aday['ad']];
+        }
+        return $parcalar;
+    }
+
+    public function imzaliPaketPdfCikar(string $icerik): ?string
     {
         if ($icerik === '' || $icerik[0] !== "\x30") {
             return null;

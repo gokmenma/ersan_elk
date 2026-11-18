@@ -63,8 +63,14 @@ $(document).ready(function () {
       if (item.type !== "primary") removeButton.appendTo(actions);
       card.append(icon, info, actions).appendTo(list);
     });
+    const mevcutVar = gelenDosyalar.some(item => item.type === "existing" || item.type === "primary");
+    $("#btnEkleriPdfGoster").toggleClass("d-none", !mevcutVar || !$("#evrak_id").val());
     gelenDosyaAlanlariniGuncelle();
   }
+
+  $("#btnEkleriPdfGoster").on("click", function () {
+    showPdfFromRequest({ type: "GET", data: { type: "ekler_birlesik", id: $("#evrak_id").val() } }, false);
+  });
 
   $("#gelenEkDosyalari").on("change", function () {
     Array.from(this.files || []).forEach(file => {
