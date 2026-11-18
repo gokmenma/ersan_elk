@@ -179,11 +179,195 @@ if (!empty($aparatKatIds)) {
     <?php include 'layouts/breadcrumb.php'; ?>
     <!-- end page title -->
 
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <div class="d-flex flex-wrap align-items-center gap-3">
+<?php
+$serviseAdet = (int) array_sum(array_column($kategoriEnvanteri, 'serviste'));
+$hurdaAdet = (int) array_sum(array_column($kategoriEnvanteri, 'hurda'));
+$servisHurdaAdet = $serviseAdet + $hurdaAdet;
+?>
+<script>try { document.documentElement.classList.toggle('demirbas-summary-hidden', localStorage.getItem('demirbas_summary_cards_state') === 'hidden'); } catch (e) {}</script>
+<style>
+#summaryCardsContainer { overflow: hidden; max-height: 1100px; opacity: 1; transition: max-height .3s ease, opacity .3s ease, margin .3s ease; }
+.demirbas-summary-hidden #summaryCardsContainer { max-height: 0 !important; opacity: 0; margin-top: 0 !important; margin-bottom: 0 !important; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { #summaryCardsContainer { transition: none; } }
+</style>
+    <div class="row align-items-center mb-3">
+        <div class="col-md-4 col-12 d-flex align-items-center gap-3">
+            <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 44px; height: 44px;">
+                <i class="bx bx-cube fs-4 text-primary"></i>
+            </div>
+            <div>
+                <h4 class="mb-0 fw-bold text-dark font-size-16">Demirbaşlar</h4>
+                <p class="text-muted mb-0 font-size-12">Demirbaş envanteri, stok ve zimmet durumu</p>
+            </div>
+        </div>
+                        <div class="personel-action-toolbar col-md-8 col-12 d-flex align-items-center justify-content-md-end flex-wrap gap-2 mt-2 mt-md-0">
+                            <div class="dropdown">
+                                <button
+                                    class="btn btn-outline-secondary bg-white top-action-btn dropdown-toggle shadow-sm"
+                                    type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bx bx-cog font-size-16 text-primary"></i> İşlemler
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0">
+                                    <li>
+                                        <a class="dropdown-item py-2" href="javascript:void(0);" id="exportExcel">
+                                            <i class="bx bx-spreadsheet me-2 text-success fs-5"></i> Excel'e Aktar
+                                        </a>
+                                    </li>
+                                    <li id="importExcelLi"
+                                        class="<?php echo $activeTab !== 'demirbas' ? 'd-none' : ''; ?>">
+                                        <a class="dropdown-item py-2" href="javascript:void(0);" id="importExcel">
+                                            <i class="bx bx-upload me-2 text-primary fs-5"></i> Excel'den Yükle
+                                        </a>
+                                    </li>
+                                    <li id="hurdaIadeLi" class="<?php echo $activeTab !== 'depo' ? 'd-none' : ''; ?>">
+                                        <hr class="dropdown-divider">
+                                    </li>
+                                    <li id="hurdaIadeButonLi"
+                                        class="<?php echo $activeTab !== 'depo' ? 'd-none' : ''; ?>">
+                                        <a class="dropdown-item py-2 fw-bold" href="javascript:void(0);"
+                                            id="btnHurdaSayacIade" style="color: #ef4444;">
+                                            <i class="bx bx-recycle me-2 fs-5" style="color: #ef4444;"></i> Hurda Sayaç
+                                            İade Al
+                                        </a>
+                                    </li>
+                                    <?php if (Gate::allows('demirbas_toplu_islem_sil')): ?>
+                                        <li id="zimmetIslemlerDivider"
+                                            class="<?php echo $activeTab !== 'zimmet' ? 'd-none' : ''; ?>">
+                                            <hr class="dropdown-divider">
+                                        </li>
+                                        <li id="topluIadeLi" class="<?php echo $activeTab !== 'zimmet' ? 'd-none' : ''; ?>">
+                                            <a class="dropdown-item py-2 text-info fw-bold" href="javascript:void(0);"
+                                                id="btnTopluIadeAl">
+                                                <i class="bx bx-undo me-2 text-info fs-5"></i> Toplu İade Al
+                                            </a>
+                                        </li>
+                                        <li id="topluZimmetSilLi"
+                                            class="<?php echo $activeTab !== 'zimmet' ? 'd-none' : ''; ?>">
+                                            <a class="dropdown-item py-2 text-danger fw-bold" href="javascript:void(0);"
+                                                id="btnTopluZimmetSil">
+                                                <i class="bx bx-trash me-2 text-danger fs-5"></i> Toplu Zimmet Sil
+                                            </a>
+                                        </li>
+
+                                        <li id="topluDemirbasSilLi" class="d-none">
+                                            <a class="dropdown-item py-2 text-danger fw-bold" href="javascript:void(0);"
+                                                id="btnTopluDemirbasSil">
+                                                <i class="bx bx-trash me-2 text-danger fs-5"></i> Seçilileri Sil
+                                            </a>
+                                        </li>
+                                    <?php endif; ?>
+                                </ul>
+                            </div>
+
+                            <!-- Tab Bağımlı Ana Butonlar -->
+                            <button type="button" id="btnYeniDemirbas"
+                                class="btn btn-primary top-action-btn shadow-sm text-white align-items-center <?php echo $activeTab === 'demirbas' ? 'd-flex' : 'd-none'; ?>"
+                                data-bs-toggle="modal" data-bs-target="#demirbasModal">
+                                <i class="bx bx-plus-circle font-size-16"></i> Yeni Demirbaş
+                            </button>
+                            <button type="button" id="btnZimmetVer"
+                                class="btn btn-outline-secondary bg-white top-action-btn shadow-sm align-items-center <?php echo $activeTab === 'zimmet' ? 'd-flex' : 'd-none'; ?>"
+                                data-bs-toggle="modal" data-bs-target="#zimmetModal">
+                                <i class="bx bx-transfer-alt font-size-16"></i> Zimmet Ver
+                            </button>
+                            <button type="button" id="btnYeniSayac"
+                                class="btn btn-primary top-action-btn shadow-sm text-white align-items-center <?php echo $activeTab === 'depo' ? 'd-flex' : 'd-none'; ?>"
+                                data-bs-toggle="modal" data-bs-target="#demirbasModal">
+                                <i class="bx bx-plus-circle font-size-16"></i> Yeni Sayaç
+                            </button>
+                            <button type="button" id="btnTopluKaskiyeTeslim"
+                                class="btn btn-outline-secondary bg-white top-action-btn shadow-sm align-items-center <?php echo $activeTab === 'depo' ? 'd-flex' : 'd-none'; ?>">
+                                <i class="bx bx-buildings font-size-16"></i> Toplu Kaskiye Teslim Et
+                            </button>
+                            <button type="button" id="btnYeniAparat"
+                                class="btn btn-primary top-action-btn shadow-sm text-white align-items-center <?php echo $activeTab === 'aparat' ? 'd-flex' : 'd-none'; ?>"
+                                data-bs-toggle="modal" data-bs-target="#demirbasModal">
+                                <i class="bx bx-plus-circle font-size-16"></i> Yeni Aparat
+                            </button>
+                            <button type="button" id="btnAparatPersoneleVer"
+                                class="btn btn-outline-secondary bg-white top-action-btn shadow-sm align-items-center <?php echo $activeTab === 'aparat' ? 'd-flex' : 'd-none'; ?>">
+                                <i class="bx bx-user-plus font-size-16"></i> Personele Ver
+                            </button>
+
+                            <button type="button" id="btnYeniServis"
+                                class="btn btn-outline-secondary bg-white top-action-btn shadow-sm align-items-center <?php echo $activeTab === 'servis' ? 'd-flex' : 'd-none'; ?>">
+                                <i class="bx bx-wrench font-size-16"></i> Yeni Servis Kaydı
+                            </button>
+                        
+                <button type="button" class="btn btn-outline-secondary bg-white top-icon-btn shadow-sm" id="btnToggleSummaryCards" title="Özet Kartları Göster/Gizle" aria-label="Özet Kartları Göster/Gizle" aria-expanded="true">
+                    <i class="bx bx-chevron-up"></i>
+                </button>
+</div>
+    </div>
+
+    <div class="row g-3 mb-3 summary-cards-group" id="summaryCardsContainer">
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div><span class="summary-kpi-label">TOPLAM ÇEŞİT</span><h3 class="summary-kpi-value my-1"><?php echo (int) ($stokOzeti->toplam_cesit ?? 0); ?></h3></div>
+                        <div class="summary-kpi-icon bg-primary-subtle text-primary">
+                            <i class="bx bx-cube"></i>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center border-top pt-2 mt-2">
+                        <span class="summary-kpi-subtext">Toplam <?php echo (int) ($stokOzeti->toplam_adet ?? 0); ?> adet</span>
+                        <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 demirbas-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" data-filter=""><i class="bx bx-layer"></i> Tümü</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div><span class="summary-kpi-label">STOKTA KALAN</span><h3 class="summary-kpi-value my-1 text-success"><?php echo (int) ($stokOzeti->stokta_kalan ?? 0); ?></h3></div>
+                        <div class="summary-kpi-icon bg-success-subtle text-success">
+                            <i class="bx bx-check-circle"></i>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center border-top pt-2 mt-2">
+                        <span class="summary-kpi-subtext">Depoda boşta olan adet</span>
+                        <button type="button" class="btn btn-sm btn-subtle-success rounded-pill px-2 py-0 demirbas-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-filter="bosta"><i class="bx bx-package"></i> Boşta</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div><span class="summary-kpi-label">AKTİF ZİMMETLİ</span><h3 class="summary-kpi-value my-1"><?php echo (int) ($zimmetStats->aktif_zimmet ?? 0); ?></h3></div>
+                        <div class="summary-kpi-icon bg-warning-subtle text-warning">
+                            <i class="bx bx-transfer"></i>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center border-top pt-2 mt-2">
+                        <span class="summary-kpi-subtext">Personel üzerindeki zimmet</span>
+                        <button type="button" class="btn btn-sm btn-subtle-warning rounded-pill px-2 py-0 demirbas-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-filter="zimmetli"><i class="bx bx-user-check"></i> Zimmetli</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div><span class="summary-kpi-label">SERVİS / HURDA</span><h3 class="summary-kpi-value my-1 text-danger"><?php echo $servisHurdaAdet; ?></h3></div>
+                        <div class="summary-kpi-icon bg-danger-subtle text-danger">
+                            <i class="bx bx-recycle"></i>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center border-top pt-2 mt-2">
+                        <span class="summary-kpi-subtext">Serviste <?php echo $serviseAdet; ?> | Hurda <?php echo $hurdaAdet; ?></span>
+                        <button type="button" class="btn btn-sm btn-subtle-danger rounded-pill px-2 py-0 demirbas-quick-filter d-flex align-items-center gap-1 summary-pill-btn" data-filter="hurda"><i class="bx bx-recycle"></i> Hurda</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-none">
                         <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-2">
                             <!-- Tab Navigation -->
                             <?php
@@ -295,108 +479,33 @@ if (!empty($aparatKatIds)) {
                         </style>
 
 
-                        <!-- Butonlar -->
-                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1 ms-auto">
-                            <div class="dropdown">
-                                <button
-                                    class="btn btn-link btn-sm px-3 fw-bold dropdown-toggle text-dark d-flex align-items-center"
-                                    type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="bx bx-menu me-1 fs-5"></i> İşlemler
-                                    <i class="bx bx-chevron-down ms-1"></i>
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0">
-                                    <li>
-                                        <a class="dropdown-item py-2" href="javascript:void(0);" id="exportExcel">
-                                            <i class="bx bx-spreadsheet me-2 text-success fs-5"></i> Excel'e Aktar
-                                        </a>
-                                    </li>
-                                    <li id="importExcelLi"
-                                        class="<?php echo $activeTab !== 'demirbas' ? 'd-none' : ''; ?>">
-                                        <a class="dropdown-item py-2" href="javascript:void(0);" id="importExcel">
-                                            <i class="bx bx-upload me-2 text-primary fs-5"></i> Excel'den Yükle
-                                        </a>
-                                    </li>
-                                    <li id="hurdaIadeLi" class="<?php echo $activeTab !== 'depo' ? 'd-none' : ''; ?>">
-                                        <hr class="dropdown-divider">
-                                    </li>
-                                    <li id="hurdaIadeButonLi"
-                                        class="<?php echo $activeTab !== 'depo' ? 'd-none' : ''; ?>">
-                                        <a class="dropdown-item py-2 fw-bold" href="javascript:void(0);"
-                                            id="btnHurdaSayacIade" style="color: #ef4444;">
-                                            <i class="bx bx-recycle me-2 fs-5" style="color: #ef4444;"></i> Hurda Sayaç
-                                            İade Al
-                                        </a>
-                                    </li>
-                                    <?php if (Gate::allows('demirbas_toplu_islem_sil')): ?>
-                                        <li id="zimmetIslemlerDivider"
-                                            class="<?php echo $activeTab !== 'zimmet' ? 'd-none' : ''; ?>">
-                                            <hr class="dropdown-divider">
-                                        </li>
-                                        <li id="topluIadeLi" class="<?php echo $activeTab !== 'zimmet' ? 'd-none' : ''; ?>">
-                                            <a class="dropdown-item py-2 text-info fw-bold" href="javascript:void(0);"
-                                                id="btnTopluIadeAl">
-                                                <i class="bx bx-undo me-2 text-info fs-5"></i> Toplu İade Al
-                                            </a>
-                                        </li>
-                                        <li id="topluZimmetSilLi"
-                                            class="<?php echo $activeTab !== 'zimmet' ? 'd-none' : ''; ?>">
-                                            <a class="dropdown-item py-2 text-danger fw-bold" href="javascript:void(0);"
-                                                id="btnTopluZimmetSil">
-                                                <i class="bx bx-trash me-2 text-danger fs-5"></i> Toplu Zimmet Sil
-                                            </a>
-                                        </li>
+    </div>
 
-                                        <li id="topluDemirbasSilLi" class="d-none">
-                                            <a class="dropdown-item py-2 text-danger fw-bold" href="javascript:void(0);"
-                                                id="btnTopluDemirbasSil">
-                                                <i class="bx bx-trash me-2 text-danger fs-5"></i> Seçilileri Sil
-                                            </a>
-                                        </li>
-                                    <?php endif; ?>
-                                </ul>
-                            </div>
-
-                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-
-                            <!-- Tab Bağımlı Ana Butonlar -->
-                            <button type="button" id="btnYeniDemirbas"
-                                class="btn btn-success btn-sm px-3 py-2 fw-bold align-items-center shadow-sm ms-1 <?php echo $activeTab === 'demirbas' ? 'd-flex' : 'd-none'; ?>"
-                                data-bs-toggle="modal" data-bs-target="#demirbasModal">
-                                <i class="bx bx-plus-circle fs-5 me-1"></i> Yeni Demirbaş
-                            </button>
-                            <button type="button" id="btnZimmetVer"
-                                class="btn btn-warning btn-sm px-3 py-2 fw-bold align-items-center shadow-sm ms-1 <?php echo $activeTab === 'zimmet' ? 'd-flex' : 'd-none'; ?>"
-                                data-bs-toggle="modal" data-bs-target="#zimmetModal">
-                                <i class="bx bx-transfer-alt fs-5 me-1"></i> Zimmet Ver
-                            </button>
-                            <button type="button" id="btnYeniSayac"
-                                class="btn btn-success btn-sm px-3 py-2 fw-bold align-items-center shadow-sm ms-1 <?php echo $activeTab === 'depo' ? 'd-flex' : 'd-none'; ?>"
-                                data-bs-toggle="modal" data-bs-target="#demirbasModal">
-                                <i class="bx bx-plus-circle fs-5 me-1"></i> Yeni Sayaç
-                            </button>
-                            <button type="button" id="btnTopluKaskiyeTeslim"
-                                class="btn btn-info btn-sm px-3 py-2 fw-bold align-items-center shadow-sm ms-1 <?php echo $activeTab === 'depo' ? 'd-flex' : 'd-none'; ?>">
-                                <i class="bx bx-buildings fs-5 me-1"></i> Toplu Kaskiye Teslim Et
-                            </button>
-                            <button type="button" id="btnYeniAparat"
-                                class="btn btn-success btn-sm px-3 py-2 fw-bold align-items-center shadow-sm ms-1 <?php echo $activeTab === 'aparat' ? 'd-flex' : 'd-none'; ?>"
-                                data-bs-toggle="modal" data-bs-target="#demirbasModal">
-                                <i class="bx bx-plus-circle fs-5 me-1"></i> Yeni Aparat
-                            </button>
-                            <button type="button" id="btnAparatPersoneleVer"
-                                class="btn btn-warning btn-sm px-3 py-2 fw-bold align-items-center shadow-sm ms-1 <?php echo $activeTab === 'aparat' ? 'd-flex' : 'd-none'; ?>">
-                                <i class="bx bx-user-plus fs-5 me-1"></i> Personele Ver
-                            </button>
-
-                            <button type="button" id="btnYeniServis"
-                                class="btn btn-warning btn-sm px-3 py-2 fw-bold align-items-center shadow-sm ms-1 <?php echo $activeTab === 'servis' ? 'd-flex' : 'd-none'; ?>">
-                                <i class="bx bx-wrench fs-5 me-1"></i> Yeni Servis Kaydı
-                            </button>
+    <div class="row">
+        <div class="col-12">
+            <div class="card summary-kpi-card mb-3" id="demirbasListCard">
+                <div class="card-header bg-transparent border-0 px-3 py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 38px; height: 38px;">
+                            <i class="bx bx-list-ul font-size-20"></i>
                         </div>
+                        <div>
+                            <h5 class="card-title mb-0 font-size-14 fw-bold text-dark">Demirbaş Listesi</h5>
+                            <p class="text-muted mb-0 font-size-12" style="margin-top: 2px;">Anlık arama, sütun filtreleme ve stok yönetimi</p>
+                        </div>
+                        <div id="activeFilterBadges" class="d-flex gap-2 ms-2"></div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+                        <button type="button" class="btn btn-sm btn-subtle-primary px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" data-bs-toggle="modal" data-bs-target="#envanterModal" title="Kategori Bazlı Envanter Raporu">
+                            <i class="bx bx-bar-chart-alt-2 font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Envanter Raporu</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-subtle-success px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderExportExcel" title="Excel'e Aktar">
+                            <i class="bx bx-file font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Excel</span>
+                        </button>
                     </div>
                 </div>
 
-                <div class="card-body">
+                <div class="card-body p-3 pt-0">
                     <!-- Preloader -->
                     <div class="personel-preloader" id="personel-loader">
                         <div class="loader-content">
@@ -412,165 +521,6 @@ if (!empty($aparatKatIds)) {
                         <!-- Demirbaş Listesi Tab -->
                         <div class="tab-pane fade <?php echo $activeTab === 'demirbas' ? 'show active' : ''; ?>"
                             id="demirbasContent" role="tabpanel">
-
-                            <!-- Özet Kartlar -->
-                            <div class="row g-3 mb-4">
-                                <div class="col-md-4">
-                                    <div class="card border border-light shadow-none h-100 bordro-summary-card"
-                                        style="--card-color: #556ee6; border-bottom: 3px solid var(--card-color) !important;">
-                                        <div class="card-body p-2 px-3">
-                                            <div class="icon-label-container">
-                                                <div class="icon-box"
-                                                    style="background: rgba(85, 110, 230, 0.1); width: 32px; height: 32px;">
-                                                    <i class="bx bx-cube fs-5 text-primary"></i>
-                                                </div>
-                                                <span class="text-muted small fw-bold"
-                                                    style="font-size: 0.55rem; opacity: 0.5;">DEMİRBAŞ</span>
-                                            </div>
-                                            <p class="text-muted mb-0 small fw-bold text-uppercase"
-                                                style="letter-spacing: 0.5px; font-size: 0.65rem;">Toplam Çeşit</p>
-                                            <h4 class="mb-0 fw-bold"><?php echo $stokOzeti->toplam_cesit ?? 0; ?></h4>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="card border border-light shadow-none h-100 bordro-summary-card"
-                                        style="--card-color: #34c38f; border-bottom: 3px solid var(--card-color) !important;">
-                                        <div class="card-body p-2 px-3">
-                                            <div class="icon-label-container">
-                                                <div class="icon-box"
-                                                    style="background: rgba(52, 195, 143, 0.1); width: 32px; height: 32px;">
-                                                    <i class="bx bx-check-circle fs-5 text-success"></i>
-                                                </div>
-                                                <span class="text-muted small fw-bold"
-                                                    style="font-size: 0.55rem; opacity: 0.5;">STOK</span>
-                                            </div>
-                                            <p class="text-muted mb-0 small fw-bold text-uppercase"
-                                                style="letter-spacing: 0.5px; font-size: 0.65rem;">Stokta Kalan</p>
-                                            <h4 class="mb-0 fw-bold"><?php echo $stokOzeti->stokta_kalan ?? 0; ?></h4>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="card border border-light shadow-none h-100 bordro-summary-card"
-                                        style="--card-color: #f1b44c; border-bottom: 3px solid var(--card-color) !important;">
-                                        <div class="card-body p-2 px-3">
-                                            <div class="icon-label-container">
-                                                <div class="icon-box"
-                                                    style="background: rgba(241, 180, 76, 0.1); width: 32px; height: 32px;">
-                                                    <i class="bx bx-transfer fs-5 text-warning"></i>
-                                                </div>
-                                                <span class="text-muted small fw-bold"
-                                                    style="font-size: 0.55rem; opacity: 0.5;">ZİMMET</span>
-                                            </div>
-                                            <p class="text-muted mb-0 small fw-bold text-uppercase"
-                                                style="letter-spacing: 0.5px; font-size: 0.65rem;">Aktif Zimmetli</p>
-                                            <h4 class="mb-0 fw-bold"><?php echo $zimmetStats->aktif_zimmet ?? 0; ?></h4>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Kategori Bazlı Rapor Akordiyon -->
-                            <div class="accordion mb-4" id="inventoryAccordion">
-                                <div class="accordion-item shadow-sm border-0 rounded-3 overflow-hidden">
-                                    <h2 class="accordion-header" id="headingInventory">
-                                        <button class="accordion-button collapsed bg-white fw-bold text-dark py-3"
-                                            type="button" data-bs-toggle="collapse" data-bs-target="#collapseInventory"
-                                            aria-expanded="false" aria-controls="collapseInventory"
-                                            style="box-shadow: none;">
-                                            <i class="bx bx-bar-chart-alt-2 fs-5 me-2 text-primary"></i>
-                                            <span class="me-2">Kategori Bazlı Envanter Raporu</span>
-                                            <div id="activeFilterBadges" class="d-flex gap-2"></div>
-                                        </button>
-                                    </h2>
-                                    <div id="collapseInventory" class="accordion-collapse collapse"
-                                        aria-labelledby="headingInventory" data-bs-parent="#inventoryAccordion">
-                                        <div class="accordion-body p-0">
-                                            <div class="table-responsive">
-                                                <table class="table table-hover table-bordered mb-0">
-                                                    <thead class="table-light">
-                                                        <tr>
-                                                            <th class="ps-3">Kategori</th>
-                                                            <th class="text-center">Çeşit</th>
-                                                            <th class="text-center">Toplam</th>
-                                                            <th class="text-center">Boşta</th>
-                                                            <th class="text-center">Zimmetli</th>
-                                                            <th class="text-center">Serviste</th>
-                                                            <th class="text-center">Hurda</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <?php if (!empty($kategoriEnvanteri)): ?>
-                                                            <?php foreach ($kategoriEnvanteri as $katAdi => $stats): ?>
-                                                                <tr>
-                                                                    <td class="ps-3"><span
-                                                                            class="badge bg-secondary"><?php echo htmlspecialchars($katAdi); ?></span>
-                                                                    </td>
-                                                                    <td class="text-center text-muted fw-medium">
-                                                                        <?php echo $stats['cesit']; ?>
-                                                                    </td>
-                                                                    <td class="text-center fw-bold text-dark">
-                                                                        <?php echo $stats['toplam']; ?>
-                                                                    </td>
-                                                                    <td class="text-center">
-                                                                        <span
-                                                                            class="badge bg-success bg-opacity-10 text-success fs-6 fw-bold px-3 inventory-filter"
-                                                                            style="cursor:pointer;" data-filter-type="bosta"
-                                                                            data-kat-adi="<?php echo htmlspecialchars($katAdi); ?>">
-                                                                            <?php echo $stats['bosta']; ?>
-                                                                        </span>
-                                                                    </td>
-                                                                    <td class="text-center">
-                                                                        <?php if ($stats['zimmetli'] > 0): ?>
-                                                                            <span
-                                                                                class="badge bg-warning text-dark inventory-filter"
-                                                                                style="cursor:pointer;" data-filter-type="zimmetli"
-                                                                                data-kat-adi="<?php echo htmlspecialchars($katAdi); ?>">
-                                                                                <?php echo $stats['zimmetli']; ?>
-                                                                            </span>
-                                                                        <?php else: ?>
-                                                                            <span class="text-muted">-</span>
-                                                                        <?php endif; ?>
-                                                                    </td>
-                                                                    <td class="text-center">
-                                                                        <?php if ($stats['serviste'] > 0): ?>
-                                                                            <span class="badge bg-info inventory-filter"
-                                                                                style="cursor:pointer;" data-filter-type="arizali"
-                                                                                data-kat-adi="<?php echo htmlspecialchars($katAdi); ?>">
-                                                                                <?php echo $stats['serviste']; ?>
-                                                                            </span>
-                                                                        <?php else: ?>
-                                                                            <span class="text-muted">-</span>
-                                                                        <?php endif; ?>
-                                                                    </td>
-                                                                    <td class="text-center">
-                                                                        <?php if ($stats['hurda'] > 0): ?>
-                                                                            <span class="badge bg-danger inventory-filter"
-                                                                                style="cursor:pointer;" data-filter-type="hurda"
-                                                                                data-kat-adi="<?php echo htmlspecialchars($katAdi); ?>">
-                                                                                <?php echo $stats['hurda']; ?>
-                                                                            </span>
-                                                                        <?php else: ?>
-                                                                            <span class="text-muted">-</span>
-                                                                        <?php endif; ?>
-                                                                    </td>
-                                                                </tr>
-                                                            <?php endforeach; ?>
-                                                        <?php else: ?>
-                                                            <tr>
-                                                                <td colspan="7" class="text-center text-muted py-4"><i
-                                                                        class="bx bx-info-circle fs-4 d-block mb-1"></i>Raporlanacak
-                                                                    veri bulunamadı.</td>
-                                                            </tr>
-                                                        <?php endif; ?>
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
 
                             <!-- Demirbaş Filtre Butonları -->
                             <div class="d-flex align-items-center justify-content-between mb-3 mt-2">
@@ -599,8 +549,8 @@ if (!empty($aparatKatIds)) {
 
                             <div class="table-responsive">
                                 <table id="demirbasTable"
-                                    class="table table-demirbas table-hover table-bordered nowrap w-100">
-                                    <thead class="table-light">
+                                    class="table table-demirbas table-hover table-bordered nowrap align-middle w-100 mb-0">
+                                    <thead>
                                         <tr>
                                             <th class="text-center" style="width:3%">
                                                 <div class="custom-checkbox-container d-inline-block">
@@ -1428,7 +1378,135 @@ if (!empty($aparatKatIds)) {
     </div>
 </div>
 
+<div class="modal fade" id="envanterModal" data-modal-icon="bx bx-bar-chart-alt-2" data-modal-subtitle="Bir adede tıklayarak listeyi kategori ve duruma göre filtreleyin" tabindex="-1" aria-labelledby="envanterModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;">
+                        <i class="bx bx-bar-chart-alt-2 font-size-20"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title mb-0 font-size-14 fw-bold text-dark" id="envanterModalLabel">Kategori Bazlı Envanter Raporu</h5>
+                        <p class="text-muted mb-0 font-size-12">Bir adede tıklayarak listeyi o kategori ve duruma göre filtreleyin</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body p-0">
+<div class="table-responsive">
+                                                <table class="table table-hover table-bordered align-middle mb-0">
+                                                    <thead>
+                                                        <tr>
+                                                            <th class="ps-3">Kategori</th>
+                                                            <th class="text-center">Çeşit</th>
+                                                            <th class="text-center">Toplam</th>
+                                                            <th class="text-center">Boşta</th>
+                                                            <th class="text-center">Zimmetli</th>
+                                                            <th class="text-center">Serviste</th>
+                                                            <th class="text-center">Hurda</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <?php if (!empty($kategoriEnvanteri)): ?>
+                                                            <?php foreach ($kategoriEnvanteri as $katAdi => $stats): ?>
+                                                                <tr>
+                                                                    <td class="ps-3"><span
+                                                                            class="badge bg-secondary"><?php echo htmlspecialchars($katAdi); ?></span>
+                                                                    </td>
+                                                                    <td class="text-center text-muted fw-medium">
+                                                                        <?php echo $stats['cesit']; ?>
+                                                                    </td>
+                                                                    <td class="text-center fw-bold text-dark">
+                                                                        <?php echo $stats['toplam']; ?>
+                                                                    </td>
+                                                                    <td class="text-center">
+                                                                        <span
+                                                                            class="badge bg-success bg-opacity-10 text-success fs-6 fw-bold px-3 inventory-filter"
+                                                                            style="cursor:pointer;" data-filter-type="bosta"
+                                                                            data-kat-adi="<?php echo htmlspecialchars($katAdi); ?>">
+                                                                            <?php echo $stats['bosta']; ?>
+                                                                        </span>
+                                                                    </td>
+                                                                    <td class="text-center">
+                                                                        <?php if ($stats['zimmetli'] > 0): ?>
+                                                                            <span
+                                                                                class="badge bg-warning text-dark inventory-filter"
+                                                                                style="cursor:pointer;" data-filter-type="zimmetli"
+                                                                                data-kat-adi="<?php echo htmlspecialchars($katAdi); ?>">
+                                                                                <?php echo $stats['zimmetli']; ?>
+                                                                            </span>
+                                                                        <?php else: ?>
+                                                                            <span class="text-muted">-</span>
+                                                                        <?php endif; ?>
+                                                                    </td>
+                                                                    <td class="text-center">
+                                                                        <?php if ($stats['serviste'] > 0): ?>
+                                                                            <span class="badge bg-info inventory-filter"
+                                                                                style="cursor:pointer;" data-filter-type="arizali"
+                                                                                data-kat-adi="<?php echo htmlspecialchars($katAdi); ?>">
+                                                                                <?php echo $stats['serviste']; ?>
+                                                                            </span>
+                                                                        <?php else: ?>
+                                                                            <span class="text-muted">-</span>
+                                                                        <?php endif; ?>
+                                                                    </td>
+                                                                    <td class="text-center">
+                                                                        <?php if ($stats['hurda'] > 0): ?>
+                                                                            <span class="badge bg-danger inventory-filter"
+                                                                                style="cursor:pointer;" data-filter-type="hurda"
+                                                                                data-kat-adi="<?php echo htmlspecialchars($katAdi); ?>">
+                                                                                <?php echo $stats['hurda']; ?>
+                                                                            </span>
+                                                                        <?php else: ?>
+                                                                            <span class="text-muted">-</span>
+                                                                        <?php endif; ?>
+                                                                    </td>
+                                                                </tr>
+                                                            <?php endforeach; ?>
+                                                        <?php else: ?>
+                                                            <tr>
+                                                                <td colspan="7" class="text-center text-muted py-4"><i
+                                                                        class="bx bx-info-circle fs-4 d-block mb-1"></i>Raporlanacak
+                                                                    veri bulunamadı.</td>
+                                                            </tr>
+                                                        <?php endif; ?>
+                                                    </tbody>
+                                                </table>
+</div>
+            </div>
+            <div class="modal-footer border-top py-2">
+                <button type="button" class="btn btn-secondary btn-sm fw-bold px-4" data-bs-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+    $(function () {
+        $(document).on('click', '#envanterModal .inventory-filter', function () {
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('envanterModal')).hide();
+        });
+        var $toggle = $('#btnToggleSummaryCards');
+        var sync = function () {
+            var hidden = $('html').hasClass('demirbas-summary-hidden');
+            $toggle.attr('aria-expanded', !hidden).find('i').attr('class', hidden ? 'bx bx-chevron-down' : 'bx bx-chevron-up');
+        };
+        sync();
+        $toggle.on('click', function () {
+            var hide = !$('html').hasClass('demirbas-summary-hidden');
+            $('html').toggleClass('demirbas-summary-hidden', hide);
+            try { localStorage.setItem('demirbas_summary_cards_state', hide ? 'hidden' : 'visible'); } catch (e) {}
+            sync();
+        });
+        $(document).on('click', '.demirbas-quick-filter', function () {
+            var f = $(this).data('filter') || '';
+            $('.demirbas-quick-filter').removeClass('active');
+            $(this).addClass('active');
+            $('input[name="demirbas-status-filter"][value="' + f + '"]').prop('checked', true).trigger('change');
+        });
+        $('#btnHeaderExportExcel').on('click', function () { $('#exportExcel').trigger('click'); });
+    });
     var sayacKatIds = <?php echo json_encode($sayacKatIds); ?>;
     var aparatKatIds = <?php echo json_encode($aparatKatIds); ?>;
 </script>

@@ -291,7 +291,7 @@ function sessionPayload(): array
         'illegal_cancel' => Gate::allows('kacak_iptal_ekle') || Gate::isSuperAdmin(),
         'illegal_revert_cancel' => Gate::allows('kacak_iptal') || Gate::isSuperAdmin(),
         'support' => mobileCan(['admin_destek_talebi', 'Destek Taleplerim (Kullanıcı)']),
-        'live_support' => mobileCan(['canli_sohbet_ayarlari_sekmesi']),
+        'live_support' => mobileCan(['canli_sohbet_ayarlari_sekmesi']) || (new \App\Model\DestekModel())->isAssignedSupportUser((int) ($_SESSION['user_id'] ?? 0), (int) ($_SESSION['firma_id'] ?? 0)),
         'site_messages' => mobileCan(['site_mesaj_yonetimi']),
         'recruitment' => mobileCan(['ik_ise_alim_dashboard', 'ik_basvuru_listesi', 'ik_ilan_yonetimi']),
         'recruitment_applications' => mobileCan(['ik_basvuru_listesi']),

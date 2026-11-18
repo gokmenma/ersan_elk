@@ -126,6 +126,19 @@ class DestekModel extends Model
         ];
     }
 
+    public function isAssignedSupportUser(int $userId, int $firmaId): bool
+    {
+        if ($userId <= 0 || $firmaId <= 0) {
+            return false;
+        }
+        $settings = new \App\Model\SettingsModel();
+        if ($settings->getSettings('canli_destek_aktif', $firmaId) !== '1') {
+            return false;
+        }
+        $ids = array_filter(array_map('trim', explode(',', (string) ($settings->getSettings('canli_destek_yetkili_kullanicilar', $firmaId) ?? ''))), 'strlen');
+        return in_array((string) $userId, $ids, true);
+    }
+
     public function getSupportUsers(int $firmaId, int $ownerId): array
     {
         $sql = "SELECT id, adi_soyadi, user_name

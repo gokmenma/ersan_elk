@@ -32,16 +32,18 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $action = $_POST['action'] ?? '';
+$destekModel = new DestekModel();
+$firmaId = (int) ($_SESSION['firma_id'] ?? 0);
+$sessionUserId = (int) ($_SESSION['id'] ?? $_SESSION['user_id'] ?? 0);
 $permissionPolicy = new PermissionPolicyModel();
-if ($permissionPolicy->isReady()) {
+$destekAtanmis = $destekModel->isAssignedSupportUser($sessionUserId, $firmaId);
+if (!$destekAtanmis && $permissionPolicy->isReady()) {
     Gate::authorizeApiPolicy('destek/api', (string) $action);
-} elseif (!Gate::allows('canli_sohbet_ayarlari_sekmesi')) {
+} elseif (!$destekAtanmis && !Gate::allows('canli_sohbet_ayarlari_sekmesi')) {
     http_response_code(403);
     echo json_encode(['status' => 'error', 'message' => 'Canlı destek yönetimi için yetkiniz bulunmamaktadır.'], JSON_UNESCAPED_UNICODE);
     exit;
 }
-$destekModel = new DestekModel();
-$firmaId = (int) ($_SESSION['firma_id'] ?? 0);
 if ($firmaId <= 0) {
     http_response_code(400);
     echo json_encode(['status' => 'error', 'message' => 'Lütfen önce firma seçin.'], JSON_UNESCAPED_UNICODE);

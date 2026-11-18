@@ -86,9 +86,11 @@ if ($firmaId <= 0) supportResponse(['success' => false, 'message' => 'Lütfen ö
 $action = (string) ($_GET['action'] ?? $_POST['action'] ?? 'list');
 $resource = 'mobile-spa/support';
 $policy = new PermissionPolicyModel();
-if ($policy->isReady()) {
+$assignedSupport = in_array($action, ['list', 'send', 'update_status'], true)
+    && (new DestekModel())->isAssignedSupportUser((int) $_SESSION['user_id'], $firmaId);
+if (!$assignedSupport && $policy->isReady()) {
     Gate::authorizeApiPolicy($resource, $action);
-} elseif (!(Gate::allows('canli_sohbet_ayarlari_sekmesi') || Gate::isSuperAdmin())) {
+} elseif (!$assignedSupport && !(Gate::allows('canli_sohbet_ayarlari_sekmesi') || Gate::isSuperAdmin())) {
     supportResponse(['success' => false, 'message' => 'Canlı destek yönetimi yetkiniz bulunmuyor.'], 403);
 }
 
