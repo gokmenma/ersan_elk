@@ -238,7 +238,6 @@ $araclar_list = $Evrak->getActiveVehicles();
                                         <i data-feather="eye" class="icon-xs me-1"></i> Mevcut Dosyayı Gör
                                     </a>
                                 </div>
-                                <button type="button" id="btnEkleriPdfGoster" class="btn btn-sm btn-outline-primary w-100 mt-3 d-none"><i class="bx bx-file-find me-1"></i> Tüm Ekleri Tek PDF Olarak Göster</button>
                                 <div id="gelenEvrakDosyaListesi" class="d-grid gap-2 mt-3"></div>
                             </div>
                         </div>

@@ -63,13 +63,13 @@ $(document).ready(function () {
       if (item.type !== "primary") removeButton.appendTo(actions);
       card.append(icon, info, actions).appendTo(list);
     });
-    const mevcutVar = gelenDosyalar.some(item => item.type === "existing" || item.type === "primary");
-    $("#btnEkleriPdfGoster").toggleClass("d-none", !mevcutVar || !$("#evrak_id").val());
     gelenDosyaAlanlariniGuncelle();
   }
 
-  $("#btnEkleriPdfGoster").on("click", function () {
-    showPdfFromRequest({ type: "GET", data: { type: "ekler_birlesik", id: $("#evrak_id").val() } }, false);
+  $(document).on("click", ".evrak-ekler-pdf-goruntule", function (event) {
+    event.preventDefault();
+    event.stopPropagation();
+    showPdfFromRequest({ type: "GET", data: { type: "ekler_birlesik", id: $(this).data("id") } }, false);
   });
 
   $("#gelenEkDosyalari").on("change", function () {
@@ -3082,7 +3082,7 @@ $(document).ready(function () {
 
   // Tablo Satırı Tıklaması KEP Koruma
   $("#evrakTable tbody").on("click", "tr", function (e) {
-    if ($(e.target).closest("a, button, input, .dropdown, .popover, .action-btn-group, .evrak-imza-onizle, .e-imza-rozet, .btn-cevap-goster").length) return;
+    if ($(e.target).closest("a, button, input, .dropdown, .popover, .action-btn-group, .evrak-imza-onizle, .e-imza-rozet, .btn-cevap-goster, .evrak-ekler-pdf-goruntule").length) return;
     const kepBtn = $(this).find(".btn-kep-onizle");
     if (kepBtn.length) {
       e.preventDefault();

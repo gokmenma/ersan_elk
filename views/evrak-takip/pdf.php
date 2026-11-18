@@ -191,11 +191,6 @@ try {
         if (!$gelenEvrak || ($gelenEvrak->evrak_tipi ?? '') !== 'gelen') {
             throw new RuntimeException('Evrak bulunamadı.');
         }
-        if (\App\Model\EvrakSevkModel::isRestricted($gelenEvrak) && !(new \App\Model\EvrakSevkModel())->canViewMesaj(
-            (new \App\Model\UetsMesajModel())->getById((int) ($gelenEvrak->uets_mesaj_id ?? 0), $firmaId)
-        )) {
-            throw new RuntimeException('Bu evrakı görüntüleme yetkiniz yok.');
-        }
         $parcalar = $model->getBirlesikEkParcalari($birlesikId);
         if ($parcalar === []) {
             throw new RuntimeException('Birleştirilecek PDF veya görsel ek bulunamadı.');
