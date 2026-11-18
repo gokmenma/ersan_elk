@@ -1,0 +1,295 @@
+html[data-theme-preset="macos-light"] {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --mac-accent: #0071e3;
+  --mac-accent-hover: #0077ed;
+  --mac-accent-active: #006edb;
+  --mac-link: #0066cc;
+  --mac-canvas: #f5f5f7;
+  --mac-label: #1d1d1f;
+  --mac-label-2: #6e6e73;
+  --mac-label-3: #86868b;
+  --mac-separator: #d2d2d7;
+  --mac-hairline: rgba(0, 0, 0, 0.08);
+  --theme-primary: #0071e3;
+  --theme-primary-hover: #0077ed;
+  --theme-primary-shadow: rgba(0, 113, 227, 0.22);
+  --theme-primary-light: rgba(0, 113, 227, 0.1);
+  --focus-color: #0071e3;
+  --sidebar-bg: rgba(246, 246, 248, 0.86);
+  --topbar-bg: rgba(255, 255, 255, 0.72);
+  --bg-card: #ffffff;
+  --bg-subtle: #f5f5f7;
+  --bg-footer: #fbfbfd;
+  --border-default: #e8e8ed;
+  --border-subtle: #f0f0f3;
+  --text-heading: #1d1d1f;
+  --text-title: #1d1d1f;
+  --text-body: #1d1d1f;
+  --text-secondary: #6e6e73;
+  --text-muted: #6e6e73;
+  --blue-bg: rgba(0, 113, 227, 0.1);      --blue-text: #0066cc;    --blue-badge-bg: rgba(0, 113, 227, 0.12);   --blue-badge-text: #0058b0;
+  --cyan-bg: rgba(90, 200, 250, 0.18);    --cyan-text: #0a84b8;    --cyan-badge-bg: rgba(90, 200, 250, 0.22);  --cyan-badge-text: #07688f;
+  --emerald-bg: rgba(52, 199, 89, 0.14);  --emerald-text: #248a3d; --emerald-badge-bg: rgba(52, 199, 89, 0.16); --emerald-badge-text: #1d7a34;
+  --amber-bg: rgba(255, 149, 0, 0.14);    --amber-text: #c93400;   --amber-badge-bg: rgba(255, 149, 0, 0.18);  --amber-badge-text: #a65200;
+  --danger-bg: rgba(255, 59, 48, 0.1);    --danger-text: #d70015;  --danger-border: rgba(255, 59, 48, 0.25);
+  --bs-body-bg: #f5f5f7;
+  --bs-body-color: #1d1d1f;
+  --bs-link-color: #0066cc;
+  --bs-link-hover-color: #0077ed;
+  --bs-border-color: #d2d2d7;
+  --bs-body-font-family: var(--font-sans);
+  color-scheme: light;
+}
+
+html[data-theme-preset="macos-light"],
+html[data-theme-preset="macos-light"] body:not(#_),
+html[data-theme-preset="macos-light"] body:not(#_) :is(input, button, select, textarea, optgroup, .btn, .form-control, .form-select, .table, .modal, .card, .dropdown-menu, .select2-container, .select2-dropdown, .swal2-popup, .flatpickr-calendar, .vertical-menu, #sidebar-menu, #page-topbar, .main-content, .dataTables_wrapper, .page-link, .badge) {
+  font-family: var(--font-sans) !important;
+  letter-spacing: -0.011em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+html[data-theme-preset="macos-light"] body:not(#_) :is(h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6, .summary-kpi-value, .modal-title, .card-title, .page-title-text h4, .topbar-page-title, #topbar-page-title, .brand-name) {
+  font-family: var(--font-display) !important;
+  letter-spacing: -0.022em;
+  color: var(--mac-label);
+}
+html[data-theme-preset="macos-light"] body:not(#_) :is(.fw-bold, .fw-bolder, b, strong, th) { font-weight: 600 !important; }
+html[data-theme-preset="macos-light"] body:not(#_) :is(code, kbd, samp, pre, .row-index-badge) { font-family: var(--font-mono) !important; }
+
+html[data-theme-preset="macos-light"] body:not(#_),
+html[data-theme-preset="macos-light"] body:not(#_) .main-content,
+html[data-theme-preset="macos-light"] body:not(#_) .page-content { background-color: var(--mac-canvas) !important; color: var(--mac-label); }
+html[data-theme-preset="macos-light"] body:not(#_) a:not(.btn):not(.dropdown-item):not(.page-link):not(.nav-link):not([class*="menu"]):not(.waves-effect) { color: var(--mac-link); }
+html[data-theme-preset="macos-light"] body:not(#_) .text-muted { color: var(--mac-label-2) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .text-dark { color: var(--mac-label) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) ::selection { background: rgba(0, 113, 227, 0.22); }
+
+html[data-theme-preset="macos-light"] body:not(#_) #page-topbar,
+html[data-theme-preset="macos-light"] body:not(#_) .quick-favorites-bar {
+  background: rgba(255, 255, 255, 0.72) !important;
+  backdrop-filter: saturate(180%) blur(20px) !important;
+  -webkit-backdrop-filter: saturate(180%) blur(20px) !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--mac-hairline) !important;
+  box-shadow: none !important;
+}
+html[data-theme-preset="macos-light"] body:not(#_) #page-topbar :is(.header-item, .logo-txt, .topbar-page-title, #topbar-page-title) { color: var(--mac-label) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) #page-topbar :is(#topbar-page-desc, .topbar-page-desc) { color: var(--mac-label-2) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) #page-topbar :is(.header-item svg, .header-item i) { color: rgba(60, 60, 67, 0.8) !important; stroke: currentColor !important; }
+html[data-theme-preset="macos-light"] body:not(#_) #page-topbar .global-search-input-box {
+  background: rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid transparent !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+}
+html[data-theme-preset="macos-light"] body:not(#_) #page-topbar .global-search-input-box:focus-within {
+  background: #ffffff !important;
+  border-color: var(--mac-accent) !important;
+  box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.2) !important;
+}
+html[data-theme-preset="macos-light"] body:not(#_) #page-topbar .global-search-input { color: var(--mac-label) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) #page-topbar .global-search-input::placeholder { color: rgba(60, 60, 67, 0.5) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) #page-topbar .global-search-icon { color: rgba(60, 60, 67, 0.6) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) #page-topbar .global-search-kbd-badge kbd { background: #ffffff !important; border: 1px solid var(--mac-separator) !important; color: var(--mac-label-2) !important; box-shadow: none !important; border-radius: 5px !important; }
+
+html[data-theme-preset="macos-light"] body:not(#_) .vertical-menu,
+html[data-theme-preset="macos-light"] body:not(#_)[data-sidebar] .vertical-menu {
+  --sidebar-bg: rgba(246, 246, 248, 0.86);
+  --sidebar-border: rgba(0, 0, 0, 0.08);
+  --sidebar-foreground: #1d1d1f;
+  --sidebar-muted: rgba(60, 60, 67, 0.55);
+  --sidebar-item-hover: rgba(0, 0, 0, 0.05);
+  --sidebar-item-active: rgba(0, 0, 0, 0.09);
+  background: rgba(246, 246, 248, 0.86) !important;
+  backdrop-filter: blur(28px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+}
+html[data-theme-preset="macos-light"] body:not(#_) .sidebar-sticky-top,
+html[data-theme-preset="macos-light"] body:not(#_) .sidebar-brand-box { background: transparent !important; box-shadow: none !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .macos-dot { border-color: rgba(0, 0, 0, 0.18); }
+html[data-theme-preset="macos-light"] body:not(#_) .brand-name { color: var(--mac-label) !important; font-weight: 600 !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .sidebar-search { color: var(--mac-label) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .sidebar-search:hover { background: rgba(0, 0, 0, 0.06) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .sidebar-search:focus,
+html[data-theme-preset="macos-light"] body:not(#_) .sidebar-search:not(:placeholder-shown) {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.14) !important;
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.2) !important;
+}
+html[data-theme-preset="macos-light"] body:not(#_) .sidebar-search::placeholder { color: rgba(60, 60, 67, 0.45) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .sidebar-search-container .search-icon { color: rgba(60, 60, 67, 0.7) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .btn-sidebar-settings { color: rgba(60, 60, 67, 0.7) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .btn-sidebar-settings:hover,
+html[data-theme-preset="macos-light"] body:not(#_) .btn-sidebar-settings[aria-expanded="true"] { background: rgba(0, 0, 0, 0.07) !important; color: var(--mac-label) !important; }
+
+html[data-theme-preset="macos-light"] body:not(#_) #sidebar-menu .menu-title,
+html[data-theme-preset="macos-light"] body:not(#_) #side-menu .menu-title { color: rgba(60, 60, 67, 0.55) !important; font-weight: 600 !important; letter-spacing: 0.02em !important; }
+html[data-theme-preset="macos-light"] body:not(#_) #sidebar-menu #side-menu > li > a,
+html[data-theme-preset="macos-light"] body:not(#_) #sidebar-menu ul > li > a { color: #1d1d1f !important; font-weight: 400 !important; }
+html[data-theme-preset="macos-light"] body:not(#_) #sidebar-menu :is(#side-menu > li > a, ul > li > a) :is(i, svg) { color: rgba(60, 60, 67, 0.7) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .vertical-menu #sidebar-menu ul li > a:hover,
+html[data-theme-preset="macos-light"] body:not(#_) .vertical-menu #sidebar-menu #side-menu li > a:hover { background: rgba(0, 0, 0, 0.05) !important; color: var(--mac-label) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .vertical-menu #sidebar-menu ul li > a:hover :is(i, svg),
+html[data-theme-preset="macos-light"] body:not(#_) .vertical-menu #sidebar-menu #side-menu li > a:hover :is(i, svg) { color: var(--mac-label) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .sub-menu { border-left-color: rgba(0, 0, 0, 0.1) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) #sidebar-menu .sub-menu li a,
+html[data-theme-preset="macos-light"] body:not(#_) #sidebar-menu ul li ul.sub-menu li a { color: rgba(29, 29, 31, 0.78) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .vertical-menu #sidebar-menu .sub-menu li a:hover,
+html[data-theme-preset="macos-light"] body:not(#_) .vertical-menu #sidebar-menu ul li ul.sub-menu li a:hover { background-color: rgba(0, 0, 0, 0.05) !important; color: var(--mac-label) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) #sidebar-menu .sub-menu li a.active,
+html[data-theme-preset="macos-light"] body:not(#_) #sidebar-menu ul li ul.sub-menu li a.active,
+html[data-theme-preset="macos-light"] body:not(#_) #sidebar-menu #side-menu > li:not(:has(.sub-menu)) > a.active,
+html[data-theme-preset="macos-light"] body:not(#_) #sidebar-menu ul > li:not(:has(.sub-menu)) > a.active {
+  background: rgba(0, 0, 0, 0.09) !important;
+  border-color: transparent !important;
+  color: var(--mac-label) !important;
+  font-weight: 500 !important;
+  box-shadow: none !important;
+}
+html[data-theme-preset="macos-light"] body:not(#_) #sidebar-menu #side-menu > li.mm-active:has(.sub-menu) > a,
+html[data-theme-preset="macos-light"] body:not(#_) #sidebar-menu ul > li.mm-active:has(.sub-menu) > a { background: rgba(0, 0, 0, 0.04) !important; color: var(--mac-label) !important; font-weight: 500 !important; }
+html[data-theme-preset="macos-light"] body:not(#_) #sidebar-menu :is(ul li a.active, #side-menu li a.active, #side-menu > li.mm-active > a) :is(i, svg) { color: var(--mac-accent) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .has-arrow::after { border-color: rgba(60, 60, 67, 0.4) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .star-btn { color: rgba(60, 60, 67, 0.3) !important; }
+
+html[data-theme-preset="macos-light"] body:not(#_) :is(.dropdown-menu, .menu-settings-dropdown .dropdown-menu, .mac-popover-menu) {
+  background: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: saturate(180%) blur(24px) !important;
+  -webkit-backdrop-filter: saturate(180%) blur(24px) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.16), 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+}
+html[data-theme-preset="macos-light"] body:not(#_) :is(.menu-settings-dropdown .dropdown-menu, .dropdown-menu.mac-popover-menu)::before { background: #ffffff !important; border-top-color: rgba(0, 0, 0, 0.08) !important; border-left-color: rgba(0, 0, 0, 0.08) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .mac-dropdown-group { background: rgba(0, 0, 0, 0.03) !important; border: 1px solid rgba(0, 0, 0, 0.06) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) :is(.dropdown-item, .mac-popover-item) { color: var(--mac-label) !important; font-weight: 400 !important; border-radius: 6px !important; }
+html[data-theme-preset="macos-light"] body:not(#_) :is(.dropdown-item, .mac-popover-item):is(:hover, :focus, .active) { background: var(--mac-accent) !important; color: #ffffff !important; }
+html[data-theme-preset="macos-light"] body:not(#_) :is(.dropdown-item, .mac-popover-item).disabled { color: rgba(60, 60, 67, 0.3) !important; background: transparent !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .mac-item-shortcut { color: var(--mac-label-3) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) :is(.dropdown-item, .mac-popover-item):hover .mac-item-shortcut { color: rgba(255, 255, 255, 0.8) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .dropdown-divider { border-top-color: rgba(0, 0, 0, 0.08) !important; }
+
+html[data-theme-preset="macos-light"] body:not(#_) :is(.card, .summary-kpi-card, .summary-kpi-card:not(:has(> .card-header)), .summary-kpi-card:has(> .card-header), .form-card) {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.05) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.04) !important;
+}
+html[data-theme-preset="macos-light"] body:not(#_) :is(.summary-kpi-card:not(:has(> .card-header)):hover, .summary-kpi-card:has(> .card-header):hover) { transform: none !important; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.04) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) :is(.card-header, .summary-kpi-card > .card-header) { background: transparent !important; border-bottom: 1px solid var(--mac-hairline) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) :is(.card-footer) { background: var(--bg-footer) !important; border-top: 1px solid var(--mac-hairline) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .summary-kpi-card > .card-header h5 { font-size: 17px !important; font-weight: 600 !important; letter-spacing: -0.022em !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .summary-kpi-card > .card-header h5 + p { font-size: 12.5px !important; color: var(--mac-label-2) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .summary-kpi-label { font-size: 12px !important; font-weight: 600 !important; text-transform: none !important; letter-spacing: -0.003em !important; color: var(--mac-label-2) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .summary-kpi-value { font-size: 28px !important; font-weight: 600 !important; letter-spacing: -0.028em !important; color: var(--mac-label) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .summary-kpi-subtext { color: var(--mac-label-2) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .summary-kpi-icon { border-radius: 12px !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .summary-kpi-card:not(:has(> .card-header)) > .card-body > div:last-child:not(:first-child) { border-top-color: var(--mac-hairline) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .summary-pill-btn { border-radius: 980px !important; background: rgba(0, 0, 0, 0.05) !important; border: 0 !important; color: var(--mac-label) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .summary-pill-btn.active { background: var(--mac-accent) !important; color: #ffffff !important; }
+
+html[data-theme-preset="macos-light"] body:not(#_) div.flex-shrink-0[style*="width: 44px"][style*="height: 44px"] { background: #ffffff !important; border: 1px solid rgba(0, 0, 0, 0.06) !important; border-radius: 12px !important; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) div.flex-shrink-0[style*="width: 44px"][style*="height: 44px"] + div h4 { font-family: var(--font-display) !important; font-size: 22px !important; font-weight: 600 !important; letter-spacing: -0.026em !important; color: var(--mac-label) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) div.flex-shrink-0[style*="width: 44px"][style*="height: 44px"] + div p { color: var(--mac-label-2) !important; font-size: 13px !important; }
+
+html[data-theme-preset="macos-light"] body:not(#_) .btn { border-radius: 10px; font-weight: 400; letter-spacing: -0.011em; box-shadow: none; transition: background-color .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease; }
+html[data-theme-preset="macos-light"] body:not(#_) :is(.btn-primary, .btn-primary.top-action-btn, .modal-footer .btn, .swal2-confirm, .swal2-cancel) { border-radius: 980px !important; }
+html[data-theme-preset="macos-light"] body:not(#_) :is(.btn-primary, .btn-primary.top-action-btn, .swal2-confirm) {
+  background: var(--mac-accent) !important;
+  border: 1px solid var(--mac-accent) !important;
+  color: #ffffff !important;
+  font-weight: 400 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+html[data-theme-preset="macos-light"] body:not(#_) :is(.btn-primary, .btn-primary.top-action-btn, .swal2-confirm):hover { background: var(--mac-accent-hover) !important; border-color: var(--mac-accent-hover) !important; transform: none !important; box-shadow: none !important; }
+html[data-theme-preset="macos-light"] body:not(#_) :is(.btn-primary, .btn-primary.top-action-btn):active { background: var(--mac-accent-active) !important; border-color: var(--mac-accent-active) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .btn:focus-visible { outline: 0 !important; box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.3) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) :is(.btn-outline-secondary, .btn-light, .btn-outline-primary, .btn-secondary) {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  color: var(--mac-label) !important;
+}
+html[data-theme-preset="macos-light"] body:not(#_) :is(.btn-outline-secondary, .btn-light, .btn-outline-primary, .btn-secondary):hover,
+html[data-theme-preset="macos-light"] body:not(#_) :is(.btn-outline-secondary, .btn-light, .btn-outline-primary, .btn-secondary):focus { background: #f5f5f7 !important; border-color: rgba(0, 0, 0, 0.16) !important; color: var(--mac-label) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .top-action-btn:not(.btn-primary) { border-radius: 980px !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .top-icon-btn { border-radius: 50% !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .btn-link { color: var(--mac-link) !important; background: transparent !important; border: 0 !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .table-action-btn { border-radius: 8px !important; }
+
+html[data-theme-preset="macos-light"] body:not(#_) :is(.form-control:not(.sidebar-search):not(.global-search-input), .form-select, .select2-container--default .select2-selection--single, .select2-container--default .select2-selection--multiple, .input-group-text) {
+  background-color: #ffffff !important;
+  border: 1px solid var(--mac-separator) !important;
+  border-radius: 10px !important;
+  color: var(--mac-label) !important;
+  box-shadow: none !important;
+}
+html[data-theme-preset="macos-light"] body:not(#_) :is(.form-control:not(.sidebar-search):not(.global-search-input), .form-select):focus,
+html[data-theme-preset="macos-light"] body:not(#_) .select2-container--default.select2-container--focus .select2-selection--single,
+html[data-theme-preset="macos-light"] body:not(#_) .select2-container--default.select2-container--open .select2-selection--single,
+html[data-theme-preset="macos-light"] body:not(#_) .select2-container--default.select2-container--focus .select2-selection--multiple {
+  border-color: var(--mac-accent) !important;
+  box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.2) !important;
+}
+html[data-theme-preset="macos-light"] body:not(#_) :is(.form-control, .form-select)::placeholder { color: var(--mac-label-3) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) :is(.form-floating > label, .form-floating-custom > label, .form-label) { color: var(--mac-label-2) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) :is(.form-floating > .form-control:focus ~ label, .form-floating-custom .form-control:focus ~ label) { color: var(--mac-accent) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .select2-container--default .select2-selection--single .select2-selection__rendered { color: var(--mac-label) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .select2-dropdown { border: 1px solid var(--mac-hairline) !important; border-radius: 12px !important; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.16) !important; overflow: hidden; }
+html[data-theme-preset="macos-light"] body:not(#_) .select2-container--default .select2-results__option--highlighted[aria-selected] { background: var(--mac-accent) !important; color: #ffffff !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .form-check-input:checked { background-color: var(--mac-accent) !important; border-color: var(--mac-accent) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .form-check-input:focus { box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.2) !important; border-color: var(--mac-accent) !important; }
+
+html[data-theme-preset="macos-light"] body:not(#_) table.dataTable thead th,
+html[data-theme-preset="macos-light"] body:not(#_) .table thead th {
+  background-color: #f5f5f7 !important;
+  color: var(--mac-label-2) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+  letter-spacing: -0.003em !important;
+  border-bottom: 1px solid var(--mac-separator) !important;
+}
+html[data-theme-preset="macos-light"] body:not(#_) table.dataTable.table-bordered thead th { border-left: 1px solid #e8e8ed !important; border-right: 1px solid #e8e8ed !important; }
+html[data-theme-preset="macos-light"] body:not(#_) table.dataTable tbody td { font-size: 13.5px !important; color: var(--mac-label) !important; border-top: 1px solid #e8e8ed !important; }
+html[data-theme-preset="macos-light"] body:not(#_) table.dataTable.table-bordered tbody td { border-left: 1px solid #f0f0f3 !important; border-right: 1px solid #f0f0f3 !important; }
+html[data-theme-preset="macos-light"] body:not(#_) table.dataTable tbody tr:last-child td { border-bottom: 1px solid #e8e8ed !important; }
+html[data-theme-preset="macos-light"] body:not(#_) table.dataTable thead tr { border-color: #e8e8ed !important; }
+html[data-theme-preset="macos-light"] body:not(#_) table.dataTable.table-hover tbody tr:hover > * { background-color: #f5f5f7 !important; --bs-table-accent-bg: #f5f5f7 !important; }
+html[data-theme-preset="macos-light"] body:not(#_) table.dataTable tbody tr.selected > * { background-color: rgba(0, 113, 227, 0.1) !important; color: var(--mac-label) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .dataTables_wrapper .dataTables_info,
+html[data-theme-preset="macos-light"] body:not(#_) .dataTables_wrapper .dataTables_length label { color: var(--mac-label-2) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .summary-kpi-card .dataTables_wrapper .row:last-child { background: #fbfbfd !important; border-top: 1px solid var(--mac-hairline) !important; }
+
+html[data-theme-preset="macos-light"] body:not(#_) .page-link { border-radius: 8px !important; border: 1px solid transparent !important; background: transparent !important; color: var(--mac-label) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .page-link:hover { background: rgba(0, 0, 0, 0.05) !important; color: var(--mac-label) !important; border-color: transparent !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .page-item.active .page-link { background: var(--mac-accent) !important; border-color: var(--mac-accent) !important; color: #ffffff !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .page-item.disabled .page-link { color: rgba(60, 60, 67, 0.3) !important; }
+
+html[data-theme-preset="macos-light"] body:not(#_) .badge { font-weight: 500; letter-spacing: -0.005em; }
+html[data-theme-preset="macos-light"] body:not(#_) .row-index-badge { background: #1d1d1f !important; border-radius: 6px !important; box-shadow: none !important; }
+html[data-theme-preset="macos-light"] body:not(#_) :is(.badge-group, .badge-represant) { background: #f5f5f7 !important; color: var(--mac-label) !important; border: 1px solid #e8e8ed !important; border-radius: 6px !important; }
+
+html[data-theme-preset="macos-light"] body:not(#_) .modal-content { background: #ffffff !important; border: 0 !important; border-radius: 18px !important; box-shadow: 0 24px 70px rgba(0, 0, 0, 0.24), 0 0 0 1px rgba(0, 0, 0, 0.04) !important; overflow: hidden; }
+html[data-theme-preset="macos-light"] body:not(#_) .modal-header { background: transparent !important; border-bottom: 1px solid var(--mac-hairline) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .modal-title { font-size: 17px !important; font-weight: 600 !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .modal-footer { background: #fbfbfd !important; border-top: 1px solid var(--mac-hairline) !important; }
+html[data-theme-preset="macos-light"] .modal-backdrop.show { background: rgba(0, 0, 0, 0.32) !important; opacity: 1 !important; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+html[data-theme-preset="macos-light"] body:not(#_) .swal2-popup { border-radius: 18px !important; box-shadow: 0 24px 70px rgba(0, 0, 0, 0.24) !important; }
+
+html[data-theme-preset="macos-light"] body:not(#_) .nav-tabs { border-bottom: 1px solid var(--mac-hairline) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .nav-tabs .nav-link { color: var(--mac-label-2) !important; border: 0 !important; border-bottom: 2px solid transparent !important; background: transparent !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .nav-tabs .nav-link.active { color: var(--mac-accent) !important; border-bottom-color: var(--mac-accent) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .nav-pills .nav-link { border-radius: 980px !important; color: var(--mac-label) !important; }
+html[data-theme-preset="macos-light"] body:not(#_) .nav-pills .nav-link.active { background: var(--mac-accent) !important; color: #ffffff !important; }
+
+html[data-theme-preset="macos-light"] body:not(#_) *::-webkit-scrollbar { width: 10px; height: 10px; }
+html[data-theme-preset="macos-light"] body:not(#_) *::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.22); border-radius: 10px; border: 3px solid transparent; background-clip: content-box; }
+html[data-theme-preset="macos-light"] body:not(#_) *::-webkit-scrollbar-track { background: transparent; }

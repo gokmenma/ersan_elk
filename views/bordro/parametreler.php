@@ -129,205 +129,275 @@ for ($y = date('Y') + 1; $y >= 2020; $y--) {
 }
 ?>
 
+<?php
+    $toplamParametre = count($tumParametreler);
+    $aktifParametre = 0;
+    $gelirSayisi = 0;
+    $kesintiSayisi = 0;
+    foreach ($tumParametreler as $p) {
+        if (bugunGecerliMi($p, $bugun)) {
+            $aktifParametre++;
+        }
+        if ($p->kategori === 'gelir') {
+            $gelirSayisi++;
+        } else {
+            $kesintiSayisi++;
+        }
+    }
+    $filtreliAyarlar = [];
+    if ($seciliDonem && !empty($genelAyarlar)) {
+        foreach ($genelAyarlar as $ayar) {
+            if (!empty($ayar->gecerlilik_baslangic) && getDonemKey($ayar->gecerlilik_baslangic) === $seciliDonem) {
+                $filtreliAyarlar[] = $ayar;
+            }
+        }
+    }
+    $aktifAyarSayisi = count(array_filter($filtreliAyarlar, fn($a) => !empty($a->aktif)));
+    $dilimSayisi = !empty($vergiDilimleri) ? count($vergiDilimleri) : 0;
+    $enYuksekOran = 0;
+    foreach (($vergiDilimleri ?: []) as $d) {
+        $enYuksekOran = max($enYuksekOran, (float) $d->vergi_orani);
+    }
+    $secimDonemLabel = $seciliDonem ? getDonemLabel($seciliDonem) : '-';
+?>
+<script>try { document.documentElement.classList.toggle('bordro-param-summary-hidden', localStorage.getItem('bordro_param_summary_cards_state') === 'hidden'); } catch (e) {}</script>
+<style>
+    #summaryCardsContainer { overflow: hidden; max-height: 1100px; opacity: 1; transition: max-height .3s ease, opacity .3s ease, margin .3s ease; }
+    .bordro-param-summary-hidden #summaryCardsContainer { max-height: 0 !important; opacity: 0; margin-top: 0 !important; margin-bottom: 0 !important; pointer-events: none; }
+    @media (prefers-reduced-motion: reduce) { #summaryCardsContainer { transition: none; } }
+    #paramTabs { gap: 6px; border-bottom: 0; }
+    #paramTabs .nav-link { border-radius: 8px; font-size: 13px; font-weight: 600; color: #64748b; padding: 8px 14px; background: #fff; border: 1px solid #e2e8f0; }
+    #paramTabs .nav-link.active { background-color: #475569 !important; color: #fff !important; border-color: #475569 !important; }
+    .param-filter-bar .form-floating-select2, .param-filter-bar .form-floating { min-width: 220px; }
+    html[data-theme-preset="macos-dark"] #paramTabs .nav-link { background: rgba(30, 31, 37, 0.94); border-color: rgba(255, 255, 255, 0.08); color: rgba(235, 238, 245, 0.75); }
+    html[data-theme-preset="macos-dark"] #paramTabs .nav-link.active { background-color: #0a84ff; color: #fff; border-color: #0a84ff; }
+</style>
+
+<?php
+$maintitle = "Bordro";
+$title = "Bordro Parametreleri";
+include 'layouts/breadcrumb.php';
+?>
+
 <div class="container-fluid">
-    <?php
-    $maintitle = "Bordro";
-    $title = "Bordro Parametreleri";
-    ?>
-    <?php include 'layouts/breadcrumb.php'; ?>
+    <div class="row align-items-center mb-3">
+        <div class="col-md-6 col-12 d-flex align-items-center gap-3">
+            <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 44px; height: 44px;">
+                <i class="bx bx-slider-alt fs-4 text-primary"></i>
+            </div>
+            <div>
+                <h4 class="mb-0 fw-bold text-dark font-size-16">Bordro Parametreleri</h4>
+                <p class="text-muted mb-0 font-size-12">Gelir/kesinti türleri, genel bordro ayarları ve gelir vergisi dilimleri</p>
+            </div>
+        </div>
+        <div class="personel-action-toolbar col-md-6 col-12 d-flex align-items-center justify-content-md-end gap-2 mt-2 mt-md-0">
+            <button type="button" class="btn btn-primary top-action-btn shadow-sm text-white" id="btnTopYeni" data-bs-toggle="modal" data-bs-target="#modalParametreEkle">
+                <i class="bx bx-plus font-size-16"></i> <span id="btnTopYeniLabel">Yeni Parametre</span>
+            </button>
+            <button type="button" class="btn btn-outline-secondary bg-white top-icon-btn shadow-sm" id="btnToggleSummaryCards" title="Özet Kartları Göster/Gizle" aria-expanded="true">
+                <i class="bx bx-chevron-up"></i>
+            </button>
+        </div>
+    </div>
 
-    <style>
-        /* macOS Dark Uyumluluğu */
-        html[data-theme-preset="macos-dark"] .card-header .bg-white {
-            background-color: var(--mac-surface, rgba(30, 31, 37, 0.94)) !important;
-            border-color: var(--mac-line, rgba(255, 255, 255, 0.08)) !important;
-        }
+    <div class="row g-3 mb-3 summary-cards-group" id="summaryCardsContainer">
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div><span class="summary-kpi-label">TOPLAM PARAMETRE</span><h3 class="summary-kpi-value my-1"><?= (int) $toplamParametre ?></h3></div>
+                        <div class="summary-kpi-icon bg-primary-subtle text-primary"><i class="bx bx-cog"></i></div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center border-top pt-2">
+                        <span class="summary-kpi-subtext">Gelir: <?= (int) $gelirSayisi ?> | Kesinti: <?= (int) $kesintiSayisi ?></span>
+                        <button type="button" class="btn btn-sm btn-subtle-primary px-2 py-0 summary-pill-btn status-quick-filter active" data-kategori="" data-donem="tumu"><i class="bx bx-layer"></i> Tümü</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div><span class="summary-kpi-label">BUGÜN GEÇERLİ</span><h3 class="summary-kpi-value my-1 text-success"><?= (int) $aktifParametre ?></h3></div>
+                        <div class="summary-kpi-icon bg-success-subtle text-success"><i class="bx bx-check-circle"></i></div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center border-top pt-2">
+                        <span class="summary-kpi-subtext">Pasif: <?= (int) ($toplamParametre - $aktifParametre) ?></span>
+                        <button type="button" class="btn btn-sm btn-subtle-success px-2 py-0 summary-pill-btn status-quick-filter" data-kategori="" data-donem="aktif"><i class="bx bx-check"></i> Aktif</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div><span class="summary-kpi-label">GENEL AYAR (SEÇİLİ DÖNEM)</span><h3 class="summary-kpi-value my-1"><?= count($filtreliAyarlar) ?></h3></div>
+                        <div class="summary-kpi-icon bg-info-subtle text-info"><i class="bx bx-slider"></i></div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center border-top pt-2">
+                        <span class="summary-kpi-subtext"><?= htmlspecialchars($secimDonemLabel, ENT_QUOTES, 'UTF-8') ?></span>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle"><?= (int) $aktifAyarSayisi ?> aktif</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div><span class="summary-kpi-label"><?= (int) $seciliVergiYili ?> VERGİ DİLİMİ</span><h3 class="summary-kpi-value my-1"><?= (int) $dilimSayisi ?></h3></div>
+                        <div class="summary-kpi-icon bg-warning-subtle text-warning"><i class="bx bx-chart"></i></div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center border-top pt-2">
+                        <span class="summary-kpi-subtext">En yüksek oran</span>
+                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle">%<?= number_format($enYuksekOran, 0) ?></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        html[data-theme-preset="macos-dark"] .nav-tabs-custom .nav-link,
-        html[data-theme-preset="macos-dark"] .nav-pills .nav-link {
-            color: rgba(235, 238, 245, 0.75);
-        }
-
-        html[data-theme-preset="macos-dark"] .nav-pills .nav-link.active {
-            background-color: #0a84ff !important;
-            color: #ffffff !important;
-        }
-
-        html[data-theme-preset="macos-dark"] #dtParametreler thead th,
-        html[data-theme-preset="macos-dark"] #dtParametreler thead.table-light th {
-            background-color: rgba(39, 40, 44, 0.96) !important;
-            color: rgba(224, 225, 229, 0.75) !important;
-            border-color: rgba(255, 255, 255, 0.08) !important;
-        }
-
-        html[data-theme-preset="macos-dark"] #dtParametreler td {
-            border-color: rgba(255, 255, 255, 0.08) !important;
-            color: rgba(232, 233, 236, 0.85) !important;
-        }
-    </style>
-
-    <!-- Nav tabs -->
-    <ul class="nav nav-tabs nav-pills mb-3" role="tablist">
+    <ul class="nav nav-pills mb-3" id="paramTabs" role="tablist">
         <li class="nav-item">
-            <a class="nav-link active" data-bs-toggle="tab" href="#tabParametreler" role="tab">
+            <a class="nav-link active" data-bs-toggle="tab" href="#tabParametreler" role="tab" data-add-label="Yeni Parametre" data-add-target="#modalParametreEkle">
                 <i class="bx bx-cog me-1"></i> Gelir/Kesinti Parametreleri
             </a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" data-bs-toggle="tab" href="#tabGenelAyarlar" role="tab">
+            <a class="nav-link" data-bs-toggle="tab" href="#tabGenelAyarlar" role="tab" data-add-label="Yeni Ayar" data-add-target="#modalGenelAyarEkle">
                 <i class="bx bx-slider me-1"></i> Genel Ayarlar
             </a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" data-bs-toggle="tab" href="#tabVergiDilimleri" role="tab">
+            <a class="nav-link" data-bs-toggle="tab" href="#tabVergiDilimleri" role="tab" data-add-label="Dilim Ekle" data-add-target="#modalVergiDilimiEkle">
                 <i class="bx bx-chart me-1"></i> Gelir Vergisi Dilimleri
             </a>
         </li>
     </ul>
 
     <div class="tab-content">
-        <!-- Gelir/Kesinti Parametreleri Tab -->
         <div class="tab-pane active" id="tabParametreler" role="tabpanel">
-            <div class="card">
-                <div class="card-header border-bottom-0 pb-3">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                        <h5 class="card-title mb-0">
-                            <i class="bx bx-list-ul me-1"></i> Tüm Gelir ve Kesinti Türleri
-                        </h5>
-                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
-                            <button type="button" id="exportExcelParametreler"
-                                class="btn btn-link text-success text-decoration-none px-2 d-flex align-items-center"
-                                title="Excel'e Aktar">
-                                <i class="mdi mdi-file-excel fs-5 me-1"></i> Excel'e Aktar
-                            </button>
-                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                            <button type="button"
-                                class="btn btn-dark text-white shadow-sm text-decoration-none px-3 d-flex align-items-center"
-                                data-bs-toggle="modal" data-bs-target="#modalParametreEkle">
-                                <i class="bx bx-plus me-1 text-white fs-5"></i> Yeni Parametre
-                            </button>
+            <div class="card summary-kpi-card mb-3" id="parametreListCard">
+                <div class="card-header bg-transparent border-0 px-3 py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 38px; height: 38px;">
+                            <i class="bx bx-list-ul font-size-20"></i>
+                        </div>
+                        <div>
+                            <h5 class="card-title mb-0 font-size-14 fw-bold text-dark">Tüm Gelir ve Kesinti Türleri</h5>
+                            <p class="text-muted mb-0 font-size-12" style="margin-top: 2px;">Parametre tanımları, hesaplama tipleri ve geçerlilik dönemleri</p>
                         </div>
                     </div>
-                    <!-- Filtre Alanları -->
-                    <div class="row mt-3">
-                        <div class="col-md-3">
-                            <?= Form::FormSelect2(
-                                name: "filtreDonem",
-                                options: [
-                                    "aktif" => "Sadece Aktif Dönemler (Bugün Geçerli)",
-                                    "tumu" => "Tüm Dönemler (Geçmiş ve Gelecek Dahil)"
-                                ],
-                                selectedValue: ($showAll ? "tumu" : "aktif"),
-                                label: "Dönem Filtresi",
-                                icon: "calendar"
-                            ) ?>
-                        </div>
-                        <div class="col-md-3">
-                            <?= Form::FormSelect2(
-                                name: "filtreKategori",
-                                options: [
-                                    "" => "Tümü",
-                                    "Gelir" => "Gelir (Ek Ödeme)",
-                                    "Kesinti" => "Kesinti"
-                                ],
-                                selectedValue: "",
-                                label: "Kategori Filtresi",
-                                icon: "filter"
-                            ) ?>
-                        </div>
+                    <div class="d-flex align-items-center gap-2 ms-auto flex-wrap param-filter-bar">
+                        <?= Form::FormSelect2(
+                            name: "filtreDonem",
+                            options: [
+                                "aktif" => "Sadece Aktif (Bugün Geçerli)",
+                                "tumu" => "Tüm Dönemler"
+                            ],
+                            selectedValue: ($showAll ? "tumu" : "aktif"),
+                            label: "Dönem Filtresi",
+                            icon: "calendar"
+                        ) ?>
+                        <?= Form::FormSelect2(
+                            name: "filtreKategori",
+                            options: [
+                                "" => "Tümü",
+                                "Gelir" => "Gelir (Ek Ödeme)",
+                                "Kesinti" => "Kesinti"
+                            ],
+                            selectedValue: "",
+                            label: "Kategori Filtresi",
+                            icon: "filter"
+                        ) ?>
+                        <button type="button" id="exportExcelParametreler" class="btn btn-sm btn-subtle-success px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" title="Excel'e Aktar">
+                            <i class="bx bx-file font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Excel</span>
+                        </button>
                     </div>
                 </div>
-                <div class="card-body pt-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover table-bordered w-100 align-middle" id="dtParametreler">
-                            <thead class="table-light">
+                <div class="card-body p-3 pt-0">
+                    <div class="table-responsive" style="overflow-x: auto !important;">
+                        <table class="table table-bordered table-hover nowrap align-middle w-100 mb-0" id="dtParametreler">
+                            <thead>
                                 <tr>
-                                    <th>Kategori</th>
-                                    <th>Tür Kodu</th>
-                                    <th>Etiket (Adı)</th>
-                                    <th>Hesaplama Tipi</th>
-                                    <th>Başlangıç</th>
-                                    <th>Bitiş</th>
-                                    <th class="text-center">Durum</th>
-                                    <th class="text-center" style="width: 120px;">İşlem</th>
+                                    <th data-filter="select">KATEGORİ</th>
+                                    <th data-filter="string">TÜR KODU</th>
+                                    <th data-filter="string">ETİKET (ADI)</th>
+                                    <th data-filter="select">HESAPLAMA TİPİ</th>
+                                    <th data-filter="string">BAŞLANGIÇ</th>
+                                    <th data-filter="string">BİTİŞ</th>
+                                    <th data-filter="select" class="text-center">DURUM</th>
+                                    <th data-filter="none" class="text-center" style="width: 120px;">İŞLEMLER</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php foreach ($tumParametreler as $param): ?>
-                                    <?php
-                                    $aktifMi = bugunGecerliMi($param, $bugun);
-                                    ?>
+                                    <?php $aktifMi = bugunGecerliMi($param, $bugun); ?>
                                     <tr data-aktif="<?= $aktifMi ? '1' : '0' ?>"
-                                        data-kategori="<?= htmlspecialchars($param->kategori === 'gelir' ? 'Gelir' : 'Kesinti') ?>">
+                                        data-kategori="<?= $param->kategori === 'gelir' ? 'Gelir' : 'Kesinti' ?>">
                                         <td>
                                             <?php if ($param->kategori === 'gelir'): ?>
-                                                <span class="badge bg-success bg-opacity-10 text-success"><i
-                                                        class="bx bx-plus-circle me-1"></i> Gelir</span>
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold"><i class="bx bx-plus-circle me-1"></i>Gelir</span>
                                             <?php else: ?>
-                                                <span class="badge bg-danger bg-opacity-10 text-danger"><i
-                                                        class="bx bx-minus-circle me-1"></i> Kesinti</span>
+                                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold"><i class="bx bx-minus-circle me-1"></i>Kesinti</span>
                                             <?php endif; ?>
                                         </td>
-                                        <td><code><?= htmlspecialchars($param->kod) ?></code></td>
+                                        <td><span class="badge-group"><?= htmlspecialchars($param->kod, ENT_QUOTES, 'UTF-8') ?></span></td>
                                         <td>
-                                            <strong><?= htmlspecialchars($param->etiket) ?></strong>
+                                            <div class="fw-medium"><?= htmlspecialchars($param->etiket, ENT_QUOTES, 'UTF-8') ?></div>
                                             <?php if (!empty($param->aciklama)): ?>
-                                                <br><small class="text-muted"><?= htmlspecialchars($param->aciklama) ?></small>
+                                                <div class="font-size-12 text-secondary"><?= htmlspecialchars($param->aciklama, ENT_QUOTES, 'UTF-8') ?></div>
                                             <?php endif; ?>
                                         </td>
                                         <td>
                                             <?php
                                             $badge = match ($param->hesaplama_tipi) {
-                                                'brut', 'gunluk_brut', 'aylik_gun_brut' => 'bg-primary',
-                                                'net', 'gunluk_net', 'aylik_gun_net', 'aylik_fiili_gun_net' => 'bg-success',
-                                                'kismi_muaf', 'gunluk_kismi_muaf' => 'bg-warning text-dark',
-                                                'netten' => 'bg-secondary',
-                                                'brutten', 'gunluk_kesinti', 'aylik_gun_kesinti' => 'bg-danger',
-                                                'sgk_matrahindan' => 'bg-warning text-dark',
-                                                'oran_bazli_vergi' => 'bg-info',
-                                                'oran_bazli_sgk' => 'bg-primary',
-                                                'oran_bazli_net' => 'bg-dark',
-                                                'elden_tutardan' => 'bg-warning text-dark',
-                                                default => 'bg-secondary'
+                                                'brut', 'gunluk_brut', 'aylik_gun_brut', 'oran_bazli_sgk' => 'bg-primary-subtle text-primary border-primary-subtle',
+                                                'net', 'gunluk_net', 'aylik_gun_net', 'aylik_fiili_gun_net' => 'bg-success-subtle text-success border-success-subtle',
+                                                'kismi_muaf', 'gunluk_kismi_muaf', 'sgk_matrahindan', 'elden_tutardan' => 'bg-warning-subtle text-warning border-warning-subtle',
+                                                'brutten', 'gunluk_kesinti', 'aylik_gun_kesinti' => 'bg-danger-subtle text-danger border-danger-subtle',
+                                                'oran_bazli_vergi' => 'bg-info-subtle text-info border-info-subtle',
+                                                default => 'bg-secondary-subtle text-secondary border-secondary-subtle'
                                             };
                                             ?>
-                                            <span class="badge <?= $badge ?>">
-                                                <?= $hesaplamaTipleri[$param->hesaplama_tipi] ?? ($param->hesaplama_tipi ?: 'Tanımsız') ?>
+                                            <span class="badge <?= $badge ?> border rounded-pill px-2 py-1 font-size-11 fw-semibold">
+                                                <?= htmlspecialchars($hesaplamaTipleri[$param->hesaplama_tipi] ?? ($param->hesaplama_tipi ?: 'Tanımsız'), ENT_QUOTES, 'UTF-8') ?>
                                             </span>
                                             <?php if ($param->hesaplama_tipi === 'kismi_muaf' && $param->gunluk_muaf_limit > 0): ?>
-                                                <br><small class="text-primary mt-1 d-inline-block">Limit:
-                                                    <?= number_format($param->gunluk_muaf_limit, 2, ',', '.') ?> ₺/gün</small>
+                                                <div class="font-size-12 text-primary text-nowrap">Limit: <?= number_format($param->gunluk_muaf_limit, 2, ',', '.') ?> ₺/gün</div>
                                             <?php endif; ?>
                                         </td>
-                                        <td>
+                                        <td class="text-nowrap">
                                             <?= $param->gecerlilik_baslangic ? date('d.m.Y', strtotime($param->gecerlilik_baslangic)) : '<span class="text-muted">Tüm Dönemler</span>' ?>
                                         </td>
-                                        <td>
+                                        <td class="text-nowrap">
                                             <?= $param->gecerlilik_bitis ? date('d.m.Y', strtotime($param->gecerlilik_bitis)) : '<span class="text-muted">Süresiz</span>' ?>
                                         </td>
                                         <td class="text-center">
                                             <?php if ($aktifMi): ?>
-                                                <span class="badge bg-success">Aktif</span>
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Aktif</span>
                                             <?php else: ?>
-                                                <span class="badge bg-secondary">Pasif</span>
+                                                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Pasif</span>
                                             <?php endif; ?>
                                         </td>
                                         <td class="text-center">
-                                            <div class="d-flex justify-content-center gap-1">
-                                                <button class="btn btn-sm btn-outline-primary btn-edit-param"
-                                                    data-id="<?= $param->id ?>"
+                                            <div class="action-btn-group">
+                                                <button class="btn btn-sm btn-subtle-warning table-action-btn btn-edit-param"
+                                                    data-id="<?= (int) $param->id ?>"
                                                     data-param='<?= htmlspecialchars(json_encode($param), ENT_QUOTES, 'UTF-8') ?>'
                                                     title="Düzenle">
                                                     <i class="bx bx-edit-alt"></i>
                                                 </button>
-                                                <button class="btn btn-sm btn-outline-success btn-copy-param"
+                                                <button class="btn btn-sm btn-subtle-primary table-action-btn btn-copy-param"
                                                     data-param='<?= htmlspecialchars(json_encode($param), ENT_QUOTES, 'UTF-8') ?>'
                                                     title="Yeni dönem olarak kopyala">
                                                     <i class="bx bx-copy"></i>
                                                 </button>
-                                                <button class="btn btn-sm btn-outline-danger btn-delete-param"
-                                                    data-id="<?= $param->id ?>"
-                                                    data-etiket="<?= htmlspecialchars($param->etiket) ?>" title="Sil">
+                                                <button class="btn btn-sm btn-subtle-danger table-action-btn btn-delete-param"
+                                                    data-id="<?= (int) $param->id ?>"
+                                                    data-etiket="<?= htmlspecialchars($param->etiket, ENT_QUOTES, 'UTF-8') ?>" title="Sil">
                                                     <i class="bx bx-trash"></i>
                                                 </button>
                                             </div>
@@ -341,125 +411,89 @@ for ($y = date('Y') + 1; $y >= 2020; $y--) {
             </div>
         </div>
 
-        <!-- Genel Ayarlar Tab -->
         <div class="tab-pane" id="tabGenelAyarlar" role="tabpanel">
-            <?php
-            // Seçili döneme göre filtrele
-            $filtreliAyarlar = [];
-            if ($seciliDonem && !empty($genelAyarlar)) {
-                foreach ($genelAyarlar as $ayar) {
-                    if (!empty($ayar->gecerlilik_baslangic)) {
-                        $donemKey = getDonemKey($ayar->gecerlilik_baslangic);
-                        if ($donemKey === $seciliDonem) {
-                            $filtreliAyarlar[] = $ayar;
-                        }
-                    }
-                }
-            }
-            ?>
-            <div class="card">
-                <div class="card-header">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                        <h5 class="card-title mb-0">
-                            <i class="bx bx-slider me-1"></i> Genel Bordro Ayarları
-                        </h5>
-                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-2">
-                            <?php if (!empty($donemler)): ?>
-                                <div style="min-width: 200px;">
-                                    <select id="donemSecimi" class="form-select" style="width: 100%;">
-                                        <?php foreach ($donemler as $donem): ?>
-                                            <option value="<?= $donem ?>" <?= $seciliDonem === $donem ? 'selected' : '' ?>>
-                                                <?= getDonemLabel($donem) ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                                <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                            <?php endif; ?>
-
-                            <button type="button" id="exportExcelGenelAyar"
-                                class="btn btn-link text-success text-decoration-none px-2 d-flex align-items-center"
-                                title="Excel'e Aktar">
-                                <i class="mdi mdi-file-excel fs-5 me-1"></i> Excel'e Aktar
-                            </button>
-                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                            <button type="button"
-                                class="btn btn-link text-info text-decoration-none px-2 d-flex align-items-center"
-                                data-bs-toggle="modal" data-bs-target="#modalYeniDonem">
-                                <i class="bx bx-copy me-1 fs-5"></i> Yeni Dönem Oluştur
-                            </button>
-                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                            <button type="button"
-                                class="btn btn-dark text-white shadow-sm text-decoration-none px-3 d-flex align-items-center"
-                                data-bs-toggle="modal" data-bs-target="#modalGenelAyarEkle">
-                                <i class="bx bx-plus me-1 fs-5 text-white"></i> Yeni Ayar
-                            </button>
+            <div class="card summary-kpi-card mb-3" id="genelAyarListCard">
+                <div class="card-header bg-transparent border-0 px-3 py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 38px; height: 38px;">
+                            <i class="bx bx-slider font-size-20"></i>
+                        </div>
+                        <div>
+                            <h5 class="card-title mb-0 font-size-14 fw-bold text-dark">Genel Bordro Ayarları</h5>
+                            <p class="text-muted mb-0 font-size-12" style="margin-top: 2px;"><?= htmlspecialchars($secimDonemLabel, ENT_QUOTES, 'UTF-8') ?> dönemine ait ayar değerleri</p>
                         </div>
                     </div>
+                    <div class="d-flex align-items-center gap-2 ms-auto flex-wrap param-filter-bar">
+                        <?php if (!empty($donemler)): ?>
+                            <?= Form::FormSelect2(
+                                name: "donemSecimi",
+                                options: $donemOptions,
+                                selectedValue: $seciliDonem,
+                                label: "Dönem",
+                                icon: "calendar"
+                            ) ?>
+                        <?php endif; ?>
+                        <button type="button" id="exportExcelGenelAyar" class="btn btn-sm btn-subtle-success px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" title="Excel'e Aktar">
+                            <i class="bx bx-file font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Excel</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary bg-white px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" data-bs-toggle="modal" data-bs-target="#modalYeniDonem">
+                            <i class="bx bx-copy font-size-15 text-primary"></i> <span class="d-none d-sm-inline font-size-12">Yeni Dönem Oluştur</span>
+                        </button>
+                    </div>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-3 pt-0">
                     <?php if (empty($filtreliAyarlar)): ?>
-                        <div class="alert alert-warning text-center">
+                        <div class="alert alert-warning text-center mb-0">
                             <i class="bx bx-info-circle me-1"></i>
-                            <?php if (empty($donemler)): ?>
-                                Henüz genel ayar tanımlanmamış.
-                            <?php else: ?>
-                                Bu dönem için ayar bulunamadı.
-                            <?php endif; ?>
+                            <?= empty($donemler) ? 'Henüz genel ayar tanımlanmamış.' : 'Bu dönem için ayar bulunamadı.' ?>
                         </div>
                     <?php else: ?>
-                        <div class="table-responsive">
-                            <table class="table table-hover table-bordered w-100 align-middle" id="dtGenelAyarlar">
-                                <thead class="table-light">
+                        <div class="table-responsive" style="overflow-x: auto !important;">
+                            <table class="table table-bordered table-hover nowrap align-middle w-100 mb-0" id="dtGenelAyarlar">
+                                <thead>
                                     <tr>
-                                        <th>Ayar Adı</th>
-                                        <th>Kod</th>
-                                        <th class="text-end">Değer</th>
-                                        <th>Geçerlilik</th>
-                                        <th class="text-center">Durum</th>
-                                        <th class="text-center" style="width: 100px;">İşlem</th>
+                                        <th data-filter="string">AYAR ADI</th>
+                                        <th data-filter="string">KOD</th>
+                                        <th data-filter="string" class="text-end">DEĞER</th>
+                                        <th data-filter="string">GEÇERLİLİK</th>
+                                        <th data-filter="none" class="text-center">DURUM</th>
+                                        <th data-filter="none" class="text-center" style="width: 100px;">İŞLEMLER</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($filtreliAyarlar as $ayar): ?>
                                         <tr>
-                                            <td>
-                                                <strong><?= htmlspecialchars($ayar->parametre_adi) ?></strong>
-                                            </td>
-                                            <td><code><?= htmlspecialchars($ayar->parametre_kodu) ?></code></td>
-                                            <td class="text-end">
+                                            <td class="fw-medium"><?= htmlspecialchars($ayar->parametre_adi, ENT_QUOTES, 'UTF-8') ?></td>
+                                            <td><span class="badge-group"><?= htmlspecialchars($ayar->parametre_kodu, ENT_QUOTES, 'UTF-8') ?></span></td>
+                                            <td class="text-end text-nowrap">
                                                 <?php if (strpos($ayar->parametre_kodu, 'orani') !== false): ?>
-                                                    <span
-                                                        class="badge bg-info fs-6">%<?= number_format($ayar->deger, 2, ',', '.') ?></span>
+                                                    <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">%<?= number_format($ayar->deger, 2, ',', '.') ?></span>
                                                 <?php else: ?>
-                                                    <span
-                                                        class="badge bg-success fs-6"><?= number_format($ayar->deger, 2, ',', '.') ?>
-                                                        ₺</span>
+                                                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold"><?= number_format($ayar->deger, 2, ',', '.') ?> ₺</span>
                                                 <?php endif; ?>
                                             </td>
-                                            <td>
+                                            <td class="text-nowrap">
                                                 <?= date('d.m.Y', strtotime($ayar->gecerlilik_baslangic)) ?>
-                                                <br>
-                                                <small class="text-muted">
-                                                    <?= $ayar->gecerlilik_bitis ? date('d.m.Y', strtotime($ayar->gecerlilik_bitis)) : 'Süresiz' ?>
-                                                </small>
+                                                <div class="font-size-12 text-secondary"><?= $ayar->gecerlilik_bitis ? date('d.m.Y', strtotime($ayar->gecerlilik_bitis)) : 'Süresiz' ?></div>
                                             </td>
                                             <td class="text-center">
                                                 <div class="form-check form-switch d-flex justify-content-center">
                                                     <input class="form-check-input switch-ayar-status" type="checkbox"
-                                                        data-id="<?= $ayar->id ?>" <?= $ayar->aktif ? 'checked' : '' ?>>
+                                                        data-id="<?= (int) $ayar->id ?>" <?= $ayar->aktif ? 'checked' : '' ?>>
                                                 </div>
                                             </td>
                                             <td class="text-center">
-                                                <button class="btn btn-sm btn-outline-primary btn-edit-ayar"
-                                                    data-id="<?= $ayar->id ?>" data-ayar='<?= json_encode($ayar) ?>'>
-                                                    <i class="bx bx-edit-alt"></i>
-                                                </button>
-                                                <button class="btn btn-sm btn-outline-danger btn-delete-ayar"
-                                                    data-id="<?= $ayar->id ?>"
-                                                    data-adi="<?= htmlspecialchars($ayar->parametre_adi) ?>">
-                                                    <i class="bx bx-trash"></i>
-                                                </button>
+                                                <div class="action-btn-group">
+                                                    <button class="btn btn-sm btn-subtle-warning table-action-btn btn-edit-ayar" title="Düzenle"
+                                                        data-id="<?= (int) $ayar->id ?>" data-ayar='<?= htmlspecialchars(json_encode($ayar), ENT_QUOTES, 'UTF-8') ?>'>
+                                                        <i class="bx bx-edit-alt"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-subtle-danger table-action-btn btn-delete-ayar" title="Sil"
+                                                        data-id="<?= (int) $ayar->id ?>"
+                                                        data-adi="<?= htmlspecialchars($ayar->parametre_adi, ENT_QUOTES, 'UTF-8') ?>">
+                                                        <i class="bx bx-trash"></i>
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -471,75 +505,68 @@ for ($y = date('Y') + 1; $y >= 2020; $y--) {
             </div>
         </div>
 
-        <!-- Gelir Vergisi Dilimleri Tab -->
         <div class="tab-pane" id="tabVergiDilimleri" role="tabpanel">
-            <div class="card">
-                <div class="card-header">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                        <h5 class="card-title mb-0">
-                            <i class="bx bx-chart me-1"></i>
-                            <span id="vergiDilimiBaslik"><?= $seciliVergiYili ?></span> Yılı Gelir Vergisi Dilimleri
-                        </h5>
-                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-2">
-                            <div style="min-width: 120px;">
-                                <select id="vergiYiliSecimi" class="form-select" style="width: 100%;">
-                                    <?php for ($y = date('Y') + 1; $y >= 2020; $y--): ?>
-                                        <option value="<?= $y ?>" <?= $seciliVergiYili == $y ? 'selected' : '' ?>><?= $y ?>
-                                        </option>
-                                    <?php endfor; ?>
-                                </select>
-                            </div>
-                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                            <button type="button" id="exportExcelVergiDilimleri"
-                                class="btn btn-link text-success text-decoration-none px-2 d-flex align-items-center"
-                                title="Excel'e Aktar">
-                                <i class="mdi mdi-file-excel fs-5 me-1"></i> Excel'e Aktar
-                            </button>
-                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                            <button type="button"
-                                class="btn btn-dark text-white shadow-sm text-decoration-none px-3 d-flex align-items-center"
-                                data-bs-toggle="modal" data-bs-target="#modalVergiDilimiEkle">
-                                <i class="bx bx-plus me-1 text-white fs-5"></i> Dilim Ekle
-                            </button>
+            <div class="card summary-kpi-card mb-3" id="vergiDilimiListCard">
+                <div class="card-header bg-transparent border-0 px-3 py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 38px; height: 38px;">
+                            <i class="bx bx-chart font-size-20"></i>
+                        </div>
+                        <div>
+                            <h5 class="card-title mb-0 font-size-14 fw-bold text-dark"><span id="vergiDilimiBaslik"><?= (int) $seciliVergiYili ?></span> Yılı Gelir Vergisi Dilimleri</h5>
+                            <p class="text-muted mb-0 font-size-12" style="margin-top: 2px;">Kümülatif matrah dilimleri ve vergi oranları</p>
                         </div>
                     </div>
+                    <div class="d-flex align-items-center gap-2 ms-auto flex-wrap param-filter-bar">
+                        <?= Form::FormSelect2(
+                            name: "vergiYiliSecimi",
+                            options: $vergiYillariOptions,
+                            selectedValue: $seciliVergiYili,
+                            label: "Vergi Yılı",
+                            icon: "calendar"
+                        ) ?>
+                        <button type="button" id="exportExcelVergiDilimleri" class="btn btn-sm btn-subtle-success px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" title="Excel'e Aktar">
+                            <i class="bx bx-file font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Excel</span>
+                        </button>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover table-bordered w-100 align-middle" id="dtVergiDilimleri">
-                            <thead class="table-light">
-                                <tr class="text-center">
-                                    <th>Dilim</th>
-                                    <th>Alt Limit</th>
-                                    <th>Üst Limit</th>
-                                    <th>Vergi Oranı</th>
-                                    <th>Açıklama</th>
-                                    <th style="width: 100px;">İşlem</th>
+                <div class="card-body p-3 pt-0">
+                    <div class="table-responsive" style="overflow-x: auto !important;">
+                        <table class="table table-bordered table-hover nowrap align-middle w-100 mb-0" id="dtVergiDilimleri">
+                            <thead>
+                                <tr>
+                                    <th data-filter="string">DİLİM</th>
+                                    <th data-filter="string" class="text-end">ALT LİMİT</th>
+                                    <th data-filter="string" class="text-end">ÜST LİMİT</th>
+                                    <th data-filter="string" class="text-center">VERGİ ORANI</th>
+                                    <th data-filter="string">AÇIKLAMA</th>
+                                    <th data-filter="none" class="text-center" style="width: 100px;">İŞLEMLER</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php if (!empty($vergiDilimleri)): ?>
                                     <?php foreach ($vergiDilimleri as $dilim): ?>
                                         <tr>
-                                            <td class="text-center fw-bold"><?= $dilim->dilim_no ?>. Dilim</td>
-                                            <td class="text-end"><?= number_format($dilim->alt_limit, 2, ',', '.') ?> ₺</td>
-                                            <td class="text-end">
+                                            <td><span class="row-index-badge"><?= (int) $dilim->dilim_no ?>. Dilim</span></td>
+                                            <td class="text-end text-nowrap"><?= number_format($dilim->alt_limit, 2, ',', '.') ?> ₺</td>
+                                            <td class="text-end text-nowrap">
                                                 <?= $dilim->ust_limit ? number_format($dilim->ust_limit, 2, ',', '.') . ' ₺' : '<span class="text-muted">Sınırsız</span>' ?>
                                             </td>
                                             <td class="text-center">
-                                                <span
-                                                    class="badge bg-primary fs-6">%<?= number_format($dilim->vergi_orani, 0) ?></span>
+                                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">%<?= number_format($dilim->vergi_orani, 0) ?></span>
                                             </td>
-                                            <td class="text-muted small"><?= htmlspecialchars($dilim->aciklama ?? '') ?></td>
+                                            <td class="text-secondary font-size-12"><?= htmlspecialchars($dilim->aciklama ?? '', ENT_QUOTES, 'UTF-8') ?></td>
                                             <td class="text-center">
-                                                <button class="btn btn-sm btn-outline-primary btn-edit-dilim"
-                                                    data-dilim='<?= json_encode($dilim) ?>'>
-                                                    <i class="bx bx-edit-alt"></i>
-                                                </button>
-                                                <button class="btn btn-sm btn-outline-danger btn-delete-dilim"
-                                                    data-id="<?= $dilim->id ?>" data-dilim="<?= $dilim->dilim_no ?>">
-                                                    <i class="bx bx-trash"></i>
-                                                </button>
+                                                <div class="action-btn-group">
+                                                    <button class="btn btn-sm btn-subtle-warning table-action-btn btn-edit-dilim" title="Düzenle"
+                                                        data-dilim='<?= htmlspecialchars(json_encode($dilim), ENT_QUOTES, 'UTF-8') ?>'>
+                                                        <i class="bx bx-edit-alt"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-subtle-danger table-action-btn btn-delete-dilim" title="Sil"
+                                                        data-id="<?= (int) $dilim->id ?>" data-dilim="<?= (int) $dilim->dilim_no ?>">
+                                                        <i class="bx bx-trash"></i>
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -1578,18 +1605,51 @@ for ($y = date('Y') + 1; $y >= 2020; $y--) {
         // ========== DATATABLE BAŞLATMA ==========
 
         // Filtreler için Select2 Initializer
-        $('#filtreDonem, #filtreKategori').select2({
+        $('#filtreDonem, #filtreKategori, #donemSecimi, #vergiYiliSecimi').select2({
             minimumResultsForSearch: Infinity
+        });
+
+        const toggleBtn = $('#btnToggleSummaryCards');
+        const updateToggleState = () => {
+            const isHidden = $('html').hasClass('bordro-param-summary-hidden');
+            toggleBtn.attr('aria-expanded', !isHidden);
+            toggleBtn.find('i').attr('class', isHidden ? 'bx bx-chevron-down' : 'bx bx-chevron-up');
+        };
+        updateToggleState();
+        toggleBtn.on('click', function () {
+            const willHide = !$('html').hasClass('bordro-param-summary-hidden');
+            $('html').toggleClass('bordro-param-summary-hidden', willHide);
+            try { localStorage.setItem('bordro_param_summary_cards_state', willHide ? 'hidden' : 'visible'); } catch (e) { }
+            updateToggleState();
+        });
+
+        $('#paramTabs a[data-bs-toggle="tab"]').on('shown.bs.tab', function () {
+            $('#btnTopYeni').attr('data-bs-target', $(this).data('add-target'));
+            $('#btnTopYeniLabel').text($(this).data('add-label'));
+            history.replaceState(null, '', window.location.pathname + window.location.search + $(this).attr('href'));
+            $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
+        });
+        if (window.location.hash && $('#paramTabs a[href="' + window.location.hash + '"]').length) {
+            bootstrap.Tab.getOrCreateInstance($('#paramTabs a[href="' + window.location.hash + '"]')[0]).show();
+        }
+
+        $('.status-quick-filter').on('click', function () {
+            $('.status-quick-filter').removeClass('active');
+            $(this).addClass('active');
+            $('#filtreKategori').val($(this).data('kategori')).trigger('change');
+            $('#filtreDonem').val($(this).data('donem')).trigger('change');
+            bootstrap.Tab.getOrCreateInstance($('#paramTabs a[href="#tabParametreler"]')[0]).show();
         });
 
         // Parametreler Datatable Initializer
         let dtParametreler;
         if ($('#dtParametreler').length > 0) {
-            let options = getDatatableOptions();
-            options.order = [[1, 'asc']];
-            options.pageLength = 25;
-            options.columnDefs = [{ targets: -1, orderable: false }];
-            dtParametreler = $('#dtParametreler').DataTable(options);
+            dtParametreler = $('#dtParametreler').DataTable(applyLengthStateSave({
+                ...getDatatableOptions(),
+                order: [[1, 'asc']],
+                pageLength: 25,
+                columnDefs: [{ targets: -1, orderable: false, searchable: false }]
+            }));
 
             // Filtreleme fonksiyonu
             $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
@@ -1623,20 +1683,22 @@ for ($y = date('Y') + 1; $y >= 2020; $y--) {
 
         // Genel Ayarlar Datatable Initializer
         if ($('#dtGenelAyarlar').length > 0) {
-            let optionsGenel = getDatatableOptions();
-            optionsGenel.order = [[0, 'asc']];
-            optionsGenel.pageLength = 25;
-            optionsGenel.columnDefs = [{ targets: -1, orderable: false }];
-            $('#dtGenelAyarlar').DataTable(optionsGenel);
+            $('#dtGenelAyarlar').DataTable(applyLengthStateSave({
+                ...getDatatableOptions(),
+                order: [[0, 'asc']],
+                pageLength: 25,
+                columnDefs: [{ targets: [-1, -2], orderable: false, searchable: false }]
+            }));
         }
 
         // Vergi Dilimleri Datatable Initializer
         if ($('#dtVergiDilimleri').length > 0) {
-            let optionsVergi = getDatatableOptions();
-            optionsVergi.order = [[0, 'asc']];
-            optionsVergi.pageLength = 25;
-            optionsVergi.columnDefs = [{ targets: -1, orderable: false }];
-            $('#dtVergiDilimleri').DataTable(optionsVergi);
+            $('#dtVergiDilimleri').DataTable(applyLengthStateSave({
+                ...getDatatableOptions(),
+                order: [[0, 'asc']],
+                pageLength: 25,
+                columnDefs: [{ targets: -1, orderable: false, searchable: false }]
+            }));
         }
 
         // Excel Butonları

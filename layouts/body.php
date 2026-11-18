@@ -43,7 +43,7 @@ $isObserverModeActive = class_exists('\App\Service\ObserverMode') && \App\Servic
             ];
             bodyAttrs.forEach(name => {
                 let value = localStorage.getItem(name);
-                if (!value && name === 'data-topbar' && !customTopbar && (!savedPreset || savedPreset === 'ersan' || savedPreset === 'minimalist')) value = 'light';
+                if (!value && name === 'data-topbar' && !customTopbar && (!savedPreset || savedPreset === 'ersan' || savedPreset === 'minimalist' || savedPreset === 'macos-light')) value = 'light';
                 if (!value && name === 'data-sidebar' && !customSidebar && (!savedPreset || savedPreset === 'ersan' || savedPreset === 'minimalist' || savedPreset === 'dark-pro' || savedPreset === 'macos-dark')) value = 'dark';
                 if (!value && name === 'data-theme-mode') value = 'ersan';
                 if (name === 'data-layout-size' && value === 'boxed') {

@@ -9,7 +9,7 @@ aynı yedek dizinini, aynı Google Drive klasörünü ve aynı **Yönetim → Si
 
 ## Canlıda aktifleştirme kontrol listesi
 
-1. `.env` → `BACKUP_DIR=/home/KULLANICI/yedekler` (web kökü dışında, yazılabilir dizin).
+1. `.env` → `BACKUP_DIR=/home/KULLANICI/repositories/ersan_elk_yedekler` (web kökü dışında, yazılabilir dizin).
 2. cPanel **Cron Jobs** ekranına iki görev ekleyin ([Crontab](#crontab)).
 3. Google Drive uzak kopyası için `.env` GDRIVE_* ve `YEDEK_SIFRELEME_ANAHTARI` ([Kurulum](#kurulum-bir-kez)).
    Anahtarı sunucu dışında da saklayın.
@@ -167,8 +167,8 @@ BACKUP_DIR=/home/kullanici/db_yedekleri
 cPanel → **Cron Jobs** → *Common Settings: Once Per Two Hours* (`0 */2 * * *`):
 
 ```
-0 */2 * * *  /usr/local/bin/php /home/KULLANICI/public_html/ersan_elk/cron/db_backup.php --sessiz >> /home/KULLANICI/public_html/ersan_elk/cron/logs/backup_cron.log 2>&1
-30 1,13 * * *  /usr/local/bin/php /home/KULLANICI/public_html/ersan_elk/cron/dosya_yedek.php --sessiz >> /home/KULLANICI/public_html/ersan_elk/cron/logs/dosya_yedek_cron.log 2>&1
+0 */2 * * *  /usr/local/bin/php /home/KULLANICI/repositories/ersan_elk/cron/db_backup.php --sessiz >> /home/KULLANICI/repositories/ersan_elk/cron/logs/backup_cron.log 2>&1
+30 1,13 * * *  /usr/local/bin/php /home/KULLANICI/repositories/ersan_elk/cron/dosya_yedek.php --sessiz >> /home/KULLANICI/repositories/ersan_elk/cron/logs/dosya_yedek_cron.log 2>&1
 ```
 
 Dosya yedeği günde iki kez (01:30 ve 13:30) yeterlidir; değişiklik yoksa arşiv oluşturmaz. Eski

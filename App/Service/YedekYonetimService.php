@@ -181,6 +181,7 @@ class YedekYonetimService
             }, $testler), 0, 10),
             'test_vt_tanimli' => trim((string) ($_ENV['YEDEK_TEST_VT'] ?? '')) !== '',
             'bos_alan' => @disk_free_space($this->dizin) ?: null,
+            'dizin_hatasi' => $this->dizinErisimHatasi(),
             'is' => $this->isDurumu(),
         ];
     }
@@ -248,6 +249,11 @@ class YedekYonetimService
         }
         if ($tip === 'drive_indir' && !self::dosyaAdiGecerliMi((string) ($parametre['dosya'] ?? ''))) {
             throw new DomainException('Geçersiz yedek dosya adı.');
+        }
+
+        $hata = $this->dizinErisimHatasi();
+        if ($hata !== null) {
+            throw new DomainException($hata);
         }
 
         $kilit = $this->yedek->kilitAl();
@@ -343,6 +349,21 @@ class YedekYonetimService
             $this->yedek->kilitBirak($this->kilit);
             $this->kilit = null;
         }
+    }
+
+    public function dizinErisimHatasi(): ?string
+    {
+        if (!is_dir($this->dizin)) {
+            $ust = dirname($this->dizin);
+            return is_dir($ust) && is_writable($ust) ? null
+                : 'Yedek dizini yok ve web sunucusu tarafından oluşturulamıyor. BACKUP_DIR ayarını ve klasör izinlerini kontrol edin.';
+        }
+        if (!is_readable($this->dizin) || !is_writable($this->dizin) || !is_executable($this->dizin)) {
+            $kullanici = function_exists('posix_geteuid') && function_exists('posix_getpwuid')
+                ? (posix_getpwuid(posix_geteuid())['name'] ?? '?') : get_current_user();
+            return sprintf('Yedek dizinine web sunucusu kullanıcısı (%s) yazamıyor. Klasör sahibi/izinleri cron kullanıcısıyla aynı olmalı.', $kullanici);
+        }
+        return null;
     }
 
     private function drivedanIndir(string $ad, int $kullaniciId): bool

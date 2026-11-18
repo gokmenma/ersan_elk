@@ -211,6 +211,7 @@ $(function () {
         }
 
         const uyarilar = [];
+        if (o.dizin_hatasi) uyarilar.push(esc(o.dizin_hatasi));
         if (!o.drive_yapilandirildi) uyarilar.push("Google Drive uzak kopyası kapalı; yedekler yalnızca bu sunucuda duruyor. Kurulum: <code>cron/YEDEKLEME.md</code>");
         if (!o.test_vt_tanimli) uyarilar.push('Geri yükleme testi için <code>.env</code> içinde <code>YEDEK_TEST_VT</code> tanımlanmalı.');
         if (o.son_yedek && (Date.now() - new Date(o.son_yedek.zaman.replace(' ', 'T')).getTime()) / 3600000 > 26) uyarilar.push('Son 26 saattir veritabanı yedeği alınmamış; cron görevini kontrol edin.');

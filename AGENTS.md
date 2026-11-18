@@ -203,3 +203,12 @@ Bu bölüm 8. bölümün görsel ayrıntılarını geçersiz kılar; yeni ve dü
 - **Aksiyon butonları**: `.action-btn-group` içinde 28x28 `.table-action-btn` (5px köşe, 11.5px).
 - **Sayfalama**: 32px `.page-link`, 6px köşe, aktif sayfa slate.
 - **Doğrulama**: Yeni sayfa tarayıcıda açılıp KPI, liste kartı, tablo başlığı ve satır rozetleri bu bölümle karşılaştırılmadan tamamlanmış sayılmaz; yeni sayfa `views/cari/list.php` ile aynı görünümde olmalıdır.
+
+## 16. macOS Açık Tema (`macos-light`) Standardı
+- Preset anahtarı `macos-light`; tek stil kaynağı `assets/css/macos-light.css` (`layouts/head-style.php` içinde `ersan.css`'den sonra yüklenir). Renk, yazı tipi, köşe ve gölge değişiklikleri yalnızca bu dosyada yapılır; seçiciler `html[data-theme-preset="macos-light"] body:not(#_)` ile başlar.
+- Yazı tipi: Apple web yığını `-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", Inter, "Helvetica Neue", Helvetica, Arial`; başlıklar SF Pro Display, gövde SF Pro Text. SF Pro lisansı gereği yalnız Apple cihazlarda görünür, diğerlerinde Inter yedeği kullanılır. Ağırlıklar 400/500/600 (700 kullanılmaz), başlıklarda `letter-spacing: -0.022em`.
+- Renkler: zemin `#f5f5f7`, kart `#ffffff`, metin `#1d1d1f`, ikincil `#6e6e73`, ayırıcı `#d2d2d7`, vurgu `#0071e3` (hover `#0077ed`), bağlantı `#0066cc`; sistem renkleri `#34c759`, `#ff9500`, `#ff3b30`.
+- Biçim: kart 18px köşe, birincil buton ve modal alt butonları hap (980px), alanlar 10px, açılır menü 12px; üst çubuk ve sidebar yarı saydam + `backdrop-filter`; menü öğesi vurgusu macOS gibi mavi dolgu.
+- Sidebar yapısı (Finder) `macos-dark` ile `layouts/sidebar.php` içinde `html:is(...)` ile paylaşılır; renkler `macos-light.css` içinde geçersiz kılınır.
+- Kayıt noktaları: `layouts/head-style.php` (THEME_PRESETS_CONFIG), `assets/js/app_module.js` (THEME_PRESETS), `layouts/right-sidebar.php` (tema kartı), `layouts/body.php` (topbar varsayılanı).
+

@@ -1,5 +1,8 @@
 # Active Context
 
+## Bordro Parametreler — Yeni Sayfa Standardı (2026-11-18)
+- `views/bordro/parametreler.php`: üst başlık + toolbar (sekmeye göre değişen ekleme butonu, özet kartı aç/kapa), 4 KPI kartı, 3 sekmede liste kartı, `data-filter` başlıkları, `Form::FormSelect2` filtreleri, `applyLengthStateSave` DataTables. Aktif sekme URL hash'inde saklanır.
+
 ## Demirbaş — Liste Sayfası Açılış Performansı (2026-11-18)
 - `views/demirbas/list.php` özet kartları için firmanın tüm demirbaş+sayaç+aparat kayıtlarını (`getAllWithCategory`, ~31 bin satır, satır başına alt sorgular) çekiyordu; süre ~3 sn.
 - Yeni `DemirbasModel::getEnvanterOzetSatirlari($haricKategoriIds)` yalnız sayaç/aparat dışı satırları ve gerekli kolonları getirir (`kayit_tarihi DESC` sıralaması kategori envanteri sırası için korunur).
@@ -4053,3 +4056,7 @@
 - `views/yedekleme` sayfası "Sistem Yedekleri" oldu: dosya yedekleri listede, Dosya Tam/Artımlı Yedeği Al, Bütünlük Doğrulama, Dosya filtresi, 26 saat uyarısı. Yeni yetki/SQL yok (mevcut `is-baslat` aksiyonu).
 - Yerelde CLI + tarayıcıda test edildi (tam/artımlı/silme/geri yükleme birebir, bozulma tespiti, DB yedeği regresyonu). Drive kısmı kimlik bilgisi olmadığı için uçtan uca denenmedi.
 - Canlıda yapılacaklar: `.env` BACKUP_DIR (web kökü dışı), cPanel cron'a `dosya_yedek.php` (01:30/13:30) ve `db_backup.php` (2 saatte bir), GDRIVE_* + YEDEK_SIFRELEME_ANAHTARI, YEDEK_TEST_VT. Kontrol listesi `cron/YEDEKLEME.md` başında.
+
+## macOS Açık Tema (2026-11-18)
+- Yeni `macos-light` preset: `assets/css/macos-light.css` (Apple web yazı yığını SF Pro/Inter yedekli, #f5f5f7 zemin, #0071e3 vurgu, 18px kart, hap buton, yarı saydam üst çubuk/sidebar). Sidebar Finder yapısı `layouts/sidebar.php` içinde macos-dark ile `html:is(...)` ile paylaşıldı.
+- Kayıt: head-style.php, app_module.js, right-sidebar.php (kart), body.php. Kural: AGENTS.md bölüm 16. Evrak Takip sayfasında Chrome ile doğrulandı; diğer sayfalar (modal, form, bordro) gözle taranmadı.

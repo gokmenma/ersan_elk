@@ -2369,3 +2369,7 @@
 - [x] cron/dosya_yedek.php, cron/dosya_restore.php; klasor_yedekleme.php sarmalayıcı
 - [x] Sistem Yedekleri arayüzüne dosya yedekleri
 - [ ] Canlı: BACKUP_DIR, cron görevleri, Drive .env, YEDEK_TEST_VT, ilk tam yedekler ve doğrulama
+
+- [x] macOS Açık tema (`macos-light`) eklendi ve tema seçiciye bağlandı (2026-11-18). Kalan: tüm sayfalarda gözle tarama, SF Pro'nun Apple dışı cihazlarda Inter yedeği.
+
+- [x] Bordro Parametreler sayfası (3 sekme) Aydınoğulları yeni sayfa standardına geçirildi (2026-11-18).

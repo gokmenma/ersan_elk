@@ -1133,9 +1133,9 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                 }
 
                 /* macOS Finder Sidebar — neutral graphite, compact rows and monochrome icons (Tahoe style) */
-                html[data-theme-preset="macos-dark"] body .vertical-menu,
-                html[data-theme-preset="macos-dark"] body[data-sidebar] .vertical-menu,
-                html[data-theme-preset="macos-dark"] body[data-sidebar="dark"] .vertical-menu {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .vertical-menu,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar] .vertical-menu,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar="dark"] .vertical-menu {
                     --sidebar-bg: rgba(30, 31, 35, 0.96);
                     --sidebar-border: rgba(255, 255, 255, 0.10);
                     --sidebar-foreground: rgba(255, 255, 255, 0.85);
@@ -1154,7 +1154,7 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                     backface-visibility: hidden;
                 }
 
-                html[data-theme-preset="macos-dark"] body .sidebar-sticky-top {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .sidebar-sticky-top {
                     display: flex !important;
                     flex-direction: row !important;
                     align-items: center !important;
@@ -1168,7 +1168,7 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                     z-index: 1000 !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .sidebar-brand-box {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .sidebar-brand-box {
                     min-height: auto !important;
                     height: auto !important;
                     padding: 0 !important;
@@ -1181,7 +1181,7 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                     border-bottom: none !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .macos-window-controls {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .macos-window-controls {
                     width: auto !important;
                     gap: 6px !important;
                     margin: 0 !important;
@@ -1191,27 +1191,27 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                     flex-shrink: 0 !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .macos-dot {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .macos-dot {
                     width: 11px !important;
                     height: 11px !important;
                     box-shadow: none;
                     border: 0.5px solid rgba(0, 0, 0, 0.25);
                 }
 
-                html[data-theme-preset="macos-dark"] body .sidebar-search-container {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .sidebar-search-container {
                     padding: 0 !important;
                     margin: 0 !important;
                     flex-shrink: 0 !important;
                     position: relative !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .sidebar-search-container .position-relative {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .sidebar-search-container .position-relative {
                     display: flex !important;
                     align-items: center !important;
                 }
 
                 /* Arama simgesi: Finder gibi çerçevesiz ikon, tıklandığında genişler */
-                html[data-theme-preset="macos-dark"] body .sidebar-search {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .sidebar-search {
                     width: 24px !important;
                     height: 24px !important;
                     padding: 0 0 0 24px !important;
@@ -1225,12 +1225,12 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                     transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s ease, padding 0.15s ease !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .sidebar-search:hover {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .sidebar-search:hover {
                     background: rgba(255, 255, 255, 0.08) !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .sidebar-search:focus,
-                html[data-theme-preset="macos-dark"] body .sidebar-search:not(:placeholder-shown) {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .sidebar-search:focus,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .sidebar-search:not(:placeholder-shown) {
                     width: 96px !important;
                     padding-left: 24px !important;
                     padding-right: 20px !important;
@@ -1241,11 +1241,11 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                     box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08) !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .sidebar-search::placeholder {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .sidebar-search::placeholder {
                     color: rgba(235, 235, 245, 0.38) !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .sidebar-search-container .search-icon {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .sidebar-search-container .search-icon {
                     left: 5px !important;
                     top: 50% !important;
                     transform: translateY(-50%) !important;
@@ -1255,7 +1255,7 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                     pointer-events: none !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .brand-wrapper {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .brand-wrapper {
                     min-width: 0;
                     margin: 0 !important;
                     gap: 0;
@@ -1263,12 +1263,12 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                     align-items: center !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .brand-logo,
-                html[data-theme-preset="macos-dark"] body .brand-sub {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .brand-logo,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .brand-sub {
                     display: none !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .brand-name {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .brand-name {
                     max-width: 90px !important;
                     overflow: hidden;
                     color: rgba(255, 255, 255, 0.88) !important;
@@ -1280,12 +1280,12 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                 }
 
                 /* Üç Nokta Ayarlar Butonu (Çerçevesiz Finder Stili) & Popover Menü */
-                html[data-theme-preset="macos-dark"] body .menu-settings-dropdown {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .menu-settings-dropdown {
                     flex-shrink: 0 !important;
                     position: relative !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .btn-sidebar-settings {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .btn-sidebar-settings {
                     width: 24px !important;
                     height: 24px !important;
                     padding: 0 !important;
@@ -1300,22 +1300,22 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                     flex-shrink: 0 !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .btn-sidebar-settings i,
-                html[data-theme-preset="macos-dark"] body .btn-sidebar-settings svg {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .btn-sidebar-settings i,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .btn-sidebar-settings svg {
                     width: 15px !important;
                     height: 15px !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .btn-sidebar-settings:hover,
-                html[data-theme-preset="macos-dark"] body .btn-sidebar-settings[aria-expanded="true"] {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .btn-sidebar-settings:hover,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .btn-sidebar-settings[aria-expanded="true"] {
                     background: rgba(255, 255, 255, 0.14) !important;
                     color: #ffffff !important;
                 }
 
                 /* GNOME / macOS Finder Stili Açılır Menü (Popover Dropdown) - Tooltip Ok Desteği ve Merkezleme */
-                html[data-theme-preset="macos-dark"] body .menu-settings-dropdown .dropdown-menu,
-                html[data-theme-preset="macos-dark"] body .dropdown-menu.mac-popover-menu,
-                html[data-theme-preset="macos-dark"] body .mac-popover-menu {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .menu-settings-dropdown .dropdown-menu,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .dropdown-menu.mac-popover-menu,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .mac-popover-menu {
                     position: absolute !important;
                     top: calc(100% + 8px) !important;
                     right: -4px !important;
@@ -1339,8 +1339,8 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                 }
 
                 /* Üç Noktayı Hedefleyen Tooltip / Popover Üçgen Oku */
-                html[data-theme-preset="macos-dark"] body .menu-settings-dropdown .dropdown-menu::before,
-                html[data-theme-preset="macos-dark"] body .dropdown-menu.mac-popover-menu::before {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .menu-settings-dropdown .dropdown-menu::before,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .dropdown-menu.mac-popover-menu::before {
                     content: '' !important;
                     position: absolute !important;
                     top: -5px !important;
@@ -1355,7 +1355,7 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                     border-top-left-radius: 2px !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .mac-dropdown-group {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .mac-dropdown-group {
                     background: #242424 !important;
                     border: 1px solid #383838 !important;
                     border-radius: 8px !important;
@@ -1363,12 +1363,12 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                     margin-bottom: 6px !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .mac-dropdown-group:last-child {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .mac-dropdown-group:last-child {
                     margin-bottom: 0 !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .dropdown-item,
-                html[data-theme-preset="macos-dark"] body .mac-popover-item {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .dropdown-item,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .mac-popover-item {
                     color: #ffffff !important;
                     font-size: 13px !important;
                     font-weight: 400 !important;
@@ -1386,23 +1386,23 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                     transition: background 0.12s ease, color 0.12s ease !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .dropdown-item:hover,
-                html[data-theme-preset="macos-dark"] body .dropdown-item:focus,
-                html[data-theme-preset="macos-dark"] body .mac-popover-item:hover,
-                html[data-theme-preset="macos-dark"] body .mac-popover-item:focus {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .dropdown-item:hover,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .dropdown-item:focus,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .mac-popover-item:hover,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .mac-popover-item:focus {
                     background: #3b3b3b !important;
                     color: #ffffff !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .dropdown-item.disabled,
-                html[data-theme-preset="macos-dark"] body .mac-popover-item.disabled {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .dropdown-item.disabled,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .mac-popover-item.disabled {
                     color: #5a5a5a !important;
                     background: transparent !important;
                     cursor: default !important;
                     pointer-events: none !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .mac-item-shortcut {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .mac-item-shortcut {
                     font-size: 12px !important;
                     font-weight: 400 !important;
                     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
@@ -1411,31 +1411,31 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                     padding-left: 8px !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .dropdown-item:hover .mac-item-shortcut,
-                html[data-theme-preset="macos-dark"] body .mac-popover-item:hover .mac-item-shortcut {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .dropdown-item:hover .mac-item-shortcut,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .mac-popover-item:hover .mac-item-shortcut {
                     color: #b0b0b0 !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .dropdown-item.disabled .mac-item-shortcut,
-                html[data-theme-preset="macos-dark"] body .mac-popover-item.disabled .mac-item-shortcut {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .dropdown-item.disabled .mac-item-shortcut,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .mac-popover-item.disabled .mac-item-shortcut {
                     color: #4a4a4a !important;
                 }
 
                 /* Sidebar içerisi tamamen kesintisiz ve akıcı (çizgisiz) */
-                html[data-theme-preset="macos-dark"] body .sidebar-menu-scroll {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .sidebar-menu-scroll {
                     border-top: none !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body #sidebar-menu {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body #sidebar-menu {
                     padding: 4px 6px 16px !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .menu-section {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .menu-section {
                     margin-bottom: 4px;
                 }
 
-                html[data-theme-preset="macos-dark"] body #sidebar-menu .menu-title,
-                html[data-theme-preset="macos-dark"] body #side-menu .menu-title {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body #sidebar-menu .menu-title,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body #side-menu .menu-title {
                     min-height: auto !important;
                     padding: 12px 10px 4px !important;
                     background: transparent !important;
@@ -1447,8 +1447,8 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                 }
 
                 /* Ana menü satırları */
-                html[data-theme-preset="macos-dark"] body #sidebar-menu #side-menu > li > a,
-                html[data-theme-preset="macos-dark"] body #sidebar-menu ul > li > a {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body #sidebar-menu #side-menu > li > a,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body #sidebar-menu ul > li > a {
                     min-height: 32px !important;
                     margin: 1px 6px !important;
                     padding: 6px 10px !important;
@@ -1462,10 +1462,10 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                     transition: background-color .15s ease, color .12s ease !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body #sidebar-menu #side-menu > li > a i,
-                html[data-theme-preset="macos-dark"] body #sidebar-menu #side-menu > li > a svg,
-                html[data-theme-preset="macos-dark"] body #sidebar-menu ul > li > a i,
-                html[data-theme-preset="macos-dark"] body #sidebar-menu ul > li > a svg {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body #sidebar-menu #side-menu > li > a i,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body #sidebar-menu #side-menu > li > a svg,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body #sidebar-menu ul > li > a i,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body #sidebar-menu ul > li > a svg {
                     width: 16px !important;
                     height: 16px !important;
                     min-width: 16px !important;
@@ -1475,8 +1475,8 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                     stroke-width: 1.65 !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .vertical-menu #sidebar-menu ul li > a:hover,
-                html[data-theme-preset="macos-dark"] body .vertical-menu #sidebar-menu #side-menu li > a:hover {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .vertical-menu #sidebar-menu ul li > a:hover,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .vertical-menu #sidebar-menu #side-menu li > a:hover {
                     background: rgba(255, 255, 255, 0.08) !important;
                     border-color: transparent !important;
                     color: #ffffff !important;
@@ -1484,16 +1484,16 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                     -webkit-backdrop-filter: none !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .vertical-menu #sidebar-menu ul li > a:hover i,
-                html[data-theme-preset="macos-dark"] body .vertical-menu #sidebar-menu ul li > a:hover svg,
-                html[data-theme-preset="macos-dark"] body .vertical-menu #sidebar-menu #side-menu li > a:hover i,
-                html[data-theme-preset="macos-dark"] body .vertical-menu #sidebar-menu #side-menu li > a:hover svg {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .vertical-menu #sidebar-menu ul li > a:hover i,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .vertical-menu #sidebar-menu ul li > a:hover svg,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .vertical-menu #sidebar-menu #side-menu li > a:hover i,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .vertical-menu #sidebar-menu #side-menu li > a:hover svg {
                     color: #ffffff !important;
                     stroke: currentColor !important;
                 }
 
                 /* Alt Menü Kırılımları — Orijinal Hiyerarşi Korundu */
-                html[data-theme-preset="macos-dark"] body .sub-menu {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .sub-menu {
                     padding: 0 0 0 12px !important;
                     margin: 0 0 0 28px !important;
                     list-style: none !important;
@@ -1501,8 +1501,8 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                     position: relative !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body #sidebar-menu .sub-menu li a,
-                html[data-theme-preset="macos-dark"] body #sidebar-menu ul li ul.sub-menu li a {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body #sidebar-menu .sub-menu li a,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body #sidebar-menu ul li ul.sub-menu li a {
                     font-size: 13px !important;
                     padding-left: 1rem !important;
                     padding-right: 28px !important;
@@ -1515,18 +1515,18 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                     transition: background-color .15s ease, color .12s ease, padding-left .15s ease !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .vertical-menu #sidebar-menu .sub-menu li a:hover,
-                html[data-theme-preset="macos-dark"] body .vertical-menu #sidebar-menu ul li ul.sub-menu li a:hover {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .vertical-menu #sidebar-menu .sub-menu li a:hover,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .vertical-menu #sidebar-menu ul li ul.sub-menu li a:hover {
                     background-color: rgba(255, 255, 255, 0.08) !important;
                     color: #ffffff !important;
                     padding-left: 1.2rem !important;
                 }
 
                 /* SADECE GERÇEK AKTİF ÖĞE (Seçili Sayfa) Dolu Pill Alır */
-                html[data-theme-preset="macos-dark"] body #sidebar-menu .sub-menu li a.active,
-                html[data-theme-preset="macos-dark"] body #sidebar-menu ul li ul.sub-menu li a.active,
-                html[data-theme-preset="macos-dark"] body #sidebar-menu #side-menu > li:not(:has(.sub-menu)) > a.active,
-                html[data-theme-preset="macos-dark"] body #sidebar-menu ul > li:not(:has(.sub-menu)) > a.active {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body #sidebar-menu .sub-menu li a.active,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body #sidebar-menu ul li ul.sub-menu li a.active,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body #sidebar-menu #side-menu > li:not(:has(.sub-menu)) > a.active,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body #sidebar-menu ul > li:not(:has(.sub-menu)) > a.active {
                     background: rgba(255, 255, 255, 0.16) !important;
                     border-color: rgba(255, 255, 255, 0.04) !important;
                     color: #ffffff !important;
@@ -1536,13 +1536,13 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                     -webkit-backdrop-filter: none !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body #sidebar-menu .sub-menu li a.active {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body #sidebar-menu .sub-menu li a.active {
                     padding-left: 1.2rem !important;
                 }
 
                 /* Alt menülü üst başlık açıkken çift kutu olmasını engelle, sadece açık/parlak göster */
-                html[data-theme-preset="macos-dark"] body #sidebar-menu #side-menu > li.mm-active:has(.sub-menu) > a,
-                html[data-theme-preset="macos-dark"] body #sidebar-menu ul > li.mm-active:has(.sub-menu) > a {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body #sidebar-menu #side-menu > li.mm-active:has(.sub-menu) > a,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body #sidebar-menu ul > li.mm-active:has(.sub-menu) > a {
                     background: rgba(255, 255, 255, 0.05) !important;
                     color: #ffffff !important;
                     font-weight: 500 !important;
@@ -1550,46 +1550,46 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                     box-shadow: none !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body #sidebar-menu ul li a.active i,
-                html[data-theme-preset="macos-dark"] body #sidebar-menu ul li a.active svg,
-                html[data-theme-preset="macos-dark"] body #sidebar-menu #side-menu li a.active i,
-                html[data-theme-preset="macos-dark"] body #sidebar-menu #side-menu li a.active svg,
-                html[data-theme-preset="macos-dark"] body #sidebar-menu #side-menu > li.mm-active > a i,
-                html[data-theme-preset="macos-dark"] body #sidebar-menu #side-menu > li.mm-active > a svg {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body #sidebar-menu ul li a.active i,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body #sidebar-menu ul li a.active svg,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body #sidebar-menu #side-menu li a.active i,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body #sidebar-menu #side-menu li a.active svg,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body #sidebar-menu #side-menu > li.mm-active > a i,
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body #sidebar-menu #side-menu > li.mm-active > a svg {
                     color: #ffffff !important;
                     stroke: currentColor !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .has-arrow::after {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .has-arrow::after {
                     right: 14px !important;
                     width: 5px !important;
                     height: 5px !important;
                     border-color: rgba(235, 235, 245, 0.45) !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .star-btn {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .star-btn {
                     color: rgba(235, 235, 245, 0.35) !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .vertical-menu .sidebar-menu-scroll {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .vertical-menu .sidebar-menu-scroll {
                     position: relative !important;
                     z-index: 1 !important;
                 }
 
-                html[data-theme-preset="macos-dark"] body .vertical-menu .sidebar-sticky-top {
+                html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body .vertical-menu .sidebar-sticky-top {
                     position: relative !important;
                     z-index: 1000 !important;
                 }
 
                 /* Dar Finder sidebar: esit dis bosluk, gizli ince scrollbar ve yumusak koseler */
                 @media (min-width: 992px) {
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .vertical-menu {
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .vertical-menu {
                         left: var(--mac-sidebar-left, 3px) !important;
                         width: 60px !important;
                     }
 
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] #page-topbar,
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .quick-favorites-bar {
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] #page-topbar,
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .quick-favorites-bar {
                         left: calc(var(--mac-sidebar-left, 3px) + 60px + var(--mac-window-gap, 6px)) !important;
                         right: var(--mac-window-gap, 6px) !important;
                         width: calc(100% - var(--mac-sidebar-left, 3px) - 60px - (var(--mac-window-gap, 6px) * 2)) !important;
@@ -1599,53 +1599,53 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                         box-sizing: border-box !important;
                     }
 
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] #page-topbar {
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] #page-topbar {
                         top: var(--mac-window-gap, 6px) !important;
                         height: 60px !important;
                         min-height: 60px !important;
                         max-height: 60px !important;
                     }
 
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] #page-topbar .navbar-header {
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] #page-topbar .navbar-header {
                         height: 58px !important;
                         min-height: 58px !important;
                         max-height: 58px !important;
                         box-sizing: border-box !important;
                     }
 
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] #page-topbar::before {
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] #page-topbar::before {
                         border-radius: 16px !important;
                     }
 
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .main-content {
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .main-content {
                         margin-left: calc(var(--mac-sidebar-left, 3px) + 60px) !important;
                         margin-right: 0 !important;
                         width: calc(100% - var(--mac-sidebar-left, 3px) - 60px) !important;
                         padding: 0 !important;
                     }
 
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .main-content .page-content,
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .main-content .container-fluid {
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .main-content .page-content,
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .main-content .container-fluid {
                         padding-left: var(--mac-window-gap, 6px) !important;
                         padding-right: var(--mac-window-gap, 6px) !important;
                     }
 
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"]:not(:has(#quick-favorites-bar)) .main-content .page-content {
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"]:not(:has(#quick-favorites-bar)) .main-content .page-content {
                         padding-top: calc(var(--mac-window-gap, 6px) + 60px + var(--mac-window-gap, 6px)) !important;
                     }
 
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"]:has(#quick-favorites-bar) .main-content .page-content {
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"]:has(#quick-favorites-bar) .main-content .page-content {
                         padding-top: calc(var(--mac-window-gap, 6px) + 60px + var(--mac-window-gap, 6px) + 42px + var(--mac-window-gap, 6px)) !important;
                     }
 
                     /* Bootstrap ic yatay payini dar modda bir kez uygula; ikinci 6px'i geri al. */
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .main-content .page-content > .container-fluid {
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .main-content .page-content > .container-fluid {
                         position: relative !important;
                         left: calc(var(--mac-window-gap, 6px) * -1) !important;
                         width: calc(100% + var(--mac-window-gap, 6px)) !important;
                     }
 
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .vertical-menu .simplebar-track.simplebar-vertical {
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .vertical-menu .simplebar-track.simplebar-vertical {
                         width: 2px !important;
                         right: 0 !important;
                         opacity: 0 !important;
@@ -1653,12 +1653,12 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                         transition: opacity .16s ease !important;
                     }
 
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .vertical-menu:hover .simplebar-track.simplebar-vertical {
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .vertical-menu:hover .simplebar-track.simplebar-vertical {
                         opacity: 1 !important;
                         visibility: visible !important;
                     }
 
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .vertical-menu .simplebar-scrollbar::before {
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .vertical-menu .simplebar-scrollbar::before {
                         left: 0 !important;
                         right: 0 !important;
                         width: 2px !important;
@@ -1667,14 +1667,14 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                     }
 
                     /* data-simplebar host uzerindeki yerel scrollbar'i da ayni sekilde yonet. */
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .vertical-menu .sidebar-menu-scroll,
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .vertical-menu .simplebar-content-wrapper {
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .vertical-menu .sidebar-menu-scroll,
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .vertical-menu .simplebar-content-wrapper {
                         scrollbar-width: none !important;
                         -ms-overflow-style: none !important;
                     }
 
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .vertical-menu .sidebar-menu-scroll::-webkit-scrollbar,
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .vertical-menu .simplebar-content-wrapper::-webkit-scrollbar {
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .vertical-menu .sidebar-menu-scroll::-webkit-scrollbar,
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .vertical-menu .simplebar-content-wrapper::-webkit-scrollbar {
                         width: 0 !important;
                         height: 0 !important;
                         display: none !important;
@@ -1682,17 +1682,17 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
 
                     /* SimpleBar, kaydirma sonrasinda inline visible sinifi ekliyor.
                        Dar menude hover disinda track'i akis disina cikartarak bunu kesin olarak engelle. */
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .vertical-menu:not(:hover) .simplebar-track,
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .vertical-menu:not(:hover) .simplebar-track.simplebar-vertical,
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .vertical-menu:not(:hover) .simplebar-scrollbar,
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .vertical-menu:not(:hover) .simplebar-scrollbar::before {
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .vertical-menu:not(:hover) .simplebar-track,
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .vertical-menu:not(:hover) .simplebar-track.simplebar-vertical,
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .vertical-menu:not(:hover) .simplebar-scrollbar,
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .vertical-menu:not(:hover) .simplebar-scrollbar::before {
                         display: none !important;
                         width: 0 !important;
                         opacity: 0 !important;
                         visibility: hidden !important;
                     }
 
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .vertical-menu:hover .simplebar-track.simplebar-vertical {
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .vertical-menu:hover .simplebar-track.simplebar-vertical {
                         display: block !important;
                         width: 2px !important;
                         opacity: 1 !important;
@@ -1701,14 +1701,14 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                         border: 0 !important;
                     }
 
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .vertical-menu:hover .simplebar-scrollbar {
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .vertical-menu:hover .simplebar-scrollbar {
                         display: block !important;
                         width: 2px !important;
                         opacity: 1 !important;
                         visibility: visible !important;
                     }
 
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .vertical-menu:hover .simplebar-scrollbar::before {
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .vertical-menu:hover .simplebar-scrollbar::before {
                         display: block !important;
                         width: 2px !important;
                         opacity: .45 !important;
@@ -1716,23 +1716,23 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                     }
 
                     /* Dar menude tum ikonlari gercek sidebar merkezine sabitle. */
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu {
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu {
                         width: 100% !important;
                         padding-left: 0 !important;
                         padding-right: 0 !important;
                     }
 
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu #side-menu,
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu #side-menu > li,
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu .menu-items-list,
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu .menu-items-list > li {
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu #side-menu,
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu #side-menu > li,
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu .menu-items-list,
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu .menu-items-list > li {
                         width: 100% !important;
                         margin-left: 0 !important;
                         margin-right: 0 !important;
                     }
 
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu #side-menu > li > a,
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu .menu-items-list > li > a {
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu #side-menu > li > a,
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu .menu-items-list > li > a {
                         width: 40px !important;
                         min-width: 40px !important;
                         max-width: 40px !important;
@@ -1750,15 +1750,15 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                         left: 5px !important;
                     }
 
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu #side-menu > li > a::after,
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu .menu-items-list > li > a::after {
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu #side-menu > li > a::after,
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu .menu-items-list > li > a::after {
                         display: none !important;
                     }
 
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu #side-menu > li > a i,
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu #side-menu > li > a svg,
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu .menu-items-list > li > a i,
-                    html[data-theme-preset="macos-dark"] body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu .menu-items-list > li > a svg {
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu #side-menu > li > a i,
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu #side-menu > li > a svg,
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu .menu-items-list > li > a i,
+                    html:is([data-theme-preset="macos-dark"], [data-theme-preset="macos-light"]) body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu .menu-items-list > li > a svg {
                         width: 18px !important;
                         height: 18px !important;
                         min-width: 18px !important;

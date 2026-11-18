@@ -28,6 +28,7 @@
             'minimalist': { primary: '#18181b', topbar: 'light', sidebar: 'light', themeMode: 'slate', layoutMode: 'light', font: 'Geist' },
             'dark-pro': { primary: '#06b6d4', topbar: 'dark', sidebar: 'dark', themeMode: 'cyan', layoutMode: 'dark', font: 'Inter' },
             'macos-dark': { primary: '#0a84ff', topbar: 'dark', sidebar: 'dark', themeMode: 'default', layoutMode: 'dark', font: 'Inter' },
+            'macos-light': { primary: '#0071e3', topbar: 'light', sidebar: 'light', themeMode: 'default', layoutMode: 'light', font: 'Inter' },
             'ocean-deep': { primary: '#0284c7', topbar: '#0284c7', sidebar: '#0f172a', themeMode: 'cyan', layoutMode: 'light', font: 'Plus Jakarta Sans' },
             'sunset-amber': { primary: '#f97316', topbar: '#f59e0b', sidebar: '#1c1917', themeMode: 'orange', layoutMode: 'light', font: 'Montserrat' },
             'forest-moss': { primary: '#10b981', topbar: '#059669', sidebar: '#064e3b', themeMode: 'emerald', layoutMode: 'light', font: 'Manrope' },
@@ -369,6 +370,8 @@ use App\Helper\Helper;
     id="custom-style" rel="stylesheet" type="text/css" />
 <link href="<?php echo Helper::base_url('assets/css/ersan.css?v=' . (file_exists(__DIR__ . '/../assets/css/ersan.css') ? filemtime(__DIR__ . '/../assets/css/ersan.css') : time())); ?>"
     id="ersan-style" rel="stylesheet" type="text/css" />
+<link href="<?php echo Helper::base_url('assets/css/macos-light.css?v=' . (file_exists(__DIR__ . '/../assets/css/macos-light.css') ? filemtime(__DIR__ . '/../assets/css/macos-light.css') : time())); ?>"
+    id="macos-light-style" rel="stylesheet" type="text/css" />
 <!-- jQuery -->
 <script src="<?php echo Helper::base_url('assets/libs/jquery/jquery.3.7.1.min.js'); ?>"></script>
 <script src="<?php echo Helper::base_url('assets/libs/select2/js/select2.min.js'); ?>"></script>

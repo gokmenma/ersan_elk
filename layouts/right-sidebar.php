@@ -180,6 +180,25 @@
                         <span class="preset-sub">Tahoe & Grafit</span>
                     </div>
 
+                    <!-- 8b. macOS Açık -->
+                    <div class="theme-preset-card" data-preset="macos-light" role="button" title="macOS Açık (Apple)">
+                        <div class="preset-preview">
+                            <div class="preset-topbar d-flex align-items-center px-1" style="background: #fbfbfd; border-bottom: 1px solid #d2d2d7; gap: 3px;">
+                                <span style="width: 4px; height: 4px; border-radius: 50%; background: #ff5f57; display: inline-block;"></span>
+                                <span style="width: 4px; height: 4px; border-radius: 50%; background: #febc2e; display: inline-block;"></span>
+                                <span style="width: 4px; height: 4px; border-radius: 50%; background: #28c840; display: inline-block;"></span>
+                            </div>
+                            <div class="preset-body">
+                                <div class="preset-sidebar" style="background: #f0f0f3; border-right: 1px solid #d2d2d7;"></div>
+                                <div class="preset-content" style="background: #f5f5f7;">
+                                    <div class="preset-accent-bar" style="background: #0071e3;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="preset-name">macOS Açık</span>
+                        <span class="preset-sub">Apple & SF Pro</span>
+                    </div>
+
                     <!-- 9. Okyanus -->
                     <div class="theme-preset-card" data-preset="ocean-deep" role="button" title="Okyanus">
                         <div class="preset-preview">

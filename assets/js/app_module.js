@@ -494,6 +494,15 @@ File: Main Js File
         layoutMode: "dark",
         fontFamily: "Inter"
       },
+      "macos-light": {
+        name: "macOS Açık",
+        topbarColor: "light",
+        sidebarColor: "light",
+        primaryColor: "#0071e3",
+        themeMode: "default",
+        layoutMode: "light",
+        fontFamily: "Inter"
+      },
       "ocean-deep": {
         name: "Okyanus",
         topbarColor: "#0284c7",
