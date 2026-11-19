@@ -111,7 +111,7 @@ final class IcraUstYaziService
 
         $govde = '';
         foreach ($paragraflar as $paragraf) {
-            $govde .= '<p>' . $paragraf . '</p>';
+            $govde .= str_starts_with($paragraf, '<p>') ? $paragraf : '<p>' . $paragraf . '</p>';
         }
 
         $daire = trim((string) ($tetikleyen->icra_dairesi ?? ''));
@@ -190,18 +190,15 @@ final class IcraUstYaziService
         $satirlar = [];
         foreach ($icralar as $sira => $icra) {
             $satirlar[] = sprintf(
-                '%d-) %s %s sayılı dosyasına %s TL kesinti yapılmış olup kalan borç miktarı %s TL,',
+                '%d-) %s %s sayılı dosyasına %s TL,',
                 $sira + 1,
                 $this->dosyaIlgi($icra),
                 $this->kacis((string) $icra->dosya_no),
-                $this->para($icra->toplam_kesilen),
                 $this->para($icra->kalan_tutar)
             );
         }
 
-        return 'Söz konusu personelin halen devam etmekte olan;<br>'
-            . implode('<br>', $satirlar)
-            . '<br>şeklinde icra kesintileri bulunmaktadır.';
+        return $this->maddeParagraflari('Söz konusu personelin halen devam etmekte olan;', $satirlar, 'şeklinde icra kesintileri bulunmaktadır.');
     }
 
     private function bekleyenlerParagrafi(array $icralar): string
@@ -217,9 +214,16 @@ final class IcraUstYaziService
             );
         }
 
-        return 'Bunun dışında ilgilinin;<br>'
-            . implode('<br>', $satirlar)
-            . '<br>bildirilen ve idaremizce takip sırasına alınan borcu bulunmaktadır.';
+        return $this->maddeParagraflari('Bunun dışında ilgilinin;', $satirlar, 'bildirilen ve idaremizce takip sırasına alınan borcu bulunmaktadır.');
+    }
+
+    private function maddeParagraflari(string $baslik, array $satirlar, string $kapanis): string
+    {
+        $html = '<p>' . $baslik . '</p>';
+        foreach ($satirlar as $satir) {
+            $html .= '<p>' . $satir . '</p>';
+        }
+        return $html . '<p>' . $kapanis . '</p>';
     }
 
     private function sonucParagrafi(object $icra, bool $oncekiDosyaVar): string

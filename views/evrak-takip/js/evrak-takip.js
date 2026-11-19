@@ -1092,7 +1092,7 @@ $(document).ready(function () {
         data: function (data) {
           data.action = "evrak-listesi";
           data.quick_filter = activeQuickFilter;
-          data.signature_only = imzaFiltresiAktif ? 1 : 0; data.approval_filter = activeApprovalFilter;
+          data.signature_only = imzaFiltresiAktif ? 1 : 0; data.approval_filter = activeApprovalFilter; data.icerik_ara = ($("#filterIcerikAra").val() || "").trim();
         }
       },
       order: [[3, "desc"]],
@@ -1108,7 +1108,7 @@ $(document).ready(function () {
     }) : {
       processing: true,
       serverSide: true,
-      ajax: { url: api_url, type: "POST", data: function (data) { data.action = "evrak-listesi"; data.quick_filter = activeQuickFilter; data.signature_only = imzaFiltresiAktif ? 1 : 0; data.approval_filter = activeApprovalFilter; } },
+      ajax: { url: api_url, type: "POST", data: function (data) { data.action = "evrak-listesi"; data.quick_filter = activeQuickFilter; data.signature_only = imzaFiltresiAktif ? 1 : 0; data.approval_filter = activeApprovalFilter; data.icerik_ara = ($("#filterIcerikAra").val() || "").trim(); } },
       order: [[3, "desc"]],
       columnDefs: [
         { targets: 3, type: "date" },
@@ -1128,6 +1128,16 @@ $(document).ready(function () {
     if (evrakDataTable) {
       evrakDataTable.draw();
     }
+  });
+
+  let icerikAraTimer = null;
+  $("#filterIcerikAra").on("input", function () {
+    $("#btnClearIcerikAra").toggle($(this).val().trim().length > 0);
+    clearTimeout(icerikAraTimer);
+    icerikAraTimer = setTimeout(function () { if (evrakDataTable) evrakDataTable.draw(); }, 350);
+  });
+  $("#btnClearIcerikAra").on("click", function () {
+    $("#filterIcerikAra").val("").trigger("input");
   });
 
   $(".approval-quick-filter").on("click", function () {
@@ -1376,7 +1386,7 @@ $(document).ready(function () {
       $(this).html('<i class="bx bx-fullscreen"></i> <span>Tam Ekran</span>');
     } else {
       $dialog.removeClass("modal-xl modal-dialog-centered").addClass("modal-fullscreen");
-      $iframe.css("height", "calc(100vh - 60px)");
+      $iframe.css("height", "calc(100vh - 130px)");
       $(this).html('<i class="bx bx-exit-fullscreen"></i> <span>Küçült</span>');
     }
   });

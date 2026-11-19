@@ -302,6 +302,13 @@ $title = "Evrak Listesi";
 
             <!-- Sağ Araç Çubuğu -->
             <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+                <div class="d-flex align-items-center border rounded-3 px-2 py-1 shadow-sm gap-1 product-search-box" title="Evrak metni, ilgi, ekler, KEP mesajı ve ek dosya adlarında arar">
+                    <i class="bx bx-search-alt text-primary font-size-16"></i>
+                    <input type="text" id="filterIcerikAra" class="form-control form-control-sm border-0 bg-transparent p-0 font-size-12 fw-semibold" style="width: 195px;" placeholder="İçerikte Ara..." autocomplete="off" maxlength="200">
+                    <button type="button" class="btn btn-sm btn-link p-0 text-muted hover-danger" id="btnClearIcerikAra" title="İçerik Aramasını Temizle" style="display: none;">
+                        <i class="bx bx-x font-size-14"></i>
+                    </button>
+                </div>
                 <div class="d-flex align-items-center gap-1 flex-wrap" id="approvalFilterGroup" role="group" aria-label="Onay durumu filtresi">
                     <button type="button" class="btn btn-sm btn-outline-secondary bg-white px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold approval-quick-filter" data-approval="bekleyen" aria-pressed="false">
                         <i class="bx bx-time-five text-warning font-size-15"></i> <span class="font-size-12">Onay Bekleyenler</span>

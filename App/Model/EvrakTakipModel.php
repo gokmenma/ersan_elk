@@ -100,6 +100,12 @@ class EvrakTakipModel extends Model
             $bindings['global_search'] = '%' . $globalSearch . '%';
         }
 
+        $contentSearch = trim((string) ($params['icerik_ara'] ?? ''));
+        if ($contentSearch !== '') {
+            $where[] = '(et.aciklama LIKE :content_search OR et.ilgiler LIKE :content_search OR et.ekler LIKE :content_search OR et.muhatap_alt_birim LIKE :content_search OR et.kep_mesaj_metni LIKE :content_search OR et.karsi_evrak_aciklama LIKE :content_search OR EXISTS (SELECT 1 FROM evrak_takip_ekleri eic WHERE eic.evrak_id = et.id AND eic.firma_id = et.firma_id AND eic.silinme_tarihi IS NULL AND eic.dosya_adi LIKE :content_search))';
+            $bindings['content_search'] = '%' . addcslashes($contentSearch, '\\%_') . '%';
+        }
+
         $kepStatusOrder = "(SELECT kd.delil_tur_id FROM kep_mesajlar km INNER JOIN kep_deliller kd ON kd.kep_mesaj_id = km.id WHERE km.evrak_id = et.id AND km.firm_id = et.firma_id AND km.deleted_at IS NULL AND km.yon = 'giden' ORDER BY kd.olay_zamani DESC, kd.id DESC LIMIT 1)";
         $columnMap = [1 => 'et.evrak_tipi', 2 => $kepStatusOrder, 3 => 'et.tarih', 4 => 'et.konu', 5 => 'et.kurum_adi', 6 => "COALESCE(NULLIF(u.adi_soyadi, ''), u.user_name)", 7 => 'p1.adi_soyadi', 8 => 'p2.adi_soyadi', 9 => 'et.cevap_verildi_mi', 10 => 'et.onay_durumu'];
         foreach ((array) ($params['columns'] ?? []) as $index => $column) {

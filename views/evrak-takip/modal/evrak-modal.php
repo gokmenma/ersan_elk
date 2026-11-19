@@ -267,11 +267,6 @@ $araclar_list = $Evrak->getActiveVehicles();
                         <h5 class="modal-title fw-bold mb-0" id="evrakPdfModalLabel">Resmî Yazı Önizleme</h5>
                     </div>
                 </div>
-                <div class="ms-auto d-flex align-items-center gap-2">
-                    <button type="button" id="btnPdfTamEkran" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"><i class="bx bx-fullscreen"></i> <span>Tam Ekran</span></button>
-                    <a id="evrakPdfYeniSekme" href="#" target="_blank" class="btn btn-sm btn-outline-secondary d-none"><i class="bx bx-open-external me-1"></i>Yeni Sekmede Aç</a>
-                    <button type="button" class="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1" data-bs-dismiss="modal" title="Kapat"><i class="bx bx-x fs-5"></i> <span>Kapat</span></button>
-                </div>
             </div>
             <div class="modal-body p-0" style="min-height: 72vh;">
                 <div class="d-flex evrak-pdf-layout">
@@ -324,6 +319,11 @@ $araclar_list = $Evrak->getActiveVehicles();
                         </div>
                     </aside>
                 </div>
+            </div>
+            <div class="modal-footer d-flex align-items-center justify-content-end gap-2 py-3 px-4 border-top">
+                <a id="evrakPdfYeniSekme" href="#" target="_blank" class="btn btn-outline-primary px-4 d-none"><i class="bx bx-open-external me-1"></i>Yeni Sekmede Aç</a>
+                <button type="button" id="btnPdfTamEkran" class="btn btn-outline-secondary px-4 d-inline-flex align-items-center gap-1"><i class="bx bx-fullscreen"></i> <span>Tam Ekran</span></button>
+                <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal" title="Kapat"><i class="bx bx-x me-1"></i>Kapat</button>
             </div>
         </div>
     </div>
