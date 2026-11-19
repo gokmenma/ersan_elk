@@ -256,7 +256,10 @@ function dosyaAc(d) {
   else window.location.href = dosyaApi.indirUrl(d.id)
 }
 
-const menuAc = (tur, nesne) => { sheet.value = { tur, nesne } }
+const menuAc = (tur, nesne) => {
+  sheet.value = { tur, nesne }
+  if (tur === 'dosya' && perms.value.files_share && nesne.seviye >= 2) paylasimOnYukle(nesne)
+}
 
 async function calistir(is, basariMesaji) {
   try {
@@ -322,25 +325,41 @@ const MIME_TIPLERI = {
   zip: 'application/zip',
 }
 
+const hazirDosyalar = new Map()
+
+async function paylasimDosyasiHazirla(nesne) {
+  const yanit = await fetch(dosyaApi.indirUrl(nesne.id), { credentials: 'same-origin' })
+  if (!yanit.ok) throw new Error('Dosya alınamadı')
+  const blob = await yanit.blob()
+  const ad = gorunenAd(nesne)
+  const uzanti = (ad.split('.').pop() || '').toLowerCase()
+  const tip = MIME_TIPLERI[uzanti] || (blob.type && blob.type !== 'application/octet-stream' ? blob.type : 'application/octet-stream')
+  return new File([blob], ad, { type: tip })
+}
+
+function paylasimOnYukle(nesne) {
+  if (!navigator.share || hazirDosyalar.has(nesne.id)) return
+  const kayit = { dosya: null, hata: null }
+  kayit.sonuc = paylasimDosyasiHazirla(nesne).then((f) => { kayit.dosya = f }).catch((e) => { kayit.hata = e; hazirDosyalar.delete(nesne.id) })
+  hazirDosyalar.set(nesne.id, kayit)
+}
+
 async function dosyaDogrudanPaylas() {
   const { nesne } = sheet.value
   sheet.value = null
   if (!navigator.share) { bildir('Bu cihaz doğrudan paylaşımı desteklemiyor'); return }
-  bildir('Dosya hazırlanıyor…')
+  const kayit = hazirDosyalar.get(nesne.id)
+  if (!kayit || !kayit.dosya) {
+    paylasimOnYukle(nesne)
+    bildir('Dosya hazırlanıyor, birkaç saniye sonra tekrar dokunun')
+    return
+  }
   try {
-    const yanit = await fetch(dosyaApi.indirUrl(nesne.id), { credentials: 'same-origin' })
-    if (!yanit.ok) throw new Error('Dosya alınamadı')
-    const blob = await yanit.blob()
-    const ad = gorunenAd(nesne)
-    const uzanti = (ad.split('.').pop() || '').toLowerCase()
-    const tip = MIME_TIPLERI[uzanti] || (blob.type && blob.type !== 'application/octet-stream' ? blob.type : 'application/octet-stream')
-    const dosya = new File([blob], ad, { type: tip })
-    if (navigator.canShare && !navigator.canShare({ files: [dosya] })) { bildir('Bu dosya türü doğrudan paylaşılamıyor'); return }
-    bildir('')
-    await navigator.share({ files: [dosya], title: ad })
+    if (navigator.canShare && !navigator.canShare({ files: [kayit.dosya] })) { bildir('Bu dosya türü doğrudan paylaşılamıyor'); return }
+    await navigator.share({ files: [kayit.dosya], title: kayit.dosya.name })
   } catch (e) {
-    if (e && e.name === 'AbortError') { bildir(''); return }
-    bildir(e && e.message ? e.message : 'Paylaşılamadı')
+    if (e && e.name === 'AbortError') return
+    bildir(`Paylaşılamadı (${e && e.name ? e.name : 'hata'}${e && e.message ? ': ' + e.message : ''})`)
   }
 }
 async function paylasAc() {
