@@ -226,6 +226,60 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 echo json_encode(['status' => 'success', 'message' => 'İçerik şablonu silindi.'], JSON_UNESCAPED_UNICODE);
                 break;
 
+            case 'evrak-varsayilan-imza-kaydet':
+                $rawIds = $_POST['imza_kullanici_ids'] ?? [];
+                if (is_string($rawIds)) {
+                    $decodedIds = json_decode($rawIds, true);
+                    $rawIds = is_array($decodedIds) ? $decodedIds : ($rawIds !== '' ? [$rawIds] : []);
+                }
+                if (!is_array($rawIds)) {
+                    $rawIds = [];
+                }
+                $rawKiminAdina = $_POST['kimin_adina'] ?? [];
+                if (is_string($rawKiminAdina)) {
+                    $decodedKimin = json_decode($rawKiminAdina, true);
+                    $rawKiminAdina = is_array($decodedKimin) ? $decodedKimin : [];
+                }
+                if (!is_array($rawKiminAdina)) {
+                    $rawKiminAdina = [];
+                }
+
+                $signersPayload = [];
+                foreach (array_values($rawIds) as $idx => $encUid) {
+                    $uid = $decryptId($encUid);
+                    if ($uid > 0) {
+                        $signersPayload[] = [
+                            'user_id' => $uid,
+                            'kimin_adina' => trim((string) ($rawKiminAdina[$idx] ?? '')),
+                        ];
+                    }
+                }
+
+                $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
+                $result = $Model->saveDefaultSigners($currentUserId, $firmaId, $signersPayload);
+                $isCleared = $result['saved'] === [];
+
+                (new SystemLogModel())->logAction(
+                    $currentUserId,
+                    $isCleared ? 'Giden Evrak Varsayılan İmza Temizleme' : 'Giden Evrak Varsayılan İmza Güncelleme',
+                    $isCleared
+                        ? 'Kullanıcı varsayılan imza yetkililerini temizledi.'
+                        : 'Varsayılan imzacılar: ' . implode(', ', $result['names']),
+                    SystemLogModel::LEVEL_INFO
+                );
+
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => $isCleared
+                        ? 'Varsayılan imza yetkilileri temizlendi.'
+                        : 'Varsayılan imza yetkilileri kaydedildi. Yeni giden evraklarda otomatik seçili gelecektir.',
+                    'default_signers' => array_map(static fn(array $row): array => [
+                        'raw_id' => (int) $row['user_id'],
+                        'kimin_adina' => (string) $row['kimin_adina'],
+                    ], $result['saved']),
+                ], JSON_UNESCAPED_UNICODE);
+                break;
+
             case 'evrak-kaydet':
                 $data = $_POST;
                 $attachmentOrder = json_decode((string) ($data['ek_duzen_json'] ?? '[]'), true) ?: [];

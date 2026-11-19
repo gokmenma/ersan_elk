@@ -1,5 +1,12 @@
 # Progress
 
+## 2026-11-19 — Evrak Takip: Giden Evrak Varsayılan İmza Yetkilileri
+- [x] `App/Model/EvrakTakipModel.php` içine `getDefaultSigners` ve `saveDefaultSigners` metotları eklendi (`settings` tablosu üzerinden kullanıcı+firma bazlı saklama)
+- [x] `views/evrak-takip/api.php` içine `evrak-varsayilan-imza-kaydet` aksiyonu ve `SystemLogModel` log kaydı eklendi
+- [x] `sql/2026_11_19_evrak_varsayilan_imza_policy.sql` oluşturuldu ve `permission_policies` tablosuna uygulandı
+- [x] `views/evrak-takip/giden-evrak.php` ve `views/evrak-takip/js/giden-evrak.js` üzerinde varsayılan kaydet/uygula/kaldır kontrolleri ve yeni evrakta otomatik ön-seçim tamamlandı
+- [x] PHP/JS sözdizimi ve model kayıt/okuma/temizleme testleri doğrulandı
+
 ## 2026-11-18 — Demirbaş: Liste Sayfası Açılış Hızlandırma
 - [x] Özet kartları yalnız demirbaş satırlarıyla hesaplanıyor (~3,1 sn → ~0,22 sn)
 - [x] Eski/yeni HTML çıktısı karşılaştırıldı, aynı

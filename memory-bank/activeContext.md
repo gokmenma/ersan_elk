@@ -1,5 +1,11 @@
 # Active Context
 
+## Evrak Takip — Giden Evrak Varsayılan İmza Yetkilileri (2026-11-19)
+- `App/Model/EvrakTakipModel.php`: `DEFAULT_SIGNERS_SETTING_KEY = 'giden_evrak_varsayilan_imzalar'` sabiti, `getDefaultSigners(int $userId, int $firmaId)` ve `saveDefaultSigners(int $userId, int $firmaId, array $signers)` metotları eklendi. Kayıtlar `settings` tablosunda kullanıcı+firma bazlı JSON olarak tutulur (en fazla 3 aktif imza yetkilisi + `kimin_adina`).
+- `views/evrak-takip/api.php`: `evrak-varsayilan-imza-kaydet` aksiyonu eklendi; `Security::decrypt` ile ID çözümü, Model doğrulaması ve `SystemLogModel` loglaması yapılır.
+- `sql/2026_11_19_evrak_varsayilan_imza_policy.sql`: `permission_policies` tablosuna `evrak-varsayilan-imza-kaydet` aksiyonu için `evrak-kaydet` ile aynı `permission_id` üzerinden politika eklendi ve DB'ye uygulandı.
+- `views/evrak-takip/giden-evrak.php` & `views/evrak-takip/js/giden-evrak.js`: Yeni giden evrak açıldığında kayıtlı varsayılan imzacılar (`kimin_adina` dahil) otomatik seçili gelir; İmza sekmesine **Varsayılan Yap**, **Varsayılanı Uygula** ve **Varsayılanı Kaldır** kontrolleri eklendi. Yeni evrakta otomatik İmza sekmesine atlama engellendi; form temizlenince varsayılan imzacılar korunur.
+
 ## Bordro Parametreler — Yeni Sayfa Standardı (2026-11-18)
 - `views/bordro/parametreler.php`: üst başlık + toolbar (sekmeye göre değişen ekleme butonu, özet kartı aç/kapa), 4 KPI kartı, 3 sekmede liste kartı, `data-filter` başlıkları, `Form::FormSelect2` filtreleri, `applyLengthStateSave` DataTables. Aktif sekme URL hash'inde saklanır.
 

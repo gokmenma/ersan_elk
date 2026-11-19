@@ -100,11 +100,30 @@ final class IcraUstYaziService
         }
 
         $paragraflar = [$this->girisParagrafi($tetikleyen)];
-        if ($devamEdenler !== []) {
-            $paragraflar[] = $this->devamEdenlerParagrafi($devamEdenler);
+        $anaIcra = null;
+        foreach ($devamEdenler as $anahtar => $aday) {
+            if ((float) $aday->toplam_kesilen > 0) {
+                $anaIcra = $anahtar;
+                break;
+            }
         }
-        if ($bekleyenler !== []) {
-            $paragraflar[] = $this->bekleyenlerParagrafi($bekleyenler);
+        if ($anaIcra === null && $devamEdenler !== []) {
+            $anaIcra = array_key_first($devamEdenler);
+        }
+        $digerleri = [];
+        foreach ($devamEdenler as $anahtar => $aday) {
+            if ($anahtar !== $anaIcra) {
+                $digerleri[] = $aday;
+            }
+        }
+        foreach ($bekleyenler as $aday) {
+            $digerleri[] = $aday;
+        }
+        if ($anaIcra !== null) {
+            $paragraflar[] = $this->devamEdenlerParagrafi([$devamEdenler[$anaIcra]]);
+        }
+        if ($digerleri !== []) {
+            $paragraflar[] = $this->digerBorclarParagrafi($digerleri);
         }
         $paragraflar[] = $this->sonucParagrafi($tetikleyen, $devamEdenler !== [] || $bekleyenler !== []);
         $paragraflar[] = 'Gereğini bilgilerinize arz ederim.';
@@ -176,41 +195,47 @@ final class IcraUstYaziService
 
     private function devamEdenlerParagrafi(array $icralar): string
     {
-        if (count($icralar) === 1) {
-            $icra = $icralar[0];
+        $icra = $icralar[0];
+        $toplam = $this->para($icra->toplam_borc);
+        $kalan = $this->para($icra->kalan_tutar);
+        $nb = "\u{00A0}";
+        if ($toplam === $kalan) {
             return sprintf(
-                "Söz konusu personelin halen devam etmekte olan %s %s sayılı dosyasına %s TL icra kesintisi olup, kalan borç miktarı %s TL'dir.",
+                "Söz konusu personelin halen devam etmekte olan %s %s sayılı dosyasına %s%sTL borcu bulunmaktadır.",
                 $this->dosyaIlgi($icra),
                 $this->kacis((string) $icra->dosya_no),
-                $this->para($icra->toplam_kesilen),
-                $this->para($icra->kalan_tutar)
+                $kalan,
+                $nb
             );
         }
 
-        $satirlar = [];
-        foreach ($icralar as $sira => $icra) {
-            $satirlar[] = sprintf(
-                '%d-) %s %s sayılı dosyasına %s TL,',
-                $sira + 1,
-                $this->dosyaIlgi($icra),
-                $this->kacis((string) $icra->dosya_no),
-                $this->para($icra->kalan_tutar)
-            );
-        }
-
-        return $this->maddeParagraflari('Söz konusu personelin halen devam etmekte olan;', $satirlar, 'şeklinde icra kesintileri bulunmaktadır.');
+        return sprintf(
+            "Söz konusu personelin halen devam etmekte olan %s %s sayılı dosyasına toplam %s%sTL borcu olup kalan borç miktarı %s%sTL'dir.",
+            $this->dosyaIlgi($icra),
+            $this->kacis((string) $icra->dosya_no),
+            $toplam,
+            $nb,
+            $kalan,
+            $nb
+        );
     }
 
-    private function bekleyenlerParagrafi(array $icralar): string
+    private function digerBorclarParagrafi(array $icralar): string
     {
+        $nb = "\u{00A0}";
         $satirlar = [];
         foreach ($icralar as $sira => $icra) {
+            $toplam = $this->para($icra->toplam_borc);
+            $kalan = $this->para($icra->kalan_tutar);
+            $tutar = $toplam === $kalan
+                ? sprintf('%s%sTL,', $kalan, $nb)
+                : sprintf('toplam %s%sTL borcu olup kalan borç miktarı %s%sTL,', $toplam, $nb, $kalan, $nb);
             $satirlar[] = sprintf(
-                '%d-) %s %s sayılı dosyasına %s TL,',
+                '%d-) %s %s sayılı dosyasına %s',
                 $sira + 1,
                 $this->dosyaIlgi($icra),
                 $this->kacis((string) $icra->dosya_no),
-                $this->para($icra->toplam_borc)
+                $tutar
             );
         }
 
@@ -255,7 +280,7 @@ final class IcraUstYaziService
         if ($dosyaNo === '') {
             return $daire . ' tarafından gönderilen icra kesinti müzekkeresi.';
         }
-        return TurkceEk::ekle($daire, 'ilgi', null, "'") . ' ' . $dosyaNo . ' sayılı icra kesinti müzekkeresi.';
+        return TurkceEk::ekle($this->yazimDuzeni($daire), 'ilgi', null, "'") . ' ' . $dosyaNo . ' sayılı icra kesinti müzekkeresi.';
     }
 
     private function dosyaIlgi(object $icra): string
@@ -264,7 +289,25 @@ final class IcraUstYaziService
         if ($daire === '') {
             return 'ilgili icra dairesinin';
         }
-        return $this->kacis(TurkceEk::ekle($daire, 'ilgi', null, "'"));
+        return $this->kacis(TurkceEk::ekle($this->yazimDuzeni($daire), 'ilgi', null, "'"));
+    }
+
+    private function yazimDuzeni(string $metin): string
+    {
+        $buyuk = strtr($metin, ['i' => 'İ', 'ı' => 'I']);
+        if (mb_strtoupper($buyuk, 'UTF-8') !== $buyuk) {
+            return $metin;
+        }
+        $kelimeler = preg_split('/(\s+)/u', mb_strtolower(strtr($metin, ['İ' => 'i', 'I' => 'ı']), 'UTF-8'), -1, PREG_SPLIT_DELIM_CAPTURE);
+        foreach ($kelimeler as $anahtar => $kelime) {
+            if ($kelime === '' || preg_match('/^\s+$/u', $kelime)) {
+                continue;
+            }
+            $ilk = mb_substr($kelime, 0, 1, 'UTF-8');
+            $ilk = $ilk === 'i' ? 'İ' : ($ilk === 'ı' ? 'I' : mb_strtoupper($ilk, 'UTF-8'));
+            $kelimeler[$anahtar] = $ilk . mb_substr($kelime, 1, null, 'UTF-8');
+        }
+        return implode('', $kelimeler);
     }
 
     private function oranMetni(float $oran, string $kesintiTipi): string

@@ -161,6 +161,23 @@ foreach ($signingUsers as $user) {
     ];
 }
 
+$currentUserId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
+$defaultSignersRaw = $Evrak->getDefaultSigners($currentUserId, $firmaId);
+$defaultSignersList = [];
+foreach ($defaultSignersRaw as $defItem) {
+    $uid = (int) ($defItem['user_id'] ?? 0);
+    if (isset($signingUserMap[$uid])) {
+        $user = $signingUserMap[$uid];
+        $defaultSignersList[] = [
+            'id' => $user->enc_id,
+            'raw_id' => (int) $user->id,
+            'name' => (string) $user->adi_soyadi,
+            'title' => (string) ($user->imza_unvani ?? ''),
+            'kimin_adina' => (string) ($defItem['kimin_adina'] ?? ''),
+        ];
+    }
+}
+
 $savedKiminAdina = json_decode((string) ($record->imza_kimin_adina_json ?? '[]'), true) ?: [];
 $initialSelectedSigners = [];
 foreach ($selectedSignerIds as $idx => $id) {
@@ -176,10 +193,13 @@ foreach ($selectedSignerIds as $idx => $id) {
         ];
     }
 }
+if (!$record && $initialSelectedSigners === [] && $defaultSignersList !== []) {
+    $initialSelectedSigners = $defaultSignersList;
+    $savedKiminAdina = array_column($defaultSignersList, 'kimin_adina');
+}
 $selectedRelated = !empty($record->ilgili_evrak_id) ? Security::encrypt($record->ilgili_evrak_id) : ($cevapGelen ? Security::encrypt((int) $cevapGelen->id) : '');
 $solLogoPath = (string) ($settings->sol_logo_yolu ?? $firma->logo_yolu ?? '');
 $sagLogoPath = (string) ($settings->sag_logo_yolu ?? '');
-$currentUserId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
 $onayDurumu = $record->onay_durumu ?? 'taslak';
 $kilitli = $record && $onayDurumu !== 'taslak';
 if ($record && $onayDurumu === 'taslak') {
@@ -391,9 +411,27 @@ $gonderimTuruOptions += [
                                 <div class="form-text mb-2">Yukarıdaki listeyle eş zamanlıdır; elle de yazabilirsiniz. Satırları sürükleyerek veya okla sıralayabilirsiniz. PDF'de a), b), c) şeklinde sıralanır.</div>
                             </div>
                             <div class="tab-pane fade" id="gidenImzaTab">
-                                        <div class="d-flex align-items-center justify-content-between mb-2">
-                                    <span class="small fw-bold text-uppercase text-muted" style="font-size:0.7rem">İmza Yetkilileri</span>
-                                            <span class="small text-muted" style="font-size:0.7rem"><i class="bx bx-info-circle me-1"></i>En fazla 3 imza</span>
+                                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span class="small fw-bold text-uppercase text-muted" style="font-size:0.7rem">İmza Yetkilileri</span>
+                                                <span id="imzaVarsayilanDurumRozet" class="badge bg-success-subtle text-success border border-success-subtle rounded-pill d-none" style="font-size:0.68rem">
+                                                    <i class="bx bxs-star me-1"></i>Varsayılan
+                                                </span>
+                                            </div>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <?php if (!$kilitli): ?>
+                                                    <button type="button" id="btnImzaVarsayilanUygula" class="btn btn-sm btn-light border py-0 px-2 d-none" style="font-size:0.75rem;line-height:1.7" title="Kayıtlı varsayılan imza yetkililerini yükle">
+                                                        <i class="bx bx-revision me-1"></i>Varsayılanı Uygula
+                                                    </button>
+                                                    <button type="button" id="btnImzaVarsayilanKaydet" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:0.75rem;line-height:1.7" title="Seçili imza yetkililerini yeni giden evraklar için varsayılan olarak kaydet">
+                                                        <i class="bx bx-star me-1"></i>Varsayılan Yap
+                                                    </button>
+                                                    <button type="button" id="btnImzaVarsayilanTemizle" class="btn btn-sm btn-outline-danger py-0 px-2 d-none" style="font-size:0.75rem;line-height:1.7" title="Kayıtlı varsayılan imza tercihini kaldır">
+                                                        <i class="bx bx-trash-alt"></i>
+                                                    </button>
+                                                <?php endif; ?>
+                                                <span class="small text-muted" style="font-size:0.7rem"><i class="bx bx-info-circle me-1"></i>En fazla 3 imza</span>
+                                            </div>
                                         </div>
 
                                         <div id="imzaSeciciContainer" class="ilgi-ekle-kutu mb-3">
@@ -802,10 +840,12 @@ body[data-layout-mode="dark"] .modal-content {
 
 <script>
 window.gidenEvrakKilitli = <?php echo $kilitli ? 'true' : 'false'; ?>;
+window.gidenIsNewRecord = <?php echo $record ? 'false' : 'true'; ?>;
 window.gidenExistingAttachments = <?php echo json_encode($existingAttachments, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 window.gidenGelenEvraklarMap = <?php echo json_encode($gelenEvrakMap, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 window.gidenSigningUsersList = <?php echo json_encode($signingUsersList, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 window.gidenInitialSelectedSigners = <?php echo json_encode($initialSelectedSigners, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+window.gidenDefaultSigners = <?php echo json_encode($defaultSignersList, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 window.gidenKepSettings = <?php echo json_encode($kepSettings ? ['has_settings' => !empty($kepSettings['has_user_credentials']), 'kep_adresi' => $kepSettings['kep_adresi']] : ['has_settings' => false], JSON_UNESCAPED_UNICODE); ?>;
 window.gidenKepMesaj = <?php echo json_encode($kepMesaj ? ['kep_id' => $kepMesaj['kep_id'], 'durum' => $kepMesaj['durum']] : null, JSON_UNESCAPED_UNICODE); ?>;
 window.gidenKepCanSendApproved = <?php echo $record && $onayDurumu === 'onaylandi' && $canSendKep && empty($kepMesaj) && empty($record->kep_mesaj_id) ? 'true' : 'false'; ?>;

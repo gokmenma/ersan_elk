@@ -417,6 +417,149 @@ class EvrakTakipModel extends Model
         return $ordered;
     }
 
+    public const DEFAULT_SIGNERS_SETTING_KEY = 'giden_evrak_varsayilan_imzalar';
+
+    /**
+     * Kullanıcının (yoksa firmanın) giden evrak varsayılan imza yetkililerini döndürür.
+     * Yalnızca hâlâ aktif ve imza yetkisi bulunan kullanıcılar listelenir.
+     *
+     * @return array<int, array{user_id: int, kimin_adina: string}>
+     */
+    public function getDefaultSigners(int $userId, int $firmaId): array
+    {
+        if ($userId <= 0 || $firmaId <= 0) {
+            return [];
+        }
+
+        $settingsModel = new SettingsModel();
+        $raw = $settingsModel->getSettingByUser(self::DEFAULT_SIGNERS_SETTING_KEY, $userId, $firmaId);
+        if ($raw === null) {
+            $raw = $settingsModel->getSettings(self::DEFAULT_SIGNERS_SETTING_KEY, $firmaId);
+        }
+        if ($raw === null || trim($raw) === '') {
+            return [];
+        }
+
+        $decoded = json_decode($raw, true);
+        if (!is_array($decoded) || $decoded === []) {
+            return [];
+        }
+
+        $candidates = [];
+        $seen = [];
+        foreach ($decoded as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $uid = (int) ($item['user_id'] ?? 0);
+            if ($uid <= 0 || isset($seen[$uid])) {
+                continue;
+            }
+            $seen[$uid] = true;
+            $kiminAdina = trim((string) ($item['kimin_adina'] ?? ''));
+            if (mb_strlen($kiminAdina, 'UTF-8') > 120) {
+                $kiminAdina = mb_substr($kiminAdina, 0, 120, 'UTF-8');
+            }
+            $candidates[] = [
+                'user_id' => $uid,
+                'kimin_adina' => $kiminAdina,
+            ];
+            if (count($candidates) >= 3) {
+                break;
+            }
+        }
+
+        if ($candidates === []) {
+            return [];
+        }
+
+        $validUsers = $this->getSigningUsersByIds(array_column($candidates, 'user_id'));
+        $validMap = [];
+        foreach ($validUsers as $u) {
+            $validMap[(int) $u->id] = true;
+        }
+
+        $result = [];
+        foreach ($candidates as $cand) {
+            if (isset($validMap[$cand['user_id']])) {
+                $result[] = $cand;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Kullanıcının firma bazlı giden evrak varsayılan imza yetkililerini kaydeder veya temizler.
+     *
+     * @param array<int, array{user_id: int, kimin_adina?: string}> $signers
+     * @return array{saved: array<int, array{user_id: int, kimin_adina: string}>, names: array<int, string>}
+     */
+    public function saveDefaultSigners(int $userId, int $firmaId, array $signers): array
+    {
+        if ($userId <= 0 || $firmaId <= 0) {
+            throw new \RuntimeException('Geçersiz kullanıcı veya firma oturumu.');
+        }
+
+        $candidates = [];
+        $seen = [];
+        foreach ($signers as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $uid = (int) ($item['user_id'] ?? 0);
+            if ($uid <= 0 || isset($seen[$uid])) {
+                continue;
+            }
+            $seen[$uid] = true;
+            $kiminAdina = trim((string) ($item['kimin_adina'] ?? ''));
+            if (mb_strlen($kiminAdina, 'UTF-8') > 120) {
+                $kiminAdina = mb_substr($kiminAdina, 0, 120, 'UTF-8');
+            }
+            $candidates[] = [
+                'user_id' => $uid,
+                'kimin_adina' => $kiminAdina,
+            ];
+            if (count($candidates) >= 3) {
+                break;
+            }
+        }
+
+        $clean = [];
+        $names = [];
+        if ($candidates !== []) {
+            $validUsers = $this->getSigningUsersByIds(array_column($candidates, 'user_id'));
+            $validMap = [];
+            foreach ($validUsers as $u) {
+                $validMap[(int) $u->id] = (string) $u->adi_soyadi;
+            }
+            foreach ($candidates as $cand) {
+                if (isset($validMap[$cand['user_id']])) {
+                    $clean[] = $cand;
+                    $names[] = $validMap[$cand['user_id']];
+                }
+            }
+            if ($clean === []) {
+                throw new \RuntimeException('Seçilen imza yetkilileri geçerli veya aktif değil.');
+            }
+        }
+
+        $json = json_encode($clean, JSON_UNESCAPED_UNICODE);
+        if ($json === false) {
+            throw new \RuntimeException('Varsayılan imza verisi hazırlanamadı.');
+        }
+
+        $settingsModel = new SettingsModel();
+        if (!$settingsModel->upsertMultipleSettings([self::DEFAULT_SIGNERS_SETTING_KEY => $json], $firmaId, $userId)) {
+            throw new \RuntimeException('Varsayılan imza yetkilileri kaydedilemedi.');
+        }
+
+        return [
+            'saved' => $clean,
+            'names' => $names,
+        ];
+    }
+
     public function resetApprovalWorkflow(int $evrakId, array $signerIds): void
     {
         $evrak = $this->getById($evrakId);

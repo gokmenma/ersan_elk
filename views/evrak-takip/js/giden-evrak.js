@@ -10,8 +10,46 @@ $(document).ready(function () {
 
   // --- İmza Yetkilileri Yönetimi (Modern & Kullanıcı Dostu) ---
   const allSigningUsers = window.gidenSigningUsersList || [];
+  let defaultSigners = (window.gidenDefaultSigners || []).slice(0, 3);
   let selectedSigners = (window.gidenInitialSelectedSigners || []).slice(0, 3);
   const signerAddSelect = $("#imza_kullanici_ekle_select");
+
+  function isSameSignerList(listA, listB) {
+    if (!Array.isArray(listA) || !Array.isArray(listB) || listA.length !== listB.length) return false;
+    return listA.every((item, idx) => {
+      const other = listB[idx];
+      return Number(item.raw_id) === Number(other.raw_id) && String(item.kimin_adina || "").trim() === String(other.kimin_adina || "").trim();
+    });
+  }
+
+  function updateDefaultSignerControls() {
+    const hasDefaults = defaultSigners.length > 0;
+    const matchesDefault = hasDefaults && isSameSignerList(selectedSigners, defaultSigners);
+    const saveBtn = $("#btnImzaVarsayilanKaydet");
+    const clearBtn = $("#btnImzaVarsayilanTemizle");
+    const applyBtn = $("#btnImzaVarsayilanUygula");
+    const badge = $("#imzaVarsayilanDurumRozet");
+
+    badge.toggleClass("d-none", !matchesDefault);
+    clearBtn.toggleClass("d-none", !hasDefaults);
+    applyBtn.toggleClass("d-none", !hasDefaults || matchesDefault);
+
+    if (saveBtn.length) {
+      if (matchesDefault) {
+        saveBtn
+          .prop("disabled", true)
+          .removeClass("btn-outline-primary")
+          .addClass("btn-outline-success")
+          .html('<i class="bx bxs-star me-1"></i>Varsayılan Kayıtlı');
+      } else {
+        saveBtn
+          .prop("disabled", selectedSigners.length === 0)
+          .removeClass("btn-outline-success")
+          .addClass("btn-outline-primary")
+          .html('<i class="bx bx-star me-1"></i>Varsayılan Yap');
+      }
+    }
+  }
 
   function getSignerInitials(name) {
     if (!name) return "İ";
@@ -81,6 +119,8 @@ $(document).ready(function () {
 
     // 5. Kart listesini çiz
     renderSignerOrderList();
+    // 6. Varsayılan imza buton durumlarını güncelle
+    updateDefaultSignerControls();
   }
 
   function renderSignerOrderList() {
@@ -191,6 +231,7 @@ $(document).ready(function () {
     if (selectedSigners[index]) {
       selectedSigners[index].kimin_adina = $(this).val().trim();
       $("#kimin_adina_" + (index + 1)).val(selectedSigners[index].kimin_adina);
+      updateDefaultSignerControls();
     }
   });
 
@@ -202,6 +243,80 @@ $(document).ready(function () {
     const currentVal = input.val().trim();
     const newVal = text !== "" && currentVal === text ? "" : text;
     input.val(newVal).trigger("change");
+  });
+
+  function saveDefaultSignersRequest(signersToSave, triggerBtn) {
+    const payload = new FormData();
+    payload.append("action", "evrak-varsayilan-imza-kaydet");
+    payload.append("imza_kullanici_ids", JSON.stringify(signersToSave.map(s => s.id)));
+    payload.append("kimin_adina", JSON.stringify(signersToSave.map(s => s.kimin_adina || "")));
+
+    if (triggerBtn && triggerBtn.length) {
+      triggerBtn.prop("disabled", true);
+    }
+
+    $.ajax({
+      url: "views/evrak-takip/api.php",
+      type: "POST",
+      data: payload,
+      contentType: false,
+      processData: false
+    }).done(function (response) {
+      if (response && response.status === "success") {
+        const savedRows = Array.isArray(response.default_signers) ? response.default_signers : [];
+        defaultSigners = savedRows.map(row => {
+          const user = allSigningUsers.find(u => Number(u.raw_id) === Number(row.raw_id));
+          return user ? { ...user, kimin_adina: row.kimin_adina || "" } : null;
+        }).filter(Boolean).slice(0, 3);
+        updateDefaultSignerControls();
+        Swal.fire({
+          icon: "success",
+          title: savedRows.length > 0 ? "Varsayılan Kaydedildi" : "Varsayılan Kaldırıldı",
+          text: response.message,
+          timer: 1800,
+          showConfirmButton: false
+        });
+      } else {
+        updateDefaultSignerControls();
+        Swal.fire("Hata", (response && response.message) || "Varsayılan imza kaydedilemedi.", "error");
+      }
+    }).fail(function () {
+      updateDefaultSignerControls();
+      Swal.fire("Sunucu Hatası", "Varsayılan imza kaydedilirken bir hata oluştu.", "error");
+    });
+  }
+
+  // Seçili İmza Yetkililerini Varsayılan Olarak Kaydet
+  $("#btnImzaVarsayilanKaydet").on("click", function () {
+    if (selectedSigners.length === 0) {
+      Swal.fire("İmza Seçilmedi", "Varsayılan olarak kaydetmek için en az bir imza yetkilisi seçiniz.", "warning");
+      return;
+    }
+    saveDefaultSignersRequest(selectedSigners, $(this));
+  });
+
+  // Kayıtlı Varsayılan İmza Yetkililerini Kaldır
+  $("#btnImzaVarsayilanTemizle").on("click", function () {
+    const btn = $(this);
+    Swal.fire({
+      title: "Varsayılan İmzayı Kaldır?",
+      text: "Yeni giden evraklarda artık otomatik imza yetkilisi seçilmeyecektir. Mevcut formdaki seçiminiz korunur.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Evet, Kaldır",
+      cancelButtonText: "Vazgeç"
+    }).then(result => {
+      if (result.isConfirmed) {
+        saveDefaultSignersRequest([], btn);
+      }
+    });
+  });
+
+  // Kayıtlı Varsayılan İmza Yetkililerini Forma Uygula
+  $("#btnImzaVarsayilanUygula").on("click", function () {
+    if (defaultSigners.length === 0) return;
+    selectedSigners = defaultSigners.map(s => ({ ...s }));
+    syncSignerState();
   });
 
   // İlk Yükleme Senkronizasyonu
@@ -851,7 +966,7 @@ $(document).ready(function () {
         attachments = [];
         removedAttachmentIds = [];
         renderAttachments();
-        selectedSigners = [];
+        selectedSigners = defaultSigners.map(s => ({ ...s }));
         syncSignerState();
         Swal.fire({ icon: "success", title: "Temizlendi", text: "Form başarıyla sıfırlandı.", timer: 1500, showConfirmButton: false });
       }
@@ -1162,7 +1277,7 @@ $(document).ready(function () {
         $("#gidenEvrakTabs button[data-bs-target='#gidenImzaTab']").tab("show");
         $("#gidenEvrakTabs button[data-bs-target='#gidenIcerikTab']").tab("show");
       } else {
-        if (selectedSigners && selectedSigners.length > 0) {
+        if (!window.gidenIsNewRecord && selectedSigners && selectedSigners.length > 0) {
           $("#gidenEvrakTabs button[data-bs-target='#gidenImzaTab']").tab("show");
         }
       }
