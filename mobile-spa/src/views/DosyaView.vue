@@ -18,6 +18,7 @@ import {
   List,
   Pencil,
   Search,
+  Send,
   Share2,
   UserPlus,
   Trash2,
@@ -304,6 +305,25 @@ async function sil() {
   await calistir(() => (tur === 'klasor' ? dosyaApi.klasorSil(nesne.id) : dosyaApi.dosyaSil(nesne.id)), 'Silindi')
 }
 
+async function dosyaDogrudanPaylas() {
+  const { nesne } = sheet.value
+  sheet.value = null
+  if (!navigator.share) { bildir('Bu cihaz doğrudan paylaşımı desteklemiyor'); return }
+  bildir('Dosya hazırlanıyor…')
+  try {
+    const yanit = await fetch(dosyaApi.indirUrl(nesne.id), { credentials: 'same-origin' })
+    if (!yanit.ok) throw new Error('Dosya alınamadı')
+    const blob = await yanit.blob()
+    const ad = gorunenAd(nesne)
+    const dosya = new File([blob], ad, { type: blob.type || 'application/octet-stream' })
+    if (navigator.canShare && !navigator.canShare({ files: [dosya] })) { bildir('Bu dosya türü doğrudan paylaşılamıyor'); return }
+    bildir('')
+    await navigator.share({ files: [dosya], title: ad })
+  } catch (e) {
+    if (e && e.name === 'AbortError') { bildir(''); return }
+    bildir(e && e.message ? e.message : 'Paylaşılamadı')
+  }
+}
 async function paylasAc() {
   const { nesne } = sheet.value
   sheet.value = null
@@ -521,6 +541,7 @@ onMounted(() => { yukle(); ozetYukle() })
         </div>
         <button v-if="sheet.tur === 'dosya' && sheet.nesne.onizleme" type="button" @click="dosyaAc(sheet.nesne); sheet = null"><Eye :size="18" /> Önizle</button>
         <a v-if="sheet.tur === 'dosya'" :href="dosyaApi.indirUrl(sheet.nesne.id)" @click="sheet = null"><Download :size="18" /> İndir</a>
+        <button v-if="sheet.tur === 'dosya' && perms.files_share && sheet.nesne.seviye >= 2" type="button" @click="dosyaDogrudanPaylas"><Send :size="18" /> Dosyayı paylaş</button>
         <button v-if="sheet.tur === 'dosya' && perms.files_share && sheet.nesne.seviye >= 2" type="button" @click="paylasAc"><Share2 :size="18" /> Bağlantı ile paylaş</button>
         <button v-if="perms.files_share && sheet.nesne.seviye >= 2" type="button" @click="erisimAc"><UserPlus :size="18" /> Kullanıcılarla paylaş</button>
         <button v-if="perms.files_edit && sheet.nesne.seviye >= 2" type="button" @click="adlandir"><Pencil :size="18" /> Yeniden adlandır</button>

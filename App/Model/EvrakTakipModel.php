@@ -1544,6 +1544,30 @@ class EvrakTakipModel extends Model
         return $sql->fetchAll(\PDO::FETCH_OBJ);
     }
 
+    public function getCevapYazilariMap(array $gelenIds): array
+    {
+        $gelenIds = array_values(array_unique(array_filter(array_map('intval', $gelenIds))));
+        if ($gelenIds === []) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($gelenIds), '?'));
+        $sql = $this->db->prepare("
+            SELECT et.id, et.ilgili_evrak_id, et.evrak_no, et.konu
+            FROM {$this->table} et
+            WHERE et.ilgili_evrak_id IN ({$placeholders})
+              AND et.evrak_tipi = 'giden'
+              AND et.firma_id = ?
+              AND et.silinme_tarihi IS NULL
+            ORDER BY et.tarih DESC, et.id DESC
+        ");
+        $sql->execute([...$gelenIds, (int) $_SESSION['firma_id']]);
+        $map = [];
+        foreach ($sql->fetchAll(\PDO::FETCH_OBJ) as $row) {
+            $map[(int) $row->ilgili_evrak_id][] = $row;
+        }
+        return $map;
+    }
+
     /**
      * Evrakı cevaplandı olarak işaretler
      */

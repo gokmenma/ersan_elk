@@ -1286,6 +1286,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $result = $Model->ajaxList($_POST, (int) $_SESSION['firma_id'], $currentUserId);
                 $ids = array_map(static fn(object $row): int => (int) $row->id, $result['rows']);
                 $attachmentMap = $Model->getAttachmentMap($ids);
+                $replyMap = $Model->getCevapYazilariMap($ids);
                 $approvalMap = $Model->getApprovalSummaryMap($currentUserId, $ids);
                 $approvalDetailMap = $Model->getApprovalDetailMap($ids);
                 $latestKepEvidenceMap = (new KepDelilModel())->getLatestByEvrakIds($ids, (int) $_SESSION['firma_id']);
@@ -1352,7 +1353,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         if (empty($name)) return '<span class="text-muted small">-</span>';
                         return '<div class="d-flex align-items-center"><span class="font-size-12 fw-semibold text-dark text-truncate" style="max-width:130px">' . $esc($name) . '</span><button type="button" class="btn btn-link text-primary p-0 ms-1 evrak-bildir-manuel" data-id="' . $esc($encryptedId) . '" data-personel-id="' . (int) $personId . '" data-type="' . $esc($kind) . '" data-last-notified="' . $esc($lastDate) . '" title="Bildirim ve Mail Gönder"><i class="bx bx-bell font-size-14"></i></button></div>';
                     };
-                    $replyHtml = $reply === '-' ? '<span class="text-muted small">-</span>' : '<span class="badge ' . ($reply === 'EVET' ? 'bg-success-subtle text-success btn-cevap-goster' : 'bg-warning-subtle text-warning') . ' border rounded-pill px-2 py-1 font-size-11 fw-semibold"' . ($reply === 'EVET' ? ' role="button" style="cursor:pointer" title="Verilen cevabı göster" data-id="' . $esc($encryptedId) . '"' : '') . '>' . $reply . '</span>';
+                    $replyHtml = '<span class="text-muted small">-</span>';
+                    if ($reply === 'BEKLEMEDE') {
+                        $replyHtml = '<span class="badge bg-warning-subtle text-warning border rounded-pill px-2 py-1 font-size-11 fw-semibold">BEKLEMEDE</span>';
+                    } elseif ($reply === 'EVET') {
+                        $replyItems = '';
+                        foreach ($replyMap[(int) $evrak->id] ?? [] as $replyRow) {
+                            $replySubject = trim((string) $replyRow->konu) !== '' ? (string) $replyRow->konu : '-';
+                            $replyItems .= '<div class="d-flex align-items-center gap-2 mb-1"><button type="button" class="btn p-0 border-0 d-inline-flex align-items-center justify-content-center rounded-circle bg-danger-subtle text-danger flex-shrink-0 evrak-pdf-goruntule" style="width:28px;height:28px" data-id="' . $esc(Security::encrypt((int) $replyRow->id)) . '" title="Cevap yazısını PDF olarak göster"><i class="bx bx-file-blank font-size-16"></i></button><span class="font-size-12 text-truncate" style="max-width:220px" title="' . $esc($replySubject) . '">' . $esc($replySubject) . '</span></div>';
+                        }
+                        $replyHtml = $replyItems !== '' ? '<div>' . $replyItems . '</div>' : '<span class="badge bg-success-subtle text-success btn-cevap-goster border rounded-pill px-2 py-1 font-size-11 fw-semibold" role="button" style="cursor:pointer" title="Verilen cevabı göster" data-id="' . $esc($encryptedId) . '">EVET</span>';
+                    }
                     $flowItems = '';
                     foreach ($approvalDetailMap[(int) $evrak->id] ?? [] as $signature) {
                         $flowItems .= '<li><strong>' . (int) $signature['sira'] . '. ' . $esc($signature['adi_soyadi']) . '</strong> — ' . ($signature['durum'] === 'onaylandi' ? 'İmzalandı' : 'Bekliyor') . '</li>';

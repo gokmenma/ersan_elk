@@ -226,15 +226,16 @@ $onayTuruMetni = match ($onayTuru) {
     default => 'elektronik imza',
 };
 $kepAlicilarValue = (string) ($value('kep_alicilar', '') ?: $value('alici_kep', ''));
-$gonderimTuruOptions = [
+$gonderimTuruOptions = [];
+if ($canSendKep || $gonderimKanali === 'kep') {
+    $gonderimTuruOptions['kep'] = 'Kayıtlı Elektronik Posta (KEP)';
+}
+$gonderimTuruOptions += [
     'normal' => 'Normal Gönderim',
     'posta' => 'Posta ile Gönderim (PTT / Kargo)',
     'uyap' => 'UYAP Üzerinden Gönderim',
     'elden' => 'Elden Teslim',
 ];
-if ($canSendKep || $gonderimKanali === 'kep') {
-    $gonderimTuruOptions['kep'] = 'Kayıtlı Elektronik Posta (KEP)';
-}
 ?>
 
 <div class="container-fluid">
