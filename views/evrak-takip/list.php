@@ -643,6 +643,10 @@ $title = "Evrak Listesi";
 </div>
 
 <style>
+/* Okunmamış evrak satırı */
+#evrakTable tbody tr.evrak-okunmamis > td { background-color: rgba(220, 38, 38, .045) !important; font-weight: 700; }
+#evrakTable tbody tr.evrak-okunmamis > td:first-child { box-shadow: inset 4px 0 0 #dc2626; }
+#evrakTable tbody tr.evrak-okunmamis:hover > td { background-color: rgba(220, 38, 38, .08) !important; }
 /* Tablo Tipografi ve Temel Stiller */
 #evrakTable_wrapper {
     overflow: visible !important;

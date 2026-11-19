@@ -1509,7 +1509,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $personHtml($evrak->personel_adi, $evrak->personel_id, 'personel', $evrak->son_bildirim_tarihi_personel ?? '', $encryptedId, $esc),
                         $personHtml($evrak->ilgili_personel_adi, $evrak->ilgili_personel_id, 'ilgili', $evrak->son_bildirim_tarihi_ilgili ?? '', $encryptedId, $esc),
                         $replyHtml, $approvalHtml, $fileHtml, $actions,
-                        'DT_RowAttr' => ['data-id' => $encryptedId, 'data-imza-bekliyor' => $myTurn ? '1' : '0', 'data-tip' => $type, 'data-cevap' => $reply],
+                        'DT_RowClass' => (\App\Model\EvrakSevkModel::isRestricted($evrak) && !isset($uetsReadIds[(int) $evrak->id])) ? 'evrak-okunmamis' : '', 'DT_RowAttr' => ['data-id' => $encryptedId, 'data-imza-bekliyor' => $myTurn ? '1' : '0', 'data-tip' => $type, 'data-cevap' => $reply],
                     ];
                 }
                 echo json_encode(['draw' => $result['draw'], 'recordsTotal' => $result['recordsTotal'], 'recordsFiltered' => $result['recordsFiltered'], 'data' => $dataRows], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

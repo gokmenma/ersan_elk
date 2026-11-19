@@ -305,6 +305,23 @@ async function sil() {
   await calistir(() => (tur === 'klasor' ? dosyaApi.klasorSil(nesne.id) : dosyaApi.dosyaSil(nesne.id)), 'Silindi')
 }
 
+const MIME_TIPLERI = {
+  pdf: 'application/pdf',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  xls: 'application/vnd.ms-excel',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  doc: 'application/msword',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  ppt: 'application/vnd.ms-powerpoint',
+  csv: 'text/csv',
+  txt: 'text/plain',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  zip: 'application/zip',
+}
+
 async function dosyaDogrudanPaylas() {
   const { nesne } = sheet.value
   sheet.value = null
@@ -315,7 +332,9 @@ async function dosyaDogrudanPaylas() {
     if (!yanit.ok) throw new Error('Dosya alınamadı')
     const blob = await yanit.blob()
     const ad = gorunenAd(nesne)
-    const dosya = new File([blob], ad, { type: blob.type || 'application/octet-stream' })
+    const uzanti = (ad.split('.').pop() || '').toLowerCase()
+    const tip = MIME_TIPLERI[uzanti] || (blob.type && blob.type !== 'application/octet-stream' ? blob.type : 'application/octet-stream')
+    const dosya = new File([blob], ad, { type: tip })
     if (navigator.canShare && !navigator.canShare({ files: [dosya] })) { bildir('Bu dosya türü doğrudan paylaşılamıyor'); return }
     bildir('')
     await navigator.share({ files: [dosya], title: ad })
