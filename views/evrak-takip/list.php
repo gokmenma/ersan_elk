@@ -330,7 +330,7 @@ $title = "Evrak Listesi";
                     <thead>
                         <tr>
                             <th class="text-center" style="width: 45px;" data-filter="none">#</th>
-                            <th class="text-center" style="width: 80px;" data-filter="select">TİP</th>
+                            <th class="text-center" style="width: 80px;" data-filter="string">TİP</th>
                             <th class="text-center" style="width: 105px;" data-filter="select" data-filter-options="KABUL EDİLDİ|KEPHS'E AKTARILDI|İLETİLDİ|TESLİM EDİLDİ|TESLİM EDİLEMEDİ|OKUNDU|İNDİRİLDİ|DELİL ALINDI">KEP DURUMU</th>
                             <th style="width: 100px;" data-filter="date">TARİH</th>
                             <th data-filter="string">KONU / EVRAK NO</th>
@@ -338,8 +338,8 @@ $title = "Evrak Listesi";
                             <th data-filter="string">İŞLEM YAPAN PERSONEL</th>
                             <th data-filter="string">ZİMMETLİ (OFİS)</th>
                             <th data-filter="string">İLGİLİ PERSONEL</th>
-                            <th class="text-center" style="width: 85px;" data-filter="select">CEVAP</th>
-                            <th class="text-center" style="width: 110px;" data-filter="select">E-İMZA</th>
+                            <th class="text-center" style="width: 85px;" data-filter="string">CEVAP</th>
+                            <th class="text-center" style="width: 110px;" data-filter="string">E-İMZA</th>
                             <th class="text-center" style="width: 95px;" data-filter="none">DOSYA</th>
                             <th class="text-center" style="min-width: 120px; width: 130px;" data-filter="none">İŞLEMLER</th>
                         </tr>

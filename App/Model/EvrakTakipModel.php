@@ -146,6 +146,7 @@ class EvrakTakipModel extends Model
                     if (in_array('BEKLEMEDE', $values, true)) $replyClauses[] = '(et.cevap_verildi_mi = 0 OR et.cevap_verildi_mi IS NULL)';
                     if ($replyClauses) $where[] = '(' . implode(' OR ', $replyClauses) . ')';
                 } else {
+                    if ((int) $index === 1) $values = array_values(array_unique(array_map(static fn(string $item): string => str_starts_with(mb_strtoupper($item, 'UTF-8'), 'G') && str_contains(mb_strtoupper($item, 'UTF-8'), 'DEN') ? (mb_strtoupper($item, 'UTF-8') === 'GELEN' ? 'gelen' : 'giden') : mb_strtolower($item, 'UTF-8'), $values)));
                     if ((int) $index === 10) $values = array_values(array_unique(array_map(static fn(string $item): string => self::approvalStatusFromLabel($item), $values)));
                     $placeholders = [];
                     foreach ($values as $valueIndex => $selectedValue) {
@@ -174,11 +175,36 @@ class EvrakTakipModel extends Model
                     $where[] = 'et.tarih ' . $operator . ' :' . $key;
                     $bindings[$key] = $normalizeDate($value);
                 }
-            } elseif ((int) $index === 9) {
-                $where[] = $value === 'EVET' ? 'et.cevap_verildi_mi = 1' : '(et.cevap_verildi_mi = 0 OR et.cevap_verildi_mi IS NULL)';
-            } elseif ((int) $index === 10) {
-                $where[] = 'et.onay_durumu = :' . $key;
-                $bindings[$key] = self::approvalStatusFromLabel($value);
+            } elseif (in_array((int) $index, [1, 9, 10], true) && !in_array($mode, ['null', 'not_null'], true)) {
+                $folded = strtolower(strtr($value, ['İ' => 'i', 'I' => 'i', 'ı' => 'i', 'Ş' => 's', 'ş' => 's', 'Ğ' => 'g', 'ğ' => 'g', 'Ü' => 'u', 'ü' => 'u', 'Ö' => 'o', 'ö' => 'o', 'Ç' => 'c', 'ç' => 'c']));
+                $labels = match ((int) $index) {
+                    1 => ['gelen' => 'gelen', 'giden' => 'giden'],
+                    9 => ['evet' => 1, 'beklemede' => 0],
+                    default => ['onayli' => 'onaylandi', 'onayda' => 'onay_bekliyor', 'imzanizda' => 'onay_bekliyor', 'taslak' => 'taslak'],
+                };
+                $matched = [];
+                foreach ($labels as $label => $target) {
+                    if ($folded !== '' && str_contains($label, $folded)) {
+                        $matched[] = $target;
+                    }
+                }
+                $matched = array_values(array_unique($matched));
+                if ($matched === []) {
+                    $clause = '1 = 0';
+                } elseif ((int) $index === 9) {
+                    $parts = [];
+                    if (in_array(1, $matched, true)) $parts[] = 'et.cevap_verildi_mi = 1';
+                    if (in_array(0, $matched, true)) $parts[] = '(et.cevap_verildi_mi = 0 OR et.cevap_verildi_mi IS NULL)';
+                    $clause = '(' . implode(' OR ', $parts) . ')';
+                } else {
+                    $holders = [];
+                    foreach ($matched as $matchIndex => $target) {
+                        $holders[] = ':' . $key . '_s' . $matchIndex;
+                        $bindings[$key . '_s' . $matchIndex] = $target;
+                    }
+                    $clause = $columnMap[$index] . ' IN (' . implode(',', $holders) . ')';
+                }
+                $where[] = in_array($mode, ['not_contains', 'not_equals'], true) ? 'NOT (' . $clause . ')' : $clause;
             } else {
                 if ($mode === 'null' || $mode === 'not_null') {
                     $where[] = $mode === 'null'
