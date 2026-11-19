@@ -344,6 +344,32 @@ function paylasimOnYukle(nesne) {
   hazirDosyalar.set(nesne.id, kayit)
 }
 
+async function gecicibaglantiyaGec(nesne) {
+  const sonuc = await Swal.fire({
+    title: 'Doğrudan paylaşılamıyor',
+    text: 'Tarayıcı bu dosya türünü doğrudan göndermeye izin vermiyor. 1 gün geçerli bir indirme bağlantısı oluşturup paylaşalım mı?',
+    icon: 'info',
+    showCancelButton: true,
+    confirmButtonColor: '#191d24',
+    cancelButtonColor: '#64748b',
+    confirmButtonText: 'Bağlantı ile paylaş',
+    cancelButtonText: 'Vazgeç',
+    reverseButtons: true,
+  })
+  if (!sonuc.isConfirmed) return
+  try {
+    const r = await dosyaApi.paylasimOlustur(nesne.id, 1, '', '')
+    try {
+      await navigator.share({ title: gorunenAd(nesne), url: r.url })
+    } catch (e) {
+      if (e && e.name === 'AbortError') return
+      try { await navigator.clipboard.writeText(r.url); bildir('Bağlantı kopyalandı') } catch { bildir(r.url) }
+    }
+  } catch (e) {
+    bildir(e.message)
+  }
+}
+
 async function dosyaDogrudanPaylas() {
   const { nesne } = sheet.value
   sheet.value = null
@@ -355,10 +381,11 @@ async function dosyaDogrudanPaylas() {
     return
   }
   try {
-    if (navigator.canShare && !navigator.canShare({ files: [kayit.dosya] })) { bildir('Bu dosya türü doğrudan paylaşılamıyor'); return }
+    if (navigator.canShare && !navigator.canShare({ files: [kayit.dosya] })) { await gecicibaglantiyaGec(nesne); return }
     await navigator.share({ files: [kayit.dosya], title: kayit.dosya.name })
   } catch (e) {
     if (e && e.name === 'AbortError') return
+    if (e && e.name === 'NotAllowedError') { await gecicibaglantiyaGec(nesne); return }
     bildir(`Paylaşılamadı (${e && e.name ? e.name : 'hata'}${e && e.message ? ': ' + e.message : ''})`)
   }
 }
