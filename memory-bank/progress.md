@@ -2381,3 +2381,5 @@
 
 - [x] Bordro Parametreler sayfası (3 sekme) Aydınoğulları yeni sayfa standardına geçirildi (2026-11-18).
 - [x] Gelen evrak modalı yeniden tasarlandı; Bilgi/İşlem türü eklendi (tarayıcıda görsel doğrulama kullanıcıda).
+
+- [x] Evrak AI cevap taslağı hukuki iyileştirme: senaryo tespiti, güçlendirilmiş prompt, çıktı kural kontrolü (2026-11-20). Kalan: bordrodan son net maaş ve ayrılış alacağı verisinin yer tutucu yerine otomatik doldurulması; şablonların hukuk müşavirince onayı; tarayıcıda gerçek evrakla deneme.

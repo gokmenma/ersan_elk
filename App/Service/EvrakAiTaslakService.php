@@ -92,7 +92,7 @@ final class EvrakAiTaslakService
             $address = '';
         }
         $html = RichTextSanitizer::sanitize((string) ($result['aciklama_html'] ?? ''));
-        $uyarilar = $kayit['uyarilar'];
+        $uyarilar = array_merge($kayit['uyarilar'], $this->kuralUyarilari(strip_tags($html), (string) $kayit['senaryo']));
         if (preg_match('/\[[^\]]{2,60}\]/u', strip_tags($html)) === 1) {
             $uyarilar[] = 'Metinde köşeli parantezle işaretli alanlar var; şirket kayıtlarında bulunamayan bilgileri kaydetmeden önce doldurunuz.';
         }
@@ -141,7 +141,7 @@ final class EvrakAiTaslakService
 
     private function sirketKayitlari(array $analiz): array
     {
-        $kayit = ['metin' => '', 'personel_adi' => '', 'calisma_durumu' => '', 'uyarilar' => []];
+        $kayit = ['metin' => '', 'personel_adi' => '', 'calisma_durumu' => '', 'senaryo' => 'kayit_yok', 'uyarilar' => []];
         $tc = (string) ($analiz['borclu_tc'] ?? '');
         $ad = trim((string) ($analiz['borclu_adi'] ?? ''));
         if ($tc === '' && $ad === '') {
@@ -173,14 +173,34 @@ final class EvrakAiTaslakService
         $cikis = trim((string) ($personel->isten_cikis_tarihi ?? ''));
         $aktif = $cikis === '' || $cikis === '0000-00-00';
         $giris = trim((string) ($personel->ise_giris_tarihi ?? ''));
+        $belgeTs = $this->belgeTarihi((string) ($analiz['tarih'] ?? ''));
+        $cikisTs = $aktif ? false : strtotime($cikis);
+        if ($aktif) {
+            $senaryo = 'calisiyor';
+        } elseif ($belgeTs === null || $cikisTs === false) {
+            $senaryo = 'ayrildi_tarih_belirsiz';
+        } elseif ($cikisTs < $belgeTs) {
+            $senaryo = 'muzekkere_oncesi_ayrildi';
+        } else {
+            $senaryo = 'muzekkere_sonrasi_ayrildi';
+        }
+        $kayit['senaryo'] = $senaryo;
+
+        $durumSatiri = match ($senaryo) {
+            'calisiyor' => 'Çalışma durumu: ŞİRKETİMİZDE HALEN ÇALIŞMAKTADIR (işten ayrılmamıştır).',
+            'muzekkere_oncesi_ayrildi' => 'Çalışma durumu: İŞTEN AYRILMIŞTIR; işten çıkış tarihi ' . $this->tarih($cikis) . ', müzekkere tarihinden (' . date('d.m.Y', (int) $belgeTs) . ') ÖNCEDİR. Müzekkere tarihinde şirket çalışanı değildir; bu müzekkere kapsamında maaşından kesinti YAPILMAMIŞTIR ve YAPILMAYACAKTIR. "Kesinti yapılacaktır", "hesaba yatırılacaktır" gibi gelecek zamanlı taahhüt YAZMA.',
+            'muzekkere_sonrasi_ayrildi' => 'Çalışma durumu: İŞTEN AYRILMIŞTIR; işten çıkış tarihi ' . $this->tarih($cikis) . ', müzekkere tarihinden (' . date('d.m.Y', (int) $belgeTs) . ') SONRADIR. Müzekkere tarihinden ayrılışa kadar geçen sürede kesinti yapılıp yapılmadığı yalnızca aşağıdaki icra kaydından alınır; kayıtta yoksa tutarı [KESİLEN TUTAR] yer tutucusuyla bırak.',
+            default => 'Çalışma durumu: İŞTEN AYRILMIŞTIR, işten çıkış tarihi ' . $this->tarih($cikis) . '. Müzekkere tarihi okunamadığından ayrılışın müzekkereden önce mi sonra mı olduğu belirsizdir; bunu yazıda kesinleştirme, [MÜZEKKERE TARİHİ] yer tutucusu kullan.',
+        };
         $satirlar = [
             'Personel: ' . $personel->adi_soyadi,
             'Görevi: ' . (trim((string) ($personel->gorev ?? '')) ?: 'kayıtlı değil'),
             'İşe giriş tarihi: ' . $this->tarih($giris),
-            $aktif
-                ? 'Çalışma durumu: ŞİRKETİMİZDE HALEN ÇALIŞMAKTADIR (işten ayrılmamıştır).'
-                : 'Çalışma durumu: İŞTEN AYRILMIŞTIR, işten çıkış tarihi ' . $this->tarih($cikis) . '.',
+            $durumSatiri,
         ];
+        if (!$aktif) {
+            $satirlar[] = 'Ayrılış tarihi itibarıyla personele ait ödenmemiş ücret/izin/kıdem/ihbar alacağı bilgisi bu kayıtlardan alınmamıştır; haciz bu alacaklara da uygulanacağından yazıda "[AYRILIŞ ALACAĞI DURUMU]" yer tutucusuyla alacak olup olmadığını belirt.';
+        }
 
         $dosyaNorm = preg_replace('/\s+/', '', trim((string) ($analiz['dosya_no'] ?? '')));
         $icralar = (new PersonelIcralariModel())->getPersonelIcralariWithKesintiler((int) $personel->id);
@@ -206,7 +226,7 @@ final class EvrakAiTaslakService
         if ($digerleri !== []) {
             $satirlar[] = 'Aynı personelin sırada bekleyen/devam eden başka ' . count($digerleri) . ' icra dosyası vardır (ayrıntı verme; yalnızca sıra nedeniyle kesintinin gecikebileceğini belirtebilirsin).';
         }
-        $satirlar[] = 'Aylık maaş/ücret tutarı bu kayıtlardan alınmamıştır; belge maaş tutarının bildirilmesini istiyorsa [AYLIK NET MAAŞ TUTARI] yer tutucusunu kullan.';
+        $satirlar[] = 'Aylık maaş/ücret tutarı bu kayıtlardan alınmamıştır; belge maaş tutarının bildirilmesini istiyorsa [AYLIK NET MAAŞ TUTARI] yer tutucusunu kullan, istemiyorsa maaş tutarından hiç söz etme.';
 
         $kayit['metin'] = implode("\n", $satirlar);
         $kayit['personel_adi'] = (string) $personel->adi_soyadi;
@@ -220,7 +240,7 @@ final class EvrakAiTaslakService
     private function cevapPromptu(array $analiz, array $kayit, string $instruction): string
     {
         $turRehberi = [
-            'maas_haciz' => 'Bu bir maaş haczi müzekkeresidir. Cevap şunları içermelidir: müzekkerenin alındığı ve ilgili personelin kayıtlarla eşleştiği; haczin İİK 83/355 kapsamındaki maaş kesintisi için işleme alındığı (yalnızca kayıtlardaki durum uygunsa); kesintinin tutarın icra dairesinin hesabına yatırılacağı biçimde yapılacağı; belge maaş tutarını soruyorsa tutarın yer tutucuyla belirtilmesi; personelin işten ayrılması hâlinde dairenin bilgilendirileceği. Personel ayrılmışsa ayrılış tarihini ve varsa yapılacak ödemeler üzerindeki haczi belirt.',
+            'maas_haciz' => 'Bu bir maaş haczi müzekkeresidir. Cevap, ŞİRKET KAYITLARI’ndaki çalışma durumuna göre yazılır: (a) halen çalışıyorsa müzekkerenin işleme alındığını, kesintinin personelin net ücretinin belgedeki oranı (genellikle dörtte biri; oran borç tutarına değil ücrete uygulanır) üzerinden yapılıp dosya numarası belirtilerek icra dairesinin hesabına yatırılacağını bildir; (b) müzekkere tarihinden önce ayrılmışsa müzekkere tarihinde şirket çalışanı olmadığını, bu nedenle kesinti yapılmadığını ve yapılmayacağını, ayrılış tarihini ve ayrılışta ödenmemiş alacak olup olmadığını (haciz bu alacaklara da uygulanır) açıkça bildir; (c) müzekkere sonrası ayrılmışsa ayrılış tarihini, o tarihe kadar yapılan kesinti ve yatırımları ile ayrılışta kalan alacağa ilişkin durumu bildir. Belge maaş tutarını soruyorsa tutarı yer tutucuyla belirt, sormuyorsa maaş tutarından söz etme. Kanun maddesini yalnızca belgede geçiyorsa an ve “İİK m. 83 ve 355” gibi her maddeyi ayrı yaz; “83/355” biçiminde bitişik yazma. Ayrılmış kişiye “eski personelimiz” de.',
             'haciz_ihbari' => 'Bu bir haciz ihbarnamesidir. Cevap, şirketin borçlu ile ilgili borcu/alacağı olup olmadığını kayıtlara göre belirtmelidir.',
             'bilgi_belge_talebi' => 'Bu bir bilgi/belge talebidir. Cevap, istenen her bilgiyi ayrı madde olarak yanıtlamalı, kayıtlarda bulunmayanı yer tutucuyla işaretlemelidir.',
         ];
@@ -239,12 +259,50 @@ final class EvrakAiTaslakService
             . "3) Bilinmeyen zorunlu bilgi için köşeli parantezli yer tutucu kullan.\n"
             . "4) Yazı giriş-gelişme-sonuç mantığında, birbiriyle bağlantılı en az üç ayrı paragraftan oluşmalı; 'Giriş', 'Gelişme', 'Sonuç' başlıkları yazılmamalı.\n"
             . "5) Giriş paragrafı zorunlu olarak 'İlgi yazı ile' sözleriyle başlamalı ve belgenin tarihine, dosya numarasına ve kişisine atıf yapmalı.\n"
-            . "6) Sonuç paragrafı 'Gereğini bilgilerinize arz ederim.' gibi uygun bir kapanışla bitmeli.\n"
+            . "6) Son paragraf yalnızca 'Gereğini arz ederim.' cümlesiyle bitmeli; 'Gereğini bilgilerinize arz ederim' gibi iki kalıbı karıştırma.\n"
             . "7) kurum_adi cevabın gönderileceği kurumun belgede yazan tam resmî adıdır (ör. icra dairesinin adı); alt birim ve adres ayrı alanlara yazılır, kurum adını adres alanına koyma.\n"
             . "8) konu kısa ve belgeye özgü olmalı (ör. 'Arif Sezer Yılmaz Maaş Haczi Hakkında'); ilgiler alanına belgenin tarih ve sayısını yaz.\n"
             . "9) aciklama_html yalnızca p, br, strong, b, em, i, u, ul, ol, li ve table/tr/td/th etiketlerini kullanabilir.\n"
+            . "10) Bu yönergelerdeki koşullu ifadeleri ('belge ... talep ediyorsa', 'varsa') yazıya kopyalama; yazıda her cümle kesin ve tamamlanmış olmalı. Yer tutucuyu cümle içinde anlatma ('... olarak belirtilmiştir' yazma); yer tutucu doğrudan olgunun yerine yazılır.\n"
+            . "11) Gelecekte bildirim vaat etme ('bilgilendireceğiz' yazma); bildirilmesi gereken bilgiyi bu yazıda ver.\n"
+            . "12) Kanun atıflarında her maddeyi ayrı yaz ('İİK m. 83 ve 355'); '83/355' gibi bitişik yazma. Haciz oranı borca değil maaşa/ücrete uygulanır.\n"
+            . "13) Gövde paragraflarını numaralı veya düz paragraf olarak, 'Sayın' veya hitap kalıbı kullanmadan, resmî ve edilgen anlatımla yaz; personelden 'personelimiz' değil, ayrılmışsa 'eski personelimiz' diye söz et.\n"
             . "Şu anahtarlarla JSON nesnesi döndür: konu, kurum_adi, muhatap_alt_birim, muhatap_adres, ilgiler, aciklama_html.";
         return $prompt;
+    }
+
+    private function belgeTarihi(string $tarih): ?int
+    {
+        $tarih = trim($tarih);
+        if (preg_match('/(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})/', $tarih, $m) === 1 && checkdate((int) $m[2], (int) $m[1], (int) $m[3])) {
+            return mktime(0, 0, 0, (int) $m[2], (int) $m[1], (int) $m[3]);
+        }
+        if (preg_match('/(\d{4})-(\d{2})-(\d{2})/', $tarih, $m) === 1 && checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
+            return mktime(0, 0, 0, (int) $m[2], (int) $m[3], (int) $m[1]);
+        }
+        return null;
+    }
+
+    private function kuralUyarilari(string $metin, string $senaryo): array
+    {
+        $uyarilar = [];
+        if (preg_match('/\d+\s*\/\s*355/u', $metin) === 1) {
+            $uyarilar[] = 'Kanun atfı "83/355" biçiminde yazılmış; "İİK m. 83 ve 355" biçimine çevriniz.';
+        }
+        if (preg_match('/borç(?:\s+miktarının|un)\s+(?:1\/4|dörtte\s+biri)/iu', $metin) === 1) {
+            $uyarilar[] = 'Kesinti oranı borca göre yazılmış; haciz borcun değil maaşın (net ücretin) dörtte biri üzerinden yapılır, düzeltiniz.';
+        }
+        if (preg_match('/(?:talep\s+ediyorsa|istiyorsa|ise\s+bu\s+tutar|olarak\s+belirtilmiştir)/iu', $metin) === 1) {
+            $uyarilar[] = 'Metinde koşullu veya talimat kaynaklı bir ifade kalmış olabilir; resmî yazıda kesin ifade kullanınız.';
+        }
+        if (preg_match('/Gereğini\s+bilgilerinize/iu', $metin) === 1) {
+            $uyarilar[] = 'Kapanış "Gereğini arz ederim." biçiminde olmalıdır.';
+        }
+        if (in_array($senaryo, ['muzekkere_oncesi_ayrildi', 'ayrildi_tarih_belirsiz'], true)
+            && preg_match('/kesinti\s+yap(?:ıl)?acak|yatırılacak|bilgilendireceğiz/iu', $metin) === 1) {
+            $uyarilar[] = 'Personel işten ayrılmış görünüyor ancak metinde gelecek zamanlı kesinti/bilgilendirme taahhüdü var; kontrol ediniz.';
+        }
+        return $uyarilar;
     }
 
     private function tarih(string $tarih): string
