@@ -354,7 +354,7 @@ $title = "Evrak Listesi";
                             $geriAlinabilir = $Evrak->canRevokeApproval($evrak, $currentUserId);
                             $siraBende = $onayDurumu === 'onay_bekliyor' && !empty($onayBilgisi['sira_bende']);
                             $evrakTipi = (string) ($evrak->evrak_tipi ?? 'gelen');
-                            $cevapDurumu = ($evrakTipi === 'gelen') ? ($evrak->cevap_verildi_mi ? 'EVET' : 'BEKLEMEDE') : '-';
+                            $cevapDurumu = ($evrakTipi === 'gelen') ? (($evrak->gelen_tur ?? 'islem') === 'bilgi' ? 'BILGI' : ($evrak->cevap_verildi_mi ? 'EVET' : 'BEKLEMEDE')) : '-';
                         ?>
                             <tr data-id="<?= htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>"
                                 data-imza-bekliyor="<?= $siraBende ? '1' : '0'; ?>"
@@ -486,7 +486,9 @@ $title = "Evrak Listesi";
                                 </td>
                                 <td class="text-center">
                                     <?php if ($evrakTipi === 'gelen'): ?>
-                                        <?php if ($evrak->cevap_verildi_mi): ?>
+                                        <?php if (($evrak->gelen_tur ?? 'islem') === 'bilgi'): ?>
+                                            <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold" title="Bilgi amaçlı evrak; cevap gerektirmez"><i class="bx bx-info-circle"></i> BİLGİ</span>
+                                        <?php elseif ($evrak->cevap_verildi_mi): ?>
                                             <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold btn-cevap-goster" role="button" style="cursor:pointer" data-id="<?= htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" title="Cevap Tarihi: <?= $evrak->cevap_tarihi ? date('d.m.Y', strtotime($evrak->cevap_tarihi)) : '-'; ?>">
                                                 EVET
                                             </span>

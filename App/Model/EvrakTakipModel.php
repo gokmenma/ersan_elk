@@ -43,6 +43,19 @@ class EvrakTakipModel extends Model
             if (!in_array('son_tarih', $cols)) {
                 $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN son_tarih date DEFAULT NULL AFTER tarih");
             }
+            if (!in_array('cevap_metni', $cols)) {
+                $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN cevap_metni TEXT NULL AFTER cevap_tarihi");
+            }
+            $this->db->exec("CREATE TABLE IF NOT EXISTS evrak_takip_cevap_ekleri (
+                id INT NOT NULL AUTO_INCREMENT, firma_id INT NOT NULL, evrak_id INT NOT NULL,
+                dosya_adi VARCHAR(255) NOT NULL, dosya_yolu VARCHAR(555) NOT NULL, mime_tipi VARCHAR(120) NULL,
+                dosya_boyutu INT NOT NULL DEFAULT 0, yukleyen_kullanici_id INT NULL,
+                olusturma_tarihi DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, silinme_tarihi DATETIME NULL,
+                PRIMARY KEY (id), KEY idx_cevap_ek_evrak (evrak_id, firma_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+            if (!in_array('gelen_tur', $cols)) {
+                $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN gelen_tur ENUM('islem','bilgi') NOT NULL DEFAULT 'islem' AFTER evrak_tipi");
+            }
         } catch (\Exception $e) {
             // Silent catch to prevent errors on strict environments
         }
@@ -143,7 +156,8 @@ class EvrakTakipModel extends Model
                 } elseif ((int) $index === 9) {
                     $replyClauses = [];
                     if (in_array('EVET', $values, true)) $replyClauses[] = 'et.cevap_verildi_mi = 1';
-                    if (in_array('BEKLEMEDE', $values, true)) $replyClauses[] = '(et.cevap_verildi_mi = 0 OR et.cevap_verildi_mi IS NULL)';
+                    if (in_array('BEKLEMEDE', $values, true)) $replyClauses[] = "(et.evrak_tipi = 'gelen' AND et.gelen_tur = 'islem' AND (et.cevap_verildi_mi = 0 OR et.cevap_verildi_mi IS NULL))";
+                    if (in_array('BİLGİ', $values, true) || in_array('BILGI', $values, true)) $replyClauses[] = "(et.evrak_tipi = 'gelen' AND et.gelen_tur = 'bilgi')";
                     if ($replyClauses) $where[] = '(' . implode(' OR ', $replyClauses) . ')';
                 } else {
                     if ((int) $index === 1) $values = array_values(array_unique(array_map(static fn(string $item): string => str_starts_with(mb_strtoupper($item, 'UTF-8'), 'G') && str_contains(mb_strtoupper($item, 'UTF-8'), 'DEN') ? (mb_strtoupper($item, 'UTF-8') === 'GELEN' ? 'gelen' : 'giden') : mb_strtolower($item, 'UTF-8'), $values)));
@@ -179,7 +193,7 @@ class EvrakTakipModel extends Model
                 $folded = strtolower(strtr($value, ['İ' => 'i', 'I' => 'i', 'ı' => 'i', 'Ş' => 's', 'ş' => 's', 'Ğ' => 'g', 'ğ' => 'g', 'Ü' => 'u', 'ü' => 'u', 'Ö' => 'o', 'ö' => 'o', 'Ç' => 'c', 'ç' => 'c']));
                 $labels = match ((int) $index) {
                     1 => ['gelen' => 'gelen', 'giden' => 'giden'],
-                    9 => ['evet' => 1, 'beklemede' => 0],
+                    9 => ['evet' => 1, 'beklemede' => 0, 'bilgi' => 2],
                     default => ['onayli' => 'onaylandi', 'onayda' => 'onay_bekliyor', 'imzanizda' => 'onay_bekliyor', 'taslak' => 'taslak'],
                 };
                 $matched = [];
@@ -194,7 +208,8 @@ class EvrakTakipModel extends Model
                 } elseif ((int) $index === 9) {
                     $parts = [];
                     if (in_array(1, $matched, true)) $parts[] = 'et.cevap_verildi_mi = 1';
-                    if (in_array(0, $matched, true)) $parts[] = '(et.cevap_verildi_mi = 0 OR et.cevap_verildi_mi IS NULL)';
+                    if (in_array(0, $matched, true)) $parts[] = "(et.evrak_tipi = 'gelen' AND et.gelen_tur = 'islem' AND (et.cevap_verildi_mi = 0 OR et.cevap_verildi_mi IS NULL))";
+                    if (in_array(2, $matched, true)) $parts[] = "(et.evrak_tipi = 'gelen' AND et.gelen_tur = 'bilgi')";
                     $clause = '(' . implode(' OR ', $parts) . ')';
                 } else {
                     $holders = [];
@@ -228,7 +243,7 @@ class EvrakTakipModel extends Model
             $where[] = 'et.evrak_tipi = :quick_type';
             $bindings['quick_type'] = $quickFilter;
         } elseif ($quickFilter === 'cevap_bekleyen') {
-            $where[] = "et.evrak_tipi = 'gelen' AND (et.cevap_verildi_mi = 0 OR et.cevap_verildi_mi IS NULL)";
+            $where[] = "et.evrak_tipi = 'gelen' AND et.gelen_tur = 'islem' AND (et.cevap_verildi_mi = 0 OR et.cevap_verildi_mi IS NULL)";
         }
         $approvalFilter = ['bekleyen' => 'onay_bekliyor', 'onayli' => 'onaylandi', 'taslak' => 'taslak'][(string) ($params['approval_filter'] ?? '')] ?? null;
         if ($approvalFilter !== null) {
@@ -1591,7 +1606,7 @@ class EvrakTakipModel extends Model
                 COUNT(*) as toplam_evrak,
                 SUM(CASE WHEN evrak_tipi = 'gelen' THEN 1 ELSE 0 END) as gelen_evrak,
                 SUM(CASE WHEN evrak_tipi = 'giden' THEN 1 ELSE 0 END) as giden_evrak,
-                SUM(CASE WHEN evrak_tipi = 'gelen' AND (cevap_verildi_mi = 0 OR cevap_verildi_mi IS NULL) THEN 1 ELSE 0 END) as cevap_bekleyen
+                SUM(CASE WHEN evrak_tipi = 'gelen' AND gelen_tur = 'islem' AND (cevap_verildi_mi = 0 OR cevap_verildi_mi IS NULL) THEN 1 ELSE 0 END) as cevap_bekleyen
             FROM {$this->table} et
             WHERE et.firma_id = :firma_id
             AND et.silinme_tarihi IS NULL
@@ -1717,6 +1732,84 @@ class EvrakTakipModel extends Model
         ");
         $sql->execute(['gelen_id' => $gelenId, 'firma_id' => $_SESSION['firma_id']]);
         return $sql->fetchAll(\PDO::FETCH_OBJ);
+    }
+
+    public function getGidenCevapSecenekleri(): array
+    {
+        $visibilityBindings = [];
+        $visibilitySql = (new EvrakSevkModel())->visibilitySql('et', $visibilityBindings);
+        $sql = $this->db->prepare("
+            SELECT et.id, et.evrak_no, et.konu, et.kurum_adi, et.tarih
+            FROM {$this->table} et
+            WHERE et.firma_id = :firma_id
+              AND et.evrak_tipi = 'giden'
+              AND et.ilgili_evrak_id IS NULL
+              AND et.silinme_tarihi IS NULL
+              AND {$visibilitySql}
+            ORDER BY et.tarih DESC, et.id DESC
+            LIMIT 300
+        ");
+        $sql->execute(['firma_id' => $_SESSION['firma_id']] + $visibilityBindings);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    public function syncCevapGiden(int $gelenId, array $gidenIds): void
+    {
+        $firmaId = (int) $_SESSION['firma_id'];
+        $gidenIds = array_values(array_unique(array_filter(array_map('intval', $gidenIds))));
+        $params = [$gelenId, $firmaId];
+        $notIn = '';
+        if ($gidenIds !== []) {
+            $notIn = ' AND id NOT IN (' . implode(',', array_fill(0, count($gidenIds), '?')) . ')';
+            $params = [...$params, ...$gidenIds];
+        }
+        $this->db->prepare("UPDATE {$this->table} SET ilgili_evrak_id = NULL WHERE ilgili_evrak_id = ? AND evrak_tipi = 'giden' AND firma_id = ?{$notIn}")->execute($params);
+        if ($gidenIds !== []) {
+            $in = implode(',', array_fill(0, count($gidenIds), '?'));
+            $this->db->prepare("UPDATE {$this->table} SET ilgili_evrak_id = ? WHERE id IN ({$in}) AND evrak_tipi = 'giden' AND firma_id = ? AND silinme_tarihi IS NULL AND (ilgili_evrak_id IS NULL OR ilgili_evrak_id = ?)")
+                ->execute([$gelenId, ...$gidenIds, $firmaId, $gelenId]);
+        }
+    }
+
+    public function getCevapDosyalari(int $gelenId): array
+    {
+        $sql = $this->db->prepare("
+            SELECT id, dosya_adi, dosya_yolu, mime_tipi, dosya_boyutu, olusturma_tarihi
+            FROM evrak_takip_cevap_ekleri
+            WHERE evrak_id = :evrak_id AND firma_id = :firma_id AND silinme_tarihi IS NULL
+            ORDER BY id ASC
+        ");
+        $sql->execute(['evrak_id' => $gelenId, 'firma_id' => $_SESSION['firma_id']]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    public function saveCevapDosyasi(int $gelenId, array $file): int
+    {
+        $sql = $this->db->prepare("
+            INSERT INTO evrak_takip_cevap_ekleri (firma_id, evrak_id, dosya_adi, dosya_yolu, mime_tipi, dosya_boyutu, yukleyen_kullanici_id)
+            VALUES (:firma_id, :evrak_id, :dosya_adi, :dosya_yolu, :mime_tipi, :dosya_boyutu, :user_id)
+        ");
+        $sql->execute([
+            'firma_id' => $_SESSION['firma_id'],
+            'evrak_id' => $gelenId,
+            'dosya_adi' => $file['dosya_adi'],
+            'dosya_yolu' => $file['dosya_yolu'],
+            'mime_tipi' => $file['mime_tipi'] ?? null,
+            'dosya_boyutu' => (int) ($file['dosya_boyutu'] ?? 0),
+            'user_id' => (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0) ?: null,
+        ]);
+        return (int) $this->db->lastInsertId();
+    }
+
+    public function deleteCevapDosyalari(int $gelenId, array $ids): void
+    {
+        $ids = array_values(array_filter(array_map('intval', $ids)));
+        if ($ids === []) {
+            return;
+        }
+        $in = implode(',', array_fill(0, count($ids), '?'));
+        $this->db->prepare("UPDATE evrak_takip_cevap_ekleri SET silinme_tarihi = NOW() WHERE id IN ({$in}) AND evrak_id = ? AND firma_id = ? AND silinme_tarihi IS NULL")
+            ->execute([...$ids, $gelenId, (int) $_SESSION['firma_id']]);
     }
 
     public function getCevapYazilariMap(array $gelenIds): array

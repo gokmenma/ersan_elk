@@ -2380,3 +2380,4 @@
 - [x] macOS Açık tema (`macos-light`) eklendi ve tema seçiciye bağlandı (2026-11-18). Kalan: tüm sayfalarda gözle tarama, SF Pro'nun Apple dışı cihazlarda Inter yedeği.
 
 - [x] Bordro Parametreler sayfası (3 sekme) Aydınoğulları yeni sayfa standardına geçirildi (2026-11-18).
+- [x] Gelen evrak modalı yeniden tasarlandı; Bilgi/İşlem türü eklendi (tarayıcıda görsel doğrulama kullanıcıda).

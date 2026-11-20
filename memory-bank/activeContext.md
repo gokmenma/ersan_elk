@@ -4066,3 +4066,9 @@
 ## macOS Açık Tema (2026-11-18)
 - Yeni `macos-light` preset: `assets/css/macos-light.css` (Apple web yazı yığını SF Pro/Inter yedekli, #f5f5f7 zemin, #0071e3 vurgu, 18px kart, hap buton, yarı saydam üst çubuk/sidebar). Sidebar Finder yapısı `layouts/sidebar.php` içinde macos-dark ile `html:is(...)` ile paylaşıldı.
 - Kayıt: head-style.php, app_module.js, right-sidebar.php (kart), body.php. Kural: AGENTS.md bölüm 16. Evrak Takip sayfasında Chrome ile doğrulandı; diğer sayfalar (modal, form, bordro) gözle taranmadı.
+
+## 2026-11-20 — Gelen evrak: Bilgi / İşlem ayrımı
+- `evrak_takip.gelen_tur` (islem|bilgi, varsayılan islem) eklendi: `database/evrak_gelen_tur.sql` (+ model checkSchema yedeği).
+- Bilgi amaçlı evrakta cevap alanı/termin gizlenir, liste cevap sütununda "BİLGİ" rozeti; "Cevap Bekleyen" KPI, hızlı filtre, UETS hatırlatma ve mobil bekleyen sayacından hariç.
+- Modal: evrak türü seçim kartları, kompakt OCR şeridi, koşullu "Cevap Durumu" bölümü.
+- Cevap detayı: "Cevap verildi" açıkken cevap tarihi + Evraklardan Seç (giden `ilgili_evrak_id` eşleme) / Dosya Yükle (`evrak_takip_cevap_ekleri`, uploads/evrak-takip/cevap/) / Yazı Yaz (`evrak_takip.cevap_metni`). SQL: database/evrak_gelen_tur.sql.

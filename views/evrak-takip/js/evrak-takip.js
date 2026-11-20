@@ -72,16 +72,31 @@ $(document).ready(function () {
     showPdfFromRequest({ type: "GET", data: { type: "ekler_birlesik", id: $(this).data("id") } }, false);
   });
 
-  $("#gelenEkDosyalari").on("change", function () {
-    Array.from(this.files || []).forEach(file => {
+  function gelenDosyalariEkle(files) {
+    Array.from(files || []).forEach(file => {
       if (file.size > 10 * 1024 * 1024) {
         Swal.fire("Dosya Çok Büyük", file.name + " 10 MB sınırını aşıyor.", "warning");
         return;
       }
       gelenDosyalar.push({type: "new", key: "g" + gelenDosyaSirasi++, name: file.name, size: file.size, file: file});
     });
-    this.value = "";
     gelenDosyalariGoster();
+  }
+
+  $("#gelenEkDosyalari").on("change", function () {
+    gelenDosyalariEkle(this.files);
+    this.value = "";
+  });
+
+  $("#gelenEkDosyaDropzone").on("dragover dragenter", function (e) {
+    e.preventDefault();
+    $(this).addClass("surukle");
+  }).on("dragleave drop", function (e) {
+    e.preventDefault();
+    $(this).removeClass("surukle");
+    if (e.type === "drop" && !$("#gelenEkDosyalari").prop("disabled")) {
+      gelenDosyalariEkle(e.originalEvent.dataTransfer.files);
+    }
   });
 
   function ocrSonucGoster(html, sinif) {
@@ -348,6 +363,16 @@ $(document).ready(function () {
       }
     });
 
+    $("#evrakModal .evrak-select2-cevap").each(function() {
+      if (!$(this).hasClass("select2-hidden-accessible")) {
+        $(this).select2({
+          dropdownParent: $("#evrakModal"),
+          width: "100%",
+          placeholder: "Evrak no veya konu ile arayın..."
+        });
+      }
+    });
+
     $("#evrakModal .evrak-select2-tags").each(function() {
         if (!$(this).hasClass('select2-hidden-accessible')) {
             $(this).select2({
@@ -444,6 +469,7 @@ $(document).ready(function () {
     }
     checkBildirimVisibility();
     checkCevapVisibility();
+    checkGelenTur();
     checkTrafficFineVisibility();
   }
 
@@ -528,8 +554,69 @@ $(document).ready(function () {
     }
   }
 
+  let silinenCevapDosyaIds = [];
+  let mevcutCevapDosyalari = [];
+
+  function cevapSayaclariniGuncelle() {
+    $("#silinen_cevap_dosya_ids_json").val(JSON.stringify(silinenCevapDosyaIds));
+  }
+
+  function cevapDosyalariniGoster() {
+    const list = $("#cevapDosyaListesi").empty();
+    mevcutCevapDosyalari.forEach(function (item, index) {
+      const card = $("<div>").addClass("border rounded-3 p-2 d-flex align-items-center gap-2");
+      $("<span>").addClass("badge bg-info-subtle text-info p-2 rounded-circle").append($("<i>").addClass("bx bx-file font-size-16")).appendTo(card);
+      $("<div>").addClass("flex-grow-1 fw-bold small text-truncate").attr("title", item.name).text(item.name).appendTo(card);
+      $("<a>").addClass("btn btn-sm btn-subtle-info").attr({href: item.url, target: "_blank", title: "Dosyayı görüntüle"}).append($("<i>").addClass("bx bx-show font-size-14")).appendTo(card);
+      $("<button type='button'>").addClass("btn btn-sm btn-subtle-danger").attr("title", "Kaldır").append($("<i>").addClass("bx bx-trash font-size-14")).on("click", function () {
+        silinenCevapDosyaIds.push(item.id);
+        mevcutCevapDosyalari.splice(index, 1);
+        cevapDosyalariniGoster();
+      }).appendTo(card);
+      card.appendTo(list);
+    });
+    cevapSayaclariniGuncelle();
+  }
+
+  function cevapAlaniniSifirla() {
+    silinenCevapDosyaIds = [];
+    mevcutCevapDosyalari = [];
+    $("#cevapDosyaCollapse, #cevapMetinCollapse").removeClass("show");
+    $("#cevap_giden_ids option[data-ekstra]").remove();
+    $("#cevap_giden_ids").val(null).trigger("change");
+    $("#cevapDosyalari").val("");
+    $("#cevap_metni").val("");
+    cevapDosyalariniGoster();
+  }
+
+  $(document).on("change", "#cevap_giden_ids, #cevapDosyalari", cevapSayaclariniGuncelle);
+  $(document).on("input", "#cevap_metni", cevapSayaclariniGuncelle);
+  $(document).on("change", "#cevapDosyalari", function () {
+    Array.from(this.files || []).forEach(function (file) {
+      if (file.size > 10 * 1024 * 1024) Swal.fire("Dosya Çok Büyük", file.name + " 10 MB sınırını aşıyor.", "warning");
+    });
+  });
+
+  function checkGelenTur() {
+    const bilgi = $('input[name="gelen_tur"]:checked').val() === "bilgi";
+    const gelen = ($('input[name="evrak_tipi"]').val() || "gelen") === "gelen";
+    if (bilgi && gelen) {
+      $("#cevap_verildi").prop("checked", false);
+      $('input[name="cevap_tarihi"]').val("");
+      $('input[name="son_tarih"]').val("");
+    }
+    const cevapGoster = gelen && !bilgi;
+    $("#gelenCevapSection").toggleClass("d-none", !cevapGoster);
+    $("#cevapKolon").toggleClass("d-none", !cevapGoster);
+    $("#evrakKolonSol, #evrakKolonOrta").toggleClass("col-lg-4", cevapGoster).toggleClass("col-lg-6", !cevapGoster);
+    $("#evrakKolonSol").toggleClass("border-end", true);
+    $("#evrakKolonOrta").toggleClass("border-end", cevapGoster);
+    $("#sonTarihWrap").toggleClass("d-none", bilgi);
+    checkCevapVisibility();
+  }
+
   function checkCevapVisibility() {
-    const checked = $("#cevap_verildi").is(":checked");
+    const checked = $("#cevap_verildi").is(":checked") && $('input[name="gelen_tur"]:checked').val() !== "bilgi";
     if (checked) {
       $("#cevapTarihiContainer").removeClass("d-none");
     } else {
@@ -540,6 +627,7 @@ $(document).ready(function () {
   // Events
   $(document).on("change", "#ilgili_personel_id, #personel_id", checkBildirimVisibility);
   $(document).on("change", "#cevap_verildi", checkCevapVisibility);
+  $(document).on("change", 'input[name="gelen_tur"]', checkGelenTur);
   $(document).on("keyup change", "#plaka", queryAracZimmet);
   $(document).on("change", "input[name='tarih']", queryAracZimmet);
   $(document).on("change", "#konu", checkTrafficFineVisibility);
@@ -603,16 +691,22 @@ $(document).ready(function () {
     silinenGelenDosyaIds = [];
     gelenDosyalariGoster();
     $("#evrakOcrSonuc").addClass("d-none").empty();
+    $('#evrakModal textarea[name="aciklama"]').val("");
+    $("#evrakOcrIcerik").removeClass("show");
+    $("#evrakOcrPanel .evrak-ocr-baslik").attr("aria-expanded", "false");
     
     // Select2 Reset
     $(".evrak-select2, .evrak-select2-tags, .evrak-select2-multiple").val("").trigger("change");
     $("#yazi_tipi").val("times_new_roman").trigger("change");
     
     $("#personel_bildir, #cevap_verildi").prop("checked", false);
+    cevapAlaniniSifirla();
+    $("#gelenTurIslem").prop("checked", true);
     $("#cezaHedefArac").prop("checked", true);
     checkTrafficFineTarget();
     $("#bildirimContainer, #cevapTarihiContainer, #gidenIliskiSection").addClass("d-none");
-    $("#gelenCevapSection").removeClass("d-none");
+    $("#gelenCevapSection, #sonTarihWrap").removeClass("d-none");
+    checkGelenTur();
     
     validator.resetForm();
     $(".is-invalid").removeClass("is-invalid");
@@ -707,6 +801,19 @@ $(document).ready(function () {
         
         $("#personel_bildir").prop("checked", data.personel_bildirim_durumu == 1);
         $("#cevap_verildi").prop("checked", data.cevap_verildi_mi == 1);
+        $('#evrakModal textarea[name="aciklama"]').val($("<div>").html(data.aciklama || "").text());
+        cevapAlaniniSifirla();
+        (data.cevap_giden || []).forEach(function (g) {
+          $("#cevap_giden_ids").append($("<option>").attr("data-ekstra", "1").val(g.id).text(g.text).prop("selected", true));
+        });
+        $("#cevap_giden_ids").trigger("change");
+        $("#cevap_metni").val(data.cevap_metni || "");
+        mevcutCevapDosyalari = data.cevap_dosyalari || [];
+        cevapDosyalariniGoster();
+        $("#cevapDosyaCollapse").toggleClass("show", mevcutCevapDosyalari.length > 0);
+        $("#cevapMetinCollapse").toggleClass("show", $.trim(data.cevap_metni || "") !== "");
+        $(data.gelen_tur === "bilgi" ? "#gelenTurBilgi" : "#gelenTurIslem").prop("checked", true);
+        checkGelenTur();
         
         if (data.cevap_tarihi && data.cevap_tarihi !== '0000-00-00') {
             const d2 = data.cevap_tarihi.split("-");
@@ -3155,7 +3262,7 @@ function applyUetsLock(locked) {
   $('input[name="evrak_no"]').prop("readonly", true);
   $("#konu").prop("disabled", locked);
   $("#gelenEkDosyalari").prop("disabled", locked).closest(".mb-3").find(".btn-subtle-danger").toggle(!locked);
-  $("#gelenEkDosyalari, #gelenEkDosyalariYardim").toggleClass("d-none", locked);
+  $("#gelenEkDosyaDropzone").toggleClass("d-none", locked);
   $("#evrakModal").toggleClass("uets-kilitli", locked);
   $("#evrakKilitRozet").toggleClass("d-none", !locked);
   $("#btnEvrakKaydet").text(locked ? "Kaydet" : "Bilgileri Kaydet");
@@ -3495,17 +3602,24 @@ $(document).on("click", ".btn-cevap-goster", function (e) {
       return;
     }
     const d = res.data;
-    if (d.cevaplar.length === 1) {
+    const ekDosyalar = d.dosyalar || [];
+    if (d.cevaplar.length === 1 && !ekDosyalar.length && !d.cevap_metni) {
       openPdf(d.cevaplar[0].id);
       return;
     }
     let html = '<div class="bg-light border rounded-3 p-2 mb-3 font-size-13"><strong>Gelen Evrak:</strong> ' + esc(d.evrak_no) + " — " + esc(d.konu) + (d.cevap_tarihi ? ' <span class="text-muted">(Cevap tarihi: ' + esc(d.cevap_tarihi) + ")</span>" : "") + "</div>";
-    if (!d.cevaplar.length) {
+    if (!d.cevaplar.length && !ekDosyalar.length && !d.cevap_metni) {
       html += '<div class="alert alert-light border text-muted mb-0">Bu evrak cevaplandı olarak işaretlenmiş ancak sisteme bağlı bir cevap yazısı bulunamadı.</div>';
     }
     d.cevaplar.forEach(function (c) {
       html += '<div class="d-flex justify-content-between align-items-center border rounded-3 p-2 mb-2"><div class="font-size-13"><div class="fw-semibold">' + esc(c.evrak_no || "-") + " · " + esc(c.tarih) + '</div><div class="text-muted font-size-12">' + esc(c.konu) + '</div></div><button type="button" class="btn btn-sm btn-subtle-primary btn-cevap-pdf" data-id="' + esc(c.id) + '"><i class="bx bx-show"></i> PDF</button></div>';
     });
+    ekDosyalar.forEach(function (f) {
+      html += '<div class="d-flex justify-content-between align-items-center border rounded-3 p-2 mb-2"><div class="font-size-13 fw-semibold text-truncate me-2" title="' + esc(f.name) + '"><i class="bx bx-paperclip"></i> ' + esc(f.name) + '</div><a class="btn btn-sm btn-subtle-primary" target="_blank" href="' + esc(f.url) + '"><i class="bx bx-show"></i> Aç</a></div>';
+    });
+    if (d.cevap_metni) {
+      html += '<div class="border rounded-3 p-2 mb-2 font-size-13"><div class="text-muted font-size-12 mb-1">Cevap yazısı / açıklama</div><div style="white-space:pre-wrap">' + esc(d.cevap_metni) + '</div></div>';
+    }
     $("#cevapYazisiBody").html(html);
     bootstrap.Modal.getOrCreateInstance($modal[0]).show();
   }).fail(function () {

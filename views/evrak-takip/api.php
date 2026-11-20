@@ -475,6 +475,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // Checkboxlar için varsayılan değerler
                 $data['personel_bildirim_durumu'] = isset($data['personel_bildirim_durumu']) ? 1 : 0;
                 $data['cevap_verildi_mi'] = isset($data['cevap_verildi_mi']) ? 1 : 0;
+                $data['gelen_tur'] = ($data['gelen_tur'] ?? 'islem') === 'bilgi' ? 'bilgi' : 'islem';
+                if ($data['gelen_tur'] === 'bilgi') {
+                    $data['cevap_verildi_mi'] = 0;
+                    $data['cevap_tarihi'] = null;
+                }
+                $cevapGidenIds = array_map(fn($encryptedGidenId) => $decryptId((string) $encryptedGidenId), (array) ($_POST['cevap_giden_ids'] ?? []));
+                $silinenCevapDosyaIds = array_map(fn($encryptedFileId) => $decryptId((string) $encryptedFileId), json_decode((string) ($data['silinen_cevap_dosya_ids_json'] ?? '[]'), true) ?: []);
+                unset($data['cevap_giden_ids'], $data['silinen_cevap_dosya_ids_json']);
+                if (($data['evrak_tipi'] ?? 'gelen') === 'gelen') {
+                    $data['cevap_metni'] = ($data['gelen_tur'] === 'bilgi' || empty($data['cevap_verildi_mi']))
+                        ? null
+                        : mb_substr(trim((string) ($data['cevap_metni'] ?? '')), 0, 10000, 'UTF-8');
+                } else {
+                    unset($data['cevap_metni']);
+                }
 
                 if (!empty($data['cevap_tarihi'])) {
                     $data['cevap_tarihi'] = Date::Ymd($data['cevap_tarihi']);
@@ -652,6 +667,48 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             'dosya_boyutu' => $size,
                             'sira' => (int) ($newAttachmentPositions[$fileKey] ?? (count($orderedExistingIds) + 1)),
                         ]);
+                    }
+                }
+
+                if (($data['evrak_tipi'] ?? 'gelen') === 'gelen' && !empty($data['cevap_verildi_mi'])) {
+                    $Model->syncCevapGiden($real_id, $cevapGidenIds);
+                    $Model->deleteCevapDosyalari($real_id, $silinenCevapDosyaIds);
+                    $cevapFiles = $_FILES['cevap_dosyalari'] ?? null;
+                    if ($cevapFiles && is_array($cevapFiles['name'])) {
+                        $cevapDir = dirname(__DIR__, 2) . '/uploads/evrak-takip/cevap/';
+                        if (!is_dir($cevapDir)) {
+                            @mkdir($cevapDir, 0777, true);
+                            @chmod($cevapDir, 0777);
+                        }
+                        if (!is_dir($cevapDir)) {
+                            throw new Exception('Cevap dosyası klasörü oluşturulamadı.');
+                        }
+                        $cevapMimes = ['pdf' => ['application/pdf', 'application/x-pdf'], 'jpg' => ['image/jpeg', 'image/pjpeg'], 'jpeg' => ['image/jpeg', 'image/pjpeg'], 'png' => ['image/png', 'image/x-png'], 'webp' => ['image/webp'], 'doc' => ['application/msword', 'application/octet-stream'], 'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip', 'application/octet-stream'], 'odt' => ['application/vnd.oasis.opendocument.text', 'application/zip', 'application/octet-stream']];
+                        foreach ($cevapFiles['name'] as $cKey => $cName) {
+                            if ((int) ($cevapFiles['error'][$cKey] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+                                continue;
+                            }
+                            $cSize = (int) ($cevapFiles['size'][$cKey] ?? 0);
+                            $cTmp = (string) ($cevapFiles['tmp_name'][$cKey] ?? '');
+                            if ((int) $cevapFiles['error'][$cKey] !== UPLOAD_ERR_OK || $cSize <= 0 || $cSize > 10 * 1024 * 1024) {
+                                throw new Exception($cName . ' yüklenemedi veya 10 MB sınırını aşıyor.');
+                            }
+                            $cExt = strtolower(pathinfo((string) $cName, PATHINFO_EXTENSION));
+                            $cMime = (new finfo(FILEINFO_MIME_TYPE))->file($cTmp);
+                            if (!isset($cevapMimes[$cExt]) || !in_array($cMime, $cevapMimes[$cExt], true)) {
+                                throw new Exception($cName . ' desteklenmeyen bir dosya türünde.');
+                            }
+                            $cStored = 'cevap_' . $real_id . '_' . bin2hex(random_bytes(8)) . '.' . ($cExt === 'jpeg' ? 'jpg' : $cExt);
+                            if (!move_uploaded_file($cTmp, $cevapDir . $cStored)) {
+                                throw new Exception($cName . ' kaydedilemedi.');
+                            }
+                            $Model->saveCevapDosyasi($real_id, [
+                                'dosya_adi' => mb_substr(basename((string) $cName), 0, 255, 'UTF-8'),
+                                'dosya_yolu' => 'uploads/evrak-takip/cevap/' . $cStored,
+                                'mime_tipi' => $cMime,
+                                'dosya_boyutu' => $cSize,
+                            ]);
+                        }
                     }
                 }
 
@@ -1301,6 +1358,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
                 $storedSignerIds = json_decode((string) ($evrak->imza_kullanici_ids ?? '[]'), true) ?: [];
                 $evrak->imza_kullanici_ids = array_map(fn($signerId) => Security::encrypt((int) $signerId), $storedSignerIds);
+                $evrak->cevap_giden = array_map(static fn(object $r): array => [
+                    'id' => Security::encrypt((int) $r->id),
+                    'text' => trim(($r->evrak_no ?: '-') . ' - ' . ($r->konu ?: '-') . (!empty($r->tarih) ? ' (' . date('d.m.Y', strtotime((string) $r->tarih)) . ')' : '')),
+                ], $Model->getCevapYazilari($id));
+                $evrak->cevap_dosyalari = array_map(static fn(object $f): array => [
+                    'id' => Security::encrypt((int) $f->id),
+                    'name' => (string) $f->dosya_adi,
+                    'url' => EvrakTakipModel::fileUrl((string) $f->dosya_yolu, (string) $f->dosya_adi),
+                    'size' => (int) $f->dosya_boyutu,
+                ], $Model->getCevapDosyalari($id));
                 $evrak->dosyalar = array_map(static function ($attachment) {
                     return [
                         'id' => Security::encrypt((int) $attachment->id),
@@ -1365,7 +1432,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $approval = $approvalMap[(int) $evrak->id] ?? ['toplam' => 0, 'onaylanan' => 0, 'sira_bende' => false];
                     $myTurn = $approvalStatus === 'onay_bekliyor' && !empty($approval['sira_bende']);
                     $locked = $approvalStatus !== 'taslak';
-                    $reply = $type === 'gelen' ? (!empty($evrak->cevap_verildi_mi) ? 'EVET' : 'BEKLEMEDE') : '-';
+                    $reply = $type === 'gelen' ? (($evrak->gelen_tur ?? 'islem') === 'bilgi' ? 'BILGI' : (!empty($evrak->cevap_verildi_mi) ? 'EVET' : 'BEKLEMEDE')) : '-';
                     $kepLinked = ($evrak->kaynak_tipi ?? '') === 'kep' || !empty($evrak->kep_mesaj_id);
                     $hasApprovalFlow = $type === 'giden' && (empty($evrak->ust_yazi_gerekli_degil) || (int) ($approval['toplam'] ?? 0) > 0);
                     $isKep = $kepLinked && !$hasApprovalFlow;
@@ -1401,14 +1468,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $detailUrl = ($type === 'gelen' || $isKep) ? 'javascript:void(0);' : 'index?p=evrak-takip/giden-evrak&amp;id=' . $esc($encryptedId);
                     $detailClass = $isKep ? ' btn-kep-onizle' : ($type === 'gelen' ? ' evrak-duzenle' : '');
                     $subjectHtml = '<div class="d-flex flex-column"><a href="' . $detailUrl . '" class="fw-bold text-dark font-size-13 text-decoration-none evrak-konu-text' . $detailClass . '" data-id="' . $esc($encryptedId) . '" title="' . $esc($evrak->konu ?: '-') . '">' . $esc($evrak->konu ?: '-') . '</a><span class="text-muted font-size-11"><i class="bx bx-hash"></i> ' . $esc($evrak->evrak_no ?: '-') . '</span>' . (($type === 'giden' && !empty($evrak->karsi_evrak_no)) ? '<span class="text-success font-size-11 fw-semibold" title="' . $esc($evrak->karsi_evrak_aciklama ?? '') . '"><i class="bx bx-link-alt"></i> Karşı No: ' . $esc($evrak->karsi_evrak_no) . (!empty($evrak->karsi_evrak_tarihi) ? ' (' . date('d.m.Y', strtotime((string) $evrak->karsi_evrak_tarihi)) . ')' : '') . '</span>' : '') . '</div>';
-                    if ($type === 'gelen' && (!empty($evrak->dosya_yolu) || !empty($attachmentMap[(int) $evrak->id]))) $subjectHtml = '<div class="d-flex align-items-center gap-2"><button type="button" class="btn p-0 border-0 d-inline-flex align-items-center justify-content-center rounded-circle bg-danger-subtle text-danger flex-shrink-0 evrak-ekler-pdf-goruntule" style="width:30px;height:30px" data-id="' . $esc($encryptedId) . '" title="Evrak ve eklerini tek PDF olarak göster"><i class="bx bx-file-blank font-size-16"></i></button>' . $subjectHtml . '</div>';
+                    if ($type === 'gelen') $subjectHtml = '<div class="d-flex align-items-center gap-2"><button type="button" class="btn p-0 border-0 d-inline-flex align-items-center justify-content-center rounded-circle bg-danger-subtle text-danger flex-shrink-0 evrak-ekler-pdf-goruntule" style="width:30px;height:30px" data-id="' . $esc($encryptedId) . '" title="Evrakı ve tüm eklerini tek PDF olarak göster"><i class="bx bx-file-blank font-size-16"></i></button>' . $subjectHtml . '</div>';
                     elseif ($type === 'giden' && !$isKep && empty($evrak->ust_yazi_gerekli_degil)) $subjectHtml = '<div class="d-flex align-items-center gap-2"><button type="button" class="btn p-0 border-0 d-inline-flex align-items-center justify-content-center rounded-circle bg-danger-subtle text-danger flex-shrink-0 evrak-pdf-goruntule" style="width:30px;height:30px" data-id="' . $esc($encryptedId) . '" title="Evrakı PDF olarak önizle"><i class="bx bx-file-blank font-size-16"></i></button>' . $subjectHtml . '</div>';
                     $personHtml = static function ($name, $personId, $kind, $lastDate, $encryptedId, $esc): string {
                         if (empty($name)) return '<span class="text-muted small">-</span>';
                         return '<div class="d-flex align-items-center"><span class="font-size-12 fw-semibold text-dark text-truncate" style="max-width:130px">' . $esc($name) . '</span><button type="button" class="btn btn-link text-primary p-0 ms-1 evrak-bildir-manuel" data-id="' . $esc($encryptedId) . '" data-personel-id="' . (int) $personId . '" data-type="' . $esc($kind) . '" data-last-notified="' . $esc($lastDate) . '" title="Bildirim ve Mail Gönder"><i class="bx bx-bell font-size-14"></i></button></div>';
                     };
                     $replyHtml = '<span class="text-muted small">-</span>';
-                    if ($reply === 'BEKLEMEDE') {
+                    if ($reply === 'BILGI') {
+                        $replyHtml = '<span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold" title="Bilgi amaçlı evrak; cevap gerektirmez"><i class="bx bx-info-circle"></i> BİLGİ</span>';
+                    } elseif ($reply === 'BEKLEMEDE') {
                         $replyHtml = '<span class="badge bg-warning-subtle text-warning border rounded-pill px-2 py-1 font-size-11 fw-semibold">BEKLEMEDE</span>';
                     } elseif ($reply === 'EVET') {
                         $replyItems = '';
@@ -1986,6 +2055,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         'tarih' => !empty($r->tarih) ? date('d.m.Y', strtotime($r->tarih)) : '',
                         'metin' => RichTextSanitizer::sanitize((string) ($r->aciklama ?? '')),
                     ], $Model->getCevapYazilari($gelenId)),
+                    'cevap_metni' => (string) ($gelen->cevap_metni ?? ''),
+                    'dosyalar' => array_map(static fn(object $f): array => [
+                        'name' => (string) $f->dosya_adi,
+                        'url' => EvrakTakipModel::fileUrl((string) $f->dosya_yolu, (string) $f->dosya_adi),
+                    ], $Model->getCevapDosyalari($gelenId)),
                 ]], JSON_UNESCAPED_UNICODE);
                 break;
 

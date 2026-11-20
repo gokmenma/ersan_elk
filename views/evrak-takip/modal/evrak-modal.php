@@ -3,8 +3,52 @@ use App\Helper\Form;
 $araclar_list = $Evrak->getActiveVehicles();
 ?>
 
+<style>
+#evrakModal .gelen-tur-kart { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1.5px solid #e2e8f0; border-radius: 12px; cursor: pointer; transition: border-color .15s, background-color .15s, box-shadow .15s; background: #fff; margin: 0; }
+#evrakModal .gelen-tur-kart:hover { border-color: #94a3b8; }
+#evrakModal .gelen-tur-ikon { width: 40px; height: 40px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+#evrakModal .gelen-tur-metin { display: flex; flex-direction: column; min-width: 0; }
+#evrakModal .gelen-tur-baslik { font-weight: 700; font-size: 14px; color: #1e293b; }
+#evrakModal .gelen-tur-alt { font-size: 12px; color: #64748b; }
+#evrakModal .btn-check:checked + .gelen-tur-kart { border-color: #475569; background: #f8fafc; box-shadow: 0 0 0 3px rgba(71, 85, 105, .14); }
+#evrakModal .btn-check:focus-visible + .gelen-tur-kart { outline: 2px solid #475569; outline-offset: 2px; }
+html[data-theme-preset="macos-dark"] #evrakModal .gelen-tur-kart, html[data-bs-theme="dark"] #evrakModal .gelen-tur-kart { background: transparent; border-color: rgba(255,255,255,.14); }
+html[data-theme-preset="macos-dark"] #evrakModal .gelen-tur-baslik, html[data-bs-theme="dark"] #evrakModal .gelen-tur-baslik { color: #f5f7fa; }
+html[data-theme-preset="macos-dark"] #evrakModal .gelen-tur-alt, html[data-bs-theme="dark"] #evrakModal .gelen-tur-alt { color: rgba(215,220,232,.6); }
+html[data-theme-preset="macos-dark"] #evrakModal .btn-check:checked + .gelen-tur-kart, html[data-bs-theme="dark"] #evrakModal .btn-check:checked + .gelen-tur-kart { border-color: #0a84ff; background: rgba(10,132,255,.12); box-shadow: none; }
+#evrakModal .cevap-etiket { display: block; font-size: 12.5px; font-weight: 600; color: #475569; margin-bottom: 6px; }
+#evrakModal .cevap-etiket i { margin-right: 4px; }
+html[data-theme-preset="macos-dark"] #evrakModal .cevap-etiket, html[data-bs-theme="dark"] #evrakModal .cevap-etiket { color: rgba(215,220,232,.7); }
+#evrakModal .evrak-ocr-baslik[aria-expanded="true"] .evrak-ocr-ok { transform: rotate(180deg); }
+#evrakModal .evrak-ocr-ok { transition: transform .2s; }
+#evrakModal .cevap-select-kutu .select2-container--default .select2-selection--multiple { display: flex !important; align-items: center !important; }
+#evrakModal .cevap-select-kutu .select2-selection--multiple .select2-selection__rendered { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 0 !important; margin: 0 !important; width: 100%; }
+#evrakModal .cevap-select-kutu .select2-selection--multiple .select2-search--inline { flex: 1 1 100%; min-width: 140px; margin: 0; float: none; }
+#evrakModal .cevap-select-kutu .select2-selection--multiple .select2-search__field { margin: 0 !important; padding: 0 !important; height: 24px; line-height: 24px; font-size: 13px; width: 100% !important; }
+#evrakModal .cevap-select-kutu .select2-selection--multiple .select2-selection__choice { margin: 0 !important; }
+#evrakModal .evrak-dropzone { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border: 1.5px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; cursor: pointer; margin: 0; transition: border-color .15s, background-color .15s; }
+#evrakModal .evrak-dropzone:hover, #evrakModal .evrak-dropzone.surukle { border-color: #475569; background: #f1f5f9; }
+#evrakModal .evrak-dropzone-ikon { width: 40px; height: 40px; border-radius: 10px; background: #e2e8f0; color: #475569; display: inline-flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+#evrakModal .evrak-dropzone-metin { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+#evrakModal .evrak-dropzone-baslik { font-weight: 700; font-size: 13.5px; color: #1e293b; }
+#evrakModal .evrak-dropzone-alt { font-size: 12px; color: #64748b; }
+#evrakModal .evrak-dropzone-btn { padding: 6px 14px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; font-size: 12.5px; font-weight: 600; color: #334155; flex-shrink: 0; }
+html[data-theme-preset="macos-dark"] #evrakModal .evrak-dropzone, html[data-bs-theme="dark"] #evrakModal .evrak-dropzone { background: transparent; border-color: rgba(255,255,255,.2); }
+html[data-theme-preset="macos-dark"] #evrakModal .evrak-dropzone-baslik, html[data-bs-theme="dark"] #evrakModal .evrak-dropzone-baslik { color: #f5f7fa; }
+html[data-theme-preset="macos-dark"] #evrakModal .evrak-dropzone-alt, html[data-bs-theme="dark"] #evrakModal .evrak-dropzone-alt { color: rgba(215,220,232,.6); }
+html[data-theme-preset="macos-dark"] #evrakModal .evrak-dropzone-ikon, html[data-bs-theme="dark"] #evrakModal .evrak-dropzone-ikon { background: rgba(255,255,255,.1); color: #f5f7fa; }
+html[data-theme-preset="macos-dark"] #evrakModal .evrak-dropzone-btn, html[data-bs-theme="dark"] #evrakModal .evrak-dropzone-btn { background: transparent; color: #f5f7fa; border-color: rgba(255,255,255,.2); }
+#evrakModal .modal-header .evrak-no-ust { margin: 0 !important; width: 200px; }
+#evrakModal .evrak-no-ust .form-control { border: 0 !important; background: transparent !important; box-shadow: none !important; text-align: right; padding-left: 0 !important; padding-right: 4px !important; font-weight: 700; }
+#evrakModal .evrak-no-ust .form-floating-icon { display: none !important; }
+#evrakModal .evrak-no-ust > .form-floating > label, #evrakModal .evrak-no-ust label { left: auto !important; right: 0; width: 100%; text-align: right; padding-left: 0 !important; padding-right: 4px !important; background: transparent !important; }
+html[data-theme-preset="macos-dark"] #evrakModal .evrak-modal-kapat, html[data-bs-theme="dark"] #evrakModal .evrak-modal-kapat { filter: invert(1) grayscale(100%) brightness(200%); }
+#evrakModal .cevap-adim { width: 22px; height: 22px; border-radius: 50%; background: #475569; color: #fff; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+#evrakModal .cevap-yazisi-grup { background: rgba(71,85,105,.04); }
+</style>
+
 <div class="modal fade" id="evrakModal" tabindex="-1" aria-labelledby="evrakModalLabel" aria-hidden="true" style="z-index: 1060;">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0">
             <div class="modal-header bg-dark py-3 px-1">
                 <div class="modal-title-section ps-3">
@@ -13,24 +57,32 @@ $araclar_list = $Evrak->getActiveVehicles();
                     </div>
                     <div class="modal-title-group">
                         <h5 class="modal-title text-white fw-bold" id="evrakModalLabel">Yeni Gelen Evrak Kaydı</h5>
-                        <p class="modal-subtitle text-white-50">Evrak bilgilerini eksiksiz doldurunuz.</p>
+                        <p class="modal-subtitle text-white-50">Önce evrak türünü seçin, ardından bilgileri girin.</p>
                     </div>
                 </div>
-                <button type="button" class="btn-close btn-close-white me-3" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="d-flex align-items-center gap-3 me-3">
+                            <div class="mb-3 evrak-no-ust">
+                                <?php echo Form::FormFloatInput('text', 'evrak_no', 'Kayıtta Alacak', 'Evrak Numarası', 'Evrak No / Kayıt No', 'hash', 'form-control', false, null, 'off', true); ?>
+                            </div>
+                    <button type="button" class="btn-close evrak-modal-kapat" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
             </div>
             <div class="modal-body p-4">
                 <form id="evrakForm" enctype="multipart/form-data">
                     <input type="hidden" name="id" id="evrak_id" value="">
                     <input type="hidden" name="action" value="evrak-kaydet">
 
-                    <div class="evrak-ocr-panel border border-dashed rounded-3 p-3 mb-4" id="evrakOcrPanel">
-                        <div class="d-flex align-items-start gap-3">
-                            <div class="bg-primary bg-opacity-10 text-primary rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 42px; height: 42px;">
-                                <i class="bx bx-scan fs-4"></i>
-                            </div>
-                            <div class="flex-grow-1 min-w-0">
-                                <div class="fw-bold">Evraktan Otomatik Doldur <span class="badge bg-success-subtle text-success ms-1 fw-normal"><i class="bx bx-lock-alt"></i> Yerel OCR</span></div>
-                                <div class="text-muted small mb-2">Evrakı (örn. trafik idari para cezası karar tutanağı) yükleyin; kurum, tarih, plaka ve ceza tutarı otomatik doldurulur. Okuma yalnızca tarayıcınızda yapılır, belge dış servise gönderilmez. Dosya evrak ekine de eklenir.</div>
+                    <div class="evrak-ocr-panel border border-dashed rounded-3 mb-3" id="evrakOcrPanel">
+                        <button type="button" class="evrak-ocr-baslik btn w-100 d-flex align-items-center gap-3 text-start p-3 border-0 bg-transparent" data-bs-toggle="collapse" data-bs-target="#evrakOcrIcerik" aria-expanded="false" aria-controls="evrakOcrIcerik">
+                            <span class="bg-primary bg-opacity-10 text-primary rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;"><i class="bx bx-scan fs-5"></i></span>
+                            <span class="flex-grow-1">
+                                <span class="d-block fw-bold">Evraktan otomatik doldur <span class="badge bg-success-subtle text-success ms-1 fw-normal"><i class="bx bx-lock-alt"></i> Yerel OCR</span></span>
+                                <span class="d-block text-muted font-size-12">Belgeyi yükleyin; kurum, tarih, plaka ve ceza tutarı otomatik gelsin.</span>
+                            </span>
+                            <i class="bx bx-chevron-down fs-4 evrak-ocr-ok"></i>
+                        </button>
+                        <div class="collapse" id="evrakOcrIcerik">
+                            <div class="px-3 pb-3">
                                 <div class="row g-2 align-items-center">
                                     <div class="col-sm-8">
                                         <input type="file" id="evrakOcrDosya" class="form-control form-control-sm shadow-none" accept=".pdf,.jpg,.jpeg,.png,.webp">
@@ -41,14 +93,61 @@ $araclar_list = $Evrak->getActiveVehicles();
                                         </button>
                                     </div>
                                 </div>
-                                <div class="form-text mt-1">PDF, JPG, PNG veya WEBP, en fazla 10 MB. Taranmış belgelerde ilk okuma birkaç saniye sürebilir.</div>
+                                <div class="form-text mt-1">PDF, JPG, PNG veya WEBP · en fazla 10 MB · Okuma yalnızca tarayıcınızda yapılır, belge dış servise gönderilmez.</div>
                                 <div id="evrakOcrSonuc" class="small mt-2 d-none"></div>
                             </div>
                         </div>
                     </div>
+
+                    <div class="mb-3 evrak-dosya-alani">
+                        <input type="hidden" name="ek_duzen_json" id="gelen_ek_duzen_json" value="[]">
+                        <input type="hidden" name="silinen_ek_ids_json" id="gelen_silinen_ek_ids_json" value="[]">
+                        <input type="file" id="gelenEkDosyalari" class="d-none" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.odt,.ods">
+                        <label for="gelenEkDosyalari" id="gelenEkDosyaDropzone" class="evrak-dropzone w-100">
+                            <span class="evrak-dropzone-ikon"><i class="bx bx-cloud-upload"></i></span>
+                            <span class="evrak-dropzone-metin">
+                                <span class="evrak-dropzone-baslik">Evrak dosyalarını seçin veya buraya sürükleyin</span>
+                                <span class="evrak-dropzone-alt" id="gelenEkDosyalariYardim">PDF, görsel, Word veya Excel · birden fazla dosya · dosya başına en fazla 10 MB</span>
+                            </span>
+                            <span class="evrak-dropzone-btn">Dosya Seç</span>
+                        </label>
+                        <div id="mevcutDosya" class="mt-2" style="display:none;">
+                            <a href="#" target="_blank" class="btn btn-sm btn-soft-info w-100 fw-bold border-dashed rounded-3">
+                                <i data-feather="eye" class="icon-xs me-1"></i> Mevcut Dosyayı Gör
+                            </a>
+                        </div>
+                        <div id="gelenEvrakDosyaListesi" class="d-grid gap-2 mt-2"></div>
+                    </div>
+
+                    <div class="mb-4" id="gelenTurSecim">
+                        <div class="fw-bold small text-uppercase text-muted mb-2">Bu evrak için ne yapılacak?</div>
+                        <div class="row g-2">
+                            <div class="col-sm-6">
+                                <input type="radio" class="btn-check" name="gelen_tur" id="gelenTurIslem" value="islem" checked>
+                                <label class="gelen-tur-kart w-100" for="gelenTurIslem">
+                                    <span class="gelen-tur-ikon bg-warning-subtle text-warning"><i class="bx bx-edit-alt"></i></span>
+                                    <span class="gelen-tur-metin">
+                                        <span class="gelen-tur-baslik">İşlem / Cevap Gerekli</span>
+                                        <span class="gelen-tur-alt">Gereği yapılacak yazı; cevap bekleniyor</span>
+                                    </span>
+                                </label>
+                            </div>
+                            <div class="col-sm-6">
+                                <input type="radio" class="btn-check" name="gelen_tur" id="gelenTurBilgi" value="bilgi">
+                                <label class="gelen-tur-kart w-100" for="gelenTurBilgi">
+                                    <span class="gelen-tur-ikon bg-info-subtle text-info"><i class="bx bx-info-circle"></i></span>
+                                    <span class="gelen-tur-metin">
+                                        <span class="gelen-tur-baslik">Bilgi Amaçlı</span>
+                                        <span class="gelen-tur-alt">Bilgimize sunulmuş; cevap gerekmez</span>
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="row g-4">
                         <!-- Sol Kolon: Evrak Temel Bilgileri -->
-                        <div class="col-md-6 border-end">
+                        <div class="col-lg-4 border-end" id="evrakKolonSol">
                             <div class="d-flex align-items-center mb-3">
                                 <span class="badge bg-primary-subtle text-primary p-1 rounded-pill me-2">
                                     <i data-feather="info" style="width: 14px; height: 14px;"></i>
@@ -57,23 +156,12 @@ $araclar_list = $Evrak->getActiveVehicles();
                                 <span id="evrakKilitRozet" class="badge bg-secondary-subtle text-secondary border rounded-pill ms-2 d-none"><i class="bx bx-lock-alt"></i> Salt okunur</span>
                             </div>
                             
-                            <div class="mb-3">
+                            <div class="mb-3" style="height:0;margin:0 !important;">
                                 <input type="hidden" name="evrak_tipi" id="tipGelen" value="gelen">
-                                <div class="d-flex align-items-center gap-2 p-2 bg-success-subtle text-success rounded-3 border border-success-subtle">
-                                    <i data-feather="download" style="width:16px"></i><span class="fw-bold small">GELEN EVRAK</span>
-                                </div>
                             </div>
 
                             <div class="mb-3">
-                                <?php echo Form::FormFloatInput('text', 'tarih', date('d.m.Y'), 'Evrak Tarihi', 'Evrak Tarihi *', 'calendar', 'form-control flatpickr', true); ?>
-                            </div>
-
-                            <div class="mb-3">
-                                <?php echo Form::FormFloatInput('text', 'son_tarih', '', 'Son Tarih / Termin (Opsiyonel)', 'Son Tarih / Cevap Süresi', 'calendar', 'form-control flatpickr'); ?>
-                            </div>
-
-                            <div class="mb-3">
-                                <?php echo Form::FormFloatInput('text', 'evrak_no', 'Kayıtta Alacak', 'Evrak Numarası', 'Evrak No / Kayıt No', 'hash', 'form-control', false, null, 'off', true); ?>
+                                <?php echo Form::FormFloatInput('text', 'kurum_adi', '', 'Kurum / Firma Adı', 'Gelen / Giden Kurum Adı *', 'home', 'form-control', true); ?>
                             </div>
 
                             <div class="mb-3">
@@ -91,17 +179,22 @@ $araclar_list = $Evrak->getActiveVehicles();
                             </div>
 
                             <div class="mb-3">
-                                <?php echo Form::FormFloatInput('text', 'kurum_adi', '', 'Kurum / Firma Adı', 'Gelen / Giden Kurum Adı *', 'home', 'form-control', true); ?>
+                                <?php echo Form::FormFloatInput('text', 'tarih', date('d.m.Y'), 'Evrak Tarihi', 'Evrak Tarihi *', 'calendar', 'form-control flatpickr', true); ?>
                             </div>
+
+                            <div class="mb-3">
+                                <?php echo Form::FormFloatTextarea('aciklama', '', 'Açıklama', 'Açıklama / Not (Opsiyonel)', 'edit-3', 'form-control', false, '90px', 3); ?>
+                            </div>
+
                         </div>
 
                         <!-- Sağ Kolon: Atama ve İşlem -->
-                        <div class="col-md-6">
+                        <div class="col-lg-4 border-end" id="evrakKolonOrta">
                             <div class="d-flex align-items-center mb-3">
                                 <span class="badge bg-success-subtle text-success p-1 rounded-pill me-2">
                                     <i data-feather="user-check" style="width: 14px; height: 14px;"></i>
                                 </span>
-                                <h6 class="mb-0 fw-bold">Zimmet & Atama</h6>
+                                <h6 class="mb-0 fw-bold">Kime Atanacak?</h6>
                             </div>
                             
                             <div class="mb-3">
@@ -140,13 +233,6 @@ $araclar_list = $Evrak->getActiveVehicles();
                             </div>
 
                             <hr class="my-3 opacity-50">
-
-                            <div class="d-flex align-items-center mb-3">
-                                <span class="badge bg-warning-subtle text-warning p-1 rounded-pill me-2">
-                                    <i data-feather="check-square" style="width: 14px; height: 14px;"></i>
-                                </span>
-                                <h6 class="mb-0 fw-bold">İşlem & Cevap</h6>
-                            </div>
 
                             <!-- Trafik Cezası Bilgileri (Dinamik) -->
                             <div id="trafficFineSection" class="d-none border border-dashed border-primary rounded-3 p-3 mb-3" style="background-color: rgba(var(--bs-primary-rgb), 0.04);">
@@ -196,23 +282,6 @@ $araclar_list = $Evrak->getActiveVehicles();
                                 </div>
                             </div>
 
-                            <!-- Gelen Evrak için Cevap Alanı -->
-                            <div id="gelenCevapSection">
-                                <div class="mb-3 px-3 d-flex align-items-center justify-content-between rounded-3 py-2 border evrak-cevap-kutu">
-                                    <div class="d-flex align-items-center">
-                                        <i data-feather="message-circle" class="text-primary me-2" style="width: 18px;"></i>
-                                        <span class="small fw-bold">Cevap Verildi mi?</span>
-                                    </div>
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" name="cevap_verildi_mi" value="1" id="cevap_verildi">
-                                    </div>
-                                </div>
-
-                                <div id="cevapTarihiContainer" class="mb-3 d-none">
-                                    <?php echo Form::FormFloatInput('text', 'cevap_tarihi', '', 'Gelen Evraka Verilen Cevap Tarihi', 'Cevap Tarihi', 'calendar', 'form-control flatpickr'); ?>
-                                </div>
-                            </div>
-
                             <!-- Giden Evrak için İlişkilendirme -->
                             <div id="gidenIliskiSection" class="d-none">
                                 <div class="mb-3">
@@ -227,18 +296,75 @@ $araclar_list = $Evrak->getActiveVehicles();
                                 </div>
                             </div>
 
-                            <div class="mb-3">
-                                <input type="hidden" name="ek_duzen_json" id="gelen_ek_duzen_json" value="[]">
-                                <input type="hidden" name="silinen_ek_ids_json" id="gelen_silinen_ek_ids_json" value="[]">
-                                <label for="gelenEkDosyalari" class="form-label small fw-bold text-muted"><i class="bx bx-paperclip"></i> Evrak Dosyaları</label>
-                                <input type="file" id="gelenEkDosyalari" class="form-control" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.odt,.ods">
-                                <div class="form-text" id="gelenEkDosyalariYardim">Birden fazla dosya seçebilirsiniz. Her dosya en fazla 10 MB olabilir.</div>
-                                <div id="mevcutDosya" class="mt-2" style="display:none;">
-                                    <a href="#" target="_blank" class="btn btn-sm btn-soft-info w-100 fw-bold border-dashed rounded-3">
-                                        <i data-feather="eye" class="icon-xs me-1"></i> Mevcut Dosyayı Gör
-                                    </a>
+                        </div>
+
+                        <div class="col-lg-4" id="cevapKolon">
+                            <!-- Gelen Evrak için Cevap Alanı -->
+                            <div id="gelenCevapSection">
+                                <div class="d-flex align-items-center mb-3">
+                                    <span class="badge bg-warning-subtle text-warning p-1 rounded-pill me-2">
+                                        <i data-feather="check-square" style="width: 14px; height: 14px;"></i>
+                                    </span>
+                                    <h6 class="mb-0 fw-bold">Cevap Durumu</h6>
                                 </div>
-                                <div id="gelenEvrakDosyaListesi" class="d-grid gap-2 mt-3"></div>
+                                <div class="mb-3" id="sonTarihWrap">
+                                    <?php echo Form::FormFloatInput('text', 'son_tarih', '', 'Cevap için Son Tarih (Opsiyonel)', 'Son Tarih / Cevap Süresi', 'calendar', 'form-control flatpickr'); ?>
+                                </div>
+
+                                <div class="mb-3 px-3 d-flex align-items-center justify-content-between rounded-3 py-2 border evrak-cevap-kutu">
+                                    <div class="d-flex align-items-center">
+                                        <i data-feather="message-circle" class="text-primary me-2" style="width: 18px;"></i>
+                                        <span class="small fw-bold">Cevap verildi</span>
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="cevap_verildi_mi" value="1" id="cevap_verildi">
+                                    </div>
+                                </div>
+
+                                <div id="cevapTarihiContainer" class="d-none">
+                                    <div class="cevap-yazisi-grup border rounded-3 p-3 mb-3">
+                                        <div class="d-flex align-items-start gap-2 mb-3">
+                                            <span class="cevap-adim">1</span>
+                                            <div>
+                                                <div class="fw-bold small">Cevap yazısını seçin</div>
+                                                <div class="text-muted font-size-12">Bu evraka verdiğiniz cevap sistemde kayıtlı bir giden evrak ise buradan seçin.</div>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3 cevap-select-kutu">
+                                            <?php
+                                            $cevap_giden_options = [];
+                                            foreach ($Evrak->getGidenCevapSecenekleri() as $gd) {
+                                                $cevap_giden_options[\App\Helper\Security::encrypt($gd->id)] = trim(($gd->evrak_no ?: '-') . ' - ' . ($gd->konu ?: '-') . (!empty($gd->tarih) ? ' (' . date('d.m.Y', strtotime($gd->tarih)) . ')' : ''));
+                                            }
+                                            echo Form::FormSelect2('cevap_giden_ids[]', $cevap_giden_options, '', 'Sistemdeki Giden Evrak (Cevap Yazısı)', 'link', 'key', '', 'form-select evrak-select2-cevap', false, 'width:100%', 'multiple', 'cevap_giden_ids');
+                                            ?>
+                                        </div>
+
+                                        <div class="cevap-alternatif d-flex align-items-center flex-wrap gap-2">
+                                            <span class="text-muted font-size-12">Sistemde yoksa:</span>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary bg-white" data-bs-toggle="collapse" data-bs-target="#cevapDosyaCollapse" aria-expanded="false"><i class="bx bx-upload me-1"></i>Dosya yükle</button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary bg-white" data-bs-toggle="collapse" data-bs-target="#cevapMetinCollapse" aria-expanded="false"><i class="bx bx-pencil me-1"></i>Yazı ekle</button>
+                                        </div>
+
+                                        <div class="collapse mt-3" id="cevapDosyaCollapse">
+                                            <input type="hidden" id="silinen_cevap_dosya_ids_json" name="silinen_cevap_dosya_ids_json" value="[]">
+                                            <input type="file" id="cevapDosyalari" name="cevap_dosyalari[]" class="form-control" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.odt">
+                                            <div class="form-text">PDF, görsel veya Word · dosya başına en fazla 10 MB</div>
+                                            <div id="cevapDosyaListesi" class="d-grid gap-2 mt-2"></div>
+                                        </div>
+                                        <div class="collapse mt-3" id="cevapMetinCollapse">
+                                            <?php echo Form::FormFloatTextarea('cevap_metni', '', 'Cevap özeti', 'Cevap Özeti / Açıklama', 'edit-3', 'form-control', false, '90px', 3); ?>
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex align-items-start gap-2 mb-2">
+                                        <span class="cevap-adim">2</span>
+                                        <div class="fw-bold small">Cevabın verildiği tarih</div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <?php echo Form::FormFloatInput('text', 'cevap_tarihi', '', 'Gelen Evraka Verilen Cevap Tarihi', 'Cevap Tarihi', 'calendar', 'form-control flatpickr'); ?>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -388,7 +514,7 @@ body[data-layout-mode="dark"] .evrak-cevap-kutu {
     html[data-theme-preset="macos-dark"] #evrakModal .uets-ozet-kart, body[data-layout-mode="dark"] #evrakModal .uets-ozet-kart { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.1); }
     html[data-theme-preset="macos-dark"] #evrakModal .uets-ozet-satir, body[data-layout-mode="dark"] #evrakModal .uets-ozet-satir { border-bottom-color: rgba(255,255,255,.08); }
     html[data-theme-preset="macos-dark"] #evrakModal .uets-ozet-deger, body[data-layout-mode="dark"] #evrakModal .uets-ozet-deger { color: #f1f5f9; }
-    #evrakModal.uets-kilitli .col-md-6:not(.border-end) { background: rgba(var(--bs-primary-rgb), .03); border-radius: 12px; padding: 14px 16px 4px; }
+    #evrakModal.uets-kilitli #evrakKolonOrta, #evrakModal.uets-kilitli #cevapKolon { background: rgba(var(--bs-primary-rgb), .03); border-radius: 12px; padding: 14px 16px 4px; }
     #evrakModal .evrak-dosya-kart { background: #f8fafc; border-color: #e2e8f0 !important; transition: background .15s, border-color .15s; }
     #evrakModal .evrak-dosya-kart:hover { background: #f1f5f9; border-color: #cbd5e1 !important; }
     html[data-theme-preset="macos-dark"] #evrakModal .uets-kilit-uyari, body[data-layout-mode="dark"] #evrakModal .uets-kilit-uyari { background: rgba(250,204,21,.08); border-color: rgba(250,204,21,.25); color: #fde68a; }

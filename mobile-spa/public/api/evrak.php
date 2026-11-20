@@ -289,7 +289,7 @@ try {
         } elseif ($filter === 'giden') {
             $where .= " AND et.evrak_tipi = 'giden'";
         } elseif ($filter === 'bekleyen') {
-            $where .= " AND et.evrak_tipi = 'gelen' AND (et.cevap_verildi_mi = 0 OR et.cevap_verildi_mi IS NULL)";
+            $where .= " AND et.evrak_tipi = 'gelen' AND et.gelen_tur = 'islem' AND (et.cevap_verildi_mi = 0 OR et.cevap_verildi_mi IS NULL)";
         }
 
         if ($search !== '') {
@@ -367,7 +367,7 @@ try {
             $id = (int) $row->id;
             $encId = Security::encrypt($id);
             $isGelen = ($row->evrak_tipi === 'gelen');
-            $isBekleyen = $isGelen && (!$row->cevap_verildi_mi);
+            $isBekleyen = $isGelen && (!$row->cevap_verildi_mi) && (($row->gelen_tur ?? 'islem') !== 'bilgi');
             $onayDurumu = (string) ($row->onay_durumu ?? 'taslak');
             $onayInfo = $onayMap[$id] ?? [
                 'toplam' => 0,

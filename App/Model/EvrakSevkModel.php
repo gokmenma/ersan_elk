@@ -133,6 +133,7 @@ class EvrakSevkModel extends Model
                    AND et.evrak_tipi = 'gelen'
                    AND (COALESCE(et.kaynak_tipi, '') = 'uets' OR COALESCE(et.uets_mesaj_id, '') <> '')
                    AND COALESCE(et.cevap_verildi_mi, 0) = 0
+                   AND et.gelen_tur = 'islem'
                    AND et.olusturma_tarihi >= :since
                    AND et.olusturma_tarihi <= DATE_SUB(NOW(), INTERVAL " . self::REMINDER_MIN_AGE_HOURS . " HOUR)
                    AND NOT EXISTS (SELECT 1 FROM evrak_sevk sv

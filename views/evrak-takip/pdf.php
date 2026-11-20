@@ -192,8 +192,26 @@ try {
             throw new RuntimeException('Evrak bulunamadı.');
         }
         $parcalar = $model->getBirlesikEkParcalari($birlesikId);
+        $ozetAciklama = null;
         if ($parcalar === []) {
-            throw new RuntimeException('Birleştirilecek PDF veya görsel ek bulunamadı.');
+            $kacis = static fn($value): string => htmlspecialchars((string) ($value ?? ''), ENT_QUOTES, 'UTF-8');
+            $satirlar = [
+                'Evrak No' => $gelenEvrak->evrak_no ?: '-',
+                'Evrak Tarihi' => !empty($gelenEvrak->tarih) ? date('d.m.Y', strtotime((string) $gelenEvrak->tarih)) : '-',
+                'Gelen Kurum' => $gelenEvrak->kurum_adi ?: '-',
+                'Konu' => $gelenEvrak->konu ?: '-',
+                'Zimmetlenen Personel' => $gelenEvrak->personel_adi ?: '-',
+                'İlgili Personel' => $gelenEvrak->ilgili_personel_adi ?: '-',
+                'Cevap Durumu' => ($gelenEvrak->gelen_tur ?? 'islem') === 'bilgi' ? 'Bilgi amaçlı (cevap gerekmez)' : (!empty($gelenEvrak->cevap_verildi_mi) ? 'Cevap verildi' . (!empty($gelenEvrak->cevap_tarihi) ? ' (' . date('d.m.Y', strtotime((string) $gelenEvrak->cevap_tarihi)) . ')' : '') : 'Cevap bekleniyor'),
+            ];
+            $ozetAciklama = '<p style="text-align:center"><strong>GELEN EVRAK KAYIT ÖZETİ</strong></p><p style="text-align:center">Bu kayda eklenmiş dosya bulunmadığından kayıt bilgileri gösterilmektedir.</p><table style="width:100%;border-collapse:collapse" border="1" cellpadding="6"><tbody>';
+            foreach ($satirlar as $etiket => $deger) {
+                $ozetAciklama .= '<tr><td style="width:35%"><strong>' . $kacis($etiket) . '</strong></td><td>' . $kacis($deger) . '</td></tr>';
+            }
+            $ozetAciklama .= '</tbody></table>';
+            if (trim((string) ($gelenEvrak->aciklama ?? '')) !== '') {
+                $ozetAciklama .= '<p><strong>Açıklama:</strong></p><p>' . nl2br($kacis(trim(strip_tags((string) $gelenEvrak->aciklama)))) . '</p>';
+            }
         }
         $geciciDosyalar = [];
         try {
@@ -209,6 +227,7 @@ try {
                 'evrak_no' => $gelenEvrak->evrak_no,
                 'konu' => $gelenEvrak->konu,
                 'ust_yazi_gerekli_degil' => 1,
+                'aciklama' => $ozetAciklama ?? '',
                 'ek_dosya_yollari' => $ekYollari,
             ]);
         } finally {
