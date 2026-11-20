@@ -117,6 +117,7 @@ const invoiceList = ref([])
 const listSummary = ref({})
 const listLoading = ref(false)
 const listPagination = ref({ page: 1, limit: 25, total: 0, has_more: false })
+const loadingMore = ref(false)
 const searchQuery = ref('')
 const productSearchQuery = ref('')
 const statusFilter = ref('') // giden için durum
@@ -436,7 +437,7 @@ async function loadInvoices(reset = true) {
     listPagination.value.page = 1
     invoiceList.value = []
   }
-  listLoading.value = true
+  if (reset) listLoading.value = true
   errorMessage.value = ''
 
   try {
@@ -477,8 +478,16 @@ async function loadInvoices(reset = true) {
     errorMessage.value = err.message || 'Fatura listesi yüklenemedi.'
   } finally {
     listLoading.value = false
+    loadingMore.value = false
     refreshing.value = false
   }
+}
+
+function loadMoreInvoices() {
+  if (loadingMore.value || listLoading.value || !listPagination.value.has_more) return
+  loadingMore.value = true
+  listPagination.value.page += 1
+  loadInvoices(false)
 }
 
 function loadCurrentTab(reset = true) {
@@ -2328,6 +2337,13 @@ onBeforeUnmount(() => {
             </div>
           </div>
         </article>
+
+        <div v-if="listPagination.has_more" class="fatura-load-more">
+          <button type="button" class="clay-filter-pill" :disabled="loadingMore" @click="loadMoreInvoices">
+            <RefreshCw v-if="loadingMore" :size="15" class="is-spinning" />
+            <span>{{ loadingMore ? 'Yükleniyor...' : `Daha Fazla Yükle (${invoiceList.length} / ${listPagination.total})` }}</span>
+          </button>
+        </div>
       </div>
     </main>
 
@@ -3376,6 +3392,12 @@ onBeforeUnmount(() => {
   overflow-x: hidden;
   box-sizing: border-box;
 }
+.fatura-load-more {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 16px;
+}
+
 .fatura-tab-content {
   width: 100%;
   max-width: 100%;
