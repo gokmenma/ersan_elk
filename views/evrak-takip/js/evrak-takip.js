@@ -3684,3 +3684,15 @@ $(document).on("click", ".btn-cevap-pdf", function () {
   bootstrap.Modal.getOrCreateInstance(document.getElementById("modalCevapYazisi")).hide();
   $('<span class="evrak-pdf-goruntule d-none"></span>').data("id", $(this).data("id")).appendTo("body").trigger("click").remove();
 });
+
+$(function () {
+  const params = new URLSearchParams(window.location.search);
+  const acilacakEvrak = params.get("evrak");
+  if (!acilacakEvrak) return;
+  params.delete("evrak");
+  const kalan = params.toString();
+  window.history.replaceState(null, "", window.location.pathname + (kalan ? "?" + kalan : ""));
+  setTimeout(function () {
+    $('<a href="javascript:void(0)" class="evrak-duzenle d-none"></a>').data("id", acilacakEvrak).appendTo("body").trigger("click").remove();
+  }, 500);
+});

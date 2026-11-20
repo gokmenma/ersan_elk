@@ -298,15 +298,16 @@ function renderWidget(string $widgetId, array $data = []) {
                                             $tarihKisa = $aDay . ' ' . ($aylarKisaTr[$aMonth] ?? '');
                                             $isGorev = ($alarm['tur'] ?? '') === 'gorev';
                                             $badgeClass = $isGorev ? 'bg-primary-subtle text-primary' : 'bg-warning-subtle text-warning-emphasis';
-                                            $badgeText = $isGorev ? 'Görev' : 'Evrak';
+                                            $badgeText = $isGorev ? 'Görev' : 'Cevap';
                                             $url = $alarm['url'] ?? '#';
                                             ?>
-                                            <a href="<?php echo htmlspecialchars($url, ENT_QUOTES, 'UTF-8'); ?>" class="cal-alarm-item d-block text-decoration-none mb-1" data-day="<?php echo $aDay; ?>" title="<?php echo htmlspecialchars($alarm['baslik'] . ' (' . $badgeText . ')', ENT_QUOTES, 'UTF-8'); ?>">
+                                            <a href="<?php echo htmlspecialchars($url, ENT_QUOTES, 'UTF-8'); ?>" class="cal-alarm-item d-block text-decoration-none mb-1" data-day="<?php echo $aDay; ?>" title="<?php echo htmlspecialchars($alarm['baslik'] . (!empty($alarm['alt']) ? ' — ' . $alarm['alt'] : '') . ' (' . $badgeText . ')', ENT_QUOTES, 'UTF-8'); ?>">
                                                 <div class="d-flex align-items-center justify-content-between">
                                                     <span class="cal-alarm-date fw-bold"><?php echo $tarihKisa; ?></span>
                                                     <span class="badge <?php echo $badgeClass; ?> cal-mini-pill"><?php echo $badgeText; ?></span>
                                                 </div>
                                                 <div class="cal-alarm-text text-truncate fw-semibold text-dark"><?php echo htmlspecialchars($alarm['baslik'], ENT_QUOTES, 'UTF-8'); ?></div>
+                                                <?php if (!empty($alarm['alt'])): ?><div class="text-truncate text-muted" style="font-size: 0.62rem;"><?php echo htmlspecialchars($alarm['alt'], ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
                                             </a>
                                         <?php endforeach; ?>
                                     <?php endif; ?>

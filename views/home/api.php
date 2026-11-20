@@ -144,9 +144,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         'id' => $e->id,
                         'tarih' => $e->son_tarih,
                         'saat' => null,
-                        'baslik' => (!empty($e->kurum_adi) ? $e->kurum_adi : $e->konu) . (!empty($e->evrak_no) ? ' (' . $e->evrak_no . ')' : ''),
+                        'baslik' => !empty($e->konu) ? $e->konu : (string) $e->kurum_adi,
+                        'alt' => 'Cevap son günü · ' . trim((!empty($e->kurum_adi) ? $e->kurum_adi : '') . (!empty($e->evrak_no) ? ' · No: ' . $e->evrak_no : ''), ' ·'),
                         'liste_adi' => $e->konu,
-                        'url' => 'index.php?p=evrak-takip/list',
+                        'url' => 'index.php?p=evrak-takip/list&evrak=' . rawurlencode(\App\Helper\Security::encrypt((int) $e->id)),
                     ];
                 }
                 usort($takvimAlarmlar, function($a, $b) {
@@ -319,9 +320,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                     'id' => $e->id,
                                     'tarih' => $e->son_tarih,
                                     'saat' => null,
-                                    'baslik' => (!empty($e->kurum_adi) ? $e->kurum_adi : $e->konu) . (!empty($e->evrak_no) ? ' (' . $e->evrak_no . ')' : ''),
+                                    'baslik' => !empty($e->konu) ? $e->konu : (string) $e->kurum_adi,
+                                    'alt' => 'Cevap son günü · ' . trim((!empty($e->kurum_adi) ? $e->kurum_adi : '') . (!empty($e->evrak_no) ? ' · No: ' . $e->evrak_no : ''), ' ·'),
                                     'liste_adi' => $e->konu,
-                                    'url' => 'index.php?p=evrak-takip/list',
+                                    'url' => 'index.php?p=evrak-takip/list&evrak=' . rawurlencode(\App\Helper\Security::encrypt((int) $e->id)),
                                 ];
                             }
                             usort($takvimAlarmlar, function($a, $b) {

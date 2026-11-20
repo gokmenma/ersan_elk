@@ -1870,6 +1870,8 @@ class EvrakTakipModel extends Model
                   AND et.silinme_tarihi IS NULL 
                   AND et.evrak_tipi = 'gelen'
                   AND et.son_tarih IS NOT NULL
+                  AND et.gelen_tur = 'islem'
+                  AND COALESCE(et.cevap_verildi_mi, 0) = 0
                   AND {$visibilitySql}";
         
         $params = [':firma_id' => $firmaId];
