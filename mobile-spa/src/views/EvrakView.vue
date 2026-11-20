@@ -3768,6 +3768,21 @@ onBeforeUnmount(stopMobileSignTimer)
   border-top: 1px solid var(--ds-border-subtle);
   padding-top: 10px;
   gap: 8px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.evrak-card-footer::-webkit-scrollbar {
+  display: none;
+}
+.evrak-card-footer > *,
+.evrak-card-files > *,
+.evrak-card-actions > * {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .evrak-card-files {
   display: flex;

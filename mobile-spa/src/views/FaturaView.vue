@@ -4731,9 +4731,20 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex: 0 1 auto;
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.fatura-card__actions::-webkit-scrollbar {
+  display: none;
+}
+.fatura-card__actions > * {
   flex-shrink: 0;
-  flex-wrap: wrap;
-  justify-content: flex-end;
 }
 .fatura-payment-tag {
   padding: 3px 7px;
