@@ -71,6 +71,16 @@ $(document).ready(function () {
             }
         },
         columns: [
+            {
+                data: "hareket_id_enc",
+                className: "text-center",
+                width: "40px",
+                orderable: false,
+                searchable: false,
+                render: function (data) {
+                    return '<input type="checkbox" class="form-check-input hareket-sec" data-id="' + data + '">';
+                }
+            },
             { data: "islem_tarihi", className: "text-center", width: "130px" },
             { data: "belge_no", width: "120px" },
             { data: "aciklama" },
@@ -83,7 +93,7 @@ $(document).ready(function () {
         drawCallback: function() {
             safeFeatherReplace();
         },
-        order: [[0, 'desc']]
+        order: [[1, 'desc']]
     });
 
     // Excel Aktar Butonları
@@ -341,7 +351,7 @@ $(document).ready(function () {
 
     // Satır tıklama ile düzenleme
     $('#hareketTable tbody').on('click', 'tr', function (e) {
-        if ($(e.target).closest('a, button, .action-btn-group').length > 0) {
+        if ($(e.target).closest('a, button, input, label, .action-btn-group').length > 0) {
             return;
         }
         const btn = $(this).find('.hareket-duzenle');
@@ -349,6 +359,58 @@ $(document).ready(function () {
         if (id) {
             editHareket(id);
         }
+    });
+
+    function updateAktarButton() {
+        const n = $('.hareket-sec:checked').length;
+        $('#aktarSecilenSayi').text(n);
+        $('#btnHareketAktar').toggleClass('d-none', n === 0).toggleClass('d-flex', n > 0);
+        const all = $('.hareket-sec').length;
+        $('#checkAllHareket').prop('checked', all > 0 && n === all);
+    }
+
+    $('#checkAllHareket').on('change', function () {
+        $('.hareket-sec').prop('checked', $(this).is(':checked'));
+        updateAktarButton();
+    });
+    $('#hareketTable tbody').on('change', '.hareket-sec', updateAktarButton);
+    table.on('draw', updateAktarButton);
+
+    $('#btnHareketAktar').on('click', function () {
+        $('#aktarAdet').text($('.hareket-sec:checked').length);
+        if (!$('#aktarHedefCari').data('select2')) {
+            $('#aktarHedefCari').select2({ dropdownParent: $('#hareketAktarModal'), width: '100%' });
+        }
+        $('#aktarHedefCari').val('').trigger('change');
+        $('#hareketAktarModal').modal('show');
+    });
+
+    $('#btnHareketAktarOnayla').on('click', function () {
+        const hedef = $('#aktarHedefCari').val();
+        const ids = $('.hareket-sec:checked').map(function () { return $(this).data('id'); }).get();
+        if (!hedef) {
+            Swal.fire("Uyarı", "Lütfen hedef cariyi seçin.", "warning");
+            return;
+        }
+        if (!ids.length) return;
+        $.ajax({
+            url: "views/cari/api.php",
+            type: "POST",
+            dataType: "json",
+            data: { action: "cari-hareket-aktar", kaynak_cari_id: global_cari_id, hedef_cari_id: hedef, hareket_ids: ids },
+            success: function (res) {
+                if (res.status === "success") {
+                    $('#hareketAktarModal').modal('hide');
+                    table.ajax.reload(null, false);
+                    Swal.fire({ title: "Tamamlandı", text: res.message, icon: "success", timer: 2000, showConfirmButton: false });
+                } else {
+                    Swal.fire("Hata!", res.message, "error");
+                }
+            },
+            error: function () {
+                Swal.fire("Hata!", "İşlem gerçekleştirilemedi.", "error");
+            }
+        });
     });
 
     // Hareket Sil

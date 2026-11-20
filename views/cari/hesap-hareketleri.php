@@ -26,6 +26,7 @@ $toplam_islem = (int)($ozet->toplam_islem ?? 0);
 $toplam_borc = (float)($ozet->toplam_borc ?? 0);
 $toplam_alacak = (float)($ozet->toplam_alacak ?? 0);
 $bakiye = (float)($ozet->bakiye ?? 0);
+$aktarimOptions = $Cari->getAktarimSecenekleri((int)$cari_id);
 ?>
 <script>try { document.documentElement.classList.toggle('cari-hareket-summary-hidden', localStorage.getItem('cari_hareket_summary_cards_state') === 'hidden'); } catch (e) {}</script>
 <style>
@@ -229,6 +230,9 @@ $bakiye = (float)($ozet->bakiye ?? 0);
 
             <!-- Sağ Araç Çubuğu -->
             <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+                <button type="button" class="btn btn-sm btn-primary px-2.5 py-1.5 d-none align-items-center gap-1 rounded-3 fw-semibold shadow-sm text-white" id="btnHareketAktar">
+                    <i class="bx bx-git-compare font-size-14"></i> Seçilenleri Başka Cariye Aktar (<span id="aktarSecilenSayi">0</span>)
+                </button>
                 <a class="btn btn-sm btn-subtle-success px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderExportExcel" title="Excel'e Aktar"
                    href="views/cari/export-hareketler-excel.php?id=<?= urlencode($cari_id_enc) ?>">
                     <i class="bx bx-file font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Excel</span>
@@ -247,6 +251,7 @@ $bakiye = (float)($ozet->bakiye ?? 0);
                 <table id="hareketTable" class="table table-bordered table-hover nowrap align-middle w-100 mb-0">
                     <thead class="table-light">
                         <tr>
+                            <th data-filter="none" style="width: 40px;" class="text-center"><input type="checkbox" class="form-check-input" id="checkAllHareket" title="Tümünü Seç / Kaldır"></th>
                             <th data-filter="date" style="width: 130px;" class="text-center">TARİH</th>
                             <th data-filter="string" style="width: 120px;">BELGE NO</th>
                             <th data-filter="string">AÇIKLAMA</th>
@@ -483,6 +488,28 @@ $bakiye = (float)($ozet->bakiye ?? 0);
 </style>
 
 <!-- Hızlı İşlem Modalı (Aldım/Verdim) -->
+<div class="modal fade" id="hareketAktarModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-bottom px-4 py-3">
+                <div>
+                    <h5 class="modal-title fw-bold mb-0 font-size-16">Hareketleri Başka Cariye Aktar</h5>
+                    <p class="text-muted font-size-12 mb-0"><span id="aktarAdet">0</span> hareket seçildi</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body px-4 py-3">
+                <?= Form::FormSelect2("aktarHedefCari", ['' => 'Hedef cariyi seçin...'] + $aktarimOptions, "", "Hedef Cari", "user-check") ?>
+                <div class="alert alert-warning py-2 px-3 font-size-12 mt-3 mb-0">Seçili hareketler (ve bağlı faturalar) bu cariden çıkarılıp hedef cariye taşınır; iki carinin bakiyesi güncellenir.</div>
+            </div>
+            <div class="modal-footer border-top px-4 py-3">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="button" class="btn btn-primary px-4" id="btnHareketAktarOnayla"><i class="bx bx-git-compare me-1"></i> Aktar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="hizliIslemModal" tabindex="-1" aria-labelledby="hizliIslemModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">

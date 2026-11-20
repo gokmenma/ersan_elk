@@ -82,7 +82,7 @@ $(document).ready(function () {
             { data: "Telefon", className: "text-center", width: "120px" },
             { data: "il_ilce", width: "140px" },
             { data: "bakiye", className: "text-end", width: "130px" },
-            { data: "actions", className: "text-center", width: "160px", orderable: false, searchable: false }
+            { data: "actions", className: "text-center", width: "130px", orderable: false, searchable: false }
         ],
         createdRow: function(row, data, dataIndex) {
             $(row).find('td:not(:last-child)').attr('style', 'cursor: pointer !important');
@@ -408,71 +408,6 @@ $(document).ready(function () {
                     }
                 });
             }
-        });
-    });
-
-    $('#cariTable').on('click', '.hareket-aktar', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        const id = $(this).data('id');
-        $('#aktarKaynakId').val(id);
-        $('#aktarKaynakAd').text($(this).data('ad'));
-        $('#aktarKaynakSil').prop('checked', false);
-        $('#aktarHedefCari option').prop('disabled', false);
-        $('#aktarHedefCari option[value="' + id + '"]').prop('disabled', true);
-        $('#aktarHedefCari').val('');
-        if (!$('#aktarHedefCari').data('select2')) {
-            $('#aktarHedefCari').select2({ dropdownParent: $('#hareketAktarModal'), width: '100%' });
-        }
-        $('#aktarHedefCari').trigger('change');
-        $('#hareketAktarModal').modal('show');
-    });
-
-    $('#btnHareketAktarOnayla').on('click', function () {
-        const kaynak = $('#aktarKaynakId').val();
-        const hedef = $('#aktarHedefCari').val();
-        if (!hedef) {
-            Swal.fire("Uyarı", "Lütfen hedef cariyi seçin.", "warning");
-            return;
-        }
-        const hedefAd = $('#aktarHedefCari option:selected').text();
-        Swal.fire({
-            title: "Hareketler aktarılsın mı?",
-            html: '<strong></strong> carisindeki tüm hareketler <strong class="text-primary"></strong> carisine taşınacak.',
-            icon: "question",
-            showCancelButton: true,
-            confirmButtonText: "Evet, aktar",
-            cancelButtonText: "İptal",
-            didOpen: (el) => {
-                const strongs = el.querySelectorAll('strong');
-                strongs[0].textContent = $('#aktarKaynakAd').text();
-                strongs[1].textContent = hedefAd;
-            }
-        }).then((result) => {
-            if (!result.isConfirmed) return;
-            $.ajax({
-                url: "views/cari/api.php",
-                type: "POST",
-                dataType: "json",
-                data: {
-                    action: "cari-hareket-aktar",
-                    kaynak_cari_id: kaynak,
-                    hedef_cari_id: hedef,
-                    kaynak_sil: $('#aktarKaynakSil').is(':checked') ? 1 : 0
-                },
-                success: function (res) {
-                    if (res.status === "success") {
-                        $('#hareketAktarModal').modal('hide');
-                        updateSummaryCards();
-                        showToast(res.message, "success");
-                    } else {
-                        Swal.fire("Hata!", res.message, "error");
-                    }
-                },
-                error: function () {
-                    Swal.fire("Hata!", "İşlem gerçekleştirilemedi.", "error");
-                }
-            });
         });
     });
 

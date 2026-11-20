@@ -313,10 +313,10 @@ class CariModel extends Model
         return $row ?: null;
     }
 
-    public function getAktarimSecenekleri(): array
+    public function getAktarimSecenekleri(int $haricId = 0): array
     {
-        $stmt = $this->db->prepare("SELECT id, CariAdi, firma, vkn_tckn FROM cari WHERE silinme_tarihi IS NULL ORDER BY CariAdi ASC");
-        $stmt->execute();
+        $stmt = $this->db->prepare("SELECT id, CariAdi, firma, vkn_tckn FROM cari WHERE silinme_tarihi IS NULL AND id <> :haric ORDER BY CariAdi ASC");
+        $stmt->execute(['haric' => $haricId]);
         $options = [];
         foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $r) {
             $ad = trim((string)($r->CariAdi ?: $r->firma));

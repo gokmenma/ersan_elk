@@ -642,10 +642,14 @@ class CariHareketleriModel extends Model
         ];
     }
 
-    public function hareketleriAktar(int $kaynakId, int $hedefId): int
+    public function hareketleriAktar(int $kaynakId, int $hedefId, array $hareketIds): int
     {
+        $hareketIds = array_values(array_unique(array_filter(array_map('intval', $hareketIds), fn($v) => $v > 0)));
         if ($kaynakId <= 0 || $hedefId <= 0 || $kaynakId === $hedefId) {
             throw new \InvalidArgumentException('Kaynak ve hedef cari farklı olmalıdır.');
+        }
+        if (!$hareketIds) {
+            throw new \InvalidArgumentException('Aktarılacak hareket seçilmedi.');
         }
 
         $chk = $this->db->prepare("SELECT COUNT(*) FROM cari WHERE id IN (:k, :h) AND silinme_tarihi IS NULL");
@@ -654,14 +658,27 @@ class CariHareketleriModel extends Model
             throw new \InvalidArgumentException('Kaynak veya hedef cari bulunamadı.');
         }
 
+        $in = implode(',', array_fill(0, count($hareketIds), '?'));
+
         $this->db->beginTransaction();
         try {
-            $up = $this->db->prepare("UPDATE $this->table SET cari_id = :hedef WHERE cari_id = :kaynak AND silinme_tarihi IS NULL");
-            $up->execute(['hedef' => $hedefId, 'kaynak' => $kaynakId]);
+            $sel = $this->db->prepare("SELECT id, fatura_id FROM $this->table WHERE cari_id = ? AND silinme_tarihi IS NULL AND id IN ($in)");
+            $sel->execute(array_merge([$kaynakId], $hareketIds));
+            $rows = $sel->fetchAll(PDO::FETCH_OBJ);
+            if (count($rows) !== count($hareketIds)) {
+                throw new \InvalidArgumentException('Seçilen hareketlerden bazıları bu cariye ait değil veya silinmiş.');
+            }
+
+            $up = $this->db->prepare("UPDATE $this->table SET cari_id = ? WHERE cari_id = ? AND silinme_tarihi IS NULL AND id IN ($in)");
+            $up->execute(array_merge([$hedefId, $kaynakId], $hareketIds));
             $adet = $up->rowCount();
 
-            $fat = $this->db->prepare("UPDATE faturalar SET cari_id = :hedef WHERE cari_id = :kaynak");
-            $fat->execute(['hedef' => $hedefId, 'kaynak' => $kaynakId]);
+            $faturaIds = array_values(array_filter(array_map(fn($r) => (int)$r->fatura_id, $rows)));
+            if ($faturaIds) {
+                $fin = implode(',', array_fill(0, count($faturaIds), '?'));
+                $fat = $this->db->prepare("UPDATE faturalar SET cari_id = ? WHERE cari_id = ? AND id IN ($fin)");
+                $fat->execute(array_merge([$hedefId, $kaynakId], $faturaIds));
+            }
 
             $this->db->commit();
             return $adet;

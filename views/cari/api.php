@@ -105,9 +105,6 @@ if ($action == "cari-ajax-list") {
                     <button type="button" class="btn btn-subtle-success table-action-btn hareket-ekle" data-id="' . $enc_id . '" title="Hareket Ekle">
                         <i class="bx bx-plus-circle font-size-14"></i>
                     </button>
-                    <button type="button" class="btn btn-subtle-info table-action-btn hareket-aktar" data-id="' . $enc_id . '" data-ad="' . htmlspecialchars((string)($row->CariAdi ?: $row->firma), ENT_QUOTES, 'UTF-8') . '" title="Hareketleri Başka Cariye Aktar">
-                        <i class="bx bx-git-compare font-size-14"></i>
-                    </button>
                     <button type="button" class="btn btn-subtle-warning table-action-btn duzenle" data-id="' . $enc_id . '" title="Düzenle">
                         <i class="bx bx-edit-alt font-size-14"></i>
                     </button>
@@ -246,21 +243,22 @@ if ($action == "cari-hareket-aktar") {
     try {
         $kaynakId = (int)Security::decrypt($_POST["kaynak_cari_id"] ?? "");
         $hedefId = (int)Security::decrypt($_POST["hedef_cari_id"] ?? "");
-        $kaynakSil = isset($_POST["kaynak_sil"]) && $_POST["kaynak_sil"] == "1";
-
-        $adet = $CariHareket->hareketleriAktar($kaynakId, $hedefId);
-        if ($kaynakSil) {
-            $Cari->softDelete($kaynakId);
+        $rawIds = $_POST["hareket_ids"] ?? [];
+        if (!is_array($rawIds) || count($rawIds) === 0 || count($rawIds) > 500) {
+            throw new \InvalidArgumentException('Aktarılacak hareket seçilmedi veya sayı sınırı aşıldı (en fazla 500).');
         }
+        $hareketIds = array_map(fn($v) => (int)Security::decrypt((string)$v), $rawIds);
+
+        $adet = $CariHareket->hareketleriAktar($kaynakId, $hedefId, $hareketIds);
 
         (new \App\Model\SystemLogModel())->logAction(
             (int)($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0),
             'Cari Hareket Aktarımı',
-            "Kaynak cari: $kaynakId, Hedef cari: $hedefId, Aktarılan hareket: $adet" . ($kaynakSil ? ', kaynak cari silindi' : ''),
+            "Kaynak cari: $kaynakId, Hedef cari: $hedefId, Aktarılan hareket: $adet, Hareket ID: " . implode(',', $hareketIds),
             \App\Model\SystemLogModel::LEVEL_INFO
         );
 
-        echo json_encode(["status" => "success", "message" => "$adet hareket hedef cariye aktarıldı." . ($kaynakSil ? " Kaynak cari silindi." : "")]);
+        echo json_encode(["status" => "success", "message" => "$adet hareket hedef cariye aktarıldı."]);
     } catch (\InvalidArgumentException $e) {
         echo json_encode(["status" => "error", "message" => $e->getMessage()]);
     } catch (\Throwable $e) {
@@ -321,6 +319,7 @@ if ($action == "hesap-hareketleri-ajax-list") {
             }
 
             $formattedData[] = [
+                "hareket_id_enc" => $enc_hareket_id,
                 "islem_tarihi" => '<span class="fw-semibold text-dark font-size-13">' . date('d.m.Y H:i', strtotime($row->islem_tarihi)) . '</span>',
                 "belge_no" => $belgeNoHtml,
                 "aciklama" => '<span class="fw-medium text-dark font-size-13" style="color: #0f172a;">' . htmlspecialchars($row->aciklama ?: '-', ENT_QUOTES, 'UTF-8') . '</span>',
