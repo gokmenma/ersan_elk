@@ -788,7 +788,7 @@ $(document).ready(function() {
         <div class="modal-content shadow-lg border-0">
             <div class="modal-header bg-dark text-white">
                 <h5 class="modal-title font-size-15 fw-bold d-flex align-items-center" id="modalUetsSevkTitle">
-                    <i class="bx bx-share me-2 fs-5 text-warning"></i> UETS Evrakını Sevk Et
+                    <i class="bx bx-share me-2 fs-5 text-warning"></i> Evrakı Personele Sevk Et
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
             </div>
@@ -826,7 +826,7 @@ $(document).ready(function() {
         <div class="modal-content shadow-lg border-0">
             <div class="modal-header bg-dark text-white">
                 <h5 class="modal-title font-size-15 fw-bold d-flex align-items-center" id="modalUetsTarihceTitle">
-                    <i class="bx bx-history me-2 fs-5 text-warning"></i> Sevk ve Erişim Tarihçesi
+                    <i class="bx bx-history me-2 fs-5 text-warning"></i> Evrak Tarihçesi
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
             </div>
@@ -837,7 +837,7 @@ $(document).ready(function() {
                 <h6 class="font-size-13 fw-bold mb-2">Sevk Zinciri</h6>
                 <div id="uetsSevkZinciri" class="mb-4"></div>
                 <div id="uetsDenetimBlok">
-                    <h6 class="font-size-13 fw-bold mb-2">Erişim ve İşlem Kayıtları</h6>
+                    <h6 class="font-size-13 fw-bold mb-2">Tüm İşlem Kayıtları (Kayıt, Atama, Sevk, Cevap)</h6>
                     <div id="uetsDenetimIzi"></div>
                 </div>
             </div>

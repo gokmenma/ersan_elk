@@ -4072,3 +4072,5 @@
 - Bilgi amaçlı evrakta cevap alanı/termin gizlenir, liste cevap sütununda "BİLGİ" rozeti; "Cevap Bekleyen" KPI, hızlı filtre, UETS hatırlatma ve mobil bekleyen sayacından hariç.
 - Modal: evrak türü seçim kartları, kompakt OCR şeridi, koşullu "Cevap Durumu" bölümü.
 - Cevap detayı: "Cevap verildi" açıkken cevap tarihi + Evraklardan Seç (giden `ilgili_evrak_id` eşleme) / Dosya Yükle (`evrak_takip_cevap_ekleri`, uploads/evrak-takip/cevap/) / Yazı Yaz (`evrak_takip.cevap_metni`). SQL: database/evrak_gelen_tur.sql.
+- Gelen evrak sevk + tarihçe: UETS'e özel sevk (evrak_sevk) ve tarihçe (evrak_tarihce) tüm gelen evraklara açıldı (menüde "Personele Sevk Et" / "Evrak Tarihçesi"). Kayıt, düzenleme (alan farkları), atama, cevap, sevk, sevk görüldü olayları loglanır; eski kayıtlarda "kayıt" satırı olusturma_tarihi'nden türetilir. Yeni tablo/yetki yok (evrak-takip/list politikası).
+- Tarihçe tüm evraklara (gelen + giden) genişletildi: kayıt/düzenleme farkları loglanır, giden için onay olayları aynı evrak_tarihce'de görünür; menüde "Evrak Tarihçesi" her satırda. Kayıt satırı eski evraklarda olusturma_tarihi'nden türetilir.

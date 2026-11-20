@@ -362,8 +362,9 @@ class EvrakSevkModel extends Model
     {
         $evrakId = (int) $evrak->id;
         $firmaId = (int) $evrak->firma_id;
-        if (!self::isRestricted($evrak)) {
-            throw new Exception('Yalnızca UETS ile gelen evraklar sevk edilebilir.');
+        $kisitli = self::isRestricted($evrak);
+        if (($evrak->evrak_tipi ?? '') !== 'gelen') {
+            throw new Exception('Yalnızca gelen evraklar sevk edilebilir.');
         }
         if (!$this->canView($evrak, $fromUserId)) {
             throw new Exception('Bu evrakı sevk etme yetkiniz yok.');
@@ -375,7 +376,7 @@ class EvrakSevkModel extends Model
         if (!in_array($toUserId, $validRecipients, true)) {
             throw new Exception('Seçilen personel bu evrakı alabilecek yetkide değil.');
         }
-        if ($this->userHasFullAccess($toUserId)) {
+        if ($kisitli && $this->userHasFullAccess($toUserId)) {
             throw new Exception('Seçilen personel bu evrakı zaten görüntüleyebiliyor.');
         }
         if ($this->hasActiveSevk($evrakId, $toUserId)) {
@@ -408,13 +409,13 @@ class EvrakSevkModel extends Model
             throw $e;
         }
 
-        $this->notifyRecipient($evrak, $fromUserId, $toUserId, $note);
+        $this->notifyRecipient($evrak, $fromUserId, $toUserId, $note, $kisitli);
         try {
             (new SystemLogModel())->logActionForFirm(
                 $firmaId,
                 $fromUserId,
-                'UETS_SEVK',
-                "UETS evrakı sevk edildi. Evrak ID: {$evrakId}, Alan Kullanıcı ID: {$toUserId}."
+                $kisitli ? 'UETS_SEVK' : 'EVRAK_SEVK',
+                ($kisitli ? 'UETS evrakı' : 'Gelen evrak') . " sevk edildi. Evrak ID: {$evrakId}, Alan Kullanıcı ID: {$toUserId}."
             );
         } catch (\Throwable $e) {
             error_log('EvrakSevkModel log hatası: ' . $e->getMessage());
@@ -496,14 +497,15 @@ class EvrakSevkModel extends Model
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
-    private function notifyRecipient(object $evrak, int $fromUserId, int $toUserId, string $note = ''): void
+    private function notifyRecipient(object $evrak, int $fromUserId, int $toUserId, string $note = '', bool $kisitli = true): void
     {
         try {
             $userModel = new UserModel();
             $from = $userModel->find($fromUserId);
             $fromName = trim((string) ($from->adi_soyadi ?? $from->user_name ?? 'Bir kullanıcı'));
-            $title = 'UETS Evrakı Size Sevk Edildi';
-            $message = $fromName . ' tarafından size bir UETS tebligat evrakı sevk edildi: ' . mb_substr((string) ($evrak->konu ?? ''), 0, 120);
+            $tur = $kisitli ? 'UETS tebligat evrakı' : 'gelen evrak';
+            $title = $kisitli ? 'UETS Evrakı Size Sevk Edildi' : 'Gelen Evrak Size Sevk Edildi';
+            $message = $fromName . ' tarafından size bir ' . $tur . ' sevk edildi: ' . mb_substr((string) ($evrak->konu ?? ''), 0, 120);
 
             $sent = (new BildirimModel())->createNotificationWithPush(
                 $toUserId,
@@ -540,7 +542,7 @@ class EvrakSevkModel extends Model
                 }
             }
             $body = '<p>Merhaba <b>' . $e($to->adi_soyadi ?? '') . '</b>,</p>'
-                . '<p>' . $e($fromName) . ' tarafından size bir UETS tebligat evrakı sevk edildi.</p>'
+                . '<p>' . $e($fromName) . ' tarafından size bir ' . $e($tur) . ' sevk edildi.</p>'
                 . '<table style="border-collapse:collapse;font-size:14px;">' . $table . '</table>';
 
             $appBase = trim((string) ($_ENV['APP_BASE'] ?? ($_SERVER['HTTP_HOST'] ?? '')), " \t\n\r\0\x0B\"'");

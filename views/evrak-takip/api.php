@@ -670,6 +670,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
 
+                $yeniCevapDosyaSayisi = 0;
+                $oncekiCevapIds = $id > 0 ? array_map(static fn(object $r): int => (int) $r->id, $Model->getCevapYazilari($real_id)) : [];
                 if (($data['evrak_tipi'] ?? 'gelen') === 'gelen' && !empty($data['cevap_verildi_mi'])) {
                     $Model->syncCevapGiden($real_id, $cevapGidenIds);
                     $Model->deleteCevapDosyalari($real_id, $silinenCevapDosyaIds);
@@ -702,6 +704,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             if (!move_uploaded_file($cTmp, $cevapDir . $cStored)) {
                                 throw new Exception($cName . ' kaydedilemedi.');
                             }
+                            $yeniCevapDosyaSayisi++;
                             $Model->saveCevapDosyasi($real_id, [
                                 'dosya_adi' => mb_substr(basename((string) $cName), 0, 255, 'UTF-8'),
                                 'dosya_yolu' => 'uploads/evrak-takip/cevap/' . $cStored,
@@ -717,6 +720,69 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'id' => $real_id,
                     'ekler' => implode("\n", array_map(fn($attachment) => $attachment->dosya_adi, $currentAttachments)),
                 ]);
+                {
+                    $kayitTipi = ($data['evrak_tipi'] ?? 'gelen') === 'giden' ? 'giden' : 'gelen';
+                    $tarihceModel = new \App\Model\EvrakSevkModel();
+                    $tarihceFirma = (int) $_SESSION['firma_id'];
+                    $sonrasi = $Model->getById($real_id);
+                    if (empty($existingDocument)) {
+                        $tarihceModel->recordHistory($tarihceFirma, $real_id, 'kayit', $currentUserId, null, ($kayitTipi === 'gelen' ? 'Gelen evrak' : 'Giden evrak') . ' kaydedildi' . (!empty($sonrasi->evrak_no) ? ' (Evrak No: ' . $sonrasi->evrak_no . ')' : '') . ($kayitTipi === 'gelen' ? (($sonrasi->gelen_tur ?? 'islem') === 'bilgi' ? ' · Bilgi amaçlı' : ' · İşlem/cevap gerekli') : '') . '.');
+                        if ($kayitTipi === 'gelen' && (!empty($sonrasi->personel_adi) || !empty($sonrasi->ilgili_personel_adi))) {
+                            $tarihceModel->recordHistory($tarihceFirma, $real_id, 'atama', $currentUserId, null, trim((!empty($sonrasi->personel_adi) ? 'Zimmetlenen: ' . $sonrasi->personel_adi . '. ' : '') . (!empty($sonrasi->ilgili_personel_adi) ? 'İlgili: ' . $sonrasi->ilgili_personel_adi . '.' : '')));
+                        }
+                    } else {
+                        $tr = static fn($v): string => $v === null || $v === '' ? '-' : (string) $v;
+                        $tarihFmt = static fn($v): string => !empty($v) && strtotime((string) $v) ? date('d.m.Y', strtotime((string) $v)) : '-';
+                        $degisen = [];
+                        foreach (['konu' => 'Konu', 'kurum_adi' => 'Kurum'] as $alan => $etiket) {
+                            if ((string) ($existingDocument->$alan ?? '') !== (string) ($sonrasi->$alan ?? '')) {
+                                $degisen[] = $etiket . ': ' . $tr($existingDocument->$alan ?? '') . ' → ' . $tr($sonrasi->$alan ?? '');
+                            }
+                        }
+                        if ($kayitTipi === 'giden' && (string) ($existingDocument->gonderim_kanali ?? '') !== (string) ($sonrasi->gonderim_kanali ?? '')) {
+                            $degisen[] = 'Gönderim kanalı: ' . $tr($existingDocument->gonderim_kanali ?? '') . ' → ' . $tr($sonrasi->gonderim_kanali ?? '');
+                        }
+                        foreach (['tarih' => 'Evrak tarihi', 'son_tarih' => 'Son tarih', 'cevap_tarihi' => 'Cevap tarihi'] as $alan => $etiket) {
+                            if ($tarihFmt($existingDocument->$alan ?? null) !== $tarihFmt($sonrasi->$alan ?? null)) {
+                                $degisen[] = $etiket . ': ' . $tarihFmt($existingDocument->$alan ?? null) . ' → ' . $tarihFmt($sonrasi->$alan ?? null);
+                            }
+                        }
+                        if ($kayitTipi === 'gelen' && ($existingDocument->gelen_tur ?? 'islem') !== ($sonrasi->gelen_tur ?? 'islem')) {
+                            $degisen[] = 'Evrak türü: ' . (($sonrasi->gelen_tur ?? 'islem') === 'bilgi' ? 'Bilgi amaçlı' : 'İşlem/cevap gerekli');
+                        }
+                        if ((string) ($existingDocument->ekler ?? '') !== (string) ($sonrasi->ekler ?? '')) {
+                            $degisen[] = 'Evrak dosyaları değişti';
+                        }
+                        if ((string) ($existingDocument->aciklama ?? '') !== (string) ($sonrasi->aciklama ?? '')) {
+                            $degisen[] = 'Açıklama güncellendi';
+                        }
+                        if ($degisen !== []) {
+                            $tarihceModel->recordHistory($tarihceFirma, $real_id, 'duzenleme', $currentUserId, null, implode(' | ', $degisen));
+                        }
+                        if ($kayitTipi === 'gelen' && (string) ($existingDocument->personel_adi ?? '') !== (string) ($sonrasi->personel_adi ?? '') || $kayitTipi === 'gelen' && (string) ($existingDocument->ilgili_personel_adi ?? '') !== (string) ($sonrasi->ilgili_personel_adi ?? '')) {
+                            $tarihceModel->recordHistory($tarihceFirma, $real_id, 'atama', $currentUserId, null, 'Zimmetlenen: ' . $tr($sonrasi->personel_adi ?? '') . ' · İlgili: ' . $tr($sonrasi->ilgili_personel_adi ?? ''));
+                        }
+                    }
+                    $cevapDegisti = $kayitTipi === 'gelen' && (int) ($existingDocument->cevap_verildi_mi ?? 0) !== (int) ($sonrasi->cevap_verildi_mi ?? 0)
+                        || (string) ($existingDocument->cevap_metni ?? '') !== (string) ($sonrasi->cevap_metni ?? '')
+                        || $oncekiCevapIds !== array_map(static fn(object $r): int => (int) $r->id, $Model->getCevapYazilari($real_id))
+                        || $yeniCevapDosyaSayisi > 0 || $silinenCevapDosyaIds !== [];
+                    if ($cevapDegisti && (!empty($sonrasi->cevap_verildi_mi) || !empty($existingDocument->cevap_verildi_mi))) {
+                        $parcalar = [];
+                        $parcalar[] = !empty($sonrasi->cevap_verildi_mi) ? 'Cevap verildi' . (!empty($sonrasi->cevap_tarihi) ? ' (' . date('d.m.Y', strtotime((string) $sonrasi->cevap_tarihi)) . ')' : '') : 'Cevap işareti kaldırıldı';
+                        $baglanan = $Model->getCevapYazilari($real_id);
+                        if ($baglanan !== []) {
+                            $parcalar[] = 'Bağlı giden evrak: ' . implode(', ', array_map(static fn(object $r): string => (string) ($r->evrak_no ?: $r->konu), $baglanan));
+                        }
+                        if ($yeniCevapDosyaSayisi > 0) {
+                            $parcalar[] = $yeniCevapDosyaSayisi . ' cevap dosyası yüklendi';
+                        }
+                        if (!empty($sonrasi->cevap_metni)) {
+                            $parcalar[] = 'Cevap metni girildi';
+                        }
+                        $tarihceModel->recordHistory($tarihceFirma, $real_id, 'cevap', $currentUserId, null, implode(' · ', $parcalar));
+                    }
+                }
                 if (($data['evrak_tipi'] ?? 'gelen') === 'giden') {
                     $Model->resetApprovalWorkflow($real_id, array_map(fn($user) => (int) $user->id, $validSigners));
                 }
@@ -1325,6 +1391,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $sevkModel->markSeen((int) $_SESSION['firma_id'], $id, $currentUserId);
                     $evrak->uets_kisitli = true;
                     $evrak->tarihce_gorebilir = $sevkModel->hasFullAccess();
+                } elseif (($evrak->evrak_tipi ?? '') === 'gelen') {
+                    $sevkModel->markSeen((int) $_SESSION['firma_id'], $id, $currentUserId);
                 }
 
                 if (($evrak->kaynak_tipi ?? '') === 'uets' || !empty($evrak->uets_mesaj_id)) {
@@ -1532,9 +1600,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 evrak-karsi-no" data-id="' . $esc($encryptedId) . '" title="Karşı Kurum Evrak No"><i class="bx bx-link-alt text-success"></i><span>' . (empty($evrak->karsi_evrak_no) ? 'Karşı Kurum No Gir' : 'Karşı Kurum No Düzenle') . '</span></button>';
                     }
                     if ($kepSent) $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 btn-kep-onizle-menu" data-id="' . $esc($encryptedId) . '" title="KEP İletisi ve Delil Önizleme"><i class="bx bx-mail-send text-primary"></i><span>KEP İletisi ve Delil Önizleme</span></button>';
-                    if (\App\Model\EvrakSevkModel::isRestricted($evrak)) {
+                    $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 btn-uets-tarihce" data-id="' . $esc($encryptedId) . '" data-subject="' . $esc($evrak->konu) . '" data-full="1" data-tip="' . $esc($type) . '" title="Evrak Tarihçesi"><i class="bx bx-history text-secondary"></i><span>Evrak Tarihçesi</span></button>';
+                    if ($type === 'gelen') {
                         $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 btn-uets-sevk" data-id="' . $esc($encryptedId) . '" data-subject="' . $esc($evrak->konu) . '" title="Personele Sevk Et"><i class="bx bx-share text-warning"></i><span>Personele Sevk Et</span></button>';
-                        $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 btn-uets-tarihce" data-id="' . $esc($encryptedId) . '" data-subject="' . $esc($evrak->konu) . '" data-full="' . ($uetsFullAccess ? '1' : '0') . '" title="Sevk ve Erişim Tarihçesi"><i class="bx bx-history text-secondary"></i><span>Sevk ve Erişim Tarihçesi</span></button>';
                     }
                     if (!empty($evrak->uets_mesaj_id)) $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 btn-uets-deliller" data-uets-id="' . $esc($evrak->uets_mesaj_id) . '" title="UETS Delillerini Görüntüle"><i class="bx bx-shield-quarter text-info"></i><span>UETS Delillerini Görüntüle</span></button>';
                     $hasSigners = !in_array(trim((string) ($evrak->imza_kullanici_ids ?? '')), ['', '[]', 'null'], true);
@@ -1922,16 +1990,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             case 'uets-sevk-personel-listesi':
                 $evrak = $Model->getById($decryptId((string) ($_POST['id'] ?? '')));
-                if (!$evrak || !\App\Model\EvrakSevkModel::isRestricted($evrak)) {
+                if (!$evrak || ($evrak->evrak_tipi ?? '') !== 'gelen') {
                     throw new Exception('Evrak bulunamadı.');
                 }
                 $sevkModel = new \App\Model\EvrakSevkModel();
                 $users = $sevkModel->recipients((int) $_SESSION['firma_id'], (int) ($_SESSION['owner_id'] ?? 0), $currentUserId);
                 $evrakIdNum = (int) $evrak->id;
-                echo json_encode(['status' => 'success', 'data' => array_map(static function (object $u) use ($sevkModel, $evrakIdNum): array {
+                $kisitliEvrak = \App\Model\EvrakSevkModel::isRestricted($evrak);
+                echo json_encode(['status' => 'success', 'data' => array_map(static function (object $u) use ($sevkModel, $evrakIdNum, $kisitliEvrak): array {
                     $uid = (int) $u->id;
                     $neden = '';
-                    if ($sevkModel->userHasFullAccess($uid)) {
+                    if ($kisitliEvrak && $sevkModel->userHasFullAccess($uid)) {
                         $neden = 'Tüm UETS evraklarını görüntüleme yetkisi var';
                     } elseif ($sevkModel->hasActiveSevk($evrakIdNum, $uid)) {
                         $neden = 'Evrak zaten sevk edilmiş';
@@ -1977,7 +2046,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             case 'uets-sevk-gecmisi':
                 $evrakId = $decryptId((string) ($_POST['id'] ?? ''));
                 $evrak = $Model->getById($evrakId);
-                if (!$evrak || !\App\Model\EvrakSevkModel::isRestricted($evrak)) {
+                if (!$evrak || ($evrak->evrak_tipi ?? '') !== 'gelen') {
                     throw new Exception('Evrak bulunamadı.');
                 }
                 $chain = (new \App\Model\EvrakSevkModel())->sevkChain((int) $_SESSION['firma_id'], $evrakId);
@@ -2066,18 +2135,36 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             case 'evrak-tarihce':
                 $evrakId = $decryptId((string) ($_POST['id'] ?? ''));
                 $evrak = $Model->getById($evrakId);
-                if (!$evrak || !\App\Model\EvrakSevkModel::isRestricted($evrak)) {
+                if (!$evrak || !(new \App\Model\EvrakSevkModel())->canView($evrak)) {
                     throw new Exception('Evrak bulunamadı.');
                 }
                 $trail = (new \App\Model\EvrakSevkModel())->auditTrail((int) $_SESSION['firma_id'], $evrakId);
-                echo json_encode(['status' => 'success', 'data' => array_map(static fn(object $r): array => [
+                $rows = array_map(static fn(object $r): array => [
                     'islem' => (string) $r->islem,
                     'islem_yapan' => (string) ($r->islem_yapan ?? 'Sistem'),
                     'hedef' => (string) ($r->hedef ?? ''),
                     'aciklama' => (string) ($r->aciklama ?? ''),
                     'ip' => (string) ($r->ip_adresi ?? ''),
                     'tarih' => $r->created_at ? date('d.m.Y H:i:s', strtotime($r->created_at)) : '',
-                ], $trail)], JSON_UNESCAPED_UNICODE);
+                ], $trail);
+                $kayitVar = false;
+                foreach ($trail as $trailRow) {
+                    if (in_array($trailRow->islem, ['kayit', 'uets_alindi'], true)) {
+                        $kayitVar = true;
+                    }
+                }
+                if (!$kayitVar && !empty($evrak->olusturma_tarihi)) {
+                    $kayitYapan = !empty($evrak->olusturan_kullanici_id) ? (new \App\Model\UserModel())->find((int) $evrak->olusturan_kullanici_id) : null;
+                    $rows[] = [
+                        'islem' => 'kayit',
+                        'islem_yapan' => (string) ($kayitYapan->adi_soyadi ?? $kayitYapan->user_name ?? 'Sistem'),
+                        'hedef' => '',
+                        'aciklama' => 'Evrak sisteme kaydedildi.',
+                        'ip' => '',
+                        'tarih' => date('d.m.Y H:i:s', strtotime((string) $evrak->olusturma_tarihi)),
+                    ];
+                }
+                echo json_encode(['status' => 'success', 'data' => $rows], JSON_UNESCAPED_UNICODE);
                 break;
 
             case 'evrak-onay-tarihcesi':

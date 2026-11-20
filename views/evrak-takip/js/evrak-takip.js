@@ -3307,6 +3307,16 @@ $(function () {
     goruntuleme: "Evrak görüntülendi",
     eyp_indirme: "EYP paketi indirildi",
     uets_alindi: "UETS'ten alındı",
+    kayit: "Evrak kaydedildi",
+    duzenleme: "Evrak güncellendi",
+    atama: "Personel ataması",
+    cevap: "Cevap bilgisi",
+    onay_sunuldu: "Onaya sunuldu",
+    onay_imzalandi: "İmzalandı",
+    onay_tamamlandi: "Onay tamamlandı",
+    onay_iade: "İade edildi",
+    onay_geri_alindi: "Onay geri alındı",
+    karsi_no_guncellendi: "Karşı kurum evrak no güncellendi",
     dosya_acildi: "Dosya açıldı",
   };
 
@@ -3538,13 +3548,15 @@ $(function () {
   $(document).on("click", ".btn-uets-tarihce", function () {
     const id = $(this).data("id");
     const full = String($(this).data("full")) === "1";
+    const gidenEvrak = String($(this).data("tip")) === "giden";
+    $("#uetsSevkZinciri").toggle(!gidenEvrak).prev("h6").toggle(!gidenEvrak);
     $("#uetsTarihceKonu").text($(this).data("subject") || "-");
     $("#uetsSevkZinciri").html('<div class="text-muted py-2"><i class="bx bx-loader-alt bx-spin"></i> Yükleniyor...</div>');
     $("#uetsDenetimIzi").html("");
     $("#uetsDenetimBlok").toggle(full);
     $("#modalUetsTarihce").modal("show");
 
-    $.post(sevkApi, { action: "uets-sevk-gecmisi", id: id }, null, "json").done(function (res) {
+    if (!gidenEvrak) $.post(sevkApi, { action: "uets-sevk-gecmisi", id: id }, null, "json").done(function (res) {
       if (res.status !== "success") {
         $("#uetsSevkZinciri").html('<div class="alert alert-danger mb-0">' + escapeHtml(res.message || "Sevk geçmişi alınamadı.") + "</div>");
         return;
