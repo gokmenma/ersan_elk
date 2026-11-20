@@ -2164,7 +2164,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         'tarih' => date('d.m.Y H:i:s', strtotime((string) $evrak->olusturma_tarihi)),
                     ];
                 }
-                echo json_encode(['status' => 'success', 'data' => $rows], JSON_UNESCAPED_UNICODE);
+                $evrakTipiTarihce = ($evrak->evrak_tipi ?? 'gelen') === 'giden' ? 'giden' : 'gelen';
+                $evrakOzeti = [
+                    'Evrak No (Sayı)' => (string) ($evrak->evrak_no ?? ''),
+                    'Evrak Tarihi' => !empty($evrak->tarih) ? date('d.m.Y', strtotime((string) $evrak->tarih)) : '',
+                    ($evrakTipiTarihce === 'gelen' ? 'Geldiği Kurum' : 'Gönderilen Kurum') => (string) ($evrak->kurum_adi ?? ''),
+                    'Konu' => (string) ($evrak->konu ?? ''),
+                    'Evrak Türü' => $evrakTipiTarihce === 'gelen' ? (($evrak->gelen_tur ?? 'islem') === 'bilgi' ? 'Gelen · Bilgi amaçlı' : 'Gelen · İşlem/cevap gerekli') : 'Giden',
+                    'Zimmetlenen Personel' => (string) ($evrak->personel_adi ?? ''),
+                    'İlgili Personel' => (string) ($evrak->ilgili_personel_adi ?? ''),
+                ];
+                if ($evrakTipiTarihce === 'gelen' && ($evrak->gelen_tur ?? 'islem') !== 'bilgi') {
+                    $evrakOzeti['Cevap Durumu'] = !empty($evrak->cevap_verildi_mi) ? 'Cevap verildi' . (!empty($evrak->cevap_tarihi) ? ' (' . date('d.m.Y', strtotime((string) $evrak->cevap_tarihi)) . ')' : '') : 'Cevap bekleniyor';
+                    if (!empty($evrak->son_tarih)) {
+                        $evrakOzeti['Cevap Son Tarihi'] = date('d.m.Y', strtotime((string) $evrak->son_tarih));
+                    }
+                }
+                echo json_encode(['status' => 'success', 'data' => $rows, 'evrak' => array_map(null, array_keys($evrakOzeti), array_values($evrakOzeti))], JSON_UNESCAPED_UNICODE);
                 break;
 
             case 'evrak-onay-tarihcesi':

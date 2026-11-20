@@ -833,6 +833,7 @@ $(document).ready(function() {
             <div class="modal-body p-4">
                 <div class="bg-light p-3 rounded-3 mb-3 border font-size-13">
                     <strong>Evrak:</strong> <span id="uetsTarihceKonu" class="text-primary fw-semibold"></span>
+                    <div id="uetsTarihceEvrakBilgi" class="row g-2 mt-1"></div>
                 </div>
                 <h6 class="font-size-13 fw-bold mb-2">Sevk Zinciri</h6>
                 <div id="uetsSevkZinciri" class="mb-4"></div>
@@ -840,6 +841,10 @@ $(document).ready(function() {
                     <h6 class="font-size-13 fw-bold mb-2">Tüm İşlem Kayıtları (Kayıt, Atama, Sevk, Cevap)</h6>
                     <div id="uetsDenetimIzi"></div>
                 </div>
+            </div>
+            <div class="modal-footer border-top">
+                <button type="button" class="btn btn-outline-secondary bg-white fw-bold" id="btnTarihceYazdir"><i class="bx bx-printer me-1"></i>Yazdır</button>
+                <button type="button" class="btn btn-primary fw-bold px-4" data-bs-dismiss="modal">Kapat</button>
             </div>
         </div>
     </div>

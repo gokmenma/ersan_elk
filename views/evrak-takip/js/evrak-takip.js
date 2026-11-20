@@ -3404,7 +3404,13 @@ $(function () {
       Swal.fire("Uyarı", "Lütfen sevk edilecek en az bir personel seçiniz.", "warning");
       return;
     }
-    const btn = $(this).prop("disabled", true);
+    const btn = $(this);
+    const btnHtml = btn.html();
+    const kilitler = $("#modalUetsSevk [data-bs-dismiss], #modalUetsSevk .btn-close");
+    btn.prop("disabled", true).html('<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Sevk ediliyor...');
+    kilitler.prop("disabled", true);
+    sevkListe.css({ "pointer-events": "none", opacity: 0.6 });
+    $("#uets_sevk_notu, #uets_sevk_ara").prop("disabled", true);
     $.post(sevkApi, {
       action: "uets-sevk-et",
       id: $("#uetsSevkEvrakId").val(),
@@ -3423,7 +3429,10 @@ $(function () {
         Swal.fire("Hata", "Sevk işlemi yapılamadı.", "error");
       })
       .always(function () {
-        btn.prop("disabled", false);
+        btn.prop("disabled", false).html(btnHtml);
+        kilitler.prop("disabled", false);
+        sevkListe.css({ "pointer-events": "", opacity: "" });
+        $("#uets_sevk_notu, #uets_sevk_ara").prop("disabled", false);
       });
   });
 
@@ -3545,12 +3554,44 @@ $(function () {
       .always(function () { btn.prop("disabled", false); });
   });
 
+  $(document).on("click", "#btnTarihceYazdir", function () {
+    const govde = $("#modalUetsTarihce .modal-body").clone();
+    govde.find(".bx-spin").closest("div").remove();
+    const pencere = window.open("", "_blank");
+    if (!pencere) {
+      Swal.fire("Engellendi", "Yazdırma penceresi açılamadı; tarayıcınızın açılır pencere engelini kapatın.", "warning");
+      return;
+    }
+    const baslik = "Evrak Tarihçesi";
+    pencere.document.write('<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>' + baslik + '</title><style>' +
+      'body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#111;margin:20px}h1{font-size:18px;margin:0 0 4px}h6{font-size:13px;margin:16px 0 6px}' +
+      '.bg-light{background:#f3f4f6;border:1px solid #d1d5db;padding:8px 10px;border-radius:4px;margin:10px 0}' +
+      'table{width:100%;border-collapse:collapse}th,td{border:1px solid #9ca3af;padding:4px 6px;text-align:left;vertical-align:top}th{background:#e5e7eb}' +
+      'ul{list-style:none;padding:0;margin:0}li{border:1px solid #d1d5db;padding:6px 8px;margin-bottom:4px}.text-muted{color:#555}.badge{border:1px solid #9ca3af;padding:0 6px;border-radius:8px;font-size:11px}' +
+      '.row{display:flex;flex-wrap:wrap}.col-sm-6{width:50%;box-sizing:border-box;padding:2px 6px 4px 0}.col-12{width:100%}.text-uppercase{text-transform:uppercase;font-size:10px}.fw-semibold{font-weight:600}' +
+      '.alert{border:1px solid #d1d5db;padding:8px;text-align:center}.bx{display:none}.text-nowrap{white-space:nowrap}.foot{margin-top:18px;font-size:11px;color:#555}' +
+      '</style></head><body><h1>' + baslik + '</h1>' + govde.html() +
+      '<div class="foot">Yazdırma tarihi: ' + new Date().toLocaleString("tr-TR") + '</div></body></html>');
+    pencere.document.close();
+    pencere.focus();
+    setTimeout(function () { pencere.print(); }, 300);
+  });
+
   $(document).on("click", ".btn-uets-tarihce", function () {
     const id = $(this).data("id");
     const full = String($(this).data("full")) === "1";
     const gidenEvrak = String($(this).data("tip")) === "giden";
     $("#uetsSevkZinciri").toggle(!gidenEvrak).prev("h6").toggle(!gidenEvrak);
     $("#uetsTarihceKonu").text($(this).data("subject") || "-");
+    $("#uetsTarihceEvrakBilgi").html('<div class="col-12 text-muted font-size-12"><i class="bx bx-loader-alt bx-spin"></i> Evrak bilgileri yükleniyor...</div>');
+    $.post(sevkApi, { action: "evrak-tarihce", id: id }, null, "json").done(function (res) {
+      let html = "";
+      (res.evrak || []).forEach(function (satir) {
+        if (!satir[1] || satir[0] === "Konu") return;
+        html += '<div class="col-sm-6"><div class="text-muted font-size-11 text-uppercase">' + escapeHtml(satir[0]) + '</div><div class="fw-semibold">' + escapeHtml(satir[1]) + "</div></div>";
+      });
+      $("#uetsTarihceEvrakBilgi").html(html);
+    }).fail(function () { $("#uetsTarihceEvrakBilgi").empty(); });
     $("#uetsSevkZinciri").html('<div class="text-muted py-2"><i class="bx bx-loader-alt bx-spin"></i> Yükleniyor...</div>');
     $("#uetsDenetimIzi").html("");
     $("#uetsDenetimBlok").toggle(full);
