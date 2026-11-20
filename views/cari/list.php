@@ -24,6 +24,8 @@ foreach ($ulkeler as $u) {
     }
 }
 
+$aktarimOptions = (new \App\Model\CariModel())->getAktarimSecenekleri();
+
 $aliciTuruOptions = [
     'KURUMSAL' => 'Kurumsal Firma (Tüzel Kişi / VKN)',
     'BIREYSEL' => 'Bireysel Şahıs (Gerçek Kişi / TCKN)'
@@ -229,7 +231,7 @@ $belgeTuruOptions = [
                             <th data-filter="string" style="width: 120px;">TELEFON</th>
                             <th data-filter="string" style="width: 140px;">İL / İLÇE</th>
                             <th data-filter="number" class="text-end" style="width: 130px;">BAKİYE</th>
-                            <th data-filter="none" style="width: 120px;" class="text-center">İŞLEMLER</th>
+                            <th data-filter="none" style="width: 160px;" class="text-center">İŞLEMLER</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -444,6 +446,37 @@ $belgeTuruOptions = [
                     <button type="submit" class="btn btn-primary px-4">Kaydet</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Hareket Aktarım Modalı -->
+<div class="modal fade" id="hareketAktarModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-bottom px-4 py-3">
+                <div>
+                    <h5 class="modal-title fw-bold mb-0 font-size-16">Hareketleri Başka Cariye Aktar</h5>
+                    <p class="text-muted font-size-12 mb-0">Aynı cari farklı adlarla açıldıysa hareketleri tek carede birleştirin</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body px-4 py-3">
+                <input type="hidden" id="aktarKaynakId">
+                <div class="mb-3 p-2 bg-light rounded border font-size-13">
+                    <span class="text-muted">Kaynak cari:</span> <strong id="aktarKaynakAd"></strong>
+                </div>
+                <?= Form::FormSelect2("aktarHedefCari", ['' => 'Hedef cariyi seçin...'] + $aktarimOptions, "", "Hedef Cari", "user-check") ?>
+                <div class="form-check mt-3">
+                    <input class="form-check-input" type="checkbox" id="aktarKaynakSil" value="1">
+                    <label class="form-check-label font-size-13" for="aktarKaynakSil">Aktarımdan sonra kaynak cariyi sil</label>
+                </div>
+                <div class="alert alert-warning py-2 px-3 font-size-12 mt-3 mb-0">Kaynak carideki tüm aktif hareketler ve ona bağlı faturalar hedef cariye taşınır.</div>
+            </div>
+            <div class="modal-footer border-top px-4 py-3">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="button" class="btn btn-primary px-4" id="btnHareketAktarOnayla"><i class="bx bx-git-compare me-1"></i> Aktar</button>
+            </div>
         </div>
     </div>
 </div>

@@ -2384,3 +2384,4 @@
 
 - [x] Evrak AI cevap taslağı hukuki iyileştirme: senaryo tespiti, güçlendirilmiş prompt, çıktı kural kontrolü (2026-11-20). Kalan: bordrodan son net maaş ve ayrılış alacağı verisinin yer tutucu yerine otomatik doldurulması; şablonların hukuk müşavirince onayı; tarayıcıda gerçek evrakla deneme.
 - [x] Gelen faturalarda toplu cariye işle (2026-11-20). Kalan: tarayıcıda gerçek faturalarla deneme.
+- [x] Son hareketler sıralama düzeltmesi + cariler arası hareket aktarımı (2026-11-20). Kalan: politika SQL'in çalıştırılması, tarayıcıda deneme.

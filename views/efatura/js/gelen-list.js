@@ -272,7 +272,7 @@ $(document).ready(function() {
                 render: function(data, type, row, meta) {
                     return `
                     <div class="form-check font-size-16">
-                        <input class="form-check-input row-select-checkbox" type="checkbox" data-id="${row.encrypted_id}" id="chk_${meta.row}">
+                        <input class="form-check-input row-select-checkbox" type="checkbox" data-id="${row.encrypted_id}" id="chk_${meta.row}" ${(row.cariye_islendi == 1 || row.ticari_yanit === 'RED') ? 'disabled title="Cariye işlenmiş veya reddedilmiş fatura seçilemez"' : ''}>
                         <label class="form-check-label" for="chk_${meta.row}"></label>
                     </div>`;
                 }
@@ -448,12 +448,12 @@ $(document).ready(function() {
 
     $('#checkAll').on('change', function() {
         const isChecked = $(this).is(':checked');
-        $('.row-select-checkbox').prop('checked', isChecked);
+        $('.row-select-checkbox:not(:disabled)').prop('checked', isChecked);
         updateBulkCariyeButton();
     });
 
     $('#tblGelenFaturalar tbody').on('change', '.row-select-checkbox', function() {
-        const all = $('.row-select-checkbox').length;
+        const all = $('.row-select-checkbox:not(:disabled)').length;
         $('#checkAll').prop('checked', all > 0 && $('.row-select-checkbox:checked').length === all);
         updateBulkCariyeButton();
     });

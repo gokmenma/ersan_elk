@@ -24,7 +24,8 @@ $cariActions = [
     'hesap-hareketleri-ajax-list', 'hizli-hareket-kaydet', 'hareket-getir',
     'hareket-sil', 'hareket-pdf-analiz', 'hareket-pdf-kaydet', 'tum-hareketler-getir',
     'son-hareketler-getir', 'tum-hareketler-ajax-list', 'dashboard-data', 'dashboard_data',
-    'banka-ekstre-analiz', 'banka_ekstre_analiz', 'banka-ekstre-aktar', 'banka_ekstre_aktar'
+    'banka-ekstre-analiz', 'banka_ekstre_analiz', 'banka-ekstre-aktar', 'banka_ekstre_aktar',
+    'cari-hareket-aktar'
 ];
 if (!in_array($action, $cariActions, true)) {
     http_response_code(400);
@@ -39,7 +40,7 @@ if ($permissionPolicy->isReady()) {
     $movementActions = [
         'hesap-hareketleri-ajax-list', 'hizli-hareket-kaydet', 'hareket-getir',
         'hareket-sil', 'hareket-pdf-analiz', 'hareket-pdf-kaydet', 'tum-hareketler-getir',
-        'son-hareketler-getir', 'tum-hareketler-ajax-list'
+        'son-hareketler-getir', 'tum-hareketler-ajax-list', 'cari-hareket-aktar'
     ];
     $requiredPermission = in_array($action, $movementActions, true)
         ? 'cari_hesap_hareketleri'
@@ -103,6 +104,9 @@ if ($action == "cari-ajax-list") {
                     </a>
                     <button type="button" class="btn btn-subtle-success table-action-btn hareket-ekle" data-id="' . $enc_id . '" title="Hareket Ekle">
                         <i class="bx bx-plus-circle font-size-14"></i>
+                    </button>
+                    <button type="button" class="btn btn-subtle-info table-action-btn hareket-aktar" data-id="' . $enc_id . '" data-ad="' . htmlspecialchars((string)($row->CariAdi ?: $row->firma), ENT_QUOTES, 'UTF-8') . '" title="Hareketleri Başka Cariye Aktar">
+                        <i class="bx bx-git-compare font-size-14"></i>
                     </button>
                     <button type="button" class="btn btn-subtle-warning table-action-btn duzenle" data-id="' . $enc_id . '" title="Düzenle">
                         <i class="bx bx-edit-alt font-size-14"></i>
@@ -234,6 +238,34 @@ if ($action == "cari-sil") {
         echo json_encode(["status" => "success", "message" => "Cari başarıyla silindi."]);
     } catch (Exception $e) {
         echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+    }
+    exit;
+}
+
+if ($action == "cari-hareket-aktar") {
+    try {
+        $kaynakId = (int)Security::decrypt($_POST["kaynak_cari_id"] ?? "");
+        $hedefId = (int)Security::decrypt($_POST["hedef_cari_id"] ?? "");
+        $kaynakSil = isset($_POST["kaynak_sil"]) && $_POST["kaynak_sil"] == "1";
+
+        $adet = $CariHareket->hareketleriAktar($kaynakId, $hedefId);
+        if ($kaynakSil) {
+            $Cari->softDelete($kaynakId);
+        }
+
+        (new \App\Model\SystemLogModel())->logAction(
+            (int)($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0),
+            'Cari Hareket Aktarımı',
+            "Kaynak cari: $kaynakId, Hedef cari: $hedefId, Aktarılan hareket: $adet" . ($kaynakSil ? ', kaynak cari silindi' : ''),
+            \App\Model\SystemLogModel::LEVEL_INFO
+        );
+
+        echo json_encode(["status" => "success", "message" => "$adet hareket hedef cariye aktarıldı." . ($kaynakSil ? " Kaynak cari silindi." : "")]);
+    } catch (\InvalidArgumentException $e) {
+        echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+    } catch (\Throwable $e) {
+        error_log("cari-hareket-aktar: " . $e->getMessage());
+        echo json_encode(["status" => "error", "message" => "Hareketler aktarılamadı."]);
     }
     exit;
 }

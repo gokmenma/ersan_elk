@@ -642,6 +642,35 @@ class CariHareketleriModel extends Model
         ];
     }
 
+    public function hareketleriAktar(int $kaynakId, int $hedefId): int
+    {
+        if ($kaynakId <= 0 || $hedefId <= 0 || $kaynakId === $hedefId) {
+            throw new \InvalidArgumentException('Kaynak ve hedef cari farklı olmalıdır.');
+        }
+
+        $chk = $this->db->prepare("SELECT COUNT(*) FROM cari WHERE id IN (:k, :h) AND silinme_tarihi IS NULL");
+        $chk->execute(['k' => $kaynakId, 'h' => $hedefId]);
+        if ((int)$chk->fetchColumn() !== 2) {
+            throw new \InvalidArgumentException('Kaynak veya hedef cari bulunamadı.');
+        }
+
+        $this->db->beginTransaction();
+        try {
+            $up = $this->db->prepare("UPDATE $this->table SET cari_id = :hedef WHERE cari_id = :kaynak AND silinme_tarihi IS NULL");
+            $up->execute(['hedef' => $hedefId, 'kaynak' => $kaynakId]);
+            $adet = $up->rowCount();
+
+            $fat = $this->db->prepare("UPDATE faturalar SET cari_id = :hedef WHERE cari_id = :kaynak");
+            $fat->execute(['hedef' => $hedefId, 'kaynak' => $kaynakId]);
+
+            $this->db->commit();
+            return $adet;
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
     /**
      * Tüm cariler genelinde en son yapılan hesap hareketlerini getirir.
      *
@@ -676,7 +705,7 @@ class CariHareketleriModel extends Model
                 LEFT JOIN users u ON u.id = h.ekleyen_kullanici
                 LEFT JOIN faturalar f ON f.id = h.fatura_id
                 WHERE $where
-                ORDER BY h.islem_tarihi DESC, h.id DESC
+                ORDER BY COALESCE(h.kayit_tarihi, h.islem_tarihi) DESC, h.id DESC
                 LIMIT :limit";
 
         $stmt = $this->db->prepare($sql);

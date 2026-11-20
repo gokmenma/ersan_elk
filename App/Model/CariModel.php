@@ -313,6 +313,19 @@ class CariModel extends Model
         return $row ?: null;
     }
 
+    public function getAktarimSecenekleri(): array
+    {
+        $stmt = $this->db->prepare("SELECT id, CariAdi, firma, vkn_tckn FROM cari WHERE silinme_tarihi IS NULL ORDER BY CariAdi ASC");
+        $stmt->execute();
+        $options = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $r) {
+            $ad = trim((string)($r->CariAdi ?: $r->firma));
+            $vkn = trim((string)$r->vkn_tckn);
+            $options[Security::encrypt($r->id)] = $ad . ($vkn !== '' ? ' (' . $vkn . ')' : '');
+        }
+        return $options;
+    }
+
     /**
      * Faturadaki VKN/TCKN veya Ünvan bilgisine göre cari tablosunda eşleşen kaydı bulur.
      */

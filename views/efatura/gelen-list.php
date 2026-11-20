@@ -87,10 +87,6 @@ $title = 'Gelen Faturalar';
             </button>
             <?php endif; ?>
 
-            <button type="button" class="btn btn-outline-success bg-white top-action-btn shadow-sm d-none" id="btnBulkCariyeIsle">
-                <i class="bx bx-transfer-alt font-size-16"></i> Seçilenleri Cariye İşle (<span id="bulkCariyeCount">0</span>)
-            </button>
-
             <!-- 2. İşlemler Dropdown -->
             <div class="dropdown d-inline-block">
                 <button type="button" class="btn btn-outline-secondary bg-white top-action-btn dropdown-toggle shadow-sm" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -222,6 +218,9 @@ $title = 'Gelen Faturalar';
 
             <!-- Sağ Araç Çubuğu: Ürün Arama, Tarih Aralığı ve Dışa Aktarma Butonları -->
             <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+                <button type="button" class="btn btn-primary shadow-sm text-white d-none" id="btnBulkCariyeIsle" style="height: 32px; padding: 0 12px; font-size: 12px;">
+                    <i class="bx bx-transfer-alt font-size-14 align-middle"></i> Seçilenleri Cariye İşle (<span id="bulkCariyeCount">0</span>)
+                </button>
                 <!-- Ürün / Marka / İçerik Arama Alanı -->
                 <div class="d-flex align-items-center border rounded-3 px-2 py-1 shadow-sm gap-1 product-search-box" title="Fatura içeriğindeki ürün adı, marka, ürün kodu veya açıklamaya göre filtrele">
                     <i class="bx bx-package text-primary font-size-16"></i>
@@ -709,6 +708,8 @@ $title = 'Gelen Faturalar';
 #tblGelenFaturalar tbody tr:hover td {
     background-color: rgba(var(--bs-primary-rgb, 19, 91, 236), 0.05) !important;
 }
+#tblGelenFaturalar .btn-cariye-isle:disabled { opacity: .35 !important; cursor: not-allowed !important; filter: grayscale(1); pointer-events: auto; }
+#tblGelenFaturalar .row-select-checkbox:disabled { opacity: .35; cursor: not-allowed; }
 #tblGelenFaturalar tbody tr.selected td {
     background-color: rgba(var(--bs-primary-rgb, 19, 91, 236), 0.12) !important;
     color: inherit !important;
