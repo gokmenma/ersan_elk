@@ -87,6 +87,10 @@ $title = 'Gelen Faturalar';
             </button>
             <?php endif; ?>
 
+            <button type="button" class="btn btn-outline-success bg-white top-action-btn shadow-sm d-none" id="btnBulkCariyeIsle">
+                <i class="bx bx-transfer-alt font-size-16"></i> Seçilenleri Cariye İşle (<span id="bulkCariyeCount">0</span>)
+            </button>
+
             <!-- 2. İşlemler Dropdown -->
             <div class="dropdown d-inline-block">
                 <button type="button" class="btn btn-outline-secondary bg-white top-action-btn dropdown-toggle shadow-sm" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">

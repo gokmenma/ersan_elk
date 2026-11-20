@@ -757,6 +757,66 @@ try {
             }
             break;
 
+        case 'bulk_sync_to_cari':
+            $rawIds = $_POST['invoice_ids'] ?? [];
+            if (!is_array($rawIds) || count($rawIds) === 0) {
+                http_response_code(422);
+                echo json_encode(['status' => 'error', 'message' => 'İşlenecek fatura seçilmedi.']);
+                exit;
+            }
+            if (count($rawIds) > 200) {
+                http_response_code(422);
+                echo json_encode(['status' => 'error', 'message' => 'Tek seferde en fazla 200 fatura işlenebilir.']);
+                exit;
+            }
+
+            $cariHareketModel = new \App\Model\CariHareketleriModel();
+            $logModel = new \App\Model\SystemLogModel();
+            $basarili = 0;
+            $atlanan = [];
+            $islenenIds = [];
+
+            foreach (array_unique($rawIds) as $rawId) {
+                $faturaNo = '-';
+                try {
+                    $invoiceId = EInvoiceSecurity::invoiceId($rawId);
+                    $stmt = $cariHareketModel->db->prepare("SELECT fatura_no, yon FROM faturalar WHERE id = :id AND firm_id = :firm_id AND deleted_at IS NULL LIMIT 1");
+                    $stmt->execute(['id' => $invoiceId, 'firm_id' => $firmId]);
+                    $fat = $stmt->fetch(PDO::FETCH_OBJ);
+                    if (!$fat) {
+                        $atlanan[] = ['fatura_no' => $faturaNo, 'neden' => 'Fatura bulunamadı.'];
+                        continue;
+                    }
+                    $faturaNo = (string)($fat->fatura_no ?: '-');
+
+                    $engel = $cariHareketModel->cariyeIslemeEngeli($invoiceId);
+                    if ($engel !== null) {
+                        $atlanan[] = ['fatura_no' => $faturaNo, 'neden' => $engel];
+                        continue;
+                    }
+
+                    $movementId = $cariHareketModel->syncFaturaHareketi($invoiceId, $userId, true);
+                    if ($movementId) {
+                        $basarili++;
+                        $islenenIds[] = $invoiceId;
+                    } else {
+                        $atlanan[] = ['fatura_no' => $faturaNo, 'neden' => 'Eşleşen cari bulunamadı veya oluşturulamadı.'];
+                    }
+                } catch (\Throwable $e) {
+                    error_log('bulk_sync_to_cari: ' . $e->getMessage());
+                    $atlanan[] = ['fatura_no' => $faturaNo, 'neden' => 'Beklenmeyen hata.'];
+                }
+            }
+
+            $logModel->logAction($userId, 'Toplu Cariye İşle', 'Seçilen: ' . count($rawIds) . ', İşlenen: ' . $basarili . ', Atlanan: ' . count($atlanan) . ', Fatura ID: ' . implode(',', $islenenIds), \App\Model\SystemLogModel::LEVEL_INFO);
+
+            echo json_encode([
+                'status' => $basarili > 0 ? 'success' : 'error',
+                'message' => $basarili . ' fatura cariye işlendi' . (count($atlanan) ? ', ' . count($atlanan) . ' fatura atlandı.' : '.'),
+                'data' => ['islenen' => $basarili, 'atlanan' => $atlanan]
+            ], JSON_UNESCAPED_UNICODE);
+            break;
+
         // 25. Fatura Cari Durum Kontrolü (Cariye işle öncesi bilgi getirme)
         case 'check_invoice_cari':
             $rawId = $_GET['invoice_id'] ?? ($_GET['id'] ?? ($_POST['invoice_id'] ?? ($_POST['id'] ?? '')));

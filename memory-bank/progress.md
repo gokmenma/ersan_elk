@@ -2383,3 +2383,4 @@
 - [x] Gelen evrak modalı yeniden tasarlandı; Bilgi/İşlem türü eklendi (tarayıcıda görsel doğrulama kullanıcıda).
 
 - [x] Evrak AI cevap taslağı hukuki iyileştirme: senaryo tespiti, güçlendirilmiş prompt, çıktı kural kontrolü (2026-11-20). Kalan: bordrodan son net maaş ve ayrılış alacağı verisinin yer tutucu yerine otomatik doldurulması; şablonların hukuk müşavirince onayı; tarayıcıda gerçek evrakla deneme.
+- [x] Gelen faturalarda toplu cariye işle (2026-11-20). Kalan: tarayıcıda gerçek faturalarla deneme.

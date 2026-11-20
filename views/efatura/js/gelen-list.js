@@ -440,9 +440,89 @@ $(document).ready(function() {
     const table = $('#tblGelenFaturalar').DataTable(finalOptions);
 
     // Check All Kutusu
+    function updateBulkCariyeButton() {
+        const count = $('.row-select-checkbox:checked').length;
+        $('#bulkCariyeCount').text(count);
+        $('#btnBulkCariyeIsle').toggleClass('d-none', count === 0);
+    }
+
     $('#checkAll').on('change', function() {
         const isChecked = $(this).is(':checked');
         $('.row-select-checkbox').prop('checked', isChecked);
+        updateBulkCariyeButton();
+    });
+
+    $('#tblGelenFaturalar tbody').on('change', '.row-select-checkbox', function() {
+        const all = $('.row-select-checkbox').length;
+        $('#checkAll').prop('checked', all > 0 && $('.row-select-checkbox:checked').length === all);
+        updateBulkCariyeButton();
+    });
+
+    table.on('draw', function() {
+        $('#checkAll').prop('checked', false);
+        updateBulkCariyeButton();
+    });
+
+    $('#btnBulkCariyeIsle').on('click', function() {
+        const ids = $('.row-select-checkbox:checked').map(function() { return $(this).data('id'); }).get();
+        if (!ids.length) return;
+
+        Swal.fire({
+            title: 'Toplu Cariye İşle',
+            html: `<div class="text-start p-1 font-size-14 text-dark">
+                <strong>${ids.length}</strong> adet gelen fatura, VKN/ünvanına göre eşleşen cari hesaplarına <strong>(Alacak)</strong> olarak işlenecektir.
+                <div class="alert alert-info py-2 px-3 font-size-12 mt-3 mb-0">Eşleşen cari bulunamazsa yeni cari kart otomatik oluşturulur. Zaten cariye işlenmiş veya reddedilmiş faturalar atlanır.</div>
+            </div>`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: '<i class="bx bx-check me-1"></i> Evet, Cariye İşle',
+            cancelButtonText: 'Vazgeç',
+            customClass: { confirmButton: 'btn btn-primary me-2', cancelButton: 'btn btn-light' },
+            buttonsStyling: false
+        }).then((result) => {
+            if (!result.isConfirmed) return;
+
+            Swal.fire({
+                title: 'İşleniyor...',
+                text: 'Faturalar cari hareketlerine aktarılıyor, lütfen bekleyin.',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            $.ajax({
+                url: 'api/efatura-api.php',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    action: 'bulk_sync_to_cari',
+                    invoice_ids: ids,
+                    csrf_token: $('meta[name="efatura-csrf"]').attr('content')
+                },
+                success: function(res) {
+                    const atlanan = (res.data && res.data.atlanan) || [];
+                    let html = `<div class="text-start font-size-13">${escapeHtmlText(res.message || '')}</div>`;
+                    if (atlanan.length) {
+                        html += '<ul class="text-start font-size-12 mt-2 mb-0 ps-3" style="max-height:200px;overflow:auto;">' +
+                            atlanan.map(a => `<li><strong>${escapeHtmlText(a.fatura_no)}</strong>: ${escapeHtmlText(a.neden)}</li>`).join('') + '</ul>';
+                    }
+                    Swal.fire({
+                        title: res.status === 'success' ? 'Tamamlandı' : 'Uyarı',
+                        html: html,
+                        icon: res.status === 'success' ? 'success' : 'warning',
+                        confirmButtonText: 'Tamam',
+                        customClass: { confirmButton: 'btn btn-primary' },
+                        buttonsStyling: false
+                    });
+                    table.ajax.reload(null, false);
+                },
+                error: function(xhr) {
+                    let errMsg = 'İşlem gerçekleştirilemedi.';
+                    try { const json = JSON.parse(xhr.responseText); if (json.message) errMsg = json.message; } catch (e) {}
+                    Swal.fire({ title: 'Hata!', text: errMsg, icon: 'error', confirmButtonText: 'Tamam', customClass: { confirmButton: 'btn btn-danger' }, buttonsStyling: false });
+                }
+            });
+        });
     });
 
     // Satır Seçimi (Tıklama ile)
