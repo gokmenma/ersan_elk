@@ -34,18 +34,57 @@ if (!$p || (int) $p->firma_id !== $firmaId || !empty($p->silinme_tarihi)) {
     exit('Personel bulunamadı.');
 }
 
-$sablon = (new SozlesmeSablonModel())->aktifDosyaYolu($firmaId);
-if (!is_file($sablon)) {
-    error_log('Hizmet sözleşmesi şablonu bulunamadı.');
-    http_response_code(500);
-    exit('Sözleşme şablonu bulunamadı.');
+$SablonModel = new SozlesmeSablonModel();
+$htmlSablon = $SablonModel->aktifHtml($firmaId);
+if (($_GET['onizleme'] ?? '') === 'html') {
+    if (!$htmlSablon) {
+        http_response_code(404);
+        header('Content-Type: application/json; charset=UTF-8');
+        exit(json_encode(['status' => 'error', 'message' => 'Şablon web editöründe hazırlanmamış.'], JSON_UNESCAPED_UNICODE));
+    }
+    try {
+        (new SystemLogModel())->logAction(
+            (int) ($_SESSION['user_id'] ?? 0),
+            'Hizmet Sözleşmesi Önizleme',
+            ($p->adi_soyadi ?? '') . ' (ID: ' . $personelId . ') için hizmet sözleşmesi önizlendi.',
+            SystemLogModel::LEVEL_INFO
+        );
+    } catch (Throwable $e) {
+        error_log('Hizmet sözleşmesi log hatası: ' . $e->getMessage());
+    }
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+    header('Content-Type: application/json; charset=UTF-8');
+    header('X-Content-Type-Options: nosniff');
+    exit(json_encode([
+        'status' => 'success',
+        'html' => SozlesmeSablonService::htmlDoldur((string) $htmlSablon->html_icerik, SozlesmeSablonService::degerler($p)),
+        'cerceve' => (int) $htmlSablon->sayfa_cercevesi === 1,
+    ], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP));
 }
 
 $gecici = tempnam(sys_get_temp_dir(), 'hs_');
-if ($gecici === false || !SozlesmeSablonService::doldur($sablon, SozlesmeSablonService::degerler($p), $gecici)) {
-    if ($gecici !== false) {
+if ($gecici === false) {
+    error_log('Hizmet sözleşmesi geçici dosyası oluşturulamadı.');
+    http_response_code(500);
+    exit('Sözleşme oluşturulamadı.');
+}
+
+if ($htmlSablon) {
+    $uretildi = SozlesmeSablonService::htmldenDocx((string) $htmlSablon->html_icerik, SozlesmeSablonService::degerler($p), (int) $htmlSablon->sayfa_cercevesi === 1, $gecici);
+} else {
+    $sablon = $SablonModel->aktifDosyaYolu($firmaId);
+    if (!is_file($sablon)) {
         @unlink($gecici);
+        error_log('Hizmet sözleşmesi şablonu bulunamadı.');
+        http_response_code(500);
+        exit('Sözleşme şablonu bulunamadı.');
     }
+    $uretildi = SozlesmeSablonService::doldur($sablon, SozlesmeSablonService::degerler($p), $gecici);
+}
+if (!$uretildi) {
+    @unlink($gecici);
     error_log('Hizmet sözleşmesi oluşturulamadı.');
     http_response_code(500);
     exit('Sözleşme oluşturulamadı.');

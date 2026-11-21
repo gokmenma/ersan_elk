@@ -341,7 +341,7 @@ $(document).ready(function () {
 
     var html = '<div class="cm-header"><i class="bx bx-layer text-primary me-2 font-size-15"></i> <span class="text-truncate"></span></div>';
     html += item("detay", "bx bx-right-arrow-alt", "Detaya Git");
-    html += item("sozlesme", "bx bx-file", "Hizmet Sözleşmesini İndir");
+    html += item("sozlesme", "bx bx-show", "Hizmet Sözleşmesini Görüntüle");
     if ($("#btnKarsilamaSelected").length) {
       html += '<div class="cm-divider"></div>';
       html += item("karsilama", "bx bxl-whatsapp text-success", "Karşılama Mesajı Gönder");
@@ -375,12 +375,48 @@ $(document).ready(function () {
     if (aksiyon === "detay") {
       window.location.href = "index?p=personel/manage&id=" + encodeURIComponent(id);
     } else if (aksiyon === "sozlesme") {
-      window.location.href = "views/personel/sozlesme-indir.php?id=" + encodeURIComponent(id);
+      var temel = "views/personel/sozlesme-indir.php?id=" + encodeURIComponent(id);
+      sozlesmeOnizle(temel + "&onizleme=html");
+      $("#btnSozlesmeIndir").attr("href", temel);
+      bootstrap.Modal.getOrCreateInstance(document.getElementById("sozlesmeOnizlemeModal")).show();
     } else if (aksiyon === "karsilama") {
       $("#btnKarsilamaSelected").trigger("click");
     } else if (aksiyon === "sil") {
       $("#btnDeleteSelected").trigger("click");
     }
+  });
+
+  function sozlesmeOnizle(url) {
+    var frame = document.getElementById("sozlesmeOnizlemeFrame");
+    frame.contentDocument.open();
+    frame.contentDocument.write('<body style="font-family:sans-serif;color:#64748b;text-align:center;padding-top:80px">Sözleşme hazırlanıyor...</body>');
+    frame.contentDocument.close();
+    fetch(url, { credentials: "same-origin" })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (veri) {
+        if (!veri || veri.status !== "success") throw new Error(veri && veri.message ? veri.message : "hata");
+        SozlesmeBelge.yaz(frame.contentDocument, veri.html, !!veri.cerceve);
+      })
+      .catch(function (e) {
+        frame.contentDocument.open();
+        frame.contentDocument.write('<body style="font-family:sans-serif;color:#dc2626;text-align:center;padding-top:80px">' + $("<i>").text(e && e.message && e.message !== "hata" ? e.message : "Sözleşme önizlenemedi. Lütfen Word butonunu kullanın.").html() + "</body>");
+        frame.contentDocument.close();
+      });
+  }
+
+  $("#btnSozlesmeYazdir").on("click", function () {
+    var frame = document.getElementById("sozlesmeOnizlemeFrame");
+    if (frame.contentDocument.getElementById("kok")) {
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+    }
+  });
+
+  $("#sozlesmeOnizlemeModal").on("hidden.bs.modal", function () {
+    document.getElementById("sozlesmeOnizlemeFrame").contentDocument.open();
+    document.getElementById("sozlesmeOnizlemeFrame").contentDocument.close();
   });
 
   // Detay Butonu

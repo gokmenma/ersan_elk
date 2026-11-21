@@ -4078,3 +4078,12 @@
 - Gelen faturalar toplu cariye işle: listede seçilen faturalar için `bulk_sync_to_cari` API aksiyonu (en fazla 200, firma kontrollü, yetki sync_to_cari ile aynı, atlananlar nedenleriyle döner, loglanır); araç çubuğunda seçim olunca "Seçilenleri Cariye İşle" butonu (views/efatura/gelen-list.php + js/gelen-list.js). Yeni tablo/yetki yok.
 - Cari: Son Hesap Hareketleri artık kayıt zamanına göre sıralı (faturadan işlenenler görünür); cari listesine "Hareketleri Başka Cariye Aktar" (cari-hareket-aktar, CariHareketleriModel::hareketleriAktar, hareketler + faturalar.cari_id taşınır, opsiyonel kaynak silme). Politika SQL: sql/2026_11_20_add_cari_hareket_aktar_policy.sql (çalıştırılmalı).
 - Cari hareket aktarımı artık Hesap Hareketleri sayfasında seçili hareketler için (hareketleriAktar(kaynak, hedef, hareketIds)); cari listesindeki toplu aktarım kaldırıldı. Politika SQL aynı: sql/2026_11_20_add_cari_hareket_aktar_policy.sql.
+
+## Sözleşme Şablonları — Web Editör (2026-11-21)
+- `views/personel/sozlesme-sablonlari.php` artık Quill 2 tabanlı A4 editör (sozlesme-4b taslak sayfası referans); Word yükleme/sürüm listesi kaldırıldı.
+- Şablon HTML olarak `personel_sozlesme_sablonlari.html_icerik` içinde saklanır (SQL: `sql/2026_11_21_sozlesme_sablon_web_editor.sql`); kaydet aksiyonu `sablon-kaydet`, sunucuda `SozlesmeSablonService::htmlTemizle/htmlDogrula` ile temizlenir.
+- `sozlesme-indir.php`: aktif HTML şablon varsa PhpWord ile .docx üretir, yoksa eski docx şablonu doldurur.
+- Varsayılan içerik: `resources/sablonlar/hizmet_sozlesmesi_varsayilan.html`. Quill tablo hücreleri tek satır tutar (hücrede çoklu paragraf kullanma).
+- Editörde Word benzeri sayfalama: `sayfala()` (sozlesme-sablonlari.js) bloklara geçici `padding-top` + `data-sbp` ekleyip sayfa sınırında bloğu sonraki sayfaya iter; kayıt/yazdırmadan önce `icerikAl()` bunları temizler. Sayfalar `.sablon-sayfa` ile çizilir.
+- Word'den yapıştırma uyumu: editöre görsel (base64, sanitizer yalnız data:image kabul eder) butonu, pt→px yazı boyutu eşleme, docx'te tablo hücre boşlukları. Quill 2 tabloları colspan/sütun genişliği tutmaz (bilinen sınır).
+- Editör Quill'den Summernote-lite'a taşındı (Giden Evrak ile aynı varsayılan araç çubuğu; layouts/vendor-scripts.php listesine sayfa eklendi). Eski Quill HTML'i `SozlesmeSablonService::editorIcinHazirla()` ile dönüştürülür; docx üretiminde td genişlikleri (%, pt) px'e çevrilir, colspan korunur. Quill CDN ve eski tablo/görsel matcher'ları kaldırıldı.

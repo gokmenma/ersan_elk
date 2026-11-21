@@ -140,4 +140,60 @@ class SozlesmeSablonModel extends Model
     {
         $this->db->prepare("UPDATE {$this->table} SET kullanimda = 0 WHERE firma_id = ? AND sablon_turu = ?")->execute([$firmaId, $tur]);
     }
+
+    public function htmlHazirMi(): bool
+    {
+        try {
+            $this->db->query("SELECT icerik_turu, html_icerik, sayfa_cercevesi FROM {$this->table} LIMIT 1");
+            return true;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    public function aktifHtml(int $firmaId, string $tur = self::TUR_HIZMET): ?object
+    {
+        if (!$this->htmlHazirMi()) {
+            return null;
+        }
+        $stmt = $this->db->prepare(
+            "SELECT * FROM {$this->table}
+             WHERE firma_id = ? AND sablon_turu = ? AND icerik_turu = 'html' AND kullanimda = 1 AND deleted_at IS NULL AND is_active = 1
+             ORDER BY versiyon DESC LIMIT 1"
+        );
+        $stmt->execute([$firmaId, $tur]);
+        return $stmt->fetch(PDO::FETCH_OBJ) ?: null;
+    }
+
+    public function htmlKaydet(int $firmaId, string $html, bool $cerceve, int $userId, string $tur = self::TUR_HIZMET): int
+    {
+        $hash = hash("sha256", $html . ($cerceve ? "1" : "0"));
+        $this->db->beginTransaction();
+        try {
+            $mevcut = $this->aktifHtml($firmaId, $tur);
+            if ($mevcut) {
+                $this->db->prepare(
+                    "UPDATE {$this->table} SET html_icerik = ?, sayfa_cercevesi = ?, dosya_boyutu = ?, sha256 = ?, yukleyen_id = ?, olusturma_tarihi = NOW()
+                     WHERE id = ? AND firma_id = ?"
+                )->execute([$html, $cerceve ? 1 : 0, strlen($html), $hash, $userId, (int) $mevcut->id, $firmaId]);
+                $id = (int) $mevcut->id;
+            } else {
+                $this->db->prepare("UPDATE {$this->table} SET kullanimda = 0 WHERE firma_id = ? AND sablon_turu = ?")->execute([$firmaId, $tur]);
+                $this->db->prepare(
+                    "INSERT INTO {$this->table}
+                     (firma_id, sablon_turu, icerik_turu, versiyon, dosya_adi, orijinal_dosya_adi, dosya_boyutu, sha256, aciklama, html_icerik, sayfa_cercevesi, kullanimda, yukleyen_id, olusturma_tarihi)
+                     VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, 1, ?, NOW())"
+                )->execute([$firmaId, $tur, "html", $this->sonrakiVersiyon($firmaId, $tur), "Web editörü", strlen($html), $hash, "Web editöründe düzenlendi", $html, $cerceve ? 1 : 0, $userId]);
+                $id = (int) $this->db->lastInsertId();
+            }
+            $this->db->commit();
+            return $id;
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        }
+    }
+
 }

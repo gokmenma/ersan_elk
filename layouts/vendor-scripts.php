@@ -31,6 +31,7 @@ $page = $_GET['p'] ?? 'home';
 <?php } ?>
 
 <?php if ($page == 'personel/list') { ?>
+    <script src="<?php echo Helper::assetVersion('assets/js/sozlesme-belge.js'); ?>"></script>
     <script src="<?php echo Helper::assetVersion('views/personel/js/list.js'); ?>"></script>
 <?php } ?>
 
@@ -110,7 +111,7 @@ $page = $_GET['p'] ?? 'home';
 <?php } ?>
 
 <?php
-if ($page == "slider/duzenle" || $page == "evrak-takip/giden-evrak" || $page == "evrak-takip/list" || $page == "mail-sms/mail-gonder" || $page == "duyuru/list" || $page == "efatura/olustur") {
+if ($page == "slider/duzenle" || $page == "evrak-takip/giden-evrak" || $page == "evrak-takip/list" || $page == "mail-sms/mail-gonder" || $page == "duyuru/list" || $page == "efatura/olustur" || $page == "personel/sozlesme-sablonlari") {
     $summernoteVersion = filemtime(dirname(__DIR__) . '/assets/libs/summernote/summernote-lite.min.js');
     echo '<script src="assets/libs/summernote/summernote-lite.min.js?v=' . $summernoteVersion . '"></script>';
     echo '<script src="assets/libs/summernote/lang/summernote-tr-TR.min.js?v=' . $summernoteVersion . '"></script>';

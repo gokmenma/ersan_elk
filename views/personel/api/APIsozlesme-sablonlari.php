@@ -70,76 +70,27 @@ if ($action === 'sablon-indir') {
     exit;
 }
 
-if ($action === 'sablon-yukle') {
+if ($action === 'sablon-kaydet') {
     try {
-        $dosya = $_FILES['sablon_dosyasi'] ?? null;
-        if (!$dosya || ($dosya['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || !is_uploaded_file($dosya['tmp_name'])) {
-            $cevap('error', 'Lütfen bir .docx dosyası seçin.');
+        if (!$Model->htmlHazirMi()) {
+            $cevap('error', 'Şablon yönetimi için veritabanı betiği (sql/2026_11_21_sozlesme_sablon_web_editor.sql) çalıştırılmalıdır.');
         }
-        $orijinal = (string) $dosya['name'];
-        if (strtolower(pathinfo($orijinal, PATHINFO_EXTENSION)) !== 'docx') {
-            $cevap('error', 'Yalnızca .docx uzantılı Word dosyaları yüklenebilir.');
+        $ham = (string) ($_POST['icerik'] ?? '');
+        if (strlen($ham) > SozlesmeSablonService::HTML_MAKS_BOYUT * 2) {
+            $cevap('error', 'Şablon içeriği çok büyük (en fazla 1 MB).');
         }
-
-        [$bulunan, $hatalar] = SozlesmeSablonService::dogrula($dosya['tmp_name']);
+        $html = SozlesmeSablonService::htmlTemizle($ham);
+        [$bulunan, $hatalar] = SozlesmeSablonService::htmlDogrula($html);
         if ($hatalar) {
             $cevap('error', implode(' ', $hatalar));
         }
-
-        $klasor = SozlesmeSablonModel::klasor($firma_id);
-        if (!is_dir($klasor) && !mkdir($klasor, 0770, true) && !is_dir($klasor)) {
-            error_log('Sözleşme şablon klasörü oluşturulamadı: ' . $klasor);
-            $cevap('error', 'Şablon klasörü oluşturulamadı.');
-        }
-        $saklananAd = bin2hex(random_bytes(16)) . '.docx';
-        if (!move_uploaded_file($dosya['tmp_name'], $klasor . '/' . $saklananAd)) {
-            error_log('Sözleşme şablonu taşınamadı: ' . $klasor);
-            $cevap('error', 'Dosya kaydedilemedi.');
-        }
-
-        $aciklama = mb_substr(trim((string) ($_POST['aciklama'] ?? '')), 0, 255, 'UTF-8');
-        $id = $Model->ekle(
-            $firma_id,
-            SozlesmeSablonModel::TUR_HIZMET,
-            $saklananAd,
-            mb_substr(basename($orijinal), 0, 255, 'UTF-8'),
-            (int) filesize($klasor . '/' . $saklananAd),
-            hash_file('sha256', $klasor . '/' . $saklananAd),
-            $aciklama,
-            $userId
-        );
-        $SystemLog->logAction($userId, 'Sözleşme Şablonu Yükleme', 'Hizmet sözleşmesi şablonunun yeni sürümü yüklendi ve kullanıma alındı (kayıt: ' . $id . ', yer tutucu: ' . count($bulunan) . ').', SystemLogModel::LEVEL_IMPORTANT);
-        $uyari = $bulunan === [] ? ' Belgede hiç yer tutucu bulunamadı; personel bilgileri otomatik doldurulmayacak.' : '';
-        $cevap('success', 'Yeni şablon sürümü yüklendi ve kullanıma alındı.' . $uyari, ['yer_tutucular' => $bulunan]);
+        $cerceve = ($_POST['sayfa_cercevesi'] ?? '0') === '1';
+        $id = $Model->htmlKaydet($firma_id, $html, $cerceve, $userId);
+        $SystemLog->logAction($userId, 'Sözleşme Şablonu Kaydetme', 'Hizmet sözleşmesi şablonu web editöründe kaydedildi (kayıt: ' . $id . ', yer tutucu: ' . count($bulunan) . ').', SystemLogModel::LEVEL_IMPORTANT);
+        $cevap('success', 'Şablon kaydedildi ve kullanıma alındı.', ['yer_tutucular' => $bulunan]);
     } catch (\Throwable $e) {
-        error_log('sablon-yukle: ' . $e->getMessage());
-        $cevap('error', 'Şablon yüklenirken bir hata oluştu.');
-    }
-}
-
-if ($action === 'sablon-aktif-et') {
-    try {
-        $id = (int) Security::decrypt((string) ($_POST['id'] ?? ''));
-        $kayit = $id > 0 ? $Model->aktifEt($id, $firma_id) : null;
-        if (!$kayit) {
-            $cevap('error', 'Şablon sürümü bulunamadı.');
-        }
-        $SystemLog->logAction($userId, 'Sözleşme Şablonu Sürüm Değişikliği', 'Hizmet sözleşmesi şablonu v' . (int) $kayit->versiyon . ' sürümüne alındı.', SystemLogModel::LEVEL_IMPORTANT);
-        $cevap('success', 'Seçilen sürüm kullanıma alındı.');
-    } catch (\Throwable $e) {
-        error_log('sablon-aktif-et: ' . $e->getMessage());
-        $cevap('error', 'İşlem sırasında bir hata oluştu.');
-    }
-}
-
-if ($action === 'sablon-varsayilana-don') {
-    try {
-        $Model->varsayilanaDon($firma_id);
-        $SystemLog->logAction($userId, 'Sözleşme Şablonu Sürüm Değişikliği', 'Hizmet sözleşmesi şablonu sistem varsayılanına döndürüldü.', SystemLogModel::LEVEL_IMPORTANT);
-        $cevap('success', 'Sistem varsayılan şablonu kullanıma alındı.');
-    } catch (\Throwable $e) {
-        error_log('sablon-varsayilana-don: ' . $e->getMessage());
-        $cevap('error', 'İşlem sırasında bir hata oluştu.');
+        error_log('sablon-kaydet: ' . $e->getMessage());
+        $cevap('error', 'Şablon kaydedilirken bir hata oluştu.');
     }
 }
 

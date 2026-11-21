@@ -646,6 +646,25 @@ if (Gate::canWithMessage("personel_listesi")) {
         </div>
     </div>
 
+    <div class="modal fade" id="sozlesmeOnizlemeModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title font-size-15 fw-bold"><i class="bx bx-file me-1"></i> Hizmet Sözleşmesi</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <iframe id="sozlesmeOnizlemeFrame" title="Hizmet Sözleşmesi" style="width:100%;height:75vh;border:0;background:#e9edf2"></iframe>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" id="btnSozlesmeYazdir" class="btn btn-primary"><i class="bx bx-printer me-1"></i> Yazdır / PDF</button>
+                    <a href="#" id="btnSozlesmeIndir" class="btn btn-outline-secondary"><i class="bx bx-download me-1"></i> Word</a>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <?php include __DIR__ . '/icerik/modals/karsilama_mesaji.php'; ?>
 
 <?php } ?>

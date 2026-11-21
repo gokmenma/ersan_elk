@@ -2,8 +2,6 @@
 
 require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
-use App\Helper\Form;
-use App\Helper\Security;
 use App\Model\SozlesmeSablonModel;
 use App\Service\Gate;
 use App\Service\SozlesmeSablonService;
@@ -13,24 +11,28 @@ $title = "Sözleşme Şablonları";
 
 $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
 $Model = new SozlesmeSablonModel();
-$hazir = $Model->hazirMi();
-$surumler = $hazir ? $Model->listele($firmaId) : [];
-$kullanimdaOlan = null;
-foreach ($surumler as $s) {
-    if ((int) $s->kullanimda === 1) {
-        $kullanimdaOlan = $s;
-        break;
-    }
-}
-$duzenleyebilir = Gate::allows('personel/sozlesme-sablonlari-duzenle');
+$hazir = $Model->htmlHazirMi();
+$kayit = $hazir ? $Model->aktifHtml($firmaId) : null;
+$duzenleyebilir = Gate::allows('personel/sozlesme-sablonlari-duzenle') && $hazir;
+$icerik = SozlesmeSablonService::editorIcinHazirla(SozlesmeSablonService::htmlTemizle($kayit ? (string) $kayit->html_icerik : SozlesmeSablonService::varsayilanHtml()));
+$cerceve = $kayit ? (int) $kayit->sayfa_cercevesi === 1 : true;
 $alanlar = SozlesmeSablonService::alanTanimlari();
+$gruplar = [
+    'Personel Bilgileri' => ['AD_SOYAD' => 'Adı Soyadı', 'BABA_ADI' => 'Baba Adı', 'ANNE_ADI' => 'Anne Adı', 'TC_KIMLIK_NO' => 'T.C. Kimlik No', 'CEP_TELEFONU' => 'Cep Telefonu', 'ADRES' => 'İkamet Adresi'],
+    'Doğum Bilgileri' => ['DOGUM_YERI' => 'Doğum Yeri', 'DOGUM_YILI' => 'Doğum Yılı', 'DOGUM_TARIHI' => 'Doğum Tarihi', 'DOGUM_YERI_YILI' => 'Doğum Yeri ve Yılı'],
+    'Görev Bilgileri' => ['GOREV' => 'Görevi', 'DEPARTMAN' => 'Departman', 'ISE_BASLAMA_TARIHI' => 'İşe Başlama Tarihi', 'BUGUN' => 'Bugünün Tarihi'],
+];
 $e = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 $apiUrl = 'views/personel/api/APIsozlesme-sablonlari.php';
+$ayarlar = [
+    'api' => $apiUrl,
+    'duzenleyebilir' => $duzenleyebilir,
+    'icerik' => $icerik,
+    'varsayilan' => SozlesmeSablonService::editorIcinHazirla(SozlesmeSablonService::varsayilanHtml()),
+    'cerceve' => $cerceve,
+];
 ?>
-<style>
-.sablon-kod { cursor: pointer; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-.sablon-kod:hover { background: var(--bs-primary-bg-subtle); }
-</style>
+<link rel="stylesheet" href="assets/css/sozlesme-sablon-editor.css?v=<?= (int) @filemtime(dirname(__DIR__, 2) . '/assets/css/sozlesme-sablon-editor.css') ?>">
 
 <?php include 'layouts/breadcrumb.php'; ?>
 
@@ -41,153 +43,73 @@ $apiUrl = 'views/personel/api/APIsozlesme-sablonlari.php';
                 <i class="bx bx-file fs-4 text-primary"></i>
             </div>
             <div>
-                <h4 class="mb-0 fw-bold text-dark font-size-16">Sözleşme Şablonları</h4>
-                <p class="text-muted mb-0 font-size-12">Belirli süreli hizmet sözleşmesi şablonunu Word'de düzenleyip yeni sürüm olarak yükleyin</p>
+                <h4 class="mb-0 fw-bold text-dark font-size-16">Hizmet Sözleşmesi Şablonu</h4>
+                <p class="text-muted mb-0 font-size-12">Times New Roman (10pt) formatında düzenleniyor</p>
             </div>
         </div>
         <div class="personel-action-toolbar col-md-6 col-12 d-flex align-items-center justify-content-md-end gap-2 mt-2 mt-md-0">
-            <a class="btn btn-outline-secondary bg-white top-action-btn shadow-sm" href="<?= $e($apiUrl) ?>?action=sablon-indir&id=<?= $kullanimdaOlan ? $e(rawurlencode(Security::encrypt($kullanimdaOlan->id))) : 'varsayilan' ?>">
-                <i class="bx bx-download font-size-16"></i> Kullanımdaki Şablonu İndir
-            </a>
-            <?php if ($duzenleyebilir && $hazir): ?>
-            <button type="button" class="btn btn-primary top-action-btn shadow-sm text-white" data-bs-toggle="modal" data-bs-target="#sablonYukleModal">
-                <i class="bx bx-upload font-size-16"></i> Yeni Sürüm Yükle
+            <?php if ($duzenleyebilir): ?>
+            <button type="button" class="btn btn-outline-danger bg-white top-action-btn shadow-sm" id="btnSablonSifirla">
+                <i class="bx bx-reset font-size-16"></i> Varsayılana Sıfırla
+            </button>
+            <?php endif; ?>
+            <button type="button" class="btn btn-outline-secondary bg-white top-action-btn shadow-sm" id="btnSablonYazdir">
+                <i class="bx bx-printer font-size-16"></i> Önizleme / Yazdır
+            </button>
+            <?php if ($duzenleyebilir): ?>
+            <button type="button" class="btn btn-primary top-action-btn shadow-sm text-white" id="btnSablonKaydet">
+                <i class="bx bx-save font-size-16"></i> Şablonu Kaydet
             </button>
             <?php endif; ?>
         </div>
     </div>
 
     <?php if (!$hazir): ?>
-    <div class="alert alert-warning">Şablon yönetimi için veritabanı betiği (sql/2026_11_11_hizmet_sozlesmesi_sablon_yonetimi.sql) çalıştırılmalıdır. O zamana kadar sistem varsayılan şablonu kullanılır.</div>
+    <div class="alert alert-warning">Şablon düzenleme için veritabanı betiği (sql/2026_11_21_sozlesme_sablon_web_editor.sql) çalıştırılmalıdır. O zamana kadar sistem varsayılan şablonu kullanılır ve şablon yalnızca görüntülenebilir.</div>
     <?php endif; ?>
 
-    <div class="row g-3">
-        <div class="col-12 col-xl-8">
-            <div class="card mb-0" id="sablonListCard">
-                <div class="card-header bg-transparent d-flex align-items-center gap-2">
-                    <div class="bg-primary-subtle text-primary rounded d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;"><i class="bx bx-list-ul fs-5"></i></div>
-                    <div>
-                        <h5 class="font-size-14 fw-bold mb-0">Şablon Sürümleri</h5>
-                        <p class="text-muted font-size-12 mb-0">Her yükleme yeni sürüm olarak saklanır; istediğiniz sürüme geri dönebilirsiniz</p>
-                    </div>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-hover align-middle w-100 mb-0" id="sablonTable">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Sürüm</th>
-                                    <th>Açıklama / Dosya</th>
-                                    <th>Yükleyen</th>
-                                    <th>Tarih</th>
-                                    <th>Durum</th>
-                                    <th class="text-center" style="width: 130px;">İşlemler</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><strong>Sistem</strong></td>
-                                    <td>Varsayılan şablon <div class="text-muted font-size-11">Hiç sürüm yüklenmediğinde veya varsayılana dönüldüğünde kullanılır</div></td>
-                                    <td>-</td>
-                                    <td>-</td>
-                                    <td>
-                                        <?php if (!$kullanimdaOlan): ?>
-                                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Kullanımda</span>
-                                        <?php else: ?>
-                                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Pasif</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td class="text-center">
-                                        <div class="action-btn-group d-inline-flex gap-1">
-                                            <a class="btn btn-subtle-primary table-action-btn" title="İndir" href="<?= $e($apiUrl) ?>?action=sablon-indir&id=varsayilan"><i class="bx bx-download"></i></a>
-                                            <?php if ($duzenleyebilir && $kullanimdaOlan): ?>
-                                            <button type="button" class="btn btn-subtle-success table-action-btn sablon-varsayilana-don" title="Bu sürümü kullan"><i class="bx bx-check-circle"></i></button>
-                                            <?php endif; ?>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <?php foreach ($surumler as $s): $sifreli = Security::encrypt($s->id); ?>
-                                <tr>
-                                    <td><strong>v<?= (int) $s->versiyon ?></strong></td>
-                                    <td>
-                                        <?= $e($s->aciklama ?: '-') ?>
-                                        <div class="text-muted font-size-11"><?= $e($s->orijinal_dosya_adi) ?> · <?= $e(number_format(((int) $s->dosya_boyutu) / 1024, 0, ',', '.')) ?> KB</div>
-                                    </td>
-                                    <td><?= $e($s->yukleyen_adi ?: '-') ?></td>
-                                    <td><?= $e(date('d.m.Y H:i', strtotime((string) $s->olusturma_tarihi))) ?></td>
-                                    <td>
-                                        <?php if ((int) $s->kullanimda === 1): ?>
-                                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Kullanımda</span>
-                                        <?php else: ?>
-                                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Pasif</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td class="text-center">
-                                        <div class="action-btn-group d-inline-flex gap-1">
-                                            <a class="btn btn-subtle-primary table-action-btn" title="İndir" href="<?= $e($apiUrl) ?>?action=sablon-indir&id=<?= $e(rawurlencode($sifreli)) ?>"><i class="bx bx-download"></i></a>
-                                            <?php if ($duzenleyebilir && (int) $s->kullanimda !== 1): ?>
-                                            <button type="button" class="btn btn-subtle-success table-action-btn sablon-aktif-et" title="Bu sürümü kullan" data-id="<?= $e($sifreli) ?>"><i class="bx bx-check-circle"></i></button>
-                                            <?php endif; ?>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div class="card sablon-editor-card mb-0" id="sablonEditorCard">
+        <div class="sablon-editor-shell">
+            <aside class="sablon-sidebar">
+                <h6 class="sablon-sidebar-title"><i class="bx bx-code-curly"></i> Dinamik Alanlar</h6>
 
-        <div class="col-12 col-xl-4">
-            <div class="card mb-0">
-                <div class="card-header bg-transparent">
-                    <h5 class="font-size-14 fw-bold mb-0"><i class="bx bx-code-curly me-1"></i> Yer Tutucular</h5>
-                    <p class="text-muted font-size-12 mb-0">Word belgesinde ilgili yere yazın; sözleşme indirilirken personelin bilgisiyle değişir. Kopyalamak için tıklayın.</p>
+                <div class="sablon-ayar-kutusu">
+                    <div class="sablon-grup-baslik">Sayfa Ayarları</div>
+                    <div class="form-check form-switch d-flex align-items-center justify-content-between ps-0 mb-0">
+                        <label class="form-check-label font-size-12 fw-medium" for="sablonCerceve">Sayfa Çerçevesi</label>
+                        <input class="form-check-input ms-2 mt-0" type="checkbox" role="switch" id="sablonCerceve" <?= $cerceve ? 'checked' : '' ?> <?= $duzenleyebilir ? '' : 'disabled' ?>>
+                    </div>
                 </div>
-                <div class="card-body p-0">
-                    <table class="table table-sm align-middle mb-0">
-                        <tbody>
-                            <?php foreach ($alanlar as $kod => $aciklama): ?>
-                            <tr>
-                                <td><code class="sablon-kod px-1 rounded" data-kod="{{<?= $e($kod) ?>}}">{{<?= $e($kod) ?>}}</code></td>
-                                <td class="font-size-12 text-muted"><?= $e($aciklama) ?></td>
-                            </tr>
+
+                <div class="sablon-akordeon" id="sablonAlanlar">
+                    <?php $grupNo = 0; foreach ($gruplar as $grupAdi => $grupAlanlari): $grupNo++; ?>
+                    <div class="sablon-grup">
+                        <button type="button" class="sablon-grup-baslik <?= $grupNo === 1 ? '' : 'collapsed' ?>" data-bs-toggle="collapse" data-bs-target="#sablonGrup<?= $grupNo ?>" aria-expanded="<?= $grupNo === 1 ? 'true' : 'false' ?>" aria-controls="sablonGrup<?= $grupNo ?>">
+                            <span><?= $e($grupAdi) ?></span>
+                            <i class="bx bx-chevron-down"></i>
+                        </button>
+                        <div id="sablonGrup<?= $grupNo ?>" class="collapse <?= $grupNo === 1 ? 'show' : '' ?>" data-bs-parent="#sablonAlanlar">
+                            <?php foreach ($grupAlanlari as $kod => $etiket): ?>
+                            <button type="button" class="sablon-alan-btn" data-kod="{{<?= $e($kod) ?>}}" title="<?= $e($alanlar[$kod] ?? $etiket) ?>" <?= $duzenleyebilir ? '' : 'disabled' ?>>
+                                <span><?= $e($etiket) ?></span>
+                                <code>{{<?= $e($kod) ?>}}</code>
+                            </button>
                             <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                    <div class="p-3 font-size-12 text-muted border-top">
-                        <strong>Nasıl düzenlenir?</strong> Şablonu indirin, Word'de madde ekleyip değiştirin, yer tutucuları (<code>{{AD_SOYAD}}</code> gibi) kendi yerlerinde bırakın ve "Yeni Sürüm Yükle" ile yükleyin. Tanımsız bir yer tutucu yazarsanız yükleme reddedilir.
+                        </div>
                     </div>
+                    <?php endforeach; ?>
                 </div>
-            </div>
+            </aside>
+
+            <section class="sablon-main">
+                <div class="sablon-viewport" id="sablonViewport">
+                    <textarea id="sablonEditor"></textarea>
+                </div>
+            </section>
         </div>
     </div>
 </div>
 
-<?php if ($duzenleyebilir && $hazir): ?>
-<div class="modal fade" id="sablonYukleModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="bx bx-upload me-2"></i>Yeni Şablon Sürümü Yükle</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
-            </div>
-            <div class="modal-body">
-                <form id="sablonYukleForm" enctype="multipart/form-data">
-                    <input type="hidden" name="action" value="sablon-yukle">
-                    <div class="mb-3"><?= Form::FormFileInput('sablon_dosyasi', 'Word Dosyası (.docx)', 'bx bx-file', 'form-control', true, 'accept=".docx"') ?></div>
-                    <div class="mb-2"><?= Form::FormFloatTextarea('aciklama', '', 'Örn: Madde 16 eklendi', 'Değişiklik Açıklaması', 'bx bx-note', 'form-control', false, '80px', 3, 'maxlength="255"') ?></div>
-                    <p class="font-size-12 text-muted mb-0">Yüklenen sürüm hemen kullanıma alınır. Önceki sürümler saklanır.</p>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Kapat</button>
-                <button type="button" class="btn btn-primary" id="btnSablonYukle"><i class="bx bx-upload me-1"></i>Yükle</button>
-            </div>
-        </div>
-    </div>
-</div>
-<?php endif; ?>
-<script>window.SOZLESME_SABLON_API = <?= json_encode($apiUrl) ?>;</script>
-<script src="views/personel/js/sozlesme-sablonlari.js?v=<?php echo time(); ?>"></script>
+<script>window.SOZLESME_SABLON = <?= json_encode($ayarlar, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
+<script src="assets/js/sozlesme-belge.js?v=<?= (int) @filemtime(dirname(__DIR__, 2) . '/assets/js/sozlesme-belge.js') ?>"></script>
+<script src="views/personel/js/sozlesme-sablonlari.js?v=<?= (int) @filemtime(__DIR__ . '/js/sozlesme-sablonlari.js') ?>"></script>

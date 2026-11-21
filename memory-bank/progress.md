@@ -2386,3 +2386,5 @@
 - [x] Gelen faturalarda toplu cariye işle (2026-11-20). Kalan: tarayıcıda gerçek faturalarla deneme.
 - [x] Son hareketler sıralama düzeltmesi + cariler arası hareket aktarımı (2026-11-20). Kalan: politika SQL'in çalıştırılması, tarayıcıda deneme.
 - [x] Seçili hareketleri başka cariye aktarma (hesap-hareketleri sayfası) (2026-11-20). Kalan: tarayıcıda deneme, politika SQL.
+
+- [x] Sözleşme Şablonları sayfası web editöre dönüştürüldü (HTML saklama, PhpWord ile docx indirme). SQL betiği canlı ortamda çalıştırılmalı.
