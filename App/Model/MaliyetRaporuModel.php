@@ -5,27 +5,35 @@ namespace App\Model;
 use App\Core\Db;
 use PDO;
 
-/**
- * Maliyet Raporu Model
- * 
- * Tüm gider kaynaklarını UNION ALL ile birleştirerek
- * aylık, yıllık ve kategorize edilmiş raporlar üretir.
- *
- * Kaynaklar:
- *   - arac_yakit_kayitlari    → Araç / Yakıt
- *   - arac_bakim_kayitlari    → Araç / Bakım
- *   - arac_servis_kayitlari   → Araç / Servis
- *   - arac_sigorta_kayitlari  → Araç / Sigorta
- *   - demirbas_servis_kayitlari → Demirbaş / Servis
- *   - bordro_personel          → Personel / Maaş
- *   - manuel_giderler          → Kullanıcı tanımlı
- */
 class MaliyetRaporuModel extends Db
 {
-    public const SGK_ISVEREN_ALT_KATEGORI = 'SGK İşveren Payı';
+    public const HARIC = 'haric';
+
+    public const KALEMLER = [
+        'maas'             => ['ad' => 'Maaş Gideri',               'renk' => '#f43f5e', 'ikon' => 'bx-wallet',        'kaynak' => 'Bordro net maaş'],
+        'sgk'              => ['ad' => 'SGK Gideri',                'renk' => '#14b8a6', 'ikon' => 'bx-shield-quarter', 'kaynak' => 'Bordro SGK + işsizlik (işçi + işveren)'],
+        'vergi'            => ['ad' => 'Vergi Gideri',              'renk' => '#6366f1', 'ikon' => 'bx-receipt',       'kaynak' => 'Bordro gelir + damga vergisi'],
+        'arac_kirasi'      => ['ad' => 'Araç Kirası',               'renk' => '#0ea5e9', 'ikon' => 'bx-car',           'kaynak' => 'Eşleştirilen firma faturaları'],
+        'yakit'            => ['ad' => 'Yakıt Gideri',              'renk' => '#f59e0b', 'ikon' => 'bx-gas-pump',      'kaynak' => 'Yakıt faturaları + elle girilen yakıt + kasa'],
+        'arac_bakim'       => ['ad' => 'Araç Bakım / Servis',       'renk' => '#0891b2', 'ikon' => 'bx-wrench',        'kaynak' => 'Araç bakım, servis, sigorta kayıtları'],
+        'telefon_internet' => ['ad' => 'Telefon / İnternet',        'renk' => '#8b5cf6', 'ikon' => 'bx-phone',         'kaynak' => 'Eşleştirilen operatör faturaları'],
+        'malzeme_demirbas' => ['ad' => 'Malzeme / Demirbaş',        'renk' => '#10b981', 'ikon' => 'bx-package',       'kaynak' => 'Eşleştirilen faturalar + demirbaş servis + manuel'],
+        'ofis_diger'       => ['ad' => 'Ofis ve Diğer Harcamalar',  'renk' => '#64748b', 'ikon' => 'bx-briefcase',     'kaynak' => 'Gelir-Gider giderleri + manuel'],
+    ];
+
+    public const KAYNAK_ADLARI = [
+        'bordro_personel'           => 'Bordro',
+        'faturalar'                 => 'Gelen Fatura',
+        'arac_yakit_kayitlari'      => 'Yakıt Kaydı',
+        'arac_bakim_kayitlari'      => 'Araç Bakım',
+        'arac_servis_kayitlari'     => 'Araç Servis',
+        'arac_sigorta_kayitlari'    => 'Araç Sigorta',
+        'demirbas_servis_kayitlari' => 'Demirbaş Servis',
+        'gelir_gider'               => 'Gelir-Gider',
+        'manuel_giderler'           => 'Manuel Gider',
+    ];
 
     private int $firmaId;
-    private ?array $manuelGiderColumns = null;
 
     public function __construct()
     {
@@ -33,151 +41,22 @@ class MaliyetRaporuModel extends Db
         $this->firmaId = (int) ($_SESSION['firma_id'] ?? 0);
     }
 
-    /* ------------------------------------------------------------------ */
-    /*  BİRLEŞİK UNION SORGUSU                                            */
-    /* ------------------------------------------------------------------ */
-
-    /* ------------------------------------------------------------------ */
-    /*  ÖZET SORGULARI                                                     */
-    /* ------------------------------------------------------------------ */
-
-    /**
-     * Kategori bazlı toplam
-     */
-    public function getCategorySummary(?string $baslangic = null, ?string $bitis = null): array
+    public static function kalemGecerliMi(?string $kalem, bool $haricDahil = false): bool
     {
-        $parts  = [];
-        $params = [];
-
-        $this->addAracYakit($parts, $params, $baslangic, $bitis);
-        $this->addAracBakim($parts, $params, $baslangic, $bitis);
-        $this->addAracServis($parts, $params, $baslangic, $bitis);
-        $this->addAracSigorta($parts, $params, $baslangic, $bitis);
-        $this->addDemirbasServis($parts, $params, $baslangic, $bitis);
-        $this->addPersonelBordro($parts, $params, $baslangic, $bitis);
-        $this->addManuelGiderler($parts, $params, $baslangic, $bitis);
-
-        if (empty($parts)) {
-            return [];
+        if ($kalem === null || $kalem === '') {
+            return false;
         }
-
-        $inner = implode("\nUNION ALL\n", $parts);
-
-        $sql = "SELECT kategori, SUM(tutar) as toplam
-                FROM ({$inner}) AS unified
-                GROUP BY kategori
-                ORDER BY toplam DESC";
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_OBJ);
+        return isset(self::KALEMLER[$kalem]) || ($haricDahil && $kalem === self::HARIC);
     }
 
-    /**
-     * Aylık toplam (belirli yıl için)
-     */
-    public function getMonthlyTotals(int $yil): array
+    public static function kalemAdi(?string $kalem): string
     {
-        $baslangic = "{$yil}-01-01";
-        $bitis     = "{$yil}-12-31";
-
-        $parts  = [];
-        $params = [];
-
-        $this->addAracYakit($parts, $params, $baslangic, $bitis);
-        $this->addAracBakim($parts, $params, $baslangic, $bitis);
-        $this->addAracServis($parts, $params, $baslangic, $bitis);
-        $this->addAracSigorta($parts, $params, $baslangic, $bitis);
-        $this->addDemirbasServis($parts, $params, $baslangic, $bitis);
-        $this->addPersonelBordro($parts, $params, $baslangic, $bitis);
-        $this->addManuelGiderler($parts, $params, $baslangic, $bitis);
-
-        if (empty($parts)) {
-            return [];
+        if ($kalem === self::HARIC) {
+            return 'Rapora Dahil Etme';
         }
-
-        $inner = implode("\nUNION ALL\n", $parts);
-
-        $sql = "SELECT
-                    MONTH(tarih) as ay,
-                    kategori,
-                    SUM(tutar) as toplam
-                FROM ({$inner}) AS unified
-                GROUP BY MONTH(tarih), kategori
-                ORDER BY ay ASC, kategori ASC";
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_OBJ);
+        return self::KALEMLER[$kalem]['ad'] ?? (string) $kalem;
     }
 
-    /**
-     * Yıllık toplam
-     */
-    public function getYearlyTotals(): array
-    {
-        $parts  = [];
-        $params = [];
-
-        $this->addAracYakit($parts, $params);
-        $this->addAracBakim($parts, $params);
-        $this->addAracServis($parts, $params);
-        $this->addAracSigorta($parts, $params);
-        $this->addDemirbasServis($parts, $params);
-        $this->addPersonelBordro($parts, $params);
-        $this->addManuelGiderler($parts, $params);
-
-        if (empty($parts)) {
-            return [];
-        }
-
-        $inner = implode("\nUNION ALL\n", $parts);
-
-        $sql = "SELECT
-                    YEAR(tarih) as yil,
-                    kategori,
-                    SUM(tutar) as toplam
-                FROM ({$inner}) AS unified
-                GROUP BY YEAR(tarih), kategori
-                ORDER BY yil DESC, kategori ASC";
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_OBJ);
-    }
-
-    /**
-     * Genel toplam (tek sayı)
-     */
-    public function getGrandTotal(?string $baslangic = null, ?string $bitis = null): float
-    {
-        $parts  = [];
-        $params = [];
-
-        $this->addAracYakit($parts, $params, $baslangic, $bitis);
-        $this->addAracBakim($parts, $params, $baslangic, $bitis);
-        $this->addAracServis($parts, $params, $baslangic, $bitis);
-        $this->addAracSigorta($parts, $params, $baslangic, $bitis);
-        $this->addDemirbasServis($parts, $params, $baslangic, $bitis);
-        $this->addPersonelBordro($parts, $params, $baslangic, $bitis);
-        $this->addManuelGiderler($parts, $params, $baslangic, $bitis);
-
-        if (empty($parts)) {
-            return 0;
-        }
-
-        $inner = implode("\nUNION ALL\n", $parts);
-
-        $sql = "SELECT COALESCE(SUM(tutar), 0) as toplam FROM ({$inner}) AS unified";
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-        return (float) $stmt->fetchColumn();
-    }
-
-    /**
-     * Yıl/ay filtresinden tarih aralığı üretir
-     */
     public static function tarihAraligi($yil, $ay): array
     {
         $yil = (int) $yil;
@@ -192,76 +71,110 @@ class MaliyetRaporuModel extends Db
         return ["{$yil}-01-01", "{$yil}-12-31"];
     }
 
-    /**
-     * İşveren SGK + işsizlik payı toplamı (bordro kayıtlarındaki snapshot ile birebir)
-     */
-    public function getSgkIsverenTotal(?string $baslangic = null, ?string $bitis = null, ?string $kategori = null): float
+    public function kalemOzet(?string $bas = null, ?string $bit = null): array
     {
-        if ($kategori && $kategori !== 'Personel') {
-            return 0.0;
+        [$inner, $params] = $this->birlesik($bas, $bit);
+        $stmt = $this->db->prepare("SELECT kalem, COALESCE(SUM(tutar), 0) AS toplam, COUNT(*) AS adet
+                                    FROM ({$inner}) AS u GROUP BY kalem");
+        $stmt->execute($params);
+
+        $sonuc = [];
+        foreach (array_keys(self::KALEMLER) as $k) {
+            $sonuc[$k] = ['toplam' => 0.0, 'adet' => 0];
         }
+        foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $r) {
+            if (isset($sonuc[$r->kalem])) {
+                $sonuc[$r->kalem] = ['toplam' => round((float) $r->toplam, 2), 'adet' => (int) $r->adet];
+            }
+        }
+        return $sonuc;
+    }
 
-        $parts  = [];
-        $params = [];
-        $this->addPersonelBordro($parts, $params, $baslangic, $bitis);
+    public function aylikKalem(int $yil): array
+    {
+        [$inner, $params] = $this->birlesik("{$yil}-01-01", "{$yil}-12-31");
+        $stmt = $this->db->prepare("SELECT MONTH(tarih) AS ay, kalem, COALESCE(SUM(tutar), 0) AS toplam
+                                    FROM ({$inner}) AS u GROUP BY MONTH(tarih), kalem");
+        $stmt->execute($params);
 
-        $inner = implode("\nUNION ALL\n", $parts);
-        $sql = "SELECT COALESCE(SUM(tutar), 0) FROM ({$inner}) AS unified
-                WHERE alt_kategori = " . $this->utf8Expr(':alt_sgk');
-        $params['alt_sgk'] = self::SGK_ISVEREN_ALT_KATEGORI;
+        $matris = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $r) {
+            $matris[$r->kalem][(int) $r->ay] = round((float) $r->toplam, 2);
+        }
+        return $matris;
+    }
+
+    public function eslesmemisFaturalar(?string $bas = null, ?string $bit = null): array
+    {
+        $params = ['f_ef' => $this->firmaId, 'f_ef2' => $this->firmaId, 'f_ef3' => $this->firmaId];
+        $vkn = $this->faturaVknExpr();
+        $tutar = $this->faturaTutarExpr();
+        $sql = "SELECT {$vkn} AS vkn,
+                       MAX(COALESCE(NULLIF(f.alici_unvan, ''), c.unvan)) AS unvan,
+                       COUNT(*) AS adet,
+                       COALESCE(SUM({$tutar}), 0) AS toplam,
+                       MAX(f.fatura_tarihi) AS son_tarih
+                FROM faturalar f
+                LEFT JOIN efatura_cariler c ON c.id = f.cari_id
+                LEFT JOIN maliyet_fatura_kalem mfk
+                       ON mfk.fatura_id = f.id AND mfk.firma_id = :f_ef2 AND mfk.deleted_at IS NULL AND mfk.is_active = 1
+                LEFT JOIN maliyet_kalem_eslestirme mke
+                       ON mke.firma_id = :f_ef3 AND mke.kaynak = 'fatura' AND mke.deleted_at IS NULL AND mke.is_active = 1
+                      AND mke.eslesme_degeri = {$vkn}
+                WHERE f.firm_id = :f_ef
+                  AND f.yon = 'GELEN'
+                  AND f.deleted_at IS NULL
+                  AND COALESCE(f.is_active, 1) = 1
+                  AND COALESCE(f.ticari_yanit, '') <> 'RED'
+                  AND mfk.id IS NULL
+                  AND mke.id IS NULL";
+        if ($bas && $bit) {
+            $sql .= " AND f.fatura_tarihi BETWEEN :bas_ef AND :bit_ef";
+            $params['bas_ef'] = $bas;
+            $params['bit_ef'] = $bit;
+        }
+        $sql .= " GROUP BY {$vkn} ORDER BY toplam DESC";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
-        return round((float) $stmt->fetchColumn(), 2);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
-    /**
-     * DataTables server-side liste
-     */
-    public function ajaxList(array $params, ?string $baslangic = null, ?string $bitis = null, ?string $kategori = null): array
+    public function ajaxList(array $params, ?string $baslangic = null, ?string $bitis = null, ?string $kalem = null): array
     {
-        $parts  = [];
-        $bind   = [];
-
-        $this->addAracYakit($parts, $bind, $baslangic, $bitis, $kategori);
-        $this->addAracBakim($parts, $bind, $baslangic, $bitis, $kategori);
-        $this->addAracServis($parts, $bind, $baslangic, $bitis, $kategori);
-        $this->addAracSigorta($parts, $bind, $baslangic, $bitis, $kategori);
-        $this->addDemirbasServis($parts, $bind, $baslangic, $bitis, $kategori);
-        $this->addPersonelBordro($parts, $bind, $baslangic, $bitis, $kategori);
-        $this->addManuelGiderler($parts, $bind, $baslangic, $bitis, $kategori);
-
+        [$inner, $bind] = $this->birlesik($baslangic, $bitis);
         $draw = (int) ($params['draw'] ?? 0);
-        if (empty($parts)) {
-            return ['draw' => $draw, 'recordsTotal' => 0, 'recordsFiltered' => 0, 'data' => []];
+
+        $adCase = $this->kalemAdiCase($bind);
+        $kaynakCase = $this->kaynakAdiCase($bind);
+        $base = "SELECT u.*, {$adCase} AS kalem_adi, {$kaynakCase} AS kaynak_adi FROM ({$inner}) AS u";
+
+        $onWhere = [];
+        if ($kalem && self::kalemGecerliMi($kalem)) {
+            $onWhere[] = 'u.kalem = :q_kalem';
+            $bind['q_kalem'] = $kalem;
         }
+        $onWhereSql = $onWhere ? ' WHERE ' . implode(' AND ', $onWhere) : '';
+        $base .= $onWhereSql;
 
-        $inner = implode("\nUNION ALL\n", $parts);
-
-        $totalStmt = $this->db->prepare("SELECT COUNT(*) FROM ({$inner}) AS unified");
+        $totalStmt = $this->db->prepare("SELECT COUNT(*) FROM ({$base}) AS t");
         $totalStmt->execute($bind);
         $total = (int) $totalStmt->fetchColumn();
 
-        $kolonlar = [
-            1 => 'tarih',
-            2 => 'kategori',
-            3 => 'alt_kategori',
-            4 => 'tutar',
-            5 => 'kaynak_tablo',
-            6 => 'aciklama',
-        ];
-        $metinKolonlari = ['kategori', 'alt_kategori', 'kaynak_tablo', 'aciklama'];
+        $kolonlar = [1 => 'tarih', 2 => 'kalem_adi', 3 => 'alt_kategori', 4 => 'tutar', 5 => 'kaynak_adi', 6 => 'aciklama'];
+        $metinKolonlari = ['kalem_adi', 'alt_kategori', 'kaynak_adi', 'aciklama'];
 
-        $where  = [];
+        $where = [];
         $filter = [];
-
         $arama = trim((string) ($params['search']['value'] ?? ''));
         if ($arama !== '') {
-            $where[] = "(CAST(tarih AS CHAR) LIKE :q_arama OR kategori LIKE :q_arama OR alt_kategori LIKE :q_arama
-                         OR CAST(tutar AS CHAR) LIKE :q_arama OR kaynak_tablo LIKE :q_arama OR aciklama LIKE :q_arama)";
-            $filter['q_arama'] = '%' . $arama . '%';
+            $parcalar = [];
+            foreach ($kolonlar as $i => $ad) {
+                $parcalar[] = in_array($ad, $metinKolonlari, true) ? "{$ad} LIKE :q_ara_{$i}" : "CAST({$ad} AS CHAR) LIKE :q_ara_{$i}";
+                $filter["q_ara_{$i}"] = '%' . $arama . '%';
+            }
+            $where[] = '(' . implode(' OR ', $parcalar) . ')';
         }
-
         foreach (($params['columns'] ?? []) as $i => $kolon) {
             $i = (int) $i;
             $deger = trim((string) ($kolon['search']['value'] ?? ''));
@@ -269,363 +182,309 @@ class MaliyetRaporuModel extends Db
                 continue;
             }
             $ad = $kolonlar[$i];
-            if (in_array($ad, $metinKolonlari, true)) {
-                $where[] = "{$ad} LIKE :q_col_{$i}";
-            } else {
-                $where[] = "CAST({$ad} AS CHAR) LIKE :q_col_{$i}";
-            }
+            $where[] = in_array($ad, $metinKolonlari, true) ? "{$ad} LIKE :q_col_{$i}" : "CAST({$ad} AS CHAR) LIKE :q_col_{$i}";
             $filter["q_col_{$i}"] = '%' . $deger . '%';
         }
-
         $whereSql = $where ? ' WHERE ' . implode(' AND ', $where) : '';
 
-        $filteredStmt = $this->db->prepare("SELECT COUNT(*) FROM ({$inner}) AS unified{$whereSql}");
+        $filteredStmt = $this->db->prepare("SELECT COUNT(*), COALESCE(SUM(tutar), 0) FROM ({$base}) AS t{$whereSql}");
         $filteredStmt->execute($bind + $filter);
-        $filtered = (int) $filteredStmt->fetchColumn();
+        [$filtered, $toplam] = $filteredStmt->fetch(PDO::FETCH_NUM);
 
         $siralama = [];
         foreach (($params['order'] ?? []) as $o) {
             $idx = (int) ($o['column'] ?? -1);
             if (isset($kolonlar[$idx])) {
-                $yon = strtolower((string) ($o['dir'] ?? 'asc')) === 'asc' ? 'ASC' : 'DESC';
-                $siralama[] = $kolonlar[$idx] . ' ' . $yon;
+                $siralama[] = $kolonlar[$idx] . (strtolower((string) ($o['dir'] ?? 'asc')) === 'asc' ? ' ASC' : ' DESC');
             }
         }
-        if (empty($siralama)) {
+        if (!$siralama) {
             $siralama[] = 'tarih DESC';
         }
         $siralama[] = 'kaynak_tablo ASC';
-        $siralama[] = 'aciklama ASC';
+        $siralama[] = 'kaynak_id DESC';
 
-        $baslangicSatir = max(0, (int) ($params['start'] ?? 0));
-        $uzunluk = (int) ($params['length'] ?? 25);
-        $uzunluk = $uzunluk > 0 ? min($uzunluk, 500) : 25;
+        $start = max(0, (int) ($params['start'] ?? 0));
+        $length = (int) ($params['length'] ?? 25);
+        $length = $length > 0 ? min($length, 500) : 25;
 
-        $sql = "SELECT tarih, kategori, alt_kategori, tutar, kaynak_tablo, aciklama
-                FROM ({$inner}) AS unified{$whereSql}
-                ORDER BY " . implode(', ', $siralama) . "
-                LIMIT :baslangic, :uzunluk";
-        $stmt = $this->db->prepare($sql);
+        $stmt = $this->db->prepare("SELECT * FROM ({$base}) AS t{$whereSql} ORDER BY " . implode(', ', $siralama) . " LIMIT :baslangic, :uzunluk");
         foreach ($bind + $filter as $k => $v) {
             $stmt->bindValue($k, $v);
         }
-        $stmt->bindValue('baslangic', $baslangicSatir, PDO::PARAM_INT);
-        $stmt->bindValue('uzunluk', $uzunluk, PDO::PARAM_INT);
+        $stmt->bindValue('baslangic', $start, PDO::PARAM_INT);
+        $stmt->bindValue('uzunluk', $length, PDO::PARAM_INT);
         $stmt->execute();
-
-        $sumStmt = $this->db->prepare("SELECT COALESCE(SUM(tutar), 0) FROM ({$inner}) AS unified{$whereSql}");
-        $sumStmt->execute($bind + $filter);
 
         return [
             'draw'            => $draw,
             'recordsTotal'    => $total,
-            'recordsFiltered' => $filtered,
-            'toplam'          => round((float) $sumStmt->fetchColumn(), 2),
+            'recordsFiltered' => (int) $filtered,
+            'toplam'          => round((float) $toplam, 2),
             'data'            => $stmt->fetchAll(PDO::FETCH_OBJ),
         ];
     }
 
-    /* ------------------------------------------------------------------ */
-    /*  ALT SORGU BİLEŞENLERİ                                             */
-    /* ------------------------------------------------------------------ */
-
-    private function addAracYakit(array &$parts, array &$params, ?string $bas = null, ?string $bit = null, ?string $kat = null): void
+    private function birlesik(?string $bas, ?string $bit): array
     {
-        if ($kat && $kat !== 'Araç') return;
-
-        $kategoriExpr = $this->utf8Expr("'Araç'");
-        $altKategoriExpr = $this->utf8Expr("'Yakıt'");
-        $kaynakExpr = $this->utf8Expr("'arac_yakit_kayitlari'");
-        $aciklamaExpr = $this->utf8Expr("CONCAT(a.plaka, ' - ', y.yakit_miktari, ' Lt')");
-
-        $sql = "SELECT y.tarih,
-                       {$kategoriExpr} AS kategori,
-                       {$altKategoriExpr} AS alt_kategori,
-                       y.toplam_tutar AS tutar,
-                       {$kaynakExpr} AS kaynak_tablo,
-                       {$aciklamaExpr} AS aciklama
-                FROM arac_yakit_kayitlari y
-                INNER JOIN araclar a ON y.arac_id = a.id
-                                WHERE y.silinme_tarihi IS NULL
-                                    AND y.firma_id = :f_yk
-                                    AND COALESCE(y.toplam_tutar, 0) <> 0";
-        $params['f_yk'] = $this->firmaId;
-
-        if ($bas && $bit) {
-            $sql .= " AND y.tarih BETWEEN :bas_yk AND :bit_yk";
-            $params['bas_yk'] = $bas;
-            $params['bit_yk'] = $bit;
-        }
-
-        $parts[] = "({$sql})";
+        $parts = [];
+        $params = [];
+        $this->addBordro($parts, $params, $bas, $bit);
+        $this->addFaturalar($parts, $params, $bas, $bit);
+        $this->addYakitKayitlari($parts, $params, $bas, $bit);
+        $this->addAracBakim($parts, $params, $bas, $bit);
+        $this->addAracServis($parts, $params, $bas, $bit);
+        $this->addAracSigorta($parts, $params, $bas, $bit);
+        $this->addDemirbasServis($parts, $params, $bas, $bit);
+        $this->addGelirGider($parts, $params, $bas, $bit);
+        $this->addManuelGiderler($parts, $params, $bas, $bit);
+        return [implode("\nUNION ALL\n", $parts), $params];
     }
 
-    private function addAracBakim(array &$parts, array &$params, ?string $bas = null, ?string $bit = null, ?string $kat = null): void
+    private function satir(string $tarih, string $kalem, string $alt, string $tutar, string $kaynak, string $aciklama, string $id): string
     {
-        if ($kat && $kat !== 'Araç') return;
-
-        $kategoriExpr = $this->utf8Expr("'Araç'");
-        $altKategoriExpr = $this->utf8Expr("CONCAT('Bakım - ', b.bakim_tipi)");
-        $kaynakExpr = $this->utf8Expr("'arac_bakim_kayitlari'");
-        $aciklamaExpr = $this->utf8Expr("CONCAT(a.plaka, ' - ', COALESCE(b.servis_adi, LEFT(b.aciklama, 80)))");
-
-        $sql = "SELECT b.tarih,
-                       {$kategoriExpr} AS kategori,
-                       {$altKategoriExpr} AS alt_kategori,
-                       b.tutar,
-                       {$kaynakExpr} AS kaynak_tablo,
-                       {$aciklamaExpr} AS aciklama
-                FROM arac_bakim_kayitlari b
-                INNER JOIN araclar a ON b.arac_id = a.id
-                                WHERE b.silinme_tarihi IS NULL
-                                    AND b.firma_id = :f_bk
-                                    AND COALESCE(b.tutar, 0) <> 0";
-        $params['f_bk'] = $this->firmaId;
-
-        if ($bas && $bit) {
-            $sql .= " AND b.tarih BETWEEN :bas_bk AND :bit_bk";
-            $params['bas_bk'] = $bas;
-            $params['bit_bk'] = $bit;
-        }
-
-        $parts[] = "({$sql})";
+        return "SELECT {$tarih} AS tarih,
+                       {$this->utf8Expr($kalem)} AS kalem,
+                       {$this->utf8Expr($alt)} AS alt_kategori,
+                       ROUND({$tutar}, 2) AS tutar,
+                       {$this->utf8Expr($kaynak)} AS kaynak_tablo,
+                       {$this->utf8Expr($aciklama)} AS aciklama,
+                       {$id} AS kaynak_id";
     }
 
-    private function addAracServis(array &$parts, array &$params, ?string $bas = null, ?string $bit = null, ?string $kat = null): void
+    private function tarihFiltre(string $kolon, string $sfx, array &$params, ?string $bas, ?string $bit): string
     {
-        if ($kat && $kat !== 'Araç') return;
-
-        $kategoriExpr = $this->utf8Expr("'Araç'");
-        $altKategoriExpr = $this->utf8Expr("'Servis'");
-        $kaynakExpr = $this->utf8Expr("'arac_servis_kayitlari'");
-        $aciklamaExpr = $this->utf8Expr("CONCAT(a.plaka, ' - ', COALESCE(LEFT(s.servis_nedeni, 80), ''))");
-
-        $sql = "SELECT s.servis_tarihi AS tarih,
-                       {$kategoriExpr} AS kategori,
-                       {$altKategoriExpr} AS alt_kategori,
-                       s.tutar,
-                       {$kaynakExpr} AS kaynak_tablo,
-                       {$aciklamaExpr} AS aciklama
-                FROM arac_servis_kayitlari s
-                INNER JOIN araclar a ON s.arac_id = a.id
-                                WHERE s.silinme_tarihi IS NULL
-                                    AND s.firma_id = :f_sv
-                                    AND COALESCE(s.tutar, 0) <> 0";
-        $params['f_sv'] = $this->firmaId;
-
-        if ($bas && $bit) {
-            $sql .= " AND s.servis_tarihi BETWEEN :bas_sv AND :bit_sv";
-            $params['bas_sv'] = $bas;
-            $params['bit_sv'] = $bit;
+        if (!$bas || !$bit) {
+            return '';
         }
-
-        $parts[] = "({$sql})";
+        $params["bas_{$sfx}"] = $bas;
+        $params["bit_{$sfx}"] = $bit;
+        return " AND {$kolon} BETWEEN :bas_{$sfx} AND :bit_{$sfx}";
     }
 
-    private function addAracSigorta(array &$parts, array &$params, ?string $bas = null, ?string $bit = null, ?string $kat = null): void
+    private function addBordro(array &$parts, array &$params, ?string $bas, ?string $bit): void
     {
-        if ($kat && $kat !== 'Araç') return;
-
-        $kategoriExpr = $this->utf8Expr("'Araç'");
-        $altKategoriExpr = $this->utf8Expr("CONCAT('Sigorta - ', si.sigorta_tipi)");
-        $kaynakExpr = $this->utf8Expr("'arac_sigorta_kayitlari'");
-        $aciklamaExpr = $this->utf8Expr("CONCAT(a.plaka, ' - ', COALESCE(si.sigorta_sirketi, ''), ' ', COALESCE(si.police_no, ''))");
-
-        $sql = "SELECT si.baslangic_tarihi AS tarih,
-                       {$kategoriExpr} AS kategori,
-                       {$altKategoriExpr} AS alt_kategori,
-                       si.prim_tutari AS tutar,
-                       {$kaynakExpr} AS kaynak_tablo,
-                       {$aciklamaExpr} AS aciklama
-                FROM arac_sigorta_kayitlari si
-                INNER JOIN araclar a ON si.arac_id = a.id
-                                WHERE si.silinme_tarihi IS NULL
-                                    AND si.firma_id = :f_sg
-                                    AND COALESCE(si.prim_tutari, 0) <> 0";
-        $params['f_sg'] = $this->firmaId;
-
-        if ($bas && $bit) {
-            $sql .= " AND si.baslangic_tarihi BETWEEN :bas_sg AND :bit_sg";
-            $params['bas_sg'] = $bas;
-            $params['bit_sg'] = $bit;
-        }
-
-        $parts[] = "({$sql})";
-    }
-
-    private function addDemirbasServis(array &$parts, array &$params, ?string $bas = null, ?string $bit = null, ?string $kat = null): void
-    {
-        if ($kat && $kat !== 'Demirbaş') return;
-
-        $kategoriExpr = $this->utf8Expr("'Demirbaş'");
-        $altKategoriExpr = $this->utf8Expr("'Servis'");
-        $kaynakExpr = $this->utf8Expr("'demirbas_servis_kayitlari'");
-        $aciklamaExpr = $this->utf8Expr("CONCAT(d.demirbas_adi, ' (', d.demirbas_no, ')')");
-
-        $sql = "SELECT ds.servis_tarihi AS tarih,
-                       {$kategoriExpr} AS kategori,
-                       {$altKategoriExpr} AS alt_kategori,
-                       ds.tutar,
-                       {$kaynakExpr} AS kaynak_tablo,
-                       {$aciklamaExpr} AS aciklama
-                FROM demirbas_servis_kayitlari ds
-                INNER JOIN demirbas d ON ds.demirbas_id = d.id
-                                WHERE ds.silinme_tarihi IS NULL
-                                    AND ds.firma_id = :f_ds
-                                    AND COALESCE(ds.tutar, 0) <> 0";
-        $params['f_ds'] = $this->firmaId;
-
-        if ($bas && $bit) {
-            $sql .= " AND ds.servis_tarihi BETWEEN :bas_ds AND :bit_ds";
-            $params['bas_ds'] = $bas;
-            $params['bit_ds'] = $bit;
-        }
-
-        $parts[] = "({$sql})";
-    }
-
-    private function addPersonelBordro(array &$parts, array &$params, ?string $bas = null, ?string $bit = null, ?string $kat = null): void
-    {
-        if ($kat && $kat !== 'Personel') return;
-
-        $kategoriExpr = $this->utf8Expr("'Personel'");
-        $kaynakExpr = $this->utf8Expr("'bordro_personel'");
-        $aciklamaExpr = $this->utf8Expr("CONCAT(p.adi_soyadi, ' - ', bd.donem_adi)");
-        $sgkExpr = "(COALESCE(bp.sgk_isveren, 0) + COALESCE(bp.issizlik_isveren, 0))";
-
         $parcalar = [
-            ['alt' => 'Maaş', 'tutar' => "(COALESCE(bp.toplam_maliyet, 0) - {$sgkExpr})", 'sfx' => 'bp'],
-            ['alt' => self::SGK_ISVEREN_ALT_KATEGORI, 'tutar' => $sgkExpr, 'sfx' => 'bs'],
+            'bm' => ['maas',  'Net Maaş',              'COALESCE(bp.net_maas, 0)'],
+            'bs' => ['sgk',   'SGK + İşsizlik Primi',  '(COALESCE(bp.sgk_isci, 0) + COALESCE(bp.issizlik_isci, 0) + COALESCE(bp.sgk_isveren, 0) + COALESCE(bp.issizlik_isveren, 0))'],
+            'bv' => ['vergi', 'Gelir + Damga Vergisi', '(COALESCE(bp.gelir_vergisi, 0) + COALESCE(bp.damga_vergisi, 0))'],
         ];
-
-        foreach ($parcalar as $parca) {
-            $sfx = $parca['sfx'];
-            $altKategoriExpr = $this->utf8Expr("'" . $parca['alt'] . "'");
-
-            $sql = "SELECT bd.baslangic_tarihi AS tarih,
-                           {$kategoriExpr} AS kategori,
-                           {$altKategoriExpr} AS alt_kategori,
-                           {$parca['tutar']} AS tutar,
-                           {$kaynakExpr} AS kaynak_tablo,
-                           {$aciklamaExpr} AS aciklama
+        foreach ($parcalar as $sfx => [$kalem, $alt, $tutar]) {
+            $sql = $this->satir('bd.baslangic_tarihi', "'{$kalem}'", "'{$alt}'", $tutar, "'bordro_personel'",
+                    "CONCAT(p.adi_soyadi, ' - ', bd.donem_adi)", 'bp.id') . "
                     FROM bordro_personel bp
                     INNER JOIN bordro_donemi bd ON bp.donem_id = bd.id
                     INNER JOIN personel p ON bp.personel_id = p.id
                     WHERE bp.silinme_tarihi IS NULL
+                      AND bd.silinme_tarihi IS NULL
+                      AND bp.hesaplama_tarihi IS NOT NULL
                       AND bd.firma_id = :f_{$sfx}
-                      AND {$parca['tutar']} <> 0";
+                      AND {$tutar} <> 0";
             $params["f_{$sfx}"] = $this->firmaId;
-
-            if ($bas && $bit) {
-                $sql .= " AND bd.baslangic_tarihi BETWEEN :bas_{$sfx} AND :bit_{$sfx}";
-                $params["bas_{$sfx}"] = $bas;
-                $params["bit_{$sfx}"] = $bit;
-            }
-
+            $sql .= $this->tarihFiltre('bd.baslangic_tarihi', $sfx, $params, $bas, $bit);
             $parts[] = "({$sql})";
         }
     }
 
-    private function addManuelGiderler(array &$parts, array &$params, ?string $bas = null, ?string $bit = null, ?string $kat = null): void
+    private function faturaVknExpr(): string
     {
-        $cols = $this->resolveManuelGiderColumns();
-        $dateCol = $cols['date'];
-        $categoryCol = $cols['category'];
-        $subCategoryCol = $cols['sub_category'];
-        $amountCol = $cols['amount'];
-        $descCol = $cols['description'];
+        return "COALESCE(NULLIF(f.alici_vkn_tckn, ''), c.vkn_tckn)";
+    }
 
-                $kategoriExpr = $this->utf8Expr("COALESCE(mg.{$categoryCol}, 'Diğer')");
-                $altKategoriExpr = $this->utf8Expr("COALESCE(mg.{$subCategoryCol}, 'Manuel')");
-                $kaynakExpr = $this->utf8Expr("'manuel_giderler'");
-                $aciklamaExpr = $this->utf8Expr("mg.{$descCol}");
+    private function faturaTutarExpr(): string
+    {
+        return "(COALESCE(f.odenecek_tutar, 0) * CASE WHEN COALESCE(f.para_birimi, 'TRY') IN ('TRY', 'TL') THEN 1 ELSE COALESCE(NULLIF(f.doviz_kuru, 0), 1) END)";
+    }
 
-        if ($kat) {
-            // Manuel giderler kendi kategorisine sahip olduğu için filtre uygulanır
-            $sql = "SELECT mg.{$dateCol} AS tarih,
-                                                     {$kategoriExpr} AS kategori,
-                                                     {$altKategoriExpr} AS alt_kategori,
-                           mg.{$amountCol} AS tutar,
-                                                     {$kaynakExpr} AS kaynak_tablo,
-                                                     {$aciklamaExpr} AS aciklama
-                    FROM manuel_giderler mg
-                                        WHERE mg.silinme_tarihi IS NULL
-                                            AND mg.firma_id = :f_mg
-                                            AND COALESCE(mg.{$amountCol}, 0) <> 0
-                                            AND {$kategoriExpr} = CONVERT(:kat_mg USING utf8mb4) COLLATE utf8mb4_unicode_ci";
-            $params['f_mg']   = $this->firmaId;
-            $params['kat_mg'] = $kat;
-        } else {
-            $sql = "SELECT mg.{$dateCol} AS tarih,
-                                                     {$kategoriExpr} AS kategori,
-                                                     {$altKategoriExpr} AS alt_kategori,
-                           mg.{$amountCol} AS tutar,
-                                                     {$kaynakExpr} AS kaynak_tablo,
-                                                     {$aciklamaExpr} AS aciklama
-                    FROM manuel_giderler mg
-                                        WHERE mg.silinme_tarihi IS NULL
-                                            AND mg.firma_id = :f_mg
-                                            AND COALESCE(mg.{$amountCol}, 0) <> 0";
-            $params['f_mg'] = $this->firmaId;
-        }
-
-        if ($bas && $bit) {
-            $sql .= " AND mg.{$dateCol} BETWEEN :bas_mg AND :bit_mg";
-            $params['bas_mg'] = $bas;
-            $params['bit_mg'] = $bit;
-        }
-
+    private function addFaturalar(array &$parts, array &$params, ?string $bas, ?string $bit): void
+    {
+        $vkn = $this->faturaVknExpr();
+        $kalem = 'COALESCE(mfk.kalem, mke.kalem)';
+        $sql = $this->satir('f.fatura_tarihi', $kalem,
+                "CASE WHEN mfk.id IS NOT NULL THEN 'Fatura (elle atandı)' ELSE 'Fatura' END",
+                $this->faturaTutarExpr(), "'faturalar'",
+                "CONCAT(COALESCE(NULLIF(f.alici_unvan, ''), c.unvan, ''), ' - ', COALESCE(f.fatura_no, ''))", 'f.id') . "
+                FROM faturalar f
+                LEFT JOIN efatura_cariler c ON c.id = f.cari_id
+                LEFT JOIN maliyet_fatura_kalem mfk
+                       ON mfk.fatura_id = f.id AND mfk.firma_id = :f_fm AND mfk.deleted_at IS NULL AND mfk.is_active = 1
+                LEFT JOIN maliyet_kalem_eslestirme mke
+                       ON mke.firma_id = :f_fe AND mke.kaynak = 'fatura' AND mke.deleted_at IS NULL AND mke.is_active = 1
+                      AND mke.eslesme_degeri = {$vkn}
+                WHERE f.firm_id = :f_ft
+                  AND f.yon = 'GELEN'
+                  AND f.deleted_at IS NULL
+                  AND COALESCE(f.is_active, 1) = 1
+                  AND COALESCE(f.ticari_yanit, '') <> 'RED'
+                  AND {$kalem} IS NOT NULL
+                  AND {$kalem} <> 'haric'
+                  AND COALESCE(f.odenecek_tutar, 0) <> 0";
+        $params['f_fm'] = $this->firmaId;
+        $params['f_fe'] = $this->firmaId;
+        $params['f_ft'] = $this->firmaId;
+        $sql .= $this->tarihFiltre('f.fatura_tarihi', 'ft', $params, $bas, $bit);
         $parts[] = "({$sql})";
     }
 
-    private function resolveManuelGiderColumns(): array
+    private function addYakitKayitlari(array &$parts, array &$params, ?string $bas, ?string $bit): void
     {
-        if ($this->manuelGiderColumns !== null) {
-            return $this->manuelGiderColumns;
+        $sql = $this->satir('y.tarih', "'yakit'", "'Yakıt Kaydı (fatura dışı)'", 'y.toplam_tutar', "'arac_yakit_kayitlari'",
+                "CONCAT(a.plaka, ' - ', y.yakit_miktari, ' Lt')", 'y.id') . "
+                FROM arac_yakit_kayitlari y
+                INNER JOIN araclar a ON y.arac_id = a.id
+                WHERE y.silinme_tarihi IS NULL
+                  AND y.firma_id = :f_yk
+                  AND COALESCE(y.toplam_tutar, 0) <> 0
+                  AND NOT EXISTS (
+                      SELECT 1 FROM faturalar fy
+                      WHERE fy.firm_id = y.firma_id
+                        AND fy.yon = 'GELEN'
+                        AND fy.deleted_at IS NULL
+                        AND COALESCE(y.fatura_no, '') <> ''
+                        AND fy.fatura_no = y.fatura_no
+                  )
+                  AND NOT (
+                      y.external_id IS NOT NULL
+                      AND COALESCE(y.fatura_no, '') = ''
+                      AND y.tarih >= COALESCE((
+                          SELECT MIN(fm.fatura_tarihi) FROM faturalar fm
+                          WHERE fm.firm_id = y.firma_id AND fm.yon = 'GELEN' AND fm.deleted_at IS NULL
+                      ), '9999-12-31')
+                  )";
+        $params['f_yk'] = $this->firmaId;
+        $sql .= $this->tarihFiltre('y.tarih', 'yk', $params, $bas, $bit);
+        $parts[] = "({$sql})";
+    }
+
+    private function addAracBakim(array &$parts, array &$params, ?string $bas, ?string $bit): void
+    {
+        $sql = $this->satir('b.tarih', "'arac_bakim'", "CONCAT('Bakım - ', COALESCE(b.bakim_tipi, ''))", 'b.tutar', "'arac_bakim_kayitlari'",
+                "CONCAT(a.plaka, ' - ', COALESCE(b.servis_adi, LEFT(b.aciklama, 80), ''))", 'b.id') . "
+                FROM arac_bakim_kayitlari b
+                INNER JOIN araclar a ON b.arac_id = a.id
+                WHERE b.silinme_tarihi IS NULL
+                  AND b.firma_id = :f_bk
+                  AND COALESCE(b.tutar, 0) <> 0";
+        $params['f_bk'] = $this->firmaId;
+        $sql .= $this->tarihFiltre('b.tarih', 'bk', $params, $bas, $bit);
+        $parts[] = "({$sql})";
+    }
+
+    private function addAracServis(array &$parts, array &$params, ?string $bas, ?string $bit): void
+    {
+        $sql = $this->satir('s.servis_tarihi', "'arac_bakim'", "'Servis'", 's.tutar', "'arac_servis_kayitlari'",
+                "CONCAT(a.plaka, ' - ', COALESCE(LEFT(s.servis_nedeni, 80), ''))", 's.id') . "
+                FROM arac_servis_kayitlari s
+                INNER JOIN araclar a ON s.arac_id = a.id
+                WHERE s.silinme_tarihi IS NULL
+                  AND s.firma_id = :f_sv
+                  AND COALESCE(s.tutar, 0) <> 0";
+        $params['f_sv'] = $this->firmaId;
+        $sql .= $this->tarihFiltre('s.servis_tarihi', 'sv', $params, $bas, $bit);
+        $parts[] = "({$sql})";
+    }
+
+    private function addAracSigorta(array &$parts, array &$params, ?string $bas, ?string $bit): void
+    {
+        $sql = $this->satir('si.baslangic_tarihi', "'arac_bakim'", "CONCAT('Sigorta - ', COALESCE(si.sigorta_tipi, ''))", 'si.prim_tutari', "'arac_sigorta_kayitlari'",
+                "CONCAT(a.plaka, ' - ', COALESCE(si.sigorta_sirketi, ''), ' ', COALESCE(si.police_no, ''))", 'si.id') . "
+                FROM arac_sigorta_kayitlari si
+                INNER JOIN araclar a ON si.arac_id = a.id
+                WHERE si.silinme_tarihi IS NULL
+                  AND si.firma_id = :f_sg
+                  AND COALESCE(si.prim_tutari, 0) <> 0";
+        $params['f_sg'] = $this->firmaId;
+        $sql .= $this->tarihFiltre('si.baslangic_tarihi', 'sg', $params, $bas, $bit);
+        $parts[] = "({$sql})";
+    }
+
+    private function addDemirbasServis(array &$parts, array &$params, ?string $bas, ?string $bit): void
+    {
+        $sql = $this->satir('ds.servis_tarihi', "'malzeme_demirbas'", "'Demirbaş Servis'", 'ds.tutar', "'demirbas_servis_kayitlari'",
+                "CONCAT(d.demirbas_adi, ' (', COALESCE(d.demirbas_no, ''), ')')", 'ds.id') . "
+                FROM demirbas_servis_kayitlari ds
+                INNER JOIN demirbas d ON ds.demirbas_id = d.id
+                WHERE ds.silinme_tarihi IS NULL
+                  AND ds.firma_id = :f_ds
+                  AND COALESCE(ds.tutar, 0) <> 0";
+        $params['f_ds'] = $this->firmaId;
+        $sql .= $this->tarihFiltre('ds.servis_tarihi', 'ds', $params, $bas, $bit);
+        $parts[] = "({$sql})";
+    }
+
+    private function addGelirGider(array &$parts, array &$params, ?string $bas, ?string $bit): void
+    {
+        $kategori = "CONVERT(TRIM(COALESCE(g.kategori, '')) USING utf8mb4) COLLATE utf8mb4_unicode_ci";
+        $kalem = "COALESCE(mke.kalem, 'ofis_diger')";
+        $tutar = 'CAST(g.tutar AS DECIMAL(15,2))';
+        $sql = $this->satir('DATE(g.tarih)', $kalem, "COALESCE(NULLIF(TRIM(g.kategori), ''), 'Kategorisiz')", $tutar, "'gelir_gider'",
+                "CONCAT_WS(' - ', NULLIF(g.hesap_adi, ''), NULLIF(LEFT(g.aciklama, 120), ''))", 'g.id') . "
+                FROM gelir_gider g
+                LEFT JOIN maliyet_kalem_eslestirme mke
+                       ON mke.firma_id = :f_gge AND mke.kaynak = 'gelir_gider' AND mke.deleted_at IS NULL AND mke.is_active = 1
+                      AND mke.eslesme_degeri = {$kategori}
+                WHERE g.silinme_tarihi IS NULL
+                  AND g.type = 2
+                  AND {$kalem} <> 'haric'
+                  AND {$tutar} <> 0";
+        $params['f_gge'] = $this->firmaId;
+        $sql .= $this->tarihFiltre('DATE(g.tarih)', 'gg', $params, $bas, $bit);
+        $parts[] = "({$sql})";
+    }
+
+    private function addManuelGiderler(array &$parts, array &$params, ?string $bas, ?string $bit): void
+    {
+        $anahtarlar = [];
+        foreach (array_keys(self::KALEMLER) as $i => $k) {
+            $anahtarlar[] = ":mgk_{$i}";
+            $params["mgk_{$i}"] = $k;
         }
+        $kalem = "CASE
+                      WHEN mg.kategori IN (" . implode(', ', $anahtarlar) . ") THEN mg.kategori
+                      WHEN mg.kategori = 'Demirbaş' THEN 'malzeme_demirbas'
+                      WHEN mg.kategori = 'Araç' THEN 'arac_bakim'
+                      WHEN mg.kategori = 'Personel' THEN 'maas'
+                      ELSE 'ofis_diger'
+                  END";
+        $sql = $this->satir('mg.gider_tarihi', $kalem, "COALESCE(NULLIF(mg.alt_kategori, ''), 'Manuel')", 'mg.tutar', "'manuel_giderler'",
+                "CONCAT_WS(' - ', NULLIF(mg.belge_no, ''), NULLIF(mg.aciklama, ''))", 'mg.id') . "
+                FROM manuel_giderler mg
+                WHERE mg.silinme_tarihi IS NULL
+                  AND mg.firma_id = :f_mg
+                  AND COALESCE(mg.tutar, 0) <> 0";
+        $params['f_mg'] = $this->firmaId;
+        $sql .= $this->tarihFiltre('mg.gider_tarihi', 'mg', $params, $bas, $bit);
+        $parts[] = "({$sql})";
+    }
 
-        $defaults = [
-            'date' => 'tarih',
-            'category' => 'kategori',
-            'sub_category' => 'alt_kategori',
-            'amount' => 'tutar',
-            'description' => 'aciklama',
-        ];
-
-        try {
-            $stmt = $this->db->query("SHOW COLUMNS FROM manuel_giderler");
-            $cols = $stmt->fetchAll(PDO::FETCH_COLUMN);
-
-            if (empty($cols)) {
-                $this->manuelGiderColumns = $defaults;
-                return $this->manuelGiderColumns;
-            }
-
-            $find = function (array $candidates, string $fallback) use ($cols): string {
-                foreach ($candidates as $name) {
-                    if (in_array($name, $cols, true)) {
-                        return $name;
-                    }
-                }
-                return $fallback;
-            };
-
-            $this->manuelGiderColumns = [
-                'date' => $find(['tarih', 'islem_tarihi', 'kayit_tarihi', 'olusturma_tarihi'], 'tarih'),
-                'category' => $find(['kategori', 'kategori_adi'], 'kategori'),
-                'sub_category' => $find(['alt_kategori', 'alt_kategori_adi'], 'alt_kategori'),
-                'amount' => $find(['tutar', 'miktar', 'toplam_tutar'], 'tutar'),
-                'description' => $find(['aciklama', 'notlar', 'not'], 'aciklama'),
-            ];
-        } catch (\Throwable $e) {
-            $this->manuelGiderColumns = $defaults;
+    private function kalemAdiCase(array &$params): string
+    {
+        $parcalar = [];
+        $i = 0;
+        foreach (self::KALEMLER as $k => $cfg) {
+            $parcalar[] = "WHEN :kak_{$i} THEN :kad_{$i}";
+            $params["kak_{$i}"] = $k;
+            $params["kad_{$i}"] = $cfg['ad'];
+            $i++;
         }
+        return 'CASE u.kalem ' . implode(' ', $parcalar) . ' ELSE u.kalem END';
+    }
 
-        return $this->manuelGiderColumns;
+    private function kaynakAdiCase(array &$params): string
+    {
+        $parcalar = [];
+        $i = 0;
+        foreach (self::KAYNAK_ADLARI as $k => $ad) {
+            $parcalar[] = "WHEN :kyk_{$i} THEN :kyd_{$i}";
+            $params["kyk_{$i}"] = $k;
+            $params["kyd_{$i}"] = $ad;
+            $i++;
+        }
+        return 'CASE u.kaynak_tablo ' . implode(' ', $parcalar) . ' ELSE u.kaynak_tablo END';
     }
 
     private function utf8Expr(string $expr): string
     {
-        return "CONVERT(($expr) USING utf8mb4) COLLATE utf8mb4_unicode_ci";
+        return "CONVERT(({$expr}) USING utf8mb4) COLLATE utf8mb4_unicode_ci";
     }
 }

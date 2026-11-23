@@ -84,7 +84,7 @@ class ManuelGiderModel extends Model
         }
 
         $defaults = [
-            'date' => 'tarih',
+            'date' => 'gider_tarihi',
             'category' => 'kategori',
         ];
 
@@ -102,7 +102,7 @@ class ManuelGiderModel extends Model
             };
 
             $this->columnMap = [
-                'date' => $find(['tarih', 'islem_tarihi', 'kayit_tarihi', 'olusturma_tarihi'], 'tarih'),
+                'date' => $find(['gider_tarihi', 'tarih', 'islem_tarihi', 'kayit_tarihi', 'olusturma_tarihi'], 'tarih'),
                 'category' => $find(['kategori', 'kategori_adi'], 'kategori'),
             ];
         } catch (\Throwable $e) {

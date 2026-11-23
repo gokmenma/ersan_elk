@@ -582,6 +582,10 @@
                             <div class="font-name" style="font-family: 'Roboto', sans-serif;">Roboto</div>
                             <div class="font-desc">Klasik & Sade</div>
                         </div>
+                        <div class="font-preset-card" data-font="Roboto Condensed" role="button">
+                            <div class="font-name" style="font-family: 'Roboto Condensed', sans-serif;">Roboto Condensed</div>
+                            <div class="font-desc">Kompakt & Net</div>
+                        </div>
                         <div class="font-preset-card" data-font="Manrope" role="button">
                             <div class="font-name" style="font-family: 'Manrope', sans-serif;">Manrope</div>
                             <div class="font-desc">Modern & Dengeli</div>
@@ -613,6 +617,7 @@
                         <input class="form-check-input" type="radio" name="font-family" id="font-jakarta" value="Plus Jakarta Sans">
                         <input class="form-check-input" type="radio" name="font-family" id="font-montserrat" value="Montserrat">
                         <input class="form-check-input" type="radio" name="font-family" id="font-roboto" value="Roboto">
+                        <input class="form-check-input" type="radio" name="font-family" id="font-robotocondensed" value="Roboto Condensed">
                         <input class="form-check-input" type="radio" name="font-family" id="font-manrope" value="Manrope">
                         <input class="form-check-input" type="radio" name="font-family" id="font-dmsans" value="DM Sans">
                         <input class="form-check-input" type="radio" name="font-family" id="font-spacegrotesk" value="Space Grotesk">

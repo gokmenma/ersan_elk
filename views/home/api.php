@@ -61,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     // CACHE HELPER
     $getWidgetCache = function($key) use ($firmaId, $userId) {
-        $cachePath = dirname(__DIR__, 2) . "/cache/dashboard/widget_{$firmaId}_{$userId}_{$key}.html";
+        $cachePath = dirname(__DIR__, 2) . "/cache/dashboard/widget_v2_{$firmaId}_{$userId}_{$key}.html";
         if (file_exists($cachePath) && (time() - filemtime($cachePath)) < 300) {
             return file_get_contents($cachePath);
         }
@@ -71,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $setWidgetCache = function($key, $html) use ($firmaId, $userId) {
         $dir = dirname(__DIR__, 2) . "/cache/dashboard";
         if (!is_dir($dir)) mkdir($dir, 0777, true);
-        $cachePath = "$dir/widget_{$firmaId}_{$userId}_{$key}.html";
+        $cachePath = "$dir/widget_v2_{$firmaId}_{$userId}_{$key}.html";
         file_put_contents($cachePath, $html);
     };
 
@@ -270,7 +270,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             $data['aktif_a_yuzde'] = ($data['saha_arac'] / $total_for_calc) * 100;
                             $data['servis_a_yuzde'] = ($data['servisteki_arac'] / $total_for_calc) * 100;
                             $data['bosta_a_yuzde'] = ($data['bosta_arac'] / $total_for_calc) * 100;
-                        } elseif ($widgetId == 'widget-bekleyen-talepler') {
+                        } elseif ($widgetId == 'widget-bekleyen-talepler' || $widgetId == 'widget-talep-nobet-ozet') {
+                            $ozetTalepIzni = true;
+                            if ($widgetId == 'widget-talep-nobet-ozet') {
+                                $ozetTalepIzni = \App\Service\Gate::allows('talepler');
+                                $data['ozet_talep_izni'] = $ozetTalepIzni;
+                                if (\App\Service\Gate::allows('nobet/list')) {
+                                    $data['nobetciler'] = $nobetModel->getNobetlerByTarih(date('Y-m-d'));
+                                }
+                                if (\App\Service\Gate::allows('personel-takip/list')) {
+                                    $data['gec_kalan_sayisi'] = $hareketModel->getGecKalanlarCount($firmaId);
+                                }
+                            }
+                            if ($ozetTalepIzni) {
                             $db = $nobetModel->getDb();
                             $degisim_c = 0; $mazeret_c = 0; $talep_c = 0;
                             try {
@@ -290,6 +302,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             $canAvans = \App\Service\Gate::allows('avans_talepleri');
                             $avansSayisi = $canAvans ? (int)$avansModel->getBekleyenAvansSayisi() : 0;
                             $data['personel_talep_sayisi'] = $avansSayisi + (int)$izinModel->getBekleyenIzinSayisi() + (int)$talepModel->getBekleyenTalepSayisi() + $degisim_c + $mazeret_c + $talep_c;
+                            }
                         } elseif ($widgetId == 'widget-nobetciler') {
                             $data['nobetciler'] = $nobetModel->getNobetlerByTarih(date('Y-m-d'));
                         } elseif ($widgetId == 'widget-takvim-alarmlar' || $widgetId == 'widget-gorev-evrak-takvimi') {
@@ -457,6 +470,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if (!\App\Service\Gate::allows('puantaj/raporlar')) { http_response_code(403); echo safeJsonEncode(['status' => 'error', 'message' => 'Bu veriyi görüntüleme yetkiniz bulunmamaktadır.']); exit; }
                 $type = (string) ($_POST['type'] ?? $_POST['sonuc_tipi'] ?? 'olumlu');
                 echo safeJsonEncode(['status' => 'success', 'data' => $puantajModel->getKesmeMonthlyComparisonByDay($type)]);
+                break;
+
+            case 'get-operasyon-donem':
+                $donemKeys = [];
+                if (\App\Service\Gate::allows('puantaj/raporlar')) {
+                    $donemKeys = ['reading', 'cut_open', 'meter_change', 'sealing'];
+                }
+                if (\App\Service\Gate::allows('kacak_islemleri')) {
+                    $donemKeys[] = 'illegal';
+                }
+                if ($donemKeys === []) { http_response_code(403); echo safeJsonEncode(['status' => 'error', 'message' => 'Bu veriyi görüntüleme yetkiniz bulunmamaktadır.']); exit; }
+                echo safeJsonEncode(['status' => 'success', 'data' => (new \App\Model\MobileDashboardModel())->contractProgress($donemKeys)]);
                 break;
 
             case 'get-dashboard-operational-stats':

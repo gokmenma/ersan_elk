@@ -1,5 +1,22 @@
 # Progress
 
+## 2026-11-23 — Maliyet Raporu: Kalem Bazlı Rapor
+- [x] 9 kalemli model, eşleştirme tabloları + yetki SQL'i (yerelde uygulandı)
+- [x] Eşleştirme modalı, fatura bazlı kalem atama, manuel gider kalem seçimi; işlem logları
+- [x] Ekim 2026 toplamları kaynak tablolarla birebir doğrulandı; yetki katalog ve grup ekranında görünüyor
+- [ ] Canlı ortamda SQL'in çalıştırılması; TT Mobil/Vodafone ve diğer eşleşmemiş firmaların kaleme bağlanması (kullanıcı)
+
+## 2026-11-23 — Masaüstü Ana Sayfa: KPI Kart Tasarımı
+- [x] Personel/Araç/Talepler/Geç Kalanlar/Nöbetçiler kartları Aydınoğulları KPI kart diline çevrildi
+- [x] Başlık çubuğu sadeleştirildi (KPI kartlarında yalnız üzerine gelince)
+- [x] İş Operasyonları mini KPI kart ızgarası; Gün/Dönem görünümleri headless Chrome ile doğrulandı
+
+## 2026-11-23 — Masaüstü Ana Sayfa: Tek İş Operasyonları Kartı
+- [x] 6 iş kartı tek karta birleştirildi (Araç/Personel kartı stili), Gün/Ay/Dönem geçişi
+- [x] `home/api` `get-operasyon-donem` aksiyonu + politika SQL'i (yerelde uygulandı)
+- [x] Tarayıcıda Gün/Ay/Dönem görünümleri doğrulandı
+- [ ] Canlı ortamda politika SQL'inin çalıştırılması
+
 ## 2026-11-19 — Evrak Takip: Giden Evrak Varsayılan İmza Yetkilileri
 - [x] `App/Model/EvrakTakipModel.php` içine `getDefaultSigners` ve `saveDefaultSigners` metotları eklendi (`settings` tablosu üzerinden kullanıcı+firma bazlı saklama)
 - [x] `views/evrak-takip/api.php` içine `evrak-varsayilan-imza-kaydet` aksiyonu ve `SystemLogModel` log kaydı eklendi
@@ -2389,3 +2406,26 @@
 
 - [x] Sözleşme Şablonları sayfası web editöre dönüştürüldü (HTML saklama, PhpWord ile docx indirme). SQL betiği canlı ortamda çalıştırılmalı.
 - [x] Sayaç sökme takma online sorgulamada zimmet kontrolü 'sarf' hareketini tanımıyordu; tekrar sorgulamada tüketilmiş sayaçlar kırmızı görünüyordu (2026-11-23). Kalan: sql/2026_11_23_sayac_degisim_zimmet_dusuldu_duzeltme.sql canlıda çalıştırılmalı.
+
+- [x] Ana sayfa skeleton çakışması düzeltildi (index.php + views/home.php).
+
+- [x] Ana sayfa skeleton gerçek kart düzeniyle çizildi; çoklu yüklenme çubuğu (Pace AJAX) giderildi.
+
+- [x] Ana sayfa kart zıplaması giderildi (reveal grid yerleşiminden sonra).
+
+- [x] Masaüstü tema seçicisine `Roboto Condensed` yazı tipi eklendi (`layouts/head-style.php`, `layouts/right-sidebar.php`, `assets/js/app_module.js`, `assets/css/style.css`, `assets/css/macos-light.css`).
+
+- [x] Ana sayfa reveal tek noktaya indirildi, yerleşim reveal öncesi hesaplanıyor.
+
+- [x] Lazy widget sonrası yığılma giderildi (MutationObserver ile anında grid yerleşimi).
+
+## 2026-11-23 Ana sayfa kart aralığı ve kısayol butonları
+- views/home.php: varsayılan (serbest olmayan) grid modunda gutter 12px, widget alt boşluğu 12px, hero alt boşluğu 12px (aydinogullariysc_trae ile aynı); iskelet yükleme gridi buna uyarlandı.
+- Hero kısayol butonları trae `crm-quick-square-btn` görünümüne (82x82, gri zemin, mavi hover) çevrildi; ton renkleri kaldırıldı.
+- Tarayıcıda görsel doğrulama yapılmadı.
+
+- Bekleyen Talepler / Geç Kalanlar / Bugünkü Nöbetçiler KPI kartları tek `widget-talep-nobet-ozet` kartında birleştirildi (home.php, home/api.php, home/render_widgets.php); bölümler kendi yetkisine göre çiziliyor.
+
+- [x] Ana sayfa performans turu (layout dedupe, skeleton CSS küçültme).
+
+- [x] Ana sayfa avatarları küçük resim ucuna taşındı.

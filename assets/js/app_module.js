@@ -585,6 +585,7 @@ File: Main Js File
       "Plus Jakarta Sans": "font-jakarta",
       "Montserrat": "font-montserrat",
       "Roboto": "font-roboto",
+      "Roboto Condensed": "font-robotocondensed",
       "Manrope": "font-manrope",
       "DM Sans": "font-dmsans",
       "Space Grotesk": "font-spacegrotesk",

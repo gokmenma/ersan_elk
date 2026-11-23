@@ -472,365 +472,98 @@ if (Gate::allows("ana_sayfa")) {
     // Görev ve Gelen Evrak Takvimi & Alarmlar Mini Kartı (Görsel 1 & 2 Standardı)
     $widgets['widget-takvim-alarmlar'] = renderSkeleton('widget-takvim-alarmlar', getWidgetWidth('widget-takvim-alarmlar', 'col-md-4 col-xl-4'), '260px');
 
-    if (\App\Service\Gate::allows("talepler")) {
-        $widgets['widget-bekleyen-talepler'] = renderSkeleton('widget-bekleyen-talepler', 'col-6 col-md-2', '140px');
+    if (\App\Service\Gate::allowsAny(['talepler', 'personel-takip/list', 'nobet/list'])) {
+        $widgets['widget-talep-nobet-ozet'] = renderSkeleton('widget-talep-nobet-ozet', 'col-12 col-md-6', '140px');
     }
-
-    ob_start(); ?>
-    <div class="col-6 col-md-2 widget-item" id="widget-gec-kalanlar">
-        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card stat-card"
-            style="--card-color: #f46a6a; border-bottom: 3px solid var(--card-color) !important; --delay: 0.65s">
-            <div class="card-body p-3 pb-2">
-                <div class="icon-label-container">
-                    <div class="icon-box" style="background: rgba(244, 106, 106, 0.1);">
-                        <i class="bx bx-alarm-exclamation fs-4" style="color: #f46a6a;"></i>
-                    </div>
-                    <span class="text-muted small fw-bold" style="font-size: 0.65rem;">GECİKME</span>
-                </div>
-                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">GEÇ KALANLAR</p>
-                <h4 class="mb-0 fw-bold bordro-text-heading text-danger">
-                    <?php echo $gec_kalan_sayisi ?? 0; ?>
-                </h4>
-                <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Bugün geç kalanlar</div>
-                <div class="card-footer-actions mt-2 d-flex justify-content-end">
-                    <a href="index.php?p=personel-takip/list&tab=tabGecKalanlar" class="btn btn-xs btn-soft-danger rounded-pill">
-                        <i class="bx bx-right-arrow-alt"></i> Git
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-    <?php
-    $widgets['widget-gec-kalanlar'] = ob_get_clean();
-
-    $widgets['widget-nobetciler'] = renderSkeleton('widget-nobetciler', 'col-6 col-md-2', '140px');
 
     ob_start(); ?>
     <?php $widgets['widget-row-break'] = ob_get_clean();
 
+    $fmtLastUpdate = static fn($dt): string => $dt ? date('d.m.Y H:i', strtotime((string) $dt)) : '-';
+    $canOpsReports = Gate::allows('puantaj/raporlar');
+    $canOpsKacak = Gate::allows('kacak_islemleri');
+    $canOpsIhbar = Gate::allows('ihbar/list');
+    $opsTiles = [];
+    if ($canOpsReports) {
+        $opsTiles[] = ['key' => 'reading', 'stat' => 'endeks_okuma', 'label' => 'Endeks Okuma', 'icon' => 'bx-tachometer', 'href' => 'index.php?p=puantaj/raporlar&tab=okuma', 'daily' => (int) ($dailyReadingTotal ?? 0), 'monthly' => (int) ($monthlyReadingTotal ?? 0), 'last' => $fmtLastUpdate($last_update_endeks), 'last_user' => $last_user_endeks ?: '-', 'update_key' => 'endeks'];
+        $opsTiles[] = ['key' => 'cut_open', 'stat' => 'kesme_acma', 'label' => 'Kesme / Açma', 'icon' => 'bx-cut', 'href' => 'index.php?p=puantaj/raporlar&tab=kesme', 'daily' => (int) ($dailyWorkStats->kesme_acma ?? 0), 'monthly' => (int) ($monthlyWorkStats->kesme_acma ?? 0), 'last' => $fmtLastUpdate($last_update_isler), 'last_user' => $last_user_isler ?: '-', 'update_key' => 'isler'];
+        $opsTiles[] = ['key' => 'meter_change', 'stat' => 'sayac_degisimi', 'label' => 'Sayaç Değişimi', 'icon' => 'bx-refresh', 'href' => 'index.php?p=puantaj/raporlar&tab=sokme_takma', 'daily' => (int) round((float) ($sayacDailyStats->sayac_degisimi ?? 0)), 'monthly' => (int) round((float) ($sayacMonthlyStats->sayac_degisimi ?? 0)), 'last' => $fmtLastUpdate($last_update_sayac), 'last_user' => $last_user_sayac ?: '-', 'update_key' => 'sayac'];
+        $opsTiles[] = ['key' => 'sealing', 'stat' => 'muhurleme', 'label' => 'Mühürleme', 'icon' => 'bx-shield', 'href' => 'index.php?p=puantaj/raporlar&tab=muhurleme', 'daily' => (int) ($dailyWorkStats->muhurleme ?? 0), 'monthly' => (int) ($monthlyWorkStats->muhurleme ?? 0), 'last' => $fmtLastUpdate($last_update_isler), 'last_user' => $last_user_isler ?: '-', 'update_key' => 'isler'];
+    }
+    if ($canOpsKacak) {
+        $opsTiles[] = ['key' => 'illegal', 'stat' => 'kacak', 'sub_stat' => 'kacak_onaylanan', 'sub_label' => 'Onaylanan', 'label' => 'Kaçak Kontrol', 'icon' => 'bx-error-circle', 'href' => 'index.php?p=kacak/list&tab=pane-ekip-ozet', 'daily' => (int) ($kacakDailyTotal->toplam ?? 0), 'monthly' => (int) ($kacakMonthlyTotal->toplam ?? 0), 'sub_daily' => (int) ($kacakDailyTotal->onaylanan ?? 0), 'sub_monthly' => (int) ($kacakMonthlyTotal->onaylanan ?? 0)];
+    }
+    if ($canOpsIhbar) {
+        $opsTiles[] = ['key' => 'notice', 'stat' => 'ihbar', 'sub_stat' => 'ihbar_olumlu', 'sub_label' => 'Olumlu', 'label' => 'İhbar', 'icon' => 'bx-bell', 'href' => 'index.php?p=ihbar/list', 'daily' => (int) ($ihbarDailyTotal->toplam ?? 0), 'monthly' => (int) ($ihbarMonthlyTotal->toplam ?? 0), 'sub_daily' => (int) ($ihbarDailyTotal->olumlu ?? 0), 'sub_monthly' => (int) ($ihbarMonthlyTotal->olumlu ?? 0)];
+    }
+    $opsEsc = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+
+    if ($opsTiles !== []) {
+    $opsDailyTotal = array_sum(array_column($opsTiles, 'daily'));
     ob_start(); ?>
-    <div class="col-6 col-md-2 widget-item" id="widget-gunluk-muhurleme">
-        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative stat-card"
-            style="--card-color: #858796; border-bottom: 3px solid var(--card-color) !important; --delay: 0.7s">
-            <div class="card-body p-3 pb-2">
-                <div class="icon-label-container d-flex justify-content-between align-items-start">
-                    <div class="icon-box" style="background: rgba(133, 135, 150, 0.1);">
-                        <i class="bx bx-shield fs-4" style="color: #858796;"></i>
+    <div class="<?php echo getWidgetWidthClass('widget-is-operasyonlari', 'col-12'); ?> widget-item kpi-widget" id="widget-is-operasyonlari" style="<?php echo getWidgetStyle('widget-is-operasyonlari'); ?>">
+        <div class="card border-0 h-100 stat-card ops-card">
+            <div class="card-body d-flex flex-column">
+                <div class="ops-head">
+                    <div>
+                        <span class="dash-kpi-label">İş Operasyonları · <span class="ops-total-period">Bugün</span></span>
+                        <div class="dash-kpi-value"><span class="ops-total-num"><?php echo number_format($opsDailyTotal, 0, ',', '.'); ?></span><span class="dash-kpi-unit">adet</span></div>
                     </div>
-                    <div class="d-flex align-items-center gap-1">
-                        <a href="javascript:void(0);" class="btn-api-sync text-muted" data-action="online-puantaj-sorgula"
-                            data-active-tab="muhurleme" data-bs-toggle="tooltip" title="Online sorgula(API)">
-                            <i class="bx bx-refresh fs-5"></i>
+                    <div class="ops-head-actions">
+                        <div class="ops-mode-toggle" role="group" aria-label="Operasyon dönemi">
+                            <button type="button" class="ops-mode-btn is-active" data-mode="daily" aria-pressed="true">Gün</button>
+                            <button type="button" class="ops-mode-btn" data-mode="monthly" aria-pressed="false">Ay</button>
+                            <?php if ($canOpsReports || $canOpsKacak): ?>
+                                <button type="button" class="ops-mode-btn" data-mode="contract" aria-pressed="false" title="Sözleşme dönemi toplamı, kalan ve gerçekleşme oranı">Dönem</button>
+                            <?php endif; ?>
+                        </div>
+                        <?php if ($canOpsReports): ?>
+                            <button type="button" class="ops-sync-all" title="Tüm günlük operasyonları online sorgula (API)" aria-label="Tüm günlük operasyonları online sorgula">
+                                <i class="bx bx-refresh"></i><span>Tümünü Sorgula</span>
+                            </button>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <div class="ops-contract-note">Bugün yapılan işlerin dağılımı</div>
+                <div class="ops-bar" role="img" aria-label="Operasyon dağılımı">
+                    <?php foreach ($opsTiles as $tile): ?>
+                        <span class="ops-bar-seg ops-c--<?php echo $opsEsc($tile['key']); ?>" data-key="<?php echo $opsEsc($tile['key']); ?>" style="width: <?php echo $opsDailyTotal > 0 ? round($tile['daily'] / $opsDailyTotal * 100, 2) : 0; ?>%;" title="<?php echo $opsEsc($tile['label']); ?>"></span>
+                    <?php endforeach; ?>
+                    <span class="ops-bar-track d-none"><span class="ops-bar-contract" style="width: 0%;"></span></span>
+                </div>
+                <div class="ops-items">
+                    <?php foreach ($opsTiles as $tile): ?>
+                        <a class="ops-item ops-c--<?php echo $opsEsc($tile['key']); ?>" href="<?php echo $opsEsc($tile['href']); ?>" data-key="<?php echo $opsEsc($tile['key']); ?>" data-stat="<?php echo $opsEsc($tile['stat']); ?>">
+                            <div class="dash-kpi-header">
+                                <div class="min-w-0" style="min-width:0;">
+                                    <span class="dash-kpi-label"><?php echo $opsEsc($tile['label']); ?></span>
+                                    <div class="dash-kpi-value"><span class="ops-num" data-daily="<?php echo (int) $tile['daily']; ?>" data-monthly="<?php echo (int) $tile['monthly']; ?>"><?php echo number_format((int) $tile['daily'], 0, ',', '.'); ?></span></div>
+                                </div>
+                                <div class="dash-kpi-icon"><i class="bx <?php echo $opsEsc($tile['icon']); ?>"></i></div>
+                            </div>
+                            <div class="ops-contract d-none">
+                                <span class="ops-mini-progress"><span class="ops-mini-fill"></span></span>
+                            </div>
+                            <div class="dash-kpi-footer">
+                                <?php if (isset($tile['sub_stat'])): ?>
+                                    <span class="dash-kpi-note ops-sub" data-sub-stat="<?php echo $opsEsc($tile['sub_stat']); ?>"><i class="bx bx-check-circle"></i> <?php echo $opsEsc($tile['sub_label']); ?>: <b class="ops-sub-num" data-daily="<?php echo (int) $tile['sub_daily']; ?>" data-monthly="<?php echo (int) $tile['sub_monthly']; ?>"><?php echo number_format((int) $tile['sub_daily'], 0, ',', '.'); ?></b></span>
+                                <?php elseif (isset($tile['update_key'])): ?>
+                                    <span class="dash-kpi-note ops-last" data-update-key="<?php echo $opsEsc($tile['update_key']); ?>" title="Son güncelleme / yapan"><i class="bx bx-time-five"></i> <span class="last-update-value"><?php echo $opsEsc($tile['last']); ?></span> · <span class="last-update-user-value"><?php echo $opsEsc($tile['last_user']); ?></span></span>
+                                <?php else: ?>
+                                    <span class="dash-kpi-note"></span>
+                                <?php endif; ?>
+                                <span class="dash-kpi-note ops-contract-text d-none"></span>
+                                <span class="dash-badge-soft ops-rate d-none"></span>
+                                <i class="bx bx-right-arrow-alt ops-go" aria-hidden="true"></i>
+                            </div>
                         </a>
-                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İŞ</span>
-                    </div>
-                </div>
-                <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK
-                    MÜHÜRLEME</p>
-                <h4 class="mb-0 fw-bold bordro-text-heading stat-value"
-                    data-daily="<?php echo (int)($dailyWorkStats->muhurleme ?? 0); ?>"
-                    data-monthly="<?php echo (int)($monthlyWorkStats->muhurleme ?? 0); ?>" data-label-daily="GÜNLÜK MÜHÜRLEME"
-                    data-label-monthly="AYLIK MÜHÜRLEME" data-sub-daily="Bugün yapılan mühürleme"
-                    data-sub-monthly="Bu ay yapılan mühürleme">
-                    <?php echo (int)($dailyWorkStats->muhurleme ?? 0); ?>
-                </h4>
-                <div class="sub-text mt-2 stat-subtext" style="font-size: 10px; color: #858796;">Bugün yapılan mühürleme
-                </div>
-                <div class="card-footer-actions mt-2">
-                    <div class="btn-group btn-group-sm stats-local-toggle-group">
-                        <button type="button" class="btn btn-outline-secondary stats-local-btn active"
-                            data-mode="daily">Gün</button>
-                        <button type="button" class="btn btn-outline-secondary stats-local-btn"
-                            data-mode="monthly">Ay</button>
-                    </div>
-                    <a href="index.php?p=puantaj/raporlar&tab=muhurleme" class="btn btn-xs btn-soft-primary rounded-pill">
-                        <i class="bx bx-right-arrow-alt"></i> Git
-                    </a>
-                </div>
-                <div class="mt-2 text-center py-1 rounded"
-                    style="background: rgba(133, 135, 150, 0.05); font-size: 10px; color: #858796; border-top: 1px dashed rgba(133, 135, 150, 0.2);">
-                    <i class="bx bx-time-five"></i> Son Güncelleme: <span
-                        class="fw-bold last-update-value"><?php echo $last_update_isler ? date('d.m.Y H:i', strtotime($last_update_isler)) : '-'; ?></span>
-                    <br><i class="bx bx-user-circle"></i> Yapan: <span class="fw-bold last-update-user-value"><?php echo $last_user_isler ?: '-'; ?></span>
+                    <?php endforeach; ?>
                 </div>
             </div>
         </div>
     </div>
-    <?php $widgets['widget-gunluk-muhurleme'] = ob_get_clean();
-
-
-
-    ob_start(); ?>
-    <div class="col-6 col-md-2 widget-item" id="widget-gunluk-kesme-acma">
-        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative stat-card"
-            style="--card-color: #e74a3b; border-bottom: 3px solid var(--card-color) !important; --delay: 0.9s">
-            <div class="card-body p-3 pb-2">
-                <div class="icon-label-container d-flex justify-content-between align-items-start">
-                    <div class="icon-box" style="background: rgba(231, 74, 59, 0.1);">
-                        <i class="bx bx-cut fs-4" style="color: #e74a3b;"></i>
-                    </div>
-                    <div class="d-flex align-items-center gap-1">
-                        <a href="javascript:void(0);" class="btn-api-sync text-muted" data-action="online-puantaj-sorgula"
-                            data-active-tab="kesme" data-bs-toggle="tooltip" title="Online sorgula(API)">
-                            <i class="bx bx-refresh fs-5"></i>
-                        </a>
-                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İŞ</span>
-                    </div>
-                </div>
-                <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK
-                    KESME AÇMA</p>
-                <h4 class="mb-0 fw-bold bordro-text-heading stat-value"
-                    data-daily="<?php echo (int)($dailyWorkStats->kesme_acma ?? 0); ?>"
-                    data-monthly="<?php echo (int)($monthlyWorkStats->kesme_acma ?? 0); ?>" data-label-daily="GÜNLÜK KESME AÇMA"
-                    data-label-monthly="AYLIK KESME AÇMA" data-sub-daily="Bugün yapılan kesme/açma"
-                    data-sub-monthly="Bu ay yapılan kesme/açma">
-                    <?php echo (int)($dailyWorkStats->kesme_acma ?? 0); ?>
-                </h4>
-                <div class="sub-text mt-2 stat-subtext" style="font-size: 10px; color: #858796;">Bugün yapılan kesme/açma
-                </div>
-                <div class="card-footer-actions mt-2">
-                    <div class="btn-group btn-group-sm stats-local-toggle-group">
-                        <button type="button" class="btn btn-outline-secondary stats-local-btn active"
-                            data-mode="daily">Gün</button>
-                        <button type="button" class="btn btn-outline-secondary stats-local-btn"
-                            data-mode="monthly">Ay</button>
-                    </div>
-                    <a href="index.php?p=puantaj/raporlar&tab=kesme" class="btn btn-xs btn-soft-danger rounded-pill">
-                        <i class="bx bx-right-arrow-alt"></i> Git
-                    </a>
-                </div>
-                <div class="mt-2 text-center py-1 rounded"
-                    style="background: rgba(231, 74, 59, 0.05); font-size: 10px; color: #e74a3b; border-top: 1px dashed rgba(231, 74, 59, 0.2);">
-                    <i class="bx bx-time-five"></i> Son Güncelleme: <span
-                        class="fw-bold last-update-value"><?php echo $last_update_isler ? date('d.m.Y H:i', strtotime($last_update_isler)) : '-'; ?></span>
-                    <br><i class="bx bx-user-circle"></i> Yapan: <span class="fw-bold last-update-user-value"><?php echo $last_user_isler ?: '-'; ?></span>
-                </div>
-            </div>
-        </div>
-    </div>
-    <?php $widgets['widget-gunluk-kesme-acma'] = ob_get_clean();
-
-    ob_start(); ?>
-    <div class="col-6 col-md-2 widget-item" id="widget-gunluk-endeks-okuma">
-        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative stat-card"
-            style="--card-color: #36b9cc; border-bottom: 3px solid var(--card-color) !important; --delay: 1.0s">
-            <div class="card-body p-3 pb-2">
-                <div class="icon-label-container d-flex justify-content-between align-items-start">
-                    <div class="icon-box" style="background: rgba(54, 185, 204, 0.1);">
-                        <i class="bx bx-tachometer fs-4" style="color: #36b9cc;"></i>
-                    </div>
-                    <div class="d-flex align-items-center gap-1">
-                        <a href="javascript:void(0);" class="btn-api-sync text-muted" data-action="online-icmal-sorgula"
-                            data-bs-toggle="tooltip" title="Online sorgula(API)">
-                            <i class="bx bx-refresh fs-5"></i>
-                        </a>
-                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İŞ</span>
-                    </div>
-                </div>
-                <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK
-                    ENDEKS OKUMA</p>
-                <h4 class="mb-0 fw-bold bordro-text-heading stat-value" data-daily="<?php echo (int)($dailyReadingTotal ?? 0); ?>"
-                    data-monthly="<?php echo (int)($monthlyReadingTotal ?? 0); ?>" data-label-daily="GÜNLÜK ENDEKS OKUMA"
-                    data-label-monthly="AYLIK ENDEKS OKUMA" data-sub-daily="Bugün okunan endeksler"
-                    data-sub-monthly="Bu ay okunan endeksler">
-                    <?php echo (int)($dailyReadingTotal ?? 0); ?>
-                </h4>
-                <div class="sub-text mt-2 stat-subtext" style="font-size: 10px; color: #858796;">Bugün okunan endeksler
-                </div>
-                <div class="card-footer-actions mt-2">
-                    <div class="btn-group btn-group-sm stats-local-toggle-group">
-                        <button type="button" class="btn btn-outline-secondary stats-local-btn active"
-                            data-mode="daily">Gün</button>
-                        <button type="button" class="btn btn-outline-secondary stats-local-btn"
-                            data-mode="monthly">Ay</button>
-                    </div>
-                    <a href="index.php?p=puantaj/raporlar&tab=okuma" class="btn btn-xs btn-soft-info rounded-pill">
-                        <i class="bx bx-right-arrow-alt"></i> Git
-                    </a>
-                </div>
-                <div class="mt-2 text-center py-1 rounded"
-                    style="background: rgba(54, 185, 204, 0.05); font-size: 10px; color: #36b9cc; border-top: 1px dashed rgba(54, 185, 204, 0.2);">
-                    <i class="bx bx-time-five"></i> Son Güncelleme: <span
-                        class="fw-bold last-update-value"><?php echo $last_update_endeks ? date('d.m.Y H:i', strtotime($last_update_endeks)) : '-'; ?></span>
-                    <br><i class="bx bx-user-circle"></i> Yapan: <span class="fw-bold last-update-user-value"><?php echo $last_user_endeks ?: '-'; ?></span>
-                </div>
-            </div>
-        </div>
-    </div>
-    <?php $widgets['widget-gunluk-endeks-okuma'] = ob_get_clean();
-
-    ob_start(); ?>
-    <div class="col-6 col-md-2 widget-item" id="widget-gunluk-sayac-degisimi">
-        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative stat-card"
-            style="--card-color: #1cc88a; border-bottom: 3px solid var(--card-color) !important; --delay: 1.1s">
-            <div class="card-body p-3 pb-2">
-                <div class="icon-label-container d-flex justify-content-between align-items-start">
-                    <div class="icon-box" style="background: rgba(28, 200, 138, 0.1);">
-                        <i class="bx bx-refresh fs-4" style="color: #1cc88a;"></i>
-                    </div>
-                    <div class="d-flex align-items-center gap-1">
-                        <a href="javascript:void(0);" class="btn-api-sync text-muted" data-action="online-sayac-degisim-sorgula"
-                                data-active-tab="sokme_takma" data-bs-toggle="tooltip" title="Online sorgula(API)">
-                                <i class="bx bx-refresh fs-5"></i>
-                            </a>
-                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İŞ</span>
-                        </div>
-                    </div>
-                    <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK
-                        SAYAÇ DEĞİŞİMİ</p>
-                    <h4 class="mb-0 fw-bold bordro-text-heading stat-value"
-                        data-daily="<?php echo (int)round((float)($sayacDailyStats->sayac_degisimi ?? 0)); ?>"
-                        data-monthly="<?php echo (int)round((float)($sayacMonthlyStats->sayac_degisimi ?? 0)); ?>"
-                        data-label-daily="GÜNLÜK SAYAÇ DEĞİŞİMİ" data-label-monthly="AYLIK SAYAÇ DEĞİŞİMİ"
-                        data-sub-daily="Bugün yapılan sayaç değişimi" data-sub-monthly="Bu ay yapılan sayaç değişimi">
-                        <?php echo (int)round((float)($sayacDailyStats->sayac_degisimi ?? 0)); ?>
-                    </h4>
-                    <div class="sub-text mt-2 stat-subtext" style="font-size: 10px; color: #858796;">Bugün yapılan sayaç
-                        değişimi</div>
-                    <div class="card-footer-actions mt-2">
-                        <div class="btn-group btn-group-sm stats-local-toggle-group">
-                            <button type="button" class="btn btn-outline-secondary stats-local-btn active"
-                                data-mode="daily">Gün</button>
-                            <button type="button" class="btn btn-outline-secondary stats-local-btn"
-                                data-mode="monthly">Ay</button>
-                        </div>
-                        <a href="index.php?p=puantaj/raporlar&tab=sokme_takma" class="btn btn-xs btn-soft-success rounded-pill">
-                            <i class="bx bx-right-arrow-alt"></i> Git
-                        </a>
-                    </div>
-                    <div class="mt-2 text-center py-1 rounded"
-                        style="background: rgba(28, 200, 138, 0.05); font-size: 10px; color: #1cc88a; border-top: 1px dashed rgba(28, 200, 138, 0.2);">
-                        <i class="bx bx-time-five"></i> Son Güncelleme: <span
-                            class="fw-bold last-update-value"><?php echo $last_update_sayac ? date('d.m.Y H:i', strtotime($last_update_sayac)) : '-'; ?></span>
-                        <br><i class="bx bx-user-circle"></i> Yapan: <span class="fw-bold last-update-user-value"><?php echo $last_user_sayac ?: '-'; ?></span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <?php $widgets['widget-gunluk-sayac-degisimi'] = ob_get_clean();
-
-        ob_start(); ?>
-        <div class="col-6 col-md-2 widget-item" id="widget-kacak-sayisi">
-            <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative stat-card"
-                style="--card-color: #f46a6a; border-bottom: 3px solid var(--card-color) !important; --delay: 1.15s">
-                <div class="card-body p-3 pb-2">
-                    <div class="icon-label-container d-flex justify-content-between align-items-start">
-                        <div class="icon-box" style="background: rgba(244, 106, 106, 0.1);">
-                            <i class="bx bx-error-circle fs-4" style="color: #f46a6a;"></i>
-                        </div>
-                        <div class="d-flex align-items-center gap-1">
-                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">KAÇAK</span>
-                        </div>
-                    </div>
-                    <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK
-                        KAÇAK
-                    </p>
-                    <h4 class="mb-0 fw-bold bordro-text-heading stat-value d-none"
-                        data-daily="<?php echo (int)($kacakDailyTotal->toplam ?? 0); ?>"
-                        data-monthly="<?php echo (int)($kacakMonthlyTotal->toplam ?? 0); ?>" data-label-daily="GÜNLÜK KAÇAK"
-                        data-label-monthly="AYLIK KAÇAK" data-sub-daily="Bugün tespit edilen & onaylanan"
-                        data-sub-monthly="Bu ay tespit edilen & onaylanan">
-                        <?php echo (int)($kacakDailyTotal->toplam ?? 0); ?>
-                    </h4>
-
-                    <!-- Bildirilen & Onaylanan Çift İstatistik Görünümü -->
-                    <div class="d-flex align-items-center justify-content-between my-2 py-1.5 px-2 rounded" style="background: rgba(244, 106, 106, 0.05); border: 1px dashed rgba(244, 106, 106, 0.2);">
-                        <div class="pe-2 border-end text-center flex-fill" style="border-color: rgba(244, 106, 106, 0.2) !important;">
-                            <div class="text-muted fw-bold" style="font-size: 0.6rem; letter-spacing: 0.3px;">BİLDİRİLEN</div>
-                            <span class="fs-5 fw-bold text-dark stat-local-value"
-                                  data-daily="<?php echo (int)($kacakDailyTotal->toplam ?? 0); ?>"
-                                  data-monthly="<?php echo (int)($kacakMonthlyTotal->toplam ?? 0); ?>">
-                                <?php echo (int)($kacakDailyTotal->toplam ?? 0); ?>
-                            </span>
-                        </div>
-                        <div class="ps-2 text-center flex-fill">
-                            <div class="text-success fw-bold" style="font-size: 0.6rem; letter-spacing: 0.3px;"><i class="bx bx-check-circle me-0.5"></i>ONAYLANAN</div>
-                            <span class="fs-5 fw-bold text-success stat-local-value"
-                                  data-daily="<?php echo (int)($kacakDailyTotal->onaylanan ?? 0); ?>"
-                                  data-monthly="<?php echo (int)($kacakMonthlyTotal->onaylanan ?? 0); ?>">
-                                <?php echo (int)($kacakDailyTotal->onaylanan ?? 0); ?>
-                            </span>
-                        </div>
-                    </div>
-
-                    <div class="sub-text mt-1 stat-subtext" style="font-size: 10px; color: #858796;">Bugün tespit edilen & onaylanan
-                    </div>
-                    <div class="card-footer-actions mt-2">
-                        <div class="btn-group btn-group-sm stats-local-toggle-group">
-                            <button type="button" class="btn btn-outline-secondary stats-local-btn active"
-                                data-mode="daily">Gün</button>
-                            <button type="button" class="btn btn-outline-secondary stats-local-btn"
-                                data-mode="monthly">Ay</button>
-                        </div>
-                        <a href="index.php?p=kacak/list&tab=pane-ekip-ozet"
-                            class="btn btn-xs btn-soft-danger rounded-pill">
-                            <i class="bx bx-right-arrow-alt"></i> Git
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <?php $widgets['widget-kacak-sayisi'] = ob_get_clean();
-
-        ob_start(); ?>
-        <div class="col-6 col-md-2 widget-item" id="widget-ihbar-sayisi">
-            <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative stat-card"
-                style="--card-color: #ff9f43; border-bottom: 3px solid var(--card-color) !important; --delay: 1.25s">
-                <div class="card-body p-3 pb-2">
-                    <div class="icon-label-container d-flex justify-content-between align-items-start">
-                        <div class="icon-box" style="background: rgba(255, 159, 67, 0.1);">
-                            <i class="bx bx-bell fs-4" style="color: #ff9f43;"></i>
-                        </div>
-                        <div class="d-flex align-items-center gap-1">
-                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İHBAR</span>
-                        </div>
-                    </div>
-                    <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK İHBAR</p>
-                    <h4 class="mb-0 fw-bold bordro-text-heading stat-value d-none"
-                        data-daily="<?php echo (int)($ihbarDailyTotal->toplam ?? 0); ?>"
-                        data-monthly="<?php echo (int)($ihbarMonthlyTotal->toplam ?? 0); ?>" data-label-daily="GÜNLÜK İHBAR"
-                        data-label-monthly="AYLIK İHBAR" data-sub-daily="Bugün bildirilen & olumlu"
-                        data-sub-monthly="Bu ay bildirilen & olumlu">
-                        <?php echo (int)($ihbarDailyTotal->toplam ?? 0); ?>
-                    </h4>
-
-                    <!-- Bildirilen & Olumlu Çift İstatistik Görünümü -->
-                    <div class="d-flex align-items-center justify-content-between my-2 py-1.5 px-2 rounded" style="background: rgba(255, 159, 67, 0.05); border: 1px dashed rgba(255, 159, 67, 0.25);">
-                        <div class="pe-2 border-end text-center flex-fill" style="border-color: rgba(255, 159, 67, 0.25) !important;">
-                            <div class="text-muted fw-bold" style="font-size: 0.6rem; letter-spacing: 0.3px;">BİLDİRİLEN</div>
-                            <span class="fs-5 fw-bold text-dark stat-local-value"
-                                  data-daily="<?php echo (int)($ihbarDailyTotal->toplam ?? 0); ?>"
-                                  data-monthly="<?php echo (int)($ihbarMonthlyTotal->toplam ?? 0); ?>">
-                                <?php echo (int)($ihbarDailyTotal->toplam ?? 0); ?>
-                            </span>
-                        </div>
-                        <div class="ps-2 text-center flex-fill">
-                            <div class="text-success fw-bold" style="font-size: 0.6rem; letter-spacing: 0.3px;"><i class="bx bx-check-circle me-0.5"></i>OLUMLU</div>
-                            <span class="fs-5 fw-bold text-success stat-local-value"
-                                  data-daily="<?php echo (int)($ihbarDailyTotal->olumlu ?? 0); ?>"
-                                  data-monthly="<?php echo (int)($ihbarMonthlyTotal->olumlu ?? 0); ?>">
-                                <?php echo (int)($ihbarDailyTotal->olumlu ?? 0); ?>
-                            </span>
-                        </div>
-                    </div>
-
-                    <div class="sub-text mt-1 stat-subtext" style="font-size: 10px; color: #858796;">Bugün bildirilen & olumlu</div>
-                    <div class="card-footer-actions mt-2">
-                        <div class="btn-group btn-group-sm stats-local-toggle-group">
-                            <button type="button" class="btn btn-outline-secondary stats-local-btn active"
-                                data-mode="daily">Gün</button>
-                            <button type="button" class="btn btn-outline-secondary stats-local-btn"
-                                data-mode="monthly">Ay</button>
-                        </div>
-                        <a href="index.php?p=ihbar/list"
-                            class="btn btn-xs btn-soft-warning rounded-pill">
-                            <i class="bx bx-right-arrow-alt"></i> Git
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <?php $widgets['widget-ihbar-sayisi'] = ob_get_clean();
+    <?php $widgets['widget-is-operasyonlari'] = ob_get_clean();
+    }
 
         ob_start(); ?>
         <div class="<?php echo getWidgetWidthClass('widget-endeks-karsilastirma', 'col-12'); ?> widget-item"
@@ -934,97 +667,6 @@ if (Gate::allows("ana_sayfa")) {
         $widgets['widget-izindekiler'] = renderSkeleton('widget-izindekiler', getWidgetWidth('widget-izindekiler', 'col-md-6'), '300px');
     }
 
-    ob_start(); ?>
-        <div class="<?php echo getWidgetWidthClass('widget-is-turu-istatistikleri', 'col-md-6'); ?> widget-item"
-            id="widget-is-turu-istatistikleri" style="<?php echo getWidgetStyle('widget-is-turu-istatistikleri'); ?>">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> İş Türü İstatistikleri</h5>
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="flex-shrink-0">
-                            <select class="form-select form-select-sm" id="stats-year-filter" style="width: 100px;">
-                                <?php
-                                $currentYear = date('Y');
-                                for ($y = $currentYear; $y >= $currentYear - 4; $y--) {
-                                    echo "<option value='$y'>$y</option>";
-                                }
-                                ?>
-                            </select>
-                        </div>
-                        <?php echo getWidthControl(); ?>
-                    </div>
-                </div>
-                <div class="card-body"
-                    style="height: <?php echo getWidgetHeight('widget-is-turu-istatistikleri', 'auto'); ?>; overflow-y: auto;">
-                    <div id="work-type-stats-chart" style="min-height: 400px; height: 100%;">
-                        <div id="work-type-stats-skeleton" class="dashboard-chart-skeleton">
-                            <div class="skeleton-line w-40 mb-3"></div>
-                            <div class="skeleton-chart-bars">
-                                <span style="height: 32%;"></span>
-                                <span style="height: 46%;"></span>
-                                <span style="height: 64%;"></span>
-                                <span style="height: 52%;"></span>
-                                <span style="height: 75%;"></span>
-                                <span style="height: 58%;"></span>
-                                <span style="height: 80%;"></span>
-                                <span style="height: 43%;"></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <?php $widgets['widget-is-turu-istatistikleri'] = ob_get_clean();
-
-        ob_start(); ?>
-        <div class="<?php echo getWidgetWidthClass('widget-is-emri-sonucu-istatistikleri', 'col-md-6'); ?> widget-item"
-            id="widget-is-emri-sonucu-istatistikleri" style="<?php echo getWidgetStyle('widget-is-emri-sonucu-istatistikleri'); ?>">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> İş Emri Sonuç İstatistikleri</h5>
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="flex-shrink-0 d-flex gap-2">
-                            <select class="form-select form-select-sm" id="stats-result-month-filter" style="width: 120px;">
-                                <?php
-                                $aylar = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
-                                $currentMonth = date('n');
-                                foreach ($aylar as $index => $ay) {
-                                    $val = $index + 1;
-                                    $selected = ($val == $currentMonth) ? 'selected' : '';
-                                    echo "<option value='$val' $selected>$ay</option>";
-                                }
-                                ?>
-                            </select>
-                            <select class="form-select form-select-sm" id="stats-result-year-filter" style="width: 100px;">
-                                <?php
-                                $currentYear = date('Y');
-                                for ($y = $currentYear; $y >= $currentYear - 4; $y--) {
-                                    echo "<option value='$y'>$y</option>";
-                                }
-                                ?>
-                            </select>
-                        </div>
-                        <?php echo getWidthControl(); ?>
-                    </div>
-                </div>
-                <div class="card-body"
-                    style="height: <?php echo getWidgetHeight('widget-is-emri-sonucu-istatistikleri', 'auto'); ?>; overflow-y: auto;">
-                    <div id="work-result-stats-chart" style="min-height: 400px; height: 100%;">
-                        <div id="work-result-stats-skeleton" class="dashboard-chart-skeleton">
-                            <div class="skeleton-line w-50 mb-3"></div>
-                            <div class="skeleton-chart-lines">
-                                <span class="w-100"></span>
-                                <span class="w-85"></span>
-                                <span class="w-70"></span>
-                                <span class="w-92"></span>
-                                <span class="w-60"></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <?php $widgets['widget-is-emri-sonucu-istatistikleri'] = ob_get_clean();
 
         //ob_start(); ?>
         <!-- <div class="col-md-4 widget-item" id="widget-istatistikler">
@@ -1047,6 +689,17 @@ if (Gate::allows("ana_sayfa")) {
         
             // Sıralamayı DB öncelikli, çerez yedekli akıştan kullan
             $render_order = !empty($render_order) ? $render_order : array_keys($widgets);
+
+            $legacyOpsWidgets = ['widget-gunluk-endeks-okuma', 'widget-gunluk-kesme-acma', 'widget-gunluk-sayac-degisimi', 'widget-gunluk-muhurleme', 'widget-kacak-sayisi', 'widget-ihbar-sayisi'];
+            if (!in_array('widget-is-operasyonlari', $render_order, true)) {
+                foreach ($render_order as $orderIndex => $orderId) {
+                    if (in_array($orderId, $legacyOpsWidgets, true)) {
+                        $render_order[$orderIndex] = 'widget-is-operasyonlari';
+                        break;
+                    }
+                }
+            }
+            $render_order = array_values(array_diff($render_order, $legacyOpsWidgets));
 
             // Slider her zaman üstte olmalı
             if (!in_array('widget-ana-slider', $render_order) && isset($widgets['widget-ana-slider'])) {
@@ -1077,6 +730,7 @@ if (Gate::allows("ana_sayfa")) {
             ?>
 
             <style id="dashboard-skeleton-critical">
+                #dashboard-page-content.dashboard-content-pending { height: 0; overflow: hidden; visibility: hidden; }
                 /* Widget visibility */
                 .widget-hidden {
                     display: none !important;
@@ -1087,14 +741,14 @@ if (Gate::allows("ana_sayfa")) {
                     display: none !important;
                 }
                 #dashboard-widgets .widget-collapsed {
-                    height: 32px !important;
-                    min-height: 32px !important;
+                    height: 40px !important;
+                    min-height: 40px !important;
                     overflow: hidden !important;
                 }
                 #dashboard-widgets .widget-collapsed .card,
                 #dashboard-widgets .widget-collapsed .carousel {
-                    height: 32px !important;
-                    min-height: 32px !important;
+                    height: 40px !important;
+                    min-height: 40px !important;
                     overflow: hidden !important;
                 }
 
@@ -1184,6 +838,8 @@ if (Gate::allows("ana_sayfa")) {
                     grid-auto-flow: row dense;
                     align-items: stretch;
                 }
+                #dashboard-widgets:not(.free-layout-active) { --bs-gutter-x: 12px; --bs-gutter-y: 0; }
+                #dashboard-widgets:not(.free-layout-active) > .widget-item { margin-bottom: 12px !important; }
                 #dashboard-widgets:not(.free-layout-active) > .widget-item {
                     width: auto;
                     max-width: none;
@@ -1529,6 +1185,210 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                 [data-bs-theme="dark"] #widget-kesme-karsilastirma .kesme-kpi { background:#252c39;border-color:#374151; }
                 [data-bs-theme="dark"] #widget-kesme-karsilastirma .kesme-overview { background:#1d232f;border-color:#323b49; }
                 [data-bs-theme="dark"] #widget-kesme-karsilastirma .kesme-kpi-value { color:#f8fafc; }
+                #dashboard-widgets .card.dash-kpi-card { position:relative; background:#fff; border:1px solid #e2e8f0 !important; border-radius:12px !important; box-shadow:0 1px 3px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.02) !important; transition:transform .25s cubic-bezier(.4,0,.2,1), box-shadow .25s cubic-bezier(.4,0,.2,1), border-color .25s ease; }
+                #dashboard-widgets .card.dash-kpi-card:hover { transform:translateY(-3px); box-shadow:0 10px 20px -5px rgba(15,23,42,.08), 0 4px 6px -2px rgba(15,23,42,.03) !important; border-color:#cbd5e1 !important; }
+                .dash-kpi-body { padding:20px 22px !important; display:flex; flex-direction:column; height:100%; }
+                .dash-kpi-trio { display:grid !important; grid-template-columns:repeat(3, minmax(0,1fr)); gap:0; padding:0 !important; }
+                .dash-kpi-trio-col { display:flex; flex-direction:column; min-width:0; padding:20px 22px; }
+                .dash-kpi-trio-col + .dash-kpi-trio-col { border-left:1px solid #f1f5f9; }
+                @media (max-width: 767.98px) { .dash-kpi-trio { grid-template-columns:1fr; } .dash-kpi-trio-col + .dash-kpi-trio-col { border-left:0; border-top:1px solid #f1f5f9; } }
+                [data-bs-theme="dark"] .dash-kpi-trio-col + .dash-kpi-trio-col { border-color:#3a4256; }
+                .dash-kpi-header { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:12px; }
+                .dash-kpi-label { display:block; margin-bottom:6px; font-size:13px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.03em; line-height:1.25; }
+                .dash-kpi-value { font-size:26px; font-weight:800; color:#0f172a; line-height:1.15; letter-spacing:-.03em; font-feature-settings:"tnum"; }
+                .dash-kpi-unit { margin-left:6px; font-size:13px; font-weight:500; color:#94a3b8; letter-spacing:0; }
+                .dash-kpi-icon { width:44px; height:44px; flex:0 0 44px; display:flex; align-items:center; justify-content:center; border-radius:10px; font-size:21px; transition:transform .2s ease; }
+                .dash-kpi-card:hover .dash-kpi-icon { transform:scale(1.08); }
+                .dash-kpi-icon.icon-blue { background:#eff6ff; color:#2563eb; }
+                .dash-kpi-icon.icon-emerald { background:#ecfdf5; color:#059669; }
+                .dash-kpi-icon.icon-amber { background:#fffbeb; color:#d97706; }
+                .dash-kpi-icon.icon-purple { background:#f5f3ff; color:#7c3aed; }
+                .dash-kpi-icon.icon-cyan { background:#ecfeff; color:#0891b2; }
+                .dash-kpi-icon.icon-rose { background:#fff1f2; color:#e11d48; }
+                .dash-kpi-footer { margin-top:auto; padding-top:12px; border-top:1px solid #f1f5f9; display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; color:#64748b; min-height:38px; }
+                .dash-kpi-note { font-size:11.5px; font-weight:500; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+                .dash-badge-soft { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:600; white-space:nowrap; }
+                .dash-badge-soft.soft-blue { background:#eff6ff; color:#1d4ed8; }
+                .dash-badge-soft.soft-emerald { background:#ecfdf5; color:#047857; }
+                .dash-badge-soft.soft-amber { background:#fffbeb; color:#b45309; }
+                .dash-badge-soft.soft-purple { background:#f5f3ff; color:#6d28d9; }
+                .dash-badge-soft.soft-rose { background:#fff1f2; color:#be123c; }
+                .dash-badge-soft.soft-slate { background:#f1f5f9; color:#475569; }
+                .dash-card-link { display:inline-flex; align-items:center; gap:2px; font-size:12px; font-weight:600; color:#3b82f6; text-decoration:none !important; white-space:nowrap; transition:color .15s ease; }
+                .dash-card-link:hover { color:#1d4ed8; text-decoration:underline !important; }
+                .dash-kpi-seg { display:flex; gap:3px; height:8px; margin:4px 0 14px; }
+                .dash-kpi-seg > span { display:block; height:100%; border-radius:999px; min-width:0; transition:width .5s ease; }
+                .dash-kpi-legend { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px 14px; margin-bottom:14px; }
+                .dash-kpi-legend-item { display:flex; flex-direction:column; min-width:0; }
+                .dash-kpi-legend-label { display:flex; align-items:center; gap:6px; font-size:11.5px; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+                .dash-kpi-legend-label::before { content:''; flex:0 0 8px; width:8px; height:8px; border-radius:50%; background:var(--dot, #94a3b8); }
+                .dash-kpi-legend-value { padding-left:14px; font-size:15px; font-weight:700; color:#1e293b; font-feature-settings:"tnum"; }
+                .dash-kpi-legend.cols-3 { grid-template-columns:repeat(3, minmax(0,1fr)); }
+                .dash-kpi-people { display:flex; flex-direction:column; gap:8px; max-height:112px; overflow-y:auto; margin-bottom:12px; }
+                .dash-kpi-person { display:flex; align-items:center; gap:8px; min-width:0; }
+                .dash-kpi-person img { width:28px; height:28px; border-radius:50%; object-fit:cover; flex:0 0 28px; }
+                .dash-kpi-person-name { font-size:12.5px; font-weight:600; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+                .dash-kpi-person-sub { font-size:11px; color:#94a3b8; }
+                .dash-kpi-person a { color:#64748b; font-size:16px; }
+                .dash-kpi-person a:hover { color:#2563eb; }
+
+                #dashboard-widgets .mac-title-bar { height:40px !important; min-height:40px !important; background:#fff !important; border-bottom:1px solid #f1f5f9 !important; padding:0 10px 0 12px !important; }
+                #dashboard-widgets .widget-item:hover .mac-title-bar { background:#fff !important; }
+                #dashboard-widgets .mac-title-text { order:2; text-align:left !important; text-transform:none !important; font-size:14px !important; font-weight:700 !important; color:#1e293b !important; letter-spacing:-.005em !important; padding:0 8px !important; }
+                #dashboard-widgets .mac-controls { order:3; justify-content:flex-end; width:auto !important; }
+                #dashboard-widgets .drag-handle-indicator { order:1; width:auto !important; justify-content:flex-start !important; font-size:.95rem !important; }
+                #dashboard-widgets .mac-control { background:#e2e8f0 !important; box-shadow:none !important; transition:background .15s ease, transform .1s ease !important; }
+                #dashboard-widgets .widget-item:hover .mac-close { background:#ff5f57 !important; }
+                #dashboard-widgets .widget-item:hover .mac-minimize { background:#febc2e !important; }
+                #dashboard-widgets .widget-item:hover .mac-maximize { background:#28c840 !important; }
+
+                #dashboard-widgets .kpi-widget .mac-title-bar { position:absolute !important; top:6px; left:50%; transform:translateX(-50%); width:auto !important; height:20px !important; min-height:20px !important; padding:0 8px !important; gap:8px; border:1px solid #e2e8f0 !important; border-radius:999px !important; box-shadow:0 2px 6px rgba(15,23,42,.08); opacity:0; pointer-events:none; transition:opacity .15s ease !important; z-index:20 !important; }
+                #dashboard-widgets .kpi-widget:hover .mac-title-bar { opacity:1; pointer-events:auto; }
+                #dashboard-widgets .kpi-widget .mac-title-text { display:none !important; }
+                #dashboard-widgets .kpi-widget.widget-collapsed .mac-title-bar { opacity:1; pointer-events:auto; }
+
+                .dash-hero { display:flex; justify-content:space-between; align-items:center; gap:24px; flex-wrap:wrap; margin-bottom:12px; padding:22px 26px; background:#fff; border:1px solid #e2e8f0; border-radius:16px; box-shadow:0 1px 3px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.02); }
+                .dash-hero-main { min-width:0; }
+                .dash-hero-chips { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+                .dash-hero-chip { display:inline-flex; align-items:center; gap:6px; height:30px; padding:0 12px; border:1px solid #e2e8f0; border-radius:8px; background:#f8fafc; color:#475569; font-size:12.5px; font-weight:600; }
+                .dash-hero-chip i { font-size:15px; color:#64748b; }
+                .dash-hero .dashboard-settings-toolbar > .dropdown > .btn { height:30px; padding:0 12px !important; border:1px solid #e2e8f0 !important; border-radius:8px !important; background:#fff !important; color:#475569 !important; font-size:12.5px; font-weight:600 !important; box-shadow:none !important; backdrop-filter:none; }
+                .dash-hero .dashboard-settings-toolbar > .dropdown > .btn:hover,
+                .dash-hero .dashboard-settings-toolbar > .dropdown > .btn.show { border-color:#cbd5e1 !important; background:#f8fafc !important; color:#1e293b !important; }
+                .dash-hero .dashboard-settings-toolbar > .dropdown > .btn i { font-size:16px !important; color:#64748b; }
+                .dash-hero-title { margin:0 0 4px; font-size:24px; font-weight:800; color:#0f172a; letter-spacing:-.02em; line-height:1.2; }
+                .dash-hero-wave { display:inline-block; transform-origin:70% 70%; animation:dashWave 2.4s ease-in-out 1; }
+                @keyframes dashWave { 0%,60%,100% { transform:rotate(0); } 10%,30% { transform:rotate(14deg); } 20% { transform:rotate(-8deg); } 40% { transform:rotate(-4deg); } 50% { transform:rotate(10deg); } }
+                @media (prefers-reduced-motion: reduce) { .dash-hero-wave { animation:none; } }
+                .dash-hero-sub { margin:0; font-size:13.5px; color:#64748b; }
+                .dash-hero-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-left:auto; }
+                .dash-hero-action { width:82px; height:82px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; border:1.5px solid #e2e8f0; border-radius:14px; background:#f8fafc; box-shadow:0 1px 3px rgba(0,0,0,.04); color:#334155; text-decoration:none !important; cursor:pointer; transition:all .25s cubic-bezier(.4,0,.2,1); }
+                .dash-hero-action:hover { transform:translateY(-3px); border-color:#2563eb; background:#fff; box-shadow:0 8px 18px -4px rgba(37,99,235,.18), 0 4px 8px -2px rgba(0,0,0,.04); color:#0f172a; }
+                .dash-hero-action:active { transform:translateY(-1px); }
+                .dash-hero-action:focus-visible { outline:2px solid rgba(37,99,235,.45); outline-offset:2px; }
+                .dash-hero-action-icon { width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:8px; background:rgba(226,232,240,.6); color:#475569; font-size:20px; transition:all .25s ease; }
+                .dash-hero-action:hover .dash-hero-action-icon { color:#2563eb; background:rgba(37,99,235,.1); transform:scale(1.08); }
+                .dash-hero-action-label { font-size:11px; font-weight:600; line-height:1.2; text-align:center; color:#334155; transition:color .25s ease; }
+                .dash-hero-action:hover .dash-hero-action-label { color:#0f172a; }
+                @media (max-width: 767.98px) {
+                    .dash-hero { padding:18px; }
+                    .dash-hero-title { font-size:20px; }
+                    .dash-hero-actions { width:100%; display:grid; grid-template-columns:repeat(auto-fit, minmax(72px, 1fr)); }
+                    .dash-hero-action { width:auto; }
+                    .dash-hero .dashboard-settings-toolbar > .dropdown > .btn { color:transparent !important; width:34px; }
+                }
+                [data-bs-theme="dark"] .dash-hero,
+                [data-bs-theme="dark"] .dash-hero-action { background:#2a3042; border-color:#3a4256; }
+                [data-bs-theme="dark"] .dash-hero-chip,
+                [data-bs-theme="dark"] .dash-hero .dashboard-settings-toolbar > .dropdown > .btn { background:#232838 !important; border-color:#3a4256 !important; color:#cbd5e1 !important; }
+                [data-bs-theme="dark"] .dash-hero-title { color:#f8fafc; }
+                [data-bs-theme="dark"] .dash-hero-sub { color:#94a3b8; }
+                [data-bs-theme="dark"] .dash-hero-action { color:#e2e8f0; }
+
+                .dash-kpi-legend-item { padding:9px 12px; background:#f8fafc; border:1px solid #f1f5f9; border-radius:10px; }
+                .dash-kpi-legend-value { padding-left:14px; font-size:17px; }
+                .dash-kpi-legend { gap:10px; }
+                [data-bs-theme="dark"] .dash-kpi-legend-item { background:#232838; border-color:#3a4256; }
+
+                #widget-endeks-karsilastirma .endeks-overview,
+                #widget-kesme-karsilastirma .kesme-overview { background:#fff !important; border-color:#f1f5f9 !important; gap:10px !important; padding:14px !important; }
+                #widget-endeks-karsilastirma .endeks-kpi,
+                #widget-kesme-karsilastirma .kesme-kpi { background:#fff !important; border:1px solid #e2e8f0 !important; border-radius:12px !important; box-shadow:0 1px 3px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.02) !important; padding:13px 15px !important; transition:transform .25s cubic-bezier(.4,0,.2,1), box-shadow .25s cubic-bezier(.4,0,.2,1), border-color .25s ease !important; }
+                #widget-endeks-karsilastirma .endeks-kpi::after { display:none !important; }
+                #widget-endeks-karsilastirma .endeks-kpi.is-actionable:hover,
+                #widget-kesme-karsilastirma .kesme-kpi.is-actionable:hover { transform:translateY(-3px) !important; border-color:#cbd5e1 !important; box-shadow:0 10px 20px -5px rgba(15,23,42,.08), 0 4px 6px -2px rgba(15,23,42,.03) !important; }
+                #widget-endeks-karsilastirma .endeks-kpi-label,
+                #widget-kesme-karsilastirma .kesme-kpi-label { font-size:11px !important; font-weight:600 !important; color:#64748b !important; letter-spacing:.04em !important; }
+                #widget-endeks-karsilastirma .endeks-kpi-value,
+                #widget-kesme-karsilastirma .kesme-kpi-value { margin-top:4px !important; font-size:22px !important; font-weight:800 !important; letter-spacing:-.03em; font-feature-settings:"tnum"; }
+                #widget-endeks-karsilastirma .endeks-kpi-note,
+                #widget-kesme-karsilastirma .kesme-kpi-note { margin-top:6px !important; font-size:11px !important; color:#64748b !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+                #widget-kesme-karsilastirma .comparison-dashboard-card { border:0 !important; box-shadow:none !important; }
+                [data-bs-theme="dark"] #widget-endeks-karsilastirma .endeks-overview,
+                [data-bs-theme="dark"] #widget-kesme-karsilastirma .kesme-overview,
+                [data-bs-theme="dark"] #widget-endeks-karsilastirma .endeks-kpi,
+                [data-bs-theme="dark"] #widget-kesme-karsilastirma .kesme-kpi { background:#2a3042 !important; border-color:#3a4256 !important; }
+                [data-bs-theme="dark"] #widget-endeks-karsilastirma .endeks-kpi-note,
+                [data-bs-theme="dark"] #widget-kesme-karsilastirma .kesme-kpi-note { border-top-color:#3a4256; }
+                #widget-is-operasyonlari .ops-bar:not(:has(.ops-bar-seg:not([style*="width: 0%"]):not(.d-none))):not(:has(.ops-bar-track:not(.d-none))) { display:none; }
+
+                #widget-is-operasyonlari .ops-c--reading { --ops-color:#0891b2; --ops-soft:#ecfeff; }
+                #widget-is-operasyonlari .ops-c--cut_open { --ops-color:#e11d48; --ops-soft:#fff1f2; }
+                #widget-is-operasyonlari .ops-c--meter_change { --ops-color:#059669; --ops-soft:#ecfdf5; }
+                #widget-is-operasyonlari .ops-c--sealing { --ops-color:#475569; --ops-soft:#f1f5f9; }
+                #widget-is-operasyonlari .ops-c--illegal { --ops-color:#ea580c; --ops-soft:#fff7ed; }
+                #widget-is-operasyonlari .ops-c--notice { --ops-color:#d97706; --ops-soft:#fffbeb; }
+                #widget-is-operasyonlari .ops-card { max-height:none !important; }
+                #widget-is-operasyonlari .ops-card > .card-body > * { flex-shrink:0; }
+                #widget-is-operasyonlari .ops-card > .card-body { padding:18px 20px 20px !important; }
+                #widget-is-operasyonlari .ops-head { display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+                #widget-is-operasyonlari .ops-head .dash-kpi-label { margin-bottom:2px; }
+                #widget-is-operasyonlari .ops-head-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+                #widget-is-operasyonlari .ops-mode-toggle { display:inline-flex; padding:3px; gap:2px; background:#f1f5f9; border-radius:8px; }
+                #widget-is-operasyonlari .ops-mode-btn { border:0; background:transparent; color:#64748b; font-size:12px; font-weight:600; padding:5px 14px; border-radius:6px; line-height:1.3; transition:background .2s ease, color .2s ease, box-shadow .2s ease; }
+                #widget-is-operasyonlari .ops-mode-btn:hover { color:#1e293b; }
+                #widget-is-operasyonlari .ops-mode-btn.is-active { background:#fff; color:#2563eb; box-shadow:0 1px 3px rgba(15,23,42,.12); }
+                #widget-is-operasyonlari .ops-mode-btn:focus-visible { outline:2px solid rgba(37,99,235,.4); outline-offset:1px; }
+                #widget-is-operasyonlari .ops-sync-all { display:inline-flex; align-items:center; gap:5px; border:1px solid #e2e8f0; background:#fff; color:#475569; font-size:12px; font-weight:600; padding:5px 12px; border-radius:8px; transition:.15s ease; }
+                #widget-is-operasyonlari .ops-sync-all:hover:not(:disabled) { border-color:#cbd5e1; color:#1d4ed8; background:#f8fafc; }
+                #widget-is-operasyonlari .ops-sync-all i { font-size:15px; }
+                #widget-is-operasyonlari .ops-contract-note { min-height:18px; margin:-4px 0 10px; font-size:12px; color:#64748b; }
+                #widget-is-operasyonlari .ops-contract-note b { color:#1e293b; }
+                #widget-is-operasyonlari .ops-bar { display:flex; gap:3px; height:8px; margin-bottom:16px; }
+                #widget-is-operasyonlari .ops-bar-seg { display:block; height:100%; border-radius:999px; background:var(--ops-color); transition:width .5s ease; min-width:0; }
+                #widget-is-operasyonlari .ops-bar-seg[style*="width: 0%"] { display:none; }
+                #widget-is-operasyonlari .ops-bar-contract { display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,#10b981,#059669); transition:width .5s ease; }
+                #widget-is-operasyonlari .ops-bar-track { flex:1 1 100%; width:100%; display:flex; height:100%; background:#f1f5f9; border-radius:999px; overflow:hidden; }
+                #widget-is-operasyonlari .ops-items { display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:14px; }
+                #widget-is-operasyonlari .ops-item { display:flex; flex-direction:column; padding:16px 18px; background:#fff; border:1px solid #e2e8f0; border-radius:12px; color:inherit; text-decoration:none !important; box-shadow:0 1px 3px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.02); transition:transform .25s cubic-bezier(.4,0,.2,1), box-shadow .25s cubic-bezier(.4,0,.2,1), border-color .25s ease; min-width:0; }
+                #widget-is-operasyonlari .ops-item:hover { transform:translateY(-3px); border-color:#cbd5e1; box-shadow:0 10px 20px -5px rgba(15,23,42,.08), 0 4px 6px -2px rgba(15,23,42,.03); }
+                #widget-is-operasyonlari .ops-item .dash-kpi-header { margin-bottom:8px; }
+                #widget-is-operasyonlari .ops-item .dash-kpi-label { font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+                #widget-is-operasyonlari .ops-item .dash-kpi-value { font-size:24px; }
+                #widget-is-operasyonlari .ops-item .dash-kpi-icon { width:40px; height:40px; flex-basis:40px; font-size:19px; background:var(--ops-soft); color:var(--ops-color); }
+                #widget-is-operasyonlari .ops-item:hover .dash-kpi-icon { transform:scale(1.08); }
+                #widget-is-operasyonlari .ops-contract { display:block; margin:-2px 0 0; }
+                #widget-is-operasyonlari .ops-contract.d-none { display:none !important; }
+                #widget-is-operasyonlari .ops-mini-progress { display:block; height:6px; background:#f1f5f9; border-radius:999px; overflow:hidden; }
+                #widget-is-operasyonlari .ops-mini-fill { display:block; height:100%; width:0; background:var(--ops-color); border-radius:999px; transition:width .5s ease; }
+                #widget-is-operasyonlari .ops-contract-text { font-feature-settings:"tnum"; }
+                #widget-is-operasyonlari.is-contract .ops-item .dash-kpi-footer { border-top:0; padding-top:8px; }
+                #widget-is-operasyonlari .ops-item .dash-kpi-footer { padding-top:10px; min-height:34px; }
+                #widget-is-operasyonlari .ops-sub b { color:#047857; }
+                #widget-is-operasyonlari .ops-sub i { color:#059669; }
+                #widget-is-operasyonlari .ops-rate { background:var(--ops-soft); color:var(--ops-color); }
+                #widget-is-operasyonlari .ops-go { color:var(--ops-color); font-size:18px; line-height:1; opacity:.55; transition:opacity .15s ease, transform .15s ease; }
+                #widget-is-operasyonlari .ops-item:hover .ops-go { opacity:1; transform:translateX(2px); }
+                #widget-is-operasyonlari.is-contract .ops-go,
+                #widget-is-operasyonlari .ops-rate:empty { display:none !important; }
+
+                [data-bs-theme="dark"] #dashboard-widgets .card.dash-kpi-card,
+                [data-bs-theme="dark"] #widget-is-operasyonlari .ops-item { background:#2a3042; border-color:#3a4256 !important; }
+                [data-bs-theme="dark"] .dash-kpi-label,
+                [data-bs-theme="dark"] .dash-kpi-legend-label { color:#94a3b8; }
+                [data-bs-theme="dark"] .dash-kpi-value,
+                [data-bs-theme="dark"] .dash-kpi-legend-value,
+                [data-bs-theme="dark"] .dash-kpi-person-name,
+                [data-bs-theme="dark"] #widget-is-operasyonlari .ops-contract-note b { color:#f8fafc; }
+                [data-bs-theme="dark"] .dash-kpi-footer { border-top-color:#3a4256; }
+                [data-bs-theme="dark"] .dash-kpi-icon.icon-blue { background:rgba(37,99,235,.2); color:#60a5fa; }
+                [data-bs-theme="dark"] .dash-kpi-icon.icon-emerald { background:rgba(5,150,105,.2); color:#34d399; }
+                [data-bs-theme="dark"] .dash-kpi-icon.icon-amber { background:rgba(217,119,6,.2); color:#fbbf24; }
+                [data-bs-theme="dark"] .dash-kpi-icon.icon-purple { background:rgba(124,58,237,.2); color:#a78bfa; }
+                [data-bs-theme="dark"] .dash-kpi-icon.icon-cyan { background:rgba(8,145,178,.2); color:#22d3ee; }
+                [data-bs-theme="dark"] .dash-kpi-icon.icon-rose { background:rgba(225,29,72,.2); color:#fb7185; }
+                [data-bs-theme="dark"] #widget-is-operasyonlari .ops-item .dash-kpi-icon,
+                [data-bs-theme="dark"] #widget-is-operasyonlari .ops-rate { background:rgba(148,163,184,.14); }
+                [data-bs-theme="dark"] #dashboard-widgets .mac-title-bar { background:#2a3042 !important; border-bottom-color:#3a4256 !important; }
+                [data-bs-theme="dark"] #dashboard-widgets .widget-item:hover .mac-title-bar { background:#2a3042 !important; }
+                [data-bs-theme="dark"] #dashboard-widgets .mac-title-text { color:#e2e8f0 !important; }
+                [data-bs-theme="dark"] #dashboard-widgets .mac-control { background:#4b5563 !important; }
+                [data-bs-theme="dark"] #dashboard-widgets .kpi-widget .mac-title-bar { border-color:#3a4256 !important; }
+                [data-bs-theme="dark"] #widget-is-operasyonlari .ops-mode-toggle,
+                [data-bs-theme="dark"] #widget-is-operasyonlari .ops-mini-progress,
+                [data-bs-theme="dark"] #widget-is-operasyonlari .ops-bar-track { background:#1d232f; }
+                [data-bs-theme="dark"] #widget-is-operasyonlari .ops-mode-btn.is-active { background:#374151; color:#93c5fd; }
+                [data-bs-theme="dark"] #widget-is-operasyonlari .ops-sync-all { background:#2a3042; border-color:#3a4256; color:#cbd5e1; }
                 .comparison-detail-toggle { display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:10px 14px;border:0;border-top:1px solid #e9edf4;border-bottom:1px solid #e9edf4;background:linear-gradient(180deg,#fff,#f8fafc);color:#536174;font-size:11px;font-weight:700;letter-spacing:.02em;transition:background .2s ease,color .2s ease; }
                 .comparison-detail-toggle:hover { background:#f1f5f9;color:#3730a3; }
                 .comparison-detail-toggle i { font-size:16px;transition:transform .28s cubic-bezier(.2,.8,.2,1); }
@@ -1814,66 +1674,134 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                 }
             </style>
 
-            <div id="dashboard-page-skeleton" class="dashboard-page-skeleton">
-                <div class="skeleton-toolbar">
+            <?php
+            $skeletonItems = [];
+            foreach ($render_order as $skeletonId) {
+                if (!isset($widgets[$skeletonId]) || !preg_match('/<div\b[^>]*>/', (string) $widgets[$skeletonId], $skTag)) {
+                    continue;
+                }
+                $skSaved = is_array($saved_settings[$skeletonId] ?? null) ? $saved_settings[$skeletonId] : [];
+                $skClass = preg_match('/class="([^"]*)"/', $skTag[0], $skC) ? $skC[1] : '';
+                $skStyle = preg_match('/style="([^"]*)"/', $skTag[0], $skS) ? $skS[1] : '';
+                if (str_contains($skClass, 'widget-hidden') || preg_match('/display\s*:\s*none/i', $skStyle) || ($skSaved['hidden'] ?? '') === 'true') {
+                    continue;
+                }
+                $skCols = array_values(array_filter(preg_split('/\s+/', $skClass) ?: [], static fn($c) => preg_match('/^col(-[a-z]+)?(-\d+)?$/', $c)));
+                $skProps = [];
+                $skHeight = 0;
+                foreach (explode(';', $skStyle) as $skDecl) {
+                    if (preg_match('/^\s*(width|height|min-height|position|left|top)\s*:\s*([^;]+?)\s*$/i', $skDecl, $skP)) {
+                        $skProps[strtolower($skP[1])] = preg_replace('/\s*!important/i', '', $skP[2]);
+                        if (in_array(strtolower($skP[1]), ['height', 'min-height'], true) && preg_match('/^(\d+(?:\.\d+)?)px$/', trim($skProps[strtolower($skP[1])]), $skPx)) {
+                            $skHeight = max($skHeight, (int) $skPx[1]);
+                        }
+                    }
+                }
+                $skItem = ['id' => $skeletonId, 'class' => $skCols ? implode(' ', $skCols) : 'col-12', 'style' => '', 'height' => 0];
+                if ($dashboard_is_free) {
+                    if (!isset($skProps['height']) && !isset($skProps['min-height'])) {
+                        $skProps['min-height'] = '180px';
+                    }
+                    $skItem['style'] = implode('; ', array_map(static fn($k, $v) => $k . ': ' . $v, array_keys($skProps), $skProps));
+                } else {
+                    $skGridCols = (int) ($skSaved['gridCols'] ?? 0);
+                    if ($skGridCols >= 1 && $skGridCols <= 12) {
+                        $skItem['class'] = 'col-md-' . $skGridCols . ' col-xl-' . $skGridCols;
+                    }
+                    $skGridHeight = (int) ($skSaved['gridHeight'] ?? 0);
+                    $skDefaultHeights = ["widget-ana-slider" => 304, "widget-is-operasyonlari" => 408, "widget-dogum-gunleri" => 280, "widget-talepler" => 360, "widget-izindekiler" => 360, "widget-yaklasan-gorevler" => 260, "widget-endeks-karsilastirma" => 220, "widget-kesme-karsilastirma" => 220];
+                    $skH = $skGridHeight >= 120 ? $skGridHeight : ($skDefaultHeights[$skeletonId] ?? ($skHeight > 0 ? $skHeight : 180));
+                    $skStyleParts = ['grid-row-end: span ' . (int) ceil(($skH + 12) / 8)];
+                    $skGridX = (int) ($skSaved['gridX'] ?? 0);
+                    $skGridY = (int) ($skSaved['gridY'] ?? 0);
+                    if ($skGridX >= 1 && $skGridX <= 12 && $skGridY >= 1) {
+                        $skStyleParts[] = '--gx: ' . $skGridX;
+                        $skStyleParts[] = '--gy: ' . $skGridY;
+                        $skItem['grid'] = [$skGridX, $skGridY];
+                    }
+                    $skCols12 = 12;
+                    if ($skGridCols >= 1 && $skGridCols <= 12) {
+                        $skCols12 = $skGridCols;
+                    } elseif (preg_match('/col-(?:xl-|lg-|md-)?(\d+)/', $skItem['class'], $skColM)) {
+                        $skCols12 = min(12, max(1, (int) $skColM[1]));
+                    }
+                    $skStyleParts[] = '--c: ' . $skCols12;
+                    $skItem['style'] = implode('; ', $skStyleParts);
+                }
+                $skeletonItems[] = $skItem;
+            }
+            $skeletonEsc = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+            ?>
+            <style id="dashboard-skeleton-grid">
+                #dashboard-page-skeleton .skeleton-widgets-grid { margin-left: -12px; margin-right: -12px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-auto-rows: 8px; grid-auto-flow: row dense; align-items: stretch; }
+                #dashboard-page-skeleton .skeleton-widgets-grid > .skeleton-widget { grid-column: span 12; min-width: 0; padding: 0 12px; box-sizing: border-box; }
+                @media (min-width: 768px) {
+                    #dashboard-page-skeleton .skeleton-widgets-grid > .skeleton-widget { grid-column: span var(--c, 12); }
+                    #dashboard-page-skeleton .skeleton-widgets-grid > .skeleton-widget[data-grid-x] { grid-column: var(--gx) / span var(--c, 12); grid-row-start: var(--gy); }
+                }
+            </style>
+            <div id="dashboard-page-skeleton" class="dashboard-page-skeleton" aria-hidden="true">
+                <div class="skeleton-card" style="min-height: 110px; margin-bottom: 24px;">
                     <div class="skeleton-line w-35"></div>
-                    <div class="skeleton-toolbar-right">
-                        <div class="skeleton-line" style="width: 170px;"></div>
-                        <div class="skeleton-line" style="width: 190px;"></div>
-                    </div>
+                    <div class="skeleton-line w-60"></div>
                 </div>
-
-                <div class="skeleton-grid">
-                    <div class="skeleton-card skeleton-card-lg">
-                        <div class="skeleton-line w-60"></div>
-                        <div class="skeleton-line w-95"></div>
-                        <div class="skeleton-line w-85"></div>
-                    </div>
-                    <div class="skeleton-card skeleton-card-lg">
-                        <div class="skeleton-line w-50"></div>
-                        <div class="skeleton-line w-90"></div>
-                        <div class="skeleton-line w-70"></div>
-                    </div>
-
-                    <div class="skeleton-card skeleton-card-sm">
-                        <div class="skeleton-line w-60"></div>
-                        <div class="skeleton-line w-90"></div>
-                        <div class="skeleton-line w-50"></div>
-                    </div>
-                    <div class="skeleton-card skeleton-card-sm">
-                        <div class="skeleton-line w-50"></div>
-                        <div class="skeleton-line w-85"></div>
-                        <div class="skeleton-line w-60"></div>
-                    </div>
-                    <div class="skeleton-card skeleton-card-sm">
-                        <div class="skeleton-line w-55"></div>
-                        <div class="skeleton-line w-95"></div>
-                        <div class="skeleton-line w-40"></div>
-                    </div>
-                    <div class="skeleton-card skeleton-card-sm">
-                        <div class="skeleton-line w-45"></div>
-                        <div class="skeleton-line w-80"></div>
-                        <div class="skeleton-line w-65"></div>
-                    </div>
-
-                    <div class="skeleton-card skeleton-card-full">
-                        <div class="skeleton-line w-40"></div>
-                        <div class="skeleton-line w-100"></div>
-                        <div class="skeleton-line w-100"></div>
-                        <div class="skeleton-line w-95"></div>
-                    </div>
+                <div class="<?php echo $dashboard_is_free ? 'd-block' : 'skeleton-widgets-grid'; ?>" style="position: relative; min-height: 800px;">
+                    <?php foreach ($skeletonItems as $skeletonItem): ?>
+                        <div class="skeleton-widget <?php echo $skeletonEsc($dashboard_is_free ? $skeletonItem['class'] : ''); ?>"<?php echo isset($skeletonItem['grid']) ? ' data-grid-x="' . (int) $skeletonItem['grid'][0] . '"' : ''; ?> style="<?php echo $skeletonEsc($skeletonItem['style']); ?>">
+                            <div class="skeleton-card" style="height: calc(100% - 24px); min-height: 0;">
+                                <div class="skeleton-line w-50"></div>
+                                <div class="skeleton-line w-90"></div>
+                                <div class="skeleton-line w-70"></div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
                 </div>
             </div>
+            <?php
+            echo str_repeat(' ', 4096);
+            if (function_exists('ob_flush')) {
+                @ob_flush();
+            }
+            if (function_exists('flush')) {
+                @flush();
+            }
+            ?>
 
-            <div id="dashboard-page-content" style="display: none;">
+            <div id="dashboard-page-content" class="dashboard-content-pending">
 
-                <div class="d-flex justify-content-between align-items-center dashboard-settings-row">
-                    <div>
-                        <?php
-                        $maintitle = 'Ana Sayfa';
-                        $title = '';
-                        ?>
-                    </div>
+                <?php
+                $maintitle = 'Ana Sayfa';
+                $title = '';
+                $heroAylar = [1 => 'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+                $heroGunler = [1 => 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+                $heroTarih = date('j') . ' ' . $heroAylar[(int) date('n')] . ' ' . date('Y') . ', ' . $heroGunler[(int) date('N')];
+                $heroSaat = (int) date('G');
+                $heroSelam = $heroSaat < 6 ? 'İyi geceler' : ($heroSaat < 12 ? 'Günaydın' : ($heroSaat < 18 ? 'İyi günler' : 'İyi akşamlar'));
+                $heroAdSoyad = trim((string) ($_SESSION['user']->adi_soyadi ?? ''));
+                $heroAdParcalari = $heroAdSoyad !== '' ? preg_split('/\s+/u', $heroAdSoyad) : [];
+                $heroAd = count($heroAdParcalari) > 1 ? implode(' ', array_slice($heroAdParcalari, 0, -1)) : ($heroAdParcalari[0] ?? '');
+                $heroAksiyonlar = [];
+                if (Gate::allows('personel_listesi')) {
+                    $heroAksiyonlar[] = ['href' => 'index.php?p=personel/list', 'icon' => 'bx-group', 'label' => 'Personel', 'tone' => 'blue'];
+                }
+                if (Gate::allows('puantaj/raporlar')) {
+                    $heroAksiyonlar[] = ['href' => 'index.php?p=puantaj/raporlar', 'icon' => 'bx-bar-chart-alt-2', 'label' => 'İş Raporları', 'tone' => 'emerald'];
+                }
+                if (Gate::allows('arac_takip_yonetim')) {
+                    $heroAksiyonlar[] = ['href' => 'index.php?p=arac-takip/list', 'icon' => 'bx-car', 'label' => 'Araç Takip', 'tone' => 'purple'];
+                }
+                if (Gate::allows('talepler')) {
+                    $heroAksiyonlar[] = ['href' => 'index.php?p=talepler/list', 'icon' => 'bx-message-square-detail', 'label' => 'Talepler', 'tone' => 'amber'];
+                }
+                if (Gate::allows('nobet/list')) {
+                    $heroAksiyonlar[] = ['href' => 'index.php?p=nobet/list', 'icon' => 'bx-calendar-star', 'label' => 'Nöbetler', 'tone' => 'cyan'];
+                }
+                $heroEsc = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+                ?>
+                <section class="dash-hero" aria-label="Karşılama">
+                    <div class="dash-hero-main">
+                        <div class="dash-hero-chips">
+                            <span class="dash-hero-chip"><i class="bx bx-calendar"></i> <?php echo $heroEsc($heroTarih); ?></span>
                     <div class="d-flex gap-2 dashboard-settings-toolbar" id="dashboard-settings-toolbar">
                         <div class="dropdown">
                             <button class="btn btn-soft-secondary btn-sm dropdown-toggle d-flex align-items-center" type="button"
@@ -1941,20 +1869,8 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                                     </li>
                                     <li>
                                         <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
-                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-bekleyen-talepler" checked>
-                                            <span style="font-size: 13px;">Bekleyen Talepler</span>
-                                        </label>
-                                    </li>
-                                    <li>
-                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
-                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-gec-kalanlar" checked>
-                                            <span style="font-size: 13px;">Geç Kalanlar</span>
-                                        </label>
-                                    </li>
-                                    <li>
-                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
-                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-nobetciler" checked>
-                                            <span style="font-size: 13px;">Bugünkü Nöbetçiler</span>
+                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-talep-nobet-ozet" checked>
+                                            <span style="font-size: 13px;">Talep, Geç Kalan ve Nöbetçi Özeti</span>
                                         </label>
                                     </li>
                                     <li><hr class="dropdown-divider opacity-50"></li>
@@ -1978,53 +1894,11 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                                             </label>
                                         </li>
                                     <?php endif; ?>
-                                    <li>
-                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
-                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-is-turu-istatistikleri" checked>
-                                            <span style="font-size: 13px;">İş Türü İstatistikleri</span>
-                                        </label>
-                                    </li>
-                                    <li>
-                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
-                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-is-emri-sonucu-istatistikleri" checked>
-                                            <span style="font-size: 13px;">İş Emri Sonuç İstatistikleri</span>
-                                        </label>
-                                    </li>
                                     <li><hr class="dropdown-divider opacity-50"></li>
                                     <li>
                                         <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
-                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-gunluk-kesme-acma" checked>
-                                            <span style="font-size: 13px;">Günlük Kesme Açma</span>
-                                        </label>
-                                    </li>
-                                    <li>
-                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
-                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-gunluk-endeks-okuma" checked>
-                                            <span style="font-size: 13px;">Günlük Endeks Okuma</span>
-                                        </label>
-                                    </li>
-                                    <li>
-                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
-                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-gunluk-sayac-degisimi" checked>
-                                            <span style="font-size: 13px;">Günlük Sayaç Değişimi</span>
-                                        </label>
-                                    </li>
-                                    <li>
-                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
-                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-gunluk-muhurleme" checked>
-                                            <span style="font-size: 13px;">Günlük Mühürleme</span>
-                                        </label>
-                                    </li>
-                                    <li>
-                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
-                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-kacak-sayisi" checked>
-                                            <span style="font-size: 13px;">Kaçak Kontrol</span>
-                                        </label>
-                                    </li>
-                                    <li>
-                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
-                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-ihbar-sayisi" checked>
-                                            <span style="font-size: 13px;">İhbar İşlemleri</span>
+                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-is-operasyonlari" checked>
+                                            <span style="font-size: 13px;">İş Operasyonları</span>
                                         </label>
                                     </li>
                                     <?php if (Gate::allows("gorevler")): ?>
@@ -2052,19 +1926,26 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                             </ul>
                         </div>
                     </div>
-                </div>
+                        </div>
+                        <h1 class="dash-hero-title"><?php echo $heroEsc($heroSelam . ($heroAd !== '' ? ', ' . $heroAd : '')); ?> <span class="dash-hero-wave" aria-hidden="true">👋</span></h1>
+                        <p class="dash-hero-sub">Operasyon, personel ve araç süreçlerinize bugünkü genel bakış.</p>
+                    </div>
+                    <?php if ($heroAksiyonlar !== []): ?>
+                        <nav class="dash-hero-actions" aria-label="Hızlı işlemler">
+                            <?php foreach ($heroAksiyonlar as $aksiyon): ?>
+                                <a href="<?php echo $heroEsc($aksiyon['href']); ?>" class="dash-hero-action tone-<?php echo $heroEsc($aksiyon['tone']); ?>">
+                                    <span class="dash-hero-action-icon"><i class="bx <?php echo $heroEsc($aksiyon['icon']); ?>"></i></span>
+                                    <span class="dash-hero-action-label"><?php echo $heroEsc($aksiyon['label']); ?></span>
+                                </a>
+                            <?php endforeach; ?>
+                        </nav>
+                    <?php endif; ?>
+                </section>
 
                 <style>
-                    .dashboard-settings-row {
-                        height: 0;
-                        margin: 0 !important;
-                    }
-
                     .dashboard-settings-toolbar {
-                        position: fixed;
-                        top: 76px;
-                        right: 18px;
-                        z-index: 1000;
+                        position: relative;
+                        z-index: 5;
                     }
 
                     .quick-fav-inner > .dashboard-settings-toolbar {
@@ -2128,7 +2009,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                         const favoritesInner = document.querySelector('#quick-favorites-bar .quick-fav-inner');
                         const dashboardToolbar = document.getElementById('dashboard-settings-toolbar');
 
-                        if (favoritesInner && dashboardToolbar) {
+                        if (favoritesInner && dashboardToolbar && !dashboardToolbar.closest('.dash-hero')) {
                             favoritesInner.appendChild(dashboardToolbar);
                         }
                     })();
@@ -3319,7 +3200,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
             }
 
             #dashboard-widgets .dashboard-phase2-hidden {
-                display: none !important;
+                visibility: hidden !important;
             }
 
             #dashboard-widgets .widget-item.widget-hidden {
@@ -3840,9 +3721,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                     'widget-personel-ozet',
                     'widget-dogum-gunleri',
                     'widget-arac-ozet',
-                    'widget-bekleyen-talepler',
-                    'widget-gec-kalanlar',
-                    'widget-nobetciler'
+                    'widget-talep-nobet-ozet'
                 ]);
                 let dashboardRevealed = false;
 
@@ -3863,8 +3742,12 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                 const revealDashboardPage = () => {
                     if (dashboardRevealed) return;
                     dashboardRevealed = true;
+                    runDashboardGridLayout(true);
+                    if (pageContent) {
+                        pageContent.classList.remove('dashboard-content-pending');
+                        pageContent.style.display = '';
+                    }
                     if (pageSkeleton) pageSkeleton.style.display = 'none';
-                    if (pageContent) pageContent.style.display = '';
                     if (criticalSkeletonStyle) criticalSkeletonStyle.remove();
                     if (typeof initResizableWidgets === 'function') {
                         setTimeout(initResizableWidgets, 80);
@@ -3877,6 +3760,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                     }
                 };
 
+                window.__revealDashboard = revealDashboardPage;
                 prepareStagedWidgets();
 
                 const scheduleDashboardReveal = () => {
@@ -3885,13 +3769,11 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                     });
                 };
 
-                scheduleDashboardReveal();
-
                 setTimeout(() => {
                     if (!dashboardRevealed) {
                         revealDashboardPage();
                     }
-                }, 1200);
+                }, 3000);
 
                 const API_URL = 'views/talepler/api.php';
 
@@ -4389,19 +4271,37 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                 }
 
                 let gridLayoutRaf = null;
-                function layoutDashboardGrid() {
+                let gridForceNext = false;
+                let gridLastSignature = '';
+                let gridLastHeight = 0;
+                function layoutDashboardGrid(force) {
+                    if (force) gridForceNext = true;
                     if (gridLayoutRaf) cancelAnimationFrame(gridLayoutRaf);
-                    gridLayoutRaf = requestAnimationFrame(runDashboardGridLayout);
+                    gridLayoutRaf = requestAnimationFrame(function () { runDashboardGridLayout(false); });
                 }
 
-                function runDashboardGridLayout() {
+                function dashboardGridSignature(container) {
+                    let sig = window.innerWidth + '|' + container.getElementsByTagName('*').length;
+                    for (let i = 0; i < container.children.length; i++) {
+                        const el = container.children[i];
+                        sig += '|' + el.id + el.className + (el.getAttribute('style') || '');
+                    }
+                    return sig;
+                }
+
+                function runDashboardGridLayout(force) {
                     gridLayoutRaf = null;
+                    force = force === true || gridForceNext;
+                    gridForceNext = false;
                     const container = document.getElementById('dashboard-widgets');
                     if (!container || container.classList.contains('free-layout-active')) return;
+                    const pendingContent = document.getElementById('dashboard-page-content');
+                    if (!force && pendingContent && pendingContent.classList.contains('dashboard-content-pending')) return;
+                    if (!force && dashboardGridSignature(container) === gridLastSignature) return;
                     const rowUnit = 8;
                     const prevMinHeight = container.style.minHeight;
                     const prevScrollY = window.scrollY;
-                    container.style.minHeight = container.offsetHeight + 'px';
+                    container.style.minHeight = (gridLastHeight || container.offsetHeight) + 'px';
                     const items = Array.from(container.children).filter(function (el) {
                         return el.classList.contains('widget-item') && getComputedStyle(el).display !== 'none';
                     });
@@ -4428,6 +4328,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                             fixed: el.hasAttribute('data-grid-height') || el.hasAttribute('data-grid-x') || el.classList.contains('widget-collapsed')
                         };
                     });
+                    gridLastHeight = Math.round(container.getBoundingClientRect().height);
                     info.forEach(function (i) {
                         i.el.style.gridRowEnd = 'span ' + i.span;
                         i.el.style.alignSelf = '';
@@ -4449,10 +4350,26 @@ foreach ($pinGroups as $pinMin => $pinNames) {
 
                     container.style.minHeight = prevMinHeight;
                     if (Math.abs(window.scrollY - prevScrollY) > 1) window.scrollTo(window.scrollX, prevScrollY);
+                    gridLastSignature = dashboardGridSignature(container);
                 }
 
-                window.addEventListener('resize', layoutDashboardGrid);
-                window.addEventListener('load', layoutDashboardGrid);
+                window.addEventListener('resize', function () { layoutDashboardGrid(true); });
+                window.addEventListener('load', function () { layoutDashboardGrid(true); });
+
+                (function () {
+                    const gridContainer = document.getElementById('dashboard-widgets');
+                    if (!gridContainer || !window.MutationObserver) return;
+                    let settleTimer = null;
+                    new MutationObserver(function (mutations) {
+                        if (gridContainer.classList.contains('free-layout-active')) return;
+                        if (mutations.some(function (m) { return m.target === gridContainer; })) {
+                            runDashboardGridLayout(false);
+                            return;
+                        }
+                        if (settleTimer) clearTimeout(settleTimer);
+                        settleTimer = setTimeout(function () { settleTimer = null; runDashboardGridLayout(false); }, 500);
+                    }).observe(gridContainer, { childList: true, subtree: true });
+                })();
 
                 const gridLegacyDefaultIds = ['widget-ana-slider', 'widget-personel-ozet', 'widget-arac-ozet'];
                 const gridMinHeight = 120;
@@ -4465,15 +4382,8 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                     'widget-dogum-gunleri': 'col-md-4 col-xl-4',
                     'widget-arac-ozet': 'col-md-4 col-xl-4',
                     'widget-arac-ozeti': 'col-md-4 col-xl-4',
-                    'widget-bekleyen-talepler': 'col-6 col-md-2',
-                    'widget-gec-kalanlar': 'col-6 col-md-2',
-                    'widget-nobetciler': 'col-6 col-md-2',
-                    'widget-gunluk-muhurleme': 'col-6 col-md-2',
-                    'widget-gunluk-kesme-acma': 'col-6 col-md-2',
-                    'widget-gunluk-endeks-okuma': 'col-6 col-md-2',
-                    'widget-gunluk-sayac-degisimi': 'col-6 col-md-2',
-                    'widget-kacak-sayisi': 'col-6 col-md-2',
-                    'widget-ihbar-sayisi': 'col-6 col-md-2'
+                    'widget-talep-nobet-ozet': 'col-12 col-md-6',
+                    'widget-is-operasyonlari': 'col-12'
                 };
 
                 function saveDashboardConfig(immediate = true) {
@@ -5045,7 +4955,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                             item.setAttribute('data-grid-y', row);
                             item.style.setProperty('--gx', col);
                             item.style.setProperty('--gy', row);
-                            layoutDashboardGrid();
+                            layoutDashboardGrid(true);
                             saveDashboardConfig();
                         }
                         const swallow = function (clickEv) {
@@ -5082,7 +4992,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                             ghostClass: 'bg-light',
                             onEnd: function (evt) {
                                 unpinGridWidget(evt.item);
-                                layoutDashboardGrid();
+                                layoutDashboardGrid(true);
                                 saveDashboardConfig();
                             }
                         });
@@ -5205,7 +5115,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                                 .attr('data-grid-label', cols + '/12 × ' + height + 'px')
                                 .addClass('grid-sized')
                                 .css('height', height + 'px');
-                            layoutDashboardGrid();
+                            layoutDashboardGrid(true);
                     };
 
                     const edgeScroll = function () {
@@ -5247,7 +5157,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                         widget.attr('class', classes.join(' '));
                     }
                     saveDashboardConfig();
-                    layoutDashboardGrid();
+                    layoutDashboardGrid(true);
                     setTimeout(function () { window.dispatchEvent(new Event('resize')); }, 100);
                 });
 
@@ -5346,6 +5256,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                             'widget-bekleyen-talepler'       : 'Bekleyen Talepler',
                             'widget-gec-kalanlar'            : 'Geç Kalanlar',
                             'widget-nobetciler'              : 'Bugünkü Nöbetçiler',
+                            'widget-talep-nobet-ozet'        : 'Talep, Geç Kalan ve Nöbetçi Özeti',
                             'widget-gunluk-muhurleme'        : 'Günlük Mühürleme',
                             'widget-gunluk-kesme-acma'       : 'Günlük Kesme/Açma',
                             'widget-gunluk-endeks-okuma'     : 'Endeks Okuma',
@@ -5353,6 +5264,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                             'widget-gunluk-kacak'            : 'Kaçak Kontrolü',
                             'widget-kacak-sayisi'            : 'Kaçak Sayısı',
                             'widget-ihbar-sayisi'            : 'İhbar Sayısı',
+                            'widget-is-operasyonlari'        : 'İş Operasyonları',
                             'widget-izinliler'               : 'İzinli Personeller',
                             'widget-izindekiler'             : 'İzinde Olanlar',
                             'widget-bildirimler'             : 'Görev & Bildirimler',
@@ -5423,10 +5335,10 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                             const collapsed = widgetItem.toggleClass('widget-collapsed').hasClass('widget-collapsed');
                             if (collapsed) {
                                 widgetItem.data('restore-h', widgetItem.css('height'));
-                                widgetItem.css({ height: '32px', minHeight: '32px', overflow: 'hidden' });
+                                widgetItem.css({ height: '40px', minHeight: '40px', overflow: 'hidden' });
                             } else {
                                 const rh = widgetItem.data('restore-h');
-                                widgetItem.css({ height: (rh && rh !== '32px') ? rh : '', minHeight: '', overflow: '' });
+                                widgetItem.css({ height: (rh && rh !== '40px') ? rh : '', minHeight: '', overflow: '' });
                             }
                         });
 
@@ -5619,10 +5531,8 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                     const pageContent = $('#dashboard-page-content');
                     const savedSettings = getSavedDashboardSettings();
 
-                    if (pageContent.length && pageContent.css('display') === 'none') {
-                        pageContent.show();
-                        $('#dashboard-page-skeleton').hide();
-                        $('#dashboard-skeleton-critical').remove();
+                    if (pageContent.length && pageContent.hasClass('dashboard-content-pending') && typeof window.__revealDashboard === 'function') {
+                        window.__revealDashboard();
                     }
 
                     $('#dashboard-widgets .widget-item').each(function () {
@@ -5894,20 +5804,20 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                     const lazyWidgets = document.querySelectorAll('[data-lazy-load="true"]');
                     
                     const showContent = function() {
-                        $('#dashboard-page-skeleton').hide();
-                        $('#dashboard-page-content').show();
-                        $('#dashboard-skeleton-critical').remove();
+                        if (typeof window.__revealDashboard === 'function') window.__revealDashboard();
                     };
 
                     // 1. Client-Side Cache (Instant Feel)
                     const isFreeLayout = $('#switch-free-layout').is(':checked');
-                    const cacheKey = 'dashboard_cache_v11_<?php echo $_SESSION['user_id']; ?>' + (isFreeLayout ? '_free' : '_grid');
+                    const cacheKey = 'dashboard_cache_v12_<?php echo $_SESSION['user_id']; ?>' + (isFreeLayout ? '_free' : '_grid');
                     const cachedData = localStorage.getItem(cacheKey);
                     
                     if (cachedData && !force) {
                         try {
                             const data = JSON.parse(cachedData);
-                            if (data.stats) renderOperationalStats(data.stats);
+                            if (data.stats) {
+                                try { renderOperationalStats(data.stats); } catch (statsErr) { console.error('Operasyon istatistikleri çizilemedi', statsErr); }
+                            }
                             if (data.results) {
                                 Object.keys(data.results).forEach(id => {
                                     const $el = $('#' + id);
@@ -5967,15 +5877,22 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                         try {
                             const res = typeof response === 'object' ? response : JSON.parse(response);
                             if (res.status === 'success') {
-                                // Save to localStorage
-                                localStorage.setItem(cacheKey, JSON.stringify({
-                                    stats: res.stats,
-                                    results: res.results,
-                                    time: Date.now()
-                                }));
+                                try {
+                                    Object.keys(localStorage).forEach(function (k) {
+                                        if (k.indexOf('dashboard_cache_') === 0 && k.indexOf('dashboard_cache_v12_') !== 0) localStorage.removeItem(k);
+                                    });
+                                    localStorage.setItem(cacheKey, JSON.stringify({
+                                        stats: res.stats,
+                                        results: res.results,
+                                        time: Date.now()
+                                    }));
+                                } catch (storageErr) {
+                                    try { localStorage.removeItem(cacheKey); } catch (e) {}
+                                }
 
-                                // Render Stats
-                                if (res.stats) renderOperationalStats(res.stats);
+                                if (res.stats) {
+                                    try { renderOperationalStats(res.stats); } catch (statsErr) { console.error('Operasyon istatistikleri çizilemedi', statsErr); }
+                                }
 
                                 // Render Widgets
                                 if (res.results) {
@@ -6015,15 +5932,264 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                     const monthly = stats.monthly || {};
                     const lastUpdate = stats.last_update || {};
 
-                    updateOperationalWidget('widget-gunluk-muhurleme', daily.muhurleme, monthly.muhurleme, lastUpdate.isler, lastUpdate.isler_user);
-                    updateOperationalWidget('widget-gunluk-kesme-acma', daily.kesme_acma, monthly.kesme_acma, lastUpdate.isler, lastUpdate.isler_user);
-                    updateOperationalWidget('widget-gunluk-endeks-okuma', daily.endeks_okuma, monthly.endeks_okuma, lastUpdate.endeks, lastUpdate.endeks_user);
-                    updateOperationalWidget('widget-gunluk-sayac-degisimi', daily.sayac_degisimi, monthly.sayac_degisimi, lastUpdate.sayac, lastUpdate.sayac_user);
-                    updateOperationalWidget('widget-kacak-sayisi', daily.kacak, monthly.kacak, null, '-');
-                    updateOperationalWidget('widget-ihbar-sayisi', daily.ihbar, monthly.ihbar, null, '-');
+                    opsUpdateStats(daily, monthly, lastUpdate);
                 }
 
                 function refreshOperationalStats() { return initDashboard(true); }
+
+                const OPS_MODE_KEY = 'dashboard_ops_mode_<?php echo (int) ($_SESSION['user_id'] ?? 0); ?>';
+                const opsNumberFmt = new Intl.NumberFormat('tr-TR');
+                let opsContractData = null;
+                let opsContractLoading = null;
+
+                function opsSetNumber(el, value) {
+                    if (!el) return;
+                    const end = Number(value) || 0;
+                    const start = parseInt(String(el.textContent || '0').replace(/[^0-9]/g, ''), 10) || 0;
+                    if (start === end) { el.textContent = opsNumberFmt.format(end); return; }
+                    let t0 = null;
+                    const step = (ts) => {
+                        if (!t0) t0 = ts;
+                        const p = Math.min((ts - t0) / 600, 1);
+                        el.textContent = opsNumberFmt.format(Math.round(start + (end - start) * p));
+                        if (p < 1) window.requestAnimationFrame(step);
+                    };
+                    window.requestAnimationFrame(step);
+                }
+
+                function opsCurrentMode() {
+                    const active = document.querySelector('#widget-is-operasyonlari .ops-mode-btn.is-active');
+                    return active ? active.dataset.mode : 'daily';
+                }
+
+                function opsRenderPeriod(mode) {
+                    const root = document.getElementById('widget-is-operasyonlari');
+                    if (!root) return;
+                    const isContract = mode === 'contract';
+                    const items = Array.from(root.querySelectorAll('.ops-item'));
+                    const totals = { value: 0, rateSum: 0, rateCount: 0 };
+                    const values = {};
+
+                    items.forEach((item) => {
+                        const num = item.querySelector('.ops-num');
+                        const sub = item.querySelector('.ops-sub');
+                        const last = item.querySelector('.ops-last');
+                        const contractBox = item.querySelector('.ops-contract');
+                        const rate = item.querySelector('.ops-rate');
+                        if (!isContract) {
+                            const v = Number(num.dataset[mode]) || 0;
+                            values[item.dataset.key] = v;
+                            totals.value += v;
+                            opsSetNumber(num, v);
+                            if (sub) {
+                                sub.classList.remove('d-none');
+                                const subNum = sub.querySelector('.ops-sub-num');
+                                opsSetNumber(subNum, subNum.dataset[mode]);
+                            }
+                            if (last) last.classList.remove('d-none');
+                            contractBox.classList.add('d-none');
+                            item.querySelector('.ops-contract-text').classList.add('d-none');
+                            rate.classList.add('d-none');
+                            return;
+                        }
+                        if (sub) sub.classList.add('d-none');
+                        if (last) last.classList.add('d-none');
+                        const data = opsContractData && opsContractData.items ? opsContractData.items[item.dataset.key] : null;
+                        rate.classList.remove('d-none');
+                        if (!data) {
+                            num.textContent = '-';
+                            rate.textContent = '';
+                            contractBox.classList.remove('d-none');
+                            contractBox.querySelector('.ops-mini-fill').style.width = '0%';
+                            item.querySelector('.ops-contract-text').classList.remove('d-none');
+                            item.querySelector('.ops-contract-text').textContent = opsContractLoading ? 'Yükleniyor…' : 'Sözleşme hedefi yok';
+                            return;
+                        }
+                        const oran = Number(data.oran) || 0;
+                        totals.value += Number(data.yapilan) || 0;
+                        totals.rateSum += Math.min(Math.max(oran, 0), 100);
+                        totals.rateCount++;
+                        opsSetNumber(num, data.yapilan);
+                        rate.textContent = '%' + oran.toLocaleString('tr-TR', { maximumFractionDigits: 1 });
+                        contractBox.classList.remove('d-none');
+                        contractBox.querySelector('.ops-mini-fill').style.width = Math.min(Math.max(oran, 0), 100) + '%';
+                        const text = item.querySelector('.ops-contract-text');
+                        text.classList.remove('d-none');
+                        text.textContent = 'Kalan ' + opsNumberFmt.format(data.kalan || 0);
+                        text.title = 'Hedef ' + opsNumberFmt.format(data.hedef || 0) + ' · Hakediş ' + opsNumberFmt.format(data.hakedis || 0) + ' + Güncel ' + opsNumberFmt.format(data.guncel || 0);
+                    });
+
+                    opsSetNumber(root.querySelector('.ops-total-num'), totals.value);
+                    const periodLabel = root.querySelector('.ops-total-period');
+                    if (periodLabel) periodLabel.textContent = isContract ? 'Sözleşme Dönemi' : (mode === 'monthly' ? 'Bu Ay' : 'Bugün');
+                    root.classList.toggle('is-contract', isContract);
+
+                    const contractBar = root.querySelector('.ops-bar-contract');
+                    const contractTrack = root.querySelector('.ops-bar-track');
+                    if (contractTrack) contractTrack.classList.toggle('d-none', !isContract);
+                    root.querySelectorAll('.ops-bar-seg').forEach((seg) => {
+                        seg.classList.toggle('d-none', isContract);
+                        if (!isContract) {
+                            const v = values[seg.dataset.key] || 0;
+                            seg.style.width = (totals.value > 0 ? (v / totals.value * 100) : 0) + '%';
+                            seg.title = seg.getAttribute('title').split(':')[0] + ': ' + opsNumberFmt.format(v);
+                        }
+                    });
+                    if (contractBar) {
+                        const pct = totals.rateCount > 0 ? totals.rateSum / totals.rateCount : 0;
+                        contractBar.style.width = pct + '%';
+                        contractBar.title = 'Kalemlerin ortalama gerçekleşmesi: %' + pct.toLocaleString('tr-TR', { maximumFractionDigits: 1 });
+                    }
+
+                    window.requestAnimationFrame(function () { window.dispatchEvent(new Event('resize')); });
+
+                    const note = root.querySelector('.ops-contract-note');
+                    if (!note) return;
+                    if (!isContract) { note.textContent = mode === 'monthly' ? 'Bu ay yapılan işlerin dağılımı' : 'Bugün yapılan işlerin dağılımı'; return; }
+                    const period = opsContractData ? opsContractData.period : null;
+                    if (opsContractLoading && !opsContractData) {
+                        note.textContent = 'Sözleşme verileri yükleniyor…';
+                    } else if (!period) {
+                        note.textContent = opsContractData ? 'Aktif sözleşme veya hedef miktar bulunamadı.' : 'Sözleşme verileri alınamadı.';
+                    } else {
+                        note.textContent = '';
+                        const label = document.createElement('span');
+                        label.textContent = 'Sözleşme dönemi: ';
+                        const range = document.createElement('b');
+                        range.textContent = (period.start || '-') + ' – ' + (period.end || '-');
+                        note.append(label, range);
+                        if (period.last_hakedis) {
+                            const lh = document.createElement('span');
+                            lh.textContent = ' · Son hakediş: ';
+                            const lhb = document.createElement('b');
+                            lhb.textContent = period.last_hakedis;
+                            note.append(lh, lhb);
+                        }
+                    }
+                }
+
+                function opsLoadContract(force = false) {
+                    if (opsContractLoading) return opsContractLoading;
+                    if (opsContractData && !force) return $.Deferred().resolve().promise();
+                    opsContractLoading = $.ajax({
+                        url: 'views/home/api.php',
+                        type: 'POST',
+                        dataType: 'json',
+                        data: { action: 'get-operasyon-donem' }
+                    }).done(function (res) {
+                        if (res && res.status === 'success') opsContractData = res.data || { period: null, items: {} };
+                    }).always(function () {
+                        opsContractLoading = null;
+                        if (opsCurrentMode() === 'contract') opsRenderPeriod('contract');
+                    });
+                    return opsContractLoading;
+                }
+
+                function opsSetMode(mode) {
+                    const root = document.getElementById('widget-is-operasyonlari');
+                    if (!root) return;
+                    const btn = root.querySelector('.ops-mode-btn[data-mode="' + mode + '"]');
+                    if (!btn) mode = 'daily';
+                    root.querySelectorAll('.ops-mode-btn').forEach((b) => {
+                        const on = b.dataset.mode === mode;
+                        b.classList.toggle('is-active', on);
+                        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+                    });
+                    try { localStorage.setItem(OPS_MODE_KEY, mode); } catch (e) {}
+                    opsRenderPeriod(mode);
+                    if (mode === 'contract') opsLoadContract();
+                }
+
+                function opsUpdateStats(daily, monthly, lastUpdate) {
+                    const root = document.getElementById('widget-is-operasyonlari');
+                    if (!root) return;
+                    root.querySelectorAll('.ops-item').forEach((tile) => {
+                        const stat = tile.dataset.stat;
+                        const num = tile.querySelector('.ops-num');
+                        if (stat in daily) num.dataset.daily = Number(daily[stat]) || 0;
+                        if (stat in monthly) num.dataset.monthly = Number(monthly[stat]) || 0;
+                        const sub = tile.querySelector('.ops-sub');
+                        if (sub) {
+                            const subStat = sub.dataset.subStat;
+                            const subNum = sub.querySelector('.ops-sub-num');
+                            if (subStat in daily) subNum.dataset.daily = Number(daily[subStat]) || 0;
+                            if (subStat in monthly) subNum.dataset.monthly = Number(monthly[subStat]) || 0;
+                        }
+                        const last = tile.querySelector('.ops-last[data-update-key]');
+                        if (last) {
+                            const key = last.dataset.updateKey;
+                            if (key in lastUpdate) last.querySelector('.last-update-value').textContent = formatDashboardTimestamp(lastUpdate[key]);
+                            if ((key + '_user') in lastUpdate) last.querySelector('.last-update-user-value').textContent = lastUpdate[key + '_user'] || '-';
+                        }
+                    });
+                    opsRenderPeriod(opsCurrentMode());
+                }
+
+                $(document).on('click', '#widget-is-operasyonlari .ops-mode-btn', function () {
+                    opsSetMode(this.dataset.mode);
+                });
+
+                $(document).on('click', '#widget-is-operasyonlari .ops-sync-all', async function () {
+                    const $btn = $(this);
+                    if ($btn.hasClass('syncing')) return;
+                    const $card = $btn.closest('.card');
+                    const today = '<?php echo date('Y-m-d'); ?>';
+                    const firmaKodu = '<?php echo (int) ($_SESSION['firma_kodu'] ?? 17); ?>';
+                    const steps = [
+                        { action: 'online-icmal-sorgula', active_tab: '', label: 'Endeks Okuma' },
+                        { action: 'online-puantaj-sorgula', active_tab: 'kesme', label: 'Kesme / Açma' },
+                        { action: 'online-puantaj-sorgula', active_tab: 'muhurleme', label: 'Mühürleme' },
+                        { action: 'online-sayac-degisim-sorgula', active_tab: 'sokme_takma', label: 'Sayaç Değişimi' }
+                    ];
+                    $btn.addClass('syncing').prop('disabled', true).find('i').addClass('bx-spin');
+                    $card.addClass('is-loading');
+                    if (!$card.find('.card-loading-overlay').length) {
+                        $card.append('<div class="card-loading-overlay"><div class="spinner-border text-primary" role="status"></div></div>');
+                    }
+                    const lines = [];
+                    let errors = 0;
+                    for (const step of steps) {
+                        try {
+                            const raw = await $.ajax({
+                                url: 'views/puantaj/api.php',
+                                type: 'POST',
+                                dataType: 'text',
+                                data: { action: step.action, active_tab: step.active_tab, baslangic_tarihi: today, bitis_tarihi: today, ilk_firma: firmaKodu, son_firma: firmaKodu }
+                            });
+                            let res = null;
+                            try { res = JSON.parse(raw); } catch (parseErr) { res = null; }
+                            if (res && res.status === 'success') {
+                                lines.push('<b>' + step.label + ':</b> ' + (Number(res.yeni_kayit) || 0) + ' yeni kayıt');
+                            } else {
+                                errors++;
+                                lines.push('<b>' + step.label + ':</b> <span class="text-danger">sorgulanamadı</span>');
+                            }
+                        } catch (err) {
+                            errors++;
+                            lines.push('<b>' + step.label + ':</b> <span class="text-danger">bağlantı hatası</span>');
+                        }
+                    }
+                    opsContractData = null;
+                    const done = function () {
+                        $btn.removeClass('syncing').prop('disabled', false).find('i').removeClass('bx-spin');
+                        $card.removeClass('is-loading');
+                        if (opsCurrentMode() === 'contract') opsLoadContract(true);
+                        Swal.fire({
+                            icon: errors === steps.length ? 'error' : (errors ? 'warning' : 'success'),
+                            title: errors ? 'Sorgulama kısmen tamamlandı' : 'Sorgulama Başarılı',
+                            html: lines.join('<br>'),
+                            timer: errors ? undefined : 2500,
+                            showConfirmButton: !!errors
+                        });
+                    };
+                    refreshOperationalStats().always(done);
+                });
+
+                (function () {
+                    let savedMode = 'daily';
+                    try { savedMode = localStorage.getItem(OPS_MODE_KEY) || 'daily'; } catch (e) {}
+                    if (savedMode !== 'daily') opsSetMode(savedMode);
+                })();
 
                 initDashboard();
 
@@ -7067,6 +7233,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                     applyWidgetSettings();
                     applySavedWidgetOrder();
                     if (typeof initMacControls === 'function') initMacControls();
+                    window.requestAnimationFrame(() => window.requestAnimationFrame(scheduleDashboardReveal));
                     
                     // If free layout is active but no settings exist in localStorage, 
                     // capture current positions and save them so refresh doesn't break layout.

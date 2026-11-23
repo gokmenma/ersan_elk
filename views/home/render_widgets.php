@@ -43,6 +43,23 @@ if (!function_exists('getWidgetHeight')) {
     }
 }
 
+if (!function_exists('homeAvatarUrl')) {
+    function homeAvatarUrl($path, int $width = 96): string {
+        $dummy = 'assets/images/users/user-dummy-img.jpg';
+        $path = trim((string) $path);
+        if ($path === '') {
+            $path = $dummy;
+        }
+        $normalized = ltrim(str_replace('\\', '/', $path), '/');
+        if (str_starts_with($normalized, 'assets/images/users/')) {
+            $token = Security::encryptStable($normalized);
+            if ($token !== '') {
+                return 'api/personel-thumb.php?w=' . $width . '&p=' . $token;
+            }
+        }
+        return htmlspecialchars($path, ENT_QUOTES, 'UTF-8');
+    }
+}
 if (!function_exists('getWidgetStyle')) {
     function getWidgetStyle($id) {
         global $saved_settings, $dashboard_is_free;
@@ -90,11 +107,18 @@ function homeWidgetPermission(string $widgetId): ?string {
         'widget-ihbar-sayisi' => 'ihbar/list',
         'widget-gec-kalanlar' => 'personel-takip/list',
         'widget-nobetciler' => 'nobet/list',
+        'widget-talep-nobet-ozet' => null,
         default => null,
     };
 }
 
 function homeWidgetAllowed(string $widgetId): bool {
+    if ($widgetId === 'widget-is-operasyonlari') {
+        return \App\Service\Gate::allowsAny(['puantaj/raporlar', 'kacak_islemleri', 'ihbar/list']);
+    }
+    if ($widgetId === 'widget-talep-nobet-ozet') {
+        return \App\Service\Gate::allowsAny(['talepler', 'personel-takip/list', 'nobet/list']);
+    }
     $permission = homeWidgetPermission($widgetId);
     return $permission === null || \App\Service\Gate::allows($permission);
 }
@@ -140,46 +164,44 @@ function renderWidget(string $widgetId, array $data = []) {
     switch ($widgetId) {
         case 'widget-personel-ozeti':
         case 'widget-personel-ozet':
+            $kpiEsc = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+            $aktif_p = (int) ($istatistik->aktif_personel ?? 0);
+            $saha_p = (int) ($extraStats->sahadaki_personel ?? 0);
+            $izinli_p = (int) ($extraStats->izinli_personel ?? 0);
+            $diger_p = max(0, $aktif_p - $saha_p - $izinli_p);
+            $gec_p = (int) ($gec_kalan_sayisi ?? 0);
+            $toplam_p = max(1, $aktif_p);
+            $saha_oran = (int) round($saha_p / $toplam_p * 100);
             ?>
-            <div class="<?php echo getWidgetWidthClass($widgetDomId, 'col-md-4 col-xl-4'); ?> widget-item" id="<?php echo $widgetDomId; ?>" style="<?php echo getWidgetStyle($widgetDomId); ?>">
-                <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card" style="border-radius: 12px; background: #fff;">
-                    <div class="card-body p-4 d-flex flex-column">
-                        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div class="<?php echo getWidgetWidthClass($widgetDomId, 'col-md-4 col-xl-4'); ?> widget-item kpi-widget" id="<?php echo $widgetDomId; ?>" style="<?php echo getWidgetStyle($widgetDomId); ?>">
+                <div class="card border-0 h-100 dash-kpi-card">
+                    <div class="card-body dash-kpi-body">
+                        <div class="dash-kpi-header">
                             <div>
-                                <h6 class="fw-bold text-dark mb-1 d-flex align-items-center" style="font-size: 1.1rem; letter-spacing: -0.01em;">
-                                    <i class='bx bx-grid-vertical drag-handle me-1 text-muted'></i> Personel Durumu
-                                </h6>
-                                <p class="text-muted mb-0 ms-4" style="font-size: 0.8rem;">Toplam Personel</p>
-                                <h4 class="mb-0 text-dark fw-bold ms-4"><?php echo $istatistik->aktif_personel ?? 0; ?> <span style="font-size: 0.9rem; font-weight: normal; color: #6c757d;">adet</span></h4>
+                                <span class="dash-kpi-label">Personel Durumu</span>
+                                <div class="dash-kpi-value"><?php echo number_format($aktif_p, 0, ',', '.'); ?><span class="dash-kpi-unit">aktif personel</span></div>
                             </div>
-                            <a href="index.php?p=personel/list" class="text-primary fw-semibold small text-decoration-none" style="font-size: 0.8rem;">Personel Listesine Git</a>
+                            <div class="dash-kpi-icon icon-blue"><i class="bx bx-group"></i></div>
                         </div>
-                        <?php
-                        $aktif_p = $istatistik->aktif_personel ?? 0;
-                        $toplam_p = $aktif_p ?: 1;
-                        $saha_p = $extraStats->sahadaki_personel ?? 0;
-                        $izinli_p = $extraStats->izinli_personel ?? 0;
-                        $diger_p = max(0, $aktif_p - $saha_p - $izinli_p);
-                        
-                        $s_rate = ($saha_p / $toplam_p) * 100;
-                        $d_rate = ($diger_p / $toplam_p) * 100;
-                        $i_rate = ($izinli_p / $toplam_p) * 100;
-                        ?>
-                        <div class="progress mb-4" style="height: 20px; border-radius: 4px;">
-                            <div class="progress-bar" role="progressbar" style="width: <?php echo $s_rate; ?>%; background-color: #0d6efd;" title="Saha: <?php echo $saha_p; ?>"></div>
-                            <div class="progress-bar" role="progressbar" style="width: <?php echo $d_rate; ?>%; background-color: #0dcaf0;" title="İçeride/Diğer: <?php echo $diger_p; ?>"></div>
-                            <div class="progress-bar" role="progressbar" style="width: <?php echo $i_rate; ?>%; background-color: #ffc107;" title="İzinli: <?php echo $izinli_p; ?>"></div>
+                        <div class="dash-kpi-seg" role="img" aria-label="Personel dağılımı">
+                            <span style="width: <?php echo round($saha_p / $toplam_p * 100, 2); ?>%; background:#2563eb;" title="Saha: <?php echo $saha_p; ?>"></span>
+                            <span style="width: <?php echo round($diger_p / $toplam_p * 100, 2); ?>%; background:#06b6d4;" title="İçeride / Diğer: <?php echo $diger_p; ?>"></span>
+                            <span style="width: <?php echo round($izinli_p / $toplam_p * 100, 2); ?>%; background:#f59e0b;" title="İzinli: <?php echo $izinli_p; ?>"></span>
                         </div>
-                        <div class="row mt-auto">
-                            <div class="col-6 mb-3"><div class="d-flex align-items-center"><div style="width: 3px; height: 32px; background-color: #0d6efd; margin-right: 12px;"></div><div><p class="text-muted small mb-0 font-size-11">Saha Görevlisi</p><h6 class="mb-0 fw-bold text-dark"><?php echo $saha_p; ?> Adet</h6></div></div></div>
-                            <div class="col-6 mb-3"><div class="d-flex align-items-center"><div style="width: 3px; height: 32px; background-color: #0dcaf0; margin-right: 12px;"></div><div><p class="text-muted small mb-0 font-size-11">İçeride / Diğer</p><h6 class="mb-0 fw-bold text-dark"><?php echo $diger_p; ?> Adet</h6></div></div></div>
-                            <div class="col-6"><div class="d-flex align-items-center"><div style="width: 3px; height: 32px; background-color: #ffc107; margin-right: 12px;"></div><div><p class="text-muted small mb-0 font-size-11">İzinli</p><h6 class="mb-0 fw-bold text-dark"><?php echo $izinli_p; ?> Adet</h6></div></div></div>
-                            <div class="col-6"><div class="d-flex align-items-center"><div style="width: 3px; height: 32px; background-color: #f46a6a; margin-right: 12px;"></div><div><p class="text-muted small mb-0 font-size-11">Geç Kalan</p><h6 class="mb-0 fw-bold text-dark"><?php echo $gec_kalan_sayisi; ?> Adet</h6></div></div></div>
+                        <div class="dash-kpi-legend">
+                            <div class="dash-kpi-legend-item" style="--dot:#2563eb;"><span class="dash-kpi-legend-label">Saha Görevlisi</span><span class="dash-kpi-legend-value"><?php echo $saha_p; ?></span></div>
+                            <div class="dash-kpi-legend-item" style="--dot:#06b6d4;"><span class="dash-kpi-legend-label">İçeride / Diğer</span><span class="dash-kpi-legend-value"><?php echo $diger_p; ?></span></div>
+                            <div class="dash-kpi-legend-item" style="--dot:#f59e0b;"><span class="dash-kpi-legend-label">İzinli</span><span class="dash-kpi-legend-value"><?php echo $izinli_p; ?></span></div>
+                            <div class="dash-kpi-legend-item" style="--dot:#e11d48;"><span class="dash-kpi-legend-label">Geç Kalan</span><span class="dash-kpi-legend-value"><?php echo $gec_p; ?></span></div>
+                        </div>
+                        <div class="dash-kpi-footer">
+                            <span class="dash-badge-soft soft-blue">%<?php echo $saha_oran; ?> Sahada</span>
+                            <a href="index.php?p=personel/list" class="dash-card-link">Personel Listesi <i class="bx bx-chevron-right"></i></a>
                         </div>
                     </div>
                 </div>
             </div>
-            <?php
+<?php
             break;
 
         case 'widget-takvim-alarmlar':
@@ -473,50 +495,143 @@ function renderWidget(string $widgetId, array $data = []) {
 
         case 'widget-arac-ozeti':
         case 'widget-arac-ozet':
+            $arac_toplam = max(1, (int) $toplam_aktif_arac);
+            $arac_aktif_oran = (int) round((int) $saha_arac / $arac_toplam * 100);
             ?>
-            <div class="<?php echo getWidgetWidthClass($widgetDomId, 'col-md-4 col-xl-4'); ?> widget-item" id="<?php echo $widgetDomId; ?>" style="<?php echo getWidgetStyle($widgetDomId); ?>">
-                <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card" style="border-radius: 12px; background: #fff;">
-                    <div class="card-body p-4 d-flex flex-column">
-                        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div class="<?php echo getWidgetWidthClass($widgetDomId, 'col-md-4 col-xl-4'); ?> widget-item kpi-widget" id="<?php echo $widgetDomId; ?>" style="<?php echo getWidgetStyle($widgetDomId); ?>">
+                <div class="card border-0 h-100 dash-kpi-card">
+                    <div class="card-body dash-kpi-body">
+                        <div class="dash-kpi-header">
                             <div>
-                                <h6 class="fw-bold text-dark mb-1 d-flex align-items-center" style="font-size: 1.1rem; letter-spacing: -0.01em;">
-                                    <i class='bx bx-grid-vertical drag-handle me-1 text-muted'></i> Araç Durumu
-                                </h6>
-                                <p class="text-muted mb-0 ms-4" style="font-size: 0.8rem;">Toplam Aktif Araç</p>
-                                <h4 class="mb-0 text-dark fw-bold ms-4"><?php echo $toplam_aktif_arac; ?> <span style="font-size: 0.9rem; font-weight: normal; color: #6c757d;">adet</span></h4>
+                                <span class="dash-kpi-label">Araç Durumu</span>
+                                <div class="dash-kpi-value"><?php echo number_format((int) $toplam_aktif_arac, 0, ',', '.'); ?><span class="dash-kpi-unit">aktif araç</span></div>
                             </div>
-                            <a href="index.php?p=arac-takip/list" class="text-primary fw-semibold small text-decoration-none" style="font-size: 0.8rem;">Araç Listesine Git</a>
+                            <div class="dash-kpi-icon icon-purple"><i class="bx bx-car"></i></div>
                         </div>
-                        <div class="progress mb-4" style="height: 20px; border-radius: 4px;">
-                            <div class="progress-bar" role="progressbar" style="width: <?php echo $aktif_a_yuzde; ?>%; background-color: #198754;" title="Aktif/Saha: <?php echo $saha_arac; ?>"></div>
-                            <div class="progress-bar" role="progressbar" style="width: <?php echo $servis_a_yuzde; ?>%; background-color: #dc3545;" title="Serviste: <?php echo $servisteki_arac; ?>"></div>
-                            <div class="progress-bar" role="progressbar" style="width: <?php echo $bosta_a_yuzde; ?>%; background-color: #ffc107;" title="Boşta: <?php echo $bosta_arac; ?>"></div>
+                        <div class="dash-kpi-seg" role="img" aria-label="Araç dağılımı">
+                            <span style="width: <?php echo (float) $aktif_a_yuzde; ?>%; background:#059669;" title="Saha: <?php echo (int) $saha_arac; ?>"></span>
+                            <span style="width: <?php echo (float) $servis_a_yuzde; ?>%; background:#e11d48;" title="Serviste: <?php echo (int) $servisteki_arac; ?>"></span>
+                            <span style="width: <?php echo (float) $bosta_a_yuzde; ?>%; background:#f59e0b;" title="Boşta: <?php echo (int) $bosta_arac; ?>"></span>
                         </div>
-                        <div class="row mt-auto">
-                            <div class="col-4 mb-3"><div class="d-flex align-items-center"><div style="width: 3px; height: 32px; background-color: #198754; margin-right: 12px;"></div><div><p class="text-muted small mb-0 font-size-11">Saha Aracı</p><h6 class="mb-0 fw-bold text-dark"><?php echo $saha_arac; ?> Adet</h6></div></div></div>
-                            <div class="col-4 mb-3"><div class="d-flex align-items-center"><div style="width: 3px; height: 32px; background-color: #dc3545; margin-right: 12px;"></div><div><p class="text-muted small mb-0 font-size-11">Serviste</p><h6 class="mb-0 fw-bold text-dark"><?php echo $servisteki_arac; ?> Adet</h6></div></div></div>
-                            <div class="col-4 mb-3"><div class="d-flex align-items-center"><div style="width: 3px; height: 32px; background-color: #ffc107; margin-right: 12px;"></div><div><p class="text-muted small mb-0 font-size-11">Boşta</p><h6 class="mb-0 fw-bold text-dark"><?php echo $bosta_arac; ?> Adet</h6></div></div></div>
+                        <div class="dash-kpi-legend cols-3">
+                            <div class="dash-kpi-legend-item" style="--dot:#059669;"><span class="dash-kpi-legend-label">Saha Aracı</span><span class="dash-kpi-legend-value"><?php echo (int) $saha_arac; ?></span></div>
+                            <div class="dash-kpi-legend-item" style="--dot:#e11d48;"><span class="dash-kpi-legend-label">Serviste</span><span class="dash-kpi-legend-value"><?php echo (int) $servisteki_arac; ?></span></div>
+                            <div class="dash-kpi-legend-item" style="--dot:#f59e0b;"><span class="dash-kpi-legend-label">Boşta</span><span class="dash-kpi-legend-value"><?php echo (int) $bosta_arac; ?></span></div>
+                        </div>
+                        <div class="dash-kpi-footer">
+                            <span class="dash-badge-soft soft-emerald">%<?php echo $arac_aktif_oran; ?> Sahada</span>
+                            <a href="index.php?p=arac-takip/list" class="dash-card-link">Araç Listesi <i class="bx bx-chevron-right"></i></a>
                         </div>
                     </div>
                 </div>
             </div>
-            <?php
+<?php
+            break;
+
+        case 'widget-talep-nobet-ozet':
+            $ozEsc = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+            $ozTalepVar = \App\Service\Gate::allows('talepler');
+            $ozGecVar = \App\Service\Gate::allows('personel-takip/list');
+            $ozNobetVar = \App\Service\Gate::allows('nobet/list');
+            $talepSayisi = (int) ($personel_talep_sayisi ?? 0);
+            $gecSayisi = (int) ($gec_kalan_sayisi ?? 0);
+            $nobetListe = is_array($nobetciler ?? null) ? $nobetciler : [];
+            ?>
+            <div class="<?php echo getWidgetWidthClass($widgetDomId, 'col-12 col-md-6'); ?> widget-item kpi-widget" id="<?php echo $widgetDomId; ?>" style="<?php echo getWidgetStyle($widgetDomId); ?>">
+                <div class="card border-0 h-100 dash-kpi-card">
+                    <div class="card-body dash-kpi-body dash-kpi-trio">
+                        <?php if ($ozTalepVar): ?>
+                        <div class="dash-kpi-trio-col">
+                            <div class="dash-kpi-header">
+                                <div>
+                                    <span class="dash-kpi-label">Bekleyen Talepler</span>
+                                    <div class="dash-kpi-value"><?php echo $talepSayisi; ?></div>
+                                </div>
+                                <div class="dash-kpi-icon icon-amber"><i class="bx bx-time-five"></i></div>
+                            </div>
+                            <div class="dash-kpi-note">Onay bekleyen işlemler</div>
+                            <div class="dash-kpi-footer">
+                                <span class="dash-badge-soft <?php echo $talepSayisi > 0 ? 'soft-amber' : 'soft-emerald'; ?>"><?php echo $talepSayisi > 0 ? 'Dikkat' : 'Stabil'; ?></span>
+                                <a href="index.php?p=talepler/list" class="dash-card-link">Tümü <i class="bx bx-chevron-right"></i></a>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        <?php if ($ozGecVar): ?>
+                        <div class="dash-kpi-trio-col">
+                            <div class="dash-kpi-header">
+                                <div>
+                                    <span class="dash-kpi-label">Geç Kalanlar</span>
+                                    <div class="dash-kpi-value"><?php echo $gecSayisi; ?></div>
+                                </div>
+                                <div class="dash-kpi-icon icon-rose"><i class="bx bx-alarm-exclamation"></i></div>
+                            </div>
+                            <div class="dash-kpi-note">Bugün mesaiye geç kalanlar</div>
+                            <div class="dash-kpi-footer">
+                                <span class="dash-badge-soft <?php echo $gecSayisi > 0 ? 'soft-rose' : 'soft-emerald'; ?>"><?php echo $gecSayisi > 0 ? 'Gecikme' : 'Sorun yok'; ?></span>
+                                <a href="index.php?p=personel-takip/list&amp;tab=tabGecKalanlar" class="dash-card-link">Tümü <i class="bx bx-chevron-right"></i></a>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        <?php if ($ozNobetVar): ?>
+                        <div class="dash-kpi-trio-col">
+                            <div class="dash-kpi-header">
+                                <div>
+                                    <span class="dash-kpi-label">Bugünkü Nöbetçiler</span>
+                                    <div class="dash-kpi-value"><?php echo count($nobetListe); ?></div>
+                                </div>
+                                <div class="dash-kpi-icon icon-blue"><i class="bx bx-calendar-star"></i></div>
+                            </div>
+                            <?php if ($nobetListe === []): ?>
+                                <div class="dash-kpi-note">Bugün nöbetçi kaydı yok</div>
+                            <?php else: ?>
+                                <div class="dash-kpi-people">
+                                    <?php foreach (array_slice($nobetListe, 0, 5) as $nobet): ?>
+                                        <div class="dash-kpi-person">
+                                            <img src="<?php echo homeAvatarUrl($nobet->resim_yolu ?? ''); ?>" alt="" onerror="this.src='assets/images/users/user-dummy-img.jpg'">
+                                            <div class="flex-grow-1" style="min-width:0;">
+                                                <div class="dash-kpi-person-name"><?php echo $ozEsc($nobet->adi_soyadi ?? ''); ?></div>
+                                                <?php if (!empty($nobet->cep_telefonu)): ?><div class="dash-kpi-person-sub"><?php echo $ozEsc($nobet->cep_telefonu); ?></div><?php endif; ?>
+                                            </div>
+                                            <?php if (!empty($nobet->cep_telefonu)): ?><a href="tel:<?php echo $ozEsc($nobet->cep_telefonu); ?>" class="bx-no-drag" title="Ara"><i class="bx bx-phone"></i></a><?php endif; ?>
+                                            <a href="javascript:void(0);" class="btn-send-nobet-reminder bx-no-drag" data-id="<?php echo $ozEsc(Security::encrypt($nobet->personel_id)); ?>" data-name="<?php echo $ozEsc($nobet->adi_soyadi ?? ''); ?>" title="Bildirim Gönder"><i class="bx bx-bell"></i></a>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                            <div class="dash-kpi-footer">
+                                <span class="dash-badge-soft soft-blue">Nöbet</span>
+                                <a href="index.php?p=nobet/list" class="dash-card-link">Takvim <i class="bx bx-chevron-right"></i></a>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+<?php
             break;
 
         case 'widget-bekleyen-talepler':
+            $talepSayisi = (int) ($personel_talep_sayisi ?? 0);
             ?>
-            <div class="<?php echo getWidgetWidthClass($widgetDomId, 'col-6 col-md-2'); ?> widget-item" id="<?php echo $widgetDomId; ?>" style="<?php echo getWidgetStyle($widgetDomId); ?>">
-                <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card stat-card" style="--card-color: #f6c23e; border-bottom: 3px solid var(--card-color) !important; --delay: 0.6s">
-                    <div class="card-body p-3 pb-2">
-                        <div class="icon-label-container"><div class="icon-box" style="background: rgba(246, 194, 62, 0.1);"><i class="bx bx-time-five fs-4" style="color: #f6c23e;"></i></div><span class="text-muted small fw-bold" style="font-size: 0.65rem;">TALEP</span></div>
-                        <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">BEKLEYEN TALEPLER</p>
-                        <h4 class="mb-0 fw-bold bordro-text-heading"><?php echo $personel_talep_sayisi ?? 0; ?> <span class="trend-badge <?php echo $personel_talep_sayisi > 0 ? 'down' : 'up'; ?> ms-1"><?php echo $personel_talep_sayisi > 0 ? 'Dikkat' : 'Stabil'; ?></span></h4>
-                        <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Onay bekleyen işlemler</div>
-                        <div class="card-footer-actions mt-2 d-flex justify-content-end"><a href="index.php?p=talepler/list" class="btn btn-xs btn-soft-warning rounded-pill"><i class="bx bx-right-arrow-alt"></i> Git</a></div>
+            <div class="<?php echo getWidgetWidthClass($widgetDomId, 'col-6 col-md-2'); ?> widget-item kpi-widget" id="<?php echo $widgetDomId; ?>" style="<?php echo getWidgetStyle($widgetDomId); ?>">
+                <div class="card border-0 h-100 dash-kpi-card">
+                    <div class="card-body dash-kpi-body">
+                        <div class="dash-kpi-header">
+                            <div>
+                                <span class="dash-kpi-label">Bekleyen Talepler</span>
+                                <div class="dash-kpi-value"><?php echo $talepSayisi; ?></div>
+                            </div>
+                            <div class="dash-kpi-icon icon-amber"><i class="bx bx-time-five"></i></div>
+                        </div>
+                        <div class="dash-kpi-note">Onay bekleyen işlemler</div>
+                        <div class="dash-kpi-footer">
+                            <span class="dash-badge-soft <?php echo $talepSayisi > 0 ? 'soft-amber' : 'soft-emerald'; ?>"><?php echo $talepSayisi > 0 ? 'Dikkat' : 'Stabil'; ?></span>
+                            <a href="index.php?p=talepler/list" class="dash-card-link">Tümü <i class="bx bx-chevron-right"></i></a>
+                        </div>
                     </div>
                 </div>
             </div>
-            <?php
+<?php
             break;
 
         case 'widget-dogum-gunleri':
@@ -638,33 +753,44 @@ function renderWidget(string $widgetId, array $data = []) {
             break;
 
         case 'widget-nobetciler':
+            $nobetListe = is_array($nobetciler ?? null) ? $nobetciler : [];
+            $nobetEsc = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
             ?>
-            <div class="<?php echo getWidgetWidthClass($widgetDomId, 'col-6 col-md-2'); ?> widget-item" id="<?php echo $widgetDomId; ?>" style="<?php echo getWidgetStyle($widgetDomId); ?>">
-                <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card stat-card" style="--card-color: #556ee6; border-bottom: 3px solid var(--card-color) !important; --delay: 0.75s">
-                    <div class="card-body p-3">
-                        <div class="icon-label-container"><div class="icon-box" style="background: rgba(85, 110, 230, 0.1);"><i class="bx bx-calendar-star fs-4" style="color: #556ee6;"></i></div><span class="text-muted small fw-bold" style="font-size: 0.65rem;">NÖBET</span></div>
-                        <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">BUGÜNKÜ NÖBETÇİLER</p>
-                        <div class="grid-content-area">
-                            <?php if (empty($nobetciler)): ?>
-                                <div class="text-center py-2"><p class="text-muted mb-0 small">Kayıt yok</p></div>
-                            <?php else: ?>
-                                <div class="nobetci-list" style="max-height: 120px; overflow-y: auto;">
-                                    <?php foreach (array_slice($nobetciler, 0, 5) as $nobet): ?>
-                                        <div class="d-flex align-items-center mb-2">
-                                            <img src="<?php echo !empty($nobet->resim_yolu) ? $nobet->resim_yolu : 'assets/images/users/user-dummy-img.jpg'; ?>" class="rounded-circle avatar-xs me-2" style="width: 28px; height: 28px;">
-                                            <div class="flex-grow-1 overflow-hidden"><h6 class="mb-0 font-size-12 text-truncate"><?php echo $nobet->adi_soyadi; ?></h6><small class="text-muted font-size-11"><?php echo $nobet->cep_telefonu; ?></small></div>
-                                            <?php if ($nobet->cep_telefonu): ?><a href="tel:<?php echo $nobet->cep_telefonu; ?>" class="text-success ms-1 bx-no-drag"><i class="bx bx-phone"></i></a><?php endif; ?>
-                                            <a href="javascript:void(0);" class="text-primary ms-1 btn-send-nobet-reminder bx-no-drag" data-id="<?php echo Security::encrypt($nobet->personel_id); ?>" data-name="<?php echo $nobet->adi_soyadi; ?>" title="Bildirim Gönder"><i class="bx bx-bell"></i></a>
-                                        </div>
-                                    <?php endforeach; ?>
-                                </div>
-                            <?php endif; ?>
+            <div class="<?php echo getWidgetWidthClass($widgetDomId, 'col-6 col-md-2'); ?> widget-item kpi-widget" id="<?php echo $widgetDomId; ?>" style="<?php echo getWidgetStyle($widgetDomId); ?>">
+                <div class="card border-0 h-100 dash-kpi-card">
+                    <div class="card-body dash-kpi-body">
+                        <div class="dash-kpi-header">
+                            <div>
+                                <span class="dash-kpi-label">Bugünkü Nöbetçiler</span>
+                                <div class="dash-kpi-value"><?php echo count($nobetListe); ?></div>
+                            </div>
+                            <div class="dash-kpi-icon icon-blue"><i class="bx bx-calendar-star"></i></div>
                         </div>
-                        <div class="card-footer-actions mt-2"><div class="sub-text m-0" style="font-size: 10px; color: #858796;"><?php echo count($nobetciler); ?> personel nöbetçi</div><a href="index.php?p=nobet/list" class="btn btn-xs btn-soft-primary rounded-pill"><i class="bx bx-calendar"></i> Takvim</a></div>
+                        <?php if ($nobetListe === []): ?>
+                            <div class="dash-kpi-note">Bugün nöbetçi kaydı yok</div>
+                        <?php else: ?>
+                            <div class="dash-kpi-people">
+                                <?php foreach (array_slice($nobetListe, 0, 5) as $nobet): ?>
+                                    <div class="dash-kpi-person">
+                                        <img src="<?php echo homeAvatarUrl($nobet->resim_yolu ?? ''); ?>" alt="" onerror="this.src='assets/images/users/user-dummy-img.jpg'">
+                                        <div class="flex-grow-1" style="min-width:0;">
+                                            <div class="dash-kpi-person-name"><?php echo $nobetEsc($nobet->adi_soyadi ?? ''); ?></div>
+                                            <?php if (!empty($nobet->cep_telefonu)): ?><div class="dash-kpi-person-sub"><?php echo $nobetEsc($nobet->cep_telefonu); ?></div><?php endif; ?>
+                                        </div>
+                                        <?php if (!empty($nobet->cep_telefonu)): ?><a href="tel:<?php echo $nobetEsc($nobet->cep_telefonu); ?>" class="bx-no-drag" title="Ara"><i class="bx bx-phone"></i></a><?php endif; ?>
+                                        <a href="javascript:void(0);" class="btn-send-nobet-reminder bx-no-drag" data-id="<?php echo $nobetEsc(Security::encrypt($nobet->personel_id)); ?>" data-name="<?php echo $nobetEsc($nobet->adi_soyadi ?? ''); ?>" title="Bildirim Gönder"><i class="bx bx-bell"></i></a>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                        <div class="dash-kpi-footer">
+                            <span class="dash-badge-soft soft-blue">Nöbet</span>
+                            <a href="index.php?p=nobet/list" class="dash-card-link">Takvim <i class="bx bx-chevron-right"></i></a>
+                        </div>
                     </div>
                 </div>
             </div>
-            <?php
+<?php
             break;
 
         case 'widget-gorevler':
@@ -1235,30 +1361,27 @@ function renderWidget(string $widgetId, array $data = []) {
             break;
 
         case 'widget-gec-kalanlar':
+            $gecSayisi = (int) ($gec_kalan_sayisi ?? 0);
             ?>
-            <div class="<?php echo getWidgetWidthClass($widgetDomId, 'col-6 col-md-2'); ?> widget-item" id="<?php echo $widgetDomId; ?>" style="<?php echo getWidgetStyle($widgetDomId); ?>">
-                <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card stat-card"
-                    style="--card-color: #f46a6a; border-bottom: 3px solid var(--card-color) !important; --delay: 0.9s">
-                    <div class="card-body p-3 pb-2">
-                        <div class="icon-label-container d-flex justify-content-between align-items-start">
-                            <div class="icon-box" style="background: rgba(244, 106, 106, 0.1);">
-                                <i class="bx bx-time fs-4" style="color: #f46a6a;"></i>
+            <div class="<?php echo getWidgetWidthClass($widgetDomId, 'col-6 col-md-2'); ?> widget-item kpi-widget" id="<?php echo $widgetDomId; ?>" style="<?php echo getWidgetStyle($widgetDomId); ?>">
+                <div class="card border-0 h-100 dash-kpi-card">
+                    <div class="card-body dash-kpi-body">
+                        <div class="dash-kpi-header">
+                            <div>
+                                <span class="dash-kpi-label">Geç Kalanlar</span>
+                                <div class="dash-kpi-value"><?php echo $gecSayisi; ?></div>
                             </div>
-                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">GECİKME</span>
+                            <div class="dash-kpi-icon icon-rose"><i class="bx bx-alarm-exclamation"></i></div>
                         </div>
-                        <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">GEÇ KALAN PERSONEL
-                        </p>
-                        <h4 class="mb-0 fw-bold bordro-text-heading"><?php echo (int)($gec_kalan_sayisi ?? 0); ?></h4>
-                        <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Mesaiye geç kalanlar</div>
-                        <div class="card-footer-actions mt-2 d-flex justify-content-end">
-                            <a href="index.php?p=puantaj/raporlar" class="btn btn-xs btn-soft-danger rounded-pill">
-                                <i class="bx bx-right-arrow-alt"></i> Git
-                            </a>
+                        <div class="dash-kpi-note">Bugün mesaiye geç kalanlar</div>
+                        <div class="dash-kpi-footer">
+                            <span class="dash-badge-soft <?php echo $gecSayisi > 0 ? 'soft-rose' : 'soft-emerald'; ?>"><?php echo $gecSayisi > 0 ? 'Gecikme' : 'Sorun yok'; ?></span>
+                            <a href="index.php?p=personel-takip/list&amp;tab=tabGecKalanlar" class="dash-card-link">Tümü <i class="bx bx-chevron-right"></i></a>
                         </div>
                     </div>
                 </div>
             </div>
-            <?php
+<?php
             break;
 
         case 'widget-talepler':
@@ -1313,7 +1436,7 @@ function renderWidget(string $widgetId, array $data = []) {
                                                 <td>
                                                     <div class="d-flex align-items-center">
                                                         <div class="flex-shrink-0 me-3">
-                                                            <img src="<?php echo !empty($personel->resim_yolu) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg'; ?>" alt="" class="avatar-xs rounded-circle">
+                                                            <img src="<?php echo homeAvatarUrl($personel->resim_yolu ?? ''); ?>" alt="" class="avatar-xs rounded-circle" onerror="this.onerror=null;this.src='assets/images/users/user-dummy-img.jpg'">
                                                         </div>
                                                         <div class="flex-grow-1">
                                                             <h5 class="font-size-14 mb-1"><?php echo $personel ? $personel->adi_soyadi : 'Personel #'.$req->personel_id; ?></h5>
@@ -1368,7 +1491,7 @@ function renderWidget(string $widgetId, array $data = []) {
                                                 <td>
                                                     <div class="d-flex align-items-center">
                                                         <div class="flex-shrink-0 me-3">
-                                                            <img src="<?php echo !empty($izin->resim_yolu) ? $izin->resim_yolu : 'assets/images/users/user-dummy-img.jpg'; ?>" alt="" class="avatar-xs rounded-circle">
+                                                            <img src="<?php echo homeAvatarUrl($izin->resim_yolu ?? ''); ?>" alt="" class="avatar-xs rounded-circle" onerror="this.onerror=null;this.src='assets/images/users/user-dummy-img.jpg'">
                                                         </div>
                                                         <div class="flex-grow-1">
                                                             <h5 class="font-size-14 mb-1"><?php echo $izin->adi_soyadi; ?></h5>

@@ -43,6 +43,11 @@ html[data-theme-preset="macos-light"] {
   color-scheme: light;
 }
 
+html[data-theme-preset="macos-light"][data-font-family]:not([data-font-family="Inter"]) {
+  --font-sans: var(--bs-font-sans-serif);
+  --font-display: var(--bs-font-sans-serif);
+}
+
 html[data-theme-preset="macos-light"],
 html[data-theme-preset="macos-light"] body:not(#_),
 html[data-theme-preset="macos-light"] body:not(#_) :is(input, button, select, textarea, optgroup, .btn, .form-control, .form-select, .table, .modal, .card, .dropdown-menu, .select2-container, .select2-dropdown, .swal2-popup, .flatpickr-calendar, .vertical-menu, #sidebar-menu, #page-topbar, .main-content, .dataTables_wrapper, .page-link, .badge) {

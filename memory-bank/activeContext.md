@@ -1,5 +1,28 @@
 # Active Context
 
+## Maliyet Raporu — Kalem Bazlı Yeniden Yapılanma (2026-11-23)
+- `App/Model/MaliyetRaporuModel.php` yeniden yazıldı; rapor `KALEMLER` sabitindeki 9 kaleme göre: Maaş (bordro `net_maas`), SGK (işçi+işveren SGK ve işsizlik), Vergi (gelir+damga), Araç Kirası, Yakıt, Araç Bakım/Servis (bakım+servis+sigorta), Telefon/İnternet, Malzeme/Demirbaş, Ofis ve Diğer. Bordro yalnız `hesaplama_tarihi` dolu (snapshot) satırlardan okunur.
+- Gelen faturalar (`faturalar`, yon=GELEN, RED hariç, USD×kur) kaleme `maliyet_kalem_eslestirme` (VKN → kalem) ve fatura bazlı `maliyet_fatura_kalem` (öncelikli) ile bağlanır; eşleşmeyen fatura rapora girmez, sayfada uyarı + “Eşleşmemiş Firmalar” sekmesinde listelenir. `haric` kalemi rapordan çıkarır.
+- Yakıt çift sayım koruması: `arac_yakit_kayitlari` satırı, fatura no'su gelen bir faturayla eşleşiyorsa veya kart aktarımı olup (external_id) fatura no'su boşsa ve firmanın ilk gelen fatura tarihinden sonraysa (fatura bekliyor) alınmaz.
+- Gelir-Gider (`gelir_gider` type=2, firma kolonu yok → modül gibi genel) kategorileri `maliyet_kalem_eslestirme` kaynak=gelir_gider ile kaleme bağlanır; eşleşmeyen → Ofis ve Diğer; AVANS/PERSONEL AVANS/MAAŞ/MAAŞ KALANI/iCRA/KREDİ KARTI ÖDEME `haric` (net maaş içinde zaten var).
+- Manuel giderlerde `kategori` artık kalem anahtarı tutar (eski Araç/Demirbaş/Personel değerleri CASE ile eşlenir). `ManuelGiderModel` tarih kolonu `gider_tarihi` olarak düzeltildi (eskiden `olusturma_tarihi` seçildiği için kayıt hiç eklenemiyordu).
+- Yeni yetki `maliyet_raporu_eslestirme` (eşleştirme listesi/kaydet/sil, fatura-kalem-ata); SQL `sql/2026_11_23_maliyet_kalem_eslestirme.sql` (yerelde uygulandı, tekrar çalıştırılabilir).
+
+## Masaüstü Ana Sayfa — Aydınoğulları KPI Kart Dili (2026-11-23)
+- Sayfa üstüne `.dash-hero` karşılama kartı eklendi: tarih çipi, Dashboard Ayarları (artık sabit konumlu/sık kullanılanlar çubuğunda değil, burada), saate göre selamlama + kullanıcının adı, yetkiye göre hızlı işlem kutucukları (Personel, İş Raporları, Araç Takip, Talepler, Nöbetler).
+- Kart başlık çubuğu 40px (küçültülmüş kart yüksekliği de 40px); İş Operasyonları da `kpi-widget` oldu; Endeks/Kesme karşılaştırma iç kutucukları KPI stiline (dekoratif daireler ve degrade kaldırıldı) çekildi; lejantlar küçük kutucuk.
+- Personel Durumu, Araç Durumu, Bekleyen Talepler, Geç Kalanlar, Bugünkü Nöbetçiler kartları (`views/home/render_widgets.php`) Aydınoğulları `crm-kpi-card` yapısına çevrildi: büyük harf etiket + büyük değer, sağda 44px yumuşak ikon kutusu, ince segmentli dağılım çubuğu + noktalı lejant, `border-top` alt bilgi + `dash-badge-soft` rozet + `dash-card-link`. Stiller `views/home.php` içinde `.dash-kpi-*` / `.dash-badge-soft` sınıflarıdır (açık/koyu tema).
+- Bu kartlar `kpi-widget` sınıfı taşır: macOS başlık çubuğu yalnız üzerine gelince küçük bir hap olarak görünür. Diğer kartlarda başlık çubuğu beyaz, sola hizalı başlık; trafik ışıkları gri, karta gelince renklenir.
+- İş Operasyonları kartı: üstte toplam + Gün/Ay/Dönem + Tümünü Sorgula, altta 6 mini KPI kartı. Dönem modunda alt bilgi `Kalan` + oran rozeti, ipucunda hedef/hakediş/güncel; üst çubuk kalemlerin ortalama gerçekleşmesi. Açıklama satırı her modda dolu (kayıtlı ızgara yüksekliği değişmesin diye).
+- `views/home/api.php` widget HTML önbellek dosyası `widget_v2_*` oldu; istemci önbelleği `dashboard_cache_v12_`. Pano önbelleği (~450 KB, bildirimler dahil) `localStorage`'a yazılırken kota dolarsa (QuotaExceededError) eskiden kartlar hiç çizilmiyordu; artık eski sürüm `dashboard_cache_*` anahtarları silinir, yazma hatası yutulur ve istatistik çizimi hataya düşse de kartlar çizilir. Geç Kalanlar artık `renderWidget()` ile tek kaynaktan çizilir.
+
+## Masaüstü Ana Sayfa — Tek "İş Operasyonları" Kartı + Dönem Görünümü (2026-11-23)
+- `views/home.php`: 6 ayrı iş kartı (endeks, kesme/açma, sayaç değişimi, mühürleme, kaçak, ihbar) kaldırılıp tek `widget-is-operasyonlari` (col-12) kartına alındı. Görünüm Araç/Personel Durumu kartı dilinde: başlık + toplam iş, renkli dağılım çubuğu, sol çizgili kalemler (her kalem kendi rapor sayfasına bağlantı). Kalemler yetkiye göre sunucuda çizilir (`puantaj/raporlar`, `kacak_islemleri`, `ihbar/list`).
+- Gün / Ay / **Dönem** geçişi; Dönem modu mobildeki `MobileDashboardModel::contractProgress()` verisini `home/api` `get-operasyon-donem` aksiyonundan alır (yapılan, hedef, kalan, oran; çubuk = kalemlerin ortalama gerçekleşmesi). Seçili mod `localStorage` `dashboard_ops_mode_{userId}`.
+- "Tümünü Sorgula" mobildeki gibi 4 online sorguyu ardışık çalıştırır.
+- Kayıtlı `dashboard_order` içinde eski kart kimliklerinden ilkinin yerine yeni kart konur, diğerleri sıradan çıkarılır. `.stat-card` 260px üst sınırı bu kartta kaldırıldı.
+- SQL: `sql/2026_11_23_home_operasyon_donem_policy.sql` (yerel DB'ye uygulandı).
+
 ## Evrak Takip — Giden Evrak Varsayılan İmza Yetkilileri (2026-11-19)
 - `App/Model/EvrakTakipModel.php`: `DEFAULT_SIGNERS_SETTING_KEY = 'giden_evrak_varsayilan_imzalar'` sabiti, `getDefaultSigners(int $userId, int $firmaId)` ve `saveDefaultSigners(int $userId, int $firmaId, array $signers)` metotları eklendi. Kayıtlar `settings` tablosunda kullanıcı+firma bazlı JSON olarak tutulur (en fazla 3 aktif imza yetkilisi + `kimin_adina`).
 - `views/evrak-takip/api.php`: `evrak-varsayilan-imza-kaydet` aksiyonu eklendi; `Security::decrypt` ile ID çözümü, Model doğrulaması ve `SystemLogModel` loglaması yapılır.
@@ -4088,3 +4111,27 @@
 - Word'den yapıştırma uyumu: editöre görsel (base64, sanitizer yalnız data:image kabul eder) butonu, pt→px yazı boyutu eşleme, docx'te tablo hücre boşlukları. Quill 2 tabloları colspan/sütun genişliği tutmaz (bilinen sınır).
 - Editör Quill'den Summernote-lite'a taşındı (Giden Evrak ile aynı varsayılan araç çubuğu; layouts/vendor-scripts.php listesine sayfa eklendi). Eski Quill HTML'i `SozlesmeSablonService::editorIcinHazirla()` ile dönüştürülür; docx üretiminde td genişlikleri (%, pt) px'e çevrilir, colspan korunur. Quill CDN ve eski tablo/görsel matcher'ları kaldırıldı.
 - Sayaç değişimi zimmet kontrolü (views/puantaj/api.php online sorgu): tuketimYap 'sarf' yazar; tekrar sorguda kontrol hareket_tipi IN ('sarf','iade') ile yapılır (cron zaten 'sarf' kullanıyor).
+
+## Tema Seçici — Roboto Condensed Fontu (2026-11-23)
+- Masaüstü tema seçicisi (`layouts/right-sidebar.php`, `layouts/head-style.php`, `assets/js/app_module.js`, `assets/css/style.css`, `assets/css/macos-light.css`) yazı tipi seçeneklerine `Roboto Condensed` eklendi; `ersan` (`--font-sans`), `macos-dark` (`--mac-font`) ve `macos-light` (`--font-sans`/`--font-display`) temalarında da seçili fontun varsayılan `Inter` dışı tercihlerde uygulanması sağlandı.
+
+- Ana sayfa yüklenirken çift/uyumsuz skeleton giderildi: index.php erken skeleton artık sabit (fixed) katman değil, sayfa akışında home.php skeleton ile aynı ölçü/renkte; home.php kendi skeleton`ı çizilirken erken olanı kaldırır.
+
+- Ana sayfa skeleton artık kayıtlı kart düzeninden (render_order, gridCols/gridHeight/gridX/gridY, gizli kartlar, serbest yerleşim) üretiliyor; index.php erken skeleton kaldırıldı. Pace.js ana sayfada AJAX isteklerinde yeniden başlamaması için layouts/head-style.php içinde paceOptions ile kısıtlandı.
+
+- Ana sayfa kart zıplaması: skeleton artık kayıtlı ayarlar uygulanıp grid yerleşimi (runDashboardGridLayout) çalıştıktan sonra kaldırılıyor; faz-2 kartlar display:none yerine visibility:hidden (yer ayırır).
+
+- Zıplama kök nedeni: #dashboard-page-content display:none iken grid satır aralıkları 0 yükseklikle hesaplanıyordu. Artık içerik .dashboard-content-pending (height:0, visibility:hidden) ile yerleşimde tutuluyor; tüm reveal yolları window.__revealDashboard (önce runDashboardGridLayout) üzerinden. İframe testiyle reveal anında yerleşimin final ile aynı olduğu doğrulandı.
+
+- Ana sayfa yığılma: lazy widget replaceWith ile gelen yeni elemanlar grid-row-end almadan çiziliyordu; #dashboard-widgets üzerine MutationObserver eklendi (doğrudan çocuk değişiminde senkron, alt ağaçta 120ms kısıtlı) runDashboardGridLayout çalıştırır. Not: is-operasyonlari (408px) ile sabitlenmiş gridY=40 kartları kayıtlı ayardan dolayı 96px çakışıyor (ayrı sorun).
+
+## 2026-11-23 Ana sayfa kart aralığı ve kısayol butonları
+- views/home.php: varsayılan (serbest olmayan) grid modunda gutter 12px, widget alt boşluğu 12px, hero alt boşluğu 12px (aydinogullariysc_trae ile aynı); iskelet yükleme gridi buna uyarlandı.
+- Hero kısayol butonları trae `crm-quick-square-btn` görünümüne (82x82, gri zemin, mavi hover) çevrildi; ton renkleri kaldırıldı.
+- Tarayıcıda görsel doğrulama yapılmadı.
+
+- Bekleyen Talepler / Geç Kalanlar / Bugünkü Nöbetçiler KPI kartları tek `widget-talep-nobet-ozet` kartında birleştirildi (home.php, home/api.php, home/render_widgets.php); bölümler kendi yetkisine göre çiziliyor.
+
+- Ana sayfa performans: runDashboardGridLayout imza/zorlama bayrağı ile yinelenenleri atlıyor, skeleton sürerken çalışmıyor (reveal zorlar); MutationObserver alt ağaç değişimlerini 500ms sakinleştirir; skeleton CSS 21KB -> ~1KB (--c değişkeni). Ölçüm (yavaş ortam): toplam betik 25.1s -> ~7.5s, load 14.2s -> ~6.5s, uzun animasyon karesi 98 -> 11. .htaccess içinde <IfModule> bu sunucuda 500 veriyor (deflate/cache sunucu yapılandırmasından açılmalı). Kalan: endeks-karsilastirma 3.5K düğüm, avatar PNG 400-560KB, DOMContentLoaded 1.4s, simplebar 0.9s.
+
+- Avatar küçük resim: yeni api/personel-thumb.php (oturum+yetki, yalnız assets/images/users/, 96px JPEG, uploads/personel-thumb önbelleği, ETag/7 gün) ve render_widgets.php içinde homeAvatarUrl() (Security::encryptStable). Ana sayfa avatarları 1.46MB -> ~7KB. Not: sunucu widget HTML önbelleği (cache/dashboard, 300sn) ve localStorage dashboard_cache_* eski adresleri bir süre gösterebilir.
