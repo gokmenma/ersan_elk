@@ -2388,3 +2388,4 @@
 - [x] Seçili hareketleri başka cariye aktarma (hesap-hareketleri sayfası) (2026-11-20). Kalan: tarayıcıda deneme, politika SQL.
 
 - [x] Sözleşme Şablonları sayfası web editöre dönüştürüldü (HTML saklama, PhpWord ile docx indirme). SQL betiği canlı ortamda çalıştırılmalı.
+- [x] Sayaç sökme takma online sorgulamada zimmet kontrolü 'sarf' hareketini tanımıyordu; tekrar sorgulamada tüketilmiş sayaçlar kırmızı görünüyordu (2026-11-23). Kalan: sql/2026_11_23_sayac_degisim_zimmet_dusuldu_duzeltme.sql canlıda çalıştırılmalı.

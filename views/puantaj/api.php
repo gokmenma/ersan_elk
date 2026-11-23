@@ -1772,7 +1772,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $perPersonIslemId = $record['islem_id'] . '_' . $personelId;
 
             if ($applyZimmet && $personelId > 0 && $record['takilan_sayacno'] !== '') {
-                $stmtCheck = $SayacDegisimModel->db->prepare("SELECT id FROM demirbas_hareketler WHERE islem_id = ? AND hareket_tipi = 'iade' LIMIT 1");
+                $stmtCheck = $SayacDegisimModel->db->prepare("SELECT id FROM demirbas_hareketler WHERE islem_id = ? AND hareket_tipi IN ('sarf', 'iade') AND silinme_tarihi IS NULL LIMIT 1");
                 $stmtCheck->execute([$perPersonIslemId]);
 
                 if ($stmtCheck->fetchColumn()) {
