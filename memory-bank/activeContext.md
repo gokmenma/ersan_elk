@@ -4135,3 +4135,5 @@
 - Ana sayfa performans: runDashboardGridLayout imza/zorlama bayrağı ile yinelenenleri atlıyor, skeleton sürerken çalışmıyor (reveal zorlar); MutationObserver alt ağaç değişimlerini 500ms sakinleştirir; skeleton CSS 21KB -> ~1KB (--c değişkeni). Ölçüm (yavaş ortam): toplam betik 25.1s -> ~7.5s, load 14.2s -> ~6.5s, uzun animasyon karesi 98 -> 11. .htaccess içinde <IfModule> bu sunucuda 500 veriyor (deflate/cache sunucu yapılandırmasından açılmalı). Kalan: endeks-karsilastirma 3.5K düğüm, avatar PNG 400-560KB, DOMContentLoaded 1.4s, simplebar 0.9s.
 
 - Avatar küçük resim: yeni api/personel-thumb.php (oturum+yetki, yalnız assets/images/users/, 96px JPEG, uploads/personel-thumb önbelleği, ETag/7 gün) ve render_widgets.php içinde homeAvatarUrl() (Security::encryptStable). Ana sayfa avatarları 1.46MB -> ~7KB. Not: sunucu widget HTML önbelleği (cache/dashboard, 300sn) ve localStorage dashboard_cache_* eski adresleri bir süre gösterebilir.
+
+- Pinli (data-grid-y) widgetlar üst üste binerse layoutDashboardGrid içinde otomatik aşağı itiliyor; birleşik özet kartı daraltıldı.

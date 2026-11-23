@@ -2429,3 +2429,5 @@
 - [x] Ana sayfa performans turu (layout dedupe, skeleton CSS küçültme).
 
 - [x] Ana sayfa avatarları küçük resim ucuna taşındı.
+
+- Pinli (data-grid-y) widgetlar üst üste binerse layoutDashboardGrid içinde otomatik aşağı itiliyor; birleşik özet kartı daraltıldı.

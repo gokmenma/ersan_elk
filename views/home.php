@@ -1189,7 +1189,11 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                 #dashboard-widgets .card.dash-kpi-card:hover { transform:translateY(-3px); box-shadow:0 10px 20px -5px rgba(15,23,42,.08), 0 4px 6px -2px rgba(15,23,42,.03) !important; border-color:#cbd5e1 !important; }
                 .dash-kpi-body { padding:20px 22px !important; display:flex; flex-direction:column; height:100%; }
                 .dash-kpi-trio { display:grid !important; grid-template-columns:repeat(3, minmax(0,1fr)); gap:0; padding:0 !important; }
-                .dash-kpi-trio-col { display:flex; flex-direction:column; min-width:0; padding:20px 22px; }
+                .dash-kpi-trio-col { display:flex; flex-direction:column; min-width:0; padding:18px 16px; }
+                .dash-kpi-trio .dash-kpi-label { font-size:12px; }
+                .dash-kpi-trio .dash-kpi-icon { width:36px; height:36px; flex:0 0 36px; font-size:18px; }
+                .dash-kpi-trio .dash-kpi-note { white-space:normal; overflow:visible; text-overflow:clip; }
+                .dash-kpi-trio .dash-kpi-footer { flex-wrap:wrap; }
                 .dash-kpi-trio-col + .dash-kpi-trio-col { border-left:1px solid #f1f5f9; }
                 @media (max-width: 767.98px) { .dash-kpi-trio { grid-template-columns:1fr; } .dash-kpi-trio-col + .dash-kpi-trio-col { border-left:0; border-top:1px solid #f1f5f9; } }
                 [data-bs-theme="dark"] .dash-kpi-trio-col + .dash-kpi-trio-col { border-color:#3a4256; }
@@ -4316,6 +4320,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                                 el.style.setProperty('--gx', fixedX);
                             }
                         }
+                        if (el.hasAttribute('data-grid-y')) el.style.setProperty('--gy', el.getAttribute('data-grid-y'));
                         el.style.alignSelf = 'start';
                         el.style.gridRowEnd = 'auto';
                     });
@@ -4348,6 +4353,29 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                         });
                     });
 
+                    for (let pass = 0; pass < 6; pass++) {
+                        let moved = false;
+                        const rects = items.map(function (el) { return { el: el, r: el.getBoundingClientRect() }; });
+                        rects.forEach(function (cur) {
+                            if (!cur.el.hasAttribute('data-grid-y')) return;
+                            let need = 0;
+                            rects.forEach(function (other) {
+                                if (other === cur) return;
+                                const horizontal = Math.min(cur.r.right, other.r.right) - Math.max(cur.r.left, other.r.left);
+                                const vertical = Math.min(cur.r.bottom, other.r.bottom) - Math.max(cur.r.top, other.r.top);
+                                const otherGap = parseFloat(getComputedStyle(other.el).marginBottom) || 0;
+                                if (horizontal > 4 && vertical > -otherGap + 4 && other.r.top < cur.r.top) {
+                                    need = Math.max(need, other.r.bottom + otherGap - cur.r.top);
+                                }
+                            });
+                            if (need > 0) {
+                                const curY = parseInt(getComputedStyle(cur.el).getPropertyValue('--gy'), 10) || parseInt(cur.el.getAttribute('data-grid-y'), 10) || 1;
+                                cur.el.style.setProperty('--gy', curY + Math.ceil(need / rowUnit));
+                                moved = true;
+                            }
+                        });
+                        if (!moved) break;
+                    }
                     container.style.minHeight = prevMinHeight;
                     if (Math.abs(window.scrollY - prevScrollY) > 1) window.scrollTo(window.scrollX, prevScrollY);
                     gridLastSignature = dashboardGridSignature(container);
