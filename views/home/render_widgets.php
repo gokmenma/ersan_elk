@@ -204,6 +204,85 @@ function renderWidget(string $widgetId, array $data = []) {
 <?php
             break;
 
+        case 'widget-hero-takvim':
+            $hYil = !empty($secili_yil) ? (int) $secili_yil : (int) date('Y');
+            $hAy = !empty($secili_ay) ? (int) $secili_ay : (int) date('n');
+            $hAylar = [1 => 'Ocak', 2 => 'Şubat', 3 => 'Mart', 4 => 'Nisan', 5 => 'Mayıs', 6 => 'Haziran', 7 => 'Temmuz', 8 => 'Ağustos', 9 => 'Eylül', 10 => 'Ekim', 11 => 'Kasım', 12 => 'Aralık'];
+            $hAylarKisa = [1 => 'Oca', 2 => 'Şub', 3 => 'Mar', 4 => 'Nis', 5 => 'May', 6 => 'Haz', 7 => 'Tem', 8 => 'Ağu', 9 => 'Eyl', 10 => 'Eki', 11 => 'Kas', 12 => 'Ara'];
+            $hGunler = [1 => 'Pzt', 2 => 'Sal', 3 => 'Çar', 4 => 'Per', 5 => 'Cum', 6 => 'Cmt', 7 => 'Paz'];
+            $hEsc = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+            $hGunSayisi = (int) date('t', mktime(0, 0, 0, $hAy, 1, $hYil));
+            $hListe = $takvim_alarmlar ?? [];
+            $hGunBazli = [];
+            foreach ($hListe as $hItem) {
+                $hGun = (int) date('j', strtotime($hItem['tarih']));
+                $hGunBazli[$hGun] = ($hGunBazli[$hGun] ?? 0) + 1;
+            }
+            $hBugunTarih = date('Y-m-d');
+            $hYaklasan = 0;
+            foreach ($hListe as $hItem) {
+                if (substr((string) $hItem['tarih'], 0, 10) >= $hBugunTarih) {
+                    $hYaklasan++;
+                }
+            }
+            $hBugun = ($hYil === (int) date('Y') && $hAy === (int) date('n')) ? (int) date('j') : 0;
+            ?>
+            <?php $hKapali = $hBugun > 0 && $hYaklasan === 0; ?>
+            <div class="hcal<?php echo $hKapali ? ' is-collapsed' : ''; ?>" id="heroCalendar" data-yil="<?php echo $hYil; ?>" data-ay="<?php echo $hAy; ?>">
+                <div class="hcal-head">
+                    <div class="hcal-nav">
+                        <button type="button" class="hcal-nav-btn" onclick="navigateHeroCalendar(<?php echo $hYil; ?>, <?php echo $hAy - 1; ?>)" title="Önceki Ay" aria-label="Önceki ay"><i class="bx bx-chevron-left"></i></button>
+                        <span class="hcal-title"><i class="bx bx-calendar-event"></i> <?php echo $hEsc(($hAylar[$hAy] ?? '') . ' ' . $hYil); ?></span>
+                        <button type="button" class="hcal-nav-btn" onclick="navigateHeroCalendar(<?php echo $hYil; ?>, <?php echo $hAy + 1; ?>)" title="Sonraki Ay" aria-label="Sonraki ay"><i class="bx bx-chevron-right"></i></button>
+                        <?php if (!$hBugun): ?>
+                            <button type="button" class="hcal-today-btn" onclick="navigateHeroCalendar(<?php echo (int) date('Y'); ?>, <?php echo (int) date('n'); ?>)">Bugün</button>
+                        <?php endif; ?>
+                    </div>
+                    <div class="hcal-meta">
+                        <button type="button" class="hcal-count<?php echo $hKapali ? '' : ' is-active'; ?>" id="heroCalAll" onclick="toggleHeroCalendarAll()" aria-pressed="<?php echo $hKapali ? 'false' : 'true'; ?>" title="Tüm kayıtları göster/gizle"><i class="bx bx-list-ul"></i> Tümü · <?php echo count($hListe); ?></button>
+                    </div>
+                </div>
+                <div class="hcal-strip" style="--hcal-n: <?php echo $hGunSayisi; ?>;">
+                    <?php for ($hd = 1; $hd <= $hGunSayisi; $hd++):
+                        $hDow = (int) date('N', mktime(0, 0, 0, $hAy, $hd, $hYil));
+                        $hCls = ['hcal-day'];
+                        if (isset($hGunBazli[$hd])) $hCls[] = 'has-alarm';
+                        if ($hd === $hBugun) $hCls[] = 'is-today';
+                        if ($hDow >= 6) $hCls[] = 'is-weekend';
+                        if (sprintf('%04d-%02d-%02d', $hYil, $hAy, $hd) < $hBugunTarih) $hCls[] = 'is-past';
+                        ?>
+                        <button type="button" class="<?php echo implode(' ', $hCls); ?>" data-day="<?php echo $hd; ?>" onclick="selectHeroCalendarDay(<?php echo $hd; ?>)" title="<?php echo $hEsc($hd . ' ' . ($hAylar[$hAy] ?? '') . (isset($hGunBazli[$hd]) ? ' · ' . $hGunBazli[$hd] . ' alarm' : '')); ?>">
+                            <small><?php echo $hGunler[$hDow]; ?></small>
+                            <b><?php echo $hd; ?></b>
+                            <?php if (isset($hGunBazli[$hd])): ?><i class="hcal-badge"><?php echo (int) $hGunBazli[$hd]; ?></i><?php endif; ?>
+                        </button>
+                    <?php endfor; ?>
+                </div>
+                <div class="hcal-list" id="heroCalList">
+                    <?php if (empty($hListe)): ?>
+                        <div class="hcal-empty"><i class="bx bx-calendar-check"></i> Bu ay için görev veya evrak alarmı yok</div>
+                    <?php else: ?>
+                        <?php foreach ($hListe as $hAlarm):
+                            $hAGun = (int) date('j', strtotime($hAlarm['tarih']));
+                            $hAAy = (int) date('n', strtotime($hAlarm['tarih']));
+                            $hTur = $hAlarm['tur'] ?? '';
+                            $hGorev = $hTur === 'gorev';
+                            ?>
+                            <a href="<?php echo $hEsc($hAlarm['url'] ?? '#'); ?>" class="hcal-item <?php echo $hTur === 'dogum' ? 'is-dogum' : ($hGorev ? 'is-gorev' : 'is-evrak'); ?><?php echo substr((string) $hAlarm['tarih'], 0, 10) < $hBugunTarih ? ' is-past' : ''; ?><?php echo $hAGun === $hBugun ? ' is-today' : ''; ?>" data-day="<?php echo $hAGun; ?>" title="<?php echo $hEsc(($hAlarm['baslik'] ?? '') . (!empty($hAlarm['alt']) ? ' — ' . $hAlarm['alt'] : '')); ?>">
+                                <div class="hcal-item-top">
+                                    <span class="hcal-item-date"><?php echo $hAGun . ' ' . ($hAylarKisa[$hAAy] ?? ''); ?></span>
+                                    <span class="hcal-item-tag"><?php echo $hTur === 'dogum' ? '🎂 Doğum Günü' : ($hGorev ? 'Görev' : 'Cevap'); ?></span>
+                                </div>
+                                <div class="hcal-item-title"><?php echo $hEsc($hAlarm['baslik'] ?? ''); ?></div>
+                                <?php if (!empty($hAlarm['alt'])): ?><div class="hcal-item-sub"><?php echo $hEsc($hAlarm['alt']); ?></div><?php endif; ?>
+                            </a>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php
+            break;
+
         case 'widget-takvim-alarmlar':
         case 'widget-gorev-evrak-takvimi':
             $targetYear = !empty($secili_yil) ? (int)$secili_yil : (int)date('Y');

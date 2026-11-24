@@ -123,8 +123,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 $gorevModel = new \App\Model\GorevModel();
                 $evrakModel = new \App\Model\EvrakTakipModel();
+                $heroLayout = ($_POST['layout'] ?? '') === 'hero';
                 $takvimGorevler = $gorevModel->getTakvimGorevler($firmaId, $userId, $startDate, $endDate);
-                $takvimEvraklar = $evrakModel->getTakvimEvraklar($firmaId, $startDate, $endDate);
+                $takvimEvraklar = (!$heroLayout || Gate::allows('evrak-takip/list'))
+                    ? $evrakModel->getTakvimEvraklar($firmaId, $startDate, $endDate)
+                    : [];
 
                 $takvimAlarmlar = [];
                 foreach ($takvimGorevler as $g) {
@@ -150,11 +153,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         'url' => 'index.php?p=evrak-takip/list&evrak=' . rawurlencode(\App\Helper\Security::encrypt((int) $e->id)),
                     ];
                 }
+                if ($heroLayout && Gate::allows('personel_listesi')) {
+                    $ayGunSayisi = (int) date('t', strtotime($startDate));
+                    foreach ((new \App\Model\DogumGunuBildirimModel())->getTumDogumGunleri((int) $firmaId) as $dg) {
+                        if ($dg['ay'] !== $month) {
+                            continue;
+                        }
+                        $takvimAlarmlar[] = [
+                            'tur' => 'dogum',
+                            'id' => 0,
+                            'tarih' => sprintf('%04d-%02d-%02d', $year, $month, min($dg['gun'], $ayGunSayisi)),
+                            'saat' => null,
+                            'baslik' => $dg['ad'],
+                            'alt' => trim(($year - $dg['yil']) . '. yaş · ' . $dg['bilgi'], ' ·'),
+                            'url' => 'index.php?p=personel/list',
+                        ];
+                    }
+                }
                 usort($takvimAlarmlar, function($a, $b) {
                     return strcmp($a['tarih'], $b['tarih']);
                 });
 
-                $html = renderWidget('widget-takvim-alarmlar', [
+                $html = renderWidget($heroLayout ? 'widget-hero-takvim' : 'widget-takvim-alarmlar', [
                     'takvim_alarmlar' => $takvimAlarmlar,
                     'secili_yil' => $year,
                     'secili_ay' => $month

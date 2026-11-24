@@ -4137,3 +4137,8 @@
 - Avatar küçük resim: yeni api/personel-thumb.php (oturum+yetki, yalnız assets/images/users/, 96px JPEG, uploads/personel-thumb önbelleği, ETag/7 gün) ve render_widgets.php içinde homeAvatarUrl() (Security::encryptStable). Ana sayfa avatarları 1.46MB -> ~7KB. Not: sunucu widget HTML önbelleği (cache/dashboard, 300sn) ve localStorage dashboard_cache_* eski adresleri bir süre gösterebilir.
 
 - Pinli (data-grid-y) widgetlar üst üste binerse layoutDashboardGrid içinde otomatik aşağı itiliyor; birleşik özet kartı daraltıldı.
+
+## 2026-11-24 Ana sayfa: tam boy duyuru slider'ı ve yatay takvim
+- views/home.php: Haberler & Duyurular artık grid dışında, hero kartının üstünde tam genişlik `.dash-slider` (id `widget-ana-slider` korundu); 6 sn otomatik kayar, tek duyuruda ok/gösterge gizli.
+- Görev & Evrak Takvimi gridden kaldırıldı; hero kartı içinde `#heroCalendarHost` altında yatay tek sıra gün şeridi (`.hcal-strip`) + altında alarm/evrak listesi. `get-calendar-alarms` aksiyonu `layout=hero` ile `widget-hero-takvim` (render_widgets.php) döner; hero'da evrak yalnız `evrak-takip/list` yetkisiyle gelir. Yeni policy gerekmedi.
+- Tarayıcıda doğrulandı (1600px). Mobil genişlik ve çoklu duyuruda kayma görsel test edilmedi.

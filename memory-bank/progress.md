@@ -2431,3 +2431,5 @@
 - [x] Ana sayfa avatarları küçük resim ucuna taşındı.
 
 - Pinli (data-grid-y) widgetlar üst üste binerse layoutDashboardGrid içinde otomatik aşağı itiliyor; birleşik özet kartı daraltıldı.
+
+- [x] Ana sayfa: duyuru slider'ı tam genişlik üst kart, takvim hero içinde yatay şerit + evrak listesi.

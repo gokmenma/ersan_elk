@@ -398,12 +398,10 @@ if (Gate::allows("ana_sayfa")) {
 
     if (!empty($slider_notifications)) {
         ob_start(); ?>
-        <div class="col-md-4 col-xl-4 widget-item" id="widget-ana-slider" style="margin-bottom: 1.5rem; position: relative;">
-            <!-- Mac title bar will be injected here automatically -->
-
-            <div id="dashboardCarousel" class="carousel slide animate-card bordro-summary-card h-100" data-bs-ride="carousel"
-                style="--delay: 0s; cursor: grab;">
-                <div class="carousel-indicators" style="margin-bottom: 0.5rem;">
+        <section class="dash-slider" id="widget-ana-slider" aria-label="Haberler ve duyurular">
+            <div id="dashboardCarousel" class="carousel slide animate-card bordro-summary-card h-100" data-bs-ride="carousel" data-bs-interval="6000" data-bs-pause="hover" data-bs-touch="true"
+                style="--delay: 0s;">
+                <div class="carousel-indicators<?php echo count($slider_notifications) < 2 ? ' d-none' : ''; ?>" style="margin-bottom: 0.5rem;">
                     <?php foreach ($slider_notifications as $index => $notif): ?>
                         <button type="button" data-bs-target="#dashboardCarousel" data-bs-slide-to="<?php echo $index; ?>"
                             class="<?php echo $index === 0 ? 'active' : ''; ?>"
@@ -417,7 +415,7 @@ if (Gate::allows("ana_sayfa")) {
                         <div class="carousel-item h-100 <?php echo $index === 0 ? 'active' : ''; ?>">
                             <div class="carousel-content p-4 px-5 d-flex align-items-center <?= $notif['link_class'] ?> h-100"
                                 <?= $notif['link_action'] ?>
-                                style="background: <?php echo $notif['gradient']; ?>; min-height: 260px; position: relative; overflow: hidden;">
+                                style="background: <?php echo $notif['gradient']; ?>; position: relative; overflow: hidden;">
                                 <div class="circles" style="opacity: 0.12;">
                                     <div></div>
                                     <div></div>
@@ -442,19 +440,19 @@ if (Gate::allows("ana_sayfa")) {
                         </div>
                     <?php endforeach; ?>
                 </div>
-                <button class="carousel-control-prev" type="button" data-bs-target="#dashboardCarousel" data-bs-slide="prev"
+                <button class="carousel-control-prev<?php echo count($slider_notifications) < 2 ? ' d-none' : ''; ?>" type="button" data-bs-target="#dashboardCarousel" data-bs-slide="prev"
                     style="width: 4%;">
                     <span class="carousel-control-prev-icon" aria-hidden="true" style="width: 1.2rem; height: 1.2rem;"></span>
                     <span class="visually-hidden">Previous</span>
                 </button>
-                <button class="carousel-control-next" type="button" data-bs-target="#dashboardCarousel" data-bs-slide="next"
+                <button class="carousel-control-next<?php echo count($slider_notifications) < 2 ? ' d-none' : ''; ?>" type="button" data-bs-target="#dashboardCarousel" data-bs-slide="next"
                     style="width: 4%;">
                     <span class="carousel-control-next-icon" aria-hidden="true" style="width: 1.2rem; height: 1.2rem;"></span>
                     <span class="visually-hidden">Next</span>
                 </button>
             </div>
-        </div>
-        <?php $widgets['widget-ana-slider'] = ob_get_clean();
+        </section>
+        <?php $dashSliderHtml = ob_get_clean();
     }
 
     if (\App\Service\Gate::allows("personel_listesi")) {
@@ -468,9 +466,6 @@ if (Gate::allows("ana_sayfa")) {
     if (\App\Service\Gate::allows("arac_takip_yonetim")) {
         $widgets['widget-arac-ozet'] = renderSkeleton('widget-arac-ozet', 'col-md-4 col-xl-4', '260px');
     }
-
-    // Görev ve Gelen Evrak Takvimi & Alarmlar Mini Kartı (Görsel 1 & 2 Standardı)
-    $widgets['widget-takvim-alarmlar'] = renderSkeleton('widget-takvim-alarmlar', getWidgetWidth('widget-takvim-alarmlar', 'col-md-4 col-xl-4'), '260px');
 
     if (\App\Service\Gate::allowsAny(['talepler', 'personel-takip/list', 'nobet/list'])) {
         $widgets['widget-talep-nobet-ozet'] = renderSkeleton('widget-talep-nobet-ozet', 'col-12 col-md-6', '140px');
@@ -701,10 +696,7 @@ if (Gate::allows("ana_sayfa")) {
             }
             $render_order = array_values(array_diff($render_order, $legacyOpsWidgets));
 
-            // Slider her zaman üstte olmalı
-            if (!in_array('widget-ana-slider', $render_order) && isset($widgets['widget-ana-slider'])) {
-                array_unshift($render_order, 'widget-ana-slider');
-            }
+            $render_order = array_values(array_diff($render_order, ['widget-ana-slider', 'widget-takvim-alarmlar', 'widget-gorev-evrak-takvimi']));
             ?>
 
         <div class="container-fluid">
@@ -1265,6 +1257,73 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                 @keyframes dashWave { 0%,60%,100% { transform:rotate(0); } 10%,30% { transform:rotate(14deg); } 20% { transform:rotate(-8deg); } 40% { transform:rotate(-4deg); } 50% { transform:rotate(10deg); } }
                 @media (prefers-reduced-motion: reduce) { .dash-hero-wave { animation:none; } }
                 .dash-hero-sub { margin:0; font-size:13.5px; color:#64748b; }
+                .dash-slider { margin-bottom:12px; width:100%; flex:0 0 100%; max-width:100%; }
+                .dash-slider .carousel { width:100%; }
+                .dash-slider .carousel-inner { border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,.08); }
+                .dash-slider .carousel-content { min-height:64px; padding:12px 56px !important; }
+                .dash-slider .carousel-content > .flex-grow-1 { display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 14px; padding-right:12px !important; }
+                .dash-slider .carousel-content h5 { font-size:1rem !important; margin:0 !important; white-space:nowrap; }
+                .dash-slider .carousel-content p { max-width:none !important; font-size:.875rem !important; margin:0 !important; }
+                .dash-slider .carousel-content i.bx { font-size:34px !important; }
+                .dash-slider .carousel-indicators { margin-bottom:.2rem; }
+                .dash-slider .carousel-indicators [data-bs-target] { width:6px !important; height:6px !important; }
+                .dash-slider .carousel-control-prev-icon, .dash-slider .carousel-control-next-icon { width:1rem !important; height:1rem !important; }
+                .dash-hero-cal { flex:1 0 100%; min-width:0; border-top:1px solid #e2e8f0; padding-top:14px; }
+                .hcal-loading { padding:18px 0; text-align:center; font-size:12.5px; color:#64748b; }
+                .hcal-head { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:10px; }
+                .hcal-nav, .hcal-meta { display:flex; align-items:center; gap:8px; }
+                .hcal-title { display:inline-flex; align-items:center; gap:6px; min-width:140px; justify-content:center; font-size:14px; font-weight:700; color:#1e293b; }
+                .hcal-title i { color:#64748b; font-size:17px; }
+                .hcal-nav-btn, .hcal-today-btn, .hcal-reset { border:1px solid #e2e8f0; background:#fff; color:#475569; border-radius:8px; height:30px; display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; cursor:pointer; padding:0 10px; transition:background .15s, border-color .15s; }
+                .hcal-nav-btn { width:30px; padding:0; font-size:18px; }
+                .hcal-nav-btn:hover, .hcal-today-btn:hover, .hcal-reset:hover { background:#f1f5f9; border-color:#cbd5e1; }
+                .hcal-count { display:inline-flex; align-items:center; gap:5px; height:30px; cursor:pointer; font-size:12px; font-weight:700; color:#475569; background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:0 12px; transition:background .15s, color .15s; }
+                .hcal-count:hover { background:#f1f5f9; }
+                .hcal-count.is-active { background:#475569; border-color:#475569; color:#fff; }
+                .hcal-strip { padding-top:8px !important; display:grid; grid-template-columns:repeat(var(--hcal-n, 30), minmax(34px, 1fr)); gap:4px; overflow-x:auto; padding-bottom:4px; }
+                .hcal-day { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; height:54px; border:1px solid #e2e8f0; border-radius:8px; background:#f8fafc; color:#334155; cursor:pointer; padding:0; transition:background .15s, border-color .15s, transform .15s; }
+                .hcal-day small { font-size:9.5px; font-weight:600; text-transform:uppercase; color:#94a3b8; line-height:1; }
+                .hcal-day b { font-size:14px; font-weight:700; line-height:1.1; }
+                .hcal-day:hover { background:#fff; border-color:#94a3b8; }
+                .hcal-day.is-weekend { background:#f1f5f9; }
+                .hcal-day.has-alarm { border-color:#fcd34d; background:#fffbeb; }
+                .hcal-day.is-today { background:#475569; border-color:#475569; color:#fff; }
+                .hcal-day.is-today small { color:#cbd5e1; }
+                .hcal-day.is-selected { outline:2px solid #2563eb; outline-offset:1px; }
+                .hcal-badge { position:absolute; top:-5px; right:-3px; min-width:16px; height:16px; padding:0 4px; border-radius:8px; background:#dc2626; color:#fff; font-style:normal; font-size:10px; font-weight:700; line-height:16px; text-align:center; }
+                .hcal-list { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:8px; margin-top:12px; max-height:230px; overflow-y:auto; }
+                .hcal-item { display:block; padding:9px 12px; border:1px solid #e2e8f0; border-left:3px solid #f59e0b; border-radius:8px; background:#fff; text-decoration:none !important; color:#334155; transition:background .15s, box-shadow .15s; min-width:0; }
+                .hcal-item.is-gorev { border-left-color:#3b82f6; }
+                .hcal-item.is-dogum { border-left-color:#8b5cf6; }
+                .hcal-item.is-dogum .hcal-item-date { color:#7c3aed; }
+                .hcal-item.is-dogum .hcal-item-tag { background:#f5f3ff; color:#7c3aed; border-color:#ddd6fe; }
+                .hcal-day.is-past:not(.is-selected) { opacity:.5; background:#f8fafc; }
+                .hcal-day.is-past.has-alarm:not(.is-selected) { border-color:#e2e8f0; background:#f8fafc; }
+                .hcal-day.is-past .hcal-badge { background:#94a3b8; }
+                .hcal-item.is-past { opacity:.55; border-left-color:#cbd5e1 !important; background:#f8fafc; }
+                .hcal-item.is-past .hcal-item-date, .hcal-item.is-past .hcal-item-tag { color:#94a3b8 !important; background:#f1f5f9 !important; border-color:#e2e8f0 !important; }
+                .hcal-item.is-past .hcal-item-title { font-weight:500; color:#64748b; }
+                .hcal-day.is-past:hover, .hcal-item.is-past:hover { opacity:.9; }
+                .hcal-item:hover { background:#f8fafc; box-shadow:0 2px 8px rgba(15,23,42,.06); }
+                .hcal-item.d-none { display:none !important; }
+                .hcal-item-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:3px; }
+                .hcal-item-date { font-size:11px; font-weight:700; color:#b45309; }
+                .hcal-item.is-gorev .hcal-item-date { color:#2563eb; }
+                .hcal-item-tag { font-size:10.5px; font-weight:700; padding:1px 8px; border-radius:6px; background:#fffbeb; color:#b45309; border:1px solid #fde68a; }
+                .hcal-item.is-gorev .hcal-item-tag { background:#eff6ff; color:#2563eb; border-color:#bfdbfe; }
+                .hcal-item-title { font-size:13px; font-weight:600; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+                .hcal-item-sub { font-size:11.5px; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+                .hcal.is-collapsed .hcal-list { display:none; }
+                .hcal-empty { grid-column:1 / -1; text-align:center; padding:14px 0; font-size:12.5px; color:#64748b; }
+                .hcal-empty i { font-size:18px; vertical-align:middle; margin-right:4px; }
+                [data-bs-theme="dark"] .dash-hero-cal { border-color:#3a4256; }
+                [data-bs-theme="dark"] .hcal-title { color:#f8fafc; }
+                [data-bs-theme="dark"] .hcal-day, [data-bs-theme="dark"] .hcal-item, [data-bs-theme="dark"] .hcal-nav-btn, [data-bs-theme="dark"] .hcal-today-btn, [data-bs-theme="dark"] .hcal-reset { background:#232838; border-color:#3a4256; color:#e2e8f0; }
+                [data-bs-theme="dark"] .hcal-day.is-weekend { background:#1e2332; }
+                [data-bs-theme="dark"] .hcal-day.has-alarm { background:#3a3220; border-color:#a16207; }
+                [data-bs-theme="dark"] .hcal-day.is-today { background:#64748b; border-color:#64748b; }
+                [data-bs-theme="dark"] .hcal-item-title { color:#f1f5f9; }
+                @media (max-width: 767.98px) { .dash-slider .carousel-content { padding:10px 36px !important; } .dash-slider .carousel-content h5 { white-space:normal; } }
                 .dash-hero-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-left:auto; }
                 .dash-hero-action { width:82px; height:82px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; border:1.5px solid #e2e8f0; border-radius:14px; background:#f8fafc; box-shadow:0 1px 3px rgba(0,0,0,.04); color:#334155; text-decoration:none !important; cursor:pointer; transition:all .25s cubic-bezier(.4,0,.2,1); }
                 .dash-hero-action:hover { transform:translateY(-3px); border-color:#2563eb; background:#fff; box-shadow:0 8px 18px -4px rgba(37,99,235,.18), 0 4px 8px -2px rgba(0,0,0,.04); color:#0f172a; }
@@ -1802,6 +1861,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                 }
                 $heroEsc = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
                 ?>
+                <?php echo $dashSliderHtml ?? ''; ?>
                 <section class="dash-hero" aria-label="Karşılama">
                     <div class="dash-hero-main">
                         <div class="dash-hero-chips">
@@ -1863,12 +1923,6 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                                         <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
                                             <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-arac-ozet" checked>
                                             <span style="font-size: 13px;">Araç Durumu</span>
-                                        </label>
-                                    </li>
-                                    <li>
-                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
-                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-takvim-alarmlar" checked>
-                                            <strong style="font-size: 13px;">Görev & Evrak Takvimi</strong>
                                         </label>
                                     </li>
                                     <li>
@@ -1944,6 +1998,9 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                             <?php endforeach; ?>
                         </nav>
                     <?php endif; ?>
+                    <div class="dash-hero-cal" id="heroCalendarHost" aria-label="Görev ve evrak takvimi">
+                        <div class="hcal-loading"><span class="spinner-border spinner-border-sm text-secondary" role="status" aria-hidden="true"></span> Takvim yükleniyor…</div>
+                    </div>
                 </section>
 
                 <style>
@@ -7222,6 +7279,67 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                     renderDogumTakvimi($(btn).closest('.dg-card'), 0);
                 };
 
+                window.loadHeroCalendar = function(year, month) {
+                    const $host = $('#heroCalendarHost');
+                    if (!$host.length) return;
+                    $host.css('opacity', '0.6');
+                    $.ajax({
+                        url: 'views/home/api.php',
+                        type: 'POST',
+                        data: { action: 'get-calendar-alarms', layout: 'hero', year: year, month: month },
+                        dataType: 'json'
+                    }).done(function(res) {
+                        if (res.status === 'success' && typeof res.html === 'string') {
+                            if (res.html.trim() === '') { $host.remove(); return; }
+                            $host.html(res.html);
+                            if (typeof window.heroCalUserOpen === 'boolean') window.setHeroCalendarMode(window.heroCalUserOpen ? 'all' : 'none');
+                        } else {
+                            $host.html('<div class="hcal-loading">Takvim yüklenemedi.</div>');
+                        }
+                    }).fail(function() {
+                        $host.html('<div class="hcal-loading">Takvim yüklenemedi.</div>');
+                    }).always(function() {
+                        $host.css('opacity', '1');
+                    });
+                };
+
+                window.setHeroCalendarMode = function(mode) {
+                    const $cal = $('#heroCalendar');
+                    if (!$cal.length) return;
+                    $cal.find('.hcal-day').removeClass('is-selected');
+                    if (mode === 'all') $cal.find('.hcal-item').removeClass('d-none');
+                    $cal.toggleClass('is-collapsed', mode !== 'all');
+                    $cal.find('#heroCalAll').toggleClass('is-active', mode === 'all').attr('aria-pressed', mode === 'all' ? 'true' : 'false');
+                };
+
+                window.toggleHeroCalendarAll = function() {
+                    const show = !$('#heroCalAll').hasClass('is-active');
+                    window.heroCalUserOpen = show;
+                    window.setHeroCalendarMode(show ? 'all' : 'none');
+                };
+
+                window.navigateHeroCalendar = function(year, month) {
+                    if (month < 1) { month = 12; year--; } else if (month > 12) { month = 1; year++; }
+                    window.loadHeroCalendar(year, month);
+                };
+
+                window.selectHeroCalendarDay = function(day) {
+                    const $cal = $('#heroCalendar');
+                    const $cell = $cal.find('.hcal-day[data-day="' + day + '"]');
+                    if ($cell.hasClass('is-selected')) {
+                        window.heroCalUserOpen = false;
+                        window.setHeroCalendarMode('none');
+                        return;
+                    }
+                    $cal.find('.hcal-day').removeClass('is-selected');
+                    $cell.addClass('is-selected');
+                    $cal.find('.hcal-item').each(function() {
+                        $(this).toggleClass('d-none', parseInt($(this).attr('data-day'), 10) !== day);
+                    });
+                    $cal.removeClass('is-collapsed');
+                    $cal.find('#heroCalAll').removeClass('is-active').attr('aria-pressed', 'false');
+                };
+
                 window.navigateHomeCalendar = function(year, month) {
                     if (month < 1) {
                         month = 12;
@@ -7258,6 +7376,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
 
                 // Initialize everything on load
                 $(document).ready(function() {
+                    window.loadHeroCalendar(new Date().getFullYear(), new Date().getMonth() + 1);
                     applyWidgetSettings();
                     applySavedWidgetOrder();
                     if (typeof initMacControls === 'function') initMacControls();
