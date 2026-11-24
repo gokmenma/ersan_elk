@@ -7259,7 +7259,16 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                     const subject = label.replace(/ detaylarını (göster|gizle)$/i, '');
                     button.attr('aria-expanded', isOpen ? 'false' : 'true');
                     button.find('span').text(subject + ' detaylarını ' + (isOpen ? 'göster' : 'gizle'));
-                    target.stop(true, true)[isOpen ? 'slideUp' : 'slideDown'](320);
+                    const widget = button.closest('.widget-item');
+                    const fixedHeight = parseInt(widget.attr('data-grid-height'), 10);
+                    if (fixedHeight && !isOpen) widget.css('height', 'auto');
+                    const relayout = function () { if (typeof layoutDashboardGrid === 'function') layoutDashboardGrid(true); };
+                    const ticker = setInterval(relayout, 60);
+                    target.stop(true, true)[isOpen ? 'slideUp' : 'slideDown'](320, function () {
+                        clearInterval(ticker);
+                        if (fixedHeight && isOpen) widget.css('height', fixedHeight + 'px');
+                        relayout();
+                    });
                 });
 
                 // DB'den gelen ayarları localStorage'a işle (Sayfa yüklendiğinde bir kez)
