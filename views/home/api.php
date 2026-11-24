@@ -520,6 +520,61 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 echo safeJsonEncode(['status' => 'success', 'results' => $results]);
                 break;
 
+            case 'get-saha-personel-detay':
+                if (!\App\Service\Gate::allows('personel-takip/list')) {
+                    http_response_code(403);
+                    echo safeJsonEncode(['status' => 'error', 'message' => 'Bu veriyi görüntüleme yetkiniz bulunmamaktadır.']);
+                    break;
+                }
+                $grup = (string) ($_POST['grup'] ?? '');
+                if (!in_array($grup, ['gorevde', 'tamamladi', 'baslamadi', 'izinli', 'gec_kalan'], true)) {
+                    throw new Exception('Geçersiz durum.');
+                }
+                $sahaPersonelModel = new \App\Model\PersonelModel();
+                $sahaHareketModel = new \App\Model\PersonelHareketleriModel();
+                $sahaSatirlar = $sahaHareketModel->getSahaGunPersonelleri($firmaId, $grup, null, null, $sahaPersonelModel->getRestrictedDeptArray());
+                $sahaListe = [];
+                foreach ($sahaSatirlar as $satir) {
+                    $sp = $satir['p'];
+                    $sahaListe[] = [
+                        'adi_soyadi' => (string) $sp->adi_soyadi,
+                        'departman' => (string) ($sp->departman ?? ''),
+                        'baslama' => !empty($sp->son_baslama) ? date('H:i', strtotime($sp->son_baslama)) : '',
+                        'bitis' => !empty($sp->son_bitis) ? date('H:i', strtotime($sp->son_bitis)) : '',
+                        'durum' => (string) $sp->durum_text,
+                        'mesai' => (string) $satir['limit_saat'],
+                        'gec' => (bool) $satir['gec'],
+                    ];
+                }
+                echo safeJsonEncode(['status' => 'success', 'data' => ['grup' => $grup, 'liste' => $sahaListe]]);
+                break;
+
+            case 'get-saha-arac-detay':
+                if (!\App\Service\Gate::allows('arac_takip_yonetim')) {
+                    http_response_code(403);
+                    echo safeJsonEncode(['status' => 'error', 'message' => 'Bu veriyi görüntüleme yetkiniz bulunmamaktadır.']);
+                    break;
+                }
+                $grup = (string) ($_POST['grup'] ?? '');
+                if (!in_array($grup, ['gorevde', 'tamamladi', 'baslamadi', 'serviste', 'saha', 'bosta'], true)) {
+                    throw new Exception('Geçersiz durum.');
+                }
+                $sahaAracSatirlar = (new \App\Model\AracKmBildirimModel())->getGunlukDurumAraclari((int) $firmaId, $grup);
+                $sahaAracListe = [];
+                foreach ($sahaAracSatirlar as $satir) {
+                    $sahaAracListe[] = [
+                        'plaka' => (string) $satir['plaka'],
+                        'arac' => trim((string) $satir['marka'] . ' ' . (string) $satir['model']),
+                        'personel' => (string) ($satir['personel_adi'] ?? ''),
+                        'sabah' => !empty($satir['sabah_saat']) ? date('H:i', strtotime($satir['sabah_saat'])) : '',
+                        'aksam' => !empty($satir['aksam_saat']) ? date('H:i', strtotime($satir['aksam_saat'])) : '',
+                        'servis' => trim((string) ($satir['servis_adi'] ?? '')),
+                        'servis_tarihi' => !empty($satir['servis_tarihi']) ? date('d.m.Y', strtotime($satir['servis_tarihi'])) : '',
+                    ];
+                }
+                echo safeJsonEncode(['status' => 'success', 'data' => ['grup' => $grup, 'liste' => $sahaAracListe]]);
+                break;
+
             case 'get-arac-evrak-stats':
                 $aracModel = new \App\Model\AracModel();
                 $expiredCounts = $aracModel->getAracEvrakStats();

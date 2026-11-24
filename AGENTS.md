@@ -78,6 +78,9 @@
 ### 7.1. PHP CLI Konumu
 - `php` komutu PATH'te değildir; PHP CLI `/opt/lampp/bin/php` (PHP 8.2.12) yolundadır. Sözdizimi kontrolü ve CLI betikleri `/opt/lampp/bin/php -l dosya.php` biçiminde tam yolla çalıştırılacaktır.
 
+### 7.2. Yerel Veritabanı Yetkisi
+- Yerel geliştirme veritabanında (`.env` içindeki yerel `DB_NAME`) şema ve veri değişiklikleri doğrudan uygulanabilir; yine de değişiklik her zaman ayrı bir SQL scripti olarak `sql/` altına yazılacak ve script yerelde çalıştırılacaktır. Canlı/uzak veritabanına hiçbir değişiklik uygulanmaz; yalnızca SQL scripti verilir.
+
 ## 8. Yeni Sayfa Tasarım ve DataTables Standartları (Cari / Sözleşme Standardı)
 Kullanıcı "yeni sayfa standardı", "varsayılan datatable", "cari sayfasına benzer" veya yeni bir liste/yönetim sayfası talep ettiğinde aşağıdaki mimari ve görsel standartlar **birebir uygulanacaktır**:
 

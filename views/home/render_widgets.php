@@ -301,14 +301,15 @@ function renderWidget(string $widgetId, array $data = []) {
                 $izinli_p = (int) ($so['izinli'] ?? 0) + (int) ($so['molada'] ?? 0);
                 $toplam_p = max(1, $aktif_p);
                 $paSections[] = [
+                    'detay' => \App\Service\Gate::allows('personel-takip/list'),
                     'icon' => 'bx-group', 'tone' => 'blue', 'label' => 'Personel Durumu', 'total' => $aktif_p, 'unit' => 'Saha', 'extra_total' => (int) ($istatistik->aktif_personel ?? 0), 'extra_unit' => 'Aktif',
                     'badge' => '%' . (int) round($gorevde_p / $toplam_p * 100) . ' Görevde', 'link' => 'index.php?p=personel/list', 'link_text' => 'Personel Listesi',
                     'segments' => [
-                        ['Görevde', $gorevde_p, '#2563eb', round($gorevde_p / $toplam_p * 100, 2)],
-                        ['Tamamladı', $tamam_p, '#64748b', round($tamam_p / $toplam_p * 100, 2)],
-                        ['Başlamadı', $baslamadi_p, '#06b6d4', round($baslamadi_p / $toplam_p * 100, 2)],
-                        ['İzinli', $izinli_p, '#f59e0b', round($izinli_p / $toplam_p * 100, 2)],
-                        ['Geç Kalan', (int) ($gec_kalan_sayisi ?? 0), '#e11d48', 0],
+                        ['Görevde', $gorevde_p, '#2563eb', round($gorevde_p / $toplam_p * 100, 2), 'gorevde'],
+                        ['Tamamladı', $tamam_p, '#64748b', round($tamam_p / $toplam_p * 100, 2), 'tamamladi'],
+                        ['Başlamadı', $baslamadi_p, '#06b6d4', round($baslamadi_p / $toplam_p * 100, 2), 'baslamadi'],
+                        ['İzinli', $izinli_p, '#f59e0b', round($izinli_p / $toplam_p * 100, 2), 'izinli'],
+                        ['Geç Kalan', (int) ($gec_kalan_sayisi ?? 0), '#e11d48', 0, 'gec_kalan'],
                     ],
                     'overlay' => [
                         'label' => 'Geç Kalan', 'value' => (int) ($gec_kalan_sayisi ?? 0), 'color' => '#e11d48', 'pct' => min(100, round((int) ($gec_kalan_sayisi ?? 0) / $toplam_p * 100, 2)),
@@ -318,17 +319,18 @@ function renderWidget(string $widgetId, array $data = []) {
             if ($paAracVar) {
                 $arac_toplam = max(1, (int) ($toplam_aktif_arac ?? 0));
                 $paSections[] = [
+                    'detay' => true, 'tur' => 'arac',
                     'icon' => 'bx-car', 'tone' => 'purple', 'label' => 'Araç Durumu', 'total' => (int) ($toplam_aktif_arac ?? 0), 'unit' => 'aktif araç',
                     'badge' => '%' . (int) round((int) ($saha_arac ?? 0) / $arac_toplam * 100) . ' Sahada', 'link' => 'index.php?p=arac-takip/list', 'link_text' => 'Araç Listesi',
                     'segments' => [
-                        ['Saha Aracı', (int) ($saha_arac ?? 0), '#059669', (float) ($aktif_a_yuzde ?? 0)],
-                        ['Serviste', (int) ($servisteki_arac ?? 0), '#e11d48', (float) ($servis_a_yuzde ?? 0)],
-                        ['Boşta', (int) ($bosta_arac ?? 0), '#f59e0b', (float) ($bosta_a_yuzde ?? 0)],
+                        ['Saha Aracı', (int) ($saha_arac ?? 0), '#059669', (float) ($aktif_a_yuzde ?? 0), 'saha'],
+                        ['Serviste', (int) ($servisteki_arac ?? 0), '#e11d48', (float) ($servis_a_yuzde ?? 0), 'serviste'],
+                        ['Boşta', (int) ($bosta_arac ?? 0), '#f59e0b', (float) ($bosta_a_yuzde ?? 0), 'bosta'],
                     ],
                     'extra_legend' => is_array($arac_gun_ozet ?? null) ? [
-                        ['Görevde', (int) $arac_gun_ozet['gorevde'], '#2563eb'],
-                        ['Tamamladı', (int) $arac_gun_ozet['tamamladi'], '#64748b'],
-                        ['Başlamadı', (int) $arac_gun_ozet['baslamadi'], '#06b6d4'],
+                        ['Görevde', (int) $arac_gun_ozet['gorevde'], '#2563eb', 'gorevde'],
+                        ['Tamamladı', (int) $arac_gun_ozet['tamamladi'], '#64748b', 'tamamladi'],
+                        ['Başlamadı', (int) $arac_gun_ozet['baslamadi'], '#06b6d4', 'baslamadi'],
                     ] : [],
                 ];
             }
@@ -365,12 +367,20 @@ function renderWidget(string $widgetId, array $data = []) {
                                 </div>
                                 <div class="pa-legend">
                                     <?php foreach ($paSec['segments'] as $paSeg): ?>
-                                        <span class="pa-legend-item" style="--dot: <?php echo $paEsc($paSeg[2]); ?>;"><i></i><span><?php echo $paEsc($paSeg[0]); ?></span><b><?php echo (int) $paSeg[1]; ?></b></span>
+                                        <?php if (!empty($paSec['detay']) && !empty($paSeg[4])): ?>
+                                            <button type="button" class="pa-legend-item pa-legend-btn" data-saha-tur="<?php echo $paEsc($paSec['tur'] ?? 'personel'); ?>" data-saha-grup="<?php echo $paEsc($paSeg[4]); ?>" data-saha-baslik="<?php echo $paEsc($paSeg[0]); ?>" style="--dot: <?php echo $paEsc($paSeg[2]); ?>;"><i></i><span><?php echo $paEsc($paSeg[0]); ?></span><b><?php echo (int) $paSeg[1]; ?></b></button>
+                                        <?php else: ?>
+                                            <span class="pa-legend-item" style="--dot: <?php echo $paEsc($paSeg[2]); ?>;"><i></i><span><?php echo $paEsc($paSeg[0]); ?></span><b><?php echo (int) $paSeg[1]; ?></b></span>
+                                        <?php endif; ?>
                                     <?php endforeach; ?>
                                     <?php if (!empty($paSec['extra_legend'])): ?>
                                         <span class="pa-legend-sep" aria-hidden="true"></span>
                                         <?php foreach ($paSec['extra_legend'] as $paExtra): ?>
-                                            <span class="pa-legend-item" style="--dot: <?php echo $paEsc($paExtra[2]); ?>;"><i></i><span><?php echo $paEsc($paExtra[0]); ?></span><b><?php echo (int) $paExtra[1]; ?></b></span>
+                                            <?php if (!empty($paSec['detay']) && !empty($paExtra[3])): ?>
+                                                <button type="button" class="pa-legend-item pa-legend-btn" data-saha-tur="<?php echo $paEsc($paSec['tur'] ?? 'personel'); ?>" data-saha-grup="<?php echo $paEsc($paExtra[3]); ?>" data-saha-baslik="<?php echo $paEsc($paExtra[0]); ?>" style="--dot: <?php echo $paEsc($paExtra[2]); ?>;"><i></i><span><?php echo $paEsc($paExtra[0]); ?></span><b><?php echo (int) $paExtra[1]; ?></b></button>
+                                            <?php else: ?>
+                                                <span class="pa-legend-item" style="--dot: <?php echo $paEsc($paExtra[2]); ?>;"><i></i><span><?php echo $paEsc($paExtra[0]); ?></span><b><?php echo (int) $paExtra[1]; ?></b></span>
+                                            <?php endif; ?>
                                         <?php endforeach; ?>
                                     <?php endif; ?>
                                 </div>

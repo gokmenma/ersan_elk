@@ -2434,3 +2434,5 @@
 
 - [x] Ana sayfa: duyuru slider'ı tam genişlik üst kart, takvim hero içinde yatay şerit + evrak listesi.
 - [x] Ana sayfa personel durumu kartı personel takip sayılarıyla birleştirildi (lokal DB'de bugün hareket verisi olmadığından sayı karşılaştırması sunucuda doğrulanmalı).
+- [x] Ana sayfa personel durumu legend tıklama modalı (yetkiye bağlı)
+- [x] Ana sayfa araç durumu legend modalı

@@ -1266,6 +1266,10 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                 .pa-legend-item { display:inline-flex; align-items:center; gap:7px; font-size:12.5px; color:#64748b; }
                 .pa-legend-item i { width:8px; height:8px; border-radius:50%; background:var(--dot); }
                 .pa-legend-item b { font-size:14px; font-weight:700; color:#0f172a; }
+                .pa-legend-btn { background:none; border:0; padding:4px 8px; margin:-4px -8px; border-radius:8px; cursor:pointer; font-family:inherit; transition:background .15s ease; }
+                .pa-legend-btn:hover, .pa-legend-btn:focus-visible { background:rgba(100,116,139,.12); outline:none; }
+                #sahaPersonelModal .saha-row-avatar { width:34px; height:34px; border-radius:50%; background:#e2e8f0; color:#475569; font-size:12px; font-weight:700; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
+                [data-bs-theme="dark"] .pa-legend-btn:hover { background:rgba(255,255,255,.08); }
                 [data-bs-theme="dark"] .pa-card { background:#2a3042; }
                 [data-bs-theme="dark"] .pa-divider { background:#3a4256; }
                 [data-bs-theme="dark"] .pa-total, [data-bs-theme="dark"] .pa-legend-item b { color:#f8fafc; }
@@ -2184,6 +2188,93 @@ foreach ($pinGroups as $pinMin => $pinNames) {
             </div>
         </div>
 
+        <script>
+        (function () {
+            var istek = 0;
+            var modalHtml = '<div class="modal fade" id="sahaPersonelModal" tabindex="-1" aria-labelledby="sahaPersonelTitle" aria-hidden="true">'
+                + '<div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable"><div class="modal-content border-0" style="border-radius:16px;overflow:hidden;">'
+                + '<div class="modal-header"><h5 class="modal-title fw-bold" id="sahaPersonelTitle">Personel</h5>'
+                + '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button></div>'
+                + '<div class="modal-body p-0"><div id="sahaPersonelListe"></div></div>'
+                + '<div class="modal-footer justify-content-between"><span class="text-muted" style="font-size:12px;" id="sahaPersonelSayi"></span>'
+                + '<a href="index.php?p=personel-takip/list" class="btn btn-sm btn-outline-secondary">Personel Takibi\'ne Git</a></div>'
+                + '</div></div></div>';
+            function sayiAyarla(metin) {
+                var el = document.getElementById('sahaPersonelSayi');
+                if (el) { el.textContent = metin; }
+            }
+            function modalHazirla() {
+                var el = document.getElementById('sahaPersonelModal');
+                if (!el) {
+                    document.body.insertAdjacentHTML('beforeend', modalHtml);
+                    el = document.getElementById('sahaPersonelModal');
+                }
+                return el;
+            }
+            function kapsa(v) { var d = document.createElement('div'); d.textContent = v == null ? '' : String(v); return d.innerHTML; }
+            function bas(ad) { var p = String(ad || '').trim().split(/\s+/); return ((p[0] || '').charAt(0) + (p.length > 1 ? p[p.length - 1].charAt(0) : '')).toLocaleUpperCase('tr-TR'); }
+            document.addEventListener('click', function (e) {
+                var btn = e.target.closest ? e.target.closest('.pa-legend-btn[data-saha-grup]') : null;
+                if (!btn) { return; }
+                var grup = btn.getAttribute('data-saha-grup');
+                var tur = btn.getAttribute('data-saha-tur') === 'arac' ? 'arac' : 'personel';
+                var baslik = btn.getAttribute('data-saha-baslik') || 'Personel';
+                var modalEl = modalHazirla();
+                var liste = modalEl.querySelector('#sahaPersonelListe');
+                var baslikEl = modalEl.querySelector('#sahaPersonelTitle');
+                if (baslikEl) { baslikEl.textContent = baslik; }
+                var altMetin = tur === 'arac' ? 'Bugün · araç durumu' : 'Bugün · saha takibindeki personel';
+                sayiAyarla(altMetin);
+                liste.innerHTML = '<div class="text-center text-muted py-5"><span class="spinner-border spinner-border-sm me-2"></span>' + kapsa(baslik) + ' listesi hazırlanıyor, işlem yapılıyor...</div>';
+                bootstrap.Modal.getOrCreateInstance(modalEl).show();
+                var no = ++istek;
+                var body = new URLSearchParams();
+                body.append('action', tur === 'arac' ? 'get-saha-arac-detay' : 'get-saha-personel-detay');
+                body.append('grup', grup);
+                fetch('views/home/api.php', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString(), credentials: 'same-origin' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (res) {
+                        if (no !== istek) { return; }
+                        if (!res || res.status !== 'success') {
+                            liste.innerHTML = '<div class="text-center text-danger py-5">' + kapsa(res && res.message ? res.message : 'Veri alınamadı.') + '</div>';
+                            return;
+                        }
+                        var rows = res.data.liste || [];
+                        sayiAyarla(altMetin + ' · ' + rows.length + (tur === 'arac' ? ' araç' : ' personel'));
+                        if (!rows.length) {
+                            liste.innerHTML = '<div class="text-center text-muted py-5">Kayıt bulunamadı.</div>';
+                            return;
+                        }
+                        var html;
+                        if (tur === 'arac') {
+                            html = '<div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>Plaka</th><th>Araç</th><th>Zimmetli Personel</th><th class="text-center">Sabah KM</th><th class="text-center">Akşam KM</th><th>Servis</th></tr></thead><tbody>';
+                            rows.forEach(function (r) {
+                                html += '<tr><td class="fw-semibold">' + kapsa(r.plaka) + '</td>'
+                                    + '<td>' + kapsa(r.arac || '-') + '</td>'
+                                    + '<td>' + kapsa(r.personel || '-') + '</td>'
+                                    + '<td class="text-center">' + kapsa(r.sabah || '-') + '</td>'
+                                    + '<td class="text-center">' + kapsa(r.aksam || '-') + '</td>'
+                                    + '<td>' + kapsa(r.servis ? r.servis + (r.servis_tarihi ? ' · ' + r.servis_tarihi : '') : '-') + '</td></tr>';
+                            });
+                        } else {
+                            html = '<div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>Personel</th><th>Departman</th><th class="text-center">Mesai</th><th class="text-center">Başlama</th><th class="text-center">Bitiş</th><th>Durum</th></tr></thead><tbody>';
+                            rows.forEach(function (r) {
+                                html += '<tr><td><div class="d-flex align-items-center gap-2"><span class="saha-row-avatar">' + kapsa(bas(r.adi_soyadi)) + '</span><span class="fw-semibold">' + kapsa(r.adi_soyadi) + '</span></div></td>'
+                                    + '<td>' + kapsa(r.departman || '-') + '</td>'
+                                    + '<td class="text-center">' + kapsa(r.mesai) + '</td>'
+                                    + '<td class="text-center">' + kapsa(r.baslama || '-') + '</td>'
+                                    + '<td class="text-center">' + kapsa(r.bitis || '-') + '</td>'
+                                    + '<td>' + kapsa(r.durum) + (r.gec ? ' <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill ms-1">Geç</span>' : '') + '</td></tr>';
+                            });
+                        }
+                        liste.innerHTML = html + '</tbody></table></div>';
+                    })
+                    .catch(function () {
+                        if (no === istek) { liste.innerHTML = '<div class="text-center text-danger py-5">Veri alınamadı.</div>'; }
+                    });
+            });
+        })();
+        </script>
         <div class="modal fade" id="kesmeDistributionModal" tabindex="-1" aria-labelledby="kesmeDistributionTitle" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
                 <div class="modal-content border-0" style="border-radius:18px;overflow:hidden;box-shadow:0 28px 75px -28px rgba(15,23,42,.6);">

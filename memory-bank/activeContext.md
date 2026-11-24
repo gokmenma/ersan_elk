@@ -4168,3 +4168,6 @@
 
 ## 2026-11-24 Araç durumu: günlük görevde/tamamladı
 - `AracKmBildirimModel::getGunlukDurumOzeti()`: aktif zimmetli araçlar için bugün sabah KM bildirimi = Görevde, akşam bildirimi = Tamamladı, hiçbiri yok = Başlamadı. Araç bölümü legend'ına ayraçla eklendi (progress çubuğu değişmedi). Widget önbellek anahtarı widget_v6_.
+- Ana sayfa Personel Durumu legend'ları (Görevde/Tamamladı/Başlamadı/İzinli/Geç Kalan) `personel-takip/list` yetkisi olanlarda tıklanabilir; `home/api` `get-saha-personel-detay` aksiyonu aynı yetkiyle sunucuda korunur (policy: `sql/2026_11_24_home_saha_personel_detay_policy.sql`). Modal: `#sahaPersonelModal` (views/home.php).
+- Araç Durumu legend'ları (Görevde/Tamamladı/Başlamadı/Serviste) `arac_takip_yonetim` yetkisiyle modal açar; API `get-saha-arac-detay`, policy: `sql/2026_11_24_home_saha_arac_detay_policy.sql`. Modal artık JS ile body'ye eklenir (DOM'da yoksa null hatası önlenir).
+- Araç Durumu: Saha Aracı (aktif+zimmetli+serviste değil) ve Boşta etiketleri de modal açar (`get-saha-arac-detay` grup: saha, bosta).

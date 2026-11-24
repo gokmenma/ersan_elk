@@ -122,58 +122,47 @@ $(document).ready(function () {
         if (yeni) { document.getElementById('maliyetListCard').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
     });
     const ozelKalemSecici = '#es_kalem, #mg_kategori, #fk_kalem';
-    const kalemRenkleri = ['#ec4899', '#84cc16', '#f97316', '#06b6d4', '#a855f7', '#eab308', '#ef4444', '#3b82f6', '#22c55e', '#78716c'];
     const oncekiKalem = {};
+    let yeniKalemHedef = null;
+    const $yeniKalemModal = $('#yeniKalemModal');
     $(ozelKalemSecici).on('select2:opening', function () { oncekiKalem[this.id] = $(this).val(); });
     $(ozelKalemSecici).on('change', function () {
         if ($(this).val() !== '__yeni__') { return; }
-        const $sel = $(this);
-        const geri = oncekiKalem[this.id] || '';
-        $sel.val(geri).trigger('change.select2');
-        const $modal = $sel.closest('.modal');
-        let secili = kalemRenkleri[0];
-        Swal.fire({
-            title: 'Yeni Maliyet Kalemi',
-            html: '<input id="yk_ad" class="swal2-input" maxlength="60" placeholder="Kalem adı" autocomplete="off">'
-                + '<div id="yk_renkler" class="d-flex justify-content-center flex-wrap gap-2 mt-2">'
-                + kalemRenkleri.map(function (c, i) {
-                    return '<button type="button" class="yk-renk border-0 rounded-circle" data-renk="' + c + '" style="width:26px;height:26px;background:' + c + ';outline:' + (i === 0 ? '2px solid #0f172a' : 'none') + ';outline-offset:2px;"></button>';
-                }).join('') + '</div>',
-            showCancelButton: true,
-            confirmButtonText: 'Ekle',
-            cancelButtonText: 'Vazgeç',
-            focusConfirm: false,
-            didOpen: function () {
-                $('#yk_ad').trigger('focus');
-                $('#yk_renkler').on('click', '.yk-renk', function () {
-                    secili = $(this).data('renk');
-                    $('.yk-renk').css('outline', 'none');
-                    $(this).css('outline', '2px solid #0f172a');
-                });
-            },
-            preConfirm: function () {
-                const ad = $.trim($('#yk_ad').val());
-                if (ad.length < 2) { Swal.showValidationMessage('Kalem adı en az 2 karakter olmalıdır.'); return false; }
-                return post({ action: 'kalem-ekle', ad: ad, renk: secili }).then(function (res) {
-                    if (res.status !== 'success') { Swal.showValidationMessage(res.message || 'Kalem eklenemedi.'); return false; }
-                    return res.kalem;
-                }, function () { Swal.showValidationMessage('Sunucu hatası oluştu.'); return false; });
-            }
-        }).then(function (r) {
-            if (!r.isConfirmed || !r.value) { return; }
-            const k = r.value;
+        yeniKalemHedef = $(this);
+        $(this).val(oncekiKalem[this.id] || '').trigger('change.select2');
+        $yeniKalemModal.modal('show');
+    });
+    $yeniKalemModal.on('shown.bs.modal', function () {
+        $('.modal-backdrop').last().css('z-index', 1070);
+        $('#yk_ad').trigger('focus');
+    });
+    $yeniKalemModal.on('hidden.bs.modal', function () {
+        $('#yeniKalemForm')[0].reset();
+        $('#yk_hata').addClass('d-none');
+        if ($('.modal.show').length) { $('body').addClass('modal-open'); }
+    });
+    $('#yeniKalemForm').on('submit', function (e) {
+        e.preventDefault();
+        const ad = $.trim($('#yk_ad').val());
+        const $hata = $('#yk_hata');
+        if (ad.length < 2) { $hata.text('Kalem adı en az 2 karakter olmalıdır.').removeClass('d-none'); return; }
+        const $btn = $(this).find('button[type=submit]').prop('disabled', true);
+        post({ action: 'kalem-ekle', ad: ad, renk: $('.yk-renk-input:checked').val() }).done(function (res) {
+            if (res.status !== 'success') { $hata.text(res.message || 'Kalem eklenemedi.').removeClass('d-none'); return; }
+            const k = res.kalem;
             kalemler[k.kod] = { ad: k.ad, renk: k.renk };
             $(ozelKalemSecici).each(function () {
                 const $o = $(this);
-                const yeni = new Option(k.ad, k.kod);
-                const $ayrac = $o.find('option[value="__yeni__"]');
                 const $haric = $o.find('option[value="haric"]');
-                if ($haric.length) { $(yeni).insertBefore($haric); } else if ($ayrac.length) { $(yeni).insertBefore($ayrac); } else { $o.append(yeni); }
+                const $yeni = $o.find('option[value="__yeni__"]');
+                const opt = new Option(k.ad, k.kod);
+                if ($haric.length) { $(opt).insertBefore($haric); } else if ($yeni.length) { $(opt).insertBefore($yeni); } else { $o.append(opt); }
                 $o.trigger('change.select2');
             });
-            $sel.val(k.kod).trigger('change.select2');
-            if ($modal.length) { $modal.css('overflow', 'auto'); }
-        });
+            if (yeniKalemHedef) { yeniKalemHedef.val(k.kod).trigger('change.select2'); }
+            $yeniKalemModal.modal('hide');
+        }).fail(function (xhr) { $hata.text((xhr.responseJSON && xhr.responseJSON.message) || 'Sunucu hatası oluştu.').removeClass('d-none'); })
+          .always(function () { $btn.prop('disabled', false); });
     });
 
     const kalemGrafikCiz = function () {

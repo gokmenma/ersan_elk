@@ -390,6 +390,68 @@ class AracKmBildirimModel extends Model
         ];
     }
 
+    public function getGunlukDurumAraclari(int $firmaId, string $grup, ?string $tarih = null): array
+    {
+        $gun = $tarih ?: date('Y-m-d');
+
+        if ($grup === 'serviste') {
+            $sql = "SELECT a.plaka, a.marka, a.model, NULL AS personel_adi, NULL AS sabah_saat, NULL AS aksam_saat,
+                           MAX(s.servis_adi) AS servis_adi, MIN(s.servis_tarihi) AS servis_tarihi
+                    FROM araclar a
+                    INNER JOIN arac_servis_kayitlari s ON a.id = s.arac_id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL
+                    WHERE a.firma_id = :firma_id AND a.silinme_tarihi IS NULL AND a.ikame_mi = 0
+                    GROUP BY a.id, a.plaka, a.marka, a.model
+                    ORDER BY a.plaka ASC";
+            $params = ['firma_id' => $firmaId];
+        } elseif ($grup === 'saha' || $grup === 'bosta') {
+            $zimmetKosulu = $grup === 'bosta' ? 'z.id IS NULL' : 'z.id IS NOT NULL';
+            $sql = "SELECT a.plaka, a.marka, a.model, p.adi_soyadi AS personel_adi, NULL AS sabah_saat, NULL AS aksam_saat, NULL AS servis_adi, NULL AS servis_tarihi
+                    FROM araclar a
+                    LEFT JOIN arac_zimmetleri z ON z.arac_id = a.id AND z.durum = 'aktif' AND z.silinme_tarihi IS NULL
+                    LEFT JOIN personel p ON p.id = z.personel_id
+                    WHERE a.firma_id = :firma_id AND a.silinme_tarihi IS NULL AND a.aktif_mi = 1 AND a.ikame_mi = 0
+                      AND {$zimmetKosulu}
+                      AND NOT EXISTS (SELECT 1 FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL)
+                    GROUP BY a.id, a.plaka, a.marka, a.model, p.adi_soyadi
+                    ORDER BY a.plaka ASC";
+            $params = ['firma_id' => $firmaId];
+        } else {
+            $kosul = ['gorevde' => 'x.sabah > 0 AND x.aksam = 0', 'tamamladi' => 'x.aksam > 0', 'baslamadi' => 'x.sabah = 0 AND x.aksam = 0'][$grup] ?? null;
+            if ($kosul === null) {
+                return [];
+            }
+            $sql = "SELECT a.plaka, a.marka, a.model, p.adi_soyadi AS personel_adi, x.sabah_saat, x.aksam_saat, NULL AS servis_adi, NULL AS servis_tarihi
+                    FROM (
+                        SELECT z.arac_id, MAX(z.personel_id) AS personel_id,
+                            (SELECT COUNT(*) FROM {$this->table} b WHERE b.arac_id = z.arac_id AND b.tarih = :gun_sabah AND b.tur = 'sabah'
+                                AND b.durum != 'reddedildi' AND b.silinme_tarihi IS NULL) AS sabah,
+                            (SELECT COUNT(*) FROM {$this->table} b WHERE b.arac_id = z.arac_id AND b.tarih = :gun_aksam AND b.tur = 'aksam'
+                                AND b.durum != 'reddedildi' AND b.silinme_tarihi IS NULL) AS aksam,
+                            (SELECT MIN(b.olusturma_tarihi) FROM {$this->table} b WHERE b.arac_id = z.arac_id AND b.tarih = :gun_sabah2 AND b.tur = 'sabah'
+                                AND b.durum != 'reddedildi' AND b.silinme_tarihi IS NULL) AS sabah_saat,
+                            (SELECT MIN(b.olusturma_tarihi) FROM {$this->table} b WHERE b.arac_id = z.arac_id AND b.tarih = :gun_aksam2 AND b.tur = 'aksam'
+                                AND b.durum != 'reddedildi' AND b.silinme_tarihi IS NULL) AS aksam_saat
+                        FROM arac_zimmetleri z
+                        WHERE z.durum = 'aktif' AND z.firma_id = :firma_id AND z.silinme_tarihi IS NULL AND z.zimmet_tarihi <= :gun_zimmet
+                        GROUP BY z.arac_id
+                    ) x
+                    INNER JOIN araclar a ON a.id = x.arac_id
+                    LEFT JOIN personel p ON p.id = x.personel_id
+                    WHERE {$kosul}
+                    ORDER BY a.plaka ASC";
+            $params = ['gun_sabah' => $gun, 'gun_aksam' => $gun, 'gun_sabah2' => $gun, 'gun_aksam2' => $gun, 'firma_id' => $firmaId, 'gun_zimmet' => $gun];
+        }
+
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Throwable $e) {
+            error_log('AracKmBildirimModel::getGunlukDurumAraclari hatası: ' . $e->getMessage());
+            return [];
+        }
+    }
+
     /**
      * Belirli bir tarih ve tür için KM bildirimi yapmayan personelleri getirir
      */

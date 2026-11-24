@@ -73,6 +73,8 @@ $title = 'Maliyet Raporu';
 @media (prefers-reduced-motion: reduce) { #summaryCardsContainer { transition: none; } }
 .maliyet-aylik-tablo th, .maliyet-aylik-tablo td { padding: .7rem .75rem; }
 .maliyet-aylik-tablo tfoot td { background: #f8fafc; }
+.yk-renk { outline: 2px solid transparent; outline-offset: 2px; transition: outline-color .15s; }
+.yk-renk-input:checked + .yk-renk { outline-color: #0f172a; }
 .maliyet-kalem-row { cursor: pointer; }
 .maliyet-kalem-row.active td { background-color: #f1f5f9 !important; }
 .maliyet-kalem-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
@@ -502,6 +504,36 @@ $title = 'Maliyet Raporu';
                 <div class="modal-footer">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">İptal</button>
                     <button type="submit" class="btn btn-primary"><i class="bx bx-save"></i> Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="yeniKalemModal" tabindex="-1" aria-labelledby="yeniKalemModalLabel" aria-hidden="true" style="z-index: 1075;">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="yeniKalemModalLabel">Yeni Maliyet Kalemi</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <form id="yeniKalemForm" autocomplete="off">
+                <div class="modal-body">
+                    <?= Form::FormFloatInput('text', 'yk_ad', '', 'Kalem adı', 'Kalem adı', 'tag', 'form-control', true, 60, 'off') ?>
+                    <div class="font-size-12 text-secondary mt-3 mb-2">Renk</div>
+                    <div class="d-flex flex-wrap gap-2" id="yk_renkler">
+                        <?php foreach (\App\Model\MaliyetOzelKalemModel::RENKLER as $i => $renk): ?>
+                            <label class="m-0" style="cursor:pointer;">
+                                <input type="radio" name="renk" value="<?= $h($renk) ?>" class="d-none yk-renk-input"<?= $i === 0 ? ' checked' : '' ?>>
+                                <span class="yk-renk d-block rounded-circle" style="width: 28px; height: 28px; background: <?= $h($renk) ?>;"></span>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                    <div class="text-danger font-size-12 mt-2 d-none" id="yk_hata"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Vazgeç</button>
+                    <button type="submit" class="btn btn-primary"><i class="bx bx-plus"></i> Ekle</button>
                 </div>
             </form>
         </div>

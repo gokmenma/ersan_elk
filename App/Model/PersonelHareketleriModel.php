@@ -544,6 +544,24 @@ class PersonelHareketleriModel extends Model
 
     public function getSahaGunOzeti($firma_id = null, $tarih = null, $departman = null, ?array $departmanlar = null): array
     {
+        return $this->sahaGunSinifla($firma_id, $tarih, $departman, $departmanlar)['ozet'];
+    }
+
+    public function getSahaGunPersonelleri($firma_id, string $grup, $tarih = null, $departman = null, ?array $departmanlar = null): array
+    {
+        $satirlar = $this->sahaGunSinifla($firma_id, $tarih, $departman, $departmanlar)['satirlar'];
+        $liste = [];
+        foreach ($satirlar as $satir) {
+            $uygun = $grup === 'gec_kalan' ? $satir['gec'] : $satir['grup'] === $grup;
+            if ($uygun) {
+                $liste[] = $satir;
+            }
+        }
+        return $liste;
+    }
+
+    private function sahaGunSinifla($firma_id, $tarih, $departman, ?array $departmanlar): array
+    {
         $gun = $tarih ?: date('Y-m-d');
         $bugunMu = $gun === date('Y-m-d');
         $now = new \DateTime();
@@ -553,7 +571,7 @@ class PersonelHareketleriModel extends Model
             $json = (new SettingsModel())->getSettings('personel_takip_departman_mesaileri');
             $deptMesaileri = $json ? (json_decode($json, true) ?: []) : [];
         } catch (\Throwable $e) {
-            error_log('PersonelHareketleriModel::getGunlukOzet mesai ayari okunamadi: ' . $e->getMessage());
+            error_log('PersonelHareketleriModel::sahaGunSinifla mesai ayari okunamadi: ' . $e->getMessage());
         }
 
         $personeller = $this->getTumPersonelDurumu($firma_id, $gun, $departman);
@@ -571,6 +589,7 @@ class PersonelHareketleriModel extends Model
         }
 
         $ozet = ['gorevde' => 0, 'tamamladi' => 0, 'baslamadi' => 0, 'izinli' => 0, 'molada' => 0, 'gec_kalan' => 0, 'toplam' => count($personeller)];
+        $satirlar = [];
 
         foreach ($personeller as $p) {
             $isIzinli = in_array($p->personel_id, $izinliler) || $p->durum === 'molada';
@@ -582,33 +601,40 @@ class PersonelHareketleriModel extends Model
                 $limitTime = new \DateTime($gun . ' 08:30');
             }
 
+            $gec = false;
             if ($p->durum === 'aktif') {
+                $grup = 'gorevde';
                 $ozet['gorevde']++;
                 if (!$isIzinli && !empty($p->son_baslama) && $p->son_baslama !== '0000-00-00 00:00:00') {
                     try {
                         $baslama = new \DateTime($p->son_baslama);
-                        if ($baslama->format('Y-m-d') === $gun && $baslama->format('H:i') > $limitSaat) {
-                            $ozet['gec_kalan']++;
-                        }
+                        $gec = $baslama->format('Y-m-d') === $gun && $baslama->format('H:i') > $limitSaat;
                     } catch (\Exception $e) {
-                        continue;
+                        $gec = false;
                     }
                 }
             } elseif ($p->durum === 'bitti') {
+                $grup = 'tamamladi';
                 $ozet['tamamladi']++;
             } elseif ($p->durum === 'izinli') {
+                $grup = 'izinli';
                 $ozet['izinli']++;
             } elseif ($p->durum === 'molada') {
+                $grup = 'izinli';
                 $ozet['molada']++;
             } else {
+                $grup = 'baslamadi';
                 $ozet['baslamadi']++;
-                if ($bugunMu && !$isIzinli && $now > $limitTime) {
-                    $ozet['gec_kalan']++;
-                }
+                $gec = $bugunMu && !$isIzinli && $now > $limitTime;
             }
+
+            if ($gec) {
+                $ozet['gec_kalan']++;
+            }
+            $satirlar[] = ['p' => $p, 'grup' => $grup, 'gec' => $gec, 'limit_saat' => $limitSaat];
         }
 
-        return $ozet;
+        return ['ozet' => $ozet, 'satirlar' => $satirlar];
     }
 
     /**
