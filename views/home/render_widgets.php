@@ -293,17 +293,20 @@ function renderWidget(string $widgetId, array $data = []) {
             $paAracVar = \App\Service\Gate::allows('arac_takip_yonetim');
             $paSections = [];
             if ($paPersonelVar) {
-                $aktif_p = (int) ($istatistik->aktif_personel ?? 0);
-                $saha_p = (int) ($extraStats->sahadaki_personel ?? 0);
-                $izinli_p = (int) ($extraStats->izinli_personel ?? 0);
-                $diger_p = max(0, $aktif_p - $saha_p - $izinli_p);
+                $so = is_array($saha_ozet ?? null) ? $saha_ozet : [];
+                $aktif_p = (int) ($so['toplam'] ?? 0);
+                $gorevde_p = (int) ($so['gorevde'] ?? 0);
+                $tamam_p = (int) ($so['tamamladi'] ?? 0);
+                $baslamadi_p = (int) ($so['baslamadi'] ?? 0);
+                $izinli_p = (int) ($so['izinli'] ?? 0) + (int) ($so['molada'] ?? 0);
                 $toplam_p = max(1, $aktif_p);
                 $paSections[] = [
-                    'icon' => 'bx-group', 'tone' => 'blue', 'label' => 'Personel Durumu', 'total' => $aktif_p, 'unit' => 'aktif personel',
-                    'badge' => '%' . (int) round($saha_p / $toplam_p * 100) . ' Sahada', 'link' => 'index.php?p=personel/list', 'link_text' => 'Personel Listesi',
+                    'icon' => 'bx-group', 'tone' => 'blue', 'label' => 'Personel Durumu', 'total' => $aktif_p, 'unit' => 'saha personeli',
+                    'badge' => '%' . (int) round($gorevde_p / $toplam_p * 100) . ' Görevde', 'link' => 'index.php?p=personel/list', 'link_text' => 'Personel Listesi',
                     'segments' => [
-                        ['Saha Görevlisi', $saha_p, '#2563eb', round($saha_p / $toplam_p * 100, 2)],
-                        ['İçeride / Diğer', $diger_p, '#06b6d4', round($diger_p / $toplam_p * 100, 2)],
+                        ['Görevde', $gorevde_p, '#2563eb', round($gorevde_p / $toplam_p * 100, 2)],
+                        ['Tamamladı', $tamam_p, '#64748b', round($tamam_p / $toplam_p * 100, 2)],
+                        ['Başlamadı', $baslamadi_p, '#06b6d4', round($baslamadi_p / $toplam_p * 100, 2)],
                         ['İzinli', $izinli_p, '#f59e0b', round($izinli_p / $toplam_p * 100, 2)],
                         ['Geç Kalan', (int) ($gec_kalan_sayisi ?? 0), '#e11d48', 0],
                     ],
@@ -370,10 +373,12 @@ function renderWidget(string $widgetId, array $data = []) {
         case 'widget-personel-ozeti':
         case 'widget-personel-ozet':
             $kpiEsc = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
-            $aktif_p = (int) ($istatistik->aktif_personel ?? 0);
-            $saha_p = (int) ($extraStats->sahadaki_personel ?? 0);
-            $izinli_p = (int) ($extraStats->izinli_personel ?? 0);
-            $diger_p = max(0, $aktif_p - $saha_p - $izinli_p);
+            $so = is_array($saha_ozet ?? null) ? $saha_ozet : [];
+            $aktif_p = (int) ($so['toplam'] ?? 0);
+            $saha_p = (int) ($so['gorevde'] ?? 0);
+            $tamam_p = (int) ($so['tamamladi'] ?? 0);
+            $baslamadi_p = (int) ($so['baslamadi'] ?? 0);
+            $izinli_p = (int) ($so['izinli'] ?? 0) + (int) ($so['molada'] ?? 0);
             $gec_p = (int) ($gec_kalan_sayisi ?? 0);
             $toplam_p = max(1, $aktif_p);
             $saha_oran = (int) round($saha_p / $toplam_p * 100);
@@ -384,23 +389,25 @@ function renderWidget(string $widgetId, array $data = []) {
                         <div class="dash-kpi-header">
                             <div>
                                 <span class="dash-kpi-label">Personel Durumu</span>
-                                <div class="dash-kpi-value"><?php echo number_format($aktif_p, 0, ',', '.'); ?><span class="dash-kpi-unit">aktif personel</span></div>
+                                <div class="dash-kpi-value"><?php echo number_format($aktif_p, 0, ',', '.'); ?><span class="dash-kpi-unit">saha personeli</span></div>
                             </div>
                             <div class="dash-kpi-icon icon-blue"><i class="bx bx-group"></i></div>
                         </div>
                         <div class="dash-kpi-seg" role="img" aria-label="Personel dağılımı">
-                            <span style="width: <?php echo round($saha_p / $toplam_p * 100, 2); ?>%; background:#2563eb;" title="Saha: <?php echo $saha_p; ?>"></span>
-                            <span style="width: <?php echo round($diger_p / $toplam_p * 100, 2); ?>%; background:#06b6d4;" title="İçeride / Diğer: <?php echo $diger_p; ?>"></span>
+                            <span style="width: <?php echo round($saha_p / $toplam_p * 100, 2); ?>%; background:#2563eb;" title="Görevde: <?php echo $saha_p; ?>"></span>
+                            <span style="width: <?php echo round($tamam_p / $toplam_p * 100, 2); ?>%; background:#64748b;" title="Tamamladı: <?php echo $tamam_p; ?>"></span>
+                            <span style="width: <?php echo round($baslamadi_p / $toplam_p * 100, 2); ?>%; background:#06b6d4;" title="Başlamadı: <?php echo $baslamadi_p; ?>"></span>
                             <span style="width: <?php echo round($izinli_p / $toplam_p * 100, 2); ?>%; background:#f59e0b;" title="İzinli: <?php echo $izinli_p; ?>"></span>
                         </div>
                         <div class="dash-kpi-legend">
-                            <div class="dash-kpi-legend-item" style="--dot:#2563eb;"><span class="dash-kpi-legend-label">Saha Görevlisi</span><span class="dash-kpi-legend-value"><?php echo $saha_p; ?></span></div>
-                            <div class="dash-kpi-legend-item" style="--dot:#06b6d4;"><span class="dash-kpi-legend-label">İçeride / Diğer</span><span class="dash-kpi-legend-value"><?php echo $diger_p; ?></span></div>
+                            <div class="dash-kpi-legend-item" style="--dot:#2563eb;"><span class="dash-kpi-legend-label">Görevde</span><span class="dash-kpi-legend-value"><?php echo $saha_p; ?></span></div>
+                            <div class="dash-kpi-legend-item" style="--dot:#64748b;"><span class="dash-kpi-legend-label">Tamamladı</span><span class="dash-kpi-legend-value"><?php echo $tamam_p; ?></span></div>
+                            <div class="dash-kpi-legend-item" style="--dot:#06b6d4;"><span class="dash-kpi-legend-label">Başlamadı</span><span class="dash-kpi-legend-value"><?php echo $baslamadi_p; ?></span></div>
                             <div class="dash-kpi-legend-item" style="--dot:#f59e0b;"><span class="dash-kpi-legend-label">İzinli</span><span class="dash-kpi-legend-value"><?php echo $izinli_p; ?></span></div>
                             <div class="dash-kpi-legend-item" style="--dot:#e11d48;"><span class="dash-kpi-legend-label">Geç Kalan</span><span class="dash-kpi-legend-value"><?php echo $gec_p; ?></span></div>
                         </div>
                         <div class="dash-kpi-footer">
-                            <span class="dash-badge-soft soft-blue">%<?php echo $saha_oran; ?> Sahada</span>
+                            <span class="dash-badge-soft soft-blue">%<?php echo $saha_oran; ?> Görevde</span>
                             <a href="index.php?p=personel/list" class="dash-card-link">Personel Listesi <i class="bx bx-chevron-right"></i></a>
                         </div>
                     </div>

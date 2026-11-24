@@ -542,6 +542,75 @@ class PersonelHareketleriModel extends Model
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
+    public function getSahaGunOzeti($firma_id = null, $tarih = null, $departman = null, ?array $departmanlar = null): array
+    {
+        $gun = $tarih ?: date('Y-m-d');
+        $bugunMu = $gun === date('Y-m-d');
+        $now = new \DateTime();
+
+        $deptMesaileri = [];
+        try {
+            $json = (new SettingsModel())->getSettings('personel_takip_departman_mesaileri');
+            $deptMesaileri = $json ? (json_decode($json, true) ?: []) : [];
+        } catch (\Throwable $e) {
+            error_log('PersonelHareketleriModel::getGunlukOzet mesai ayari okunamadi: ' . $e->getMessage());
+        }
+
+        $personeller = $this->getTumPersonelDurumu($firma_id, $gun, $departman);
+        if (!empty($departmanlar)) {
+            $personeller = array_values(array_filter($personeller, static function ($p) use ($departmanlar) {
+                return in_array(trim((string) ($p->departman ?? '')), $departmanlar, true);
+            }));
+        }
+
+        $izinliler = [];
+        $stmtIzin = $this->db->prepare("SELECT pi.personel_id FROM personel_izinleri pi LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id WHERE pi.baslangic_tarihi <= :gun AND pi.bitis_tarihi >= :gun2 AND pi.onay_durumu = 'Onaylandı' AND pi.silinme_tarihi IS NULL AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))");
+        $stmtIzin->execute([':gun' => $gun, ':gun2' => $gun]);
+        while ($row = $stmtIzin->fetch(PDO::FETCH_ASSOC)) {
+            $izinliler[] = $row['personel_id'];
+        }
+
+        $ozet = ['gorevde' => 0, 'tamamladi' => 0, 'baslamadi' => 0, 'izinli' => 0, 'molada' => 0, 'gec_kalan' => 0, 'toplam' => count($personeller)];
+
+        foreach ($personeller as $p) {
+            $isIzinli = in_array($p->personel_id, $izinliler) || $p->durum === 'molada';
+            $limitSaat = (!empty($p->departman) && isset($deptMesaileri[$p->departman])) ? $deptMesaileri[$p->departman] : '08:30';
+            try {
+                $limitTime = new \DateTime($gun . ' ' . $limitSaat);
+            } catch (\Exception $e) {
+                $limitSaat = '08:30';
+                $limitTime = new \DateTime($gun . ' 08:30');
+            }
+
+            if ($p->durum === 'aktif') {
+                $ozet['gorevde']++;
+                if (!$isIzinli && !empty($p->son_baslama) && $p->son_baslama !== '0000-00-00 00:00:00') {
+                    try {
+                        $baslama = new \DateTime($p->son_baslama);
+                        if ($baslama->format('Y-m-d') === $gun && $baslama->format('H:i') > $limitSaat) {
+                            $ozet['gec_kalan']++;
+                        }
+                    } catch (\Exception $e) {
+                        continue;
+                    }
+                }
+            } elseif ($p->durum === 'bitti') {
+                $ozet['tamamladi']++;
+            } elseif ($p->durum === 'izinli') {
+                $ozet['izinli']++;
+            } elseif ($p->durum === 'molada') {
+                $ozet['molada']++;
+            } else {
+                $ozet['baslamadi']++;
+                if ($bugunMu && !$isIzinli && $now > $limitTime) {
+                    $ozet['gec_kalan']++;
+                }
+            }
+        }
+
+        return $ozet;
+    }
+
     /**
      * Belirli bir tarihteki geç kalan personel sayısını getirir
      * @param int|null $firma_id
@@ -551,59 +620,6 @@ class PersonelHareketleriModel extends Model
      */
     public function getGecKalanlarCount($firma_id = null, $tarih = null, $limit_saat = '08:30')
     {
-        $gun = $tarih ?? date('Y-m-d');
-        $now = new \DateTime();
-
-        try {
-            $limit_time = new \DateTime($gun . ' ' . $limit_saat);
-        } catch (\Exception $e) {
-            $limit_time = new \DateTime($gun . ' 08:30');
-            $limit_saat = '08:30';
-        }
-
-        $countNotStartedAsLate = $now > $limit_time ? 1 : 0;
-
-        $sql = "SELECT
-                    SUM(
-                        CASE
-                            WHEN hareket.first_start IS NOT NULL
-                                 AND TIME(hareket.first_start) > :limit_saat THEN 1
-                            WHEN hareket.first_start IS NULL
-                                 AND :count_not_started = 1 THEN 1
-                            ELSE 0
-                        END
-                    ) AS gec_kalan
-                FROM personel p
-                LEFT JOIN (
-                    SELECT
-                        ph.personel_id,
-                        MIN(CASE WHEN ph.islem_tipi = 'BASLA' THEN ph.zaman END) AS first_start
-                    FROM {$this->table} ph
-                    WHERE ph.silinme_tarihi IS NULL
-                      AND ph.zaman >= :gun_start
-                      AND ph.zaman < :gun_end
-                    GROUP BY ph.personel_id
-                ) hareket ON hareket.personel_id = p.id
-                WHERE p.silinme_tarihi IS NULL
-                  AND p.aktif_mi = 1
-                  AND p.saha_takibi = 1";
-
-        $params = [
-            ':limit_saat' => $limit_saat,
-            ':count_not_started' => $countNotStartedAsLate,
-            ':gun_start' => $gun . ' 00:00:00',
-            ':gun_end' => date('Y-m-d 00:00:00', strtotime($gun . ' +1 day')),
-        ];
-
-        if ($firma_id) {
-            $sql .= " AND p.firma_id = :firma_id";
-            $params[':firma_id'] = $firma_id;
-        }
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-        $result = $stmt->fetch(PDO::FETCH_OBJ);
-
-        return (int) ($result->gec_kalan ?? 0);
+        return (int) ($this->getSahaGunOzeti($firma_id, $tarih)['gec_kalan'] ?? 0);
     }
 }

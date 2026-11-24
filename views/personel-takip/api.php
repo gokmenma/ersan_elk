@@ -76,70 +76,8 @@ try {
             }
             $bugun_mu = $gun === date('Y-m-d');
 
-            $personeller = $HareketModel->getTumPersonelDurumu($firma_id, $gun, $departman);
-
-            $gorevde = 0;
-            $tamamladi = 0;
-            $baslamadi = 0;
-            $izinli_count = 0;
-            $molada_count = 0;
-            $gec_kalan = 0;
-
-            $now = new DateTime();
-
-            $izinliler = [];
-            $stmt_izin = $db->prepare("SELECT pi.personel_id FROM personel_izinleri pi LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id WHERE pi.baslangic_tarihi <= :gun AND pi.bitis_tarihi >= :gun AND pi.onay_durumu = 'Onaylandı' AND pi.silinme_tarihi IS NULL AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))");
-            $stmt_izin->execute([':gun' => $gun]);
-            while ($row = $stmt_izin->fetch(PDO::FETCH_ASSOC)) {
-                $izinliler[] = $row['personel_id'];
-            }
-
-            foreach ($personeller as $p) {
-                $is_izinli = in_array($p->personel_id, $izinliler) || $p->durum === 'molada';
-                $limit_saat = getDeptMesai($p->departman, $deptMesaileri);
-                try {
-                    $limit_time = new DateTime($gun . ' ' . $limit_saat);
-                } catch (Exception $e) {
-                    $limit_time = new DateTime($gun . ' 08:30');
-                }
-
-                if ($p->durum === 'aktif') {
-                    $gorevde++;
-                    // Geç başlama kontrolü
-                    if (!$is_izinli && !empty($p->son_baslama) && $p->son_baslama !== '0000-00-00 00:00:00') {
-                        try {
-                            $baslama_dt = new DateTime($p->son_baslama);
-                            if ($baslama_dt->format('Y-m-d') === $gun && $baslama_dt->format('H:i') > $limit_saat) {
-                                $gec_kalan++;
-                            }
-                        } catch (Exception $e) {
-                            // Hatalı tarih, pas geç
-                        }
-                    }
-                } elseif ($p->durum === 'bitti') {
-                    $tamamladi++;
-                } elseif ($p->durum === 'izinli') {
-                    $izinli_count++;
-                } elseif ($p->durum === 'molada') {
-                    $molada_count++;
-                } else {
-                    $baslamadi++;
-                    // Başlamamış ve saat geçmiş (bugün için)
-                    if ($bugun_mu && !$is_izinli && $now > $limit_time) {
-                        $gec_kalan++;
-                    }
-                }
-            }
-
-            response(true, [
-                'gorevde' => $gorevde,
-                'tamamladi' => $tamamladi,
-                'baslamadi' => $baslamadi,
-                'izinli' => $izinli_count,
-                'molada' => $molada_count,
-                'gec_kalan' => $gec_kalan,
-                'toplam' => count($personeller)
-            ]);
+            $ozet = $HareketModel->getSahaGunOzeti($firma_id, $gun, $departman);
+            response(true, $ozet);
             break;
 
         // Tüm personel durumları (tablo için)

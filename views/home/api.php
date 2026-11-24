@@ -266,8 +266,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         if ($widgetId == 'widget-personel-arac-ozet') {
                             if (\App\Service\Gate::allows('personel_listesi')) {
                                 $data['istatistik'] = $personelModel->personelSayilari('personel');
-                                $data['extraStats'] = $personelModel->getAdvancedDashboardStats();
-                                $data['gec_kalan_sayisi'] = $hareketModel->getGecKalanlarCount($firmaId);
+                                $data['saha_ozet'] = $hareketModel->getSahaGunOzeti($firmaId, null, null, $personelModel->getRestrictedDeptArray());
+                                $data['gec_kalan_sayisi'] = $data['saha_ozet']['gec_kalan'];
                             }
                             if (\App\Service\Gate::allows('arac_takip_yonetim')) {
                                 $aracStats = $aracModel->getStats();
@@ -282,8 +282,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             }
                         } elseif ($widgetId == 'widget-personel-ozet' || $widgetId == 'widget-personel-ozeti') {
                             $data['istatistik'] = $personelModel->personelSayilari('personel');
-                            $data['extraStats'] = $personelModel->getAdvancedDashboardStats();
-                            $data['gec_kalan_sayisi'] = $hareketModel->getGecKalanlarCount($firmaId);
+                            $data['saha_ozet'] = $hareketModel->getSahaGunOzeti($firmaId, null, null, $personelModel->getRestrictedDeptArray());
+                            $data['gec_kalan_sayisi'] = $data['saha_ozet']['gec_kalan'];
                         } elseif ($widgetId == 'widget-dogum-gunleri') {
                             if (!\App\Service\Gate::allows('personel_listesi')) {
                                 continue;

@@ -2433,3 +2433,4 @@
 - Pinli (data-grid-y) widgetlar üst üste binerse layoutDashboardGrid içinde otomatik aşağı itiliyor; birleşik özet kartı daraltıldı.
 
 - [x] Ana sayfa: duyuru slider'ı tam genişlik üst kart, takvim hero içinde yatay şerit + evrak listesi.
+- [x] Ana sayfa personel durumu kartı personel takip sayılarıyla birleştirildi (lokal DB'de bugün hareket verisi olmadığından sayı karşılaştırması sunucuda doğrulanmalı).

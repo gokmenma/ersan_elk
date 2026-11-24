@@ -4156,3 +4156,7 @@
 
 ## 2026-11-24 Personel + Araç Durumu tek kart
 - `widget-personel-arac-ozet` (tam genişlik, minimal): personel ve araç bölümleri alt alta; progress altında inline legend (nokta, ad, değer). Bölümler `personel_listesi` / `arac_takip_yonetim` yetkisine göre çizilir; veri de aynı yetkiyle api.php'de toplanır. Eski `widget-personel-ozet` / `widget-arac-ozet` gridden kaldırıldı (render_widgets.php'de eski case'ler duruyor).
+
+## Ana Sayfa Personel Durumu — Personel Takip ile Birleştirme
+- `PersonelHareketleriModel::getSahaGunOzeti()` tek kaynak: hareket durumu, departman mesaisi ve izin kuralı. `personel-takip/api.php?getOzet`, ana sayfa personel widget'ları ve `getGecKalanlarCount()` bunu kullanır.
+- Ana sayfa segmentleri: Görevde / Tamamladı / Başlamadı / İzinli; toplam = saha takibi açık aktif personel.
