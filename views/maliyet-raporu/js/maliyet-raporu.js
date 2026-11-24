@@ -46,7 +46,7 @@ $(document).ready(function () {
         params.set('p', 'maliyet-raporu/list');
         params.set('yil', $('#yilSelect').val());
         const ay = $('#aySelect').val();
-        if (ay && ay !== '0') { params.set('ay', ay); }
+        params.set('ay', ay || '0');
         if (kalem) { params.set('kalem', kalem); }
         window.location.href = 'index?' + params.toString();
     };
@@ -279,15 +279,25 @@ $(document).ready(function () {
         $('#es_etiket_bilgi').text('');
     });
 
+    let kuralDt = null;
+    let eslesmemisDt = null;
+    const dtKur = function (selector, ekstra) {
+        return $(selector).DataTable(applyLengthStateSave({ ...getDatatableOptions(), responsive: false, autoWidth: false, ...ekstra }));
+    };
+    const dtYenile = function (dt, $satirlar) {
+        dt.clear();
+        if ($satirlar.length) { dt.rows.add($satirlar.map(function ($tr) { return $tr.get(0); })); }
+        dt.draw(false);
+    };
+
     const kurallariYukle = function () {
         post({ action: 'eslestirme-listesi' }).done(function (res) {
             if (res.status !== 'success') { hata(res.message); return; }
-            const $tb = $('#kuralTable tbody').empty();
             $('#kuralSayi').text(res.data.length);
-            if (!res.data.length) { $tb.append('<tr><td colspan="5" class="text-center text-muted">Tanımlı eşleştirme yok.</td></tr>'); }
-            res.data.forEach(function (r) {
+            if (!kuralDt) { kuralDt = dtKur('#kuralTable', { order: [[0, 'asc']], columnDefs: [{ targets: -1, orderable: false, searchable: false }] }); }
+            const satirlar = res.data.map(function (r) {
                 const renk = (kalemler[r.kalem] || {}).renk || '#94a3b8';
-                $tb.append('<tr>'
+                return $('<tr>'
                     + '<td><span class="badge-group">' + esc(r.kaynak_adi) + '</span></td>'
                     + '<td>' + esc(r.etiket) + '</td>'
                     + '<td class="text-secondary">' + esc(r.deger) + '</td>'
@@ -297,6 +307,7 @@ $(document).ready(function () {
                     + '<button type="button" class="btn btn-subtle-danger table-action-btn kural-sil" title="Sil" data-id="' + esc(r.id) + '"><i class="bx bx-trash"></i></button>'
                     + '</div></td></tr>');
             });
+            dtYenile(kuralDt, satirlar);
             if (!kategorilerYuklendi) {
                 const $sel = $('#es_kategori').empty().append(new Option('Kategori seçiniz', ''));
                 (res.gelir_gider_kategorileri || []).forEach(function (k) { $sel.append(new Option(k, k)); });
@@ -305,22 +316,93 @@ $(document).ready(function () {
         }).fail(function () { hata(); });
     };
 
+    const secilenVkn = {};
+    const topluSayiGuncelle = function () {
+        const n = Object.keys(secilenVkn).length;
+        $('#topluSecilenSayi').text(n);
+        $('#btnTopluEslestir').prop('disabled', n === 0);
+        const gorunen = $('.eslesmemis-check').length;
+        const gorunenSecili = $('.eslesmemis-check:checked').length;
+        const $hepsi = $('#eslesmemisHepsi');
+        $hepsi.prop('checked', gorunen > 0 && gorunenSecili === gorunen);
+        $hepsi.prop('indeterminate', gorunenSecili > 0 && gorunenSecili < gorunen);
+    };
+    const secimUygula = function ($c, secili) {
+        const vkn = String($c.data('vkn'));
+        $c.prop('checked', secili).closest('tr').toggleClass('mk-secili', secili);
+        if (secili) { secilenVkn[vkn] = $c.data('unvan'); } else { delete secilenVkn[vkn]; }
+    };
+    $('#eslesmemisHepsi').on('change', function () {
+        const secili = this.checked;
+        if (eslesmemisDt) {
+            eslesmemisDt.rows({ search: 'applied' }).every(function () {
+                const $c = $(this.node()).find('.eslesmemis-check');
+                if ($c.length) { secimUygula($c, secili); }
+            });
+        }
+        topluSayiGuncelle();
+    });
+    $('#eslesmemisTable').on('change', '.eslesmemis-check', function () { secimUygula($(this), this.checked); topluSayiGuncelle(); });
+    $('#eslesmemisTable').on('click', 'tbody td', function (e) {
+        if ($(e.target).closest('input, button, a, label').length) { return; }
+        const $c = $(this).closest('tr').find('.eslesmemis-check');
+        if ($c.length) { secimUygula($c, !$c.prop('checked')); topluSayiGuncelle(); }
+    });
+    $('#eslesmemisTable').on('draw.dt', topluSayiGuncelle);
+    $('#btnTopluEslestir').on('click', function () {
+        const kalem = $('#es_kalem').val();
+        const vkn = Object.keys(secilenVkn);
+        if (!vkn.length || !kalem || kalem === '__yeni__') { hata('Firma seçin ve üstten geçerli bir maliyet kalemi belirleyin.'); return; }
+        const kalemAd = $('#es_kalem option:selected').text();
+        Swal.fire({
+            icon: 'question', title: 'Toplu eşleştirme',
+            text: vkn.length + ' firma "' + kalemAd + '" kalemine eşleştirilecek.',
+            showCancelButton: true, confirmButtonText: 'Eşleştir', cancelButtonText: 'Vazgeç'
+        }).then(function (r) {
+            if (!r.isConfirmed) { return; }
+            const etiket = vkn.map(function (v) { return secilenVkn[v]; });
+            post({ action: 'eslestirme-toplu-kaydet', kalem: kalem, vkn: vkn, etiket: etiket }).done(function (res) {
+                if (res.status !== 'success') { hata(res.message); return; }
+                degisiklikVar = true;
+                vkn.forEach(function (v) { delete secilenVkn[v]; });
+                kurallariYukle();
+                eslesmemisYukle();
+                Swal.fire({ icon: 'success', title: res.message, toast: true, position: 'top-end', timer: 1800, showConfirmButton: false });
+            }).fail(function (xhr) { hata(xhr.responseJSON && xhr.responseJSON.message); });
+        });
+    });
+
+    const tarihSirala = function (t) {
+        const p = String(t || '').split('.');
+        return p.length === 3 ? p[2] + p[1] + p[0] : '0';
+    };
     const eslesmemisYukle = function () {
         post({ action: 'eslesmemis-faturalar', yil: $tablo.data('yil'), ay: $tablo.data('ay') }).done(function (res) {
             if (res.status !== 'success') { hata(res.message); return; }
-            const $tb = $('#eslesmemisTable tbody').empty();
             $('#eslesmemisSayi').text(res.data.length);
-            if (!res.data.length) { $tb.append('<tr><td colspan="6" class="text-center text-muted">Bu dönemde eşleşmemiş fatura yok.</td></tr>'); }
-            res.data.forEach(function (r) {
-                $tb.append('<tr>'
+            if (!eslesmemisDt) {
+                eslesmemisDt = dtKur('#eslesmemisTable', { order: [[4, 'desc']], columnDefs: [{ targets: [0, -1], orderable: false, searchable: false }] });
+            }
+            const gecerli = {};
+            const satirlar = res.data.map(function (r) {
+                if (r.vkn) { gecerli[String(r.vkn)] = true; }
+                const secili = r.vkn && secilenVkn[String(r.vkn)] !== undefined;
+                const kutu = r.vkn
+                    ? '<label class="mk-check"><input type="checkbox" class="eslesmemis-check" data-vkn="' + esc(r.vkn) + '" data-unvan="' + esc(r.unvan) + '"' + (secili ? ' checked' : '') + '><span class="mk-check-box"></span></label>'
+                    : '';
+                return $('<tr' + (secili ? ' class="mk-secili"' : '') + '>'
+                    + '<td class="text-center">' + kutu + '</td>'
                     + '<td>' + esc(r.unvan) + '</td>'
                     + '<td class="text-secondary">' + esc(r.vkn || '-') + '</td>'
-                    + '<td class="text-end"><span class="badge-stat-tag">' + esc(r.adet) + '</span></td>'
-                    + '<td class="text-end text-nowrap fw-medium">' + tl(r.toplam) + '</td>'
-                    + '<td class="text-nowrap">' + esc(r.son_tarih) + '</td>'
+                    + '<td class="text-end" data-order="' + esc(r.adet) + '"><span class="badge-stat-tag">' + esc(r.adet) + '</span></td>'
+                    + '<td class="text-end text-nowrap fw-medium" data-order="' + esc(r.toplam) + '">' + tl(r.toplam) + '</td>'
+                    + '<td class="text-nowrap" data-order="' + tarihSirala(r.son_tarih) + '">' + esc(r.son_tarih) + '</td>'
                     + '<td class="text-center">' + (r.vkn ? '<button type="button" class="btn btn-sm btn-subtle-primary py-0 px-2 eslesmemis-sec" data-vkn="' + esc(r.vkn) + '" data-unvan="' + esc(r.unvan) + '">Seç</button>' : '-') + '</td>'
                     + '</tr>');
             });
+            Object.keys(secilenVkn).forEach(function (v) { if (!gecerli[v]) { delete secilenVkn[v]; } });
+            dtYenile(eslesmemisDt, satirlar);
+            topluSayiGuncelle();
         }).fail(function () { hata(); });
     };
 
@@ -399,6 +481,11 @@ $(document).ready(function () {
         }).fail(function () { hata(); });
     });
 
+    const dtHizala = function () {
+        [kuralDt, eslesmemisDt].forEach(function (dt) { if (dt) { dt.columns.adjust(); } });
+    };
+    $esModal.on('shown.bs.modal', dtHizala);
+    $esModal.on('shown.bs.tab', dtHizala);
     $esModal.on('hidden.bs.modal', function () {
         if (degisiklikVar) { location.reload(); }
     });

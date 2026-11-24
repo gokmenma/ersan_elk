@@ -19,7 +19,7 @@ $selectedYil = (int) ($_GET['yil'] ?? date('Y'));
 if ($selectedYil < 2000 || $selectedYil > (int) date('Y') + 1) {
     $selectedYil = (int) date('Y');
 }
-$selectedAy = (int) ($_GET['ay'] ?? 0);
+$selectedAy = isset($_GET['ay']) ? (int) $_GET['ay'] : (int) date('n');
 if ($selectedAy < 1 || $selectedAy > 12) {
     $selectedAy = 0;
 }
@@ -33,6 +33,7 @@ if (!MaliyetRaporuModel::kalemGecerliMi($selectedKalem)) {
 $kalemler = MaliyetRaporuModel::kalemler();
 $ozet = $MaliyetRaporu->kalemOzet($baslangic, $bitis);
 $matris = $MaliyetRaporu->aylikKalem($selectedYil);
+$kv = $MaliyetRaporu->kurumlarVergisi($ozet, $baslangic, $bitis);
 $eslesmemis = $MaliyetRaporu->eslesmemisFaturalar($baslangic, $bitis);
 $manuelGiderler = $ManuelGider->getFiltered($baslangic, $bitis, null);
 
@@ -75,6 +76,17 @@ $title = 'Maliyet Raporu';
 .maliyet-aylik-tablo tfoot td { background: #f8fafc; }
 .yk-renk { outline: 2px solid transparent; outline-offset: 2px; transition: outline-color .15s; }
 .yk-renk-input:checked + .yk-renk { outline-color: #0f172a; }
+.mk-check { position: relative; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; margin: 0; }
+.mk-check input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.mk-check-box { width: 20px; height: 20px; border: 2px solid #cbd5e1; border-radius: 6px; background: #fff; display: inline-flex; align-items: center; justify-content: center; transition: background .15s, border-color .15s, box-shadow .15s; }
+.mk-check-box::after { content: ''; width: 5px; height: 10px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg) scale(0); margin-top: -2px; transition: transform .15s; }
+.mk-check:hover .mk-check-box { border-color: #475569; }
+.mk-check input:focus-visible + .mk-check-box { box-shadow: 0 0 0 3px rgba(71, 85, 105, .25); }
+.mk-check input:checked + .mk-check-box { background: #475569; border-color: #475569; }
+.mk-check input:checked + .mk-check-box::after { transform: rotate(45deg) scale(1); }
+.mk-check input:indeterminate + .mk-check-box { background: #475569; border-color: #475569; }
+.mk-check input:indeterminate + .mk-check-box::after { width: 10px; height: 0; border-width: 0 0 2px 0; transform: none; margin-top: 0; }
+#eslesmemisTable tbody tr.mk-secili td { background-color: #f1f5f9 !important; }
 .maliyet-kalem-row { cursor: pointer; }
 .maliyet-kalem-row.active td { background-color: #f1f5f9 !important; }
 .maliyet-kalem-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
@@ -266,6 +278,40 @@ $title = 'Maliyet Raporu';
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div class="card summary-kpi-card mb-3" id="kurumlarVergisiCard">
+        <div class="card-header d-flex align-items-center gap-2">
+            <div class="p-2 bg-warning-subtle text-warning rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;">
+                <i class="bx bx-calculator font-size-20"></i>
+            </div>
+            <div>
+                <h5 class="card-title mb-0 font-size-14 fw-bold text-dark">Tahmini Kurumlar Vergisi · <?= $h($donemEtiketi) ?></h5>
+                <p class="text-muted mb-0 font-size-12">(KDV'siz gelir − maaş − SGK − KDV'siz gelen faturalar) × %<?= $tl($kv['oran'] * 100, 0) ?></p>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row g-3 align-items-stretch">
+                <div class="col-6 col-xl-3">
+                    <div class="summary-kpi-label">Gelir (KDV'siz giden fatura)</div>
+                    <div class="summary-kpi-value text-success"><?= $tl($kv['gelir']) ?> ₺</div>
+                </div>
+                <div class="col-6 col-xl-3">
+                    <div class="summary-kpi-label">Gider (Maaş + SGK + Fatura)</div>
+                    <div class="summary-kpi-value text-danger"><?= $tl($kv['gider']) ?> ₺</div>
+                    <div class="font-size-11 text-secondary mt-1">Maaş <?= $tl($kv['maas'], 0) ?> · SGK <?= $tl($kv['sgk'], 0) ?> · Fatura <?= $tl($kv['fatura_gider'], 0) ?></div>
+                </div>
+                <div class="col-6 col-xl-3">
+                    <div class="summary-kpi-label"><?= $kv['kar'] >= 0 ? 'Kurumlar vergisi matrahı' : 'Dönem zararı' ?></div>
+                    <div class="summary-kpi-value <?= $kv['kar'] >= 0 ? 'text-dark' : 'text-danger' ?>"><?= $tl($kv['kar']) ?> ₺</div>
+                </div>
+                <div class="col-6 col-xl-3">
+                    <div class="summary-kpi-label">Kurumlar vergisi (%<?= $tl($kv['oran'] * 100, 0) ?>)</div>
+                    <div class="summary-kpi-value text-warning"><?= $tl($kv['vergi']) ?> ₺</div>
+                </div>
+            </div>
+            <p class="font-size-11 text-secondary mb-0 mt-3">Tahmini değerdir; KKEG, indirim/istisna, geçmiş yıl zararı ve mahsup edilecek geçici vergi hesaba katılmamıştır. Zarar durumunda vergi 0 gösterilir.</p>
         </div>
     </div>
 
@@ -466,9 +512,13 @@ $title = 'Maliyet Raporu';
                 <div class="tab-content">
                     <div class="tab-pane fade show active" id="tabEslesmemis" role="tabpanel">
                         <p class="font-size-12 text-secondary mb-2"><?= $h($donemEtiketi) ?> döneminde hiçbir kaleme bağlı olmayan gelen faturalar. “Seç” ile üstteki forma aktarın.</p>
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                            <button type="button" class="btn btn-primary btn-sm" id="btnTopluEslestir" disabled><i class="bx bx-link"></i> Seçilenleri Eşleştir (<span id="topluSecilenSayi">0</span>)</button>
+                            <span class="font-size-12 text-secondary">Üstteki “Maliyet Kalemi” seçimi uygulanır.</span>
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-bordered table-hover align-middle mb-0 font-size-13" id="eslesmemisTable">
-                                <thead><tr><th>FİRMA</th><th>VKN</th><th class="text-end">FATURA</th><th class="text-end">TUTAR</th><th>SON FATURA</th><th class="text-center" style="width: 90px;">İŞLEM</th></tr></thead>
+                                <thead><tr><th class="text-center" style="width: 44px;"><label class="mk-check mb-0"><input type="checkbox" id="eslesmemisHepsi" aria-label="Tümünü seç"><span class="mk-check-box"></span></label></th><th data-filter="string">FİRMA</th><th data-filter="string">VKN</th><th class="text-end">FATURA</th><th class="text-end">TUTAR</th><th data-filter="date">SON FATURA</th><th class="text-center" style="width: 90px;">İŞLEM</th></tr></thead>
                                 <tbody></tbody>
                             </table>
                         </div>
@@ -476,7 +526,7 @@ $title = 'Maliyet Raporu';
                     <div class="tab-pane fade" id="tabKurallar" role="tabpanel">
                         <div class="table-responsive">
                             <table class="table table-bordered table-hover align-middle mb-0 font-size-13" id="kuralTable">
-                                <thead><tr><th>KAYNAK</th><th>EŞLEŞME</th><th>DEĞER</th><th>MALİYET KALEMİ</th><th class="text-center" style="width: 90px;">İŞLEM</th></tr></thead>
+                                <thead><tr><th data-filter="select">KAYNAK</th><th data-filter="string">EŞLEŞME</th><th data-filter="string">DEĞER</th><th data-filter="select">MALİYET KALEMİ</th><th class="text-center" style="width: 90px;">İŞLEM</th></tr></thead>
                                 <tbody></tbody>
                             </table>
                         </div>

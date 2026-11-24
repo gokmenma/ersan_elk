@@ -83,6 +83,16 @@ class MaliyetKalemEslestirmeModel extends Db
         }
     }
 
+    public function topluKaydet(array $kayitlar, string $kalem, int $kullaniciId): int
+    {
+        $adet = 0;
+        foreach ($kayitlar as $vkn => $etiket) {
+            $this->kaydet('fatura', (string) $vkn, $etiket !== '' ? $etiket : null, $kalem, $kullaniciId);
+            $adet++;
+        }
+        return $adet;
+    }
+
     public function softDelete(int $id): bool
     {
         $stmt = $this->db->prepare("UPDATE maliyet_kalem_eslestirme SET deleted_at = NOW(), is_active = 0

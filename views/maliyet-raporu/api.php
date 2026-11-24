@@ -32,7 +32,7 @@ if ($permissionPolicy->isReady()) {
     exit;
 }
 
-$eslestirmeAksiyonlari = ['eslestirme-listesi', 'eslestirme-kaydet', 'eslestirme-sil', 'fatura-kalem-ata', 'kalem-ekle'];
+$eslestirmeAksiyonlari = ['eslestirme-listesi', 'eslestirme-kaydet', 'eslestirme-sil', 'fatura-kalem-ata', 'kalem-ekle', 'eslestirme-toplu-kaydet'];
 if (in_array($action, $eslestirmeAksiyonlari, true) && !Gate::allows('maliyet_raporu_eslestirme')) {
     http_response_code(403);
     echo json_encode(['status' => 'error', 'message' => 'Maliyet kalem eşleştirme yetkiniz bulunmamaktadır.'], JSON_UNESCAPED_UNICODE);
@@ -172,6 +172,33 @@ if ($action === 'eslestirme-kaydet') {
     } catch (\Throwable $e) {
         error_log('eslestirme-kaydet: ' . $e->getMessage());
         $cevap(['status' => 'error', 'message' => 'Eşleştirme kaydedilemedi.']);
+    }
+}
+
+if ($action === 'eslestirme-toplu-kaydet') {
+    $kalem = trim((string) ($_POST['kalem'] ?? ''));
+    $vkns = (array) ($_POST['vkn'] ?? []);
+    $etiketler = (array) ($_POST['etiket'] ?? []);
+    if (!MaliyetRaporuModel::kalemGecerliMi($kalem, true)) {
+        $cevap(['status' => 'error', 'message' => 'Geçerli bir maliyet kalemi seçiniz.']);
+    }
+    $kayitlar = [];
+    foreach ($vkns as $i => $vkn) {
+        $vkn = trim((string) $vkn);
+        if (preg_match('/^\d{10,11}$/', $vkn)) {
+            $kayitlar[$vkn] = mb_substr(trim((string) ($etiketler[$i] ?? '')), 0, 255);
+        }
+    }
+    if (!$kayitlar || count($kayitlar) > 500) {
+        $cevap(['status' => 'error', 'message' => 'Eşleştirilecek geçerli firma seçiniz (en fazla 500).']);
+    }
+    try {
+        $adet = (new MaliyetKalemEslestirmeModel())->topluKaydet($kayitlar, $kalem, $kullaniciId);
+        $log('Maliyet Kalem Toplu Eşleştirme', sprintf('%d firma %s kalemine toplu eşleştirildi.', $adet, MaliyetRaporuModel::kalemAdi($kalem)));
+        $cevap(['status' => 'success', 'message' => $adet . ' firma eşleştirildi.', 'adet' => $adet]);
+    } catch (\Throwable $e) {
+        error_log('eslestirme-toplu-kaydet: ' . $e->getMessage());
+        $cevap(['status' => 'error', 'message' => 'Toplu eşleştirme yapılamadı.']);
     }
 }
 

@@ -21,6 +21,8 @@ class MaliyetRaporuModel extends Db
         'ofis_diger'       => ['ad' => 'Ofis ve Diğer Harcamalar',  'renk' => '#64748b', 'ikon' => 'bx-briefcase',     'kaynak' => 'Gelir-Gider giderleri + manuel'],
     ];
 
+    public const KURUMLAR_VERGISI_ORANI = 0.25;
+
     public const KAYNAK_ADLARI = [
         'bordro_personel'           => 'Bordro',
         'faturalar'                 => 'Gelen Fatura',
@@ -108,6 +110,49 @@ class MaliyetRaporuModel extends Db
             }
         }
         return $sonuc;
+    }
+
+    public function kurumlarVergisi(array $ozet, ?string $bas = null, ?string $bit = null): array
+    {
+        $matrah = "(COALESCE(f.kdv_matrahi, 0) * CASE WHEN COALESCE(f.para_birimi, 'TRY') IN ('TRY', 'TL') THEN 1 ELSE COALESCE(NULLIF(f.doviz_kuru, 0), 1) END)";
+
+        $params = ['f_kg' => $this->firmaId];
+        $sql = "SELECT COALESCE(SUM({$matrah}), 0) FROM faturalar f
+                WHERE f.firm_id = :f_kg AND f.yon = 'GIDEN' AND f.deleted_at IS NULL
+                  AND COALESCE(f.is_active, 1) = 1 AND COALESCE(f.ticari_yanit, '') <> 'RED'";
+        $sql .= $this->tarihFiltre('f.fatura_tarihi', 'kg', $params, $bas, $bit);
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $gelir = round((float) $stmt->fetchColumn(), 2);
+
+        $vkn = $this->faturaVknExpr();
+        $kalem = 'COALESCE(mfk.kalem, mke.kalem)';
+        $params = ['f_kgm' => $this->firmaId, 'f_kge' => $this->firmaId, 'f_kgt' => $this->firmaId];
+        $sql = "SELECT COALESCE(SUM({$matrah}), 0) FROM faturalar f
+                LEFT JOIN efatura_cariler c ON c.id = f.cari_id
+                LEFT JOIN maliyet_fatura_kalem mfk
+                       ON mfk.fatura_id = f.id AND mfk.firma_id = :f_kgm AND mfk.deleted_at IS NULL AND mfk.is_active = 1
+                LEFT JOIN maliyet_kalem_eslestirme mke
+                       ON mke.firma_id = :f_kge AND mke.kaynak = 'fatura' AND mke.deleted_at IS NULL AND mke.is_active = 1
+                      AND mke.eslesme_degeri = {$vkn}
+                WHERE f.firm_id = :f_kgt AND f.yon = 'GELEN' AND f.deleted_at IS NULL
+                  AND COALESCE(f.is_active, 1) = 1 AND COALESCE(f.ticari_yanit, '') <> 'RED'
+                  AND {$kalem} IS NOT NULL AND {$kalem} <> 'haric'";
+        $sql .= $this->tarihFiltre('f.fatura_tarihi', 'kgf', $params, $bas, $bit);
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $faturaGider = round((float) $stmt->fetchColumn(), 2);
+
+        $maas = (float) ($ozet['maas']['toplam'] ?? 0);
+        $sgk = (float) ($ozet['sgk']['toplam'] ?? 0);
+        $gider = round($maas + $sgk + $faturaGider, 2);
+        $kar = round($gelir - $gider, 2);
+        $vergi = $kar > 0 ? round($kar * self::KURUMLAR_VERGISI_ORANI, 2) : 0.0;
+
+        return [
+            'gelir' => $gelir, 'maas' => $maas, 'sgk' => $sgk, 'fatura_gider' => $faturaGider,
+            'gider' => $gider, 'kar' => $kar, 'vergi' => $vergi, 'oran' => self::KURUMLAR_VERGISI_ORANI,
+        ];
     }
 
     public function aylikKalem(int $yil): array
