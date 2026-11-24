@@ -35,6 +35,8 @@ class MaliyetRaporuModel extends Db
 
     private int $firmaId;
 
+    private static ?array $kalemCache = null;
+
     public function __construct()
     {
         parent::__construct();
@@ -46,7 +48,7 @@ class MaliyetRaporuModel extends Db
         if ($kalem === null || $kalem === '') {
             return false;
         }
-        return isset(self::KALEMLER[$kalem]) || ($haricDahil && $kalem === self::HARIC);
+        return isset(self::kalemler()[$kalem]) || ($haricDahil && $kalem === self::HARIC);
     }
 
     public static function kalemAdi(?string $kalem): string
@@ -54,7 +56,25 @@ class MaliyetRaporuModel extends Db
         if ($kalem === self::HARIC) {
             return 'Rapora Dahil Etme';
         }
-        return self::KALEMLER[$kalem]['ad'] ?? (string) $kalem;
+        return self::kalemler()[$kalem]['ad'] ?? (string) $kalem;
+    }
+
+    public static function kalemler(): array
+    {
+        if (self::$kalemCache !== null) {
+            return self::$kalemCache;
+        }
+        $kalemler = self::KALEMLER;
+        try {
+            foreach ((new MaliyetOzelKalemModel())->liste() as $r) {
+                $kalemler[MaliyetOzelKalemModel::ONEK . $r->id] = [
+                    'ad' => $r->ad, 'renk' => $r->renk, 'ikon' => 'bx-purchase-tag-alt', 'kaynak' => 'Özel kalem (eşleştirme + manuel)',
+                ];
+            }
+        } catch (\Throwable $e) {
+            error_log('maliyet ozel kalemler: ' . $e->getMessage());
+        }
+        return self::$kalemCache = $kalemler;
     }
 
     public static function tarihAraligi($yil, $ay): array
@@ -79,7 +99,7 @@ class MaliyetRaporuModel extends Db
         $stmt->execute($params);
 
         $sonuc = [];
-        foreach (array_keys(self::KALEMLER) as $k) {
+        foreach (array_keys(self::kalemler()) as $k) {
             $sonuc[$k] = ['toplam' => 0.0, 'adet' => 0];
         }
         foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $r) {
@@ -435,7 +455,7 @@ class MaliyetRaporuModel extends Db
     private function addManuelGiderler(array &$parts, array &$params, ?string $bas, ?string $bit): void
     {
         $anahtarlar = [];
-        foreach (array_keys(self::KALEMLER) as $i => $k) {
+        foreach (array_keys(self::kalemler()) as $i => $k) {
             $anahtarlar[] = ":mgk_{$i}";
             $params["mgk_{$i}"] = $k;
         }
@@ -461,7 +481,7 @@ class MaliyetRaporuModel extends Db
     {
         $parcalar = [];
         $i = 0;
-        foreach (self::KALEMLER as $k => $cfg) {
+        foreach (self::kalemler() as $k => $cfg) {
             $parcalar[] = "WHEN :kak_{$i} THEN :kad_{$i}";
             $params["kak_{$i}"] = $k;
             $params["kad_{$i}"] = $cfg['ad'];

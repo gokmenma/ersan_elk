@@ -21,7 +21,7 @@ $page = $_GET['p'] ?? 'home';
     <?php } ?>
 <?php } ?>
 
-<?php if ($page == 'ihbar/list' || $page == 'kacak/list' || $page == 'puantaj/personel-is-raporu' || $page == 'cari/dashboard' || $page == 'ik-ise-alim/dashboard') { ?>
+<?php if ($page == 'ihbar/list' || $page == 'kacak/list' || $page == 'puantaj/personel-is-raporu' || $page == 'cari/dashboard' || $page == 'ik-ise-alim/dashboard' || $page == 'maliyet-raporu/list') { ?>
     <script src="assets/libs/apexcharts/apexcharts.min.js"></script>
 <?php } ?>
 

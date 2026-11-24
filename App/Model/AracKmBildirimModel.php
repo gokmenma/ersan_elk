@@ -354,6 +354,42 @@ class AracKmBildirimModel extends Model
         return $counts;
     }
 
+    /** Aktif zimmetli araçların günlük durum özeti: sabah bildirimi = görevde, akşam bildirimi = tamamladı. */
+    public function getGunlukDurumOzeti(int $firmaId, ?string $tarih = null): array
+    {
+        $gun = $tarih ?: date('Y-m-d');
+        $sql = "SELECT
+                    COUNT(*) AS toplam,
+                    COALESCE(SUM(CASE WHEN x.aksam > 0 THEN 1 ELSE 0 END), 0) AS tamamladi,
+                    COALESCE(SUM(CASE WHEN x.sabah > 0 AND x.aksam = 0 THEN 1 ELSE 0 END), 0) AS gorevde,
+                    COALESCE(SUM(CASE WHEN x.sabah = 0 AND x.aksam = 0 THEN 1 ELSE 0 END), 0) AS baslamadi
+                FROM (
+                    SELECT z.arac_id,
+                        (SELECT COUNT(*) FROM {$this->table} b WHERE b.arac_id = z.arac_id AND b.tarih = :gun_sabah AND b.tur = 'sabah'
+                            AND b.durum != 'reddedildi' AND b.silinme_tarihi IS NULL) AS sabah,
+                        (SELECT COUNT(*) FROM {$this->table} b WHERE b.arac_id = z.arac_id AND b.tarih = :gun_aksam AND b.tur = 'aksam'
+                            AND b.durum != 'reddedildi' AND b.silinme_tarihi IS NULL) AS aksam
+                    FROM arac_zimmetleri z
+                    WHERE z.durum = 'aktif' AND z.firma_id = :firma_id AND z.silinme_tarihi IS NULL AND z.zimmet_tarihi <= :gun_zimmet
+                    GROUP BY z.arac_id
+                ) x";
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute(['gun_sabah' => $gun, 'gun_aksam' => $gun, 'firma_id' => $firmaId, 'gun_zimmet' => $gun]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        } catch (\Throwable $e) {
+            error_log('AracKmBildirimModel::getGunlukDurumOzeti hatası: ' . $e->getMessage());
+            $row = [];
+        }
+
+        return [
+            'toplam' => (int) ($row['toplam'] ?? 0),
+            'gorevde' => (int) ($row['gorevde'] ?? 0),
+            'tamamladi' => (int) ($row['tamamladi'] ?? 0),
+            'baslamadi' => (int) ($row['baslamadi'] ?? 0),
+        ];
+    }
+
     /**
      * Belirli bir tarih ve tür için KM bildirimi yapmayan personelleri getirir
      */

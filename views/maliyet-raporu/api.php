@@ -9,6 +9,7 @@ use App\Helper\Date;
 use App\Helper\Security;
 use App\Model\ManuelGiderModel;
 use App\Model\MaliyetKalemEslestirmeModel;
+use App\Model\MaliyetOzelKalemModel;
 use App\Model\MaliyetRaporuModel;
 use App\Model\PermissionPolicyModel;
 use App\Model\SystemLogModel;
@@ -31,7 +32,7 @@ if ($permissionPolicy->isReady()) {
     exit;
 }
 
-$eslestirmeAksiyonlari = ['eslestirme-listesi', 'eslestirme-kaydet', 'eslestirme-sil', 'fatura-kalem-ata'];
+$eslestirmeAksiyonlari = ['eslestirme-listesi', 'eslestirme-kaydet', 'eslestirme-sil', 'fatura-kalem-ata', 'kalem-ekle'];
 if (in_array($action, $eslestirmeAksiyonlari, true) && !Gate::allows('maliyet_raporu_eslestirme')) {
     http_response_code(403);
     echo json_encode(['status' => 'error', 'message' => 'Maliyet kalem eşleştirme yetkiniz bulunmamaktadır.'], JSON_UNESCAPED_UNICODE);
@@ -99,6 +100,29 @@ if ($action === 'eslesmemis-faturalar') {
     } catch (\Throwable $e) {
         error_log('eslesmemis-faturalar: ' . $e->getMessage());
         $cevap(['status' => 'error', 'message' => 'Eşleşmemiş faturalar yüklenemedi.']);
+    }
+}
+
+if ($action === 'kalem-ekle') {
+    $ad = trim(preg_replace('/\s+/u', ' ', (string) ($_POST['ad'] ?? '')));
+    $renk = (string) ($_POST['renk'] ?? '');
+    if (!in_array($renk, MaliyetOzelKalemModel::RENKLER, true)) {
+        $renk = MaliyetOzelKalemModel::RENKLER[0];
+    }
+    if (mb_strlen($ad) < 2 || mb_strlen($ad) > 60) {
+        $cevap(['status' => 'error', 'message' => 'Kalem adı 2 ile 60 karakter arasında olmalıdır.']);
+    }
+    $mevcutAdlar = array_map(static fn($c) => mb_strtolower($c['ad']), MaliyetRaporuModel::kalemler());
+    if (in_array(mb_strtolower($ad), $mevcutAdlar, true) || mb_strtolower($ad) === 'rapora dahil etme') {
+        $cevap(['status' => 'error', 'message' => 'Bu isimde bir maliyet kalemi zaten var.']);
+    }
+    try {
+        $kod = (new MaliyetOzelKalemModel())->ekle($ad, $renk, $kullaniciId);
+        $log('Maliyet Özel Kalem', sprintf('"%s" maliyet kalemi eklendi.', $ad));
+        $cevap(['status' => 'success', 'message' => 'Maliyet kalemi eklendi.', 'kalem' => ['kod' => $kod, 'ad' => $ad, 'renk' => $renk]]);
+    } catch (\Throwable $e) {
+        error_log('kalem-ekle: ' . $e->getMessage());
+        $cevap(['status' => 'error', 'message' => 'Maliyet kalemi eklenemedi.']);
     }
 }
 

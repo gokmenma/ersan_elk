@@ -30,7 +30,7 @@ if (!MaliyetRaporuModel::kalemGecerliMi($selectedKalem)) {
 
 [$baslangic, $bitis] = MaliyetRaporuModel::tarihAraligi($selectedYil, $selectedAy);
 
-$kalemler = MaliyetRaporuModel::KALEMLER;
+$kalemler = MaliyetRaporuModel::kalemler();
 $ozet = $MaliyetRaporu->kalemOzet($baslangic, $bitis);
 $matris = $MaliyetRaporu->aylikKalem($selectedYil);
 $eslesmemis = $MaliyetRaporu->eslesmemisFaturalar($baslangic, $bitis);
@@ -40,7 +40,8 @@ $genelToplam = array_sum(array_column($ozet, 'toplam'));
 $grupToplam = static fn(array $keys) => array_sum(array_map(static fn($k) => $ozet[$k]['toplam'] ?? 0, $keys));
 $personelToplam = $grupToplam(['maas', 'sgk', 'vergi']);
 $aracToplam = $grupToplam(['arac_kirasi', 'yakit', 'arac_bakim']);
-$digerToplam = $grupToplam(['telefon_internet', 'malzeme_demirbas', 'ofis_diger']);
+$digerToplam = $grupToplam(array_merge(['telefon_internet', 'malzeme_demirbas', 'ofis_diger'],
+    array_values(array_filter(array_keys($kalemler), static fn($k) => strpos($k, 'ozel_') === 0))));
 $eslesmemisToplam = array_sum(array_map(static fn($r) => (float) $r->toplam, $eslesmemis));
 $eslesmemisAdet = array_sum(array_map(static fn($r) => (int) $r->adet, $eslesmemis));
 $oran = static fn($v) => $genelToplam > 0 ? round($v / $genelToplam * 100, 1) : 0;
@@ -58,7 +59,8 @@ $kalemSecenekleri = [];
 foreach ($kalemler as $k => $cfg) {
     $kalemSecenekleri[$k] = $cfg['ad'];
 }
-$kalemSecenekleriHaric = $kalemSecenekleri + [MaliyetRaporuModel::HARIC => 'Rapora Dahil Etme'];
+$yeniKalemSecenegi = ['__yeni__' => '+ Yeni Kalem Ekle'];
+$kalemSecenekleriHaric = $kalemSecenekleri + [MaliyetRaporuModel::HARIC => 'Rapora Dahil Etme'] + (Gate::allows('maliyet_raporu_eslestirme') ? $yeniKalemSecenegi : []);
 $atamaSecenekleri = ['' => 'Firma kuralına bırak'] + $kalemSecenekleriHaric;
 
 $maintitle = 'Raporlar';
@@ -69,6 +71,8 @@ $title = 'Maliyet Raporu';
 #summaryCardsContainer { overflow: hidden; max-height: 1100px; opacity: 1; transition: max-height .3s ease, opacity .3s ease, margin .3s ease; }
 .maliyet-summary-hidden #summaryCardsContainer { max-height: 0 !important; opacity: 0; margin-top: 0 !important; margin-bottom: 0 !important; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { #summaryCardsContainer { transition: none; } }
+.maliyet-aylik-tablo th, .maliyet-aylik-tablo td { padding: .7rem .75rem; }
+.maliyet-aylik-tablo tfoot td { background: #f8fafc; }
 .maliyet-kalem-row { cursor: pointer; }
 .maliyet-kalem-row.active td { background-color: #f1f5f9 !important; }
 .maliyet-kalem-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
@@ -152,7 +156,7 @@ $title = 'Maliyet Raporu';
     <?php endif; ?>
 
     <div class="row g-3 mb-3">
-        <div class="col-xl-5">
+        <div class="col-12 order-2">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-header d-flex align-items-center gap-2">
                     <div class="p-2 bg-primary-subtle text-primary rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;">
@@ -164,7 +168,9 @@ $title = 'Maliyet Raporu';
                     </div>
                 </div>
                 <div class="card-body p-0">
-                    <div class="table-responsive">
+                  <div class="row g-0">
+                    <div class="col-lg-4 px-3 pt-3 pb-2 border-end d-flex align-items-center"><div id="kalemDagilimChart" class="w-100"></div></div>
+                    <div class="col-lg-8"><div class="table-responsive">
                         <table class="table table-hover align-middle mb-0" id="kalemOzetTable">
                             <tbody>
                             <?php foreach ($kalemler as $k => $cfg):
@@ -197,12 +203,13 @@ $title = 'Maliyet Raporu';
                                 </tr>
                             </tfoot>
                         </table>
-                    </div>
+                    </div></div>
+                  </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-7">
+        <div class="col-12 order-1">
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-header d-flex align-items-center gap-2">
                     <div class="p-2 bg-primary-subtle text-primary rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;">
@@ -215,7 +222,7 @@ $title = 'Maliyet Raporu';
                 </div>
                 <div class="card-body p-2">
                     <div class="table-responsive">
-                        <table class="table table-bordered table-sm align-middle mb-0 font-size-12">
+                        <table class="table table-bordered align-middle mb-0 font-size-14 maliyet-aylik-tablo">
                             <thead>
                                 <tr>
                                     <th>Kalem</th>
@@ -382,7 +389,7 @@ $title = 'Maliyet Raporu';
                     <input type="hidden" name="manuel_gider_id" id="manuel_gider_id" value="0">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <?= Form::FormSelect2(name: 'kategori', options: $kalemSecenekleri, selectedValue: 'malzeme_demirbas', label: 'Maliyet Kalemi', icon: 'layers', required: true, id: 'mg_kategori') ?>
+                            <?= Form::FormSelect2(name: 'kategori', options: $kalemSecenekleri + (Gate::allows('maliyet_raporu_eslestirme') ? $yeniKalemSecenegi : []), selectedValue: 'malzeme_demirbas', label: 'Maliyet Kalemi', icon: 'layers', required: true, id: 'mg_kategori') ?>
                         </div>
                         <div class="col-md-6">
                             <?= Form::FormFloatInput('text', 'alt_kategori', '', 'Alt kategori', 'Alt Kategori', 'tag') ?>
@@ -504,5 +511,7 @@ $title = 'Maliyet Raporu';
 
 <script>
 window.maliyetKalemler = <?= json_encode($kalemler, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+window.maliyetKalemDeger = <?= json_encode(array_map(static fn($k) => round((float)($ozet[$k]['toplam'] ?? 0), 2), array_keys($kalemler)), JSON_HEX_TAG) ?>;
+window.maliyetKalemAnahtar = <?= json_encode(array_keys($kalemler), JSON_HEX_TAG) ?>;
 </script>
 <script src="<?= \App\Helper\Helper::assetVersion('views/maliyet-raporu/js/maliyet-raporu.js') ?>"></script>

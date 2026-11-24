@@ -4160,3 +4160,11 @@
 ## Ana Sayfa Personel Durumu — Personel Takip ile Birleştirme
 - `PersonelHareketleriModel::getSahaGunOzeti()` tek kaynak: hareket durumu, departman mesaisi ve izin kuralı. `personel-takip/api.php?getOzet`, ana sayfa personel widget'ları ve `getGecKalanlarCount()` bunu kullanır.
 - Ana sayfa segmentleri: Görevde / Tamamladı / Başlamadı / İzinli; toplam = saha takibi açık aktif personel.
+
+## 2026-11-24 Ana sayfa: kart boşlukları ve detay açılışı
+- Bölge detayı aç/kapa (`.comparison-detail-toggle`): açılırken yer önceden ayrılır, tek yerleşim hesabı yapılır; alttaki kartlar itilir, sayfa scroll'u ve düğmenin ekran konumu sabit kalır. Yerleşim sonrası scroll geri yüklemesi `behavior:'instant'` (html'deki smooth scroll yüzünden sayfa başa kayıyordu).
+- Grid kartlarına `height:100%` verildi, load sonrası 0.8/2/4.5 sn ek yerleşim; tüm kartlar arası boşluk 12px (ölçüldü).
+- Not: JS sözdizimi hatası PHP lint'te görünmez; tarayıcıda pageerror kontrolü şart.
+
+## 2026-11-24 Araç durumu: günlük görevde/tamamladı
+- `AracKmBildirimModel::getGunlukDurumOzeti()`: aktif zimmetli araçlar için bugün sabah KM bildirimi = Görevde, akşam bildirimi = Tamamladı, hiçbiri yok = Başlamadı. Araç bölümü legend'ına ayraçla eklendi (progress çubuğu değişmedi). Widget önbellek anahtarı widget_v6_.

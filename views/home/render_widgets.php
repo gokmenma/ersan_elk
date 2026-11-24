@@ -301,7 +301,7 @@ function renderWidget(string $widgetId, array $data = []) {
                 $izinli_p = (int) ($so['izinli'] ?? 0) + (int) ($so['molada'] ?? 0);
                 $toplam_p = max(1, $aktif_p);
                 $paSections[] = [
-                    'icon' => 'bx-group', 'tone' => 'blue', 'label' => 'Personel Durumu', 'total' => $aktif_p, 'unit' => 'saha personeli',
+                    'icon' => 'bx-group', 'tone' => 'blue', 'label' => 'Personel Durumu', 'total' => $aktif_p, 'unit' => 'Saha', 'extra_total' => (int) ($istatistik->aktif_personel ?? 0), 'extra_unit' => 'Aktif',
                     'badge' => '%' . (int) round($gorevde_p / $toplam_p * 100) . ' Görevde', 'link' => 'index.php?p=personel/list', 'link_text' => 'Personel Listesi',
                     'segments' => [
                         ['Görevde', $gorevde_p, '#2563eb', round($gorevde_p / $toplam_p * 100, 2)],
@@ -325,6 +325,11 @@ function renderWidget(string $widgetId, array $data = []) {
                         ['Serviste', (int) ($servisteki_arac ?? 0), '#e11d48', (float) ($servis_a_yuzde ?? 0)],
                         ['Boşta', (int) ($bosta_arac ?? 0), '#f59e0b', (float) ($bosta_a_yuzde ?? 0)],
                     ],
+                    'extra_legend' => is_array($arac_gun_ozet ?? null) ? [
+                        ['Görevde', (int) $arac_gun_ozet['gorevde'], '#2563eb'],
+                        ['Tamamladı', (int) $arac_gun_ozet['tamamladi'], '#64748b'],
+                        ['Başlamadı', (int) $arac_gun_ozet['baslamadi'], '#06b6d4'],
+                    ] : [],
                 ];
             }
             if ($paSections === []) {
@@ -343,6 +348,7 @@ function renderWidget(string $widgetId, array $data = []) {
                                         <span class="pa-label"><?php echo $paEsc($paSec['label']); ?></span>
                                         <b class="pa-total"><?php echo number_format($paSec['total'], 0, ',', '.'); ?></b>
                                         <small class="pa-unit"><?php echo $paEsc($paSec['unit']); ?></small>
+                                        <?php if (isset($paSec['extra_total'])): ?><b class="pa-total pa-extra"><?php echo number_format($paSec['extra_total'], 0, ',', '.'); ?></b><small class="pa-unit"><?php echo $paEsc($paSec['extra_unit']); ?></small><?php endif; ?>
                                     </div>
                                     <div class="pa-actions">
                                         <span class="pa-badge tone-<?php echo $paEsc($paSec['tone']); ?>"><?php echo $paEsc($paSec['badge']); ?></span>
@@ -361,6 +367,12 @@ function renderWidget(string $widgetId, array $data = []) {
                                     <?php foreach ($paSec['segments'] as $paSeg): ?>
                                         <span class="pa-legend-item" style="--dot: <?php echo $paEsc($paSeg[2]); ?>;"><i></i><span><?php echo $paEsc($paSeg[0]); ?></span><b><?php echo (int) $paSeg[1]; ?></b></span>
                                     <?php endforeach; ?>
+                                    <?php if (!empty($paSec['extra_legend'])): ?>
+                                        <span class="pa-legend-sep" aria-hidden="true"></span>
+                                        <?php foreach ($paSec['extra_legend'] as $paExtra): ?>
+                                            <span class="pa-legend-item" style="--dot: <?php echo $paEsc($paExtra[2]); ?>;"><i></i><span><?php echo $paEsc($paExtra[0]); ?></span><b><?php echo (int) $paExtra[1]; ?></b></span>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
                                 </div>
                             </section>
                         <?php endforeach; ?>

@@ -817,6 +817,7 @@ if (Gate::allows("ana_sayfa")) {
                 }
                 #dashboard-widgets:not(.free-layout-active) { --bs-gutter-x: 12px; --bs-gutter-y: 0; }
                 #dashboard-widgets:not(.free-layout-active) > .widget-item { margin-bottom: 12px !important; }
+                #dashboard-widgets:not(.free-layout-active) > .widget-item > .card, #dashboard-widgets:not(.free-layout-active) > .widget-item > .carousel { height: 100%; margin-bottom: 0; }
                 #dashboard-widgets:not(.free-layout-active) > .widget-item {
                     width: auto;
                     max-width: none;
@@ -1253,6 +1254,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                 .pa-label { font-size:12px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#64748b; }
                 .pa-total { font-size:22px; font-weight:700; color:#0f172a; line-height:1; }
                 .pa-unit { font-size:12.5px; color:#94a3b8; }
+                .pa-extra { margin-left:10px; padding-left:14px; border-left:1px solid #e2e8f0; }
                 .pa-actions { display:flex; align-items:center; gap:12px; }
                 .pa-badge { font-size:11.5px; font-weight:700; padding:3px 10px; border-radius:6px; }
                 .pa-bar { position:relative; display:flex; gap:3px; height:8px; border-radius:6px; overflow:hidden; background:#f1f5f9; }
@@ -1260,6 +1262,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                 .pa-bar span { display:block; height:100%; border-radius:6px; }
                 .pa-bar span.pa-bar-overlay { position:absolute; }
                 .pa-legend { display:flex; flex-wrap:wrap; gap:6px 28px; margin-top:10px; }
+                .pa-legend-sep { width:1px; align-self:stretch; background:#e2e8f0; margin:2px 0; }
                 .pa-legend-item { display:inline-flex; align-items:center; gap:7px; font-size:12.5px; color:#64748b; }
                 .pa-legend-item i { width:8px; height:8px; border-radius:50%; background:var(--dot); }
                 .pa-legend-item b { font-size:14px; font-weight:700; color:#0f172a; }
@@ -4404,7 +4407,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                     const rowUnit = 8;
                     const prevMinHeight = container.style.minHeight;
                     const prevScrollY = window.scrollY;
-                    container.style.minHeight = (gridLastHeight || container.offsetHeight) + 'px';
+                    container.style.minHeight = Math.max(gridLastHeight || 0, container.offsetHeight) + 'px';
                     const items = Array.from(container.children).filter(function (el) {
                         return el.classList.contains('widget-item') && getComputedStyle(el).display !== 'none';
                     });
@@ -4476,12 +4479,15 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                         if (!moved) break;
                     }
                     container.style.minHeight = prevMinHeight;
-                    if (Math.abs(window.scrollY - prevScrollY) > 1) window.scrollTo(window.scrollX, prevScrollY);
+                    if (Math.abs(window.scrollY - prevScrollY) > 1) window.scrollTo({ left: window.scrollX, top: prevScrollY, behavior: 'instant' });
                     gridLastSignature = dashboardGridSignature(container);
                 }
 
                 window.addEventListener('resize', function () { layoutDashboardGrid(true); });
-                window.addEventListener('load', function () { layoutDashboardGrid(true); });
+                window.addEventListener('load', function () {
+                    layoutDashboardGrid(true);
+                    [800, 2000, 4500].forEach(function (delay) { setTimeout(function () { layoutDashboardGrid(true); }, delay); });
+                });
 
                 (function () {
                     const gridContainer = document.getElementById('dashboard-widgets');
@@ -7262,13 +7268,25 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                     const widget = button.closest('.widget-item');
                     const fixedHeight = parseInt(widget.attr('data-grid-height'), 10);
                     if (fixedHeight && !isOpen) widget.css('height', 'auto');
-                    const relayout = function () { if (typeof layoutDashboardGrid === 'function') layoutDashboardGrid(true); };
-                    const ticker = setInterval(relayout, 60);
-                    target.stop(true, true)[isOpen ? 'slideUp' : 'slideDown'](320, function () {
-                        clearInterval(ticker);
-                        if (fixedHeight && isOpen) widget.css('height', fixedHeight + 'px');
+                    const relayout = function () { if (typeof runDashboardGridLayout === 'function') runDashboardGridLayout(true); };
+                    target.stop(true, true);
+                    if (isOpen) {
+                        target.slideUp(320, function () {
+                            if (fixedHeight) widget.css('height', fixedHeight + 'px');
+                            relayout();
+                        });
+                    } else {
+                        const startHeight = widget.outerHeight();
+                        target.show();
+                        const extraHeight = target.outerHeight(true);
+                        target.hide();
+                        widget.css('min-height', (startHeight + extraHeight) + 'px');
                         relayout();
-                    });
+                        target.slideDown(320, function () {
+                            widget.css('min-height', '');
+                            relayout();
+                        });
+                    }
                 });
 
                 // DB'den gelen ayarları localStorage'a işle (Sayfa yüklendiğinde bir kez)

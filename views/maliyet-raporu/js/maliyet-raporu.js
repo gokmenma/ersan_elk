@@ -121,6 +121,93 @@ $(document).ready(function () {
         if (detayDt) { detayDt.ajax.reload(); }
         if (yeni) { document.getElementById('maliyetListCard').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
     });
+    const ozelKalemSecici = '#es_kalem, #mg_kategori, #fk_kalem';
+    const kalemRenkleri = ['#ec4899', '#84cc16', '#f97316', '#06b6d4', '#a855f7', '#eab308', '#ef4444', '#3b82f6', '#22c55e', '#78716c'];
+    const oncekiKalem = {};
+    $(ozelKalemSecici).on('select2:opening', function () { oncekiKalem[this.id] = $(this).val(); });
+    $(ozelKalemSecici).on('change', function () {
+        if ($(this).val() !== '__yeni__') { return; }
+        const $sel = $(this);
+        const geri = oncekiKalem[this.id] || '';
+        $sel.val(geri).trigger('change.select2');
+        const $modal = $sel.closest('.modal');
+        let secili = kalemRenkleri[0];
+        Swal.fire({
+            title: 'Yeni Maliyet Kalemi',
+            html: '<input id="yk_ad" class="swal2-input" maxlength="60" placeholder="Kalem adı" autocomplete="off">'
+                + '<div id="yk_renkler" class="d-flex justify-content-center flex-wrap gap-2 mt-2">'
+                + kalemRenkleri.map(function (c, i) {
+                    return '<button type="button" class="yk-renk border-0 rounded-circle" data-renk="' + c + '" style="width:26px;height:26px;background:' + c + ';outline:' + (i === 0 ? '2px solid #0f172a' : 'none') + ';outline-offset:2px;"></button>';
+                }).join('') + '</div>',
+            showCancelButton: true,
+            confirmButtonText: 'Ekle',
+            cancelButtonText: 'Vazgeç',
+            focusConfirm: false,
+            didOpen: function () {
+                $('#yk_ad').trigger('focus');
+                $('#yk_renkler').on('click', '.yk-renk', function () {
+                    secili = $(this).data('renk');
+                    $('.yk-renk').css('outline', 'none');
+                    $(this).css('outline', '2px solid #0f172a');
+                });
+            },
+            preConfirm: function () {
+                const ad = $.trim($('#yk_ad').val());
+                if (ad.length < 2) { Swal.showValidationMessage('Kalem adı en az 2 karakter olmalıdır.'); return false; }
+                return post({ action: 'kalem-ekle', ad: ad, renk: secili }).then(function (res) {
+                    if (res.status !== 'success') { Swal.showValidationMessage(res.message || 'Kalem eklenemedi.'); return false; }
+                    return res.kalem;
+                }, function () { Swal.showValidationMessage('Sunucu hatası oluştu.'); return false; });
+            }
+        }).then(function (r) {
+            if (!r.isConfirmed || !r.value) { return; }
+            const k = r.value;
+            kalemler[k.kod] = { ad: k.ad, renk: k.renk };
+            $(ozelKalemSecici).each(function () {
+                const $o = $(this);
+                const yeni = new Option(k.ad, k.kod);
+                const $ayrac = $o.find('option[value="__yeni__"]');
+                const $haric = $o.find('option[value="haric"]');
+                if ($haric.length) { $(yeni).insertBefore($haric); } else if ($ayrac.length) { $(yeni).insertBefore($ayrac); } else { $o.append(yeni); }
+                $o.trigger('change.select2');
+            });
+            $sel.val(k.kod).trigger('change.select2');
+            if ($modal.length) { $modal.css('overflow', 'auto'); }
+        });
+    });
+
+    const kalemGrafikCiz = function () {
+        const el = document.getElementById('kalemDagilimChart');
+        const anahtarlar = window.maliyetKalemAnahtar || [];
+        const degerler = window.maliyetKalemDeger || [];
+        if (!el || typeof ApexCharts === 'undefined' || !anahtarlar.length) { return; }
+        const toplam = degerler.reduce(function (a, b) { return a + b; }, 0);
+        const para = function (v) { return Number(v).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' \u20BA'; };
+        new ApexCharts(el, {
+            chart: {
+                type: 'donut', height: 300, fontFamily: 'inherit',
+                events: {
+                    dataPointSelection: function (e, ctx, cfg) {
+                        $('.maliyet-kalem-row[data-kalem="' + anahtarlar[cfg.dataPointIndex] + '"]').trigger('click');
+                    }
+                }
+            },
+            series: degerler,
+            labels: anahtarlar.map(function (k) { return (kalemler[k] || {}).ad || k; }),
+            colors: anahtarlar.map(function (k) { return (kalemler[k] || {}).renk || '#94a3b8'; }),
+            legend: { show: false },
+            dataLabels: { enabled: false },
+            stroke: { width: 2, colors: ['#fff'] },
+            plotOptions: { pie: { donut: { size: '68%', labels: { show: true,
+                name: { fontSize: '12px', color: '#64748b' },
+                value: { fontSize: '18px', fontWeight: 700, color: '#0f172a', formatter: function (v) { return para(v); } },
+                total: { show: true, label: 'Toplam', color: '#64748b', formatter: function () { return para(toplam); } }
+            } } } },
+            tooltip: { y: { formatter: function (v) { return para(v) + (toplam > 0 ? ' \u00B7 %' + (v * 100 / toplam).toFixed(1).replace('.', ',') : ''); } } }
+        }).render();
+    };
+    $(kalemGrafikCiz);
+
     $('#btnKalemFiltreTemizle').on('click', function () {
         $('.maliyet-kalem-row.active').trigger('click');
     });
