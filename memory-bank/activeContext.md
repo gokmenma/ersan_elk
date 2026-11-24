@@ -4153,3 +4153,6 @@
 
 ## 2026-11-24 Ana sayfa kayma (CLS) düzeltmesi
 - Hero takvimi artık sayfa HTML'inde sunucu tarafında çiziliyor (`homeHeroTakvimAlarmlari()` + `widget-hero-takvim`, render_widgets.php); varsayılan "bugün" filtresi de sunucuda uygulanıyor. Ay değiştirme `get-calendar-alarms layout=hero` ile devam eder. CLS 0.044 -> 0.000 (yerel ölçüm).
+
+## 2026-11-24 Personel + Araç Durumu tek kart
+- `widget-personel-arac-ozet` (tam genişlik, minimal): personel ve araç bölümleri alt alta; progress altında inline legend (nokta, ad, değer). Bölümler `personel_listesi` / `arac_takip_yonetim` yetkisine göre çizilir; veri de aynı yetkiyle api.php'de toplanır. Eski `widget-personel-ozet` / `widget-arac-ozet` gridden kaldırıldı (render_widgets.php'de eski case'ler duruyor).

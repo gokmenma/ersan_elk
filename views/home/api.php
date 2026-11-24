@@ -61,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     // CACHE HELPER
     $getWidgetCache = function($key) use ($firmaId, $userId) {
-        $cachePath = dirname(__DIR__, 2) . "/cache/dashboard/widget_v2_{$firmaId}_{$userId}_{$key}.html";
+        $cachePath = dirname(__DIR__, 2) . "/cache/dashboard/widget_v3_{$firmaId}_{$userId}_{$key}.html";
         if (file_exists($cachePath) && (time() - filemtime($cachePath)) < 300) {
             return file_get_contents($cachePath);
         }
@@ -71,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $setWidgetCache = function($key, $html) use ($firmaId, $userId) {
         $dir = dirname(__DIR__, 2) . "/cache/dashboard";
         if (!is_dir($dir)) mkdir($dir, 0777, true);
-        $cachePath = "$dir/widget_v2_{$firmaId}_{$userId}_{$key}.html";
+        $cachePath = "$dir/widget_v3_{$firmaId}_{$userId}_{$key}.html";
         file_put_contents($cachePath, $html);
     };
 
@@ -263,7 +263,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                     $data = []; $data['width'] = $widths[$index] ?? null;
                     try {
-                        if ($widgetId == 'widget-personel-ozet' || $widgetId == 'widget-personel-ozeti') {
+                        if ($widgetId == 'widget-personel-arac-ozet') {
+                            if (\App\Service\Gate::allows('personel_listesi')) {
+                                $data['istatistik'] = $personelModel->personelSayilari('personel');
+                                $data['extraStats'] = $personelModel->getAdvancedDashboardStats();
+                                $data['gec_kalan_sayisi'] = $hareketModel->getGecKalanlarCount($firmaId);
+                            }
+                            if (\App\Service\Gate::allows('arac_takip_yonetim')) {
+                                $aracStats = $aracModel->getStats();
+                                $data['toplam_aktif_arac'] = $aracStats->aktif_arac ?? 0;
+                                $data['servisteki_arac'] = $aracModel->getServistekiAracSayisi();
+                                $data['bosta_arac'] = $aracStats->bosta_arac ?? 0;
+                                $data['saha_arac'] = max(0, $data['toplam_aktif_arac'] - $data['servisteki_arac'] - $data['bosta_arac']);
+                                $aracToplam = $data['toplam_aktif_arac'] ?: 1;
+                                $data['aktif_a_yuzde'] = ($data['saha_arac'] / $aracToplam) * 100;
+                                $data['servis_a_yuzde'] = ($data['servisteki_arac'] / $aracToplam) * 100;
+                                $data['bosta_a_yuzde'] = ($data['bosta_arac'] / $aracToplam) * 100;
+                            }
+                        } elseif ($widgetId == 'widget-personel-ozet' || $widgetId == 'widget-personel-ozeti') {
                             $data['istatistik'] = $personelModel->personelSayilari('personel');
                             $data['extraStats'] = $personelModel->getAdvancedDashboardStats();
                             $data['gec_kalan_sayisi'] = $hareketModel->getGecKalanlarCount($firmaId);

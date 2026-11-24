@@ -287,6 +287,86 @@ function renderWidget(string $widgetId, array $data = []) {
     ob_start();
     
     switch ($widgetId) {
+        case 'widget-personel-arac-ozet':
+            $paEsc = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+            $paPersonelVar = \App\Service\Gate::allows('personel_listesi');
+            $paAracVar = \App\Service\Gate::allows('arac_takip_yonetim');
+            $paSections = [];
+            if ($paPersonelVar) {
+                $aktif_p = (int) ($istatistik->aktif_personel ?? 0);
+                $saha_p = (int) ($extraStats->sahadaki_personel ?? 0);
+                $izinli_p = (int) ($extraStats->izinli_personel ?? 0);
+                $diger_p = max(0, $aktif_p - $saha_p - $izinli_p);
+                $toplam_p = max(1, $aktif_p);
+                $paSections[] = [
+                    'icon' => 'bx-group', 'tone' => 'blue', 'label' => 'Personel Durumu', 'total' => $aktif_p, 'unit' => 'aktif personel',
+                    'badge' => '%' . (int) round($saha_p / $toplam_p * 100) . ' Sahada', 'link' => 'index.php?p=personel/list', 'link_text' => 'Personel Listesi',
+                    'segments' => [
+                        ['Saha Görevlisi', $saha_p, '#2563eb', round($saha_p / $toplam_p * 100, 2)],
+                        ['İçeride / Diğer', $diger_p, '#06b6d4', round($diger_p / $toplam_p * 100, 2)],
+                        ['İzinli', $izinli_p, '#f59e0b', round($izinli_p / $toplam_p * 100, 2)],
+                        ['Geç Kalan', (int) ($gec_kalan_sayisi ?? 0), '#e11d48', 0],
+                    ],
+                    'overlay' => [
+                        'label' => 'Geç Kalan', 'value' => (int) ($gec_kalan_sayisi ?? 0), 'color' => '#e11d48', 'pct' => min(100, round((int) ($gec_kalan_sayisi ?? 0) / $toplam_p * 100, 2)),
+                    ],
+                ];
+            }
+            if ($paAracVar) {
+                $arac_toplam = max(1, (int) ($toplam_aktif_arac ?? 0));
+                $paSections[] = [
+                    'icon' => 'bx-car', 'tone' => 'purple', 'label' => 'Araç Durumu', 'total' => (int) ($toplam_aktif_arac ?? 0), 'unit' => 'aktif araç',
+                    'badge' => '%' . (int) round((int) ($saha_arac ?? 0) / $arac_toplam * 100) . ' Sahada', 'link' => 'index.php?p=arac-takip/list', 'link_text' => 'Araç Listesi',
+                    'segments' => [
+                        ['Saha Aracı', (int) ($saha_arac ?? 0), '#059669', (float) ($aktif_a_yuzde ?? 0)],
+                        ['Serviste', (int) ($servisteki_arac ?? 0), '#e11d48', (float) ($servis_a_yuzde ?? 0)],
+                        ['Boşta', (int) ($bosta_arac ?? 0), '#f59e0b', (float) ($bosta_a_yuzde ?? 0)],
+                    ],
+                ];
+            }
+            if ($paSections === []) {
+                break;
+            }
+            ?>
+            <div class="<?php echo getWidgetWidthClass($widgetDomId, 'col-12'); ?> widget-item kpi-widget" id="<?php echo $widgetDomId; ?>" style="<?php echo getWidgetStyle($widgetDomId); ?>">
+                <div class="card border-0 h-100 pa-card">
+                    <div class="card-body pa-body">
+                        <?php foreach ($paSections as $paIndex => $paSec): ?>
+                            <?php if ($paIndex > 0): ?><div class="pa-divider"></div><?php endif; ?>
+                            <section class="pa-sec">
+                                <div class="pa-head">
+                                    <div class="pa-title">
+                                        <span class="pa-icon tone-<?php echo $paEsc($paSec['tone']); ?>"><i class="bx <?php echo $paEsc($paSec['icon']); ?>"></i></span>
+                                        <span class="pa-label"><?php echo $paEsc($paSec['label']); ?></span>
+                                        <b class="pa-total"><?php echo number_format($paSec['total'], 0, ',', '.'); ?></b>
+                                        <small class="pa-unit"><?php echo $paEsc($paSec['unit']); ?></small>
+                                    </div>
+                                    <div class="pa-actions">
+                                        <span class="pa-badge tone-<?php echo $paEsc($paSec['tone']); ?>"><?php echo $paEsc($paSec['badge']); ?></span>
+                                        <a href="<?php echo $paEsc($paSec['link']); ?>" class="dash-card-link"><?php echo $paEsc($paSec['link_text']); ?> <i class="bx bx-chevron-right"></i></a>
+                                    </div>
+                                </div>
+                                <div class="pa-bar" role="img" aria-label="<?php echo $paEsc($paSec['label']); ?> dağılımı">
+                                    <?php foreach ($paSec['segments'] as $paSeg): if ($paSeg[3] <= 0) continue; ?>
+                                        <span style="width: <?php echo (float) $paSeg[3]; ?>%; background: <?php echo $paEsc($paSeg[2]); ?>;" title="<?php echo $paEsc($paSeg[0] . ': ' . $paSeg[1]); ?>"></span>
+                                    <?php endforeach; ?>
+                                    <?php if (!empty($paSec['overlay']) && $paSec['overlay']['pct'] > 0): ?>
+                                        <span class="pa-bar-overlay" style="width: <?php echo (float) $paSec['overlay']['pct']; ?>%; background: <?php echo $paEsc($paSec['overlay']['color']); ?>;" title="<?php echo $paEsc($paSec['overlay']['label'] . ': ' . $paSec['overlay']['value']); ?>"></span>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="pa-legend">
+                                    <?php foreach ($paSec['segments'] as $paSeg): ?>
+                                        <span class="pa-legend-item" style="--dot: <?php echo $paEsc($paSeg[2]); ?>;"><i></i><span><?php echo $paEsc($paSeg[0]); ?></span><b><?php echo (int) $paSeg[1]; ?></b></span>
+                                    <?php endforeach; ?>
+                                </div>
+                            </section>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+<?php
+            break;
+
         case 'widget-personel-ozeti':
         case 'widget-personel-ozet':
             $kpiEsc = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');

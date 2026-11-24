@@ -451,12 +451,8 @@ if (Gate::allows("ana_sayfa")) {
         <?php $dashSliderHtml = ob_get_clean();
     }
 
-    if (\App\Service\Gate::allows("personel_listesi")) {
-        $widgets['widget-personel-ozet'] = renderSkeleton('widget-personel-ozet', 'col-md-4 col-xl-4', '260px');
-    }
-
-    if (\App\Service\Gate::allows("arac_takip_yonetim")) {
-        $widgets['widget-arac-ozet'] = renderSkeleton('widget-arac-ozet', 'col-md-4 col-xl-4', '260px');
+    if (\App\Service\Gate::allowsAny(['personel_listesi', 'arac_takip_yonetim'])) {
+        $widgets['widget-personel-arac-ozet'] = renderSkeleton('widget-personel-arac-ozet', getWidgetWidth('widget-personel-arac-ozet', 'col-12'), '300px');
     }
 
 
@@ -685,7 +681,7 @@ if (Gate::allows("ana_sayfa")) {
             }
             $render_order = array_values(array_diff($render_order, $legacyOpsWidgets));
 
-            $render_order = array_values(array_diff($render_order, ['widget-ana-slider', 'widget-takvim-alarmlar', 'widget-gorev-evrak-takvimi', 'widget-dogum-gunleri', 'widget-talep-nobet-ozet']));
+            $render_order = array_values(array_diff($render_order, ['widget-ana-slider', 'widget-takvim-alarmlar', 'widget-gorev-evrak-takvimi', 'widget-dogum-gunleri', 'widget-talep-nobet-ozet', 'widget-personel-ozet', 'widget-arac-ozet']));
             ?>
 
         <div class="container-fluid">
@@ -1246,6 +1242,31 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                 @keyframes dashWave { 0%,60%,100% { transform:rotate(0); } 10%,30% { transform:rotate(14deg); } 20% { transform:rotate(-8deg); } 40% { transform:rotate(-4deg); } 50% { transform:rotate(10deg); } }
                 @media (prefers-reduced-motion: reduce) { .dash-hero-wave { animation:none; } }
                 .dash-hero-sub { margin:0; font-size:13.5px; color:#64748b; }
+                .pa-card { background:#fff; border-radius:16px; box-shadow:0 4px 20px rgba(15,23,42,.06) !important; }
+                .pa-body { padding:18px 22px !important; display:flex; flex-direction:column; gap:14px; }
+                .pa-divider { height:1px; background:#e2e8f0; }
+                .pa-head { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:10px; }
+                .pa-title { display:flex; align-items:baseline; gap:10px; min-width:0; }
+                .pa-icon { align-self:center; width:30px; height:30px; display:inline-flex; align-items:center; justify-content:center; border-radius:8px; font-size:17px; }
+                .pa-icon.tone-blue, .pa-badge.tone-blue { background:#eff6ff; color:#2563eb; }
+                .pa-icon.tone-purple, .pa-badge.tone-purple { background:#f5f3ff; color:#7c3aed; }
+                .pa-label { font-size:12px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#64748b; }
+                .pa-total { font-size:22px; font-weight:700; color:#0f172a; line-height:1; }
+                .pa-unit { font-size:12.5px; color:#94a3b8; }
+                .pa-actions { display:flex; align-items:center; gap:12px; }
+                .pa-badge { font-size:11.5px; font-weight:700; padding:3px 10px; border-radius:6px; }
+                .pa-bar { position:relative; display:flex; gap:3px; height:8px; border-radius:6px; overflow:hidden; background:#f1f5f9; }
+                .pa-bar-overlay { position:absolute; left:0; top:0; height:100% !important; opacity:.9; pointer-events:auto; background:repeating-linear-gradient(135deg, #e11d48 0 2px, rgba(225,29,72,.12) 2px 5px) !important; }
+                .pa-bar span { display:block; height:100%; border-radius:6px; }
+                .pa-bar span.pa-bar-overlay { position:absolute; }
+                .pa-legend { display:flex; flex-wrap:wrap; gap:6px 28px; margin-top:10px; }
+                .pa-legend-item { display:inline-flex; align-items:center; gap:7px; font-size:12.5px; color:#64748b; }
+                .pa-legend-item i { width:8px; height:8px; border-radius:50%; background:var(--dot); }
+                .pa-legend-item b { font-size:14px; font-weight:700; color:#0f172a; }
+                [data-bs-theme="dark"] .pa-card { background:#2a3042; }
+                [data-bs-theme="dark"] .pa-divider { background:#3a4256; }
+                [data-bs-theme="dark"] .pa-total, [data-bs-theme="dark"] .pa-legend-item b { color:#f8fafc; }
+                [data-bs-theme="dark"] .pa-bar { background:#232838; }
                 .dash-size-row { display:flex; gap:6px; padding:0 8px 8px 34px; }
                 .dash-size-row select { flex:1; min-width:0; height:28px; padding:0 6px; font-size:11.5px; border:1px solid #e2e8f0; border-radius:6px; background:#fff; color:#334155; }
                 #dashboard-widgets .widget-item .grid-resize-grip { display:none !important; }
@@ -1812,7 +1833,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                         $skItem['class'] = 'col-md-' . $skGridCols . ' col-xl-' . $skGridCols;
                     }
                     $skGridHeight = (int) ($skSaved['gridHeight'] ?? 0);
-                    $skDefaultHeights = ["widget-ana-slider" => 304, "widget-is-operasyonlari" => 408, "widget-dogum-gunleri" => 280, "widget-talepler" => 360, "widget-izindekiler" => 360, "widget-yaklasan-gorevler" => 260, "widget-endeks-karsilastirma" => 220, "widget-kesme-karsilastirma" => 220];
+                    $skDefaultHeights = ["widget-personel-arac-ozet" => 300, "widget-ana-slider" => 304, "widget-is-operasyonlari" => 408, "widget-dogum-gunleri" => 280, "widget-talepler" => 360, "widget-izindekiler" => 360, "widget-yaklasan-gorevler" => 260, "widget-endeks-karsilastirma" => 220, "widget-kesme-karsilastirma" => 220];
                     $skH = $skGridHeight >= 120 ? $skGridHeight : ($skDefaultHeights[$skeletonId] ?? ($skHeight > 0 ? $skHeight : 180));
                     $skStyleParts = ['grid-row-end: span ' . (int) ceil(($skH + 12) / 8)];
                     $skGridX = (int) ($skSaved['gridX'] ?? 0);
@@ -1939,17 +1960,8 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                                     </li>
                                     <li>
                                         <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
-                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-personel-ozet" checked>
-                                            <span style="font-size: 13px;">Personel Durumu</span>
-                                        </label>
-                                    </li>
-                                    <?php if (Gate::allows("personel_listesi")): ?>
-                                    
-                                    <?php endif; ?>
-                                    <li>
-                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
-                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-arac-ozet" checked>
-                                            <span style="font-size: 13px;">Araç Durumu</span>
+                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-personel-arac-ozet" checked>
+                                            <span style="font-size: 13px;">Personel ve Araç Durumu</span>
                                         </label>
                                     </li>
                                     
@@ -3811,9 +3823,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                 const criticalSkeletonStyle = document.getElementById('dashboard-skeleton-critical');
                 const criticalWidgetIds = new Set([
                     'widget-ana-slider',
-                    'widget-personel-ozet',
-                    'widget-dogum-gunleri',
-                    'widget-arac-ozet',
+                    'widget-personel-arac-ozet',
                     'widget-talep-nobet-ozet'
                 ]);
                 let dashboardRevealed = false;
@@ -4488,12 +4498,13 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                     }).observe(gridContainer, { childList: true, subtree: true });
                 })();
 
-                const gridLegacyDefaultIds = ['widget-ana-slider', 'widget-personel-ozet', 'widget-arac-ozet'];
+                const gridLegacyDefaultIds = ['widget-ana-slider', 'widget-personel-arac-ozet'];
                 const gridMinHeight = 120;
                 const gridRowStep = 20;
                 const gridMinCols = 2;
                 const defaultWidgetWidthClasses = {
                     'widget-ana-slider': 'col-md-4 col-xl-4',
+                    'widget-personel-arac-ozet': 'col-12',
                     'widget-personel-ozet': 'col-md-4 col-xl-4',
                     'widget-personel-ozeti': 'col-md-4 col-xl-4',
                     'widget-dogum-gunleri': 'col-md-4 col-xl-4',
@@ -5438,6 +5449,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                         // ── Title resolution ──────────────────────────────────────
                         const titleMap = {
                             'widget-ana-slider'              : 'Haberler & Duyurular',
+                            'widget-personel-arac-ozet'      : 'Personel ve Araç Durumu',
                             'widget-personel-ozeti'          : 'Personel Durumu',
                             'widget-personel-ozet'           : 'Personel Durumu',
                             'widget-dogum-gunleri'           : 'Doğum Günleri',
