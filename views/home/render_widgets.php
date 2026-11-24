@@ -262,16 +262,16 @@ function renderWidget(string $widgetId, array $data = []) {
             ];
             $hEtiket = ['evrak' => 'Cevap', 'gorev' => 'Görev', 'dogum' => '🎂 Doğum Günü', 'nobet' => 'Nöbetçi', 'talep' => 'Talep', 'gec' => 'Geç Kalan'];
             $hBugunTarih = date('Y-m-d');
-            $hYaklasan = 0;
+            $hBugun = ($hYil === (int) date('Y') && $hAy === (int) date('n')) ? (int) date('j') : 0;
+            $hBugunAdet = 0;
             foreach ($hListe as $hItem) {
-                if (!in_array($hItem['tur'], $hDurumTurleri, true) && substr((string) $hItem['tarih'], 0, 10) >= $hBugunTarih) {
-                    $hYaklasan++;
+                if (substr((string) $hItem['tarih'], 0, 10) === $hBugunTarih) {
+                    $hBugunAdet++;
                 }
             }
-            $hBugun = ($hYil === (int) date('Y') && $hAy === (int) date('n')) ? (int) date('j') : 0;
             ?>
-            <?php $hKapali = $hBugun > 0 && $hYaklasan === 0; ?>
-            <div class="hcal<?php echo $hKapali ? ' is-collapsed' : ''; ?>" id="heroCalendar" data-yil="<?php echo $hYil; ?>" data-ay="<?php echo $hAy; ?>">
+            <?php $hKapali = $hBugun > 0 && $hBugunAdet === 0; ?>
+            <div class="hcal<?php echo $hKapali ? ' is-collapsed' : ''; ?>" id="heroCalendar" data-yil="<?php echo $hYil; ?>" data-ay="<?php echo $hAy; ?>" data-bugun="<?php echo $hBugunAdet > 0 ? $hBugun : 0; ?>">
                 <div class="hcal-head">
                     <div class="hcal-nav">
                         <button type="button" class="hcal-nav-btn" onclick="navigateHeroCalendar(<?php echo $hYil; ?>, <?php echo $hAy - 1; ?>)" title="Önceki Ay" aria-label="Önceki ay"><i class="bx bx-chevron-left"></i></button>

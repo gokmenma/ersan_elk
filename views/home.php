@@ -1252,8 +1252,12 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                 .dash-hero-sub { margin:0; font-size:13.5px; color:#64748b; }
                 .dash-slider { margin-bottom:12px; width:100%; flex:0 0 100%; max-width:100%; }
                 .dash-slider .carousel { width:100%; }
-                .dash-slider .carousel-inner { border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,.08); }
+                .dash-slider .carousel-inner { border-radius:12px; box-shadow:0 1px 4px rgba(15,23,42,.06) !important; }
                 .dash-slider .carousel-content { min-height:64px; padding:12px 56px !important; }
+                .dash-slider .carousel-content { filter:saturate(.62) brightness(1.1); opacity:.92; }
+                .dash-slider .carousel-content h5 { font-weight:600 !important; }
+                .dash-slider .carousel-content p { opacity:.9 !important; color:rgba(255,255,255,.88) !important; }
+                .dash-slider .carousel-content i.bx { opacity:.55; }
                 .dash-slider .carousel-content > .flex-grow-1 { display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 14px; padding-right:12px !important; }
                 .dash-slider .carousel-content h5 { font-size:1rem !important; margin:0 !important; white-space:nowrap; }
                 .dash-slider .carousel-content p { max-width:none !important; font-size:.875rem !important; margin:0 !important; }
@@ -7316,7 +7320,9 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                         if (res.status === 'success' && typeof res.html === 'string') {
                             if (res.html.trim() === '') { $host.remove(); return; }
                             $host.html(res.html);
+                            const bugun = parseInt($('#heroCalendar').attr('data-bugun'), 10) || 0;
                             if (window.heroCalState) { window.heroCalState.day = 0; window.applyHeroCalendar(window.heroCalState); }
+                            else if (bugun) window.applyHeroCalendar({ open: true, type: 'all', day: bugun });
                         } else {
                             $host.html('<div class="hcal-loading">Takvim yüklenemedi.</div>');
                         }
