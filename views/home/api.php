@@ -170,6 +170,50 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         ];
                     }
                 }
+                if ($heroLayout && $year === (int) date('Y') && $month === (int) date('n')) {
+                    $bugunTarih = date('Y-m-d');
+                    if (Gate::allows('nobet/list')) {
+                        foreach ((new \App\Model\NobetModel())->getNobetlerByTarih($bugunTarih) as $nobet) {
+                            $takvimAlarmlar[] = [
+                                'tur' => 'nobet',
+                                'id' => 0,
+                                'tarih' => $bugunTarih,
+                                'saat' => null,
+                                'baslik' => (string) ($nobet->adi_soyadi ?? ''),
+                                'alt' => 'Bugünkü nöbetçi' . (!empty($nobet->cep_telefonu) ? ' · ' . $nobet->cep_telefonu : ''),
+                                'url' => 'index.php?p=nobet/list',
+                            ];
+                        }
+                    }
+                    if (Gate::allows('talepler')) {
+                        $bekleyenTalep = homeBekleyenTalepSayisi((int) $firmaId);
+                        if ($bekleyenTalep > 0) {
+                            $takvimAlarmlar[] = [
+                                'tur' => 'talep',
+                                'id' => 0,
+                                'tarih' => $bugunTarih,
+                                'saat' => null,
+                                'baslik' => $bekleyenTalep . ' bekleyen talep',
+                                'alt' => 'Onay bekleyen işlemler',
+                                'url' => 'index.php?p=talepler/list',
+                            ];
+                        }
+                    }
+                    if (Gate::allows('personel-takip/list')) {
+                        $gecKalan = (int) (new \App\Model\PersonelHareketleriModel())->getGecKalanlarCount($firmaId);
+                        if ($gecKalan > 0) {
+                            $takvimAlarmlar[] = [
+                                'tur' => 'gec',
+                                'id' => 0,
+                                'tarih' => $bugunTarih,
+                                'saat' => null,
+                                'baslik' => $gecKalan . ' kişi geç kaldı',
+                                'alt' => 'Bugün mesaiye geç kalanlar',
+                                'url' => 'index.php?p=personel-takip/list&tab=tabGecKalanlar',
+                            ];
+                        }
+                    }
+                }
                 usort($takvimAlarmlar, function($a, $b) {
                     return strcmp($a['tarih'], $b['tarih']);
                 });
@@ -303,25 +347,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 }
                             }
                             if ($ozetTalepIzni) {
-                            $db = $nobetModel->getDb();
-                            $degisim_c = 0; $mazeret_c = 0; $talep_c = 0;
-                            try {
-                                $stmtDegisim = $db->prepare("SELECT COUNT(*) as count FROM nobet_degisim_talepleri dt LEFT JOIN nobetler n ON dt.nobet_id = n.id WHERE dt.durum IN ('beklemede', 'personel_onayladi') AND n.firma_id = :firma_id AND n.nobet_tarihi >= CURDATE()");
-                                $stmtDegisim->execute([':firma_id' => $firmaId]);
-                                $degisim_c = (int) $stmtDegisim->fetch(PDO::FETCH_OBJ)->count;
-
-                                $stmtMazeret = $db->prepare("SELECT COUNT(*) as count FROM nobetler WHERE durum = 'mazeret_bildirildi' AND silinme_tarihi IS NULL AND firma_id = :firma_id AND nobet_tarihi >= CURDATE()");
-                                $stmtMazeret->execute([':firma_id' => $firmaId]);
-                                $mazeret_c = (int) $stmtMazeret->fetch(PDO::FETCH_OBJ)->count;
-
-                                $stmtTalep = $db->prepare("SELECT COUNT(*) as count FROM nobetler WHERE durum = 'talep_edildi' AND silinme_tarihi IS NULL AND firma_id = :firma_id AND nobet_tarihi >= CURDATE()");
-                                $stmtTalep->execute([':firma_id' => $firmaId]);
-                                $talep_c = (int) $stmtTalep->fetch(PDO::FETCH_OBJ)->count;
-                            } catch (\Exception $e) {}
-
-                            $canAvans = \App\Service\Gate::allows('avans_talepleri');
-                            $avansSayisi = $canAvans ? (int)$avansModel->getBekleyenAvansSayisi() : 0;
-                            $data['personel_talep_sayisi'] = $avansSayisi + (int)$izinModel->getBekleyenIzinSayisi() + (int)$talepModel->getBekleyenTalepSayisi() + $degisim_c + $mazeret_c + $talep_c;
+                            $data['personel_talep_sayisi'] = homeBekleyenTalepSayisi((int) $firmaId);
                             }
                         } elseif ($widgetId == 'widget-nobetciler') {
                             $data['nobetciler'] = $nobetModel->getNobetlerByTarih(date('Y-m-d'));

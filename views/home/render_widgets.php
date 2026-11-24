@@ -112,6 +112,35 @@ function homeWidgetPermission(string $widgetId): ?string {
     };
 }
 
+function homeBekleyenTalepSayisi(int $firmaId): int {
+    $db = (new \App\Model\NobetModel())->getDb();
+    $degisim = 0;
+    $mazeret = 0;
+    $talep = 0;
+    try {
+        $stmtDegisim = $db->prepare("SELECT COUNT(*) as count FROM nobet_degisim_talepleri dt LEFT JOIN nobetler n ON dt.nobet_id = n.id WHERE dt.durum IN ('beklemede', 'personel_onayladi') AND n.firma_id = :firma_id AND n.nobet_tarihi >= CURDATE()");
+        $stmtDegisim->execute([':firma_id' => $firmaId]);
+        $degisim = (int) $stmtDegisim->fetch(PDO::FETCH_OBJ)->count;
+
+        $stmtMazeret = $db->prepare("SELECT COUNT(*) as count FROM nobetler WHERE durum = 'mazeret_bildirildi' AND silinme_tarihi IS NULL AND firma_id = :firma_id AND nobet_tarihi >= CURDATE()");
+        $stmtMazeret->execute([':firma_id' => $firmaId]);
+        $mazeret = (int) $stmtMazeret->fetch(PDO::FETCH_OBJ)->count;
+
+        $stmtTalep = $db->prepare("SELECT COUNT(*) as count FROM nobetler WHERE durum = 'talep_edildi' AND silinme_tarihi IS NULL AND firma_id = :firma_id AND nobet_tarihi >= CURDATE()");
+        $stmtTalep->execute([':firma_id' => $firmaId]);
+        $talep = (int) $stmtTalep->fetch(PDO::FETCH_OBJ)->count;
+    } catch (\Throwable $e) {
+        error_log('Bekleyen talep sayısı hatası: ' . $e->getMessage());
+    }
+
+    $avans = \App\Service\Gate::allows('avans_talepleri') ? (int) (new \App\Model\AvansModel())->getBekleyenAvansSayisi() : 0;
+
+    return $avans
+        + (int) (new \App\Model\PersonelIzinleriModel())->getBekleyenIzinSayisi()
+        + (int) (new \App\Model\TalepModel())->getBekleyenTalepSayisi()
+        + $degisim + $mazeret + $talep;
+}
+
 function homeWidgetAllowed(string $widgetId): bool {
     if ($widgetId === 'widget-is-operasyonlari') {
         return \App\Service\Gate::allowsAny(['puantaj/raporlar', 'kacak_islemleri', 'ihbar/list']);
@@ -214,14 +243,28 @@ function renderWidget(string $widgetId, array $data = []) {
             $hGunSayisi = (int) date('t', mktime(0, 0, 0, $hAy, 1, $hYil));
             $hListe = $takvim_alarmlar ?? [];
             $hGunBazli = [];
+            $hTurSayi = [];
+            $hDurumTurleri = ['nobet', 'talep', 'gec'];
             foreach ($hListe as $hItem) {
                 $hGun = (int) date('j', strtotime($hItem['tarih']));
-                $hGunBazli[$hGun] = ($hGunBazli[$hGun] ?? 0) + 1;
+                $hTurSayi[$hItem['tur']] = ($hTurSayi[$hItem['tur']] ?? 0) + 1;
+                if (!in_array($hItem['tur'], $hDurumTurleri, true)) {
+                    $hGunBazli[$hGun] = ($hGunBazli[$hGun] ?? 0) + 1;
+                }
             }
+            $hTurler = [
+                'evrak' => ['Evrak', 'bx-envelope'],
+                'gorev' => ['Görev', 'bx-task'],
+                'dogum' => ['Doğum Günü', 'bx-cake'],
+                'nobet' => ['Nöbetçi', 'bx-calendar-star'],
+                'talep' => ['Talep', 'bx-time-five'],
+                'gec' => ['Geç Kalan', 'bx-alarm-exclamation'],
+            ];
+            $hEtiket = ['evrak' => 'Cevap', 'gorev' => 'Görev', 'dogum' => '🎂 Doğum Günü', 'nobet' => 'Nöbetçi', 'talep' => 'Talep', 'gec' => 'Geç Kalan'];
             $hBugunTarih = date('Y-m-d');
             $hYaklasan = 0;
             foreach ($hListe as $hItem) {
-                if (substr((string) $hItem['tarih'], 0, 10) >= $hBugunTarih) {
+                if (!in_array($hItem['tur'], $hDurumTurleri, true) && substr((string) $hItem['tarih'], 0, 10) >= $hBugunTarih) {
                     $hYaklasan++;
                 }
             }
@@ -238,8 +281,11 @@ function renderWidget(string $widgetId, array $data = []) {
                             <button type="button" class="hcal-today-btn" onclick="navigateHeroCalendar(<?php echo (int) date('Y'); ?>, <?php echo (int) date('n'); ?>)">Bugün</button>
                         <?php endif; ?>
                     </div>
-                    <div class="hcal-meta">
-                        <button type="button" class="hcal-count<?php echo $hKapali ? '' : ' is-active'; ?>" id="heroCalAll" onclick="toggleHeroCalendarAll()" aria-pressed="<?php echo $hKapali ? 'false' : 'true'; ?>" title="Tüm kayıtları göster/gizle"><i class="bx bx-list-ul"></i> Tümü · <?php echo count($hListe); ?></button>
+                    <div class="hcal-filters" role="group" aria-label="Takvim filtresi">
+                    <button type="button" class="hcal-chip chip-all<?php echo $hKapali ? '' : ' is-active'; ?>" data-type="all" onclick="filterHeroCalendar('all')"><i class="bx bx-list-ul"></i> Tümü <b><?php echo count($hListe); ?></b></button>
+                    <?php foreach ($hTurler as $hKey => $hMeta): if (empty($hTurSayi[$hKey])) continue; ?>
+                        <button type="button" class="hcal-chip chip-<?php echo $hKey; ?>" data-type="<?php echo $hKey; ?>" onclick="filterHeroCalendar('<?php echo $hKey; ?>')"><i class="bx <?php echo $hMeta[1]; ?>"></i> <?php echo $hMeta[0]; ?> <b><?php echo (int) $hTurSayi[$hKey]; ?></b></button>
+                    <?php endforeach; ?>
                     </div>
                 </div>
                 <div class="hcal-strip" style="--hcal-n: <?php echo $hGunSayisi; ?>;">
@@ -268,16 +314,17 @@ function renderWidget(string $widgetId, array $data = []) {
                             $hTur = $hAlarm['tur'] ?? '';
                             $hGorev = $hTur === 'gorev';
                             ?>
-                            <a href="<?php echo $hEsc($hAlarm['url'] ?? '#'); ?>" class="hcal-item <?php echo $hTur === 'dogum' ? 'is-dogum' : ($hGorev ? 'is-gorev' : 'is-evrak'); ?><?php echo substr((string) $hAlarm['tarih'], 0, 10) < $hBugunTarih ? ' is-past' : ''; ?><?php echo $hAGun === $hBugun ? ' is-today' : ''; ?>" data-day="<?php echo $hAGun; ?>" title="<?php echo $hEsc(($hAlarm['baslik'] ?? '') . (!empty($hAlarm['alt']) ? ' — ' . $hAlarm['alt'] : '')); ?>">
+                            <a href="<?php echo $hEsc($hAlarm['url'] ?? '#'); ?>" class="hcal-item is-<?php echo $hEsc($hTur); ?><?php echo substr((string) $hAlarm['tarih'], 0, 10) < $hBugunTarih ? ' is-past' : ''; ?><?php echo $hAGun === $hBugun ? ' is-today' : ''; ?>" data-day="<?php echo $hAGun; ?>" data-type="<?php echo $hEsc($hTur); ?>" title="<?php echo $hEsc(($hAlarm['baslik'] ?? '') . (!empty($hAlarm['alt']) ? ' — ' . $hAlarm['alt'] : '')); ?>">
                                 <div class="hcal-item-top">
                                     <span class="hcal-item-date"><?php echo $hAGun . ' ' . ($hAylarKisa[$hAAy] ?? ''); ?></span>
-                                    <span class="hcal-item-tag"><?php echo $hTur === 'dogum' ? '🎂 Doğum Günü' : ($hGorev ? 'Görev' : 'Cevap'); ?></span>
+                                    <span class="hcal-item-tag"><?php echo $hEsc($hEtiket[$hTur] ?? 'Kayıt'); ?></span>
                                 </div>
                                 <div class="hcal-item-title"><?php echo $hEsc($hAlarm['baslik'] ?? ''); ?></div>
                                 <?php if (!empty($hAlarm['alt'])): ?><div class="hcal-item-sub"><?php echo $hEsc($hAlarm['alt']); ?></div><?php endif; ?>
                             </a>
                         <?php endforeach; ?>
                     <?php endif; ?>
+                    <div class="hcal-empty d-none" id="heroCalNoMatch"><i class="bx bx-filter-alt"></i> Bu filtre için kayıt yok</div>
                 </div>
             </div>
             <?php

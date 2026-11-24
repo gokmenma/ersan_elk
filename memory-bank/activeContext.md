@@ -4142,3 +4142,7 @@
 - views/home.php: Haberler & Duyurular artık grid dışında, hero kartının üstünde tam genişlik `.dash-slider` (id `widget-ana-slider` korundu); 6 sn otomatik kayar, tek duyuruda ok/gösterge gizli.
 - Görev & Evrak Takvimi gridden kaldırıldı; hero kartı içinde `#heroCalendarHost` altında yatay tek sıra gün şeridi (`.hcal-strip`) + altında alarm/evrak listesi. `get-calendar-alarms` aksiyonu `layout=hero` ile `widget-hero-takvim` (render_widgets.php) döner; hero'da evrak yalnız `evrak-takip/list` yetkisiyle gelir. Yeni policy gerekmedi.
 - Tarayıcıda doğrulandı (1600px). Mobil genişlik ve çoklu duyuruda kayma görsel test edilmedi.
+
+## 2026-11-24 Hero takvim: filtre butonları ve birleşik özet
+- Doğum Günleri ve Bekleyen Talepler/Geç Kalanlar/Nöbetçiler kartları gridden kaldırıldı; veriler hero takvimine (`layout=hero`, yalnız cari ayda bugün tarihli) taşındı. Filtre butonları: Tümü, Evrak, Görev, Doğum Günü, Nöbetçi, Talep, Geç Kalan (yalnız kaydı olan türler). Gün + tür filtresi birlikte çalışır; varsayılan kapalı kuralı yalnız evrak/görev/doğum günü kayıtlarına bakar.
+- Bekleyen talep sayısı hesabı `homeBekleyenTalepSayisi()` (render_widgets.php) fonksiyonuna taşındı; api.php batch yolu da bunu kullanır.

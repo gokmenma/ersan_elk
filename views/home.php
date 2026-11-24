@@ -459,17 +459,10 @@ if (Gate::allows("ana_sayfa")) {
         $widgets['widget-personel-ozet'] = renderSkeleton('widget-personel-ozet', 'col-md-4 col-xl-4', '260px');
     }
 
-    if (\App\Service\Gate::allows("personel_listesi")) {
-        $widgets['widget-dogum-gunleri'] = renderSkeleton('widget-dogum-gunleri', getWidgetWidth('widget-dogum-gunleri', 'col-md-4 col-xl-4'), '260px');
-    }
-
     if (\App\Service\Gate::allows("arac_takip_yonetim")) {
         $widgets['widget-arac-ozet'] = renderSkeleton('widget-arac-ozet', 'col-md-4 col-xl-4', '260px');
     }
 
-    if (\App\Service\Gate::allowsAny(['talepler', 'personel-takip/list', 'nobet/list'])) {
-        $widgets['widget-talep-nobet-ozet'] = renderSkeleton('widget-talep-nobet-ozet', 'col-12 col-md-6', '140px');
-    }
 
     ob_start(); ?>
     <?php $widgets['widget-row-break'] = ob_get_clean();
@@ -696,7 +689,7 @@ if (Gate::allows("ana_sayfa")) {
             }
             $render_order = array_values(array_diff($render_order, $legacyOpsWidgets));
 
-            $render_order = array_values(array_diff($render_order, ['widget-ana-slider', 'widget-takvim-alarmlar', 'widget-gorev-evrak-takvimi']));
+            $render_order = array_values(array_diff($render_order, ['widget-ana-slider', 'widget-takvim-alarmlar', 'widget-gorev-evrak-takvimi', 'widget-dogum-gunleri', 'widget-talep-nobet-ozet']));
             ?>
 
         <div class="container-fluid">
@@ -1277,9 +1270,50 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                 .hcal-nav-btn, .hcal-today-btn, .hcal-reset { border:1px solid #e2e8f0; background:#fff; color:#475569; border-radius:8px; height:30px; display:inline-flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; cursor:pointer; padding:0 10px; transition:background .15s, border-color .15s; }
                 .hcal-nav-btn { width:30px; padding:0; font-size:18px; }
                 .hcal-nav-btn:hover, .hcal-today-btn:hover, .hcal-reset:hover { background:#f1f5f9; border-color:#cbd5e1; }
-                .hcal-count { display:inline-flex; align-items:center; gap:5px; height:30px; cursor:pointer; font-size:12px; font-weight:700; color:#475569; background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:0 12px; transition:background .15s, color .15s; }
-                .hcal-count:hover { background:#f1f5f9; }
-                .hcal-count.is-active { background:#475569; border-color:#475569; color:#fff; }
+                .hcal-filters { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:6px; }
+                .hcal-chip.chip-all { color:#475569; background:#f1f5f9; border-color:#cbd5e1; }
+                .hcal-chip.chip-all b { background:#fff; color:#475569; }
+                .hcal-chip.chip-all.is-active { background:#475569; border-color:#475569; color:#fff; }
+                .hcal-chip.chip-all.is-active b { background:rgba(255,255,255,.22); color:#fff; }
+                .hcal-chip.chip-evrak { color:#b45309; background:#fffbeb; border-color:#fde68a; }
+                .hcal-chip.chip-evrak b { background:#fff; color:#b45309; }
+                .hcal-chip.chip-evrak.is-active { background:#b45309; border-color:#b45309; color:#fff; }
+                .hcal-chip.chip-evrak.is-active b { background:rgba(255,255,255,.22); color:#fff; }
+                .hcal-chip.chip-gorev { color:#2563eb; background:#eff6ff; border-color:#bfdbfe; }
+                .hcal-chip.chip-gorev b { background:#fff; color:#2563eb; }
+                .hcal-chip.chip-gorev.is-active { background:#2563eb; border-color:#2563eb; color:#fff; }
+                .hcal-chip.chip-gorev.is-active b { background:rgba(255,255,255,.22); color:#fff; }
+                .hcal-chip.chip-dogum { color:#7c3aed; background:#f5f3ff; border-color:#ddd6fe; }
+                .hcal-chip.chip-dogum b { background:#fff; color:#7c3aed; }
+                .hcal-chip.chip-dogum.is-active { background:#7c3aed; border-color:#7c3aed; color:#fff; }
+                .hcal-chip.chip-dogum.is-active b { background:rgba(255,255,255,.22); color:#fff; }
+                .hcal-chip.chip-nobet { color:#0284c7; background:#f0f9ff; border-color:#bae6fd; }
+                .hcal-chip.chip-nobet b { background:#fff; color:#0284c7; }
+                .hcal-chip.chip-nobet.is-active { background:#0284c7; border-color:#0284c7; color:#fff; }
+                .hcal-chip.chip-nobet.is-active b { background:rgba(255,255,255,.22); color:#fff; }
+                .hcal-chip.chip-talep { color:#c2410c; background:#fff7ed; border-color:#fed7aa; }
+                .hcal-chip.chip-talep b { background:#fff; color:#c2410c; }
+                .hcal-chip.chip-talep.is-active { background:#c2410c; border-color:#c2410c; color:#fff; }
+                .hcal-chip.chip-talep.is-active b { background:rgba(255,255,255,.22); color:#fff; }
+                .hcal-chip.chip-gec { color:#be123c; background:#fff1f2; border-color:#fecdd3; }
+                .hcal-chip.chip-gec b { background:#fff; color:#be123c; }
+                .hcal-chip.chip-gec.is-active { background:#be123c; border-color:#be123c; color:#fff; }
+                .hcal-chip.chip-gec.is-active b { background:rgba(255,255,255,.22); color:#fff; }
+                .hcal-chip { display:inline-flex; align-items:center; gap:5px; height:30px; padding:0 12px; border:1px solid #e2e8f0; border-radius:8px; background:#fff; color:#475569; font-size:12px; font-weight:600; cursor:pointer; transition:background .15s, color .15s, border-color .15s; }
+                .hcal-chip i { font-size:15px; }
+                .hcal-chip b { font-weight:700; padding:0 6px; border-radius:6px; background:#f1f5f9; color:#475569; font-size:11px; line-height:18px; }
+                .hcal-chip:hover { background:#f8fafc; border-color:#cbd5e1; }
+                .hcal-chip.is-active { background:#475569; border-color:#475569; color:#fff; }
+                .hcal-chip.is-active b { background:rgba(255,255,255,.2); color:#fff; }
+                .hcal-item.is-nobet { border-left-color:#0ea5e9; }
+                .hcal-item.is-nobet .hcal-item-date, .hcal-item.is-nobet .hcal-item-tag { color:#0284c7; }
+                .hcal-item.is-nobet .hcal-item-tag { background:#f0f9ff; border-color:#bae6fd; }
+                .hcal-item.is-talep { border-left-color:#f97316; }
+                .hcal-item.is-talep .hcal-item-date, .hcal-item.is-talep .hcal-item-tag { color:#c2410c; }
+                .hcal-item.is-talep .hcal-item-tag { background:#fff7ed; border-color:#fed7aa; }
+                .hcal-item.is-gec { border-left-color:#e11d48; }
+                .hcal-item.is-gec .hcal-item-date, .hcal-item.is-gec .hcal-item-tag { color:#be123c; }
+                .hcal-item.is-gec .hcal-item-tag { background:#fff1f2; border-color:#fecdd3; }
                 .hcal-strip { padding-top:8px !important; display:grid; grid-template-columns:repeat(var(--hcal-n, 30), minmax(34px, 1fr)); gap:4px; overflow-x:auto; padding-bottom:4px; }
                 .hcal-day { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; height:54px; border:1px solid #e2e8f0; border-radius:8px; background:#f8fafc; color:#334155; cursor:pointer; padding:0; transition:background .15s, border-color .15s, transform .15s; }
                 .hcal-day small { font-size:9.5px; font-weight:600; text-transform:uppercase; color:#94a3b8; line-height:1; }
@@ -1318,7 +1352,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                 .hcal-empty i { font-size:18px; vertical-align:middle; margin-right:4px; }
                 [data-bs-theme="dark"] .dash-hero-cal { border-color:#3a4256; }
                 [data-bs-theme="dark"] .hcal-title { color:#f8fafc; }
-                [data-bs-theme="dark"] .hcal-day, [data-bs-theme="dark"] .hcal-item, [data-bs-theme="dark"] .hcal-nav-btn, [data-bs-theme="dark"] .hcal-today-btn, [data-bs-theme="dark"] .hcal-reset { background:#232838; border-color:#3a4256; color:#e2e8f0; }
+                [data-bs-theme="dark"] .hcal-day, [data-bs-theme="dark"] .hcal-item, [data-bs-theme="dark"] .hcal-nav-btn, [data-bs-theme="dark"] .hcal-chip, [data-bs-theme="dark"] .hcal-today-btn, [data-bs-theme="dark"] .hcal-reset { background:#232838; border-color:#3a4256; color:#e2e8f0; }
                 [data-bs-theme="dark"] .hcal-day.is-weekend { background:#1e2332; }
                 [data-bs-theme="dark"] .hcal-day.has-alarm { background:#3a3220; border-color:#a16207; }
                 [data-bs-theme="dark"] .hcal-day.is-today { background:#64748b; border-color:#64748b; }
@@ -1912,12 +1946,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                                         </label>
                                     </li>
                                     <?php if (Gate::allows("personel_listesi")): ?>
-                                    <li>
-                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
-                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-dogum-gunleri" checked>
-                                            <span style="font-size: 13px;">Doğum Günleri</span>
-                                        </label>
-                                    </li>
+                                    
                                     <?php endif; ?>
                                     <li>
                                         <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
@@ -1925,12 +1954,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                                             <span style="font-size: 13px;">Araç Durumu</span>
                                         </label>
                                     </li>
-                                    <li>
-                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
-                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-talep-nobet-ozet" checked>
-                                            <span style="font-size: 13px;">Talep, Geç Kalan ve Nöbetçi Özeti</span>
-                                        </label>
-                                    </li>
+                                    
                                     <li><hr class="dropdown-divider opacity-50"></li>
                                     <li>
                                         <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
@@ -7292,7 +7316,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                         if (res.status === 'success' && typeof res.html === 'string') {
                             if (res.html.trim() === '') { $host.remove(); return; }
                             $host.html(res.html);
-                            if (typeof window.heroCalUserOpen === 'boolean') window.setHeroCalendarMode(window.heroCalUserOpen ? 'all' : 'none');
+                            if (window.heroCalState) { window.heroCalState.day = 0; window.applyHeroCalendar(window.heroCalState); }
                         } else {
                             $host.html('<div class="hcal-loading">Takvim yüklenemedi.</div>');
                         }
@@ -7303,19 +7327,42 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                     });
                 };
 
-                window.setHeroCalendarMode = function(mode) {
+                window.heroCalState = null;
+
+                window.applyHeroCalendar = function(st) {
                     const $cal = $('#heroCalendar');
                     if (!$cal.length) return;
+                    let visible = 0;
+                    $cal.find('.hcal-item').each(function() {
+                        const $it = $(this);
+                        const match = (st.type === 'all' || $it.attr('data-type') === st.type)
+                            && (!st.day || parseInt($it.attr('data-day'), 10) === st.day);
+                        $it.toggleClass('d-none', !match);
+                        if (match) visible++;
+                    });
+                    $cal.toggleClass('is-collapsed', !st.open);
                     $cal.find('.hcal-day').removeClass('is-selected');
-                    if (mode === 'all') $cal.find('.hcal-item').removeClass('d-none');
-                    $cal.toggleClass('is-collapsed', mode !== 'all');
-                    $cal.find('#heroCalAll').toggleClass('is-active', mode === 'all').attr('aria-pressed', mode === 'all' ? 'true' : 'false');
+                    if (st.day) $cal.find('.hcal-day[data-day="' + st.day + '"]').addClass('is-selected');
+                    $cal.find('.hcal-chip').each(function() {
+                        const on = st.open && $(this).attr('data-type') === st.type;
+                        $(this).toggleClass('is-active', on).attr('aria-pressed', on ? 'true' : 'false');
+                    });
+                    $cal.find('#heroCalNoMatch').toggleClass('d-none', !(st.open && visible === 0 && $cal.find('.hcal-item').length > 0));
+                    window.heroCalState = st;
                 };
 
-                window.toggleHeroCalendarAll = function() {
-                    const show = !$('#heroCalAll').hasClass('is-active');
-                    window.heroCalUserOpen = show;
-                    window.setHeroCalendarMode(show ? 'all' : 'none');
+                window.currentHeroCalendarState = function() {
+                    if (window.heroCalState) return $.extend({}, window.heroCalState);
+                    const $cal = $('#heroCalendar');
+                    return { open: !$cal.hasClass('is-collapsed'), type: 'all', day: 0 };
+                };
+
+                window.filterHeroCalendar = function(type) {
+                    const st = window.currentHeroCalendarState();
+                    if (st.open && st.type === type && !st.day) { st.open = false; }
+                    else { st.open = true; st.type = type; }
+                    st.day = 0;
+                    window.applyHeroCalendar(st);
                 };
 
                 window.navigateHeroCalendar = function(year, month) {
@@ -7324,20 +7371,10 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                 };
 
                 window.selectHeroCalendarDay = function(day) {
-                    const $cal = $('#heroCalendar');
-                    const $cell = $cal.find('.hcal-day[data-day="' + day + '"]');
-                    if ($cell.hasClass('is-selected')) {
-                        window.heroCalUserOpen = false;
-                        window.setHeroCalendarMode('none');
-                        return;
-                    }
-                    $cal.find('.hcal-day').removeClass('is-selected');
-                    $cell.addClass('is-selected');
-                    $cal.find('.hcal-item').each(function() {
-                        $(this).toggleClass('d-none', parseInt($(this).attr('data-day'), 10) !== day);
-                    });
-                    $cal.removeClass('is-collapsed');
-                    $cal.find('#heroCalAll').removeClass('is-active').attr('aria-pressed', 'false');
+                    const st = window.currentHeroCalendarState();
+                    st.open = true;
+                    st.day = st.day === day ? 0 : day;
+                    window.applyHeroCalendar(st);
                 };
 
                 window.navigateHomeCalendar = function(year, month) {
