@@ -69,12 +69,8 @@ if (Gate::allows("ana_sayfa")) {
         $render_order = isset($_COOKIE['dashboard_order']) ? json_decode($_COOKIE['dashboard_order'], true) : [];
     }
 
-    if ($dbFreeLayout !== null) {
-        $dashboard_is_free = $dbFreeLayout === 'true';
-        $_COOKIE['switch_free_layout'] = $dbFreeLayout;
-    } else {
-        $dashboard_is_free = ($_COOKIE['switch_free_layout'] ?? 'false') === 'true';
-    }
+    $dashboard_is_free = false;
+    $_COOKIE['switch_free_layout'] = 'false';
 
     // Operasyonel istatistikler ve son güncelleme bilgileri
     $last_update_endeks = $last_update_isler = $last_update_sayac = null;
@@ -1250,6 +1246,9 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                 @keyframes dashWave { 0%,60%,100% { transform:rotate(0); } 10%,30% { transform:rotate(14deg); } 20% { transform:rotate(-8deg); } 40% { transform:rotate(-4deg); } 50% { transform:rotate(10deg); } }
                 @media (prefers-reduced-motion: reduce) { .dash-hero-wave { animation:none; } }
                 .dash-hero-sub { margin:0; font-size:13.5px; color:#64748b; }
+                .dash-size-row { display:flex; gap:6px; padding:0 8px 8px 34px; }
+                .dash-size-row select { flex:1; min-width:0; height:28px; padding:0 6px; font-size:11.5px; border:1px solid #e2e8f0; border-radius:6px; background:#fff; color:#334155; }
+                #dashboard-widgets .widget-item .grid-resize-grip { display:none !important; }
                 .dash-slider { margin-bottom:12px; width:100%; flex:0 0 100%; max-width:100%; }
                 .dash-slider .carousel { width:100%; }
                 .dash-slider .carousel-inner { border-radius:12px; box-shadow:0 1px 4px rgba(15,23,42,.06) !important; }
@@ -1257,11 +1256,14 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                 .dash-slider .carousel-content { filter:saturate(.62) brightness(1.1); opacity:.92; }
                 .dash-slider .carousel-content h5 { font-weight:600 !important; }
                 .dash-slider .carousel-content p { opacity:.9 !important; color:rgba(255,255,255,.88) !important; }
-                .dash-slider .carousel-content i.bx { opacity:.55; }
+                .dash-slider .carousel-content > .flex-shrink-0 i.bx { opacity:.55; }
                 .dash-slider .carousel-content > .flex-grow-1 { display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 14px; padding-right:12px !important; }
                 .dash-slider .carousel-content h5 { font-size:1rem !important; margin:0 !important; white-space:nowrap; }
                 .dash-slider .carousel-content p { max-width:none !important; font-size:.875rem !important; margin:0 !important; }
-                .dash-slider .carousel-content i.bx { font-size:34px !important; }
+                .dash-slider .carousel-content > .flex-shrink-0 i.bx { font-size:34px !important; }
+                .dash-slider .carousel-content p br { display:none; }
+                .dash-slider .carousel-content p small { margin:0 0 0 10px !important; font-size:.75rem; }
+                .dash-slider .carousel-content p small i.bx { font-size:.95rem !important; opacity:1; vertical-align:-2px; }
                 .dash-slider .carousel-indicators { margin-bottom:.2rem; }
                 .dash-slider .carousel-indicators [data-bs-target] { width:6px !important; height:6px !important; }
                 .dash-slider .carousel-control-prev-icon, .dash-slider .carousel-control-next-icon { width:1rem !important; height:1rem !important; }
@@ -1907,11 +1909,11 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                     <div class="d-flex gap-2 dashboard-settings-toolbar" id="dashboard-settings-toolbar">
                         <div class="dropdown">
                             <button class="btn btn-soft-secondary btn-sm dropdown-toggle d-flex align-items-center" type="button"
-                                data-bs-toggle="dropdown" aria-expanded="false" style="font-weight: 600; padding: 6px 16px; border-radius: 8px;">
+                                data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" style="font-weight: 600; padding: 6px 16px; border-radius: 8px;">
                                 <i class="bx bx-cog me-2 fs-5"></i> Dashboard Ayarları
                             </button>
-                            <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-2"
-                                style="min-width: 320px; z-index: 1060; border-radius: 12px;">
+                            <ul class="dropdown-menu dropdown-menu-start shadow-lg border-0 py-2"
+                                style="min-width: 400px; z-index: 1060; border-radius: 12px;">
                                 <li class="px-3 py-2">
                                     <div class="d-flex justify-content-between align-items-center">
                                         <h6 class="dropdown-header px-0 mb-0 fw-bold text-primary">YERLEŞİM AYARLARI</h6>
@@ -1921,22 +1923,14 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                                     </div>
                                 </li>
                                 <li class="px-3 mb-2">
-                                    <div class="form-check form-switch p-0 d-flex justify-content-between align-items-center" style="margin-left: 0;">
-                                        <label class="form-check-label mb-0 cursor-pointer fw-semibold text-muted" for="switch-free-layout" style="font-size: 13px;">Serbest Yerleşim Modu</label>
-                                        <input class="form-check-input cursor-pointer m-0" type="checkbox" id="switch-free-layout" style="width: 36px; height: 18px;">
-                                    </div>
-                                    <div class="small text-muted mt-1" style="font-size: 10px; line-height: 1.2;">Kartları istediğiniz yere taşıyabilir ve boyutlandırabilirsiniz.</div>
-                                </li>
-                                <li class="px-3 mb-2" id="random-layout-row" style="display:none;">
-                                    <button type="button" class="btn btn-soft-primary btn-sm w-100 d-flex align-items-center justify-content-center gap-2" id="btn-random-layout" style="border-radius: 10px; font-weight: 600;">
-                                        <i class="bx bx-shuffle"></i> Rastgele Yerleşim
-                                    </button>
+                                    <input type="checkbox" id="switch-free-layout" class="d-none" tabindex="-1" aria-hidden="true">
+                                    <div class="small text-muted" style="font-size: 11px; line-height: 1.3;">Kart genişliği (12 sütunluk grid) ve yüksekliği aşağıdaki listeden seçilir.</div>
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li class="px-3 py-1">
-                                    <h6 class="dropdown-header px-0 mb-1 fw-bold text-primary">KART GÖRÜNÜRLÜĞÜ</h6>
+                                    <h6 class="dropdown-header px-0 mb-1 fw-bold text-primary">KARTLAR · GÖRÜNÜRLÜK, GENİŞLİK, YÜKSEKLİK</h6>
                                 </li>
-                                <div style="max-height: 350px; overflow-y: auto; padding: 0 8px;">
+                                <div style="max-height: 420px; overflow-y: auto; padding: 0 8px;" id="dash-card-settings-list">
                                     <li>
                                         <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
                                             <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-ana-slider" checked>
@@ -2027,7 +2021,17 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                         </nav>
                     <?php endif; ?>
                     <div class="dash-hero-cal" id="heroCalendarHost" aria-label="Görev ve evrak takvimi">
-                        <div class="hcal-loading"><span class="spinner-border spinner-border-sm text-secondary" role="status" aria-hidden="true"></span> Takvim yükleniyor…</div>
+                        <?php
+                        try {
+                            echo renderWidget('widget-hero-takvim', [
+                                'takvim_alarmlar' => homeHeroTakvimAlarmlari((int) $firmaId, (int) $userId, (int) date('Y'), (int) date('n')),
+                                'secili_yil' => (int) date('Y'),
+                                'secili_ay' => (int) date('n'),
+                            ]);
+                        } catch (\Throwable $e) {
+                            error_log('Hero takvim hatası: ' . $e->getMessage());
+                        }
+                        ?>
                     </div>
                 </section>
 
@@ -5257,6 +5261,81 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                         });
                 });
 
+                const dashWidthOptions = [['', 'Genişlik: Varsayılan'], [3, '¼ · 3/12'], [4, '⅓ · 4/12'], [6, '½ · 6/12'], [8, '⅔ · 8/12'], [9, '¾ · 9/12'], [12, 'Tam · 12/12']];
+                const dashHeightOptions = [['', 'Yükseklik: Otomatik'], [120, '120 px'], [160, '160 px'], [200, '200 px'], [240, '240 px'], [280, '280 px'], [320, '320 px'], [360, '360 px'], [400, '400 px'], [480, '480 px'], [560, '560 px'], [640, '640 px']];
+
+                function dashSizeSelect(kind, options) {
+                    const $sel = $('<select class="dash-size-select" aria-label="' + (kind === 'cols' ? 'Kart genişliği' : 'Kart yüksekliği') + '"></select>').attr('data-kind', kind);
+                    options.forEach(function (o) { $sel.append($('<option></option>').attr('value', o[0]).text(o[1])); });
+                    return $sel;
+                }
+
+                function buildDashSizeControls() {
+                    $('#dash-card-settings-list > li').each(function () {
+                        const $li = $(this);
+                        const id = $li.find('.widget-toggle').first().attr('data-widget');
+                        if (!id || $li.find('.dash-size-row').length) return;
+                        const $row = $('<div class="dash-size-row"></div>').attr('data-widget', id);
+                        $row.append(dashSizeSelect('cols', dashWidthOptions), dashSizeSelect('height', dashHeightOptions));
+                        $li.append($row);
+                    });
+                }
+
+                function setDashSizeValue(sel, value, suffix) {
+                    if (value !== '' && !Array.prototype.some.call(sel.options, function (op) { return op.value === String(value); })) {
+                        const opt = document.createElement('option');
+                        opt.value = String(value);
+                        opt.textContent = value + suffix;
+                        sel.appendChild(opt);
+                    }
+                    sel.value = String(value);
+                }
+
+                function syncDashSizeControls() {
+                    $('#dash-card-settings-list .dash-size-row').each(function () {
+                        const $row = $(this);
+                        const widget = $('#' + $row.attr('data-widget'));
+                        $row.toggle(widget.length > 0 && widget.closest('#dashboard-widgets').length > 0);
+                        setDashSizeValue($row.find('[data-kind="cols"]')[0], widget.attr('data-grid-cols') || '', '/12');
+                        setDashSizeValue($row.find('[data-kind="height"]')[0], widget.attr('data-grid-height') || '', ' px');
+                    });
+                }
+
+                function applyDashSize(widget, cols, height) {
+                    const classes = (widget.attr('class') || '').split(' ').filter(cls => cls && !/^col(-[a-z]+)?-\d+$/.test(cls));
+                    if (cols) {
+                        classes.push('col-md-' + cols, 'col-xl-' + cols);
+                        widget.attr('data-grid-cols', cols);
+                    } else {
+                        const defaults = widget.attr('data-default-width') || defaultWidgetWidthClasses[widget.attr('id')] || '';
+                        if (defaults) classes.push(...defaults.split(' '));
+                        widget.removeAttr('data-grid-cols');
+                    }
+                    widget.attr('class', classes.join(' '));
+                    if (height) {
+                        widget.attr('data-grid-height', height).addClass('grid-sized').css('height', height + 'px');
+                    } else {
+                        widget.removeAttr('data-grid-height').removeClass('grid-sized').css('height', '');
+                    }
+                    layoutDashboardGrid(true);
+                    saveDashboardConfig();
+                    setTimeout(function () { window.dispatchEvent(new Event('resize')); }, 100);
+                }
+
+                buildDashSizeControls();
+                $(document).on('show.bs.dropdown', '#dashboard-settings-toolbar .dropdown', function () {
+                    buildDashSizeControls();
+                    syncDashSizeControls();
+                });
+                $(document).on('change', '.dash-size-row .dash-size-select', function () {
+                    const $row = $(this).closest('.dash-size-row');
+                    const widget = $('#' + $row.attr('data-widget'));
+                    if (!widget.length) return;
+                    const cols = parseInt($row.find('[data-kind="cols"]').val(), 10) || 0;
+                    const height = parseInt($row.find('[data-kind="height"]').val(), 10) || 0;
+                    applyDashSize(widget, cols, height);
+                });
+
                 $(document).on('dblclick', '#dashboard-widgets .grid-resize-grip', function (e) {
                     e.preventDefault();
                     e.stopPropagation();
@@ -5764,7 +5843,8 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                     localStorage.setItem('switch_free_layout', 'false');
                 }
                 document.cookie = "switch_free_layout=" + savedFreeLayout + "; path=/; max-age=" + (60 * 60 * 24 * 30);
-                const isFreeLayoutActive = savedFreeLayout === 'true';
+                const isFreeLayoutActive = false;
+                localStorage.setItem('switch_free_layout', 'false');
                 $('#switch-free-layout').prop('checked', isFreeLayoutActive);
                 updateRandomLayoutButtonVisibility();
                 if (isFreeLayoutActive) {
@@ -7419,7 +7499,10 @@ foreach ($pinGroups as $pinMin => $pinNames) {
 
                 // Initialize everything on load
                 $(document).ready(function() {
-                    window.loadHeroCalendar(new Date().getFullYear(), new Date().getMonth() + 1);
+                    (function () {
+                        const bugun = parseInt($('#heroCalendar').attr('data-bugun'), 10) || 0;
+                        if (bugun && !$('#heroCalendar').hasClass('is-collapsed')) window.heroCalState = { open: true, type: 'all', day: bugun };
+                    })();
                     applyWidgetSettings();
                     applySavedWidgetOrder();
                     if (typeof initMacControls === 'function') initMacControls();

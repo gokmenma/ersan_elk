@@ -4146,3 +4146,10 @@
 ## 2026-11-24 Hero takvim: filtre butonları ve birleşik özet
 - Doğum Günleri ve Bekleyen Talepler/Geç Kalanlar/Nöbetçiler kartları gridden kaldırıldı; veriler hero takvimine (`layout=hero`, yalnız cari ayda bugün tarihli) taşındı. Filtre butonları: Tümü, Evrak, Görev, Doğum Günü, Nöbetçi, Talep, Geç Kalan (yalnız kaydı olan türler). Gün + tür filtresi birlikte çalışır; varsayılan kapalı kuralı yalnız evrak/görev/doğum günü kayıtlarına bakar.
 - Bekleyen talep sayısı hesabı `homeBekleyenTalepSayisi()` (render_widgets.php) fonksiyonuna taşındı; api.php batch yolu da bunu kullanır.
+
+## 2026-11-24 Ana sayfa: serbest yerleşim kaldırıldı, grid boyut ayarı
+- Serbest Yerleşim Modu devre dışı (`$dashboard_is_free` her zaman false, anahtar gizli ve işaretsiz; JS başlangıcı localStorage'a 'false' yazar). Fare ile boyutlandırma tutamacı (`.grid-resize-grip`) CSS ile gizlendi.
+- Dashboard Ayarları menüsünde her kart satırının altında Genişlik (¼, ⅓, ½, ⅔, ¾, Tam; 12 sütun) ve Yükseklik (120–640 px, 20px adım mantığı) seçimi var; seçim `data-grid-cols`/`data-grid-height` ile uygulanır ve mevcut `saveDashboardConfig` ile (gridCols/gridHeight) kaydedilir. Listede olmayan kayıtlı değer ek seçenek olarak eklenir.
+
+## 2026-11-24 Ana sayfa kayma (CLS) düzeltmesi
+- Hero takvimi artık sayfa HTML'inde sunucu tarafında çiziliyor (`homeHeroTakvimAlarmlari()` + `widget-hero-takvim`, render_widgets.php); varsayılan "bugün" filtresi de sunucuda uygulanıyor. Ay değiştirme `get-calendar-alarms layout=hero` ile devam eder. CLS 0.044 -> 0.000 (yerel ölçüm).

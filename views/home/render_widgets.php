@@ -112,6 +112,102 @@ function homeWidgetPermission(string $widgetId): ?string {
     };
 }
 
+function homeHeroTakvimAlarmlari(int $firmaId, int $userId, int $year, int $month): array {
+    $startDate = sprintf('%04d-%02d-01', $year, $month);
+    $endDate = date('Y-m-t', strtotime($startDate));
+    $takvimAlarmlar = [];
+
+    foreach ((new \App\Model\GorevModel())->getTakvimGorevler($firmaId, $userId, $startDate, $endDate) as $g) {
+        $takvimAlarmlar[] = [
+            'tur' => 'gorev',
+            'id' => $g->id,
+            'tarih' => $g->tarih,
+            'saat' => $g->saat,
+            'baslik' => $g->baslik,
+            'liste_adi' => $g->liste_adi,
+            'url' => 'index.php?p=gorevler/list&task_id=' . $g->id,
+        ];
+    }
+    if (\App\Service\Gate::allows('evrak-takip/list')) {
+        foreach ((new \App\Model\EvrakTakipModel())->getTakvimEvraklar($firmaId, $startDate, $endDate) as $e) {
+            $takvimAlarmlar[] = [
+                'tur' => 'evrak',
+                'id' => $e->id,
+                'tarih' => $e->son_tarih,
+                'saat' => null,
+                'baslik' => !empty($e->konu) ? $e->konu : (string) $e->kurum_adi,
+                'alt' => 'Cevap son günü · ' . trim((!empty($e->kurum_adi) ? $e->kurum_adi : '') . (!empty($e->evrak_no) ? ' · No: ' . $e->evrak_no : ''), ' ·'),
+                'liste_adi' => $e->konu,
+                'url' => 'index.php?p=evrak-takip/list&evrak=' . rawurlencode(\App\Helper\Security::encrypt((int) $e->id)),
+            ];
+        }
+    }
+    if (\App\Service\Gate::allows('personel_listesi')) {
+        $ayGunSayisi = (int) date('t', strtotime($startDate));
+        foreach ((new \App\Model\DogumGunuBildirimModel())->getTumDogumGunleri((int) $firmaId) as $dg) {
+            if ($dg['ay'] !== $month) {
+                continue;
+            }
+            $takvimAlarmlar[] = [
+                'tur' => 'dogum',
+                'id' => 0,
+                'tarih' => sprintf('%04d-%02d-%02d', $year, $month, min($dg['gun'], $ayGunSayisi)),
+                'saat' => null,
+                'baslik' => $dg['ad'],
+                'alt' => trim(($year - $dg['yil']) . '. yaş · ' . $dg['bilgi'], ' ·'),
+                'url' => 'index.php?p=personel/list',
+            ];
+        }
+    }
+    if ($year === (int) date('Y') && $month === (int) date('n')) {
+        $bugunTarih = date('Y-m-d');
+        if (\App\Service\Gate::allows('nobet/list')) {
+            foreach ((new \App\Model\NobetModel())->getNobetlerByTarih($bugunTarih) as $nobet) {
+                $takvimAlarmlar[] = [
+                    'tur' => 'nobet',
+                    'id' => 0,
+                    'tarih' => $bugunTarih,
+                    'saat' => null,
+                    'baslik' => (string) ($nobet->adi_soyadi ?? ''),
+                    'alt' => 'Bugünkü nöbetçi' . (!empty($nobet->cep_telefonu) ? ' · ' . $nobet->cep_telefonu : ''),
+                    'url' => 'index.php?p=nobet/list',
+                ];
+            }
+        }
+        if (\App\Service\Gate::allows('talepler')) {
+            $bekleyenTalep = homeBekleyenTalepSayisi((int) $firmaId);
+            if ($bekleyenTalep > 0) {
+                $takvimAlarmlar[] = [
+                    'tur' => 'talep',
+                    'id' => 0,
+                    'tarih' => $bugunTarih,
+                    'saat' => null,
+                    'baslik' => $bekleyenTalep . ' bekleyen talep',
+                    'alt' => 'Onay bekleyen işlemler',
+                    'url' => 'index.php?p=talepler/list',
+                ];
+            }
+        }
+        if (\App\Service\Gate::allows('personel-takip/list')) {
+            $gecKalan = (int) (new \App\Model\PersonelHareketleriModel())->getGecKalanlarCount($firmaId);
+            if ($gecKalan > 0) {
+                $takvimAlarmlar[] = [
+                    'tur' => 'gec',
+                    'id' => 0,
+                    'tarih' => $bugunTarih,
+                    'saat' => null,
+                    'baslik' => $gecKalan . ' kişi geç kaldı',
+                    'alt' => 'Bugün mesaiye geç kalanlar',
+                    'url' => 'index.php?p=personel-takip/list&tab=tabGecKalanlar',
+                ];
+            }
+        }
+    }
+    usort($takvimAlarmlar, static fn($a, $b) => strcmp($a['tarih'], $b['tarih']));
+
+    return $takvimAlarmlar;
+}
+
 function homeBekleyenTalepSayisi(int $firmaId): int {
     $db = (new \App\Model\NobetModel())->getDb();
     $degisim = 0;
@@ -264,13 +360,14 @@ function renderWidget(string $widgetId, array $data = []) {
             $hBugunTarih = date('Y-m-d');
             $hBugun = ($hYil === (int) date('Y') && $hAy === (int) date('n')) ? (int) date('j') : 0;
             $hBugunAdet = 0;
+            $hVarsayilanGun = 0;
             foreach ($hListe as $hItem) {
                 if (substr((string) $hItem['tarih'], 0, 10) === $hBugunTarih) {
                     $hBugunAdet++;
                 }
             }
             ?>
-            <?php $hKapali = $hBugun > 0 && $hBugunAdet === 0; ?>
+            <?php $hKapali = $hBugun > 0 && $hBugunAdet === 0; $hVarsayilanGun = (!$hKapali && $hBugun > 0 && $hBugunAdet > 0) ? $hBugun : 0; ?>
             <div class="hcal<?php echo $hKapali ? ' is-collapsed' : ''; ?>" id="heroCalendar" data-yil="<?php echo $hYil; ?>" data-ay="<?php echo $hAy; ?>" data-bugun="<?php echo $hBugunAdet > 0 ? $hBugun : 0; ?>">
                 <div class="hcal-head">
                     <div class="hcal-nav">
@@ -296,6 +393,7 @@ function renderWidget(string $widgetId, array $data = []) {
                         if ($hd === $hBugun) $hCls[] = 'is-today';
                         if ($hDow >= 6) $hCls[] = 'is-weekend';
                         if (sprintf('%04d-%02d-%02d', $hYil, $hAy, $hd) < $hBugunTarih) $hCls[] = 'is-past';
+                        if ($hd === $hVarsayilanGun) $hCls[] = 'is-selected';
                         ?>
                         <button type="button" class="<?php echo implode(' ', $hCls); ?>" data-day="<?php echo $hd; ?>" onclick="selectHeroCalendarDay(<?php echo $hd; ?>)" title="<?php echo $hEsc($hd . ' ' . ($hAylar[$hAy] ?? '') . (isset($hGunBazli[$hd]) ? ' · ' . $hGunBazli[$hd] . ' alarm' : '')); ?>">
                             <small><?php echo $hGunler[$hDow]; ?></small>
@@ -314,7 +412,7 @@ function renderWidget(string $widgetId, array $data = []) {
                             $hTur = $hAlarm['tur'] ?? '';
                             $hGorev = $hTur === 'gorev';
                             ?>
-                            <a href="<?php echo $hEsc($hAlarm['url'] ?? '#'); ?>" class="hcal-item is-<?php echo $hEsc($hTur); ?><?php echo substr((string) $hAlarm['tarih'], 0, 10) < $hBugunTarih ? ' is-past' : ''; ?><?php echo $hAGun === $hBugun ? ' is-today' : ''; ?>" data-day="<?php echo $hAGun; ?>" data-type="<?php echo $hEsc($hTur); ?>" title="<?php echo $hEsc(($hAlarm['baslik'] ?? '') . (!empty($hAlarm['alt']) ? ' — ' . $hAlarm['alt'] : '')); ?>">
+                            <a href="<?php echo $hEsc($hAlarm['url'] ?? '#'); ?>" class="hcal-item is-<?php echo $hEsc($hTur); ?><?php echo substr((string) $hAlarm['tarih'], 0, 10) < $hBugunTarih ? ' is-past' : ''; ?><?php echo ($hVarsayilanGun > 0 && $hAGun !== $hVarsayilanGun) ? ' d-none' : ''; ?><?php echo $hAGun === $hBugun ? ' is-today' : ''; ?>" data-day="<?php echo $hAGun; ?>" data-type="<?php echo $hEsc($hTur); ?>" title="<?php echo $hEsc(($hAlarm['baslik'] ?? '') . (!empty($hAlarm['alt']) ? ' — ' . $hAlarm['alt'] : '')); ?>">
                                 <div class="hcal-item-top">
                                     <span class="hcal-item-date"><?php echo $hAGun . ' ' . ($hAylarKisa[$hAAy] ?? ''); ?></span>
                                     <span class="hcal-item-tag"><?php echo $hEsc($hEtiket[$hTur] ?? 'Kayıt'); ?></span>

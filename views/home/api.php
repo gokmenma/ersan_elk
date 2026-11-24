@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $dbSettingsJson = $settingsModel->getSettingByUser('dashboard_settings', $userId, $firmaId);
     $dbFreeLayout = $settingsModel->getSettingByUser('switch_free_layout', $userId, $firmaId);
     $saved_settings = $dbSettingsJson ? (json_decode($dbSettingsJson, true) ?: []) : [];
-    $dashboard_is_free = $dbFreeLayout === 'true';
+    $dashboard_is_free = false;
 
     $action = $_POST['action'] ?? '';
     if ($firmaId <= 0 || $userId <= 0) {
@@ -118,16 +118,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $year++;
                 }
 
+                if (($_POST['layout'] ?? '') === 'hero') {
+                    $heroAlarmlar = homeHeroTakvimAlarmlari((int) $firmaId, (int) $userId, $year, $month);
+                    echo safeJsonEncode([
+                        'status' => 'success',
+                        'html' => renderWidget('widget-hero-takvim', ['takvim_alarmlar' => $heroAlarmlar, 'secili_yil' => $year, 'secili_ay' => $month]),
+                        'year' => $year,
+                        'month' => $month,
+                        'count' => count($heroAlarmlar)
+                    ]);
+                    exit;
+                }
+
                 $startDate = sprintf('%04d-%02d-01', $year, $month);
                 $endDate = date('Y-m-t', strtotime($startDate));
 
                 $gorevModel = new \App\Model\GorevModel();
                 $evrakModel = new \App\Model\EvrakTakipModel();
-                $heroLayout = ($_POST['layout'] ?? '') === 'hero';
                 $takvimGorevler = $gorevModel->getTakvimGorevler($firmaId, $userId, $startDate, $endDate);
-                $takvimEvraklar = (!$heroLayout || Gate::allows('evrak-takip/list'))
-                    ? $evrakModel->getTakvimEvraklar($firmaId, $startDate, $endDate)
-                    : [];
+                $takvimEvraklar = $evrakModel->getTakvimEvraklar($firmaId, $startDate, $endDate);
 
                 $takvimAlarmlar = [];
                 foreach ($takvimGorevler as $g) {
@@ -153,72 +162,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         'url' => 'index.php?p=evrak-takip/list&evrak=' . rawurlencode(\App\Helper\Security::encrypt((int) $e->id)),
                     ];
                 }
-                if ($heroLayout && Gate::allows('personel_listesi')) {
-                    $ayGunSayisi = (int) date('t', strtotime($startDate));
-                    foreach ((new \App\Model\DogumGunuBildirimModel())->getTumDogumGunleri((int) $firmaId) as $dg) {
-                        if ($dg['ay'] !== $month) {
-                            continue;
-                        }
-                        $takvimAlarmlar[] = [
-                            'tur' => 'dogum',
-                            'id' => 0,
-                            'tarih' => sprintf('%04d-%02d-%02d', $year, $month, min($dg['gun'], $ayGunSayisi)),
-                            'saat' => null,
-                            'baslik' => $dg['ad'],
-                            'alt' => trim(($year - $dg['yil']) . '. yaş · ' . $dg['bilgi'], ' ·'),
-                            'url' => 'index.php?p=personel/list',
-                        ];
-                    }
-                }
-                if ($heroLayout && $year === (int) date('Y') && $month === (int) date('n')) {
-                    $bugunTarih = date('Y-m-d');
-                    if (Gate::allows('nobet/list')) {
-                        foreach ((new \App\Model\NobetModel())->getNobetlerByTarih($bugunTarih) as $nobet) {
-                            $takvimAlarmlar[] = [
-                                'tur' => 'nobet',
-                                'id' => 0,
-                                'tarih' => $bugunTarih,
-                                'saat' => null,
-                                'baslik' => (string) ($nobet->adi_soyadi ?? ''),
-                                'alt' => 'Bugünkü nöbetçi' . (!empty($nobet->cep_telefonu) ? ' · ' . $nobet->cep_telefonu : ''),
-                                'url' => 'index.php?p=nobet/list',
-                            ];
-                        }
-                    }
-                    if (Gate::allows('talepler')) {
-                        $bekleyenTalep = homeBekleyenTalepSayisi((int) $firmaId);
-                        if ($bekleyenTalep > 0) {
-                            $takvimAlarmlar[] = [
-                                'tur' => 'talep',
-                                'id' => 0,
-                                'tarih' => $bugunTarih,
-                                'saat' => null,
-                                'baslik' => $bekleyenTalep . ' bekleyen talep',
-                                'alt' => 'Onay bekleyen işlemler',
-                                'url' => 'index.php?p=talepler/list',
-                            ];
-                        }
-                    }
-                    if (Gate::allows('personel-takip/list')) {
-                        $gecKalan = (int) (new \App\Model\PersonelHareketleriModel())->getGecKalanlarCount($firmaId);
-                        if ($gecKalan > 0) {
-                            $takvimAlarmlar[] = [
-                                'tur' => 'gec',
-                                'id' => 0,
-                                'tarih' => $bugunTarih,
-                                'saat' => null,
-                                'baslik' => $gecKalan . ' kişi geç kaldı',
-                                'alt' => 'Bugün mesaiye geç kalanlar',
-                                'url' => 'index.php?p=personel-takip/list&tab=tabGecKalanlar',
-                            ];
-                        }
-                    }
-                }
                 usort($takvimAlarmlar, function($a, $b) {
                     return strcmp($a['tarih'], $b['tarih']);
                 });
 
-                $html = renderWidget($heroLayout ? 'widget-hero-takvim' : 'widget-takvim-alarmlar', [
+                $html = renderWidget('widget-takvim-alarmlar', [
                     'takvim_alarmlar' => $takvimAlarmlar,
                     'secili_yil' => $year,
                     'secili_ay' => $month
