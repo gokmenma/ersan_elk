@@ -103,6 +103,16 @@ if ($action === 'eslesmemis-faturalar') {
     }
 }
 
+if ($action === 'kurumlar-vergisi-detay') {
+    try {
+        [$bas, $bit] = MaliyetRaporuModel::tarihAraligi($_POST['yil'] ?? '', $_POST['ay'] ?? '');
+        $cevap(['status' => 'success', 'data' => $MaliyetRaporu->kurumlarVergisiGiderDetay($bas, $bit)]);
+    } catch (\Throwable $e) {
+        error_log('kurumlar-vergisi-detay: ' . $e->getMessage());
+        $cevap(['status' => 'error', 'message' => 'Gider detayı yüklenemedi.']);
+    }
+}
+
 if ($action === 'kalem-ekle') {
     $ad = trim(preg_replace('/\s+/u', ' ', (string) ($_POST['ad'] ?? '')));
     $renk = (string) ($_POST['renk'] ?? '');

@@ -62,6 +62,7 @@ final class ManuelFaturaService
             'stopaj_orani' => in_array($tur, self::STOPAJLI_TURLER, true) ? $this->oran($girdi['stopaj_orani'] ?? null) : null,
         ];
 
+        $kdvDahil = !empty($girdi['kdv_dahil']) && !in_array($tur, self::KDVSIZ_TURLER, true);
         $lines = [];
         foreach ((array) ($girdi['satirlar'] ?? []) as $satir) {
             if (!is_array($satir)) {
@@ -73,13 +74,17 @@ final class ManuelFaturaService
                 continue;
             }
             $birim = strtoupper(trim((string) ($satir['birim'] ?? '')));
+            $kdvOrani = in_array($tur, self::KDVSIZ_TURLER, true) ? 0.0 : ($this->oran($satir['kdv_orani'] ?? null) ?? 0.0);
+            if ($kdvDahil && $fiyat !== null) {
+                $fiyat = round($fiyat / (1 + $kdvOrani / 100), 6);
+            }
             $lines[] = [
                 'urun_hizmet_adi' => $ad !== '' ? $ad : 'Hizmet bedeli',
                 'miktar' => $this->sayi($satir['miktar'] ?? null) ?? 1.0,
                 'birim' => isset(self::BIRIMLER[$birim]) ? $birim : 'C62',
                 'birim_fiyat' => $fiyat ?? 0.0,
                 'iskonto_orani' => $this->oran($satir['iskonto_orani'] ?? null) ?? 0.0,
-                'kdv_orani' => in_array($tur, self::KDVSIZ_TURLER, true) ? 0.0 : ($this->oran($satir['kdv_orani'] ?? null) ?? 0.0),
+                'kdv_orani' => $kdvOrani,
             ];
         }
 

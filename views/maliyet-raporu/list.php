@@ -87,6 +87,12 @@ $title = 'Maliyet Raporu';
 .mk-check input:indeterminate + .mk-check-box { background: #475569; border-color: #475569; }
 .mk-check input:indeterminate + .mk-check-box::after { width: 10px; height: 0; border-width: 0 0 2px 0; transform: none; margin-top: 0; }
 #eslesmemisTable tbody tr.mk-secili td { background-color: #f1f5f9 !important; }
+.kv-gider-kart { cursor: pointer; border-radius: 8px; padding: 6px 8px; margin: -6px -8px; transition: background-color .15s ease; }
+.kv-gider-kart:hover, .kv-gider-kart:focus-visible { background-color: #f8fafc; outline: none; }
+.kv-detay-tablo th { font-size: 12px; font-weight: 700; text-transform: uppercase; color: #64748b; background: #f8fafc; white-space: nowrap; }
+.kv-detay-tablo td { font-size: 13px; color: #334155; vertical-align: middle; }
+.kv-detay-fatura-kutu { max-height: 340px; overflow: auto; }
+.kv-detay-fatura-kutu thead th { position: sticky; top: 0; z-index: 1; }
 .maliyet-kalem-row { cursor: pointer; }
 .maliyet-kalem-row.active td { background-color: #f1f5f9 !important; }
 .maliyet-kalem-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
@@ -298,9 +304,11 @@ $title = 'Maliyet Raporu';
                     <div class="summary-kpi-value text-success"><?= $tl($kv['gelir']) ?> ₺</div>
                 </div>
                 <div class="col-6 col-xl-3">
-                    <div class="summary-kpi-label">Gider (Maaş + SGK + Fatura)</div>
-                    <div class="summary-kpi-value text-danger"><?= $tl($kv['gider']) ?> ₺</div>
-                    <div class="font-size-11 text-secondary mt-1">Maaş <?= $tl($kv['maas'], 0) ?> · SGK <?= $tl($kv['sgk'], 0) ?> · Fatura <?= $tl($kv['fatura_gider'], 0) ?></div>
+                    <div class="kv-gider-kart" id="kvGiderKart" role="button" tabindex="0" data-yil="<?= (int) $selectedYil ?>" data-ay="<?= (int) $selectedAy ?>" title="Gider detayını göster" aria-label="Gider detayını göster">
+                        <div class="summary-kpi-label">Gider (Maaş + SGK + Fatura) <i class="bx bx-info-circle align-middle"></i></div>
+                        <div class="summary-kpi-value text-danger"><?= $tl($kv['gider']) ?> ₺</div>
+                        <div class="font-size-11 text-secondary mt-1">Maaş <?= $tl($kv['maas'], 0) ?> · SGK <?= $tl($kv['sgk'], 0) ?> · Fatura <?= $tl($kv['fatura_gider'], 0) ?></div>
+                    </div>
                 </div>
                 <div class="col-6 col-xl-3">
                     <div class="summary-kpi-label"><?= $kv['kar'] >= 0 ? 'Kurumlar vergisi matrahı' : 'Dönem zararı' ?></div>
@@ -590,6 +598,26 @@ $title = 'Maliyet Raporu';
     </div>
 </div>
 <?php endif; ?>
+
+<div class="modal fade" id="kvGiderModal" tabindex="-1" aria-labelledby="kvGiderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title" id="kvGiderModalLabel">Gider Detayı · <?= $h($donemEtiketi) ?></h5>
+                    <div class="font-size-12 text-secondary">Maaş + SGK + KDV'siz gelen faturalar</div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body" id="kvGiderModalBody">
+                <div class="text-center text-secondary py-5">Yükleniyor...</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
 window.maliyetKalemler = <?= json_encode($kalemler, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;

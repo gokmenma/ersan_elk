@@ -2436,3 +2436,4 @@
 - [x] Ana sayfa personel durumu kartı personel takip sayılarıyla birleştirildi (lokal DB'de bugün hareket verisi olmadığından sayı karşılaştırması sunucuda doğrulanmalı).
 - [x] Ana sayfa personel durumu legend tıklama modalı (yetkiye bağlı)
 - [x] Ana sayfa araç durumu legend modalı
+- [x] Maliyet raporu kurumlar vergisi gider detay modalı (yerelde Ekim 2026 için kart rakamlarıyla birebir doğrulandı; canlıda policy SQL'i çalıştırılmalı)

@@ -34,6 +34,62 @@ $(document).ready(function () {
         toggleDurum();
     });
 
+    const kvAcKapa = function () {
+        const $k = $('#kvGiderKart');
+        const $govde = $('#kvGiderModalBody');
+        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('kvGiderModal'));
+        $govde.html('<div class="text-center text-secondary py-5">Yükleniyor...</div>');
+        modal.show();
+        post({ action: 'kurumlar-vergisi-detay', yil: $k.data('yil'), ay: $k.data('ay') }).done(function (res) {
+            if (res.status !== 'success') { $govde.html('<div class="text-danger text-center py-4">' + esc(res.message || 'Detay yüklenemedi.') + '</div>'); return; }
+            const d = res.data;
+            const topla = function (liste, alan) { return liste.reduce(function (t, r) { return t + Number(r[alan] || 0); }, 0); };
+            const maas = topla(d.bordro, 'maas');
+            const sgk = topla(d.bordro, 'sgk');
+            const fatura = topla(d.faturalar, 'matrah');
+            const faturaKdvli = topla(d.faturalar, 'tutar');
+            const genel = maas + sgk + fatura;
+
+            let h = '<div class="row g-3 mb-4">'
+                + [['Maaş', maas, 'text-dark'], ['SGK', sgk, 'text-dark'], ['Fatura (KDV\'siz)', fatura, 'text-dark'], ['Toplam Gider', genel, 'text-danger']].map(function (k) {
+                    return '<div class="col-6 col-lg-3"><div class="summary-kpi-label">' + k[0] + '</div><div class="summary-kpi-value ' + k[2] + '">' + tl(k[1]) + '</div></div>';
+                }).join('') + '</div>';
+
+            h += '<h6 class="fw-bold font-size-14 mb-2">Bordro (Maaş + SGK)</h6>';
+            h += '<div class="table-responsive mb-4"><table class="table table-bordered align-middle w-100 mb-0 kv-detay-tablo"><thead><tr><th>Dönem</th><th class="text-end">Personel</th><th class="text-end">Net Maaş</th><th class="text-end">SGK + İşsizlik (İşçi + İşveren)</th></tr></thead><tbody>';
+            if (!d.bordro.length) { h += '<tr><td colspan="4" class="text-center text-secondary">Hesaplanmış bordro bulunamadı.</td></tr>'; }
+            d.bordro.forEach(function (r) {
+                h += '<tr><td>' + esc(r.donem) + '</td><td class="text-end">' + r.personel + '</td><td class="text-end text-nowrap">' + tl(r.maas) + '</td><td class="text-end text-nowrap">' + tl(r.sgk) + '</td></tr>';
+            });
+            h += '</tbody><tfoot><tr class="fw-bold"><td colspan="2">Toplam</td><td class="text-end text-nowrap">' + tl(maas) + '</td><td class="text-end text-nowrap">' + tl(sgk) + '</td></tr></tfoot></table></div>';
+
+            h += '<h6 class="fw-bold font-size-14 mb-2">Gelen Faturalar · Kalem Dağılımı</h6>';
+            h += '<div class="table-responsive mb-4"><table class="table table-bordered align-middle w-100 mb-0 kv-detay-tablo"><thead><tr><th>Kalem</th><th class="text-end">Fatura</th><th class="text-end">KDV\'siz Tutar</th><th class="text-end">KDV Dahil Tutar</th></tr></thead><tbody>';
+            if (!d.kalem_grup.length) { h += '<tr><td colspan="4" class="text-center text-secondary">Kaleme bağlı fatura bulunamadı.</td></tr>'; }
+            d.kalem_grup.forEach(function (r) {
+                h += '<tr><td>' + esc(r.kalem) + '</td><td class="text-end">' + r.adet + '</td><td class="text-end text-nowrap">' + tl(r.matrah) + '</td><td class="text-end text-nowrap">' + tl(r.tutar) + '</td></tr>';
+            });
+            h += '</tbody><tfoot><tr class="fw-bold"><td>Toplam</td><td class="text-end">' + d.faturalar.length + '</td><td class="text-end text-nowrap">' + tl(fatura) + '</td><td class="text-end text-nowrap">' + tl(faturaKdvli) + '</td></tr></tfoot></table></div>';
+
+            h += '<h6 class="fw-bold font-size-14 mb-2">Fatura Listesi</h6>';
+            h += '<div class="kv-detay-fatura-kutu border rounded mb-4"><table class="table table-hover align-middle w-100 mb-0 kv-detay-tablo"><thead><tr><th>Tarih</th><th>Fatura No</th><th>Firma</th><th>Kalem</th><th class="text-end">KDV\'siz</th><th class="text-end">KDV Dahil</th></tr></thead><tbody>';
+            d.faturalar.forEach(function (r) {
+                h += '<tr><td class="text-nowrap">' + esc(r.tarih) + '</td><td class="text-nowrap">' + esc(r.fatura_no) + '</td><td>' + esc(r.unvan) + '</td><td>' + esc(r.kalem) + '</td><td class="text-end text-nowrap">' + tl(r.matrah) + '</td><td class="text-end text-nowrap">' + tl(r.tutar) + '</td></tr>';
+            });
+            h += '</tbody></table></div>';
+
+            if (d.baglanmamis.adet > 0) {
+                h += '<div class="alert alert-warning mb-0 font-size-13"><i class="bx bx-error-circle me-1"></i><strong>' + d.baglanmamis.adet + '</strong> gelen fatura bir maliyet kalemine bağlı olmadığı için bu hesaba dahil değildir (KDV\'siz ' + tl(d.baglanmamis.matrah) + ' · KDV dahil ' + tl(d.baglanmamis.tutar) + '). Bağlandığında gider artar, kurumlar vergisi azalır.</div>';
+            }
+            $govde.html(h);
+        }).fail(function () {
+            $govde.html('<div class="text-danger text-center py-4">Detay yüklenemedi.</div>');
+        });
+    };
+    $('#kvGiderKart').on('click', kvAcKapa).on('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); kvAcKapa(); }
+    });
+
     if ($.fn.select2) {
         $('#yilSelect, #aySelect').select2({ minimumResultsForSearch: Infinity, width: '100%' });
         $('#mg_kategori').select2({ dropdownParent: $('#manuelGiderModal'), width: '100%' });

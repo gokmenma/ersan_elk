@@ -78,6 +78,12 @@ $manuelKdvOranlari = ['20' => '%20', '10' => '%10', '1' => '%1', '0' => '%0', '1
                         <div class="col-md-3">
                             <?= Form::FormFloatInput('text', 'manuel_siparis_no', '', 'Sipariş numarası', 'Sipariş No', 'bx bx-cart', 'form-control', false, 50) ?>
                         </div>
+                        <div class="col-md-3 d-flex align-items-center">
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" id="manuel_kdv_dahil" value="1">
+                                <label class="form-check-label font-size-13" for="manuel_kdv_dahil">Birim fiyatlar KDV dahil</label>
+                            </div>
+                        </div>
                         <div class="col-md-3 manuel-stopaj-alani">
                             <?= Form::FormFloatInput('number', 'manuel_stopaj_orani', '', 'Stopaj oranı', 'Stopaj Oranı (%)', 'bx bx-cut', 'form-control', false, null, 'off', false, 'min="0" max="100" step="0.01"') ?>
                         </div>
@@ -146,7 +152,7 @@ $manuelKdvOranlari = ['20' => '%20', '10' => '%10', '1' => '%1', '0' => '%0', '1
                                 <?= Form::FormSelect2('satir_birim', $manuelBirimler, 'C62', 'Birim', '', 'key', '', 'form-select select2 satir-birim') ?>
                             </div>
                             <div class="col-lg-2 col-6">
-                                <?= Form::FormFloatInput('number', 'satir_fiyat', '', 'Birim fiyat', 'Birim Fiyat (KDV hariç)', '', 'form-control satir-fiyat satir-hesap', true, null, 'off', false, 'min="0" step="0.0001"') ?>
+                                <?= Form::FormFloatInput('number', 'satir_fiyat', '', 'Birim fiyat', 'Birim Fiyat', '', 'form-control satir-fiyat satir-hesap', true, null, 'off', false, 'min="0" step="0.0001"') ?>
                             </div>
                             <div class="col-lg-1 col-3">
                                 <?= Form::FormFloatInput('number', 'satir_iskonto', '0', 'İsk. %', 'İsk. %', '', 'form-control satir-iskonto satir-hesap', false, null, 'off', false, 'min="0" max="100" step="0.01"') ?>

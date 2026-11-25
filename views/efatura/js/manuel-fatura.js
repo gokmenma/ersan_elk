@@ -102,15 +102,19 @@
         }).get();
     }
 
+    function netFiyat(fiyat, kdv) {
+        return $('#manuel_kdv_dahil').is(':checked') ? fiyat / (1 + kdv / 100) : fiyat;
+    }
+
     function hesapla() {
         let brut = 0, iskonto = 0;
         const kdvGruplari = {};
         $('#manuelSatirlar .manuel-satir').each(function () {
             const $s = $(this);
             const miktar = num($s.find('.satir-miktar').val());
-            const fiyat = num($s.find('.satir-fiyat').val());
             const isk = num($s.find('.satir-iskonto').val());
             const kdv = num($s.find('.satir-kdv').val());
+            const fiyat = netFiyat(num($s.find('.satir-fiyat').val()), kdv);
             const satirBrut = round2(miktar * fiyat);
             const satirIsk = round2(satirBrut * isk / 100);
             const matrah = miktar * fiyat - satirIsk;
@@ -235,6 +239,7 @@
             ettn: $.trim($('#manuel_ettn').val()),
             siparis_no: $.trim($('#manuel_siparis_no').val()),
             stopaj_orani: $('#manuel_stopaj_orani').val(),
+            kdv_dahil: $('#manuel_kdv_dahil').is(':checked') ? 1 : 0,
             alici_unvan: $.trim($('#manuel_unvan').val()),
             alici_vkn_tckn: $.trim($('#manuel_vkn').val()),
             alici_vergi_dairesi: $.trim($('#manuel_vergi_dairesi').val()),
@@ -393,7 +398,7 @@
             numaralandir();
             hesapla();
         });
-        $(document).on('input change', '#manuelSatirlar .satir-hesap, #manuel_stopaj_orani', hesapla);
+        $(document).on('input change', '#manuelSatirlar .satir-hesap, #manuel_stopaj_orani, #manuel_kdv_dahil', hesapla);
         $(document).on('change', '#manuel_belge_turu', turDegisti);
         $(document).on('input', '#manuel_vkn', function () { this.value = this.value.replace(/\D/g, '').slice(0, 11); });
         $(document).on('click', '.btn-manuel-duzenle', function (e) { e.stopPropagation(); duzenle($(this).data('id')); });

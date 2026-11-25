@@ -112,9 +112,114 @@ class MaliyetRaporuModel extends Db
         return $sonuc;
     }
 
+    private function kdvMatrahExpr(): string
+    {
+        return "(COALESCE(f.kdv_matrahi, 0) * CASE WHEN COALESCE(f.para_birimi, 'TRY') IN ('TRY', 'TL') THEN 1 ELSE COALESCE(NULLIF(f.doviz_kuru, 0), 1) END)";
+    }
+
+    public function kurumlarVergisiGiderDetay(?string $bas = null, ?string $bit = null): array
+    {
+        $matrah = $this->kdvMatrahExpr();
+        $tutar = $this->faturaTutarExpr();
+        $vkn = $this->faturaVknExpr();
+        $kalem = 'COALESCE(mfk.kalem, mke.kalem)';
+
+        $params = ['f_bd' => $this->firmaId];
+        $sql = "SELECT bd.id, bd.donem_adi, bd.baslangic_tarihi,
+                       COUNT(DISTINCT bp.personel_id) AS personel,
+                       COALESCE(SUM(COALESCE(bp.net_maas, 0)), 0) AS maas,
+                       COALESCE(SUM(COALESCE(bp.sgk_isci, 0) + COALESCE(bp.issizlik_isci, 0) + COALESCE(bp.sgk_isveren, 0) + COALESCE(bp.issizlik_isveren, 0)), 0) AS sgk
+                FROM bordro_personel bp
+                INNER JOIN bordro_donemi bd ON bp.donem_id = bd.id
+                INNER JOIN personel p ON bp.personel_id = p.id
+                WHERE bp.silinme_tarihi IS NULL AND bd.silinme_tarihi IS NULL
+                  AND bp.hesaplama_tarihi IS NOT NULL AND bd.firma_id = :f_bd";
+        $sql .= $this->tarihFiltre('bd.baslangic_tarihi', 'bd', $params, $bas, $bit);
+        $sql .= " GROUP BY bd.id, bd.donem_adi, bd.baslangic_tarihi ORDER BY bd.baslangic_tarihi, bd.id";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $bordro = array_map(static fn($r) => [
+            'donem'    => (string) $r->donem_adi,
+            'personel' => (int) $r->personel,
+            'maas'     => round((float) $r->maas, 2),
+            'sgk'      => round((float) $r->sgk, 2),
+        ], $stmt->fetchAll(PDO::FETCH_OBJ));
+
+        $params = ['f_dm' => $this->firmaId, 'f_de' => $this->firmaId, 'f_dt' => $this->firmaId];
+        $sql = "SELECT f.fatura_tarihi, f.fatura_no,
+                       COALESCE(NULLIF(f.alici_unvan, ''), c.unvan, '') AS unvan,
+                       {$kalem} AS kalem,
+                       {$matrah} AS matrah,
+                       {$tutar} AS tutar
+                FROM faturalar f
+                LEFT JOIN efatura_cariler c ON c.id = f.cari_id
+                LEFT JOIN maliyet_fatura_kalem mfk
+                       ON mfk.fatura_id = f.id AND mfk.firma_id = :f_dm AND mfk.deleted_at IS NULL AND mfk.is_active = 1
+                LEFT JOIN maliyet_kalem_eslestirme mke
+                       ON mke.firma_id = :f_de AND mke.kaynak = 'fatura' AND mke.deleted_at IS NULL AND mke.is_active = 1
+                      AND mke.eslesme_degeri = {$vkn}
+                WHERE f.firm_id = :f_dt AND f.yon = 'GELEN' AND f.deleted_at IS NULL
+                  AND COALESCE(f.is_active, 1) = 1 AND COALESCE(f.ticari_yanit, '') <> 'RED'
+                  AND {$kalem} IS NOT NULL AND {$kalem} <> 'haric'";
+        $sql .= $this->tarihFiltre('f.fatura_tarihi', 'df', $params, $bas, $bit);
+        $sql .= " ORDER BY matrah DESC, f.fatura_tarihi DESC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+
+        $faturalar = [];
+        $kalemGrup = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $r) {
+            $m = round((float) $r->matrah, 2);
+            $t = round((float) $r->tutar, 2);
+            $faturalar[] = [
+                'tarih'    => $r->fatura_tarihi ? date('d.m.Y', strtotime($r->fatura_tarihi)) : '-',
+                'fatura_no' => (string) ($r->fatura_no ?? ''),
+                'unvan'    => (string) $r->unvan,
+                'kalem'    => self::kalemAdi($r->kalem),
+                'matrah'   => $m,
+                'tutar'    => $t,
+            ];
+            $ad = self::kalemAdi($r->kalem);
+            $kalemGrup[$ad] ??= ['kalem' => $ad, 'adet' => 0, 'matrah' => 0.0, 'tutar' => 0.0];
+            $kalemGrup[$ad]['adet']++;
+            $kalemGrup[$ad]['matrah'] = round($kalemGrup[$ad]['matrah'] + $m, 2);
+            $kalemGrup[$ad]['tutar'] = round($kalemGrup[$ad]['tutar'] + $t, 2);
+        }
+        $kalemGrup = array_values($kalemGrup);
+        usort($kalemGrup, static fn($a, $b) => $b['matrah'] <=> $a['matrah']);
+
+        $params = ['f_ud' => $this->firmaId, 'f_um' => $this->firmaId, 'f_ue' => $this->firmaId];
+        $sql = "SELECT COUNT(*) AS adet, COALESCE(SUM({$matrah}), 0) AS matrah, COALESCE(SUM({$tutar}), 0) AS tutar
+                FROM faturalar f
+                LEFT JOIN efatura_cariler c ON c.id = f.cari_id
+                LEFT JOIN maliyet_fatura_kalem mfk
+                       ON mfk.fatura_id = f.id AND mfk.firma_id = :f_um AND mfk.deleted_at IS NULL AND mfk.is_active = 1
+                LEFT JOIN maliyet_kalem_eslestirme mke
+                       ON mke.firma_id = :f_ue AND mke.kaynak = 'fatura' AND mke.deleted_at IS NULL AND mke.is_active = 1
+                      AND mke.eslesme_degeri = {$vkn}
+                WHERE f.firm_id = :f_ud AND f.yon = 'GELEN' AND f.deleted_at IS NULL
+                  AND COALESCE(f.is_active, 1) = 1 AND COALESCE(f.ticari_yanit, '') <> 'RED'
+                  AND mfk.id IS NULL AND mke.id IS NULL";
+        $sql .= $this->tarihFiltre('f.fatura_tarihi', 'du', $params, $bas, $bit);
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $u = $stmt->fetch(PDO::FETCH_OBJ);
+
+        return [
+            'bordro'     => $bordro,
+            'kalem_grup' => $kalemGrup,
+            'faturalar'  => $faturalar,
+            'baglanmamis' => [
+                'adet'   => (int) ($u->adet ?? 0),
+                'matrah' => round((float) ($u->matrah ?? 0), 2),
+                'tutar'  => round((float) ($u->tutar ?? 0), 2),
+            ],
+        ];
+    }
+
     public function kurumlarVergisi(array $ozet, ?string $bas = null, ?string $bit = null): array
     {
-        $matrah = "(COALESCE(f.kdv_matrahi, 0) * CASE WHEN COALESCE(f.para_birimi, 'TRY') IN ('TRY', 'TL') THEN 1 ELSE COALESCE(NULLIF(f.doviz_kuru, 0), 1) END)";
+        $matrah = $this->kdvMatrahExpr();
 
         $params = ['f_kg' => $this->firmaId];
         $sql = "SELECT COALESCE(SUM({$matrah}), 0) FROM faturalar f
