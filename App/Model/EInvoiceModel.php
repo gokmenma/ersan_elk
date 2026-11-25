@@ -1998,10 +1998,17 @@ class EInvoiceModel extends Model
             }
 
             $ettn = $header['ettn'] !== '' ? $header['ettn'] : ($mevcut['ettn'] ?? Helper::generateUuid());
-            $stmt = $this->db->prepare('SELECT id FROM faturalar WHERE firm_id = :firm AND ettn = :ettn AND id <> :id LIMIT 1');
+            $stmt = $this->db->prepare('SELECT id, kaynak, deleted_at FROM faturalar WHERE firm_id = :firm AND ettn = :ettn AND id <> :id FOR UPDATE');
             $stmt->execute(['firm' => $firmId, 'ettn' => $ettn, 'id' => (int)($mevcut['id'] ?? 0)]);
-            if ($stmt->fetchColumn()) {
-                throw new \RuntimeException('Bu ETTN ile kayıtlı başka bir fatura bulunuyor.');
+            $cakisanlar = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($cakisanlar as $cakisan) {
+                if ($cakisan['deleted_at'] === null || ($cakisan['kaynak'] ?? '') !== 'MANUEL') {
+                    throw new \RuntimeException('Bu ETTN ile kayıtlı başka bir fatura bulunuyor.');
+                }
+            }
+            foreach ($cakisanlar as $cakisan) {
+                $stmt = $this->db->prepare("UPDATE faturalar SET ettn = :yeni WHERE id = :id AND firm_id = :firm AND kaynak = 'MANUEL' AND deleted_at IS NOT NULL");
+                $stmt->execute(['yeni' => Helper::generateUuid(), 'id' => (int)$cakisan['id'], 'firm' => $firmId]);
             }
 
             $data = [
