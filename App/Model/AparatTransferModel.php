@@ -124,6 +124,20 @@ class AparatTransferModel extends Model
         return (int) $stmt->fetchColumn();
     }
 
+    public function bekleyenGidenAdetleri(int $verenEkipId): array
+    {
+        $stmt = $this->db->prepare("SELECT aparat_tip_id, SUM(adet) AS adet FROM {$this->table}
+            WHERE firma_id = ? AND veren_ekip_id = ? AND durum = 'beklemede' AND silinme_tarihi IS NULL
+            GROUP BY aparat_tip_id");
+        $stmt->execute([$this->firmaId(), $verenEkipId]);
+
+        $sonuc = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $satir) {
+            $sonuc[(int) $satir['aparat_tip_id']] = (int) $satir['adet'];
+        }
+        return $sonuc;
+    }
+
     public function durumGuncelle(int $id, string $durum, array $veri = []): bool
     {
         $stmt = $this->db->prepare("UPDATE {$this->table}

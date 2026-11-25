@@ -323,6 +323,21 @@ class AparatHareketModel extends Model
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    public function sonDepoHareketleri(int $limit = 10): array
+    {
+        $sonuc = [];
+        foreach ($this->listele(['sahip_tipi' => 'depo', 'iptal_haric' => 1], $limit * 4) as $h) {
+            if (!in_array($h['hareket_tipi'], ['depo_giris', 'depo_cikis', 'depo_iade'], true)) {
+                continue;
+            }
+            $sonuc[] = $h;
+            if (count($sonuc) >= $limit) {
+                break;
+            }
+        }
+        return $sonuc;
+    }
+
     public function sayisi(array $filtre = []): int
     {
         [$kosul, $parametreler] = $this->filtreKosulu($filtre);

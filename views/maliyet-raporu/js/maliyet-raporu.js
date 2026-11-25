@@ -51,12 +51,12 @@ $(document).ready(function () {
             const genel = maas + sgk + fatura;
 
             let h = '<div class="row g-3 mb-4">'
-                + [['Maaş', maas, 'text-dark'], ['SGK', sgk, 'text-dark'], ['Fatura (KDV\'siz)', fatura, 'text-dark'], ['Toplam Gider', genel, 'text-danger']].map(function (k) {
+                + [['Resmî Maaş', maas, 'text-dark'], ['SGK', sgk, 'text-dark'], ['Fatura (KDV\'siz)', fatura, 'text-dark'], ['Toplam Gider', genel, 'text-danger']].map(function (k) {
                     return '<div class="col-6 col-lg-3"><div class="summary-kpi-label">' + k[0] + '</div><div class="summary-kpi-value ' + k[2] + '">' + tl(k[1]) + '</div></div>';
                 }).join('') + '</div>';
 
-            h += '<h6 class="fw-bold font-size-14 mb-2">Bordro (Maaş + SGK)</h6>';
-            h += '<div class="table-responsive mb-4"><table class="table table-bordered align-middle w-100 mb-0 kv-detay-tablo"><thead><tr><th>Dönem</th><th class="text-end">Personel</th><th class="text-end">Net Maaş</th><th class="text-end">SGK + İşsizlik (İşçi + İşveren)</th></tr></thead><tbody>';
+            h += '<h6 class="fw-bold font-size-14 mb-2">Bordro (Resmî Maaş + SGK)</h6>';
+            h += '<div class="table-responsive mb-4"><table class="table table-bordered align-middle w-100 mb-0 kv-detay-tablo"><thead><tr><th>Dönem</th><th class="text-end">Personel</th><th class="text-end">Resmî Maaş (Banka)</th><th class="text-end">SGK + İşsizlik (İşçi + İşveren)</th></tr></thead><tbody>';
             if (!d.bordro.length) { h += '<tr><td colspan="4" class="text-center text-secondary">Hesaplanmış bordro bulunamadı.</td></tr>'; }
             d.bordro.forEach(function (r) {
                 h += '<tr><td>' + esc(r.donem) + '</td><td class="text-end">' + r.personel + '</td><td class="text-end text-nowrap">' + tl(r.maas) + '</td><td class="text-end text-nowrap">' + tl(r.sgk) + '</td></tr>';
@@ -79,7 +79,7 @@ $(document).ready(function () {
             h += '</tbody></table></div>';
 
             if (d.baglanmamis.adet > 0) {
-                h += '<div class="alert alert-warning mb-0 font-size-13"><i class="bx bx-error-circle me-1"></i><strong>' + d.baglanmamis.adet + '</strong> gelen fatura bir maliyet kalemine bağlı olmadığı için bu hesaba dahil değildir (KDV\'siz ' + tl(d.baglanmamis.matrah) + ' · KDV dahil ' + tl(d.baglanmamis.tutar) + '). Bağlandığında gider artar, kurumlar vergisi azalır.</div>';
+                h += '<div class="alert alert-info mb-0 font-size-13"><i class="bx bx-info-circle me-1"></i><strong>' + d.baglanmamis.adet + '</strong> gelen fatura maliyet kalemine bağlı değildir; yine de gider olarak hesaba dahildir (KDV\'siz ' + tl(d.baglanmamis.matrah) + ' · KDV dahil ' + tl(d.baglanmamis.tutar) + ').</div>';
             }
             $govde.html(h);
         }).fail(function () {

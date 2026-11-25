@@ -31,6 +31,15 @@ class AparatStokModel extends Model
         return (int) $stmt->fetchColumn();
     }
 
+    public function bakiyeKilitle(string $sahipTipi, int $sahipId, int $aparatTipId): int
+    {
+        $stmt = $this->db->prepare("SELECT adet FROM {$this->table}
+            WHERE firma_id = ? AND sahip_tipi = ? AND sahip_id = ? AND aparat_tip_id = ?
+            FOR UPDATE");
+        $stmt->execute([$this->firmaId(), $sahipTipi, $sahipId, $aparatTipId]);
+        return (int) $stmt->fetchColumn();
+    }
+
     /**
      * Bir ekibin tip bazında güncel stoğu: [aparat_tip_id => adet]
      */

@@ -92,14 +92,14 @@ class MaliyetRaporuModel extends Db
             if ($k === 'vergi') {
                 $sonuc[self::KURUMLAR_VERGISI_KALEM] = [
                     'ad' => 'Kurumlar Vergisi (Tahmini)', 'renk' => '#d97706', 'ikon' => 'bx-calculator',
-                    'kaynak' => "Hesaplanır: (KDV'siz gelir − maaş − SGK − KDV'siz gelen fatura) × %" . (int) (self::KURUMLAR_VERGISI_ORANI * 100),
+                    'kaynak' => "Hesaplanır: (KDV'siz gelir − resmî maaş (banka) − SGK − KDV'siz gelen fatura) × %" . (int) (self::KURUMLAR_VERGISI_ORANI * 100),
                 ];
             }
         }
         if (!isset($sonuc[self::KURUMLAR_VERGISI_KALEM])) {
             $sonuc[self::KURUMLAR_VERGISI_KALEM] = [
                 'ad' => 'Kurumlar Vergisi (Tahmini)', 'renk' => '#d97706', 'ikon' => 'bx-calculator',
-                'kaynak' => "Hesaplanır: (KDV'siz gelir − maaş − SGK − KDV'siz gelen fatura) × %" . (int) (self::KURUMLAR_VERGISI_ORANI * 100),
+                'kaynak' => "Hesaplanır: (KDV'siz gelir − resmî maaş (banka) − SGK − KDV'siz gelen fatura) × %" . (int) (self::KURUMLAR_VERGISI_ORANI * 100),
             ];
         }
         return $sonuc;
@@ -161,7 +161,7 @@ class MaliyetRaporuModel extends Db
         $params = ['f_bd' => $this->firmaId];
         $sql = "SELECT bd.id, bd.donem_adi, bd.baslangic_tarihi,
                        COUNT(DISTINCT bp.personel_id) AS personel,
-                       COALESCE(SUM(COALESCE(bp.net_maas, 0)), 0) AS maas,
+                       COALESCE(SUM(COALESCE(bp.banka_odemesi, 0)), 0) AS maas,
                        COALESCE(SUM(COALESCE(bp.sgk_isci, 0) + COALESCE(bp.issizlik_isci, 0) + COALESCE(bp.sgk_isveren, 0) + COALESCE(bp.issizlik_isveren, 0)), 0) AS sgk
                 FROM bordro_personel bp
                 INNER JOIN bordro_donemi bd ON bp.donem_id = bd.id
@@ -194,7 +194,7 @@ class MaliyetRaporuModel extends Db
                       AND mke.eslesme_degeri = {$vkn}
                 WHERE f.firm_id = :f_dt AND f.yon = 'GELEN' AND f.deleted_at IS NULL
                   AND COALESCE(f.is_active, 1) = 1 AND COALESCE(f.ticari_yanit, '') <> 'RED'
-                  AND {$kalem} IS NOT NULL AND {$kalem} <> 'haric'";
+                  AND COALESCE({$kalem}, '') <> 'haric'";
         $sql .= $this->tarihFiltre('f.fatura_tarihi', 'df', $params, $bas, $bit);
         $sql .= " ORDER BY matrah DESC, f.fatura_tarihi DESC";
         $stmt = $this->db->prepare($sql);
@@ -209,11 +209,11 @@ class MaliyetRaporuModel extends Db
                 'tarih'    => $r->fatura_tarihi ? date('d.m.Y', strtotime($r->fatura_tarihi)) : '-',
                 'fatura_no' => (string) ($r->fatura_no ?? ''),
                 'unvan'    => (string) $r->unvan,
-                'kalem'    => self::kalemAdi($r->kalem),
+                'kalem'    => $r->kalem ? self::kalemAdi($r->kalem) : 'Kalemsiz (Eşleşmemiş)',
                 'matrah'   => $m,
                 'tutar'    => $t,
             ];
-            $ad = self::kalemAdi($r->kalem);
+            $ad = $r->kalem ? self::kalemAdi($r->kalem) : 'Kalemsiz (Eşleşmemiş)';
             $kalemGrup[$ad] ??= ['kalem' => $ad, 'adet' => 0, 'matrah' => 0.0, 'tutar' => 0.0];
             $kalemGrup[$ad]['adet']++;
             $kalemGrup[$ad]['matrah'] = round($kalemGrup[$ad]['matrah'] + $m, 2);
@@ -276,13 +276,13 @@ class MaliyetRaporuModel extends Db
                       AND mke.eslesme_degeri = {$vkn}
                 WHERE f.firm_id = :f_kgt AND f.yon = 'GELEN' AND f.deleted_at IS NULL
                   AND COALESCE(f.is_active, 1) = 1 AND COALESCE(f.ticari_yanit, '') <> 'RED'
-                  AND {$kalem} IS NOT NULL AND {$kalem} <> 'haric'";
+                  AND COALESCE({$kalem}, '') <> 'haric'";
         $sql .= $this->tarihFiltre('f.fatura_tarihi', 'kgf', $params, $bas, $bit);
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         $faturaGider = round((float) $stmt->fetchColumn(), 2);
 
-        $maas = (float) ($ozet['maas']['toplam'] ?? 0);
+        $maas = $this->bordroResmiMaas($bas, $bit);
         $sgk = (float) ($ozet['sgk']['toplam'] ?? 0);
         $gider = round($maas + $sgk + $faturaGider, 2);
         $kar = round($gelir - $gider, 2);
@@ -292,6 +292,39 @@ class MaliyetRaporuModel extends Db
             'gelir' => $gelir, 'maas' => $maas, 'sgk' => $sgk, 'fatura_gider' => $faturaGider,
             'gider' => $gider, 'kar' => $kar, 'vergi' => $vergi, 'oran' => self::KURUMLAR_VERGISI_ORANI,
         ];
+    }
+
+    private function bordroResmiMaas(?string $bas, ?string $bit): float
+    {
+        $params = ['f_rm' => $this->firmaId];
+        $sql = "SELECT COALESCE(SUM(COALESCE(bp.banka_odemesi, 0)), 0)
+                FROM bordro_personel bp
+                INNER JOIN bordro_donemi bd ON bp.donem_id = bd.id
+                INNER JOIN personel p ON bp.personel_id = p.id
+                WHERE bp.silinme_tarihi IS NULL AND bd.silinme_tarihi IS NULL
+                  AND bp.hesaplama_tarihi IS NOT NULL AND bd.firma_id = :f_rm";
+        $sql .= $this->tarihFiltre('bd.baslangic_tarihi', 'rm', $params, $bas, $bit);
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return round((float) $stmt->fetchColumn(), 2);
+    }
+
+    private function bordroResmiMaasAylik(int $yil): array
+    {
+        $stmt = $this->db->prepare("SELECT MONTH(bd.baslangic_tarihi) AS ay, COALESCE(SUM(COALESCE(bp.banka_odemesi, 0)), 0) AS toplam
+                FROM bordro_personel bp
+                INNER JOIN bordro_donemi bd ON bp.donem_id = bd.id
+                INNER JOIN personel p ON bp.personel_id = p.id
+                WHERE bp.silinme_tarihi IS NULL AND bd.silinme_tarihi IS NULL
+                  AND bp.hesaplama_tarihi IS NOT NULL AND bd.firma_id = :f_ra
+                  AND bd.baslangic_tarihi BETWEEN :bas_ra AND :bit_ra
+                GROUP BY MONTH(bd.baslangic_tarihi)");
+        $stmt->execute(['f_ra' => $this->firmaId, 'bas_ra' => "{$yil}-01-01", 'bit_ra' => "{$yil}-12-31"]);
+        $sonuc = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $r) {
+            $sonuc[(int) $r->ay] = (float) $r->toplam;
+        }
+        return $sonuc;
     }
 
     public function aylikKalem(int $yil): array
@@ -307,8 +340,9 @@ class MaliyetRaporuModel extends Db
         }
 
         [$gelirAy, $faturaAy] = $this->kurumlarVergisiAylik($yil);
+        $resmiMaasAy = $this->bordroResmiMaasAylik($yil);
         for ($ay = 1; $ay <= 12; $ay++) {
-            $kar = ($gelirAy[$ay] ?? 0.0) - ($matris['maas'][$ay] ?? 0.0) - ($matris['sgk'][$ay] ?? 0.0) - ($faturaAy[$ay] ?? 0.0);
+            $kar = ($gelirAy[$ay] ?? 0.0) - ($resmiMaasAy[$ay] ?? 0.0) - ($matris['sgk'][$ay] ?? 0.0) - ($faturaAy[$ay] ?? 0.0);
             if ($kar > 0) {
                 $matris[self::KURUMLAR_VERGISI_KALEM][$ay] = round($kar * self::KURUMLAR_VERGISI_ORANI, 2);
             }
@@ -344,7 +378,7 @@ class MaliyetRaporuModel extends Db
                       AND mke.eslesme_degeri = {$vkn}
                 WHERE f.firm_id = :f_at AND f.yon = 'GELEN' AND f.deleted_at IS NULL
                   AND COALESCE(f.is_active, 1) = 1 AND COALESCE(f.ticari_yanit, '') <> 'RED'
-                  AND {$kalem} IS NOT NULL AND {$kalem} <> 'haric'
+                  AND COALESCE({$kalem}, '') <> 'haric'
                   AND f.fatura_tarihi BETWEEN :bas_at AND :bit_at
                 GROUP BY MONTH(f.fatura_tarihi)");
         $stmt->execute(['f_am' => $this->firmaId, 'f_ae' => $this->firmaId, 'f_at' => $this->firmaId, 'bas_at' => $bas, 'bit_at' => $bit]);

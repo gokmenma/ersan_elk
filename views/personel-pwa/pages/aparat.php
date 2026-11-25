@@ -378,6 +378,7 @@ $uyeAdlari = implode(', ', array_column($ekipUyeleri, 'adi_soyadi'));
                         <label class="text-xs font-bold text-slate-500 dark:text-slate-400">Adet</label>
                         <input type="number" id="aparat-transfer-adet" min="1" value="1"
                             class="w-full mt-1 px-3 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 text-base font-semibold text-slate-800 dark:text-white">
+                        <p class="text-xs font-semibold text-slate-400 mt-1" id="aparat-transfer-elde"></p>
                     </div>
 
                     <button type="button" onclick="aparatTransferGonder()" id="aparat-transfer-btn"
@@ -714,7 +715,33 @@ $uyeAdlari = implode(', ', array_column($ekipUyeleri, 'adi_soyadi'));
             }
         }
 
+        function gonderilebilirAdet() {
+            const tipId = parseInt(document.getElementById('aparat-transfer-tip').value, 10);
+            const tip = ((aparatBilgi && aparatBilgi.tipler) || []).find(function (t) { return t.id === tipId; });
+            if (!tip) return null;
+            return typeof tip.gonderilebilir === 'number' ? tip.gonderilebilir : Math.max(0, tip.adet);
+        }
+
+        function transferEldeGoster() {
+            const kutu = document.getElementById('aparat-transfer-elde');
+            const girdi = document.getElementById('aparat-transfer-adet');
+            const limit = gonderilebilirAdet();
+            if (limit === null) {
+                kutu.textContent = '';
+                girdi.removeAttribute('max');
+                return;
+            }
+            girdi.max = limit;
+            kutu.textContent = limit > 0
+                ? 'Zimmetinden en fazla ' + limit + ' adet gönderebilirsin.'
+                : 'Zimmetinde gönderilebilecek bu aparat yok.';
+            kutu.className = 'text-xs font-semibold mt-1 ' + (limit > 0 ? 'text-slate-400' : 'text-amber-600');
+        }
+
+        document.getElementById('aparat-transfer-tip').addEventListener('change', transferEldeGoster);
+
         window.aparatTransferModalAc = function () {
+            transferEldeGoster();
             document.getElementById('aparat-transfer-katman').classList.add('acik');
             document.body.style.overflow = 'hidden';
         };
@@ -735,6 +762,12 @@ $uyeAdlari = implode(', ', array_column($ekipUyeleri, 'adi_soyadi'));
 
             if (!ekip) return Alert.warning('Ekip Seçin', 'Aparatı göndereceğiniz ekibi seçin.');
             if (!adet || adet < 1) return Alert.warning('Adet Hatalı', 'En az 1 adet girmelisiniz.');
+            const limit = gonderilebilirAdet();
+            if (limit !== null && adet > limit) {
+                return Alert.warning('Zimmet Yetersiz', limit > 0
+                    ? 'Zimmetinden en fazla ' + limit + ' adet gönderebilirsin.'
+                    : 'Zimmetinde gönderilebilecek bu aparat yok.');
+            }
 
             const btn = document.getElementById('aparat-transfer-btn');
             btn.disabled = true;
@@ -752,6 +785,7 @@ $uyeAdlari = implode(', ', array_column($ekipUyeleri, 'adi_soyadi'));
                 aparatTransferModalKapat();
                 Alert.success('Gönderildi', res.message);
                 aparatTransferleriYukle();
+                aparatBilgiYukle();
             } catch (e) {
                 Alert.error('Hata', 'Sunucuya ulaşılamadı.');
             } finally {

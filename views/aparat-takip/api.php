@@ -161,13 +161,7 @@ try {
         case 'son-depo-hareketleri':
             $uyeHaritasi = $Stok->ekipUyeHaritasi();
             $kayitlar = [];
-            foreach ($Hareket->listele(['sahip_tipi' => 'depo', 'iptal_haric' => 1], 40) as $h) {
-                if (count($kayitlar) >= 10) {
-                    break;
-                }
-                if (!in_array($h['hareket_tipi'], ['depo_giris', 'depo_cikis', 'depo_iade'], true)) {
-                    continue;
-                }
+            foreach ($Hareket->sonDepoHareketleri(10) as $h) {
                 $ekipId = (int) ($h['ekip_id'] ?? 0);
                 $kayitlar[] = [
                     'tarih' => $h['tarih'],

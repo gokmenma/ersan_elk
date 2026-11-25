@@ -253,7 +253,37 @@ class AparatStokService
             throw new Exception('Aparat tipi ve adet geçerli olmalıdır.');
         }
 
-        $transferId = $this->Transfer->ekle($veri);
+        $kendiTransaction = !$this->db()->inTransaction();
+        if ($kendiTransaction) {
+            $this->db()->beginTransaction();
+        }
+
+        try {
+            $zimmet = $this->Stok->bakiyeKilitle('ekip', $verenId, $tipId);
+            $bekleyen = (int) ($this->Transfer->bekleyenGidenAdetleri($verenId)[$tipId] ?? 0);
+            $gonderilebilir = max(0, $zimmet - $bekleyen);
+
+            if ($adet > $gonderilebilir) {
+                $mesaj = $gonderilebilir > 0
+                    ? sprintf('Zimmetinizde bu aparattan en fazla %d adet gönderebilirsiniz.', $gonderilebilir)
+                    : 'Zimmetinizde gönderilebilecek bu aparat bulunmuyor.';
+                if ($bekleyen > 0) {
+                    $mesaj .= sprintf(' (Zimmet: %d, onay bekleyen gönderiminiz: %d)', max(0, $zimmet), $bekleyen);
+                }
+                throw new Exception($mesaj);
+            }
+
+            $transferId = $this->Transfer->ekle($veri);
+
+            if ($kendiTransaction) {
+                $this->db()->commit();
+            }
+        } catch (Exception $e) {
+            if ($kendiTransaction && $this->db()->inTransaction()) {
+                $this->db()->rollBack();
+            }
+            throw $e;
+        }
 
         $this->logla(
             $veri['olusturan_user_id'] ?? 0,
@@ -289,6 +319,13 @@ class AparatStokService
         }
 
         try {
+            $verenZimmet = $this->Stok->bakiyeKilitle('ekip', (int) $transfer['veren_ekip_id'], (int) $transfer['aparat_tip_id']);
+            if ($adet > $verenZimmet) {
+                throw new Exception($verenZimmet > 0
+                    ? sprintf('Gönderen ekibin zimmetinde artık %d adet var; en fazla %d adet onaylanabilir.', $verenZimmet, $verenZimmet)
+                    : 'Gönderen ekibin zimmetinde bu aparat kalmadı; transfer onaylanamaz.');
+            }
+
             $guncellendi = $this->Transfer->durumGuncelle($transferId, 'onaylandi', [
                 'onaylanan_adet' => $adet,
                 'onaylayan_personel_id' => $personelId,

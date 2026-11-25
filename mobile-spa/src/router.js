@@ -21,6 +21,7 @@ const AracView = () => import('./views/AracView.vue')
 const EvrakView = () => import('./views/EvrakView.vue')
 const GidenEvrakView = () => import('./views/GidenEvrakView.vue')
 const KmOnaylariView = () => import('./views/KmOnaylariView.vue')
+const AparatTakipView = () => import('./views/AparatTakipView.vue')
 const PuantajView = () => import('./views/PuantajView.vue')
 const KacakView = () => import('./views/KacakView.vue')
 const NobetOnayView = () => import('./views/NobetOnayView.vue')
@@ -52,6 +53,8 @@ const router = createRouter({
     { path: '/arac', redirect: '/arac-takip' },
     { path: '/km-onaylari', name: 'km-onaylari', component: KmOnaylariView, meta: { requiresAuth: true, requiresCompany: true, permission: 'km_approvals' } },
     { path: '/km-onay', redirect: '/km-onaylari' },
+    { path: '/aparat-takip', name: 'aparat-takip', component: AparatTakipView, meta: { requiresAuth: true, requiresCompany: true, permission: 'apparatus' } },
+    { path: '/aparat', redirect: '/aparat-takip' },
     { path: '/gorevler', name: 'tasks', component: TasksView, meta: { requiresAuth: true, requiresCompany: true, permission: 'tasks' } },
     { path: '/raporlar', name: 'reports', component: ReportsView, meta: { requiresAuth: true, requiresCompany: true, permission: 'reports' } },
     { path: '/talepler', name: 'requests', component: TaleplerView, meta: { requiresAuth: true, requiresCompany: true, permission: 'requests' } },

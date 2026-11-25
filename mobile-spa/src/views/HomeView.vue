@@ -34,6 +34,7 @@ import {
   Link2,
   Mail,
   Megaphone,
+  Package,
   Pencil,
   Phone,
   Plus,
@@ -204,6 +205,7 @@ const iconComponentsMap = {
   ShieldAlert,
   ShieldCheck,
   Gauge,
+  Package,
   Zap,
   BadgeDollarSign,
   CreditCard,
@@ -239,6 +241,7 @@ const ALL_SYSTEM_ACTIONS = [
   { id: 'act_invoices', permission: 'invoices', label: 'Faturalar', iconName: 'FileText', to: '/fatura', theme: 'purple' },
   { id: 'act_cash', permission: 'cash', label: 'Kasa', iconName: 'CreditCard', to: '/kasa', theme: 'teal' },
   { id: 'act_km', permission: 'km_approvals', label: 'KM Onayları', iconName: 'Gauge', to: '/km-onaylari', theme: 'emerald' },
+  { id: 'act_apparatus', permission: 'apparatus', label: 'Aparat Takip', iconName: 'Package', to: '/aparat-takip', theme: 'amber' },
   { id: 'act_logs', permission: 'logs', label: 'Loglar', iconName: 'ShieldCheck', to: '/loglar', theme: 'slate' },
 
   // Popüler Alt Sekmeler ve Derin Bağlantılar

@@ -6614,6 +6614,7 @@ try {
             $ekipId = (int) $ekip['id'];
             $bakiyeler = $AparatStok->ekipBakiyeleri($ekipId);
             $kritikler = $AparatStok->ekipKritikleri($ekipId);
+            $bekleyenGiden = $AparatTransfer->bekleyenGidenAdetleri($ekipId);
             $tipler = [];
 
             foreach ($AparatTip->listele(true) as $t) {
@@ -6626,6 +6627,7 @@ try {
                     'adet' => (int) ($bakiyeler[$tipId] ?? 0),
                     'kritik_esik' => (int) $t['ekip_kritik_stok'],
                     'kritik' => isset($kritikler[$tipId]),
+                    'gonderilebilir' => max(0, (int) ($bakiyeler[$tipId] ?? 0) - (int) ($bekleyenGiden[$tipId] ?? 0)),
                 ];
             }
 

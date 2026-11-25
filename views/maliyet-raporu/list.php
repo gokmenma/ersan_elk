@@ -305,9 +305,9 @@ $title = 'Maliyet Raporu';
                 </div>
                 <div class="col-6 col-xl-3">
                     <div class="kv-gider-kart" id="kvGiderKart" role="button" tabindex="0" data-yil="<?= (int) $selectedYil ?>" data-ay="<?= (int) $selectedAy ?>" title="Gider detayını göster" aria-label="Gider detayını göster">
-                        <div class="summary-kpi-label">Gider (Maaş + SGK + Fatura) <i class="bx bx-info-circle align-middle"></i></div>
+                        <div class="summary-kpi-label">Gider (Resmî Maaş + SGK + Fatura) <i class="bx bx-info-circle align-middle"></i></div>
                         <div class="summary-kpi-value text-danger"><?= $tl($kv['gider']) ?> ₺</div>
-                        <div class="font-size-11 text-secondary mt-1">Maaş <?= $tl($kv['maas'], 0) ?> · SGK <?= $tl($kv['sgk'], 0) ?> · Fatura <?= $tl($kv['fatura_gider'], 0) ?></div>
+                        <div class="font-size-11 text-secondary mt-1">Resmî maaş <?= $tl($kv['maas'], 0) ?> · SGK <?= $tl($kv['sgk'], 0) ?> · Fatura <?= $tl($kv['fatura_gider'], 0) ?></div>
                     </div>
                 </div>
                 <div class="col-6 col-xl-3">

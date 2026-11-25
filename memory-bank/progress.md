@@ -2448,3 +2448,7 @@
 - [x] Aparat Takip sadeleştirme (Depoya Giriş / Ekibe Ver / İade Al) + kritik stok uyarısı (sayfa, ana sayfa widget, personel PWA); yerelde uçtan uca test edildi, canlıda `sql/2026_11_25_aparat_sadelestirme_kritik_stok.sql` çalıştırılmalı
 
 - [x] Demirbaş > Aparat > (Aparat Takip, Aparat Dashboard) 3 seviyeli sidebar menüsü (2026-11-25).
+- [x] Aparat ekipler arası transfer: zimmetten fazla gönderim engellendi (oluşturmada bekleyen gönderimler düşülerek, onayda gönderen zimmeti yeniden kontrol; satır kilidi ile). PWA formunda gönderilebilir adet gösterilir.
+
+- Maliyet raporu kurumlar vergisi: gider = tüm gelen fatura KDV matrahı (kalemsiz dahil, haric hariç) + resmî maaş (bordro banka_odemesi) + SGK; Ekim 2026 vergi 1.712.131,65 ₺ (MaliyetRaporuModel::kurumlarVergisi/aylikKalem/kurumlarVergisiGiderDetay).
+- [x] Yönetici mobil (mobile-spa) Aparat Takip sayfası: `/aparat-takip`, özet + azalan aparatlar + ekip kartları + Depoya Giriş/Ekibe Ver/İade Al; `public/api/aparat-takip.php`, policy SQL `sql/2026_11_25_aparat_mobile_policies.sql` (yerelde uygulandı). dist yeniden derlendi.

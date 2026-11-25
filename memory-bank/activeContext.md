@@ -11,6 +11,8 @@
 - `aparat_tipleri.depo_kritik_stok` / `ekip_kritik_stok` (0 = uyarı yok). `AparatStokModel::kritikStoklar()` / `ekipKritikleri()`: ekip uyarısı yalnız personeli olan ve o tipten bakiye satırı bulunan (daha önce zimmet almış) ekipler için üretilir; `adet <= eşik` azaldı, `<= 0` bitti.
 - Ana sayfa `widget-aparat-kritik` (`aparat_takip` yetkisi), personel PWA aparat sayfasında uyarı şeridi. Servis/defter mantığı (`AparatStokService`) değişmedi.
 - SQL: `sql/2026_11_25_aparat_sadelestirme_kritik_stok.sql` (yerelde uygulandı, tekrar çalıştırılabilir).
+- Ekipler arası transfer zimmetten fazla oluşturulamaz (bekleyen gönderimler düşülür) ve onayda gönderen zimmeti yeniden kontrol edilir (`AparatStokModel::bakiyeKilitle` FOR UPDATE).
+- Yönetici mobil: `mobile-spa/src/views/AparatTakipView.vue`, `public/api/aparat-takip.php` (`overview` → aparat_takip, `move` → aparat_depo; ekip ID'leri `Security::encrypt`), yetki anahtarı `apparatus`, BottomNav operasyon grubu ve ana sayfa hızlı işlem. Mobil SPA API'leri `bootstrap.php` yüklemediği için uçta `date_default_timezone_set('Europe/Istanbul')` gerekir.
 
 ## Maliyet Raporu — Kalem Bazlı Yeniden Yapılanma (2026-11-23)
 - `App/Model/MaliyetRaporuModel.php` yeniden yazıldı; rapor `KALEMLER` sabitindeki 9 kaleme göre: Maaş (bordro `net_maas`), SGK (işçi+işveren SGK ve işsizlik), Vergi (gelir+damga), Araç Kirası, Yakıt, Araç Bakım/Servis (bakım+servis+sigorta), Telefon/İnternet, Malzeme/Demirbaş, Ofis ve Diğer. Bordro yalnız `hesaplama_tarihi` dolu (snapshot) satırlardan okunur.

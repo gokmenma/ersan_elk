@@ -34,6 +34,7 @@ import {
   Megaphone,
   MapPin,
   MessageCircle,
+  Package,
   Pin,
   Search,
   ReceiptText,
@@ -343,6 +344,18 @@ const MODULE_CATALOG = {
     to: '/km-onaylari',
     hasDrawer: true,
   },
+  apparatus: {
+    key: 'apparatus',
+    group: 'operasyon',
+    permission: 'apparatus',
+    label: 'Aparat Takip',
+    navLabel: 'Aparat',
+    eyebrow: 'SAHA ENVANTERİ',
+    subtitle: 'Depo, ekip zimmeti ve kritik stok',
+    icon: Package,
+    theme: 'amber',
+    to: '/aparat-takip',
+  },
   documents: {
     key: 'documents',
     group: 'operasyon',
@@ -531,7 +544,7 @@ const DEFAULT_NAVBAR_KEYS = ['personnel', 'reports', 'requests']
 const DEFAULT_GROUP_KEYS = ['finans', 'operasyon', 'planlama', 'sistem']
 const DEFAULT_GROUP_ITEMS = {
   finans: ['invoices', 'cash', 'current_accounts', 'payroll', 'contracts'],
-  operasyon: ['vehicles', 'km_approvals', 'documents', 'files', 'notices', 'illegal', 'reports'],
+  operasyon: ['vehicles', 'km_approvals', 'apparatus', 'documents', 'files', 'notices', 'illegal', 'reports'],
   planlama: ['personnel', 'recruitment', 'personnel_tracking', 'requests', 'tasks', 'shifts', 'puantaj'],
   sistem: ['logs', 'live_support', 'site_messages'],
 }
