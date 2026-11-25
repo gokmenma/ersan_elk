@@ -2437,3 +2437,4 @@
 - [x] Ana sayfa personel durumu legend tıklama modalı (yetkiye bağlı)
 - [x] Ana sayfa araç durumu legend modalı
 - [x] Maliyet raporu kurumlar vergisi gider detay modalı (yerelde Ekim 2026 için kart rakamlarıyla birebir doğrulandı; canlıda policy SQL'i çalıştırılmalı)
+- [x] Maliyet raporuna tahmini kurumlar vergisi satırı (yerelde Ekim 2026 kart rakamıyla doğrulandı)

@@ -167,6 +167,10 @@ $(document).ready(function () {
 
     $('#kalemOzetTable').on('click', '.maliyet-kalem-row', function () {
         const kalem = $(this).data('kalem');
+        if (kalem === 'kurumlar_vergisi') {
+            document.getElementById('kurumlarVergisiCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return;
+        }
         const aktif = $(this).hasClass('active');
         $('.maliyet-kalem-row').removeClass('active');
         const yeni = aktif ? '' : kalem;

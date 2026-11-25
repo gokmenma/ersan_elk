@@ -23,6 +23,8 @@ class MaliyetRaporuModel extends Db
 
     public const KURUMLAR_VERGISI_ORANI = 0.25;
 
+    public const KURUMLAR_VERGISI_KALEM = 'kurumlar_vergisi';
+
     public const KAYNAK_ADLARI = [
         'bordro_personel'           => 'Bordro',
         'faturalar'                 => 'Gelen Fatura',
@@ -58,6 +60,9 @@ class MaliyetRaporuModel extends Db
         if ($kalem === self::HARIC) {
             return 'Rapora Dahil Etme';
         }
+        if ($kalem === self::KURUMLAR_VERGISI_KALEM) {
+            return self::raporKalemleri()[$kalem]['ad'];
+        }
         return self::kalemler()[$kalem]['ad'] ?? (string) $kalem;
     }
 
@@ -77,6 +82,27 @@ class MaliyetRaporuModel extends Db
             error_log('maliyet ozel kalemler: ' . $e->getMessage());
         }
         return self::$kalemCache = $kalemler;
+    }
+
+    public static function raporKalemleri(): array
+    {
+        $sonuc = [];
+        foreach (self::kalemler() as $k => $cfg) {
+            $sonuc[$k] = $cfg;
+            if ($k === 'vergi') {
+                $sonuc[self::KURUMLAR_VERGISI_KALEM] = [
+                    'ad' => 'Kurumlar Vergisi (Tahmini)', 'renk' => '#d97706', 'ikon' => 'bx-calculator',
+                    'kaynak' => "Hesaplanır: (KDV'siz gelir − maaş − SGK − KDV'siz gelen fatura) × %" . (int) (self::KURUMLAR_VERGISI_ORANI * 100),
+                ];
+            }
+        }
+        if (!isset($sonuc[self::KURUMLAR_VERGISI_KALEM])) {
+            $sonuc[self::KURUMLAR_VERGISI_KALEM] = [
+                'ad' => 'Kurumlar Vergisi (Tahmini)', 'renk' => '#d97706', 'ikon' => 'bx-calculator',
+                'kaynak' => "Hesaplanır: (KDV'siz gelir − maaş − SGK − KDV'siz gelen fatura) × %" . (int) (self::KURUMLAR_VERGISI_ORANI * 100),
+            ];
+        }
+        return $sonuc;
     }
 
     public static function tarihAraligi($yil, $ay): array
@@ -109,7 +135,15 @@ class MaliyetRaporuModel extends Db
                 $sonuc[$r->kalem] = ['toplam' => round((float) $r->toplam, 2), 'adet' => (int) $r->adet];
             }
         }
-        return $sonuc;
+
+        $vergi = $this->kurumlarVergisi($sonuc, $bas, $bit)['vergi'];
+        $sonuc[self::KURUMLAR_VERGISI_KALEM] = ['toplam' => $vergi, 'adet' => $vergi > 0 ? 1 : 0];
+
+        $sirali = [];
+        foreach (array_keys(self::raporKalemleri()) as $k) {
+            $sirali[$k] = $sonuc[$k];
+        }
+        return $sirali;
     }
 
     private function kdvMatrahExpr(): string
@@ -271,7 +305,54 @@ class MaliyetRaporuModel extends Db
         foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $r) {
             $matris[$r->kalem][(int) $r->ay] = round((float) $r->toplam, 2);
         }
+
+        [$gelirAy, $faturaAy] = $this->kurumlarVergisiAylik($yil);
+        for ($ay = 1; $ay <= 12; $ay++) {
+            $kar = ($gelirAy[$ay] ?? 0.0) - ($matris['maas'][$ay] ?? 0.0) - ($matris['sgk'][$ay] ?? 0.0) - ($faturaAy[$ay] ?? 0.0);
+            if ($kar > 0) {
+                $matris[self::KURUMLAR_VERGISI_KALEM][$ay] = round($kar * self::KURUMLAR_VERGISI_ORANI, 2);
+            }
+        }
         return $matris;
+    }
+
+    private function kurumlarVergisiAylik(int $yil): array
+    {
+        $matrah = $this->kdvMatrahExpr();
+        $vkn = $this->faturaVknExpr();
+        $kalem = 'COALESCE(mfk.kalem, mke.kalem)';
+        $bas = "{$yil}-01-01";
+        $bit = "{$yil}-12-31";
+
+        $stmt = $this->db->prepare("SELECT MONTH(f.fatura_tarihi) AS ay, COALESCE(SUM({$matrah}), 0) AS toplam FROM faturalar f
+                WHERE f.firm_id = :f_ag AND f.yon = 'GIDEN' AND f.deleted_at IS NULL
+                  AND COALESCE(f.is_active, 1) = 1 AND COALESCE(f.ticari_yanit, '') <> 'RED'
+                  AND f.fatura_tarihi BETWEEN :bas_ag AND :bit_ag
+                GROUP BY MONTH(f.fatura_tarihi)");
+        $stmt->execute(['f_ag' => $this->firmaId, 'bas_ag' => $bas, 'bit_ag' => $bit]);
+        $gelir = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $r) {
+            $gelir[(int) $r->ay] = (float) $r->toplam;
+        }
+
+        $stmt = $this->db->prepare("SELECT MONTH(f.fatura_tarihi) AS ay, COALESCE(SUM({$matrah}), 0) AS toplam FROM faturalar f
+                LEFT JOIN efatura_cariler c ON c.id = f.cari_id
+                LEFT JOIN maliyet_fatura_kalem mfk
+                       ON mfk.fatura_id = f.id AND mfk.firma_id = :f_am AND mfk.deleted_at IS NULL AND mfk.is_active = 1
+                LEFT JOIN maliyet_kalem_eslestirme mke
+                       ON mke.firma_id = :f_ae AND mke.kaynak = 'fatura' AND mke.deleted_at IS NULL AND mke.is_active = 1
+                      AND mke.eslesme_degeri = {$vkn}
+                WHERE f.firm_id = :f_at AND f.yon = 'GELEN' AND f.deleted_at IS NULL
+                  AND COALESCE(f.is_active, 1) = 1 AND COALESCE(f.ticari_yanit, '') <> 'RED'
+                  AND {$kalem} IS NOT NULL AND {$kalem} <> 'haric'
+                  AND f.fatura_tarihi BETWEEN :bas_at AND :bit_at
+                GROUP BY MONTH(f.fatura_tarihi)");
+        $stmt->execute(['f_am' => $this->firmaId, 'f_ae' => $this->firmaId, 'f_at' => $this->firmaId, 'bas_at' => $bas, 'bit_at' => $bit]);
+        $fatura = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $r) {
+            $fatura[(int) $r->ay] = (float) $r->toplam;
+        }
+        return [$gelir, $fatura];
     }
 
     public function eslesmemisFaturalar(?string $bas = null, ?string $bit = null): array

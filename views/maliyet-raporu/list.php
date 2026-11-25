@@ -30,7 +30,7 @@ if (!MaliyetRaporuModel::kalemGecerliMi($selectedKalem)) {
 
 [$baslangic, $bitis] = MaliyetRaporuModel::tarihAraligi($selectedYil, $selectedAy);
 
-$kalemler = MaliyetRaporuModel::kalemler();
+$kalemler = MaliyetRaporuModel::raporKalemleri();
 $ozet = $MaliyetRaporu->kalemOzet($baslangic, $bitis);
 $matris = $MaliyetRaporu->aylikKalem($selectedYil);
 $kv = $MaliyetRaporu->kurumlarVergisi($ozet, $baslangic, $bitis);
@@ -57,7 +57,7 @@ $ayKisa = [1 => 'Oca', 2 => 'Şub', 3 => 'Mar', 4 => 'Nis', 5 => 'May', 6 => 'Ha
 $donemEtiketi = $selectedAy ? $aySecenekleri[(string) $selectedAy] . ' ' . $selectedYil : $selectedYil . ' Yılı';
 
 $kalemSecenekleri = [];
-foreach ($kalemler as $k => $cfg) {
+foreach (MaliyetRaporuModel::kalemler() as $k => $cfg) {
     $kalemSecenekleri[$k] = $cfg['ad'];
 }
 $yeniKalemSecenegi = ['__yeni__' => '+ Yeni Kalem Ekle'];
@@ -137,7 +137,7 @@ $title = 'Maliyet Raporu';
     <div class="row g-3 mb-3 summary-cards-group" id="summaryCardsContainer">
         <?php
         $kartlar = [
-            ['TOPLAM GİDER', $genelToplam, 'bx-trending-up', 'primary', $donemEtiketi],
+            ['TOPLAM GİDER', $genelToplam, 'bx-trending-up', 'primary', $donemEtiketi . ' · tahmini kurumlar vergisi dahil'],
             ['PERSONEL', $personelToplam, 'bx-group', 'danger', 'Maaş + SGK + vergi · %' . $tl($oran($personelToplam), 1)],
             ['ARAÇ', $aracToplam, 'bx-car', 'info', 'Kira + yakıt + bakım · %' . $tl($oran($aracToplam), 1)],
             ['OFİS VE DİĞER', $digerToplam, 'bx-briefcase', 'warning', 'Telefon + malzeme + ofis · %' . $tl($oran($digerToplam), 1)],
