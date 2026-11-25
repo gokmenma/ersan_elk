@@ -385,7 +385,7 @@ $(document).ready(function () {
         e.stopPropagation();
         $.ajax({ url: API + '?action=set-default', type: 'POST', data: { id: $(this).data('id'), csrf_token: csrf }, headers: { 'X-CSRF-Token': csrf }, dataType: 'json' })
             .done(function (res) {
-                if (res.status === 'success') { tablo.ajax.reload(null, false); ozetYukle(); }
+                if (res.status === 'success') { window.location.reload(); }
                 else Swal.fire('Hata', res.message || 'İşlem başarısız.', 'error');
             }).fail(function (xhr) { hata(xhr, 'Sunucuyla bağlantı hatası oluştu.'); });
     });

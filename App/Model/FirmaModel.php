@@ -33,6 +33,19 @@ class FirmaModel extends Model
         return $query->fetchAll(PDO::FETCH_OBJ);
     }
 
+    public function guncelFirmaKodu(int $firmaId, string $varsayilan = ''): string
+    {
+        if ($firmaId > 0) {
+            $q = $this->db->prepare("SELECT firma_kodu FROM $this->table WHERE id = :id AND silinme_tarihi IS NULL");
+            $q->execute([':id' => $firmaId]);
+            $kod = trim((string) $q->fetchColumn());
+            if ($kod !== '') {
+                return $kod;
+            }
+        }
+        return $varsayilan;
+    }
+
     /**
      * Cookie veya parametrelerden varsayılan firmayı çözer.
      * @return object|null aktif firma objesi veya null

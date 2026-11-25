@@ -29,8 +29,8 @@ $puantaj_mutabakat_eposta = $allSettings['puantaj_mutabakat_eposta'] ?? '';
 $endeks_saatleri = array_filter(array_map('trim', explode(',', $online_sorgulama_endeks_saat)));
 $puantaj_saatleri = array_filter(array_map('trim', explode(',', $online_sorgulama_puantaj_saat)));
 $sayac_degisim_saatleri = array_filter(array_map('trim', explode(',', $online_sorgulama_sayac_degisim_saat)));
-$online_sorgulama_firma_baslangic = $allSettings['online_sorgulama_firma_baslangic'] ?? ($_SESSION['firma_kodu'] ?? '17');
-$online_sorgulama_firma_bitis = $allSettings['online_sorgulama_firma_bitis'] ?? ($_SESSION['firma_kodu'] ?? '17');
+$online_sorgulama_firma_baslangic = $allSettings['online_sorgulama_firma_baslangic'] ?? ((new \App\Model\FirmaModel())->guncelFirmaKodu((int) ($_SESSION['firma_id'] ?? 0)));
+$online_sorgulama_firma_bitis = $allSettings['online_sorgulama_firma_bitis'] ?? ((new \App\Model\FirmaModel())->guncelFirmaKodu((int) ($_SESSION['firma_id'] ?? 0)));
 
 // Firma bazlı özel ayarları al (Global sızıntıları önlemek için)
 $stmtFirmaSec = $Settings->db->prepare("SELECT set_name, set_value FROM settings WHERE firma_id = ?");
@@ -38,7 +38,7 @@ $stmtFirmaSec->execute([$firma_id]);
 $firmaOzelAyarlar = $stmtFirmaSec->fetchAll(PDO::FETCH_KEY_PAIR) ?: [];
 
 // Eğer firma 17 değilse, globalden sızan kaski ayarlarını ezelim. (Firma kendine özel ayarlamadıysa boş dursun)
-$firma_kodu = $_SESSION['firma_kodu'] ?? '17';
+$firma_kodu = (new \App\Model\FirmaModel())->guncelFirmaKodu((int) ($_SESSION['firma_id'] ?? 0));
 
 $api_endeks_url = $firmaOzelAyarlar['api_endeks_url'] ?? ($firma_kodu == 17 ? ($allSettings['api_endeks_url'] ?? 'https://yonetim.maraskaski.gov.tr/api/api_okuma_secure.php?action=getData') : '');
 $api_endeks_kullanici = $firmaOzelAyarlar['api_endeks_kullanici'] ?? ($firma_kodu == 17 ? ($allSettings['api_endeks_kullanici'] ?? '') : '');

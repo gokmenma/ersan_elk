@@ -1,4 +1,5 @@
 <?php
+$guncelFirmaKodu = (new \App\Model\FirmaModel())->guncelFirmaKodu((int) ($_SESSION['firma_id'] ?? 0));
 use App\Helper\Date;
 use App\Helper\Form;
 use App\Model\TanimlamalarModel;
@@ -2176,12 +2177,12 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <?php echo Form::FormFloatInput(type: 'number', name: 'ilk_firma', value: $_SESSION['firma_kodu'] ?? '17', placeholder: '', label: "İlk Firma", icon: "briefcase", required: true, class: "form-control"); ?>
+                                <?php echo Form::FormFloatInput(type: 'number', name: 'ilk_firma', value: $guncelFirmaKodu, placeholder: '', label: "İlk Firma", icon: "briefcase", required: true, class: "form-control"); ?>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <?php echo Form::FormFloatInput(type: 'number', name: 'son_firma', value: $_SESSION['firma_kodu'] ?? '17', placeholder: '', label: "Son Firma", icon: "briefcase", required: true, class: "form-control"); ?>
+                                <?php echo Form::FormFloatInput(type: 'number', name: 'son_firma', value: $guncelFirmaKodu, placeholder: '', label: "Son Firma", icon: "briefcase", required: true, class: "form-control"); ?>
                             </div>
                         </div>
                     </div>
@@ -2231,12 +2232,12 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <?php echo Form::FormFloatInput(type: 'number', name: 'ilk_firma', value: $_SESSION['firma_kodu'] ?? '17', placeholder: '', label: "İlk Firma", icon: "briefcase", required: true, class: "form-control"); ?>
+                                <?php echo Form::FormFloatInput(type: 'number', name: 'ilk_firma', value: $guncelFirmaKodu, placeholder: '', label: "İlk Firma", icon: "briefcase", required: true, class: "form-control"); ?>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <?php echo Form::FormFloatInput(type: 'number', name: 'son_firma', value: $_SESSION['firma_kodu'] ?? '17', placeholder: '', label: "Son Firma", icon: "briefcase", required: true, class: "form-control"); ?>
+                                <?php echo Form::FormFloatInput(type: 'number', name: 'son_firma', value: $guncelFirmaKodu, placeholder: '', label: "Son Firma", icon: "briefcase", required: true, class: "form-control"); ?>
                             </div>
                         </div>
                     </div>
@@ -2287,12 +2288,12 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <?php echo Form::FormFloatInput(type: 'number', name: 'ilk_firma', value: $_SESSION['firma_kodu'] ?? '17', placeholder: '', label: "İlk Firma", icon: "briefcase", required: true, class: "form-control"); ?>
+                                <?php echo Form::FormFloatInput(type: 'number', name: 'ilk_firma', value: $guncelFirmaKodu, placeholder: '', label: "İlk Firma", icon: "briefcase", required: true, class: "form-control"); ?>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <?php echo Form::FormFloatInput(type: 'number', name: 'son_firma', value: $_SESSION['firma_kodu'] ?? '17', placeholder: '', label: "Son Firma", icon: "briefcase", required: true, class: "form-control"); ?>
+                                <?php echo Form::FormFloatInput(type: 'number', name: 'son_firma', value: $guncelFirmaKodu, placeholder: '', label: "Son Firma", icon: "briefcase", required: true, class: "form-control"); ?>
                             </div>
                         </div>
                     </div>
@@ -2343,12 +2344,12 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <?php echo Form::FormFloatInput(type: 'number', name: 'ilk_firma', value: $_SESSION['firma_kodu'] ?? '17', placeholder: '', label: "İlk Firma", icon: "briefcase", required: true, class: "form-control"); ?>
+                                <?php echo Form::FormFloatInput(type: 'number', name: 'ilk_firma', value: $guncelFirmaKodu, placeholder: '', label: "İlk Firma", icon: "briefcase", required: true, class: "form-control"); ?>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <?php echo Form::FormFloatInput(type: 'number', name: 'son_firma', value: $_SESSION['firma_kodu'] ?? '17', placeholder: '', label: "Son Firma", icon: "briefcase", required: true, class: "form-control"); ?>
+                                <?php echo Form::FormFloatInput(type: 'number', name: 'son_firma', value: $guncelFirmaKodu, placeholder: '', label: "Son Firma", icon: "briefcase", required: true, class: "form-control"); ?>
                             </div>
                         </div>
                     </div>

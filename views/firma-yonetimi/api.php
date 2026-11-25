@@ -143,6 +143,21 @@ try {
                 firmaYonetimiYanit(['status' => 'error', 'message' => 'Firma bulunamadı.'], 404);
             }
             $firma->setDefault($id);
+            $varsayilanCerez = ['expires' => time() + (30 * 24 * 60 * 60), 'path' => '/', 'secure' => true, 'httponly' => true, 'samesite' => 'Lax'];
+            setcookie('varsayilan_firma_id', (string) $id, $varsayilanCerez);
+            $varsayilanFirma = $firma->find($id);
+            if ($varsayilanFirma && !empty($varsayilanFirma->firma_kodu)) {
+                setcookie('varsayilan_firma_kodu', (string) $varsayilanFirma->firma_kodu, $varsayilanCerez);
+            }
+            $_SESSION['firma_id'] = $id;
+            $_SESSION['firma_kodu'] = (string) ($varsayilanFirma->firma_kodu ?? '');
+            $varsayilanDonem = (new \App\Model\SozlesmeDonemModel())->getActiveDonem($id);
+            if ($varsayilanDonem) {
+                $_SESSION['aktif_donem_id'] = (int) $varsayilanDonem->id;
+                $_SESSION['aktif_donem_adi'] = $varsayilanDonem->donem_adi;
+            } else {
+                unset($_SESSION['aktif_donem_id'], $_SESSION['aktif_donem_adi']);
+            }
             firmaYonetimiYanit(['status' => 'success', 'message' => 'Varsayılan firma güncellendi.']);
     }
 } catch (\Throwable $e) {

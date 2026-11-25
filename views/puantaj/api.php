@@ -2315,8 +2315,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
     try {
         ini_set('memory_limit', '512M');
-        $ilkFirma = $_POST['ilk_firma'] ?? ($_SESSION['firma_kodu'] ?? 17);
-        $sonFirma = $_POST['son_firma'] ?? ($_SESSION['firma_kodu'] ?? 17);
+        $ilkFirma = $_POST['ilk_firma'] ?? ((new \App\Model\FirmaModel())->guncelFirmaKodu((int) ($_SESSION['firma_id'] ?? 0)));
+        $sonFirma = $_POST['son_firma'] ?? ((new \App\Model\FirmaModel())->guncelFirmaKodu((int) ($_SESSION['firma_id'] ?? 0)));
+        if (trim((string) $ilkFirma) === '' || trim((string) $sonFirma) === '') {
+            echo json_encode(['status' => 'error', 'message' => 'Firma kodu boş. Lütfen İlk Firma ve Son Firma alanlarını doldurun veya firma kartına firma kodu girin.']);
+            exit;
+        }
         $baslangicTarihiRaw = $_POST['baslangic_tarihi'] ?? date('Y-m-d');
         $bitisTarihiRaw = $_POST['bitis_tarihi'] ?? date('Y-m-d');
 
@@ -2735,8 +2739,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $bosSonucSayisi = 0;
         $apiData = [];
 
-        $ilkFirma = $_POST['ilk_firma'] ?? ($_SESSION['firma_kodu'] ?? 17);
-        $sonFirma = $_POST['son_firma'] ?? ($_SESSION['firma_kodu'] ?? 17);
+        $ilkFirma = $_POST['ilk_firma'] ?? ((new \App\Model\FirmaModel())->guncelFirmaKodu((int) ($_SESSION['firma_id'] ?? 0)));
+        $sonFirma = $_POST['son_firma'] ?? ((new \App\Model\FirmaModel())->guncelFirmaKodu((int) ($_SESSION['firma_id'] ?? 0)));
+        if (trim((string) $ilkFirma) === '' || trim((string) $sonFirma) === '') {
+            echo json_encode(['status' => 'error', 'message' => 'Firma kodu boş. Lütfen İlk Firma ve Son Firma alanlarını doldurun veya firma kartına firma kodu girin.']);
+            exit;
+        }
         $baslangicTarihiRaw = $_POST['baslangic_tarihi'] ?? date('Y-m-d');
         $bitisTarihiRaw = $_POST['bitis_tarihi'] ?? date('Y-m-d');
 
@@ -4080,8 +4088,12 @@ function handleOnlineSorgu($sorguTuru) {
 
     try {
         ini_set('memory_limit', '512M');
-        $ilkFirma = $_POST['ilk_firma'] ?? ($_SESSION['firma_kodu'] ?? 17);
-        $sonFirma = $_POST['son_firma'] ?? ($_SESSION['firma_kodu'] ?? 17);
+        $ilkFirma = $_POST['ilk_firma'] ?? ((new \App\Model\FirmaModel())->guncelFirmaKodu((int) ($_SESSION['firma_id'] ?? 0)));
+        $sonFirma = $_POST['son_firma'] ?? ((new \App\Model\FirmaModel())->guncelFirmaKodu((int) ($_SESSION['firma_id'] ?? 0)));
+        if (trim((string) $ilkFirma) === '' || trim((string) $sonFirma) === '') {
+            echo json_encode(['status' => 'error', 'message' => 'Firma kodu boş. Lütfen İlk Firma ve Son Firma alanlarını doldurun veya firma kartına firma kodu girin.']);
+            exit;
+        }
         $baslangicTarihiRaw = $_POST['baslangic_tarihi'] ?? date('Y-m-d');
         $bitisTarihiRaw = $_POST['bitis_tarihi'] ?? date('Y-m-d');
 

@@ -1,4 +1,5 @@
 <?php
+$guncelFirmaKodu = (new \App\Model\FirmaModel())->guncelFirmaKodu((int) ($_SESSION['firma_id'] ?? 0));
 use App\Helper\Date;
 use App\Helper\Form;
 use App\Helper\Helper;
@@ -1573,7 +1574,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 <?php echo Form::FormFloatInput(
                                     type: 'number',
                                     name: 'ilk_firma',
-                                    value: $_SESSION['firma_kodu'] ?? '17',
+                                    value: $guncelFirmaKodu,
                                     placeholder: '',
                                     label: "İlk Firma",
                                     icon: "briefcase",
@@ -1587,7 +1588,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 <?php echo Form::FormFloatInput(
                                     type: 'number',
                                     name: 'son_firma',
-                                    value: $_SESSION['firma_kodu'] ?? '17',
+                                    value: $guncelFirmaKodu,
                                     placeholder: '',
                                     label: "Son Firma",
                                     icon: "briefcase",
@@ -1664,7 +1665,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 <?php echo Form::FormFloatInput(
                                     type: 'number',
                                     name: 'ilk_firma',
-                                    value: $_SESSION['firma_kodu'] ?? '17',
+                                    value: $guncelFirmaKodu,
                                     placeholder: '',
                                     label: "İlk Firma",
                                     icon: "briefcase",
@@ -1678,7 +1679,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 <?php echo Form::FormFloatInput(
                                     type: 'number',
                                     name: 'son_firma',
-                                    value: $_SESSION['firma_kodu'] ?? '17',
+                                    value: $guncelFirmaKodu,
                                     placeholder: '',
                                     label: "Son Firma",
                                     icon: "briefcase",
