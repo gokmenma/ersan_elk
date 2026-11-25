@@ -17,11 +17,14 @@ $ayBasi = date('Y-m-01');
 $tipler = $Tip->listele(false);
 $ekipler = $Stok->ekipler();
 
-$yetkiDepo = Gate::allows('aparat_depo') || Gate::isSuperAdmin();
-$yetkiIptal = Gate::allows('aparat_iptal') || Gate::isSuperAdmin();
-$yetkiSayim = Gate::allows('aparat_sayim') || Gate::isSuperAdmin();
-$yetkiTanim = Gate::allows('aparat_tanim') || Gate::isSuperAdmin();
-$yetkiTransfer = Gate::allows('aparat_transfer_yonet') || Gate::isSuperAdmin();
+$superAdmin = Gate::isSuperAdmin();
+$yetkiDashboard = Gate::allows('aparat-takip/dashboard') || $superAdmin;
+$yetkiGelismis = Gate::allows('aparat_gelismis') || $superAdmin;
+$yetkiDepo = Gate::allows('aparat_depo') || $superAdmin;
+$yetkiIptal = $yetkiGelismis && (Gate::allows('aparat_iptal') || $superAdmin);
+$yetkiSayim = $yetkiGelismis && (Gate::allows('aparat_sayim') || $superAdmin);
+$yetkiTanim = $yetkiGelismis && (Gate::allows('aparat_tanim') || $superAdmin);
+$yetkiTransfer = $yetkiGelismis && (Gate::allows('aparat_transfer_yonet') || $superAdmin);
 
 // Ekipler listelerde personel adıyla gösterilir; ekip kodu parantez içinde kalır.
 $ekipUyeleri = $Stok->ekipUyeHaritasi();
@@ -53,20 +56,14 @@ foreach ($tipler as $t) {
 $hareketTipiOptions = ['' => 'Tüm Hareketler'] + AparatHareketModel::HAREKET_TIPLERI;
 $havuzOptions = ['' => 'Tüm Havuzlar'] + AparatHareketModel::HAVUZLAR;
 
-$havuzHareketOptions = [
-    'depo_giris' => 'Depo Girişi (satın alma)',
-    'depo_cikis' => 'Depodan Ekibe Çıkış',
-    'depo_iade' => 'Ekipten Depoya İade',
-    'hurda' => 'Hurdaya Ayır',
-    'kayip' => 'Kayıp Kaydı',
-    'acilis' => 'Açılış Stoğu (ilk kurulum)',
-];
 
 $renkOptions = [];
 foreach (AparatTipiModel::RENKLER as $renk) {
     $renkOptions[$renk] = ucfirst($renk);
 }
 ?>
+
+<script>try { document.documentElement.classList.toggle('aparat-summary-hidden', localStorage.getItem('aparat_summary_cards_state') === 'hidden'); } catch (e) {}</script>
 
 <style>
     .aparat-matris th,
@@ -89,6 +86,35 @@ foreach (AparatTipiModel::RENKLER as $renk) {
     .aparat-matris tbody td.adet-negatif {
         color: #f46a6a;
         background-color: rgba(244, 106, 106, .10);
+    }
+
+    .aparat-matris td.adet-kritik {
+        color: #b45309;
+        background-color: rgba(245, 158, 11, .14);
+    }
+
+    .aparat-kritik-kutu {
+        border: 1px solid #fde68a;
+        background: #fffbeb;
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 12.5px;
+        height: 100%;
+    }
+
+    #summaryCardsContainer {
+        overflow: hidden;
+        max-height: 1100px;
+        opacity: 1;
+        transition: max-height .3s ease, opacity .3s ease, margin .3s ease;
+    }
+
+    .aparat-summary-hidden #summaryCardsContainer {
+        max-height: 0 !important;
+        opacity: 0;
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+        pointer-events: none;
     }
 
     .aparat-matris tbody tr.havuz-satiri {
@@ -223,135 +249,182 @@ foreach (AparatTipiModel::RENKLER as $renk) {
     include 'layouts/breadcrumb.php';
     ?>
 
-    <div class="row g-3 mb-3" id="aparatOzetSerit">
-        <div class="col-6 col-lg-3">
-            <div class="card border-0 shadow-sm h-100 rounded-3" style="border-left: 3px solid #556ee6 !important;">
-                <div class="card-body p-3 d-flex align-items-center justify-content-between">
-                    <div>
-                        <div class="text-muted small fw-semibold text-uppercase mb-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">Toplam Aparat</div>
-                        <h4 class="mb-0 fw-bold text-dark" id="ozetToplam">-</h4>
+    <div class="row align-items-center mb-3">
+        <div class="col-lg-5 col-12 d-flex align-items-center gap-3">
+            <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 44px; height: 44px;">
+                <i class="bx bx-package fs-4 text-primary"></i>
+            </div>
+            <div>
+                <h4 class="mb-0 fw-bold text-dark font-size-16">Aparat Takip</h4>
+                <p class="text-muted mb-0 font-size-12">Depoya al, ekibe ver, iade al. Kesme, açma ve ekip değişimi otomatik işlenir.</p>
+            </div>
+        </div>
+
+        <div class="personel-action-toolbar col-lg-7 col-12 d-flex flex-wrap align-items-center justify-content-lg-end gap-2 mt-2 mt-lg-0">
+            <?php if ($yetkiDepo): ?>
+                <button type="button" class="btn btn-primary top-action-btn shadow-sm text-white btn-depo-hareket" data-tur="depo_giris">
+                    <i class="bx bx-plus font-size-16"></i> Depoya Giriş
+                </button>
+                <button type="button" class="btn btn-outline-secondary bg-white top-action-btn shadow-sm btn-depo-hareket" data-tur="depo_cikis">
+                    <i class="bx bx-export font-size-16 text-primary"></i> Ekibe Ver
+                </button>
+                <button type="button" class="btn btn-outline-secondary bg-white top-action-btn shadow-sm btn-depo-hareket" data-tur="depo_iade">
+                    <i class="bx bx-import font-size-16 text-success"></i> İade Al
+                </button>
+            <?php endif; ?>
+            <?php if ($yetkiGelismis && $yetkiDepo): ?>
+                <div class="dropdown d-inline-block">
+                    <button type="button" class="btn btn-outline-secondary bg-white top-action-btn dropdown-toggle shadow-sm" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="bx bx-cog font-size-16 text-primary"></i> Diğer
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end shadow-lg border-0">
+                        <button type="button" class="dropdown-item d-flex align-items-center btn-depo-hareket" data-tur="acilis">
+                            <i class="bx bx-box me-2 font-size-16 text-primary"></i> Açılış Stoğu
+                        </button>
+                        <button type="button" class="dropdown-item d-flex align-items-center" id="btnManuelIslem">
+                            <i class="bx bx-edit me-2 font-size-16 text-primary"></i> Manuel Saha Kaydı
+                        </button>
+                        <div class="dropdown-divider"></div>
+                        <button type="button" class="dropdown-item d-flex align-items-center btn-depo-hareket" data-tur="hurda">
+                            <i class="bx bx-trash me-2 font-size-16 text-warning"></i> Hurdaya Ayır
+                        </button>
+                        <button type="button" class="dropdown-item d-flex align-items-center btn-depo-hareket" data-tur="kayip">
+                            <i class="bx bx-error me-2 font-size-16 text-danger"></i> Kayıp Kaydı
+                        </button>
                     </div>
-                    <div class="avatar-sm flex-shrink-0">
-                        <span class="avatar-title rounded-3 fs-4" style="background: rgba(85, 110, 230, 0.1); color: #556ee6;">
-                            <i class="bx bx-package"></i>
-                        </span>
+                </div>
+            <?php endif; ?>
+            <?php if ($yetkiDashboard): ?>
+                <a href="index.php?p=aparat-takip/dashboard" class="btn btn-outline-secondary bg-white top-action-btn shadow-sm">
+                    <i class="bx bx-pie-chart-alt-2 font-size-16 text-primary"></i> <span class="d-none d-sm-inline">Dashboard</span>
+                </a>
+            <?php endif; ?>
+            <button type="button" class="btn btn-outline-secondary bg-white top-icon-btn shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNasilCalisir" title="Nasıl Çalışır?" aria-label="Nasıl Çalışır?">
+                <i class="bx bx-help-circle"></i>
+            </button>
+            <button type="button" class="btn btn-outline-secondary bg-white top-icon-btn shadow-sm" id="btnToggleSummaryCards" title="Özet Kartları Gizle" aria-label="Özet Kartları Gizle" aria-expanded="true">
+                <i class="bx bx-chevron-up"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3 summary-cards-group" id="summaryCardsContainer">
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div><span class="summary-kpi-label">DEPODA</span><h3 class="summary-kpi-value my-1" id="ozetDepo">-</h3></div>
+                        <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle"><i class="bx bx-buildings"></i></div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center border-top pt-1">
+                        <span class="summary-kpi-subtext">Dağıtılmayı bekleyen</span>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-6 col-lg-3">
-            <div class="card border-0 shadow-sm h-100 rounded-3" style="border-left: 3px solid #34c38f !important;">
-                <div class="card-body p-3 d-flex align-items-center justify-content-between">
-                    <div>
-                        <div class="text-muted small fw-semibold text-uppercase mb-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">Sahada Takılı</div>
-                        <h4 class="mb-0 fw-bold text-dark" id="ozetSaha">-</h4>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div><span class="summary-kpi-label">EKİPLERDE</span><h3 class="summary-kpi-value my-1 text-success" id="ozetEkip">-</h3></div>
+                        <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle"><i class="bx bx-group"></i></div>
                     </div>
-                    <div class="avatar-sm flex-shrink-0">
-                        <span class="avatar-title rounded-3 fs-4" style="background: rgba(52, 195, 143, 0.1); color: #34c38f;">
-                            <i class="bx bx-map-pin"></i>
-                        </span>
+                    <div class="d-flex justify-content-between align-items-center border-top pt-1">
+                        <span class="summary-kpi-subtext" id="ozetEkipAlt">Personel zimmetinde</span>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-6 col-lg-3">
-            <div class="card border-0 shadow-sm h-100 rounded-3" style="border-left: 3px solid #f1b44c !important;">
-                <div class="card-body p-3 d-flex align-items-center justify-content-between">
-                    <div>
-                        <div class="text-muted small fw-semibold text-uppercase mb-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">Bekleyen Transfer</div>
-                        <h4 class="mb-0 fw-bold text-dark" id="ozetTransfer">-</h4>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div><span class="summary-kpi-label">ABONEDE TAKILI</span><h3 class="summary-kpi-value my-1 text-info" id="ozetSaha">-</h3></div>
+                        <div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle"><i class="bx bx-map-pin"></i></div>
                     </div>
-                    <div class="avatar-sm flex-shrink-0">
-                        <span class="avatar-title rounded-3 fs-4" style="background: rgba(241, 180, 76, 0.1); color: #f1b44c;">
-                            <i class="bx bx-transfer-alt"></i>
-                        </span>
+                    <div class="d-flex justify-content-between align-items-center border-top pt-1">
+                        <span class="summary-kpi-subtext">Kesmede takılan, açmada geri gelir</span>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-6 col-lg-3">
-            <div class="card border-0 shadow-sm h-100 rounded-3" style="border-left: 3px solid #f46a6a !important;">
-                <div class="card-body p-3 d-flex align-items-center justify-content-between">
-                    <div>
-                        <div class="text-muted small fw-semibold text-uppercase mb-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">Negatif Stoklu Kayıt</div>
-                        <h4 class="mb-0 fw-bold text-danger" id="ozetNegatif">-</h4>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card summary-kpi-card h-100 mb-0">
+                <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div><span class="summary-kpi-label">KRİTİK STOK</span><h3 class="summary-kpi-value my-1 text-warning" id="ozetKritik">-</h3></div>
+                        <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle"><i class="bx bx-error"></i></div>
                     </div>
-                    <div class="avatar-sm flex-shrink-0">
-                        <span class="avatar-title rounded-3 fs-4" style="background: rgba(244, 106, 106, 0.1); color: #f46a6a;">
-                            <i class="bx bx-error-circle"></i>
-                        </span>
+                    <div class="d-flex justify-content-between align-items-center border-top pt-1">
+                        <span class="summary-kpi-subtext" id="ozetKritikAlt">Depo: 0 · Ekip: 0</span>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="aparatTutarsizlikUyari" class="alert alert-danger d-none align-items-center gap-2" role="alert">
-        <i class="bx bx-error-circle fs-4"></i>
-        <div class="flex-grow-1">
-            Ana defter ile bakiye tablosu arasında <b id="tutarsizSayi">0</b> satırda fark var.
+    <div id="aparatKritikUyari" class="card summary-kpi-card border-warning-subtle mb-3 d-none">
+        <div class="card-body py-2 px-3">
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <i class="bx bx-error text-warning fs-5"></i>
+                <span class="fw-semibold text-dark">Azalan aparatlar</span>
+            </div>
+            <div class="row g-2" id="aparatKritikListe" style="max-height: 260px; overflow-y: auto;"></div>
+        </div>
+    </div>
+
+    <?php if ($yetkiGelismis): ?>
+        <div id="aparatTutarsizlikUyari" class="alert alert-danger d-none align-items-center gap-2" role="alert">
+            <i class="bx bx-error-circle fs-4"></i>
+            <div class="flex-grow-1">
+                Ana defter ile bakiye tablosu arasında <b id="tutarsizSayi">0</b> satırda fark var.
+                <?php if ($yetkiDepo): ?>
+                    Bakiyeyi ana defterden yeniden hesaplayabilirsiniz.
+                <?php endif; ?>
+            </div>
             <?php if ($yetkiDepo): ?>
-                Bakiyeyi ana defterden yeniden hesaplayabilirsiniz.
+                <button type="button" class="btn btn-sm btn-danger" id="btnBakiyeOnar">Bakiyeyi Onar</button>
             <?php endif; ?>
         </div>
-        <?php if ($yetkiDepo): ?>
-            <button type="button" class="btn btn-sm btn-danger" id="btnBakiyeOnar">Bakiyeyi Onar</button>
-        <?php endif; ?>
-    </div>
 
-    <ul class="nav nav-tabs nav-tabs-custom mb-3" role="tablist">
-        <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#pane-stok" role="tab">
-                <i class="bx bx-table me-1"></i> Stok Durumu</a></li>
-        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pane-islemler" role="tab">
-                <i class="bx bx-list-ul me-1"></i> Saha İşlemleri</a></li>
-        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pane-hareketler" role="tab">
-                <i class="bx bx-transfer-alt me-1"></i> Hareket Dökümü</a></li>
-        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pane-transferler" role="tab">
-                <i class="bx bx-git-compare me-1"></i> Transferler</a></li>
-        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pane-sayim" role="tab">
-                <i class="bx bx-check-square me-1"></i> Sayım</a></li>
-        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pane-raporlar" role="tab">
-                <i class="bx bx-bar-chart-alt-2 me-1"></i> Raporlar</a></li>
-        <?php if ($yetkiTanim): ?>
-            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pane-tanimlar" role="tab">
-                    <i class="bx bx-cog me-1"></i> Tanımlar</a></li>
-        <?php endif; ?>
-
-        <li class="nav-item ms-auto d-flex align-items-center">
-            <button type="button" class="btn btn-sm btn-soft-info d-flex align-items-center gap-1"
-                data-bs-toggle="modal" data-bs-target="#modalNasilCalisir">
-                <i class="bx bx-help-circle fs-5"></i> Nasıl Çalışır?
-            </button>
-        </li>
-    </ul>
+        <ul class="nav nav-tabs nav-tabs-custom mb-3" role="tablist">
+            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#pane-stok" role="tab">
+                    <i class="bx bx-table me-1"></i> Stok Durumu</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pane-islemler" role="tab">
+                    <i class="bx bx-list-ul me-1"></i> Saha İşlemleri</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pane-hareketler" role="tab">
+                    <i class="bx bx-transfer-alt me-1"></i> Hareket Dökümü</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pane-transferler" role="tab">
+                    <i class="bx bx-git-compare me-1"></i> Transferler</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pane-sayim" role="tab">
+                    <i class="bx bx-check-square me-1"></i> Sayım</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pane-raporlar" role="tab">
+                    <i class="bx bx-bar-chart-alt-2 me-1"></i> Raporlar</a></li>
+            <?php if ($yetkiTanim): ?>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pane-tanimlar" role="tab">
+                        <i class="bx bx-cog me-1"></i> Tanımlar</a></li>
+            <?php endif; ?>
+        </ul>
+    <?php endif; ?>
 
     <div class="tab-content">
 
-        <!-- ============ STOK MATRİSİ ============ -->
         <div class="tab-pane fade show active" id="pane-stok">
-            <div class="card border-0 shadow-sm">
+            <div class="card summary-kpi-card mb-3" id="aparatListCard">
                 <div class="card-header bg-transparent border-bottom py-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
-                    <div>
-                        <h5 class="mb-0 fw-bold text-dark"><i class="bx bx-package me-1 text-primary"></i> Ekip × Aparat Tipi Stok Tablosu</h5>
-                        <p class="text-muted small mb-0 mt-1">Depo, ekipler, sahada takılı, hurda ve kayıp havuzlarının anlık dökümü.</p>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="bg-primary-subtle text-primary rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;">
+                            <i class="bx bx-list-ul fs-5"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-0 font-size-14 fw-bold">Kimde Kaç Aparat Var?</h5>
+                            <p class="text-muted font-size-12 mb-0">Turuncu: azaldı · Kırmızı: bitti/eksi. Alt satırlarda depo ve abonede takılı olanlar.</p>
+                        </div>
                     </div>
-                    <div class="d-flex align-items-center gap-2 flex-wrap ms-auto">
-                        <?php if ($yetkiDepo): ?>
-                            <button type="button" class="btn btn-primary btn-sm" id="btnHavuzHareketi">
-                                <i class="bx bx-plus me-1"></i> Depo / Havuz Hareketi
-                            </button>
-                            <button type="button" class="btn btn-outline-primary btn-sm" id="btnManuelIslem">
-                                <i class="bx bx-edit me-1"></i> Manuel Saha Kaydı
-                            </button>
-                        <?php endif; ?>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnStokYenile" title="Yenile">
-                            <i class="bx bx-refresh"></i>
-                        </button>
-                        <a class="btn btn-outline-success btn-sm" id="btnStokExcel"
-                            href="views/aparat-takip/export-excel.php?tip=stok" title="Excel İndir">
-                            <i class="bx bx-download"></i>
-                        </a>
-                    </div>
+                    <a class="btn btn-outline-success btn-sm" id="btnStokExcel"
+                        href="views/aparat-takip/export-excel.php?tip=stok" title="Excel İndir">
+                        <i class="bx bx-download"></i> Excel
+                    </a>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -364,6 +437,8 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                                             <?= htmlspecialchars($t['ad'], ENT_QUOTES, 'UTF-8') ?>
                                             <?php if ((int) $t['is_active'] === 0): ?>
                                                 <small class="d-block fw-normal">(pasif)</small>
+                                            <?php elseif ((int) $t['ekip_kritik_stok'] > 0): ?>
+                                                <small class="d-block fw-normal text-muted">sınır <?= (int) $t['ekip_kritik_stok'] ?></small>
                                             <?php endif; ?>
                                         </th>
                                     <?php endforeach; ?>
@@ -382,9 +457,42 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                     <?php endif; ?>
                 </div>
             </div>
+
+            <div class="card summary-kpi-card mb-0">
+                <div class="card-header bg-transparent border-bottom py-3 d-flex align-items-center gap-2">
+                    <div class="bg-primary-subtle text-primary rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;">
+                        <i class="bx bx-history fs-5"></i>
+                    </div>
+                    <div>
+                        <h5 class="mb-0 font-size-14 fw-bold">Son Depo Hareketleri</h5>
+                        <p class="text-muted font-size-12 mb-0">Depoya giren, ekibe verilen ve iade alınan son 10 kayıt.</p>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0" id="tabloSonDepo">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Tarih</th>
+                                    <th>Hareket</th>
+                                    <th>Aparat</th>
+                                    <th class="text-center">Adet</th>
+                                    <th>Ekip / Personel</th>
+                                    <th>Kaydeden</th>
+                                    <th>Açıklama</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td colspan="7" class="text-center text-muted py-3">Yükleniyor...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- ============ SAHA İŞLEMLERİ ============ -->
+        <?php if ($yetkiGelismis): ?>
         <div class="tab-pane fade" id="pane-islemler">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-transparent border-bottom py-3">
@@ -649,16 +757,22 @@ foreach (AparatTipiModel::RENKLER as $renk) {
             </div>
         </div>
 
+        <?php endif; ?>
         <!-- ============ TANIMLAR ============ -->
         <?php if ($yetkiTanim): ?>
             <div class="tab-pane fade" id="pane-tanimlar">
-                <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-transparent border-bottom py-3 d-flex align-items-center justify-content-between">
-                        <div>
-                            <h5 class="mb-0 fw-bold text-dark"><i class="bx bx-cog me-1 text-primary"></i> Aparat Tipleri</h5>
-                            <p class="text-muted small mb-0 mt-1">Stok hareketi görmüş tipler silinmez, pasife alınır.</p>
+                <div class="card summary-kpi-card mb-0">
+                    <div class="card-header bg-transparent border-bottom py-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="bg-primary-subtle text-primary rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;">
+                                <i class="bx bx-cog fs-5"></i>
+                            </div>
+                            <div>
+                                <h5 class="mb-0 font-size-14 fw-bold">Aparat Tipleri</h5>
+                                <p class="text-muted font-size-12 mb-0">Kritik stok sınırları buradan girilir. Stok hareketi görmüş tipler silinmez, pasife alınır.</p>
+                            </div>
                         </div>
-                        <button class="btn btn-primary btn-sm" id="btnTipEkle"><i class="bx bx-plus me-1"></i> Yeni Tip</button>
+                        <button type="button" class="btn btn-primary top-action-btn shadow-sm text-white" id="btnTipEkle"><i class="bx bx-plus font-size-16"></i> Yeni Tip</button>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
@@ -670,9 +784,11 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                                         <th data-filter="string">Ad</th>
                                         <th data-filter="string">Kod</th>
                                         <th data-filter="select">Renk</th>
+                                        <th class="text-center" data-filter="number">Depo Kritik</th>
+                                        <th class="text-center" data-filter="number">Ekip Kritik</th>
                                         <th data-filter="string">Açıklama</th>
                                         <th data-filter="select">Durum</th>
-                                        <th class="text-end">İşlem</th>
+                                        <th class="text-center" style="width: 90px;">İşlem</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
@@ -695,6 +811,26 @@ foreach (AparatTipiModel::RENKLER as $renk) {
             </div>
             <div class="modal-body">
 
+                <h6 class="fw-bold">Sizin yapacağınız 3 iş</h6>
+                <table class="table table-sm mb-3">
+                    <tbody>
+                        <tr><td class="fw-semibold" style="width:34%"><span class="nc-adim">1</span>Depoya Giriş</td><td>Aparat satın alındığında depoya ekleyin.</td></tr>
+                        <tr><td class="fw-semibold"><span class="nc-adim">2</span>Ekibe Ver</td><td>Depodan ekibe/personele aparat verdiğinizde girin. Depo azalır, ekip artar.</td></tr>
+                        <tr><td class="fw-semibold"><span class="nc-adim">3</span>İade Al</td><td>Ekip aparatı depoya geri getirdiğinde girin. Ekip azalır, depo artar.</td></tr>
+                    </tbody>
+                </table>
+
+                <h6 class="fw-bold">Gerisini sistem yapar</h6>
+                <ul class="text-muted small ps-3 mb-3">
+                    <li><b>Kesme:</b> aparat ekibin zimmetinden düşer, abonede takılı olur.</li>
+                    <li><b>Açma:</b> aparat aboneden çıkar, açan ekibin zimmetine geçer.</li>
+                    <li><b>Ekipler arası değişim:</b> veren ekipten düşer, alan ekip telefondan onaylayınca onun zimmetine geçer.</li>
+                    <li><b>Kritik stok:</b> depoda veya bir ekipte aparat azalınca bu sayfada, ana sayfada ve personelin telefonunda uyarı çıkar.</li>
+                </ul>
+
+                <?php if ($yetkiGelismis): ?>
+                <hr>
+                <h6 class="fw-bold text-muted">Ayrıntılı işleyiş</h6>
                 <p class="text-muted">
                     Aparatlar <b>ekibe</b> zimmetlidir, personele değil. Ekip üyeleri gün gün
                     değişebildiği için aparat araçta/ekipte kalır; ekranlarda ekip kodu yerine
@@ -743,7 +879,7 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                 </div>
 
                 <h6 class="fw-bold mt-4"><span class="nc-adim">3</span> Depo ve havuz hareketleri</h6>
-                <p class="text-muted small mb-2"><b>Stok Durumu → Depo / Havuz Hareketi</b> butonundan yapılır (şef yetkisi ister).</p>
+                <p class="text-muted small mb-2">Sayfanın üstündeki <b>Depoya Giriş / Ekibe Ver / İade Al</b> butonlarından, hurda/kayıp/açılış ise <b>Diğer</b> menüsünden yapılır.</p>
                 <table class="table table-sm mb-0">
                     <tbody>
                         <tr><td class="fw-semibold" style="width:38%">Depo Girişi</td><td>Satın alınan aparatlar depoya eklenir. Toplamı artıran tek hareket.</td></tr>
@@ -788,6 +924,7 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                     <li>Saha personeli telefonda <b>Hızlı İşlemler → Aparat Takip</b> ekranından kayda başlar.</li>
                 </ol>
 
+                <?php endif; ?>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-light" data-bs-dismiss="modal">Kapat</button>
@@ -802,15 +939,17 @@ foreach (AparatTipiModel::RENKLER as $renk) {
         <div class="modal-content">
             <form id="formHavuz">
                 <div class="modal-header">
-                    <h5 class="modal-title">Depo / Havuz Hareketi</h5>
+                    <h5 class="modal-title" id="havuzModalBaslik">Depoya Giriş</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <div class="row g-3">
-                        <div class="col-12"><?= Form::FormSelect2('havuz_tur', $havuzHareketOptions, 'depo_giris', 'Hareket Türü', 'bx bx-transfer', 'key', '', 'form-select select2', true) ?></div>
+                        <input type="hidden" id="havuz_tur" value="depo_giris">
+                        <div class="col-12"><p class="text-muted small mb-0" id="havuzModalAciklama"></p></div>
                         <div class="col-12" id="havuzEkipAlan"><?= Form::FormSelect2('havuz_ekip', $ekipSecimOptions, '', 'Ekip', 'bx bx-group') ?></div>
                         <div class="col-7"><?= Form::FormSelect2('havuz_aparat', $tipSecimOptions, '', 'Aparat Tipi', 'bx bx-package', 'key', '', 'form-select select2', true) ?></div>
                         <div class="col-5"><?= Form::FormFloatInput('number', 'havuz_adet', '1', '1', 'Adet', 'bx bx-hash', 'form-control', true) ?></div>
+                        <div class="col-12 d-none" id="havuzBakiyeBilgi"><span class="badge bg-light text-dark border px-2 py-1 font-size-12" id="havuzBakiyeMetin"></span></div>
                         <div class="col-12"><?= Form::FormFloatTextarea('havuz_aciklama', '', 'Açıklama / irsaliye no', 'Açıklama', 'bx bx-note') ?></div>
                     </div>
                 </div>
@@ -824,6 +963,7 @@ foreach (AparatTipiModel::RENKLER as $renk) {
 </div>
 
 <!-- ============ MODAL: MANUEL SAHA KAYDI ============ -->
+<?php if ($yetkiGelismis): ?>
 <div class="modal fade" id="modalIslem" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
@@ -884,6 +1024,7 @@ foreach (AparatTipiModel::RENKLER as $renk) {
     </div>
 </div>
 
+<?php endif; ?>
 <!-- ============ MODAL: APARAT TİPİ ============ -->
 <?php if ($yetkiTanim): ?>
     <div class="modal fade" id="modalTip" tabindex="-1">
@@ -902,6 +1043,9 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                             <div class="col-4"><?= Form::FormFloatInput('text', 'tip_kod', '', 'KUR', 'Kod', 'bx bx-hash', 'form-control', true, 20) ?></div>
                             <div class="col-6"><?= Form::FormSelect2('tip_renk', $renkOptions, 'primary', 'Renk', 'bx bx-palette') ?></div>
                             <div class="col-6"><?= Form::FormFloatInput('number', 'tip_sira', '1', '1', 'Sıra', 'bx bx-sort') ?></div>
+                            <div class="col-6"><?= Form::FormFloatInput('number', 'tip_depo_kritik', '0', '0', 'Depo kritik stok', 'bx bx-buildings') ?></div>
+                            <div class="col-6"><?= Form::FormFloatInput('number', 'tip_ekip_kritik', '0', '0', 'Ekip kritik stok', 'bx bx-group') ?></div>
+                            <div class="col-12"><p class="text-muted small mb-0">Stok bu sayıya düştüğünde ana sayfada ve personelin telefonunda uyarı çıkar. 0 = uyarı yok.</p></div>
                             <div class="col-12"><?= Form::FormFloatTextarea('tip_aciklama', '', 'Açıklama', 'Açıklama', 'bx bx-note') ?></div>
                             <div class="col-12">
                                 <label for="tip_resim" class="form-label fw-semibold small text-muted mb-1"><i class="bx bx-image me-1"></i> Aparat Görseli (İsteğe Bağlı)</label>
@@ -987,7 +1131,8 @@ foreach (AparatTipiModel::RENKLER as $renk) {
         iptal: <?= $yetkiIptal ? 'true' : 'false' ?>,
         sayim: <?= $yetkiSayim ? 'true' : 'false' ?>,
         tanim: <?= $yetkiTanim ? 'true' : 'false' ?>,
-        transfer: <?= $yetkiTransfer ? 'true' : 'false' ?>
+        transfer: <?= $yetkiTransfer ? 'true' : 'false' ?>,
+        gelismis: <?= $yetkiGelismis ? 'true' : 'false' ?>
     };
     window.aparatTipleri = <?= json_encode(array_map(fn($t) => [
         'id' => (int) $t['id'],
@@ -995,6 +1140,8 @@ foreach (AparatTipiModel::RENKLER as $renk) {
         'kod' => $t['kod'],
         'renk' => $t['renk'],
         'aktif' => (int) $t['is_active'],
+        'depo_kritik' => (int) $t['depo_kritik_stok'],
+        'ekip_kritik' => (int) $t['ekip_kritik_stok'],
     ], $tipler), JSON_UNESCAPED_UNICODE) ?>;
 </script>
 <script src="views/aparat-takip/js/list.js?v=<?= filemtime(__DIR__ . '/js/list.js') ?>"></script>

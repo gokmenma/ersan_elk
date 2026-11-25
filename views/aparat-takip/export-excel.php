@@ -29,6 +29,11 @@ if (!Gate::allows('aparat_takip') && !Gate::allows('aparat-takip/list') && !Gate
 }
 
 $tip = $_GET['tip'] ?? 'stok';
+
+if ($tip !== 'stok' && !Gate::allows('aparat_gelismis') && !Gate::isSuperAdmin()) {
+    http_response_code(403);
+    exit('Yetkisiz erişim.');
+}
 $baslangic = Date::convertExcelDate($_GET['start_date'] ?? '', 'Y-m-d') ?: date('Y-m-01');
 $bitis = Date::convertExcelDate($_GET['end_date'] ?? '', 'Y-m-d') ?: date('Y-m-d');
 

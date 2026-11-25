@@ -593,14 +593,27 @@ $uyeAdlari = implode(', ', array_column($ekipUyeleri, 'adi_soyadi'));
                 <p class="text-xs text-slate-400 mt-2">${kacir(aparatBilgi.ekip.ad)}</p>
             </div>`;
 
+            const kritikTipler = (aparatBilgi.tipler || []).filter(function (t) { return t.kritik; });
+            if (kritikTipler.length) {
+                const satirlar = kritikTipler.map(function (t) {
+                    return `<p class="text-xs text-slate-500 mt-1">${kacir(t.ad)}: elinde ${t.adet} adet kaldı (sınır ${t.kritik_esik})</p>`;
+                }).join('');
+                html += `<div class="bg-amber-50 dark:bg-slate-800 border border-amber-200 dark:border-slate-800 rounded-xl p-3 mb-3">
+                    <p class="text-xs font-bold text-amber-700 dark:text-amber-400">Aparatın azaldı, depodan almalısın</p>
+                    ${satirlar}
+                </div>`;
+            }
+
             (aparatBilgi.tipler || []).forEach(function (t) {
                 const negatif = t.adet < 0;
-                html += `<div class="bg-white dark:bg-card-dark rounded-xl p-4 flex items-center justify-between">
+                const renk = negatif || (t.kritik && t.adet <= 0) ? 'text-red-500' : (t.kritik ? 'text-amber-600' : 'text-primary');
+                const cerceve = t.kritik ? ' style="box-shadow: inset 0 0 0 1px #f59e0b;"' : '';
+                html += `<div class="bg-white dark:bg-card-dark rounded-xl p-4 flex items-center justify-between"${cerceve}>
                     <div>
                         <p class="text-sm font-bold text-slate-800 dark:text-white">${kacir(t.ad)}</p>
-                        <p class="text-xs text-slate-400 mt-1">${kacir(t.kod)}</p>
+                        <p class="text-xs text-slate-400 mt-1">${kacir(t.kod)}${t.kritik ? ' · azaldı' : ''}</p>
                     </div>
-                    <p class="text-xl font-bold ${negatif ? 'text-red-500' : 'text-primary'}">${t.adet}</p>
+                    <p class="text-xl font-bold ${renk}">${t.adet}</p>
                 </div>`;
             });
 

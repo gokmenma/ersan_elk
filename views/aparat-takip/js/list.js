@@ -8,6 +8,22 @@
     let aktifSayimId = 0;
     let aktifIslemId = 0;
     let transferDurum = '';
+    let sonMatris = null;
+
+    const HAVUZ_TURLERI = {
+        depo_giris: { baslik: 'Depoya Giriş', aciklama: 'Satın alınan aparatı depoya ekleyin.', ekip: false, kaynak: null },
+        depo_cikis: { baslik: 'Ekibe Ver', aciklama: 'Depodan düşer, seçilen ekibin zimmetine geçer.', ekip: true, kaynak: 'depo' },
+        depo_iade: { baslik: 'İade Al', aciklama: 'Ekibin zimmetinden düşer, depoya geri girer.', ekip: true, kaynak: 'ekip' },
+        hurda: { baslik: 'Hurdaya Ayır', aciklama: 'Ekipten düşer, hurdaya yazılır. Gerekçe zorunlu.', ekip: true, kaynak: 'ekip' },
+        kayip: { baslik: 'Kayıp Kaydı', aciklama: 'Ekipten düşer, kayıp olarak yazılır. Gerekçe zorunlu.', ekip: true, kaynak: 'ekip' },
+        acilis: { baslik: 'Açılış Stoğu', aciklama: 'Ekibin elinde zaten bulunan aparatı ilk kurulumda bir kez girin.', ekip: true, kaynak: null }
+    };
+
+    function esikSinifi(adet, seviye) {
+        if (adet < 0 || seviye === 'bitti') return 'adet-negatif';
+        if (seviye === 'azaldi') return 'adet-kritik';
+        return '';
+    }
 
     // ---------- Yardımcılar ----------
 
@@ -97,16 +113,30 @@
             if (res.status !== 'success') return hata(res.message);
 
             const veri = res.data;
+            sonMatris = veri;
+            const kritik = res.kritik || { depo: [], ekipler: [], toplam: 0 };
+            const kritikHarita = {};
+            kritik.depo.forEach(function (e) { kritikHarita['depo_' + e.aparat_tip_id] = e.seviye; });
+            kritik.ekipler.forEach(function (k) {
+                k.eksikler.forEach(function (e) { kritikHarita[k.ekip_id + '_' + e.aparat_tip_id] = e.seviye; });
+            });
             const altlik = $('#tabloStokMatris tfoot').empty();
 
             // Ekip satırları tabloda sıralanabilir kalsın; depo/saha/hurda/kayıp
             // havuzları ile toplam satırı tfoot'ta sabitlenir.
             const ekipSatirlari = veri.satirlar.filter(function (s) { return s.sahip_tipi === 'ekip'; });
-            const havuzSatirlari = veri.satirlar.filter(function (s) { return s.sahip_tipi !== 'ekip'; });
+            const havuzSatirlari = veri.satirlar.filter(function (s) {
+                if (s.sahip_tipi === 'ekip') return false;
+                return yetki.gelismis || s.sahip_tipi === 'depo' || s.sahip_tipi === 'saha';
+            });
 
             let sahaToplam = 0;
-            havuzSatirlari.forEach(function (s) {
+            let depoToplam = 0;
+            let ekipToplam = 0;
+            veri.satirlar.forEach(function (s) {
                 if (s.sahip_tipi === 'saha') sahaToplam = s.toplam;
+                if (s.sahip_tipi === 'depo') depoToplam = s.toplam;
+                if (s.sahip_tipi === 'ekip') ekipToplam += s.toplam;
             });
 
             const kolonlar = [{
@@ -133,6 +163,7 @@
 
             const satirlar = ekipSatirlari.map(function (s) {
                 const satir = {
+                    sahip_id: s.sahip_id,
                     baslik: s.uyeler || s.ekip_kodu,
                     uyeler: s.uyeler,
                     ekip_kodu: s.ekip_kodu,
@@ -148,12 +179,11 @@
             dtKur('#tabloStokMatris', {
                 data: satirlar,
                 columns: kolonlar,
-                order: [[0, 'asc']],
+                order: [[kolonlar.length - 1, 'desc'], [0, 'asc']],
                 createdRow: function (row, data) {
                     veri.tipler.forEach(function (tip, i) {
-                        if (data['adet_' + tip.id] < 0) {
-                            $('td', row).eq(i + 1).addClass('adet-negatif');
-                        }
+                        const sinif = esikSinifi(data['adet_' + tip.id], kritikHarita[data.sahip_id + '_' + tip.id]);
+                        if (sinif) $('td', row).eq(i + 1).addClass(sinif);
                     });
                 }
             });
@@ -162,10 +192,19 @@
                 let hucreler = '';
                 veri.tipler.forEach(function (tip) {
                     const adet = s.adetler[tip.id] || 0;
-                    hucreler += `<td class="adet-hucre${adet === 0 ? ' adet-sifir' : ''}${adet < 0 && s.sahip_tipi !== 'kayip' ? ' adet-negatif' : ''}">${adet}</td>`;
+                    let sinif = adet === 0 ? ' adet-sifir' : '';
+                    if (s.sahip_tipi === 'depo') {
+                        const depoSinif = esikSinifi(adet, kritikHarita['depo_' + tip.id]);
+                        if (depoSinif) sinif = ' ' + depoSinif;
+                    } else if (adet < 0 && s.sahip_tipi !== 'kayip') {
+                        sinif = ' adet-negatif';
+                    }
+                    hucreler += `<td class="adet-hucre${sinif}">${adet}</td>`;
                 });
+                const baslik = s.sahip_tipi === 'saha' ? 'Abonede Takılı' : s.baslik;
+                const ikon = s.sahip_tipi === 'depo' ? 'bx-buildings' : (s.sahip_tipi === 'saha' ? 'bx-map-pin' : 'bx-box');
                 altlik.append(`<tr class="havuz-satiri">
-                    <td><i class="bx bx-box me-1 text-muted"></i><b>${kacir(s.baslik)}</b></td>
+                    <td><i class="bx ${ikon} me-1 text-muted"></i><b>${kacir(baslik)}</b></td>
                     ${hucreler}
                     <td class="adet-hucre">${s.toplam}</td>
                 </tr>`);
@@ -175,12 +214,15 @@
             veri.tipler.forEach(function (tip) {
                 toplamHucreleri += `<td class="adet-hucre">${veri.sutun_toplam[tip.id] || 0}</td>`;
             });
-            altlik.append(`<tr><td>TOPLAM</td>${toplamHucreleri}<td class="adet-hucre">${veri.genel_toplam}</td></tr>`);
+            if (yetki.gelismis) {
+                altlik.append(`<tr><td>TOPLAM</td>${toplamHucreleri}<td class="adet-hucre">${veri.genel_toplam}</td></tr>`);
+            }
 
-            $('#ozetToplam').text(veri.genel_toplam);
+            $('#ozetDepo').text(depoToplam);
+            $('#ozetEkip').text(ekipToplam);
+            $('#ozetEkipAlt').text(ekipSatirlari.length + ' ekibin zimmetinde');
             $('#ozetSaha').text(sahaToplam);
-            $('#ozetTransfer').text(res.bekleyen_transfer || 0);
-            $('#ozetNegatif').text(res.negatif_islem || 0);
+            kritikGoster(kritik);
 
             if (res.tutarsiz_satir > 0) {
                 $('#tutarsizSayi').text(res.tutarsiz_satir);
@@ -191,7 +233,73 @@
         }).fail(() => hata('Stok tablosu yüklenemedi.'));
     }
 
-    $('#btnStokYenile').on('click', stokYukle);
+    function kritikGoster(kritik) {
+        $('#ozetKritik').text(kritik.toplam || 0);
+        $('#ozetKritikAlt').text('Depo: ' + kritik.depo.length + ' · Ekip: ' + kritik.ekipler.length);
+
+        const liste = $('#aparatKritikListe').empty();
+        if (!kritik.toplam) {
+            $('#aparatKritikUyari').addClass('d-none');
+            return;
+        }
+
+        function rozetler(eksikler) {
+            return eksikler.map(function (e) {
+                const renk = e.seviye === 'bitti' ? 'danger' : 'warning';
+                return `<span class="badge bg-${renk}-subtle text-${renk} border border-${renk}-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold me-1 mb-1">${kacir(e.aparat_adi)}: ${e.adet} / ${e.esik}</span>`;
+            }).join('');
+        }
+
+        if (kritik.depo.length) {
+            liste.append(`<div class="col-12 col-md-6 col-xl-4"><div class="aparat-kritik-kutu">
+                <div class="fw-semibold text-dark mb-1"><i class="bx bx-buildings me-1"></i>Depo</div>${rozetler(kritik.depo)}</div></div>`);
+        }
+        kritik.ekipler.forEach(function (e) {
+            liste.append(`<div class="col-12 col-md-6 col-xl-4"><div class="aparat-kritik-kutu">
+                <div class="fw-semibold text-dark mb-1"><i class="bx bx-user me-1"></i>${kacir(e.uyeler || 'Personel atanmamış')} <small class="text-muted">(${kacir(e.ekip_kodu)})</small></div>${rozetler(e.eksikler)}</div></div>`);
+        });
+        $('#aparatKritikUyari').removeClass('d-none');
+    }
+
+    function sonDepoHareketleriYukle() {
+        istek({ action: 'son-depo-hareketleri' }).done(function (res) {
+            const govde = $('#tabloSonDepo tbody').empty();
+            if (res.status !== 'success' || !res.data.length) {
+                govde.append('<tr><td colspan="7" class="text-center text-muted py-3">Henüz depo hareketi yok.</td></tr>');
+                return;
+            }
+            const renk = { depo_giris: 'primary', depo_cikis: 'warning', depo_iade: 'success' };
+            res.data.forEach(function (h) {
+                const r = renk[h.hareket_tipi] || 'secondary';
+                govde.append(`<tr>
+                    <td class="text-nowrap">${kacir(tarihGoster(h.tarih))}</td>
+                    <td><span class="badge bg-${r}-subtle text-${r} border border-${r}-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">${kacir(h.hareket_adi)}</span></td>
+                    <td>${kacir(h.aparat_adi)}</td>
+                    <td class="text-center fw-semibold">${h.adet}</td>
+                    <td>${kacir(h.ekip || '-')}</td>
+                    <td class="text-secondary">${kacir(h.kullanici || '-')}</td>
+                    <td class="text-secondary small">${kacir(h.aciklama || '')}</td>
+                </tr>`);
+            });
+        });
+    }
+
+    (function () {
+        const buton = $('#btnToggleSummaryCards');
+        function durumGuncelle() {
+            const gizli = $('html').hasClass('aparat-summary-hidden');
+            const etiket = gizli ? 'Özet Kartları Göster' : 'Özet Kartları Gizle';
+            buton.attr({ 'aria-expanded': !gizli, title: etiket, 'aria-label': etiket });
+            buton.find('i').attr('class', gizli ? 'bx bx-chevron-down' : 'bx bx-chevron-up');
+        }
+        durumGuncelle();
+        buton.on('click', function () {
+            const gizle = !$('html').hasClass('aparat-summary-hidden');
+            $('html').toggleClass('aparat-summary-hidden', gizle);
+            try { localStorage.setItem('aparat_summary_cards_state', gizle ? 'hidden' : 'visible'); } catch (e) {}
+            durumGuncelle();
+        });
+    })();
 
     $('#btnBakiyeOnar').on('click', function () {
         Swal.fire({
@@ -213,23 +321,44 @@
 
     // ---------- Havuz hareketi ----------
 
-    function havuzEkipGorunurluk() {
-        const tur = $('#havuz_tur').val();
-        const gerekli = ['depo_cikis', 'depo_iade', 'hurda', 'kayip', 'acilis'].indexOf(tur) !== -1;
-        $('#havuzEkipAlan').toggle(gerekli);
+    function havuzBakiyeGoster() {
+        const tur = HAVUZ_TURLERI[$('#havuz_tur').val()] || {};
+        const tipId = parseInt($('#havuz_aparat').val(), 10) || 0;
+        const ekipId = parseInt($('#havuz_ekip').val(), 10) || 0;
+        const kutu = $('#havuzBakiyeBilgi');
+
+        if (!sonMatris || !tur.kaynak || !tipId || (tur.kaynak === 'ekip' && !ekipId)) {
+            kutu.addClass('d-none');
+            return;
+        }
+
+        const satir = sonMatris.satirlar.find(function (s) {
+            return tur.kaynak === 'depo' ? s.sahip_tipi === 'depo' : (s.sahip_tipi === 'ekip' && s.sahip_id === ekipId);
+        });
+        const elde = satir ? (satir.adetler[tipId] || 0) : 0;
+        const yer = tur.kaynak === 'depo' ? 'Depoda' : 'Ekipte';
+        $('#havuzBakiyeMetin').text(yer + ' şu an: ' + elde + ' adet');
+        kutu.removeClass('d-none');
     }
 
-    $('#btnHavuzHareketi').on('click', function () {
+    $(document).on('click', '.btn-depo-hareket', function () {
+        const kod = $(this).data('tur');
+        const tur = HAVUZ_TURLERI[kod];
+        if (!tur) return;
+
         $('#formHavuz')[0].reset();
-        $('#havuz_tur').val('depo_giris').trigger('change');
+        $('#havuz_tur').val(kod);
+        $('#havuzModalBaslik').text(tur.baslik);
+        $('#havuzModalAciklama').text(tur.aciklama);
         $('#havuz_ekip').val('').trigger('change');
         $('#havuz_aparat').val('').trigger('change');
         $('#havuz_adet').val(1);
-        havuzEkipGorunurluk();
+        $('#havuzEkipAlan').toggle(tur.ekip);
+        havuzBakiyeGoster();
         new bootstrap.Modal('#modalHavuz').show();
     });
 
-    $('#havuz_tur').on('change', havuzEkipGorunurluk);
+    $('#havuz_ekip, #havuz_aparat').on('change', havuzBakiyeGoster);
 
     $('#formHavuz').on('submit', function (e) {
         e.preventDefault();
@@ -246,6 +375,7 @@
             bootstrap.Modal.getInstance(document.getElementById('modalHavuz')).hide();
             basari(res.message);
             stokYukle();
+            sonDepoHareketleriYukle();
         }).fail(() => hata('Hareket kaydedilemedi.'));
     });
 
@@ -1056,6 +1186,8 @@
                     ad: t.ad,
                     kod: t.kod,
                     renk: t.renk,
+                    depo_kritik: parseInt(t.depo_kritik_stok, 10) || 0,
+                    ekip_kritik: parseInt(t.ekip_kritik_stok, 10) || 0,
                     aciklama: t.aciklama || '',
                     durum: t.is_active == 1 ? 'Aktif' : 'Pasif'
                 };
@@ -1091,6 +1223,8 @@
                         })
                     },
                     { data: 'renk' },
+                    { data: 'depo_kritik', className: 'text-center' },
+                    { data: 'ekip_kritik', className: 'text-center' },
                     { data: 'aciklama', className: 'small text-muted' },
                     {
                         data: 'durum',
@@ -1101,12 +1235,14 @@
                     },
                     {
                         data: 'id',
-                        className: 'text-end',
+                        className: 'text-center text-nowrap',
                         orderable: false,
                         searchable: false,
                         render: function (id) {
-                            return `<button class="btn btn-sm btn-outline-primary btn-tip-duzenle" data-id="${id}"><i class="bx bx-edit"></i></button>
-                                    <button class="btn btn-sm btn-outline-danger btn-tip-sil" data-id="${id}"><i class="bx bx-trash"></i></button>`;
+                            return `<div class="action-btn-group d-inline-flex align-items-center gap-1">
+                                <button type="button" class="btn btn-sm btn-subtle-warning table-action-btn btn-tip-duzenle" data-id="${id}" title="Düzenle"><i class="bx bx-edit-alt"></i></button>
+                                <button type="button" class="btn btn-sm btn-subtle-danger table-action-btn btn-tip-sil" data-id="${id}" title="Sil"><i class="bx bx-trash"></i></button>
+                            </div>`;
                         }
                     }
                 ]
@@ -1124,6 +1260,7 @@
         $('#tipModalBaslik').text('Yeni Aparat Tipi');
         $('#tip_renk').val('primary').trigger('change');
         $('#tip_aktif').prop('checked', true);
+        $('#tip_depo_kritik, #tip_ekip_kritik').val(0);
         new bootstrap.Modal('#modalTip').show();
     });
 
@@ -1134,6 +1271,8 @@
         $('#tip_ad').val(t.ad);
         $('#tip_kod').val(t.kod);
         $('#tip_sira').val(t.sira);
+        $('#tip_depo_kritik').val(parseInt(t.depo_kritik_stok, 10) || 0);
+        $('#tip_ekip_kritik').val(parseInt(t.ekip_kritik_stok, 10) || 0);
         $('#tip_aciklama').val(t.aciklama || '');
         $('#tip_renk').val(t.renk).trigger('change');
         $('#tip_aktif').prop('checked', t.is_active == 1);
@@ -1191,6 +1330,8 @@
         formData.append('renk', $('#tip_renk').val());
         formData.append('sira', $('#tip_sira').val());
         formData.append('aciklama', $('#tip_aciklama').val());
+        formData.append('depo_kritik_stok', $('#tip_depo_kritik').val() || 0);
+        formData.append('ekip_kritik_stok', $('#tip_ekip_kritik').val() || 0);
         formData.append('is_active', $('#tip_aktif').is(':checked') ? 1 : 0);
         formData.append('resim_sil', $('#tip_resim_sil').val());
 
@@ -1215,6 +1356,7 @@
             }
             basari(res.message);
             tipleriYukle();
+            stokYukle();
         }).fail(() => hata('Aparat tipi kaydedilemedi.'));
     });
 
@@ -1262,6 +1404,7 @@
             $(modal).find('.select2').select2({ width: '100%', dropdownParent: $(modal) });
         });
         stokYukle();
+        sonDepoHareketleriYukle();
     });
 
 })(jQuery);

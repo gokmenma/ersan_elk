@@ -279,6 +279,40 @@ html[data-theme-preset="macos-dark"] #evrakModal .evrak-modal-kapat, html[data-b
                                         <?php echo Form::FormFloatInput('number', 'tutar', '', 'Kesilecek Tutar (TL)', 'Kesilecek Tutar', 'dollar-sign', 'form-control'); ?>
                                         <div class="small mt-1 px-1 text-muted" style="font-size: 10px;">Ceza tutarına göre otomatik %25 erken ödeme indirimi uygulanır; isterseniz elle değiştirebilirsiniz.</div>
                                     </div>
+                                    <div class="col-12 mt-2">
+                                        <div class="d-flex align-items-center justify-content-between p-2 bg-light rounded-3 border">
+                                            <div class="d-flex align-items-center">
+                                                <i data-feather="check-circle" class="text-success me-2" style="width: 18px;"></i>
+                                                <span class="small fw-bold">Ceza ödendi</span>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" name="ceza_odendi" value="1" id="ceza_odendi">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <input type="hidden" name="ceza_odeme_formu" value="1">
+                                    <div id="cezaOdemeContainer" class="col-12 d-none">
+                                        <div class="row g-2 mt-0">
+                                            <div class="col-md-6">
+                                                <?php echo Form::FormFloatInput('text', 'ceza_odeme_tarihi', '', 'Ödeme Tarihi', 'Ödeme Tarihi', 'calendar', 'form-control flatpickr'); ?>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <?php echo Form::FormFloatInput('number', 'ceza_odenen_tutar', '', 'Ödenen Tutar (TL)', 'Ödenen Tutar', 'dollar-sign', 'form-control'); ?>
+                                            </div>
+                                            <div class="col-12">
+                                                <input type="hidden" id="ceza_dekont_sil" name="ceza_dekont_sil" value="0">
+                                                <label class="ps-1 mb-1 fw-bold text-muted small" for="ceza_dekont">Ödeme Dekontu</label>
+                                                <input type="file" id="ceza_dekont" name="ceza_dekont" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.webp">
+                                                <div class="form-text">PDF veya görsel · en fazla 10 MB</div>
+                                                <div id="cezaDekontMevcut" class="border rounded-3 p-2 d-none align-items-center gap-2 mt-2">
+                                                    <span class="badge bg-info-subtle text-info p-2 rounded-circle"><i class="bx bx-file font-size-16"></i></span>
+                                                    <div id="cezaDekontAdi" class="flex-grow-1 fw-bold small text-truncate"></div>
+                                                    <a id="cezaDekontGoruntule" class="btn btn-sm btn-subtle-info" href="#" target="_blank" title="Dekontu görüntüle"><i class="bx bx-show font-size-14"></i></a>
+                                                    <button type="button" id="cezaDekontKaldir" class="btn btn-sm btn-subtle-danger" title="Kaldır"><i class="bx bx-trash font-size-14"></i></button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 

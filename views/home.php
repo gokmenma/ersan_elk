@@ -647,6 +647,10 @@ if (Gate::allows("ana_sayfa")) {
         $widgets['widget-izindekiler'] = renderSkeleton('widget-izindekiler', getWidgetWidth('widget-izindekiler', 'col-md-6'), '300px');
     }
 
+    if (Gate::allows('aparat_takip')) {
+        $widgets['widget-aparat-kritik'] = renderSkeleton('widget-aparat-kritik', getWidgetWidth('widget-aparat-kritik', 'col-md-6'), '300px');
+    }
+
 
         //ob_start(); ?>
         <!-- <div class="col-md-4 widget-item" id="widget-istatistikler">
@@ -1846,7 +1850,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                         $skItem['class'] = 'col-md-' . $skGridCols . ' col-xl-' . $skGridCols;
                     }
                     $skGridHeight = (int) ($skSaved['gridHeight'] ?? 0);
-                    $skDefaultHeights = ["widget-personel-arac-ozet" => 300, "widget-ana-slider" => 304, "widget-is-operasyonlari" => 408, "widget-dogum-gunleri" => 280, "widget-talepler" => 360, "widget-izindekiler" => 360, "widget-yaklasan-gorevler" => 260, "widget-endeks-karsilastirma" => 220, "widget-kesme-karsilastirma" => 220];
+                    $skDefaultHeights = ["widget-personel-arac-ozet" => 300, "widget-ana-slider" => 304, "widget-is-operasyonlari" => 408, "widget-dogum-gunleri" => 280, "widget-talepler" => 360, "widget-izindekiler" => 360, "widget-aparat-kritik" => 300, "widget-yaklasan-gorevler" => 260, "widget-endeks-karsilastirma" => 220, "widget-kesme-karsilastirma" => 220];
                     $skH = $skGridHeight >= 120 ? $skGridHeight : ($skDefaultHeights[$skeletonId] ?? ($skHeight > 0 ? $skHeight : 180));
                     $skStyleParts = ['grid-row-end: span ' . (int) ceil(($skH + 12) / 8)];
                     $skGridX = (int) ($skSaved['gridX'] ?? 0);
@@ -1974,6 +1978,9 @@ foreach ($pinGroups as $pinMin => $pinNames) {
 <tr data-widget="widget-talepler"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-talepler" checked><span>Talep Yönetimi</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
 <?php if (Gate::allows("ana_sayfa_izinli_personel_karti") || $izinModel->getRestrictedDept() !== null): ?>
 <tr data-widget="widget-izindekiler"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-izindekiler" checked><span>İzinde Olan Personeller</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
+<?php endif; ?>
+<?php if (Gate::allows('aparat_takip')): ?>
+<tr data-widget="widget-aparat-kritik"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-aparat-kritik" checked><span>Aparat Kritik Stok</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
 <?php endif; ?>
 <tr data-widget="widget-is-operasyonlari"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-is-operasyonlari" checked><span>İş Operasyonları</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
 <?php if (Gate::allows("gorevler")): ?>
@@ -5534,6 +5541,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                             'widget-is-operasyonlari'        : 'İş Operasyonları',
                             'widget-izinliler'               : 'İzinli Personeller',
                             'widget-izindekiler'             : 'İzinde Olanlar',
+                            'widget-aparat-kritik'           : 'Aparat Kritik Stok',
                             'widget-bildirimler'             : 'Görev & Bildirimler',
                             'widget-talepler'                : 'Talep Yönetimi',
                             'widget-yaklasan-gorevler'       : 'Yaklaşan Görevler',

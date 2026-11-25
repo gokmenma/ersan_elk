@@ -21,7 +21,7 @@ $page = $_GET['p'] ?? 'home';
     <?php } ?>
 <?php } ?>
 
-<?php if ($page == 'ihbar/list' || $page == 'kacak/list' || $page == 'puantaj/personel-is-raporu' || $page == 'cari/dashboard' || $page == 'ik-ise-alim/dashboard' || $page == 'maliyet-raporu/list') { ?>
+<?php if ($page == 'ihbar/list' || $page == 'kacak/list' || $page == 'puantaj/personel-is-raporu' || $page == 'cari/dashboard' || $page == 'ik-ise-alim/dashboard' || $page == 'aparat-takip/dashboard' || $page == 'maliyet-raporu/list') { ?>
     <script src="assets/libs/apexcharts/apexcharts.min.js"></script>
 <?php } ?>
 
@@ -158,7 +158,7 @@ if ($page == "hakedisler/hakedis-detay") {
     strpos($page, "puantaj/") === 0 ||
     strpos($page, "nobet/") === 0 ||
     strpos($page, "arac-takip/") === 0 ||
-    strpos($page, "aparat-takip/") === 0 ||
+    ($page !== "aparat-takip/dashboard" && strpos($page, "aparat-takip/") === 0) ||
     $page == "mail-sms/mail-gonder" || $page == "arac-takip/list" || $page == "arac-takip/duzenle" ||
     $page == "personel-takip/list" || $page == "nobet/talepler" || $page == "talepler/list" ||
     $page == "tanimlamalar/unvan-ucret" ||

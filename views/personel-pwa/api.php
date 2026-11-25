@@ -6613,15 +6613,19 @@ try {
 
             $ekipId = (int) $ekip['id'];
             $bakiyeler = $AparatStok->ekipBakiyeleri($ekipId);
+            $kritikler = $AparatStok->ekipKritikleri($ekipId);
             $tipler = [];
 
             foreach ($AparatTip->listele(true) as $t) {
+                $tipId = (int) $t['id'];
                 $tipler[] = [
-                    'id' => (int) $t['id'],
+                    'id' => $tipId,
                     'ad' => $t['ad'],
                     'kod' => $t['kod'],
                     'renk' => $t['renk'],
-                    'adet' => (int) ($bakiyeler[(int) $t['id']] ?? 0),
+                    'adet' => (int) ($bakiyeler[$tipId] ?? 0),
+                    'kritik_esik' => (int) $t['ekip_kritik_stok'],
+                    'kritik' => isset($kritikler[$tipId]),
                 ];
             }
 
@@ -6636,7 +6640,7 @@ try {
                 $digerId = (int) $e['id'];
                 $ekipListesi[] = [
                     'id' => $digerId,
-                    'ad' => $uyeHaritasi[$digerId] !== null && ($uyeHaritasi[$digerId] ?? '') !== ''
+                    'ad' => ($uyeHaritasi[$digerId] ?? '') !== ''
                         ? $uyeHaritasi[$digerId] . ' (' . $e['tur_adi'] . ')'
                         : $e['tur_adi'],
                 ];

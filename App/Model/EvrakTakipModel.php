@@ -1319,9 +1319,9 @@ class EvrakTakipModel extends Model
             "SELECT 1 FROM evrak_takip et
              LEFT JOIN evrak_takip_ekleri ee ON ee.evrak_id = et.id AND ee.firma_id = et.firma_id AND ee.silinme_tarihi IS NULL
              WHERE et.firma_id = :firma_id AND et.silinme_tarihi IS NULL
-               AND (et.dosya_yolu = :p1 OR ee.dosya_yolu = :p2) LIMIT 1"
+               AND (et.dosya_yolu = :p1 OR ee.dosya_yolu = :p2 OR et.ceza_dekont_yolu = :p3) LIMIT 1"
         );
-        $stmt->execute(['firma_id' => $firmaId, 'p1' => $path, 'p2' => $path]);
+        $stmt->execute(['firma_id' => $firmaId, 'p1' => $path, 'p2' => $path, 'p3' => $path]);
         return (bool) $stmt->fetchColumn();
     }
 

@@ -53,8 +53,8 @@ class AparatTipiModel extends Model
     public function ekle(array $veri, int $kullaniciId): int
     {
         $stmt = $this->db->prepare("INSERT INTO {$this->table}
-            (firma_id, ad, kod, renk, sira, aciklama, resim, is_active, olusturan_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            (firma_id, ad, kod, renk, sira, aciklama, resim, depo_kritik_stok, ekip_kritik_stok, is_active, olusturan_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $this->firmaId(),
             $veri['ad'],
@@ -63,6 +63,8 @@ class AparatTipiModel extends Model
             (int) ($veri['sira'] ?? 1),
             $veri['aciklama'] ?? null,
             $veri['resim'] ?? null,
+            max(0, (int) ($veri['depo_kritik_stok'] ?? 0)),
+            max(0, (int) ($veri['ekip_kritik_stok'] ?? 0)),
             isset($veri['is_active']) ? (int) $veri['is_active'] : 1,
             $kullaniciId,
         ]);
@@ -73,7 +75,8 @@ class AparatTipiModel extends Model
     {
         $resimGuncelle = array_key_exists('resim', $veri);
         $sql = "UPDATE {$this->table}
-            SET ad = ?, kod = ?, renk = ?, sira = ?, aciklama = ?, is_active = ?";
+            SET ad = ?, kod = ?, renk = ?, sira = ?, aciklama = ?,
+                depo_kritik_stok = ?, ekip_kritik_stok = ?, is_active = ?";
         if ($resimGuncelle) {
             $sql .= ", resim = ?";
         }
@@ -85,6 +88,8 @@ class AparatTipiModel extends Model
             $veri['renk'] ?? 'primary',
             (int) ($veri['sira'] ?? 1),
             $veri['aciklama'] ?? null,
+            max(0, (int) ($veri['depo_kritik_stok'] ?? 0)),
+            max(0, (int) ($veri['ekip_kritik_stok'] ?? 0)),
             isset($veri['is_active']) ? (int) $veri['is_active'] : 1,
         ];
 

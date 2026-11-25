@@ -496,6 +496,36 @@ $(document).ready(function () {
     }
   }
 
+  function cezaOdemeAlaniniGuncelle() {
+    $("#cezaOdemeContainer").toggleClass("d-none", !$("#ceza_odendi").is(":checked"));
+  }
+
+  function cezaOdemeSifirla() {
+    $("#ceza_odendi").prop("checked", false);
+    $("#ceza_odeme_tarihi, #ceza_odenen_tutar, #ceza_dekont").val("");
+    $("#ceza_dekont_sil").val("0");
+    $("#cezaDekontMevcut").addClass("d-none").removeClass("d-flex");
+    cezaOdemeAlaniniGuncelle();
+  }
+
+  $(document).on("change", "#ceza_odendi", function () {
+    cezaOdemeAlaniniGuncelle();
+    if (this.checked && !$("#ceza_odenen_tutar").val()) $("#ceza_odenen_tutar").val($("#tutar").val() || "");
+    if (this.checked && !$("#ceza_odeme_tarihi").val()) {
+      const el = $("#ceza_odeme_tarihi")[0];
+      if (el && el._flatpickr) el._flatpickr.setDate(new Date(), true, "d.m.Y");
+    }
+  });
+
+  $(document).on("click", "#cezaDekontKaldir", function () {
+    $("#ceza_dekont_sil").val("1");
+    $("#cezaDekontMevcut").addClass("d-none").removeClass("d-flex");
+  });
+
+  $(document).on("change", "#ceza_dekont", function () {
+    if (this.files && this.files.length) $("#ceza_dekont_sil").val("0");
+  });
+
   function checkTrafficFineTarget() {
     const target = $('input[name="ceza_hedef_tipi"]:checked').val() || "arac";
     if (target === "personel") {
@@ -704,6 +734,7 @@ $(document).ready(function () {
     $("#gelenTurIslem").prop("checked", true);
     $("#cezaHedefArac").prop("checked", true);
     checkTrafficFineTarget();
+    cezaOdemeSifirla();
     $("#bildirimContainer, #cevapTarihiContainer, #gidenIliskiSection").addClass("d-none");
     $("#gelenCevapSection, #sonTarihWrap").removeClass("d-none");
     checkGelenTur();
@@ -827,6 +858,19 @@ $(document).ready(function () {
         $("#ceza_personel_id").val(data.ceza_personel_id || "").trigger("change");
         $("#ceza_tutari").val(data.ceza_tutari || "");
         $("#tutar").val(data.tutar || "");
+        cezaOdemeSifirla();
+        $("#ceza_odendi").prop("checked", Number(data.ceza_odendi) === 1);
+        if (data.ceza_odeme_tarihi && data.ceza_odeme_tarihi !== "0000-00-00") {
+          const od = data.ceza_odeme_tarihi.split("-");
+          $("#ceza_odeme_tarihi").val(od[2] + "." + od[1] + "." + od[0]);
+        }
+        $("#ceza_odenen_tutar").val(data.ceza_odenen_tutar || "");
+        if (data.ceza_dekont_url) {
+          $("#cezaDekontAdi").text(data.ceza_dekont_adi || "Dekont").attr("title", data.ceza_dekont_adi || "");
+          $("#cezaDekontGoruntule").attr("href", data.ceza_dekont_url);
+          $("#cezaDekontMevcut").removeClass("d-none").addClass("d-flex");
+        }
+        cezaOdemeAlaniniGuncelle();
 
         checkSectionVisibility();
         

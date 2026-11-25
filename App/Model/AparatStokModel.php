@@ -275,6 +275,87 @@ class AparatStokModel extends Model
         ];
     }
 
+    public function kritikStoklar(): array
+    {
+        $tipler = array_values(array_filter(
+            (new AparatTipiModel())->listele(true),
+            fn($t) => (int) $t['depo_kritik_stok'] > 0 || (int) $t['ekip_kritik_stok'] > 0
+        ));
+
+        $sonuc = ['depo' => [], 'ekipler' => [], 'toplam' => 0];
+        if (empty($tipler)) {
+            return $sonuc;
+        }
+
+        $bakiyeler = $this->tumBakiyeler();
+        $uyeler = $this->ekipUyeHaritasi();
+
+        foreach ($tipler as $tip) {
+            $esik = (int) $tip['depo_kritik_stok'];
+            $adet = (int) ($bakiyeler['depo'][0][(int) $tip['id']] ?? 0);
+            if ($esik > 0 && $adet <= $esik) {
+                $sonuc['depo'][] = $this->kritikSatiri($tip, $adet, $esik);
+            }
+        }
+
+        foreach ($this->ekipler() as $ekip) {
+            $ekipId = (int) $ekip['id'];
+            if (($uyeler[$ekipId] ?? '') === '') {
+                continue;
+            }
+            $eksikler = [];
+            foreach ($tipler as $tip) {
+                $esik = (int) $tip['ekip_kritik_stok'];
+                if ($esik <= 0 || !isset($bakiyeler['ekip'][$ekipId][(int) $tip['id']])) {
+                    continue;
+                }
+                $adet = (int) $bakiyeler['ekip'][$ekipId][(int) $tip['id']];
+                if ($adet <= $esik) {
+                    $eksikler[] = $this->kritikSatiri($tip, $adet, $esik);
+                }
+            }
+            if ($eksikler) {
+                $sonuc['ekipler'][] = [
+                    'ekip_id' => $ekipId,
+                    'ekip_kodu' => $ekip['tur_adi'],
+                    'uyeler' => $uyeler[$ekipId] ?? '',
+                    'eksikler' => $eksikler,
+                ];
+            }
+        }
+
+        $sonuc['toplam'] = count($sonuc['depo']) + array_sum(array_map(fn($e) => count($e['eksikler']), $sonuc['ekipler']));
+        return $sonuc;
+    }
+
+    public function ekipKritikleri(int $ekipId): array
+    {
+        $bakiyeler = $this->ekipBakiyeleri($ekipId);
+        $sonuc = [];
+        foreach ((new AparatTipiModel())->listele(true) as $tip) {
+            $esik = (int) $tip['ekip_kritik_stok'];
+            if ($esik <= 0 || !isset($bakiyeler[(int) $tip['id']])) {
+                continue;
+            }
+            $adet = (int) $bakiyeler[(int) $tip['id']];
+            if ($adet <= $esik) {
+                $sonuc[(int) $tip['id']] = $this->kritikSatiri($tip, $adet, $esik);
+            }
+        }
+        return $sonuc;
+    }
+
+    private function kritikSatiri(array $tip, int $adet, int $esik): array
+    {
+        return [
+            'aparat_tip_id' => (int) $tip['id'],
+            'aparat_adi' => $tip['ad'],
+            'adet' => $adet,
+            'esik' => $esik,
+            'seviye' => $adet <= 0 ? 'bitti' : 'azaldi',
+        ];
+    }
+
     /**
      * Sahada takılı aparatların abone bazlı dökümü (kaç gündür takılı).
      */

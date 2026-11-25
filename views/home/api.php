@@ -429,6 +429,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             if (!empty($pIds)) { $personeller = $personelModel->whereIn('id', $pIds); foreach ($personeller as $p) $data['personel_map'][$p->id] = $p; }
                         } elseif ($widgetId == 'widget-izindekiler') {
                             $data['izindekiler'] = $izinModel->getAktifIzinler(10);
+                        } elseif ($widgetId == 'widget-aparat-kritik') {
+                            $data['aparat_kritik'] = (new \App\Model\AparatStokModel())->kritikStoklar();
                         }
                         $html = renderWidget($widgetId, $data);
                         $setWidgetCache($widgetId, $html);

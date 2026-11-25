@@ -1,5 +1,17 @@
 # Active Context
 
+## Aparat Takip Dashboard (`aparat-takip/dashboard`) (2026-11-25)
+- **Model & API**: `App/Model/AparatDashboardModel.php` ve `views/aparat-takip/api.php` (`action=dashboard-data`) oluşturuldu. Çift taraflı defter (`aparat_hareket`) satırlarını iptal ve ters kayıt filtreleriyle tekil olay bazında toplar; anlık envanter havuzlarını (`Depo`, `Ekip`, `Sahada Takılı`, `Hurda`, `Kayıp`), aparat tipi kırılımını, ekip zimmet/operasyon sıralamasını, kritik stok ve uzun süreli sahada takılı kayıtları, günlük/aylık trend serisini üretir.
+- **Arayüz & JS**: `views/aparat-takip/dashboard.php` ve `views/aparat-takip/js/dashboard.js` hazırlandı. `Gate::authorizeOrDie('aparat-takip/dashboard')` koruması, `Form::FormSelect2` aparat tipi filtresi, dönem filtre grubu (Bugün, Bu Ay, Son 30 Gün, Son 3 Ay, Bu Yıl, Tümü, Özel Tarih), sıçramasız özet kartları aç/kapa (`aparat_dash_summary_cards_state`), 4 KPI kartı, operasyonel uyarı şeridi, 3 ApexCharts grafiği (hareket trendi, havuz donut, tip yığılmış sütun — açık/koyu/macOS-dark uyumlu), ekip sıralaması, dikkat gerektirenler (Kritik Stok / Sahada Bekleyen) ve son hareketler tablosu eklendi.
+- **Bağlantılar & Yetki SQL**: `views/aparat-takip/list.php` üst araç çubuğuna yetki kontrollü Dashboard butonu, `layouts/vendor-scripts.php` içine ApexCharts tanımı eklendi. `sql/2026_11_25_add_aparat_dashboard_menu_and_permissions.sql` ile `aparat-takip/dashboard` yetkisi, menü kaydı ve sayfa/API politikaları tanımlanıp yerel veritabanına uygulandı; Yetki Kataloğu ve Yetki Grubu Düzenleme ekranlarında görünürlüğü doğrulandı.
+
+## Aparat Takip — Sade Akış + Kritik Stok Uyarısı (2026-11-25)
+- `views/aparat-takip/list.php`: herkes için yalnız üç buton (Depoya Giriş, Ekibe Ver, İade Al — `aparat_depo`), 4 KPI (Depoda, Ekiplerde, Abonede Takılı, Kritik Stok), "Azalan aparatlar" kutusu, stok tablosu ve Son Depo Hareketleri. Tek modal (`#modalHavuz`) türü butondan alır; Ekibe Ver/İade Al'da depodaki/ekipteki mevcut adet gösterilir.
+- Eski sekmeler (Saha İşlemleri, Hareket Dökümü, Transferler, Sayım, Raporlar, Tanımlar), Manuel Saha Kaydı, Hurda/Kayıp/Açılış ve Bakiyeyi Onar yeni `aparat_gelismis` yetkisine bağlandı (Süper Admin ve Firma Sahibi rollerine otomatik atandı). `api.php` gelişmiş aksiyonları ayrıca bu yetkiyle doğrular; Excel'de yalnız `tip=stok` herkese açık.
+- `aparat_tipleri.depo_kritik_stok` / `ekip_kritik_stok` (0 = uyarı yok). `AparatStokModel::kritikStoklar()` / `ekipKritikleri()`: ekip uyarısı yalnız personeli olan ve o tipten bakiye satırı bulunan (daha önce zimmet almış) ekipler için üretilir; `adet <= eşik` azaldı, `<= 0` bitti.
+- Ana sayfa `widget-aparat-kritik` (`aparat_takip` yetkisi), personel PWA aparat sayfasında uyarı şeridi. Servis/defter mantığı (`AparatStokService`) değişmedi.
+- SQL: `sql/2026_11_25_aparat_sadelestirme_kritik_stok.sql` (yerelde uygulandı, tekrar çalıştırılabilir).
+
 ## Maliyet Raporu — Kalem Bazlı Yeniden Yapılanma (2026-11-23)
 - `App/Model/MaliyetRaporuModel.php` yeniden yazıldı; rapor `KALEMLER` sabitindeki 9 kaleme göre: Maaş (bordro `net_maas`), SGK (işçi+işveren SGK ve işsizlik), Vergi (gelir+damga), Araç Kirası, Yakıt, Araç Bakım/Servis (bakım+servis+sigorta), Telefon/İnternet, Malzeme/Demirbaş, Ofis ve Diğer. Bordro yalnız `hesaplama_tarihi` dolu (snapshot) satırlardan okunur.
 - Gelen faturalar (`faturalar`, yon=GELEN, RED hariç, USD×kur) kaleme `maliyet_kalem_eslestirme` (VKN → kalem) ve fatura bazlı `maliyet_fatura_kalem` (öncelikli) ile bağlanır; eşleşmeyen fatura rapora girmez, sayfada uyarı + “Eşleşmemiş Firmalar” sekmesinde listelenir. `haric` kalemi rapordan çıkarır.
@@ -4173,3 +4185,7 @@
 - Araç Durumu: Saha Aracı (aktif+zimmetli+serviste değil) ve Boşta etiketleri de modal açar (`get-saha-arac-detay` grup: saha, bosta).
 - Maliyet Raporu: Tahmini Kurumlar Vergisi kartındaki Gider bloğu tıklanınca `#kvGiderModal` açılır (bordro dönemi, kalem dağılımı, fatura listesi, bağlanmamış fatura uyarısı). API `kurumlar-vergisi-detay` (`MaliyetRaporuModel::kurumlarVergisiGiderDetay`), policy: `sql/2026_11_25_maliyet_kv_gider_detay_policy.sql` (yerelde uygulandı).
 - Maliyet Raporu: 'Kurumlar Vergisi (Tahmini)' hesaplanan kalem olarak Vergi Gideri satırının altına eklendi (`MaliyetRaporuModel::raporKalemleri/KURUMLAR_VERGISI_KALEM`); toplam gideri etkiler, eşleştirme listelerinde yoktur; aylık değer her ay için ayrı hesaplanır, zarar ayında 0.
+
+## 2026-11-25 Evrak: trafik cezası ödeme ve dekont
+- Evrak modalındaki Trafik Cezası Detayları kartına "Ceza ödendi" anahtarı, Ödeme Tarihi, Ödenen Tutar ve Dekont yükleme alanı eklendi. Kolonlar `evrak_takip.ceza_odendi/ceza_odeme_tarihi/ceza_odenen_tutar/ceza_dekont_yolu/ceza_dekont_adi` (`sql/2026_11_25_evrak_ceza_odeme_dekont.sql`, yerelde uygulandı; canlıda çalıştırılmadan deploy edilmemeli).
+- `views/evrak-takip/api.php` evrak-kaydet: alanlar yalnız masaüstü formun gönderdiği `ceza_odeme_formu` işaretiyle işlenir (mobil formlar mevcut ödeme bilgisini silmez). Dekont `uploads/evrak-takip/ceza-dekont/` altına kaydedilir; `EvrakTakipModel::fileBelongsToFirm` dekont yolunu da kabul eder; değişiklik evrak tarihçesine yazılır.

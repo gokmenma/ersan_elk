@@ -7,6 +7,7 @@ require_once dirname(__DIR__, 2) . '/bootstrap.php';
 
 use App\Helper\Date;
 use App\Helper\Security;
+use App\Model\AparatDashboardModel;
 use App\Model\AparatHareketModel;
 use App\Model\AparatSayimModel;
 use App\Model\AparatStokModel;
@@ -73,7 +74,12 @@ function aparatTarih($deger, string $varsayilan): string
     return $ts !== false ? date('Y-m-d', $ts) : $varsayilan;
 }
 
-if (!aparatIzin('aparat_takip') && !aparatIzin('aparat-takip/list') && !aparatSuperAdmin()) {
+$temelErisimVar = aparatIzin('aparat_takip')
+    || aparatIzin('aparat-takip/list')
+    || ($action === 'dashboard-data' && aparatIzin('aparat-takip/dashboard'))
+    || aparatSuperAdmin();
+
+if (!$temelErisimVar) {
     aparatYanit(false, 'Bu işlem için yetkiniz yok.');
 }
 
@@ -82,13 +88,23 @@ if ($permissionPolicy->isReady()) {
     Gate::authorizeApiPolicy('aparat-takip/api', (string) $action);
 }
 
-$saltOkunurActionlar = ['stok-matris', 'islem-listesi', 'hareket-listesi', 'transfer-listesi',
+$gelismisActionlar = ['islem-listesi', 'islem-detay', 'islem-kaydet', 'islem-iptal',
+    'hareket-listesi', 'hareket-iptal', 'transfer-listesi', 'transfer-iptal',
+    'sayim-listesi', 'sayim-detay', 'sayim-baslat', 'sayim-gir', 'sayim-farklari-isle', 'sayim-kapat', 'sayim-iptal',
+    'sahada-takili', 'donemsel-ozet', 'api-karsilastirma', 'tutarlilik', 'bakiye-yeniden-kur',
+    'tip-kaydet', 'tip-sil'];
+
+if (in_array($action, $gelismisActionlar, true)) {
+    aparatYetkiKontrol('aparat_gelismis');
+}
+
+$saltOkunurActionlar = ['dashboard-data', 'stok-matris', 'son-depo-hareketleri', 'islem-listesi', 'hareket-listesi', 'transfer-listesi',
     'sayim-listesi', 'sayim-detay', 'tip-listesi', 'islem-detay', 'sahada-takili',
     'donemsel-ozet', 'api-karsilastirma', 'tutarlilik'];
 
 if (in_array($action, $saltOkunurActionlar, true)) {
     aparatSuperAdmin();
-    foreach (['aparat_depo', 'aparat_iptal', 'aparat_sayim', 'aparat_tanim', 'aparat_transfer_yonet'] as $izin) {
+    foreach (['aparat_depo', 'aparat_iptal', 'aparat_sayim', 'aparat_tanim', 'aparat_transfer_yonet', 'aparat_gelismis', 'aparat-takip/dashboard'] as $izin) {
         aparatIzin($izin);
     }
     session_write_close();
@@ -109,18 +125,62 @@ try {
     switch ($action) {
 
         // =====================================================
+        // DASHBOARD VERİLERİ
+        // =====================================================
+        case 'dashboard-data':
+            aparatYetkiKontrol('aparat-takip/dashboard');
+            $Dashboard = new AparatDashboardModel();
+            $gelismis = aparatIzin('aparat_gelismis') || aparatSuperAdmin();
+            $filtre = [
+                'period' => (string) ($_POST['period'] ?? $_GET['period'] ?? 'this_month'),
+                'start_date' => !empty($_POST['start_date'] ?? $_GET['start_date'] ?? '')
+                    ? aparatTarih($_POST['start_date'] ?? $_GET['start_date'] ?? '', $ayBasi)
+                    : null,
+                'end_date' => !empty($_POST['end_date'] ?? $_GET['end_date'] ?? '')
+                    ? aparatTarih($_POST['end_date'] ?? $_GET['end_date'] ?? '', $bugun)
+                    : null,
+                'aparat_tip_id' => (int) ($_POST['aparat_tip_id'] ?? $_GET['aparat_tip_id'] ?? 0),
+            ];
+            aparatYanit(true, '', $Dashboard->getDashboardData($filtre, $gelismis));
+            break;
+
+        // =====================================================
         // STOK MATRİSİ
         // =====================================================
         case 'stok-matris':
             $matris = $Stok->matris();
-            $tutarsizlik = $Hareket->tutarlilikKontrolu();
+            $gelismis = aparatIzin('aparat_gelismis') || aparatSuperAdmin();
 
             aparatYanit(true, '', [
                 'data' => $matris,
-                'tutarsiz_satir' => count($tutarsizlik),
-                'negatif_islem' => $Islem->sayisi(['sadece_negatif' => 1, 'durum' => 'aktif']),
-                'bekleyen_transfer' => count($Transfer->listele(['durum' => 'beklemede'], 500)),
+                'kritik' => $Stok->kritikStoklar(),
+                'tutarsiz_satir' => $gelismis ? count($Hareket->tutarlilikKontrolu()) : 0,
             ]);
+            break;
+
+        case 'son-depo-hareketleri':
+            $uyeHaritasi = $Stok->ekipUyeHaritasi();
+            $kayitlar = [];
+            foreach ($Hareket->listele(['sahip_tipi' => 'depo', 'iptal_haric' => 1], 40) as $h) {
+                if (count($kayitlar) >= 10) {
+                    break;
+                }
+                if (!in_array($h['hareket_tipi'], ['depo_giris', 'depo_cikis', 'depo_iade'], true)) {
+                    continue;
+                }
+                $ekipId = (int) ($h['ekip_id'] ?? 0);
+                $kayitlar[] = [
+                    'tarih' => $h['tarih'],
+                    'hareket_tipi' => $h['hareket_tipi'],
+                    'hareket_adi' => ['depo_giris' => 'Depoya Giriş', 'depo_cikis' => 'Ekibe Verildi', 'depo_iade' => 'İade Alındı'][$h['hareket_tipi']],
+                    'aparat_adi' => $h['aparat_adi'],
+                    'adet' => abs((int) $h['adet']),
+                    'ekip' => $ekipId > 0 ? ($uyeHaritasi[$ekipId] ?? $h['ekip_adi']) : '',
+                    'kullanici' => $h['kullanici_adi'] ?? '',
+                    'aciklama' => $h['aciklama'] ?? '',
+                ];
+            }
+            aparatYanit(true, '', ['data' => $kayitlar]);
             break;
 
         case 'tutarlilik':
@@ -166,6 +226,8 @@ try {
                 'renk' => in_array($_POST['renk'] ?? '', AparatTipiModel::RENKLER, true) ? $_POST['renk'] : 'primary',
                 'sira' => (int) ($_POST['sira'] ?? 1),
                 'aciklama' => trim((string) ($_POST['aciklama'] ?? '')) ?: null,
+                'depo_kritik_stok' => max(0, (int) ($_POST['depo_kritik_stok'] ?? 0)),
+                'ekip_kritik_stok' => max(0, (int) ($_POST['ekip_kritik_stok'] ?? 0)),
                 'is_active' => isset($_POST['is_active']) ? (int) $_POST['is_active'] : 1,
             ];
 
@@ -381,6 +443,9 @@ try {
             aparatYetkiKontrol('aparat_depo');
 
             $tur = $_POST['tur'] ?? '';
+            if (!in_array($tur, ['depo_giris', 'depo_cikis', 'depo_iade'], true)) {
+                aparatYetkiKontrol('aparat_gelismis');
+            }
             $Servis = new AparatStokService();
             $sonuc = $Servis->havuzHareketi($tur, [
                 'aparat_tip_id' => (int) ($_POST['aparat_tip_id'] ?? 0),

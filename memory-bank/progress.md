@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-11-25 — Aparat Takip Dashboard (`aparat-takip/dashboard`)
+- [x] `sql/2026_11_25_add_aparat_dashboard_menu_and_permissions.sql` oluşturuldu, yerelde çalıştırıldı; Yetki Kataloğu (`explicit`) ve Yetki Grubu Düzenleme listesinde doğrulandı
+- [x] `App/Model/AparatDashboardModel.php` ve `views/aparat-takip/api.php` (`dashboard-data`) PDO parametrik sorgularla geliştirildi
+- [x] `views/aparat-takip/dashboard.php`, `views/aparat-takip/js/dashboard.js`, `views/aparat-takip/list.php` Dashboard butonu ve `layouts/vendor-scripts.php` ApexCharts tanımı tamamlandı
+- [ ] Canlı ortamda `sql/2026_11_25_add_aparat_dashboard_menu_and_permissions.sql` scriptinin çalıştırılması
+
 ## 2026-11-23 — Maliyet Raporu: Kalem Bazlı Rapor
 - [x] 9 kalemli model, eşleştirme tabloları + yetki SQL'i (yerelde uygulandı)
 - [x] Eşleştirme modalı, fatura bazlı kalem atama, manuel gider kalem seçimi; işlem logları
@@ -2438,3 +2444,5 @@
 - [x] Ana sayfa araç durumu legend modalı
 - [x] Maliyet raporu kurumlar vergisi gider detay modalı (yerelde Ekim 2026 için kart rakamlarıyla birebir doğrulandı; canlıda policy SQL'i çalıştırılmalı)
 - [x] Maliyet raporuna tahmini kurumlar vergisi satırı (yerelde Ekim 2026 kart rakamıyla doğrulandı)
+- [x] Evrak trafik cezası ödeme bilgisi + dekont yükleme (lint geçti; tarayıcıda uçtan uca denenmedi)
+- [x] Aparat Takip sadeleştirme (Depoya Giriş / Ekibe Ver / İade Al) + kritik stok uyarısı (sayfa, ana sayfa widget, personel PWA); yerelde uçtan uca test edildi, canlıda `sql/2026_11_25_aparat_sadelestirme_kritik_stok.sql` çalıştırılmalı

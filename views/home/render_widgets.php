@@ -107,6 +107,7 @@ function homeWidgetPermission(string $widgetId): ?string {
         'widget-ihbar-sayisi' => 'ihbar/list',
         'widget-gec-kalanlar' => 'personel-takip/list',
         'widget-nobetciler' => 'nobet/list',
+        'widget-aparat-kritik' => 'aparat_takip',
         'widget-talep-nobet-ozet' => null,
         default => null,
     };
@@ -1848,6 +1849,52 @@ function renderWidget(string $widgetId, array $data = []) {
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+                </div>
+            </div>
+            <?php
+            break;
+
+        case 'widget-aparat-kritik':
+            $akEsc = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+            $akVeri = $aparat_kritik ?? ['depo' => [], 'ekipler' => [], 'toplam' => 0];
+            $akRozet = static function (array $e) use ($akEsc): string {
+                $renk = $e['seviye'] === 'bitti' ? 'danger' : 'warning';
+                return '<span class="badge bg-' . $renk . '-subtle text-' . $renk . ' border border-' . $renk . '-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold me-1 mb-1">'
+                    . $akEsc($e['aparat_adi']) . ': ' . (int) $e['adet'] . ' / ' . (int) $e['esik'] . '</span>';
+            };
+            ?>
+            <div class="<?php echo getWidgetWidthClass('widget-aparat-kritik', 'col-md-6'); ?> widget-item" id="widget-aparat-kritik" style="<?php echo getWidgetStyle('widget-aparat-kritik'); ?>">
+                <div class="card summary-card" style="border-radius: 12px; overflow: hidden;">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> Aparat Kritik Stok</h5>
+                        <a href="index.php?p=aparat-takip/list" class="btn btn-sm btn-subtle-primary">Aparat Takip</a>
+                    </div>
+                    <div class="card-body" style="height: <?php echo ($height ?? '300px'); ?>; overflow-y: auto;">
+                        <?php if (empty($akVeri['toplam'])): ?>
+                            <div class="h-100 d-flex flex-column align-items-center justify-content-center text-center text-muted">
+                                <i class="bx bx-check-circle text-success" style="font-size: 32px;"></i>
+                                <div class="mt-1">Depoda ve ekiplerde kritik seviyede aparat yok.</div>
+                            </div>
+                        <?php else: ?>
+                            <?php if (!empty($akVeri['depo'])): ?>
+                                <div class="mb-3">
+                                    <div class="fw-semibold text-dark mb-1"><i class="bx bx-buildings me-1"></i> Depo</div>
+                                    <div><?php foreach ($akVeri['depo'] as $e) { echo $akRozet($e); } ?></div>
+                                </div>
+                            <?php endif; ?>
+                            <?php if (!empty($akVeri['ekipler'])): ?>
+                                <div class="fw-semibold text-dark mb-1"><i class="bx bx-group me-1"></i> Ekipler / Personel</div>
+                                <ul class="list-unstyled mb-0">
+                                    <?php foreach ($akVeri['ekipler'] as $ekip): ?>
+                                        <li class="border-top py-2">
+                                            <div class="font-size-13 fw-medium text-dark"><?php echo $akEsc($ekip['uyeler'] !== '' ? $ekip['uyeler'] : 'Personel atanmamış'); ?> <small class="text-muted">(<?php echo $akEsc($ekip['ekip_kodu']); ?>)</small></div>
+                                            <div class="mt-1"><?php foreach ($ekip['eksikler'] as $e) { echo $akRozet($e); } ?></div>
+                                        </li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            <?php endif; ?>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

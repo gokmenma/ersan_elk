@@ -537,6 +537,53 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $data['ceza_personel_id'] = null;
                 }
 
+                $cezaOdemeFormu = !empty($data['ceza_odeme_formu']);
+                $cezaDekontSil = !empty($data['ceza_dekont_sil']);
+                unset($data['ceza_odeme_formu'], $data['ceza_dekont_sil']);
+                if (!$cezaOdemeFormu) {
+                    unset($data['ceza_odendi'], $data['ceza_odeme_tarihi'], $data['ceza_odenen_tutar']);
+                } else {
+                $data['ceza_odendi'] = !empty($data['ceza_odendi']) ? 1 : 0;
+                if ($data['ceza_odendi'] === 1) {
+                    $data['ceza_odeme_tarihi'] = !empty($data['ceza_odeme_tarihi']) ? Date::Ymd($data['ceza_odeme_tarihi']) : null;
+                    $data['ceza_odenen_tutar'] = isset($data['ceza_odenen_tutar']) ? $cleanNum($data['ceza_odenen_tutar']) : null;
+                    $mevcutDekontYolu = (string) ($existingDocument->ceza_dekont_yolu ?? '');
+                    $mevcutDekontAdi = (string) ($existingDocument->ceza_dekont_adi ?? '');
+                    $data['ceza_dekont_yolu'] = ($cezaDekontSil || $mevcutDekontYolu === '') ? null : $mevcutDekontYolu;
+                    $data['ceza_dekont_adi'] = ($cezaDekontSil || $mevcutDekontYolu === '') ? null : $mevcutDekontAdi;
+                    if (isset($_FILES['ceza_dekont']) && (int) $_FILES['ceza_dekont']['error'] === UPLOAD_ERR_OK) {
+                        $dekont = $_FILES['ceza_dekont'];
+                        if ($dekont['size'] > 10 * 1024 * 1024) {
+                            throw new Exception('Dekont dosyası en fazla 10 MB olabilir.');
+                        }
+                        $dekontMime = (new finfo(FILEINFO_MIME_TYPE))->file($dekont['tmp_name']);
+                        $dekontMimeMap = [
+                            'application/pdf' => 'pdf',
+                            'application/x-pdf' => 'pdf',
+                            'image/jpeg' => 'jpg',
+                            'image/pjpeg' => 'jpg',
+                            'image/png' => 'png',
+                            'image/webp' => 'webp',
+                        ];
+                        if (!isset($dekontMimeMap[$dekontMime])) {
+                            throw new Exception('Dekont için yalnızca PDF, JPG, PNG ve WEBP dosyaları yüklenebilir.');
+                        }
+                        $dekontDir = dirname(__DIR__, 2) . '/uploads/evrak-takip/ceza-dekont/';
+                        if (!is_dir($dekontDir) && !mkdir($dekontDir, 0777, true) && !is_dir($dekontDir)) {
+                            throw new Exception('Dekont klasörü oluşturulamadı.');
+                        }
+                        $dekontStored = time() . '_' . uniqid() . '.' . $dekontMimeMap[$dekontMime];
+                        if (!move_uploaded_file($dekont['tmp_name'], $dekontDir . $dekontStored)) {
+                            throw new Exception('Dekont dosyası kaydedilemedi.');
+                        }
+                        $data['ceza_dekont_yolu'] = 'uploads/evrak-takip/ceza-dekont/' . $dekontStored;
+                        $data['ceza_dekont_adi'] = mb_substr(basename((string) $dekont['name']), 0, 255, 'UTF-8');
+                    }
+                } else {
+                    $data['ceza_odeme_tarihi'] = $data['ceza_odenen_tutar'] = $data['ceza_dekont_yolu'] = $data['ceza_dekont_adi'] = null;
+                }
+                }
+
                 $evrak_tipi = $data['evrak_tipi'] ?? 'gelen';
                 $konu_kontrol = mb_strtolower($data['konu'] ?? '', 'UTF-8');
                 if ($evrak_tipi === 'gelen' && mb_strpos($konu_kontrol, 'trafik') !== false) {
@@ -755,6 +802,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         }
                         if ((string) ($existingDocument->aciklama ?? '') !== (string) ($sonrasi->aciklama ?? '')) {
                             $degisen[] = 'Açıklama güncellendi';
+                        }
+                        if ((int) ($existingDocument->ceza_odendi ?? 0) !== (int) ($sonrasi->ceza_odendi ?? 0)
+                            || (string) ($existingDocument->ceza_dekont_yolu ?? '') !== (string) ($sonrasi->ceza_dekont_yolu ?? '')
+                            || $tarihFmt($existingDocument->ceza_odeme_tarihi ?? null) !== $tarihFmt($sonrasi->ceza_odeme_tarihi ?? null)) {
+                            $degisen[] = !empty($sonrasi->ceza_odendi)
+                                ? 'Ceza ödemesi: Ödendi (' . $tarihFmt($sonrasi->ceza_odeme_tarihi ?? null) . ')' . (!empty($sonrasi->ceza_dekont_yolu) ? ' · Dekont: ' . $sonrasi->ceza_dekont_adi : '')
+                                : 'Ceza ödemesi: Ödenmedi';
                         }
                         if ($degisen !== []) {
                             $tarihceModel->recordHistory($tarihceFirma, $real_id, 'duzenleme', $currentUserId, null, implode(' | ', $degisen));
@@ -1421,6 +1475,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }, $imzaAkisi);
                 $evrak->id = $encryptedId;
                 $evrak->dosya_url = !empty($evrak->dosya_yolu) ? EvrakTakipModel::fileUrl((string) $evrak->dosya_yolu) : '';
+                $evrak->ceza_dekont_url = !empty($evrak->ceza_dekont_yolu) ? EvrakTakipModel::fileUrl((string) $evrak->ceza_dekont_yolu, (string) ($evrak->ceza_dekont_adi ?: basename((string) $evrak->ceza_dekont_yolu))) : '';
+                unset($evrak->ceza_dekont_yolu);
                 if (!empty($evrak->ilgili_evrak_id)) {
                     $evrak->ilgili_evrak_id = Security::encrypt($evrak->ilgili_evrak_id);
                 }
