@@ -154,18 +154,22 @@ final class ManuelFaturaAiService
         $hariçToplam = 0.0;
         $dahilMatrah = 0.0;
         $dahilToplam = 0.0;
+        $hariçOdenecek = 0.0;
         foreach ($satirlar as $s) {
             $tutar = (float) $s['miktar'] * (float) ($s['birim_fiyat'] ?? 0) - (float) ($s['iskonto_tutari'] ?? 0);
             $hariçToplam += $tutar;
             $dahilMatrah += $tutar / (1 + (float) $s['kdv_orani'] / 100);
             $dahilToplam += $tutar;
+            $hariçOdenecek += $tutar * (1 + (float) $s['kdv_orani'] / 100);
         }
         $hedef = $matrahBelge;
         $kdvDahil = $hedef !== null
             && abs($hariçToplam - $hedef) > 0.05
             && abs($dahilMatrah - $hedef) <= 0.05;
-        if (!$kdvDahil && $hedef === null && $odenecekBelge !== null) {
-            $kdvDahil = abs($dahilToplam - $odenecekBelge) <= 0.05 && $dahilMatrah < $dahilToplam;
+        if (!$kdvDahil && $odenecekBelge !== null) {
+            $kdvDahil = abs($dahilToplam - $odenecekBelge) <= 0.05
+                && abs($hariçOdenecek - $odenecekBelge) > 0.05
+                && $dahilMatrah < $dahilToplam;
         }
 
         foreach ($satirlar as &$s) {
