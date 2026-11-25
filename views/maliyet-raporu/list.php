@@ -260,7 +260,7 @@ $title = 'Maliyet Raporu';
                                 }
                             ?>
                                 <tr>
-                                    <td class="text-nowrap"><span class="maliyet-kalem-dot me-1" style="background: <?= $h($cfg['renk']) ?>;"></span><?= $h($cfg['ad']) ?></td>
+                                    <td class="text-nowrap" title="<?= $h($cfg['kaynak'] ?? '') ?>"><span class="maliyet-kalem-dot me-1" style="background: <?= $h($cfg['renk']) ?>;"></span><?= $h($cfg['ad']) ?><?php if (!empty($cfg['kaynak'])): ?><div class="font-size-11 text-secondary fw-normal ms-3"><?= $h($cfg['kaynak']) ?></div><?php endif; ?></td>
                                     <?php for ($m = 1; $m <= 12; $m++):
                                         $v = $aylar[$m] ?? 0;
                                         $ayToplam[$m] += $v;

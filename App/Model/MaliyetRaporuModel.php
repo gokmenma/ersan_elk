@@ -12,7 +12,7 @@ class MaliyetRaporuModel extends Db
     public const KALEMLER = [
         'maas'             => ['ad' => 'Maaş Gideri',               'renk' => '#f43f5e', 'ikon' => 'bx-wallet',        'kaynak' => 'Bordro net maaş'],
         'sgk'              => ['ad' => 'SGK Gideri',                'renk' => '#14b8a6', 'ikon' => 'bx-shield-quarter', 'kaynak' => 'Bordro SGK + işsizlik (işçi + işveren)'],
-        'vergi'            => ['ad' => 'Vergi Gideri',              'renk' => '#6366f1', 'ikon' => 'bx-receipt',       'kaynak' => 'Bordro gelir + damga vergisi'],
+        'vergi'            => ['ad' => 'Vergi Gideri',              'renk' => '#6366f1', 'ikon' => 'bx-receipt',       'kaynak' => 'Personel maaşından kesilen gelir + damga vergisi (bordro)'],
         'arac_kirasi'      => ['ad' => 'Araç Kirası',               'renk' => '#0ea5e9', 'ikon' => 'bx-car',           'kaynak' => 'Eşleştirilen firma faturaları'],
         'yakit'            => ['ad' => 'Yakıt Gideri',              'renk' => '#f59e0b', 'ikon' => 'bx-gas-pump',      'kaynak' => 'Yakıt faturaları + elle girilen yakıt + kasa'],
         'arac_bakim'       => ['ad' => 'Araç Bakım / Servis',       'renk' => '#0891b2', 'ikon' => 'bx-wrench',        'kaynak' => 'Araç bakım, servis, sigorta kayıtları'],
