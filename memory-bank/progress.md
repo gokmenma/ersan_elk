@@ -2446,3 +2446,5 @@
 - [x] Maliyet raporuna tahmini kurumlar vergisi satırı (yerelde Ekim 2026 kart rakamıyla doğrulandı)
 - [x] Evrak trafik cezası ödeme bilgisi + dekont yükleme (lint geçti; tarayıcıda uçtan uca denenmedi)
 - [x] Aparat Takip sadeleştirme (Depoya Giriş / Ekibe Ver / İade Al) + kritik stok uyarısı (sayfa, ana sayfa widget, personel PWA); yerelde uçtan uca test edildi, canlıda `sql/2026_11_25_aparat_sadelestirme_kritik_stok.sql` çalıştırılmalı
+
+- [x] Demirbaş > Aparat > (Aparat Takip, Aparat Dashboard) 3 seviyeli sidebar menüsü (2026-11-25).

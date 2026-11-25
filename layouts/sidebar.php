@@ -1018,6 +1018,17 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                     white-space: nowrap !important;
                 }
 
+                #sidebar-menu .sub-menu .sub-menu {
+                    margin-left: 14px !important;
+                    padding-left: 0 !important;
+                    border-left: 0 !important;
+                }
+
+                #sidebar-menu .sub-menu .sub-menu li a,
+                #sidebar-menu ul li ul.sub-menu li ul.sub-menu li a {
+                    padding-left: 1.6rem !important;
+                }
+
                 #sidebar-menu .sub-menu li a:hover,
                 #sidebar-menu .sub-menu li.mm-active > a,
                 #sidebar-menu .sub-menu li a.active,
@@ -1912,13 +1923,25 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
 
                                 $has_children = !empty($menu->children);
 
+                                $filterVisibleMenus = function (array $items) use (&$filterVisibleMenus, $Menus, $currentUserId): array {
+                                    $visible = [];
+                                    foreach ($items as $item) {
+                                        if (isset($item->is_menu) && $item->is_menu == 0) continue;
+                                        if (!empty($item->children)) {
+                                            $item->visible_children = $filterVisibleMenus($item->children);
+                                            if (empty($item->visible_children)) continue;
+                                        } else {
+                                            $item->visible_children = [];
+                                            if (!empty($item->menu_link) && !$Menus->userCanAccessMenuLink($currentUserId, $item->menu_link)) continue;
+                                        }
+                                        $visible[] = $item;
+                                    }
+                                    return $visible;
+                                };
+
                                 $visibleChildren = [];
                                 if ($has_children) {
-                                    foreach ($menu->children as $sub_menu) {
-                                        if (isset($sub_menu->is_menu) && $sub_menu->is_menu == 0) continue;
-                                        if (!empty($sub_menu->menu_link) && !$Menus->userCanAccessMenuLink($currentUserId, $sub_menu->menu_link)) continue;
-                                        $visibleChildren[] = $sub_menu;
-                                    }
+                                    $visibleChildren = $filterVisibleMenus($menu->children);
                                     $has_children = !empty($visibleChildren);
                                 }
 
@@ -1952,16 +1975,31 @@ foreach ($sectionConfig as $sectionGroup => $sectionCfg) {
                                                 $is_sub_active = in_array((int) $sub_menu->id, $activeMenuIds);
                                                 $isSubFavorited = in_array((int) $sub_menu->id, $favoriteMenuIds);
                                                 ?>
+                                                <?php $subHasChildren = !empty($sub_menu->visible_children); ?>
                                                 <li class="<?php echo $is_sub_active ? 'mm-active' : ''; ?> submenu-item-draggable" data-menu-id="<?php echo $sub_menu->id; ?>">
-                                                    <a class="waves-effect <?php echo $is_sub_active ? 'active' : ''; ?>"
-                                                        href="<?php echo Route::Link($sub_menu->menu_link); ?>" data-key="t-user-grid">
+                                                    <a class="waves-effect <?php echo $subHasChildren ? 'has-arrow' : ''; ?> <?php echo $is_sub_active ? 'active' : ''; ?>"
+                                                        href="<?php echo $subHasChildren ? 'javascript: void(0);' : Route::Link($sub_menu->menu_link); ?>" data-key="t-user-grid">
                                                         <span class="menu-name"><?php echo htmlspecialchars($sub_menu->menu_name); ?></span>
                                                     </a>
+                                                    <?php if ($subHasChildren): ?>
+                                                        <ul class="sub-menu mm-collapse <?php echo $is_sub_active ? 'mm-show' : ''; ?>" aria-expanded="<?php echo $is_sub_active ? 'true' : 'false'; ?>" data-parent-id="<?php echo (int) $sub_menu->id; ?>">
+                                                            <?php foreach ($sub_menu->visible_children as $third_menu): ?>
+                                                                <?php $is_third_active = in_array((int) $third_menu->id, $activeMenuIds); ?>
+                                                                <li class="<?php echo $is_third_active ? 'mm-active' : ''; ?>" data-menu-id="<?php echo (int) $third_menu->id; ?>">
+                                                                    <a class="waves-effect <?php echo $is_third_active ? 'active' : ''; ?>" href="<?php echo Route::Link($third_menu->menu_link); ?>">
+                                                                        <span class="menu-name"><?php echo htmlspecialchars($third_menu->menu_name, ENT_QUOTES, 'UTF-8'); ?></span>
+                                                                    </a>
+                                                                </li>
+                                                            <?php endforeach; ?>
+                                                        </ul>
+                                                    <?php endif; ?>
+                                                    <?php if (!$subHasChildren): ?>
                                                     <div class="star-btn <?php echo $isSubFavorited ? 'active' : ''; ?>" 
                                                          data-id="<?php echo $sub_menu->id; ?>" 
                                                          title="<?php echo $isSubFavorited ? 'Favorilerden Kaldır' : 'Favorilere Ekle'; ?>">
                                                         <i class="<?php echo $isSubFavorited ? 'fas' : 'far'; ?> fa-star" style="font-size: 11px;"></i>
                                                     </div>
+                                                    <?php endif; ?>
                                                 </li>
                                             <?php endforeach; ?>
                                         </ul>

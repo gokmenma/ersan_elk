@@ -4189,3 +4189,7 @@
 ## 2026-11-25 Evrak: trafik cezası ödeme ve dekont
 - Evrak modalındaki Trafik Cezası Detayları kartına "Ceza ödendi" anahtarı, Ödeme Tarihi, Ödenen Tutar ve Dekont yükleme alanı eklendi. Kolonlar `evrak_takip.ceza_odendi/ceza_odeme_tarihi/ceza_odenen_tutar/ceza_dekont_yolu/ceza_dekont_adi` (`sql/2026_11_25_evrak_ceza_odeme_dekont.sql`, yerelde uygulandı; canlıda çalıştırılmadan deploy edilmemeli).
 - `views/evrak-takip/api.php` evrak-kaydet: alanlar yalnız masaüstü formun gönderdiği `ceza_odeme_formu` işaretiyle işlenir (mobil formlar mevcut ödeme bilgisini silmez). Dekont `uploads/evrak-takip/ceza-dekont/` altına kaydedilir; `EvrakTakipModel::fileBelongsToFirm` dekont yolunu da kabul eder; değişiklik evrak tarihçesine yazılır.
+
+## 2026-11-25 — Demirbaş > Aparat alt menü grubu
+- Sidebar 3 seviyeye çıkarıldı (`layouts/sidebar.php`, özyinelemeli görünür çocuk filtresi); Demirbaş/Zimmet Yön. altında linksiz "Aparat" klasörü, içinde Aparat Takip ve Aparat Dashboard.
+- Script: `sql/2026_11_25_aparat_alt_menu_grubu.sql` (yerelde uygulandı; canlıda ayrıca çalıştırılmalı).
