@@ -101,6 +101,35 @@ function getAvatarUrl(int $personelId, ?string $resimYolu = null, ?string $perso
     return '/api/personnel-photo.php?id=' . rawurlencode($encId) . '&w=96';
 }
 
+function nobetAyOzeti(PDO $db, int $firmaId, int $ay, int $yil): array
+{
+    $statsSql = "SELECT 
+        COUNT(*) as total_nobet,
+        SUM(CASE WHEN (yonetici_onayi = 0 OR yonetici_onayi IS NULL) THEN 1 ELSE 0 END) as total_bekleyen,
+        SUM(CASE WHEN (yonetici_onayi = 1) THEN 1 ELSE 0 END) as total_onaylanan,
+        SUM(CASE WHEN (yonetici_onayi = 0 OR yonetici_onayi IS NULL) AND nobet_tipi = 'hafta_sonu' THEN 1 ELSE 0 END) as hafta_sonu_bekleyen,
+        SUM(CASE WHEN (yonetici_onayi = 0 OR yonetici_onayi IS NULL) AND nobet_tipi = 'resmi_tatil' THEN 1 ELSE 0 END) as resmi_tatil_bekleyen,
+        SUM(CASE WHEN (yonetici_onayi = 0 OR yonetici_onayi IS NULL) AND (nobet_tipi NOT IN ('hafta_sonu', 'resmi_tatil') OR nobet_tipi IS NULL) THEN 1 ELSE 0 END) as hafta_ici_bekleyen
+    FROM nobetler 
+    WHERE silinme_tarihi IS NULL 
+    AND (durum IS NULL OR durum NOT IN ('reddedildi', 'iptal'))
+    AND MONTH(nobet_tarihi) = ? AND YEAR(nobet_tarihi) = ?
+    AND firma_id = ?";
+
+    $stmtStats = $db->prepare($statsSql);
+    $stmtStats->execute([$ay, $yil, $firmaId]);
+    $rawStats = $stmtStats->fetch(PDO::FETCH_OBJ);
+
+    return [
+        'total_nobet' => (int) ($rawStats->total_nobet ?? 0),
+        'total_bekleyen' => (int) ($rawStats->total_bekleyen ?? 0),
+        'total_onaylanan' => (int) ($rawStats->total_onaylanan ?? 0),
+        'hafta_sonu_bekleyen' => (int) ($rawStats->hafta_sonu_bekleyen ?? 0),
+        'resmi_tatil_bekleyen' => (int) ($rawStats->resmi_tatil_bekleyen ?? 0),
+        'hafta_ici_bekleyen' => (int) ($rawStats->hafta_ici_bekleyen ?? 0),
+    ];
+}
+
 $nobetModel = new NobetModel();
 $personelModel = new PersonelModel();
 $systemLogModel = new SystemLogModel();
@@ -377,32 +406,7 @@ try {
 
             $db = $nobetModel->getDb();
 
-            // 1. İstatistikler (Tüm seçili ay için)
-            $statsSql = "SELECT 
-                COUNT(*) as total_nobet,
-                SUM(CASE WHEN (yonetici_onayi = 0 OR yonetici_onayi IS NULL) THEN 1 ELSE 0 END) as total_bekleyen,
-                SUM(CASE WHEN (yonetici_onayi = 1) THEN 1 ELSE 0 END) as total_onaylanan,
-                SUM(CASE WHEN (yonetici_onayi = 0 OR yonetici_onayi IS NULL) AND nobet_tipi = 'hafta_sonu' THEN 1 ELSE 0 END) as hafta_sonu_bekleyen,
-                SUM(CASE WHEN (yonetici_onayi = 0 OR yonetici_onayi IS NULL) AND nobet_tipi = 'resmi_tatil' THEN 1 ELSE 0 END) as resmi_tatil_bekleyen,
-                SUM(CASE WHEN (yonetici_onayi = 0 OR yonetici_onayi IS NULL) AND (nobet_tipi NOT IN ('hafta_sonu', 'resmi_tatil') OR nobet_tipi IS NULL) THEN 1 ELSE 0 END) as hafta_ici_bekleyen
-            FROM nobetler 
-            WHERE silinme_tarihi IS NULL 
-            AND (durum IS NULL OR durum NOT IN ('reddedildi', 'iptal'))
-            AND MONTH(nobet_tarihi) = ? AND YEAR(nobet_tarihi) = ?
-            AND firma_id = ?";
-
-            $stmtStats = $db->prepare($statsSql);
-            $stmtStats->execute([$ay, $yil, $firmaId]);
-            $rawStats = $stmtStats->fetch(PDO::FETCH_OBJ);
-
-            $stats = [
-                'total_nobet' => (int) ($rawStats->total_nobet ?? 0),
-                'total_bekleyen' => (int) ($rawStats->total_bekleyen ?? 0),
-                'total_onaylanan' => (int) ($rawStats->total_onaylanan ?? 0),
-                'hafta_sonu_bekleyen' => (int) ($rawStats->hafta_sonu_bekleyen ?? 0),
-                'resmi_tatil_bekleyen' => (int) ($rawStats->resmi_tatil_bekleyen ?? 0),
-                'hafta_ici_bekleyen' => (int) ($rawStats->hafta_ici_bekleyen ?? 0),
-            ];
+            $stats = nobetAyOzeti($db, $firmaId, $ay, $yil);
 
             // 2. Liste Filtreleme
             $whereParts = [
@@ -536,6 +540,7 @@ try {
                 'success' => true,
                 'ay' => $ay,
                 'yil' => $yil,
+                'stats' => nobetAyOzeti($db, $firmaId, $ay, $yil),
                 'days' => array_values($daysMap),
             ]);
         }
@@ -597,6 +602,7 @@ try {
                 'success' => true,
                 'ay' => $ay,
                 'yil' => $yil,
+                'stats' => nobetAyOzeti($db, $firmaId, $ay, $yil),
                 'max_nobet' => $maxNobet,
                 'personnel' => $pool,
             ]);

@@ -40,13 +40,15 @@ const tasks = computed(() => {
   )
 })
 
-const todayTasks = computed(() => tasks.value.filter((t) => !t.tamamlandi && (t.overdue || t.isToday)))
+const todayTasks = computed(() => tasks.value.filter((t) => !t.tamamlandi && t.isToday))
+const overdueTasks = computed(() => tasks.value.filter((t) => t.overdue))
 const upcomingTasks = computed(() => tasks.value.filter((t) => !t.tamamlandi && !t.overdue && !t.isToday))
 const doneTasks = computed(() => tasks.value.filter((t) => t.tamamlandi))
 
 const visibleTasks = computed(() => {
   if (activeTab.value === 'completed') return doneTasks.value
   if (activeTab.value === 'upcoming') return upcomingTasks.value
+  if (activeTab.value === 'overdue') return overdueTasks.value
   return todayTasks.value
 })
 
@@ -81,7 +83,7 @@ async function toggle(task) {
   busyId.value = task.id
   errorMessage.value = ''
   try {
-    const csrf = auth.csrfToken
+    const csrf = auth.state.csrfToken
     if (task.tamamlandi) await gorevlerApi.geriAl(task.id, csrf)
     else await gorevlerApi.tamamla(task.id, csrf)
     await load()
@@ -133,6 +135,10 @@ onMounted(load)
       <button type="button" class="clay-tab-btn" :class="{ 'is-active': activeTab === 'upcoming' }" @click="activeTab = 'upcoming'">
         <span>Yaklaşan</span>
         <span class="clay-tab-badge">{{ upcomingTasks.length }}</span>
+      </button>
+      <button v-if="overdueTasks.length" type="button" class="clay-tab-btn" :class="{ 'is-active': activeTab === 'overdue' }" @click="activeTab = 'overdue'">
+        <span>Geciken</span>
+        <span class="clay-tab-badge">{{ overdueTasks.length }}</span>
       </button>
       <button type="button" class="clay-tab-btn" :class="{ 'is-active': activeTab === 'completed' }" @click="activeTab = 'completed'">
         <span>Tamamlanan</span>

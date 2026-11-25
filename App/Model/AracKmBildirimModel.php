@@ -64,6 +64,15 @@ class AracKmBildirimModel extends Model
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
+    public function getPersonelKm(int $id, int $personelId): ?int
+    {
+        $sql = $this->db->prepare("SELECT bitis_km FROM {$this->table} WHERE id = :id AND personel_id = :pid LIMIT 1");
+        $sql->execute(['id' => $id, 'pid' => $personelId]);
+        $km = $sql->fetchColumn();
+
+        return $km === false || $km === null ? null : (int) $km;
+    }
+
     public function getPersonelResimYolu(int $id, int $personelId): ?string
     {
         $sql = $this->db->prepare("SELECT resim_yolu FROM {$this->table} WHERE id = :id AND personel_id = :pid LIMIT 1");

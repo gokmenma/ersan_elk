@@ -3,7 +3,7 @@ import { reactive } from 'vue'
 const now = new Date()
 
 export const nobetState = reactive({
-  activeTab: 'bekleyen', // 'bekleyen' | 'planlama' | 'havuz'
+  activeTab: 'planlama', // 'bekleyen' | 'planlama' | 'havuz'
   selectedMonth: now.getMonth() + 1,
   selectedYear: now.getFullYear(),
   durumFilter: 'bekleyen', // 'bekleyen' | 'onaylanan' | 'tumu'

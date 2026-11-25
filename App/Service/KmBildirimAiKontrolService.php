@@ -45,7 +45,7 @@ class KmBildirimAiKontrolService
         }
     }
 
-    public function kontrolEtVeOnayla(array $ids, ?int $onaylayanId): array
+    public function kontrolEtVeOnayla(array $ids, ?int $onaylayanId, bool $guvenilirOkuma = false): array
     {
         $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn($id) => $id > 0)));
         if (!$ids) {
@@ -75,9 +75,22 @@ class KmBildirimAiKontrolService
                 }
 
                 $resim = $this->resolveImage((string) $bildirim->resim_yolu);
-                $analiz = $this->analyzeImage($resim, $bildirim);
-                $analiz = $this->refineOdometerReading($resim, $analiz, $bildirim);
-                $analiz = $this->adjudicateCloseOdometerReading($resim, $analiz, $bildirim);
+                if ($guvenilirOkuma) {
+                    $analiz = [
+                        'dashboard_visible' => true,
+                        'odometer_km' => (int) $bildirim->bitis_km,
+                        'has_decimal_digit' => false,
+                        'km_confidence' => 100,
+                        'plate_text' => (string) $bildirim->plaka,
+                        'plate_confidence' => 100,
+                        'report_type' => (string) $bildirim->tur,
+                        'type_confidence' => 100,
+                    ];
+                } else {
+                    $analiz = $this->analyzeImage($resim, $bildirim);
+                    $analiz = $this->refineOdometerReading($resim, $analiz, $bildirim);
+                    $analiz = $this->adjudicateCloseOdometerReading($resim, $analiz, $bildirim);
+                }
                 $karar = $this->evaluate($analiz, $bildirim);
 
                 if (!$karar['uygun']) {
@@ -133,23 +146,133 @@ class KmBildirimAiKontrolService
             throw new Exception('Fotoğraf biçimi yapay zekâ analizi için uygun değil.');
         }
 
+        $image = ['path' => $path, 'mime' => $mime];
         $oncekiSeviye = $this->reasoningEffort;
-        $this->reasoningEffort = 'low';
+        $this->reasoningEffort = 'medium';
         try {
-            $analiz = $this->analyzeImage(['path' => $path, 'mime' => $mime], (object) ['plaka' => '-', 'tur' => '-']);
+            $analiz = $this->analyzeImage($image, (object) ['plaka' => '-', 'tur' => '-']);
         } finally {
             $this->reasoningEffort = $oncekiSeviye;
         }
 
-        $km = $analiz['odometer_km'] ?? null;
-        $guven = (int) ($analiz['km_confidence'] ?? 0);
         $gorunur = ($analiz['dashboard_visible'] ?? false) === true;
+        $ondalik = ($analiz['has_decimal_digit'] ?? null) === true;
+        $okumalar = [];
+        $ekle = static function (?int $km, int $guven) use (&$okumalar): void {
+            if ($km !== null && $km > 0) {
+                $okumalar[] = ['km' => $km, 'guven' => max(0, min(100, $guven))];
+            }
+        };
+        $ekle(isset($analiz['odometer_km']) ? (int) $analiz['odometer_km'] : null, (int) ($analiz['km_confidence'] ?? 0));
+
+        $secim = $this->okumalardanSec($okumalar);
+        if ($secim === null || $secim['guven'] < 90) {
+            $bbox = is_array($analiz['odometer_bbox'] ?? null) ? $analiz['odometer_bbox'] : null;
+            foreach ([false, true] as $guclendir) {
+                try {
+                    $yakin = $this->yakinOkuma($image, $bbox, $guclendir);
+                } catch (\Throwable $e) {
+                    error_log('KM AI yakın okuma (ön okuma) hatası: ' . $e->getMessage());
+                    continue;
+                }
+                if ($yakin === null) {
+                    continue;
+                }
+                $gorunur = $gorunur || $yakin['km'] !== null;
+                $ondalik = $ondalik || $yakin['ondalik'];
+                $ekle($yakin['km'], $yakin['guven']);
+                $secim = $this->okumalardanSec($okumalar);
+                if ($secim !== null && $secim['guven'] >= 90) {
+                    break;
+                }
+            }
+        }
 
         return [
-            'km' => ($km !== null && (int) $km > 0) ? (int) $km : null,
-            'guven' => max(0, min(100, $guven)),
+            'km' => $secim['km'] ?? null,
+            'guven' => $secim['guven'] ?? 0,
             'gosterge_gorunur' => $gorunur,
-            'ondalik_hane' => ($analiz['has_decimal_digit'] ?? null) === true,
+            'ondalik_hane' => $ondalik,
+        ];
+    }
+
+    private function okumalardanSec(array $okumalar): ?array
+    {
+        if (!$okumalar) {
+            return null;
+        }
+        $gruplar = [];
+        foreach ($okumalar as $okuma) {
+            $gruplar[$okuma['km']]['adet'] = ($gruplar[$okuma['km']]['adet'] ?? 0) + 1;
+            $gruplar[$okuma['km']]['guven'] = max($gruplar[$okuma['km']]['guven'] ?? 0, $okuma['guven']);
+        }
+        $enIyi = null;
+        foreach ($gruplar as $km => $g) {
+            $puan = $g['adet'] * 1000 + $g['guven'];
+            if ($enIyi === null || $puan > $enIyi['puan']) {
+                $enIyi = ['km' => (int) $km, 'guven' => $g['adet'] >= 2 ? max(95, $g['guven']) : $g['guven'], 'puan' => $puan];
+            }
+        }
+        return ['km' => $enIyi['km'], 'guven' => $enIyi['guven']];
+    }
+
+    private function yakinOkuma(array $image, ?array $bbox, bool $guclendir): ?array
+    {
+        $crop = null;
+        if (is_array($bbox) && isset($bbox['x'], $bbox['y'], $bbox['width'], $bbox['height'])) {
+            $crop = $this->createOdometerCropDataUrl($image, $bbox, $guclendir);
+        }
+        if ($crop === null) {
+            $crop = $this->createOdometerCropDataUrl($image, ['x' => 150, 'y' => 250, 'width' => 700, 'height' => 500], $guclendir);
+        }
+        if ($crop === null) {
+            return null;
+        }
+
+        $prompt = 'İlk görsel araç gösterge fotoğrafı, ikinci görsel toplam odometre alanının büyütülmüş kırpımıdır' . ($guclendir ? ' (parlaklık/kontrast artırılmış)' : '') . '. '
+            . 'Hız, devir, yakıt, saat, sıcaklık ve trip değerlerini dikkate alma. "km" yazısının hemen solunda ve aynı satırda bulunan sayıyı seç. '
+            . 'Rakam hücrelerini soldan sağa say ve her hücredeki yanan segmentleri tek tek incele; 7-segment LCD ekranlarda 1/7, 3/8, 5/6, 6/8, 0/8 ve 9/8 ayrımına dikkat et, soldaki sönük sıfırı atlama. '
+            . 'Çoğu araçta tüm haneler tam kilometredir; yalnızca nokta/virgülle ayrılmış veya farklı renk/zeminli ayrı bir son hane varsa onu ondalık say ve katma. '
+            . 'Sol baştaki sıfırları temizle. Bir hane gerçekten seçilemiyorsa odometer_km=null döndür; tahmin etme. Güveni 0-100 ver.';
+        $payload = [
+            'model' => $this->model,
+            'messages' => [[
+                'role' => 'user',
+                'content' => [
+                    ['type' => 'text', 'text' => $prompt],
+                    ['type' => 'image_url', 'image_url' => ['url' => 'data:' . $image['mime'] . ';base64,' . base64_encode((string) file_get_contents($image['path'])), 'detail' => 'high']],
+                    ['type' => 'image_url', 'image_url' => ['url' => $crop, 'detail' => 'high']],
+                ],
+            ]],
+            'temperature' => 0,
+            'response_format' => [
+                'type' => 'json_schema',
+                'json_schema' => [
+                    'name' => 'km_on_yakin_okuma',
+                    'strict' => true,
+                    'schema' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'odometer_km' => ['type' => ['integer', 'null']],
+                            'has_decimal_digit' => ['type' => ['boolean', 'null']],
+                            'km_confidence' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 100],
+                        ],
+                        'required' => ['odometer_km', 'has_decimal_digit', 'km_confidence'],
+                        'additionalProperties' => false,
+                    ],
+                ],
+            ],
+            'max_tokens' => 3000,
+            'reasoning_effort' => 'medium',
+        ];
+
+        $data = $this->sendAiRequest($payload, 'ön yakın okuma');
+        $km = isset($data['odometer_km']) && (int) $data['odometer_km'] > 0 ? (int) $data['odometer_km'] : null;
+
+        return [
+            'km' => $km,
+            'guven' => (int) ($data['km_confidence'] ?? 0),
+            'ondalik' => ($data['has_decimal_digit'] ?? null) === true,
         ];
     }
 
@@ -497,7 +620,7 @@ class KmBildirimAiKontrolService
         return $analiz;
     }
 
-    private function createOdometerCropDataUrl(array $image, array $bbox): ?string
+    private function createOdometerCropDataUrl(array $image, array $bbox, bool $guclendir = false): ?string
     {
         if (!function_exists('imagecreatefromstring')) {
             return null;
@@ -541,6 +664,11 @@ class KmBildirimAiKontrolService
                 imagedestroy($target);
             }
             return null;
+        }
+
+        if ($guclendir) {
+            imagegammacorrect($target, 1.0, 1.5);
+            imagefilter($target, IMG_FILTER_CONTRAST, -25);
         }
 
         ob_start();

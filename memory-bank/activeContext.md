@@ -4195,3 +4195,7 @@
 ## 2026-11-25 — Demirbaş > Aparat alt menü grubu
 - Sidebar 3 seviyeye çıkarıldı (`layouts/sidebar.php`, özyinelemeli görünür çocuk filtresi); Demirbaş/Zimmet Yön. altında linksiz "Aparat" klasörü, içinde Aparat Takip ve Aparat Dashboard.
 - Script: `sql/2026_11_25_aparat_alt_menu_grubu.sql` (yerelde uygulandı; canlıda ayrıca çalıştırılmalı).
+
+## 2026-11-25 PWA KM manuel giriş kapatıldı
+- `views/personel-pwa/includes/km-modal.php`, `views/personel-pwa/api.php` (`read-km-photo`, `save-km-report`), `AracKmBildirimModel::getPersonelKm`.
+- Okunamazsa kullanıcı fotoğrafı yeniden çeker; AI servisi çalışmazsa bildirim yapılamaz.

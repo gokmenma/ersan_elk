@@ -124,6 +124,38 @@ const calendarCells = computed(() => {
 
 // KPI Kartları
 const kpiStats = computed(() => nobetState.stats)
+const kpiCards = computed(() => {
+  const st = nobetState.stats
+  if (nobetState.activeTab === 'planlama') {
+    const gunler = calendarDays.value.filter(d => d.duty_count > 0).length
+    return [
+      { key: 'toplam', label: 'TOPLAM', value: st.total_nobet, sub: 'Aylık nöbet sayısı', color: 'blue', icon: Layers },
+      { key: 'onay', label: 'ONAYLANAN', value: st.total_onaylanan, sub: 'Onaylı nöbetler', color: 'indigo', icon: CheckCheck },
+      { key: 'bekleyen', label: 'BEKLEYEN', value: st.total_bekleyen, sub: 'Onay bekleyen nöbet', color: 'amber', icon: Clock },
+      { key: 'gun', label: 'NÖBETLİ GÜN', value: gunler, sub: `${calendarDays.value.length} günün`, color: 'rose', icon: CalendarDays },
+    ]
+  }
+  if (nobetState.activeTab === 'havuz') {
+    const list = poolPersonnel.value
+    const nobetli = list.filter(p => p.nobet_sayisi > 0).length
+    const toplam = list.reduce((t, p) => t + p.nobet_sayisi, 0)
+    const ort = nobetli ? (toplam / nobetli).toFixed(1).replace(/\.0$/, '') : 0
+    const enYuksek = list.reduce((m, p) => Math.max(m, p.nobet_sayisi), 0)
+    return [
+      { key: 'personel', label: 'PERSONEL', value: list.length, sub: 'Aktif personel', color: 'blue', icon: Users },
+      { key: 'nobetli', label: 'NÖBETLİ', value: nobetli, sub: 'Nöbet yazılan personel', color: 'indigo', icon: CalendarCheck },
+      { key: 'nobetsiz', label: 'NÖBETSİZ', value: list.length - nobetli, sub: 'Nöbeti olmayan', color: 'amber', icon: User },
+      { key: 'ort', label: 'ORT. / EN ÇOK', value: `${ort} / ${enYuksek}`, sub: 'Kişi başı nöbet', color: 'rose', icon: Sparkles },
+    ]
+  }
+  const aktif = tip => nobetState.activeTab === 'bekleyen' && currentTip.value === tip
+  return [
+    { key: 'bekleyen', label: 'BEKLEYENLER', value: st.total_bekleyen, sub: 'Onay bekleyen nöbet', color: 'amber', icon: Clock, tip: 'all', active: aktif('') },
+    { key: 'hs', label: 'H. SONU', value: st.hafta_sonu_bekleyen, sub: 'Cumartesi - Pazar', color: 'indigo', icon: Calendar, tip: 'hafta_sonu', active: aktif('hafta_sonu') },
+    { key: 'rt', label: 'R. TATİL', value: st.resmi_tatil_bekleyen, sub: 'Bayram & Tatiller', color: 'rose', icon: Sparkles, tip: 'resmi_tatil', active: aktif('resmi_tatil') },
+    { key: 'hi', label: 'H. İÇİ', value: st.hafta_ici_bekleyen, sub: 'Hafta içi nöbetleri', color: 'blue', icon: Layers, tip: 'hafta_ici', active: aktif('hafta_ici') },
+  ]
+})
 
 // Toast Göster
 function showToast(msg) {
@@ -193,6 +225,9 @@ async function loadCalendar() {
     yil: nobetState.selectedYear,
   })
   calendarDays.value = res.days || []
+  if (res.stats) {
+    Object.assign(nobetState.stats, res.stats)
+  }
   // Varsayılan olarak bugünü veya ilk günü seç
   if (!selectedCalendarDate.value && calendarDays.value.length > 0) {
     const todayStr = new Date().toISOString().slice(0, 10)
@@ -209,6 +244,9 @@ async function loadPersonnelSummary() {
     search: searchInput.value.trim(),
   })
   poolPersonnel.value = res.personnel || []
+  if (res.stats) {
+    Object.assign(nobetState.stats, res.stats)
+  }
   maxPoolShifts.value = res.max_nobet || 1
 }
 
@@ -539,67 +577,23 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- 4 Minimal Bento KPI Kartı -->
     <div class="nobet-kpi-grid">
-      <!-- 1. Toplam Bekleyen -->
-      <button
-        type="button"
-        class="nobet-kpi-card nobet-kpi-card--amber"
-        :class="{ 'is-active': nobetState.activeTab === 'bekleyen' && currentTip === '' }"
-        @click="filterByKpi('all')"
+      <component
+        :is="card.tip !== undefined ? 'button' : 'div'"
+        v-for="card in kpiCards"
+        :key="`${nobetState.activeTab}-${card.key}`"
+        :type="card.tip !== undefined ? 'button' : undefined"
+        class="nobet-kpi-card"
+        :class="[`nobet-kpi-card--${card.color}`, { 'is-active': card.active }]"
+        @click="card.tip !== undefined && filterByKpi(card.tip)"
       >
         <div class="nobet-kpi-top">
-          <span class="nobet-kpi-label">BEKLEYENLER</span>
-          <span class="nobet-kpi-icon"><Clock :size="16" /></span>
+          <span class="nobet-kpi-label">{{ card.label }}</span>
+          <span class="nobet-kpi-icon"><component :is="card.icon" :size="16" /></span>
         </div>
-        <div class="nobet-kpi-val">{{ kpiStats.total_bekleyen }}</div>
-        <span class="nobet-kpi-sub">Onay bekleyen nöbet</span>
-      </button>
-
-      <!-- 2. Hafta Sonu -->
-      <button
-        type="button"
-        class="nobet-kpi-card nobet-kpi-card--indigo"
-        :class="{ 'is-active': nobetState.activeTab === 'bekleyen' && currentTip === 'hafta_sonu' }"
-        @click="filterByKpi('hafta_sonu')"
-      >
-        <div class="nobet-kpi-top">
-          <span class="nobet-kpi-label">H. SONU</span>
-          <span class="nobet-kpi-icon"><Calendar :size="16" /></span>
-        </div>
-        <div class="nobet-kpi-val">{{ kpiStats.hafta_sonu_bekleyen }}</div>
-        <span class="nobet-kpi-sub">Cumartesi - Pazar</span>
-      </button>
-
-      <!-- 3. Resmi Tatil -->
-      <button
-        type="button"
-        class="nobet-kpi-card nobet-kpi-card--rose"
-        :class="{ 'is-active': nobetState.activeTab === 'bekleyen' && currentTip === 'resmi_tatil' }"
-        @click="filterByKpi('resmi_tatil')"
-      >
-        <div class="nobet-kpi-top">
-          <span class="nobet-kpi-label">R. TATİL</span>
-          <span class="nobet-kpi-icon"><Sparkles :size="16" /></span>
-        </div>
-        <div class="nobet-kpi-val">{{ kpiStats.resmi_tatil_bekleyen }}</div>
-        <span class="nobet-kpi-sub">Bayram & Tatiller</span>
-      </button>
-
-      <!-- 4. Hafta İçi -->
-      <button
-        type="button"
-        class="nobet-kpi-card nobet-kpi-card--blue"
-        :class="{ 'is-active': nobetState.activeTab === 'bekleyen' && currentTip === 'hafta_ici' }"
-        @click="filterByKpi('hafta_ici')"
-      >
-        <div class="nobet-kpi-top">
-          <span class="nobet-kpi-label">H. İÇİ</span>
-          <span class="nobet-kpi-icon"><Layers :size="16" /></span>
-        </div>
-        <div class="nobet-kpi-val">{{ kpiStats.hafta_ici_bekleyen }}</div>
-        <span class="nobet-kpi-sub">Hafta içi nöbetleri</span>
-      </button>
+        <div class="nobet-kpi-val">{{ card.value }}</div>
+        <span class="nobet-kpi-sub">{{ card.sub }}</span>
+      </component>
     </div>
 
     <!-- 3 Segmentli Navigasyon Barı -->

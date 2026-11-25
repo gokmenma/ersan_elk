@@ -165,7 +165,7 @@
                 <div class="pwa-km-hero safe-area-top shrink-0">
                     <span class="pwa-km-hero-badge"><span class="material-symbols-outlined">directions_car</span>ARAÇ TAKİP</span>
                     <h1>${editData ? 'Bildirim Düzenle' : 'KM Bildirimi'}</h1>
-                    <p>${zorunluSabah ? 'Göreve başlamak için ' : ''}<span class="pwa-km-plate">${kmEsc(plaka)}</span> plakalı araç için ${zorunluSabah ? 'sabah ' : ''}göstergenin fotoğrafını ekleyin, KM'yi sizin için okuyalım.</p>
+                    <p>${zorunluSabah ? 'Göreve başlamak için ' : ''}<span class="pwa-km-plate">${kmEsc(plaka)}</span> plakalı araç için ${zorunluSabah ? 'sabah ' : ''}göstergenin fotoğrafını net biçimde çekin; KM fotoğraftan otomatik okunur.</p>
                     <div class="pwa-km-hero-gauge" aria-hidden="true">
                         <svg viewBox="0 0 56 56" fill="none" stroke-linecap="round">
                             <path class="arc-bg" d="M8 40 A22 22 0 1 1 48 40" stroke-width="4"/>
@@ -193,12 +193,12 @@
                                 <span>Gösterge Fotoğrafı</span>
                                 ${editData ? '<span class="pwa-km-edit-note">Değiştirmek istemiyorsanız dokunmayın</span>' : '<span class="pwa-km-step">1</span>'}
                             </div>
-                            <input type="file" name="resim" id="km-resim-input" accept="image/*" class="hidden">
+                            <input type="file" name="resim" id="km-resim-input" accept="image/*" capture="environment" class="hidden">
                             <label for="km-resim-input" id="km-shot" class="pwa-km-shot pwa-fx-card--indigo${mevcutResim ? ' has-image' : ''}">
                                 <div class="pwa-km-shot-empty" id="resim-placeholder">
                                     <div class="pwa-fx-orb pwa-fx-orb--float"><span class="material-symbols-outlined">add_a_photo</span></div>
-                                    <span class="pwa-km-drop-text">Fotoğraf çek veya yükle</span>
-                                    <span class="pwa-km-drop-sub">Kamera ya da galeri açılır · KM otomatik okunur</span>
+                                    <span class="pwa-km-drop-text">Gösterge fotoğrafını çekin</span>
+                                    <span class="pwa-km-drop-sub">Rakamlar net ve yansımasız görünsün · KM otomatik okunur</span>
                                 </div>
                                 <div class="pwa-km-shot-view">
                                     <img id="resim-preview" alt="" src="${kmEsc(mevcutResim)}">
@@ -219,9 +219,9 @@
                             </div>
                             <div class="pwa-km-input-wrap" id="km-value-wrap">
                                 <span class="material-symbols-outlined">speed</span>
-                                <input type="number" inputmode="numeric" name="bitis_km" id="km-value-input" required value="${editData ? kmEsc(editData.bitis_km) : ''}"
+                                <input type="text" inputmode="none" name="bitis_km" id="km-value-input" readonly tabindex="-1" autocomplete="off" value="${editData ? kmEsc(editData.bitis_km) : ''}"
                                     class="pwa-km-input"
-                                    placeholder="Fotoğraftan okunur veya elle girin">
+                                    placeholder="Fotoğraftan otomatik okunur">
                             </div>
                         </div>
 
@@ -279,7 +279,7 @@
             `,
             onOpen: () => {
                 let currentLastKm = 0;
-                let kmElleGirildi = false;
+                let kmOkundu = !!editData;
                 let okumaSayaci = 0;
                 const modalEl = document.getElementById('pwa-full-modal');
                 if (modalEl) modalEl.classList.add('pwa-km-modal');
@@ -319,8 +319,18 @@
                     requestAnimationFrame(adim);
                 };
 
+                const kmOkunamadi = (metin) => {
+                    kmOkundu = false;
+                    kmInput.value = '';
+                    kmWrap.classList.remove('is-ai');
+                    setAiDurum('fail', metin);
+                };
+
                 const fotodanKmOku = async (file) => {
                     const sayac = ++okumaSayaci;
+                    kmOkundu = false;
+                    kmInput.value = '';
+                    kmWrap.classList.remove('is-ai');
                     shot.classList.add('is-reading');
                     setAiDurum('reading', 'Göstergedeki KM okunuyor…');
                     try {
@@ -329,32 +339,27 @@
                         if (sayac !== okumaSayaci) return;
 
                         if (!response || !response.success) {
-                            setAiDurum('fail', (response && response.message) || 'KM okunamadı. Lütfen elle giriniz.');
-                            kmInput.focus();
+                            kmOkunamadi((response && response.message) || 'KM okunamadı. Fotoğrafı yeniden çekin.');
                             return;
                         }
                         const veri = response.data || {};
                         if (!veri.okundu || !veri.km) {
-                            setAiDurum('fail', 'KM net okunamadı. Fotoğrafı yakından çekebilir veya KM\'yi elle girebilirsiniz.');
-                            kmInput.focus();
+                            kmOkunamadi('KM net okunamadı. Göstergeye yaklaşın, yansımayı önleyin ve fotoğrafı yeniden çekin.');
                             return;
                         }
-                        if (kmElleGirildi) {
-                            setAiDurum('warn', 'Okunan değer: ' + Number(veri.km).toLocaleString('tr-TR') + ' KM. Girdiğiniz değer korundu.');
-                            return;
-                        }
+                        kmOkundu = true;
                         kmYaz(parseInt(veri.km, 10));
                         if (currentLastKm > 0 && veri.km < currentLastKm) {
-                            setAiDurum('warn', 'Okunan değer önceki KM\'den (' + currentLastKm.toLocaleString('tr-TR') + ') düşük. Lütfen kontrol edin.');
+                            setAiDurum('warn', 'Okunan değer önceki KM\'den (' + currentLastKm.toLocaleString('tr-TR') + ') düşük. Doğru göstergeyi çektiğinizden emin olun.');
                         } else if (veri.ondalik_hane) {
-                            setAiDurum('warn', 'Yapay zekâ okudu. Ondalık hane yok sayıldı, lütfen kontrol edin.');
+                            setAiDurum('warn', 'KM fotoğraftan okundu. Ondalık hane yok sayıldı; yanlışsa fotoğrafı yeniden çekin.');
                         } else {
-                            setAiDurum('ok', 'Yapay zekâ okudu · Lütfen değeri kontrol edin.');
+                            setAiDurum('ok', 'KM fotoğraftan okundu. Yanlışsa fotoğrafı yeniden çekin.');
                         }
                     } catch (error) {
                         console.error('KM fotoğraf okuma hatası:', error);
                         if (sayac === okumaSayaci) {
-                            setAiDurum('fail', 'KM okunamadı. Lütfen elle giriniz.');
+                            kmOkunamadi('KM okunamadı. Fotoğrafı yeniden çekin.');
                         }
                     } finally {
                         if (sayac === okumaSayaci) shot.classList.remove('is-reading');
@@ -443,11 +448,6 @@
 
                 fetchLastKm();
 
-                kmInput.addEventListener('input', () => {
-                    kmElleGirildi = true;
-                    kmWrap.classList.remove('is-ai');
-                });
-
                 const noteToggle = document.getElementById('km-note-toggle');
                 if (noteToggle) {
                     noteToggle.addEventListener('click', () => {
@@ -494,14 +494,13 @@
 
                         const rInput = document.getElementById('km-resim-input');
                         if (!editData && rInput.files.length === 0) {
-                            Alert.warning('Fotoğraf Zorunlu', 'Lütfen KM gösterge fotoğrafını çekiniz veya yükleyiniz.');
+                            Alert.warning('Fotoğraf Zorunlu', 'Lütfen KM gösterge fotoğrafını çekiniz.');
                             return;
                         }
 
                         const bitisKm = parseInt(f.querySelector('[name=bitis_km]').value);
-                        if (!bitisKm || bitisKm <= 0) {
-                            Alert.warning('KM Girilmedi', 'Lütfen KM değerini giriniz.');
-                            kmInput.focus();
+                        if (!kmOkundu || !bitisKm || bitisKm <= 0) {
+                            Alert.warning('KM Okunamadı', 'KM değeri yalnızca gösterge fotoğrafından okunur. Lütfen fotoğrafı net biçimde yeniden çekiniz.');
                             return;
                         }
                         if (currentLastKm > 0 && bitisKm < currentLastKm) {

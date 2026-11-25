@@ -5899,6 +5899,21 @@ try {
                 response(false, null, 'Seçilen araç aktif olarak size zimmetli değil.');
             }
 
+            $yeniFotoVar = isset($_FILES['resim']) && $_FILES['resim']['error'] === UPLOAD_ERR_OK;
+            $guvenilirOkuma = false;
+            if ($yeniFotoVar) {
+                $okunan = $_SESSION['km_foto_dogrulanan'][$arac_id] ?? null;
+                if (!$okunan || time() - (int) $okunan['zaman'] > 1800 || (int) $okunan['km'] !== $bitis_km) {
+                    response(false, null, 'KM değeri fotoğraftan okunmadı. Lütfen göstergenin fotoğrafını net biçimde yeniden çekin.');
+                }
+                $guvenilirOkuma = (int) ($okunan['guven'] ?? 0) >= 90;
+            } else {
+                $mevcutKm = $id > 0 ? $KmBildirim->getPersonelKm($id, (int) $personel_id) : null;
+                if ($mevcutKm === null || $mevcutKm !== $bitis_km) {
+                    response(false, null, 'KM değeri elle girilemez. Lütfen göstergenin fotoğrafını çekiniz.');
+                }
+            }
+
             // KM Doğrulaması (Backend)
             $lastKm = $KmBildirim->getLastKm($arac_id, $tarih, $tur, $id);
             if ($bitis_km < $lastKm) {
@@ -5962,7 +5977,7 @@ try {
                 // Analiz hatası bildirim kaydını bozmaz; kayıt manuel onayda kalır.
                 try {
                     $aiKontrol = new \App\Service\KmBildirimAiKontrolService();
-                    $aiSonuc = $aiKontrol->kontrolEtVeOnayla([$kayitId], null);
+                    $aiSonuc = $aiKontrol->kontrolEtVeOnayla([$kayitId], null, $guvenilirOkuma);
                 } catch (\Throwable $e) {
                     error_log("PWA KM otomatik AI kontrol hatası (ID {$kayitId}): " . $e->getMessage());
                 }
@@ -6064,7 +6079,7 @@ try {
                 static fn($zaman) => $simdi - (int) $zaman < 600
             ));
             if (count($okumalar) >= 12) {
-                response(false, null, 'Çok sık fotoğraf okutuldu. Lütfen biraz bekleyin veya KM değerini elle giriniz.');
+                response(false, null, 'Çok sık fotoğraf okutuldu. Lütfen biraz bekleyip tekrar deneyiniz.');
             }
             $okumalar[] = $simdi;
             $_SESSION['km_foto_okumalari'] = $okumalar;
@@ -6087,10 +6102,17 @@ try {
                 $okunan = (new \App\Service\KmBildirimAiKontrolService())->fotografKmOku($dosya['tmp_name'], $dosyaMime);
             } catch (\Throwable $e) {
                 error_log('PWA KM fotoğraf okuma hatası (personel ' . (int) $personel_id . ', araç ' . $arac_id . '): ' . $e->getMessage());
-                response(false, null, 'Fotoğraftan KM okunamadı. KM değerini elle girebilirsiniz.');
+                response(false, null, 'Fotoğraftan KM okunamadı. Lütfen fotoğrafı yeniden çekiniz.');
             }
 
             $okunduMu = $okunan['km'] !== null && $okunan['gosterge_gorunur'] && $okunan['guven'] >= 60;
+            @session_start();
+            if ($okunduMu) {
+                $_SESSION['km_foto_dogrulanan'][$arac_id] = ['km' => (int) $okunan['km'], 'guven' => (int) $okunan['guven'], 'zaman' => time()];
+            } else {
+                unset($_SESSION['km_foto_dogrulanan'][$arac_id]);
+            }
+            session_write_close();
             $logKullanici = (int) ($_SESSION['user_id'] ?? 0);
             $logMesaj = 'Personel ID: ' . (int) $personel_id . ', Araç ID: ' . $arac_id . ', Sonuç: '
                 . ($okunduMu ? 'KM ' . $okunan['km'] . ' okundu (güven %' . $okunan['guven'] . ')' : 'okunamadı');
