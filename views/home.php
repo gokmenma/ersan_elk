@@ -1970,11 +1970,8 @@ foreach ($pinGroups as $pinMin => $pinNames) {
 <tbody>
 <tr data-widget="widget-ana-slider"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-ana-slider" checked><span>Haberler ve Duyurular</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
 <tr data-widget="widget-personel-arac-ozet"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-personel-arac-ozet" checked><span>Personel ve Araç Durumu</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
-<?php if (Gate::allowsAny(["talepler", "personel-takip/list", "nobet/list"])): ?>
-<tr data-widget="widget-talep-nobet-ozet"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-talep-nobet-ozet" checked><span>Bekleyen Talep</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
-<?php endif; ?>
 <tr data-widget="widget-bildirimler"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-bildirimler" checked><span>Görev ve Bildirimler</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
-<tr data-widget="widget-talepler"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-talepler" checked><span>Arıza/İzin/Avans Talepleri</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
+<tr data-widget="widget-talepler"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-talepler" checked><span>Talep Yönetimi</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
 <?php if (Gate::allows("ana_sayfa_izinli_personel_karti") || $izinModel->getRestrictedDept() !== null): ?>
 <tr data-widget="widget-izindekiler"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-izindekiler" checked><span>İzinde Olan Personeller</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
 <?php endif; ?>
@@ -5351,6 +5348,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                             if ($td.find('select').length) return;
                             const kind = $td.attr('data-kind');
                             $td.append(dashSizeSelect(kind, kind === 'cols' ? dashWidthOptions : dashHeightOptions));
+                            $td.append('<span class="dash-size-fixed text-muted" style="display:none;font-size:12px;">Sabit alan</span>');
                         });
                     });
                 }
@@ -5369,7 +5367,9 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                     $('#dash-card-settings-list tr[data-widget]').each(function () {
                         const $row = $(this);
                         const widget = $('#' + $row.attr('data-widget'));
-                        $row.find('select').prop('disabled', !(widget.length > 0 && widget.closest('#dashboard-widgets').length > 0));
+                        const sizable = widget.length > 0 && widget.closest('#dashboard-widgets').length > 0;
+                        $row.find('select').toggle(sizable);
+                        $row.find('.dash-size-fixed').toggle(!sizable);
                         setDashSizeValue($row.find('select.dash-size-select[data-kind="cols"]')[0], widget.attr('data-grid-cols') || '', '/12');
                         setDashSizeValue($row.find('select.dash-size-select[data-kind="height"]')[0], widget.attr('data-grid-height') || '', ' px');
                     });
@@ -5523,7 +5523,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                             'widget-bekleyen-talepler'       : 'Bekleyen Talepler',
                             'widget-gec-kalanlar'            : 'Geç Kalanlar',
                             'widget-nobetciler'              : 'Bugünkü Nöbetçiler',
-                            'widget-talep-nobet-ozet'        : 'Bekleyen Talep',
+                            'widget-talep-nobet-ozet'        : 'Nöbetçi ve Talep Özeti',
                             'widget-gunluk-muhurleme'        : 'Günlük Mühürleme',
                             'widget-gunluk-kesme-acma'       : 'Günlük Kesme/Açma',
                             'widget-gunluk-endeks-okuma'     : 'Endeks Okuma',
