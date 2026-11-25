@@ -1103,8 +1103,8 @@ class EInvoiceModel extends Model
             ) t ON t.fatura_id = f.id
             WHERE $where");
         $filteredStmt->execute($bind + [
-            'summary_month_start' => date('Y-m-01'),
-            'summary_month_end' => date('Y-m-t')
+            'summary_month_start' => !empty($params['baslangic_tarihi']) ? date('Y-m-d', strtotime($params['baslangic_tarihi'])) : '1000-01-01',
+            'summary_month_end' => !empty($params['bitis_tarihi']) ? date('Y-m-d', strtotime($params['bitis_tarihi'])) : '9999-12-31'
         ]);
         $summary = $filteredStmt->fetch(PDO::FETCH_ASSOC) ?: [];
         $recordsFiltered = (int)($summary['toplam_adet'] ?? 0);

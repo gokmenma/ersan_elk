@@ -202,6 +202,24 @@ $(document).ready(function() {
         if (document.getElementById('stat_earsiv_adet')) document.getElementById('stat_earsiv_adet').textContent = d.earsiv_adet || 0;
         if (document.getElementById('stat_toplam_tutar')) document.getElementById('stat_toplam_tutar').textContent = formatMoney(d.toplam_tutar);
         if (document.getElementById('stat_bu_ay_tutar')) document.getElementById('stat_bu_ay_tutar').textContent = formatMoney(d.bu_ay_tutar);
+        const badgeEl = document.getElementById('stat_donem_badge');
+        if (badgeEl) {
+            let badgeText = 'Tüm Dönemler';
+            if (currentStartDate && currentEndDate) {
+                const [sy, sm, sd] = currentStartDate.split('-').map(Number);
+                const [ey, em, ed] = currentEndDate.split('-').map(Number);
+                const p2 = (n) => String(n).padStart(2, '0');
+                if (sy === ey && sm === em && sd === 1 && ed === new Date(sy, sm, 0).getDate()) {
+                    badgeText = `${p2(sm)}/${sy} Dönemi`;
+                } else {
+                    badgeText = `${p2(sd)}.${p2(sm)}.${sy} - ${p2(ed)}.${p2(em)}.${ey}`;
+                }
+            } else if (currentStartDate || currentEndDate) {
+                badgeText = 'Özel Aralık';
+            }
+            badgeEl.textContent = badgeText;
+        }
+
     }
 
     let latestSummaryDraw = 0;

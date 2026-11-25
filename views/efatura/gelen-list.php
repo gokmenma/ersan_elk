@@ -133,7 +133,7 @@ $title = 'Gelen Faturalar';
                         </div>
 </div>
                     <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-subtext" id="stat_bu_ay_adet_text">Bu Ay: 0 Adet</span>
+                        <span class="summary-kpi-subtext" id="stat_bu_ay_adet_text">Dönem: 0 Adet</span>
                         <button type="button" class="btn btn-sm btn-subtle-primary rounded-pill px-2 py-0 status-quick-filter d-flex align-items-center gap-1 summary-pill-btn active" data-yanit="">
                             <i class="bx bx-filter"></i> Tümü
                         </button>
@@ -193,8 +193,8 @@ $title = 'Gelen Faturalar';
                         </div>
 </div>
                     <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-subtext text-muted">Bu Ay: <strong id="stat_bu_ay_tutar" class="text-dark">0,00 ₺</strong></span>
-                        <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">
+                        <span class="summary-kpi-subtext text-muted">Dönem: <strong id="stat_bu_ay_tutar" class="text-dark">0,00 ₺</strong></span>
+                        <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold" id="stat_donem_badge">
                             <?= date('m/Y') ?> Dönemi
                         </span>
                     </div>

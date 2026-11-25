@@ -219,7 +219,7 @@ $title = 'Giden Faturalar';
             <div class="card summary-kpi-card h-100 mb-0">
                 <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
                     <div class="d-flex justify-content-between align-items-center">
-                        <span class="summary-kpi-label">BU AY KESİLEN</span>
+                        <span class="summary-kpi-label" id="stat_donem_label">DÖNEM KESİLEN</span>
                         <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
                             <i class="bx bx-calendar"></i>
                         </div>

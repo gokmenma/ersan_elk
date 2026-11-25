@@ -218,6 +218,24 @@ $(document).ready(function() {
         if (document.getElementById('stat_iptal_tutar')) {
             document.getElementById('stat_iptal_tutar').textContent = formatMoney(d.iptal_tutar);
         }
+        const badgeEl = document.getElementById('stat_donem_badge');
+        if (badgeEl) {
+            const ymdParts = (v) => v.split('-').map(Number);
+            let badgeText = 'Tüm Dönemler';
+            if (currentStartDate && currentEndDate) {
+                const [sy, sm, sd] = ymdParts(currentStartDate);
+                const [ey, em, ed] = ymdParts(currentEndDate);
+                const monthEnd = new Date(sy, sm, 0).getDate();
+                if (sy === ey && sm === em && sd === 1 && ed === monthEnd) {
+                    badgeText = `${String(sm).padStart(2, '0')}/${sy} Dönemi`;
+                } else {
+                    badgeText = `${String(sd).padStart(2, '0')}.${String(sm).padStart(2, '0')}.${sy} - ${String(ed).padStart(2, '0')}.${String(em).padStart(2, '0')}.${ey}`;
+                }
+            } else if (currentStartDate || currentEndDate) {
+                badgeText = 'Özel Aralık';
+            }
+            badgeEl.textContent = badgeText;
+        }
         if (document.getElementById('stat_bu_ay_adet')) {
             document.getElementById('stat_bu_ay_adet').textContent = d.bu_ay_adet || 0;
         }

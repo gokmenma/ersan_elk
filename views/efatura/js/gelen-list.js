@@ -206,11 +206,29 @@ $(document).ready(function() {
         const formatMoney = (v) => Number(v || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
 
         if (document.getElementById('stat_toplam_adet')) document.getElementById('stat_toplam_adet').textContent = d.toplam_adet || 0;
-        if (document.getElementById('stat_bu_ay_adet_text')) document.getElementById('stat_bu_ay_adet_text').textContent = `Bu Ay: ${d.bu_ay_adet || 0} Adet`;
+        if (document.getElementById('stat_bu_ay_adet_text')) document.getElementById('stat_bu_ay_adet_text').textContent = `Dönem: ${d.bu_ay_adet || 0} Adet`;
         if (document.getElementById('stat_kabul_adet')) document.getElementById('stat_kabul_adet').textContent = d.kabul_adet || 0;
         if (document.getElementById('stat_bekleyen_adet')) document.getElementById('stat_bekleyen_adet').textContent = d.bekleyen_adet || 0;
         if (document.getElementById('stat_toplam_tutar')) document.getElementById('stat_toplam_tutar').textContent = formatMoney(d.toplam_tutar);
         if (document.getElementById('stat_bu_ay_tutar')) document.getElementById('stat_bu_ay_tutar').textContent = formatMoney(d.bu_ay_tutar);
+        const badgeEl = document.getElementById('stat_donem_badge');
+        if (badgeEl) {
+            let badgeText = 'Tüm Dönemler';
+            if (currentStartDate && currentEndDate) {
+                const [sy, sm, sd] = currentStartDate.split('-').map(Number);
+                const [ey, em, ed] = currentEndDate.split('-').map(Number);
+                const p2 = (n) => String(n).padStart(2, '0');
+                if (sy === ey && sm === em && sd === 1 && ed === new Date(sy, sm, 0).getDate()) {
+                    badgeText = `${p2(sm)}/${sy} Dönemi`;
+                } else {
+                    badgeText = `${p2(sd)}.${p2(sm)}.${sy} - ${p2(ed)}.${p2(em)}.${ey}`;
+                }
+            } else if (currentStartDate || currentEndDate) {
+                badgeText = 'Özel Aralık';
+            }
+            badgeEl.textContent = badgeText;
+        }
+
     }
 
     let latestSummaryDraw = 0;
