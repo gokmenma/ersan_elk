@@ -37,10 +37,15 @@ if (!$p || (int) $p->firma_id !== $firmaId || !empty($p->silinme_tarihi)) {
 $SablonModel = new SozlesmeSablonModel();
 $htmlSablon = $SablonModel->aktifHtml($firmaId);
 if (($_GET['onizleme'] ?? '') === 'html') {
-    if (!$htmlSablon) {
+    $htmlIcerik = $htmlSablon
+        ? (string) $htmlSablon->html_icerik
+        : SozlesmeSablonService::varsayilanHtml();
+    $cerceve = $htmlSablon ? ((int) $htmlSablon->sayfa_cercevesi === 1) : true;
+
+    if (trim($htmlIcerik) === '' || trim($htmlIcerik) === '<p></p>') {
         http_response_code(404);
         header('Content-Type: application/json; charset=UTF-8');
-        exit(json_encode(['status' => 'error', 'message' => 'Şablon web editöründe hazırlanmamış.'], JSON_UNESCAPED_UNICODE));
+        exit(json_encode(['status' => 'error', 'message' => 'Hizmet sözleşmesi şablonu bulunamadı.'], JSON_UNESCAPED_UNICODE));
     }
     try {
         (new SystemLogModel())->logAction(
@@ -59,8 +64,8 @@ if (($_GET['onizleme'] ?? '') === 'html') {
     header('X-Content-Type-Options: nosniff');
     exit(json_encode([
         'status' => 'success',
-        'html' => SozlesmeSablonService::htmlDoldur((string) $htmlSablon->html_icerik, SozlesmeSablonService::degerler($p)),
-        'cerceve' => (int) $htmlSablon->sayfa_cercevesi === 1,
+        'html' => SozlesmeSablonService::htmlDoldur($htmlIcerik, SozlesmeSablonService::degerler($p)),
+        'cerceve' => $cerceve,
     ], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP));
 }
 

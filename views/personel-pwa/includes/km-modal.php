@@ -119,6 +119,104 @@
         }
     }
 
+    function kmKameraAc() {
+        return new Promise((resolve, reject) => {
+            if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                reject(new Error('Kamera erişimi desteklenmiyor.'));
+                return;
+            }
+            navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+                audio: false
+            }).then(stream => {
+                const track = stream.getVideoTracks()[0];
+                const overlay = document.createElement('div');
+                overlay.id = 'km-kamera-katman';
+                overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483000;background:#000;overflow:hidden;font-family:inherit;';
+                overlay.innerHTML = `
+                    <video id="km-kamera-video" playsinline muted autoplay style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></video>
+                    <div id="km-kamera-cerceve" style="position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);width:min(92vw,560px);aspect-ratio:3/1;border:3px solid #fff;border-radius:16px;box-shadow:0 0 0 100vmax rgba(0,0,0,.62);pointer-events:none;"></div>
+                    <div style="position:absolute;left:16px;right:16px;top:calc(env(safe-area-inset-top,0px) + 70px);text-align:center;color:#fff;font-weight:700;font-size:15px;text-shadow:0 1px 6px rgba(0,0,0,.7);">Kilometre rakamlarını çerçevenin içine sığdırın</div>
+                    <div style="position:absolute;left:16px;right:16px;top:calc(38% + min(46vw,280px) / 3 + 16px);text-align:center;color:rgba(255,255,255,.85);font-size:13px;font-weight:600;text-shadow:0 1px 6px rgba(0,0,0,.7);">Yansıma olmadan, net ve yakından çekin</div>
+                    <button type="button" id="km-kamera-kapat" aria-label="Kapat" style="position:absolute;left:16px;top:calc(env(safe-area-inset-top,0px) + 14px);width:44px;height:44px;border-radius:50%;border:0;background:rgba(0,0,0,.55);color:#fff;font-size:22px;line-height:1;">&times;</button>
+                    <button type="button" id="km-kamera-fener" aria-label="Fener" style="display:none;position:absolute;right:16px;top:calc(env(safe-area-inset-top,0px) + 14px);height:44px;padding:0 16px;border-radius:22px;border:0;background:rgba(0,0,0,.55);color:#fff;font-weight:700;">Fener</button>
+                    <button type="button" id="km-kamera-yedek" style="position:absolute;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 34px);height:44px;padding:0 14px;border-radius:22px;border:0;background:rgba(0,0,0,.55);color:#fff;font-size:12px;font-weight:600;">Sistem kamerası</button>
+                    <button type="button" id="km-kamera-deklansor" aria-label="Fotoğraf çek" style="position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 24px);width:74px;height:74px;border-radius:50%;border:5px solid #fff;background:rgba(255,255,255,.25);"></button>`;
+                document.body.appendChild(overlay);
+
+                const video = overlay.querySelector('#km-kamera-video');
+                video.srcObject = stream;
+                video.play().catch(() => {});
+
+                const bitir = (sonuc) => {
+                    try { stream.getTracks().forEach(t => t.stop()); } catch (e) {}
+                    overlay.remove();
+                    resolve(sonuc);
+                };
+
+                try {
+                    const yetenek = track.getCapabilities ? track.getCapabilities() : {};
+                    if (yetenek.torch) {
+                        const fener = overlay.querySelector('#km-kamera-fener');
+                        let acik = false;
+                        fener.style.display = 'block';
+                        fener.addEventListener('click', async () => {
+                            acik = !acik;
+                            try { await track.applyConstraints({ advanced: [{ torch: acik }] }); } catch (e) { acik = !acik; }
+                            fener.style.background = acik ? 'rgba(250,204,21,.9)' : 'rgba(0,0,0,.55)';
+                            fener.style.color = acik ? '#000' : '#fff';
+                        });
+                    }
+                } catch (e) {}
+
+                overlay.querySelector('#km-kamera-kapat').addEventListener('click', () => bitir({ iptal: true }));
+                overlay.querySelector('#km-kamera-yedek').addEventListener('click', () => bitir(null));
+                overlay.querySelector('#km-kamera-deklansor').addEventListener('click', async () => {
+                    const vw = video.videoWidth, vh = video.videoHeight;
+                    if (!vw || !vh) return;
+                    const ov = overlay.getBoundingClientRect();
+                    const fr = overlay.querySelector('#km-kamera-cerceve').getBoundingClientRect();
+                    const scale = Math.max(ov.width / vw, ov.height / vh);
+                    const offX = (vw * scale - ov.width) / 2;
+                    const offY = (vh * scale - ov.height) / 2;
+                    let sw = fr.width / scale, sh = fr.height / scale;
+                    const pay = sw * 0.04;
+                    let sx = (fr.left - ov.left + offX) / scale - pay;
+                    let sy = (fr.top - ov.top + offY) / scale - pay;
+                    sw += pay * 2;
+                    sh += pay * 2;
+                    sx = Math.max(0, sx);
+                    sy = Math.max(0, sy);
+                    sw = Math.min(vw - sx, sw);
+                    sh = Math.min(vh - sy, sh);
+
+                    const fullKenar = Math.min(1, 1920 / Math.max(vw, vh));
+                    const full = document.createElement('canvas');
+                    full.width = Math.round(vw * fullKenar);
+                    full.height = Math.round(vh * fullKenar);
+                    full.getContext('2d').drawImage(video, 0, 0, full.width, full.height);
+
+                    const kirpKenar = Math.min(1, 1600 / Math.max(sw, sh));
+                    const kirp = document.createElement('canvas');
+                    kirp.width = Math.max(1, Math.round(sw * kirpKenar));
+                    kirp.height = Math.max(1, Math.round(sh * kirpKenar));
+                    kirp.getContext('2d').drawImage(video, sx, sy, sw, sh, 0, 0, kirp.width, kirp.height);
+
+                    const blobAl = (canvas, kalite) => new Promise(r => canvas.toBlob(r, 'image/jpeg', kalite));
+                    const [fullBlob, kirpBlob] = await Promise.all([blobAl(full, 0.9), blobAl(kirp, 0.92)]);
+                    if (!fullBlob || !kirpBlob) {
+                        bitir(null);
+                        return;
+                    }
+                    bitir({
+                        full: new File([fullBlob], 'km-fotografi.jpg', { type: 'image/jpeg', lastModified: Date.now() }),
+                        crop: new File([kirpBlob], 'km-kirpim.jpg', { type: 'image/jpeg', lastModified: Date.now() })
+                    });
+                });
+            }).catch(reject);
+        });
+    }
+
     async function openKmBildirModal(editData = null, zorunluSabah = false, gorevBitirSonrasi = false, oncekiAksamEksik = false, istenenTur = null) {
         if (!sharedAktifAracId && !editData) {
             Alert.warning('Araç Zimmeti Yok', 'Zimmetinizde aktif bir araç bulunmuyor.');
@@ -198,7 +296,7 @@
                                 <div class="pwa-km-shot-empty" id="resim-placeholder">
                                     <div class="pwa-fx-orb pwa-fx-orb--float"><span class="material-symbols-outlined">add_a_photo</span></div>
                                     <span class="pwa-km-drop-text">Gösterge fotoğrafını çekin</span>
-                                    <span class="pwa-km-drop-sub">Rakamlar net ve yansımasız görünsün · KM otomatik okunur</span>
+                                    <span class="pwa-km-drop-sub">Rakamları çerçeveye sığdırın · KM otomatik okunur</span>
                                 </div>
                                 <div class="pwa-km-shot-view">
                                     <img id="resim-preview" alt="" src="${kmEsc(mevcutResim)}">
@@ -280,6 +378,7 @@
             onOpen: () => {
                 let currentLastKm = 0;
                 let kmOkundu = !!editData;
+                let secilenResim = null;
                 let okumaSayaci = 0;
                 const modalEl = document.getElementById('pwa-full-modal');
                 if (modalEl) modalEl.classList.add('pwa-km-modal');
@@ -326,7 +425,7 @@
                     setAiDurum('fail', metin);
                 };
 
-                const fotodanKmOku = async (file) => {
+                const fotodanKmOku = async (file, kirpim = null) => {
                     const sayac = ++okumaSayaci;
                     kmOkundu = false;
                     kmInput.value = '';
@@ -334,8 +433,13 @@
                     shot.classList.add('is-reading');
                     setAiDurum('reading', 'Göstergedeki KM okunuyor…');
                     try {
-                        const kucuk = await kmFotoKucult(file);
-                        const response = await API.request('read-km-photo', { arac_id: aracId, resim: kucuk }, false);
+                        const okunacak = kirpim || await kmFotoKucult(file);
+                        const istek = { arac_id: aracId, resim: okunacak };
+                        if (kirpim) istek.kirpim = '1';
+                        istek.tarih = document.getElementById('km-tarih-input').value;
+                        istek.tur = document.getElementById('km-tur-input').value;
+                        if (editData && editData.id) istek.exclude_id = editData.id;
+                        const response = await API.request('read-km-photo', istek, false);
                         if (sayac !== okumaSayaci) return;
 
                         if (!response || !response.success) {
@@ -460,21 +564,47 @@
                 }
 
                 const resimInput = document.getElementById('km-resim-input');
+                const fotografUygula = (file, kirpim) => {
+                    secilenResim = file;
+                    const preview = document.getElementById('resim-preview');
+                    const onizleme = URL.createObjectURL(file);
+                    preview.onload = () => URL.revokeObjectURL(onizleme);
+                    preview.src = onizleme;
+                    shot.classList.add('has-image');
+                    fotodanKmOku(file, kirpim);
+                };
+                const kameraIleCek = async () => {
+                    let sonuc = null;
+                    try {
+                        sonuc = await kmKameraAc();
+                    } catch (hata) {
+                        console.warn('Çerçeveli kamera açılamadı, sistem kamerasına geçiliyor:', hata);
+                    }
+                    if (sonuc && sonuc.iptal) return;
+                    if (!sonuc) {
+                        if (resimInput) resimInput.click();
+                        return;
+                    }
+                    fotografUygula(sonuc.full, sonuc.crop);
+                };
+                const kameraDestekli = !!(window.isSecureContext && navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+                if (shot && kameraDestekli) {
+                    shot.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        kameraIleCek();
+                    });
+                }
                 if (resimInput) {
                     resimInput.addEventListener('change', function (e) {
                         const file = e.target.files[0];
                         if (!file) return;
-                        const reader = new FileReader();
-                        reader.onload = function (event) {
-                            const preview = document.getElementById('resim-preview');
-                            preview.src = event.target.result;
-                            shot.classList.add('has-image');
-                        };
-                        reader.readAsDataURL(file);
-                        fotodanKmOku(file);
+                        fotografUygula(file, null);
                     });
-
-                    if (!editData) {
+                }
+                if (!editData) {
+                    if (kameraDestekli) {
+                        kameraIleCek();
+                    } else if (resimInput) {
                         try {
                             resimInput.click();
                         } catch (e) {
@@ -493,7 +623,7 @@
                         const btnText = document.getElementById('km-submit-text');
 
                         const rInput = document.getElementById('km-resim-input');
-                        if (!editData && rInput.files.length === 0) {
+                        if (!editData && !secilenResim) {
                             Alert.warning('Fotoğraf Zorunlu', 'Lütfen KM gösterge fotoğrafını çekiniz.');
                             return;
                         }
@@ -512,7 +642,7 @@
                         btnText.innerText = 'FOTOĞRAF HAZIRLANIYOR...';
                         btn.classList.add('opacity-70');
 
-                        let resimFile = rInput.files[0];
+                        let resimFile = secilenResim;
                         if (resimFile) {
                             const now = new Date();
                             const timestamp = now.toLocaleDateString('tr-TR') + ' ' + now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });

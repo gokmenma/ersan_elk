@@ -6096,16 +6096,28 @@ try {
                 response(false, null, 'Yalnızca JPG, PNG veya WEBP fotoğraf okutabilirsiniz.');
             }
 
+            $okumaTarihi = (string) ($_POST['tarih'] ?? '');
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $okumaTarihi)) {
+                $okumaTarihi = date('Y-m-d');
+            }
+            $okumaTuru = ($_POST['tur'] ?? '') === 'aksam' ? 'aksam' : 'sabah';
+            $oncekiKm = null;
+            try {
+                $oncekiKm = (int) (new \App\Model\AracKmBildirimModel())->getLastKm($arac_id, $okumaTarihi, $okumaTuru, (int) ($_POST['exclude_id'] ?? 0));
+            } catch (\Throwable $e) {
+                error_log('PWA KM önceki değer alınamadı: ' . $e->getMessage());
+            }
+
             session_write_close();
 
             try {
-                $okunan = (new \App\Service\KmBildirimAiKontrolService())->fotografKmOku($dosya['tmp_name'], $dosyaMime);
+                $okunan = (new \App\Service\KmBildirimAiKontrolService())->fotografKmOku($dosya['tmp_name'], $dosyaMime, ($_POST['kirpim'] ?? '') === '1', $oncekiKm);
             } catch (\Throwable $e) {
                 error_log('PWA KM fotoğraf okuma hatası (personel ' . (int) $personel_id . ', araç ' . $arac_id . '): ' . $e->getMessage());
                 response(false, null, 'Fotoğraftan KM okunamadı. Lütfen fotoğrafı yeniden çekiniz.');
             }
 
-            $okunduMu = $okunan['km'] !== null && $okunan['gosterge_gorunur'] && $okunan['guven'] >= 60;
+            $okunduMu = $okunan['km'] !== null && $okunan['gosterge_gorunur'] && !empty($okunan['dogrulandi']) && $okunan['guven'] >= 90;
             @session_start();
             if ($okunduMu) {
                 $_SESSION['km_foto_dogrulanan'][$arac_id] = ['km' => (int) $okunan['km'], 'guven' => (int) $okunan['guven'], 'zaman' => time()];
