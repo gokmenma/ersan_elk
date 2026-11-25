@@ -622,6 +622,9 @@ class PersonelHareketleriModel extends Model
             } elseif ($p->durum === 'molada') {
                 $grup = 'izinli';
                 $ozet['molada']++;
+            } elseif (in_array($p->personel_id, $izinliler)) {
+                $grup = 'izinli';
+                $ozet['izinli']++;
             } else {
                 $grup = 'baslamadi';
                 $ozet['baslamadi']++;
