@@ -1971,7 +1971,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
 <tr data-widget="widget-ana-slider"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-ana-slider" checked><span>Haberler ve Duyurular</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
 <tr data-widget="widget-personel-arac-ozet"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-personel-arac-ozet" checked><span>Personel ve Araç Durumu</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
 <?php if (Gate::allowsAny(["talepler", "personel-takip/list", "nobet/list"])): ?>
-<tr data-widget="widget-talep-nobet-ozet"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-talep-nobet-ozet" checked><span>Talep, Geç Kalan ve Nöbetçi Özeti</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
+<tr data-widget="widget-talep-nobet-ozet"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-talep-nobet-ozet" checked><span>Bekleyen Talep</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
 <?php endif; ?>
 <tr data-widget="widget-bildirimler"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-bildirimler" checked><span>Görev ve Bildirimler</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
 <tr data-widget="widget-talepler"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-talepler" checked><span>Arıza/İzin/Avans Talepleri</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
@@ -5370,8 +5370,8 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                         const $row = $(this);
                         const widget = $('#' + $row.attr('data-widget'));
                         $row.find('select').prop('disabled', !(widget.length > 0 && widget.closest('#dashboard-widgets').length > 0));
-                        setDashSizeValue($row.find('[data-kind="cols"]')[0], widget.attr('data-grid-cols') || '', '/12');
-                        setDashSizeValue($row.find('[data-kind="height"]')[0], widget.attr('data-grid-height') || '', ' px');
+                        setDashSizeValue($row.find('select.dash-size-select[data-kind="cols"]')[0], widget.attr('data-grid-cols') || '', '/12');
+                        setDashSizeValue($row.find('select.dash-size-select[data-kind="height"]')[0], widget.attr('data-grid-height') || '', ' px');
                     });
                 }
 
@@ -5405,8 +5405,8 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                     const $row = $(this).closest('tr');
                     const widget = $('#' + $row.attr('data-widget'));
                     if (!widget.length) return;
-                    const cols = parseInt($row.find('[data-kind="cols"]').val(), 10) || 0;
-                    const height = parseInt($row.find('[data-kind="height"]').val(), 10) || 0;
+                    const cols = parseInt($row.find('select.dash-size-select[data-kind="cols"]').val(), 10) || 0;
+                    const height = parseInt($row.find('select.dash-size-select[data-kind="height"]').val(), 10) || 0;
                     applyDashSize(widget, cols, height);
                 });
 
@@ -5523,7 +5523,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                             'widget-bekleyen-talepler'       : 'Bekleyen Talepler',
                             'widget-gec-kalanlar'            : 'Geç Kalanlar',
                             'widget-nobetciler'              : 'Bugünkü Nöbetçiler',
-                            'widget-talep-nobet-ozet'        : 'Talep, Geç Kalan ve Nöbetçi Özeti',
+                            'widget-talep-nobet-ozet'        : 'Bekleyen Talep',
                             'widget-gunluk-muhurleme'        : 'Günlük Mühürleme',
                             'widget-gunluk-kesme-acma'       : 'Günlük Kesme/Açma',
                             'widget-gunluk-endeks-okuma'     : 'Endeks Okuma',
@@ -6077,7 +6077,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
 
                     // 1. Client-Side Cache (Instant Feel)
                     const isFreeLayout = $('#switch-free-layout').is(':checked');
-                    const cacheKey = 'dashboard_cache_v12_<?php echo $_SESSION['user_id']; ?>' + (isFreeLayout ? '_free' : '_grid');
+                    const cacheKey = 'dashboard_cache_v13_<?php echo $_SESSION['user_id']; ?>' + (isFreeLayout ? '_free' : '_grid');
                     const cachedData = localStorage.getItem(cacheKey);
                     
                     if (cachedData && !force) {
@@ -6147,7 +6147,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                             if (res.status === 'success') {
                                 try {
                                     Object.keys(localStorage).forEach(function (k) {
-                                        if (k.indexOf('dashboard_cache_') === 0 && k.indexOf('dashboard_cache_v12_') !== 0) localStorage.removeItem(k);
+                                        if (k.indexOf('dashboard_cache_') === 0 && k.indexOf('dashboard_cache_v13_') !== 0) localStorage.removeItem(k);
                                     });
                                     localStorage.setItem(cacheKey, JSON.stringify({
                                         stats: res.stats,
