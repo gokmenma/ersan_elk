@@ -72,6 +72,11 @@ $Hareket = new AparatHareketModel();
 
 try {
     if ($method === 'GET' && $action === 'overview') {
+        try {
+            (new AparatStokService())->otomatikKirmaSenkronize((int) $_SESSION['firma_id']);
+        } catch (Throwable $e) {
+            error_log('Aparat otomatik kırma senkronu: ' . $e->getMessage());
+        }
         $matris = $Stok->matris();
         $kritik = $Stok->kritikStoklar();
         $uyeler = $Stok->ekipUyeHaritasi();
@@ -102,8 +107,9 @@ try {
         }
         $aktifTipIds = array_column($tipler, 'id');
 
-        $ozet = ['depot' => 0, 'teams' => 0, 'field' => 0, 'critical' => (int) $kritik['toplam']];
+        $ozet = ['depot' => 0, 'teams' => 0, 'field' => 0, 'scrap' => 0, 'lost' => 0, 'critical' => (int) $kritik['toplam']];
         $depo = ['counts' => [], 'critical' => []];
+        $havuzlar = ['scrap' => ['counts' => []], 'lost' => ['counts' => []]];
         $ekipler = [];
 
         foreach ($matris['satirlar'] as $satir) {
@@ -118,6 +124,12 @@ try {
                 foreach ($depoKritik as $tipId => $seviye) {
                     $depo['critical'][(string) $tipId] = $seviye;
                 }
+                continue;
+            }
+            if ($satir['sahip_tipi'] === 'hurda' || $satir['sahip_tipi'] === 'kayip') {
+                $anahtar = $satir['sahip_tipi'] === 'hurda' ? 'scrap' : 'lost';
+                $ozet[$anahtar] = (int) $satir['toplam'];
+                $havuzlar[$anahtar]['counts'] = $adetler;
                 continue;
             }
             if ($satir['sahip_tipi'] === 'saha') {
@@ -147,13 +159,13 @@ try {
             ];
         }
 
-        $etiketler = ['depo_giris' => 'Depoya Giriş', 'depo_cikis' => 'Ekibe Verildi', 'depo_iade' => 'İade Alındı'];
+        $etiketler = ['depo_giris' => 'Depoya Giriş', 'depo_cikis' => 'Ekibe Verildi', 'depo_iade' => 'İade Alındı', 'depo_iade_hurda' => 'Bozuk İade'];
         $hareketler = [];
         foreach ($Hareket->sonDepoHareketleri(10) as $h) {
             $ekipId = (int) ($h['ekip_id'] ?? 0);
             $hareketler[] = [
-                'type' => (string) $h['hareket_tipi'],
-                'label' => $etiketler[$h['hareket_tipi']],
+                'type' => (string) $h['gorunen_tip'],
+                'label' => $etiketler[$h['gorunen_tip']],
                 'apparatus' => (string) $h['aparat_adi'],
                 'quantity' => abs((int) $h['adet']),
                 'team' => $ekipId > 0 ? (string) (($uyeler[$ekipId] ?? '') !== '' ? $uyeler[$ekipId] : $h['ekip_adi']) : '',
@@ -168,6 +180,7 @@ try {
             'summary' => $ozet,
             'types' => $tipler,
             'depot' => $depo,
+            'pools' => $havuzlar,
             'teams' => $ekipler,
             'movements' => $hareketler,
             'can_move' => $depoYetkisi,
@@ -183,7 +196,7 @@ try {
         $veri = is_array($veri) ? $veri : [];
 
         $tur = (string) ($veri['type'] ?? '');
-        if (!in_array($tur, ['depo_giris', 'depo_cikis', 'depo_iade'], true)) {
+        if (!in_array($tur, ['depo_giris', 'depo_cikis', 'depo_iade', 'depo_iade_hurda'], true)) {
             aparatMobilYanit(['success' => false, 'message' => 'Geçersiz işlem türü.'], 422);
         }
 

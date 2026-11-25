@@ -53,8 +53,8 @@ class AparatTipiModel extends Model
     public function ekle(array $veri, int $kullaniciId): int
     {
         $stmt = $this->db->prepare("INSERT INTO {$this->table}
-            (firma_id, ad, kod, renk, sira, aciklama, resim, depo_kritik_stok, ekip_kritik_stok, is_active, olusturan_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            (firma_id, ad, kod, renk, sira, aciklama, resim, depo_kritik_stok, ekip_kritik_stok, varsayilan_kirma, is_active, olusturan_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $this->firmaId(),
             $veri['ad'],
@@ -65,6 +65,7 @@ class AparatTipiModel extends Model
             $veri['resim'] ?? null,
             max(0, (int) ($veri['depo_kritik_stok'] ?? 0)),
             max(0, (int) ($veri['ekip_kritik_stok'] ?? 0)),
+            (int) ($veri['varsayilan_kirma'] ?? 0),
             isset($veri['is_active']) ? (int) $veri['is_active'] : 1,
             $kullaniciId,
         ]);
@@ -76,7 +77,7 @@ class AparatTipiModel extends Model
         $resimGuncelle = array_key_exists('resim', $veri);
         $sql = "UPDATE {$this->table}
             SET ad = ?, kod = ?, renk = ?, sira = ?, aciklama = ?,
-                depo_kritik_stok = ?, ekip_kritik_stok = ?, is_active = ?";
+                depo_kritik_stok = ?, ekip_kritik_stok = ?, varsayilan_kirma = ?, is_active = ?";
         if ($resimGuncelle) {
             $sql .= ", resim = ?";
         }
@@ -90,6 +91,7 @@ class AparatTipiModel extends Model
             $veri['aciklama'] ?? null,
             max(0, (int) ($veri['depo_kritik_stok'] ?? 0)),
             max(0, (int) ($veri['ekip_kritik_stok'] ?? 0)),
+            (int) ($veri['varsayilan_kirma'] ?? 0),
             isset($veri['is_active']) ? (int) $veri['is_active'] : 1,
         ];
 
@@ -107,6 +109,13 @@ class AparatTipiModel extends Model
     /**
      * Stoğu ya da hareketi olan tip silinmez; yalnızca pasife alınır.
      */
+    public function varsayilanKirmaTek(int $id): bool
+    {
+        $stmt = $this->db->prepare("UPDATE {$this->table} SET varsayilan_kirma = 0
+                                    WHERE firma_id = ? AND id <> ? AND varsayilan_kirma = 1");
+        return $stmt->execute([$this->firmaId(), $id]);
+    }
+
     public function kullanimdaMi(int $id): bool
     {
         $stmt = $this->db->prepare("SELECT

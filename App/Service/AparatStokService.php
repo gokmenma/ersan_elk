@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Model\AparatHareketModel;
+use App\Model\AparatOtomatikKirmaModel;
 use App\Model\AparatSayimModel;
 use App\Model\AparatStokModel;
 use App\Model\AparatTransferModel;
@@ -165,11 +166,7 @@ class AparatStokService
         }
 
         // Açmada aparat sahadan düşer; nereye gittiği aparatın durumuna bağlıdır.
-        $hedefHavuz = match ($aparatDurumu) {
-            'hasarli' => 'hurda',
-            'bulunamadi' => 'kayip',
-            default => 'ekip',
-        };
+        $hedefHavuz = $aparatDurumu === 'bulunamadi' ? 'kayip' : 'ekip';
 
         return [
             ['sahip_tipi' => 'saha', 'sahip_id' => 0, 'aparat_tip_id' => $tipId, 'adet' => -$adet],
@@ -444,7 +441,7 @@ class AparatStokService
             throw new Exception('Aparat tipi ve adet geçerli olmalıdır.');
         }
 
-        $ekipGerekli = in_array($tur, ['depo_cikis', 'depo_iade', 'hurda', 'kayip', 'acilis'], true);
+        $ekipGerekli = in_array($tur, ['depo_cikis', 'depo_iade', 'depo_iade_hurda', 'hurda', 'kayip', 'acilis'], true);
         if ($ekipGerekli) {
             if ($ekipId <= 0 || !$this->Stok->ekipGecerliMi($ekipId)) {
                 throw new Exception('Geçerli bir ekip seçilmedi.');
@@ -467,7 +464,7 @@ class AparatStokService
                 ['sahip_tipi' => 'ekip', 'sahip_id' => $ekipId, 'aparat_tip_id' => $tipId, 'adet' => -$adet],
                 ['sahip_tipi' => 'depo', 'sahip_id' => 0, 'aparat_tip_id' => $tipId, 'adet' => $adet],
             ],
-            'hurda' => [
+            'hurda', 'depo_iade_hurda' => [
                 ['sahip_tipi' => 'ekip', 'sahip_id' => $ekipId, 'aparat_tip_id' => $tipId, 'adet' => -$adet],
                 ['sahip_tipi' => 'hurda', 'sahip_id' => 0, 'aparat_tip_id' => $tipId, 'adet' => $adet],
             ],
@@ -488,11 +485,13 @@ class AparatStokService
 
         try {
             $sonuc = $this->Hareket->uygula($satirlar, [
-                'hareket_tipi' => $tur === 'acilis' ? 'acilis' : $tur,
+                'hareket_tipi' => $tur === 'depo_iade_hurda' ? 'hurda' : $tur,
                 'ekip_id' => $ekipGerekli ? $ekipId : null,
-                'referans_tipi' => 'manuel',
+                'referans_tipi' => $tur === 'depo_iade_hurda' ? 'bozuk_iade' : 'manuel',
                 'referans_id' => null,
-                'aciklama' => $aciklama ?: null,
+                'aciklama' => $tur === 'depo_iade_hurda'
+                    ? trim('Bozuk iade alındı, hurdaya ayrıldı. ' . $aciklama)
+                    : ($aciklama ?: null),
                 'kaydeden_id' => $kullaniciId ?: null,
             ]);
 
@@ -513,7 +512,7 @@ class AparatStokService
         $this->logla(
             $kullaniciId,
             'Aparat Havuz Hareketi',
-            sprintf('%s: tip #%d, %d adet%s', AparatHareketModel::HAREKET_TIPLERI[$tur === 'acilis' ? 'acilis' : $tur],
+            sprintf('%s: tip #%d, %d adet%s', $tur === 'depo_iade_hurda' ? 'Bozuk İade (Hurda)' : AparatHareketModel::HAREKET_TIPLERI[$tur],
                 $tipId, $adet, $ekipGerekli ? ', ekip: ' . $this->Stok->ekipAdi($ekipId) : ''),
             SystemLogModel::LEVEL_IMPORTANT
         );
@@ -653,6 +652,90 @@ class AparatStokService
             SystemLogModel::LEVEL_IMPORTANT);
 
         return true;
+    }
+
+    public function otomatikKirmaSenkronize(int $firmaId): array
+    {
+        $sonuc = ['islenen' => 0, 'bekleyen' => 0];
+        if ($firmaId <= 0) {
+            return $sonuc;
+        }
+
+        $Kirma = new AparatOtomatikKirmaModel();
+        $baslangic = $Kirma->baslangicTarihi($firmaId);
+        if ($baslangic === null || !$Kirma->kilitAl($firmaId)) {
+            return $sonuc;
+        }
+
+        try {
+            $varsayilanTip = $Kirma->varsayilanTipId($firmaId);
+
+            foreach ($Kirma->karsilastirma($firmaId, $baslangic) as $satir) {
+                $kayit = $satir['kayit'];
+                $islenen = $kayit ? (int) $kayit['islenen_adet'] : 0;
+                $fark = $satir['hedef'] - $islenen;
+                if ($fark === 0) {
+                    continue;
+                }
+
+                $tipId = $kayit && (int) $kayit['aparat_tip_id'] > 0 ? (int) $kayit['aparat_tip_id'] : $varsayilanTip;
+                if ($tipId <= 0) {
+                    $sonuc['bekleyen'] += max(0, $fark);
+                    continue;
+                }
+
+                $ekipId = $kayit && (int) $kayit['ekip_id'] > 0
+                    ? (int) $kayit['ekip_id']
+                    : $Kirma->ekipBul($firmaId, $satir['personel_id'], $satir['tarih']);
+
+                $this->db()->beginTransaction();
+                try {
+                    $kayitId = $Kirma->kaydet($firmaId, [
+                        'personel_id' => $satir['personel_id'],
+                        'tarih' => $satir['tarih'],
+                        'is_emri_sonucu_id' => $satir['is_emri_sonucu_id'],
+                        'ekip_id' => $ekipId,
+                        'aparat_tip_id' => $tipId,
+                        'islenen_adet' => $satir['hedef'],
+                    ]);
+
+                    $this->Hareket->uygula([
+                        ['sahip_tipi' => 'saha', 'sahip_id' => 0, 'aparat_tip_id' => $tipId, 'adet' => -$fark],
+                        ['sahip_tipi' => 'hurda', 'sahip_id' => 0, 'aparat_tip_id' => $tipId, 'adet' => $fark],
+                    ], [
+                        'firma_id' => $firmaId,
+                        'hareket_tipi' => 'hurda',
+                        'ekip_id' => $ekipId ?: null,
+                        'personel_id' => $satir['personel_id'],
+                        'referans_tipi' => 'otomatik_kirma',
+                        'referans_id' => $kayitId,
+                        'aciklama' => $fark > 0
+                            ? 'Aparat kırma (puantaj): abonedeki aparat hurdaya ayrıldı.'
+                            : 'Aparat kırma kaydı puantajdan kaldırıldı, hurda geri alındı.',
+                        'tarih' => $satir['tarih'] . ' 12:00:00',
+                    ]);
+
+                    $this->db()->commit();
+                    $sonuc['islenen'] += $fark;
+                } catch (Exception $e) {
+                    if ($this->db()->inTransaction()) {
+                        $this->db()->rollBack();
+                    }
+                    error_log('Aparat otomatik kırma işlenemedi: ' . $e->getMessage());
+                }
+            }
+        } finally {
+            $Kirma->kilitBirak($firmaId);
+        }
+
+        if ($sonuc['islenen'] !== 0) {
+            $this->logla(0, 'Aparat Otomatik Kırma', sprintf(
+                'Puantajdaki aparat kırma kayıtlarından %d adet aparat hurdaya işlendi (net).',
+                $sonuc['islenen']
+            ), SystemLogModel::LEVEL_IMPORTANT);
+        }
+
+        return $sonuc;
     }
 
     private function logla(int $kullaniciId, string $baslik, string $aciklama, int $seviye = SystemLogModel::LEVEL_INFO): void

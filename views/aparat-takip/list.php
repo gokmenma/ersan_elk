@@ -88,6 +88,66 @@ foreach (AparatTipiModel::RENKLER as $renk) {
         background-color: rgba(244, 106, 106, .10);
     }
 
+    .apf { border: 1px solid #e2e8f0; border-radius: 14px; background: #f8fafc; overflow: hidden; }
+    .apf-sahne { position: relative; height: 250px; margin: 6px 8px 0; }
+    .apf-yollar { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+    .apf-yollar line { stroke: #cbd5e1; stroke-width: 2; stroke-dasharray: 4 5; vector-effect: non-scaling-stroke; transition: stroke .3s ease; }
+    .apf-yollar line.aktif { stroke: var(--apf-renk, #475569); stroke-width: 3; animation: apf-akis .6s linear infinite; }
+    @keyframes apf-akis { to { stroke-dashoffset: -18; } }
+    .apf-dugum { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 3px; width: 96px; text-align: center; z-index: 1; }
+    .apf-ikon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; background: #fff; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, .07); font-size: 22px; color: #475569; transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease; }
+    .apf-dugum--depo .apf-ikon { color: #2563eb; }
+    .apf-dugum--ekip .apf-ikon { color: #059669; }
+    .apf-dugum--abone .apf-ikon { color: #d97706; }
+    .apf-dugum--tedarik .apf-ikon { color: #64748b; background: #f1f5f9; }
+    .apf-dugum.vurgu .apf-ikon { transform: scale(1.08); border-color: var(--apf-renk, #475569); box-shadow: 0 0 0 4px rgba(71, 85, 105, .12); }
+    .apf-ad { font-size: 12px; font-weight: 700; line-height: 1.15; color: #1e293b; }
+    .apf-ad small { display: block; font-size: 10.5px; font-weight: 500; color: #64748b; }
+    .apf-sayi { position: absolute; top: -6px; right: 18px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: #1e293b; color: #fff; font-size: 11.5px; font-weight: 700; line-height: 22px; font-variant-numeric: tabular-nums; }
+    .apf-sayi.artti { animation: apf-art .5s ease; background: #059669; }
+    .apf-sayi.azaldi { animation: apf-art .5s ease; background: #d97706; }
+    @keyframes apf-art { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
+    .apf-aparat { position: absolute; z-index: 2; display: grid; place-items: center; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 9px; background: var(--apf-renk, #475569); color: #fff; font-size: 17px; box-shadow: 0 6px 14px rgba(15, 23, 42, .25); transition: left 1.2s cubic-bezier(.45, .05, .25, 1), top 1.2s cubic-bezier(.45, .05, .25, 1), opacity .25s ease; }
+    .apf-aparat.gizli { opacity: 0; }
+    .apf-anlatim { padding: 6px 18px 4px; text-align: center; min-height: 92px; }
+    .apf-kim { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .3px; background: #e2e8f0; color: #334155; }
+    .apf-kim.siz { background: #dbeafe; color: #1d4ed8; }
+    .apf-kim.sistem { background: #d1fae5; color: #047857; }
+    .apf-baslik { margin: 6px 0 2px; font-size: 16px; font-weight: 700; color: #0f172a; }
+    .apf-metin { margin: 0 auto; max-width: 520px; font-size: 13px; color: #475569; }
+    .apf-kontrol { display: flex; align-items: center; gap: 6px; padding: 10px 14px 12px; border-top: 1px solid #e2e8f0; background: #fff; }
+    .apf-kontrol .btn { width: 34px; height: 34px; padding: 0; display: inline-grid; place-items: center; font-size: 18px; }
+    .apf-adimlar { display: flex; flex: 1; gap: 6px; margin-left: 6px; }
+    .apf-adimlar button { flex: 1; height: 8px; border: 0; border-radius: 999px; background: #e2e8f0; padding: 0; position: relative; overflow: hidden; cursor: pointer; }
+    .apf-adimlar button.bitti { background: #94a3b8; }
+    .apf-adimlar button.aktif::after { content: ""; position: absolute; inset: 0; width: 0; background: var(--apf-renk, #475569); animation: apf-dolum var(--apf-sure, 3.6s) linear forwards; }
+    .apf.durdu .apf-adimlar button.aktif::after { animation: none; width: 100%; }
+    @keyframes apf-dolum { to { width: 100%; } }
+    .apf-ozet { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0 4px; }
+    .apf-ozet__kutu { padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 13px; color: #1e293b; }
+    .apf-ozet__kutu small { display: block; margin-top: 3px; color: #64748b; font-size: 12px; }
+    .apf-ozet__etiket { display: inline-block; margin-bottom: 4px; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 700; }
+    .apf-ozet__etiket--siz { background: #dbeafe; color: #1d4ed8; }
+    .apf-ozet__etiket--sistem { background: #d1fae5; color: #047857; }
+    @media (max-width: 575.98px) {
+        .apf-sahne { height: 230px; }
+        .apf-dugum { width: 74px; }
+        .apf-ikon { width: 40px; height: 40px; font-size: 19px; }
+        .apf-ad { font-size: 11px; }
+        .apf-sayi { right: 6px; }
+        .apf-ozet { grid-template-columns: 1fr; }
+    }
+    [data-bs-theme="dark"] .apf { background: #2a3042; border-color: #32394e; }
+    [data-bs-theme="dark"] .apf-ikon { background: #32394e; border-color: #3b4560; }
+    [data-bs-theme="dark"] .apf-ad, [data-bs-theme="dark"] .apf-baslik, [data-bs-theme="dark"] .apf-ozet__kutu { color: #e2e8f0; }
+    [data-bs-theme="dark"] .apf-metin, [data-bs-theme="dark"] .apf-ad small { color: #a6b0cf; }
+    [data-bs-theme="dark"] .apf-kontrol { background: #2a3042; border-color: #32394e; }
+    [data-bs-theme="dark"] .apf-ozet__kutu { border-color: #32394e; }
+    @media (prefers-reduced-motion: reduce) {
+        .apf-aparat, .apf-ikon { transition: none; }
+        .apf-yollar line.aktif, .apf-sayi.artti, .apf-sayi.azaldi { animation: none; }
+    }
+
     .aparat-matris td.adet-kritik {
         color: #b45309;
         background-color: rgba(245, 158, 11, .14);
@@ -318,6 +378,7 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                     </div>
                     <div class="d-flex justify-content-between align-items-center border-top pt-1">
                         <span class="summary-kpi-subtext">Dağıtılmayı bekleyen</span>
+                        <span class="summary-kpi-subtext"><i class="bx bx-trash"></i> <b id="ozetHurda">0</b> · <i class="bx bx-error"></i> <b id="ozetKayip">0</b></span>
                     </div>
                 </div>
             </div>
@@ -374,6 +435,14 @@ foreach (AparatTipiModel::RENKLER as $renk) {
     </div>
 
     <?php if ($yetkiGelismis): ?>
+        <div id="aparatKirmaBekleyen" class="alert alert-warning d-none align-items-center gap-2" role="alert">
+            <i class="bx bx-time-five fs-4"></i>
+            <div class="flex-grow-1">
+                Puantajdaki <b id="kirmaBekleyenSayi">0</b> adet aparat kırması, aparat tipi belli olmadığı için hurdaya işlenmeyi bekliyor.
+                Tanımlar sekmesinde bir aparat tipini <b>“Tipi bilinmeyen aparat kırmalarında bu tipten düş”</b> olarak işaretleyin.
+            </div>
+        </div>
+
         <div id="aparatTutarsizlikUyari" class="alert alert-danger d-none align-items-center gap-2" role="alert">
             <i class="bx bx-error-circle fs-4"></i>
             <div class="flex-grow-1">
@@ -802,7 +871,7 @@ foreach (AparatTipiModel::RENKLER as $renk) {
 </div>
 
 <!-- ============ MODAL: NASIL ÇALIŞIR ============ -->
-<div class="modal fade" id="modalNasilCalisir" tabindex="-1">
+<div class="modal fade" id="modalNasilCalisir" tabindex="-1" data-modal-icon="bx bx-help-circle" data-modal-subtitle="Aparatın depodan aboneye yolculuğu, adım adım">
     <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
@@ -811,22 +880,71 @@ foreach (AparatTipiModel::RENKLER as $renk) {
             </div>
             <div class="modal-body">
 
-                <h6 class="fw-bold">Sizin yapacağınız 3 iş</h6>
-                <table class="table table-sm mb-3">
-                    <tbody>
-                        <tr><td class="fw-semibold" style="width:34%"><span class="nc-adim">1</span>Depoya Giriş</td><td>Aparat satın alındığında depoya ekleyin.</td></tr>
-                        <tr><td class="fw-semibold"><span class="nc-adim">2</span>Ekibe Ver</td><td>Depodan ekibe/personele aparat verdiğinizde girin. Depo azalır, ekip artar.</td></tr>
-                        <tr><td class="fw-semibold"><span class="nc-adim">3</span>İade Al</td><td>Ekip aparatı depoya geri getirdiğinde girin. Ekip azalır, depo artar.</td></tr>
-                    </tbody>
-                </table>
+                <div class="apf" id="aparatAkis">
+                    <div class="apf-sahne" aria-hidden="true">
+                        <svg class="apf-yollar" viewBox="0 0 100 100" preserveAspectRatio="none">
+                            <line data-yol="tedarik-depo" x1="9" y1="50" x2="29" y2="50"></line>
+                            <line data-yol="depo-ekipA" x1="29" y1="50" x2="58" y2="24"></line>
+                            <line data-yol="ekipA-abone" x1="58" y1="24" x2="88" y2="24"></line>
+                            <line data-yol="abone-ekipB" x1="88" y1="24" x2="58" y2="78"></line>
+                            <line data-yol="ekipB-ekipA" x1="58" y1="78" x2="58" y2="24"></line>
+                            <line data-yol="ekipA-depo" x1="58" y1="24" x2="29" y2="50"></line>
+                        </svg>
 
-                <h6 class="fw-bold">Gerisini sistem yapar</h6>
-                <ul class="text-muted small ps-3 mb-3">
-                    <li><b>Kesme:</b> aparat ekibin zimmetinden düşer, abonede takılı olur.</li>
-                    <li><b>Açma:</b> aparat aboneden çıkar, açan ekibin zimmetine geçer.</li>
-                    <li><b>Ekipler arası değişim:</b> veren ekipten düşer, alan ekip telefondan onaylayınca onun zimmetine geçer.</li>
-                    <li><b>Kritik stok:</b> depoda veya bir ekipte aparat azalınca bu sayfada, ana sayfada ve personelin telefonunda uyarı çıkar.</li>
-                </ul>
+                        <div class="apf-dugum apf-dugum--tedarik" data-dugum="tedarik" style="left:9%;top:50%">
+                            <span class="apf-ikon"><i class="bx bx-cart"></i></span>
+                            <span class="apf-ad">Satın alma</span>
+                        </div>
+                        <div class="apf-dugum apf-dugum--depo" data-dugum="depo" style="left:29%;top:50%">
+                            <span class="apf-ikon"><i class="bx bx-buildings"></i></span>
+                            <span class="apf-ad">Depo</span>
+                            <span class="apf-sayi" data-sayi="depo">3</span>
+                        </div>
+                        <div class="apf-dugum apf-dugum--ekip" data-dugum="ekipA" style="left:58%;top:24%">
+                            <span class="apf-ikon"><i class="bx bx-user"></i></span>
+                            <span class="apf-ad">Ahmet <small>Ekip 3</small></span>
+                            <span class="apf-sayi" data-sayi="ekipA">0</span>
+                        </div>
+                        <div class="apf-dugum apf-dugum--ekip" data-dugum="ekipB" style="left:58%;top:78%">
+                            <span class="apf-ikon"><i class="bx bx-user"></i></span>
+                            <span class="apf-ad">Mehmet <small>Ekip 5</small></span>
+                            <span class="apf-sayi" data-sayi="ekipB">0</span>
+                        </div>
+                        <div class="apf-dugum apf-dugum--abone" data-dugum="abone" style="left:88%;top:24%">
+                            <span class="apf-ikon"><i class="bx bx-home-alt"></i></span>
+                            <span class="apf-ad">Abone <small>sayaçta takılı</small></span>
+                            <span class="apf-sayi" data-sayi="abone">0</span>
+                        </div>
+
+                        <div class="apf-aparat" id="apfAparat" style="left:9%;top:50%"><i class="bx bx-package"></i></div>
+                    </div>
+
+                    <div class="apf-anlatim">
+                        <span class="apf-kim" id="apfKim">Siz yaparsınız</span>
+                        <h6 class="apf-baslik" id="apfBaslik">Depoya Giriş</h6>
+                        <p class="apf-metin" id="apfMetin">Aparat satın alındığında depoya eklenir.</p>
+                    </div>
+
+                    <div class="apf-kontrol">
+                        <button type="button" class="btn btn-sm btn-outline-secondary bg-white" id="apfGeri" title="Önceki adım" aria-label="Önceki adım"><i class="bx bx-chevron-left"></i></button>
+                        <button type="button" class="btn btn-sm btn-primary" id="apfOynat" aria-label="Duraklat"><i class="bx bx-pause"></i></button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary bg-white" id="apfIleri" title="Sonraki adım" aria-label="Sonraki adım"><i class="bx bx-chevron-right"></i></button>
+                        <div class="apf-adimlar" id="apfAdimlar" role="tablist" aria-label="Adımlar"></div>
+                    </div>
+                </div>
+
+                <div class="apf-ozet">
+                    <div class="apf-ozet__kutu">
+                        <span class="apf-ozet__etiket apf-ozet__etiket--siz">Siz yaparsınız</span>
+                        <div><b>Depoya Giriş</b> · <b>Ekibe Ver</b> · <b>İade Al</b></div>
+                        <small>Sayfanın üstündeki üç buton. Başka bir şey girmenize gerek yok.</small>
+                    </div>
+                    <div class="apf-ozet__kutu">
+                        <span class="apf-ozet__etiket apf-ozet__etiket--sistem">Sistem yapar</span>
+                        <div><b>Kesme</b> · <b>Açma</b> · <b>Ekip değişimi</b> · <b>Kritik stok uyarısı</b></div>
+                        <small>Personel telefondan kesme/açma girince zimmet kendiliğinden düşer veya geri gelir.</small>
+                    </div>
+                </div>
 
                 <?php if ($yetkiGelismis): ?>
                 <hr>
@@ -866,7 +984,7 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                             Sahada Takılı havuzundan <b>−1</b> düşer; aparatın durumuna göre:
                             <ul class="mb-0 ps-3 mt-1">
                                 <li><b>Alındı</b> → açan ekibin stoğuna +1</li>
-                                <li><b>Hasarlı geldi</b> → Hurda havuzuna +1</li>
+                                <li><b>Hasarlı geldi</b> → açan ekibin stoğuna +1; ekip bozuk aparatı depoya iade eder, depo <b>İade Al → Bozuk</b> ile hurdaya ayırır</li>
                                 <li><b>Bulunamadı</b> → Kayıp havuzuna +1</li>
                             </ul>
                         </div>
@@ -950,6 +1068,13 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                         <div class="col-7"><?= Form::FormSelect2('havuz_aparat', $tipSecimOptions, '', 'Aparat Tipi', 'bx bx-package', 'key', '', 'form-select select2', true) ?></div>
                         <div class="col-5"><?= Form::FormFloatInput('number', 'havuz_adet', '1', '1', 'Adet', 'bx bx-hash', 'form-control', true) ?></div>
                         <div class="col-12 d-none" id="havuzBakiyeBilgi"><span class="badge bg-light text-dark border px-2 py-1 font-size-12" id="havuzBakiyeMetin"></span></div>
+                        <div class="col-12 d-none" id="havuzBozukAlan">
+                            <div class="form-check form-switch p-2 ps-5 border rounded-3 bg-danger-subtle border-danger-subtle mb-0">
+                                <input class="form-check-input" type="checkbox" id="havuz_bozuk">
+                                <label class="form-check-label fw-semibold text-danger" for="havuz_bozuk">Aparat bozuk / hasarlı — hurdaya ayır</label>
+                                <div class="small text-muted">İşaretlenirse aparat depoya girmez, ekibin zimmetinden düşüp hurdaya geçer.</div>
+                            </div>
+                        </div>
                         <div class="col-12"><?= Form::FormFloatTextarea('havuz_aciklama', '', 'Açıklama / irsaliye no', 'Açıklama', 'bx bx-note') ?></div>
                     </div>
                 </div>
@@ -1046,6 +1171,13 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                             <div class="col-6"><?= Form::FormFloatInput('number', 'tip_depo_kritik', '0', '0', 'Depo kritik stok', 'bx bx-buildings') ?></div>
                             <div class="col-6"><?= Form::FormFloatInput('number', 'tip_ekip_kritik', '0', '0', 'Ekip kritik stok', 'bx bx-group') ?></div>
                             <div class="col-12"><p class="text-muted small mb-0">Stok bu sayıya düştüğünde ana sayfada ve personelin telefonunda uyarı çıkar. 0 = uyarı yok.</p></div>
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="tip_varsayilan_kirma">
+                                    <label class="form-check-label" for="tip_varsayilan_kirma">Tipi bilinmeyen aparat kırmalarında bu tipten düş</label>
+                                    <div class="small text-muted">Puantajdaki "aparat kırma" kayıtları abonedeki bu tipten hurdaya işlenir. Yalnız bir tip işaretlenebilir.</div>
+                                </div>
+                            </div>
                             <div class="col-12"><?= Form::FormFloatTextarea('tip_aciklama', '', 'Açıklama', 'Açıklama', 'bx bx-note') ?></div>
                             <div class="col-12">
                                 <label for="tip_resim" class="form-label fw-semibold small text-muted mb-1"><i class="bx bx-image me-1"></i> Aparat Görseli (İsteğe Bağlı)</label>

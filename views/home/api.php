@@ -430,6 +430,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         } elseif ($widgetId == 'widget-izindekiler') {
                             $data['izindekiler'] = $izinModel->getAktifIzinler(10);
                         } elseif ($widgetId == 'widget-aparat-kritik') {
+                            try {
+                                (new \App\Service\AparatStokService())->otomatikKirmaSenkronize((int) $firmaId);
+                            } catch (\Throwable $ke) {
+                                error_log('Aparat otomatik kırma senkronu: ' . $ke->getMessage());
+                            }
                             $data['aparat_kritik'] = (new \App\Model\AparatStokModel())->kritikStoklar();
                         }
                         $html = renderWidget($widgetId, $data);

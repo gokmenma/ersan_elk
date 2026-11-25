@@ -148,6 +148,12 @@ try {
         // STOK MATRİSİ
         // =====================================================
         case 'stok-matris':
+            $kirmaSonuc = ['islenen' => 0, 'bekleyen' => 0];
+            try {
+                $kirmaSonuc = (new AparatStokService())->otomatikKirmaSenkronize((int) $_SESSION['firma_id']);
+            } catch (Throwable $e) {
+                error_log('Aparat otomatik kırma senkronu: ' . $e->getMessage());
+            }
             $matris = $Stok->matris();
             $gelismis = aparatIzin('aparat_gelismis') || aparatSuperAdmin();
 
@@ -155,6 +161,7 @@ try {
                 'data' => $matris,
                 'kritik' => $Stok->kritikStoklar(),
                 'tutarsiz_satir' => $gelismis ? count($Hareket->tutarlilikKontrolu()) : 0,
+                'kirma_bekleyen' => $gelismis ? (int) $kirmaSonuc['bekleyen'] : 0,
             ]);
             break;
 
@@ -165,8 +172,8 @@ try {
                 $ekipId = (int) ($h['ekip_id'] ?? 0);
                 $kayitlar[] = [
                     'tarih' => $h['tarih'],
-                    'hareket_tipi' => $h['hareket_tipi'],
-                    'hareket_adi' => ['depo_giris' => 'Depoya Giriş', 'depo_cikis' => 'Ekibe Verildi', 'depo_iade' => 'İade Alındı'][$h['hareket_tipi']],
+                    'hareket_tipi' => $h['gorunen_tip'],
+                    'hareket_adi' => ['depo_giris' => 'Depoya Giriş', 'depo_cikis' => 'Ekibe Verildi', 'depo_iade' => 'İade Alındı', 'depo_iade_hurda' => 'Bozuk İade (Hurda)'][$h['gorunen_tip']],
                     'aparat_adi' => $h['aparat_adi'],
                     'adet' => abs((int) $h['adet']),
                     'ekip' => $ekipId > 0 ? ($uyeHaritasi[$ekipId] ?? $h['ekip_adi']) : '',
@@ -222,6 +229,7 @@ try {
                 'aciklama' => trim((string) ($_POST['aciklama'] ?? '')) ?: null,
                 'depo_kritik_stok' => max(0, (int) ($_POST['depo_kritik_stok'] ?? 0)),
                 'ekip_kritik_stok' => max(0, (int) ($_POST['ekip_kritik_stok'] ?? 0)),
+                'varsayilan_kirma' => !empty($_POST['varsayilan_kirma']) ? 1 : 0,
                 'is_active' => isset($_POST['is_active']) ? (int) $_POST['is_active'] : 1,
             ];
 
@@ -284,11 +292,17 @@ try {
 
             if ($tipId > 0) {
                 $Tip->guncelle($tipId, $veri);
+                if ($veri['varsayilan_kirma'] === 1) {
+                    $Tip->varsayilanKirmaTek($tipId);
+                }
                 $Log->logAction($userId, 'Aparat Tipi Güncellendi', "#$tipId $ad ($kod)", SystemLogModel::LEVEL_IMPORTANT);
                 aparatYanit(true, 'Aparat tipi güncellendi.');
             }
 
             $yeniId = $Tip->ekle($veri, $userId);
+            if ($veri['varsayilan_kirma'] === 1) {
+                $Tip->varsayilanKirmaTek($yeniId);
+            }
             $Log->logAction($userId, 'Aparat Tipi Eklendi', "#$yeniId $ad ($kod)", SystemLogModel::LEVEL_IMPORTANT);
             aparatYanit(true, 'Aparat tipi eklendi.', ['id' => $yeniId]);
             break;
@@ -437,7 +451,7 @@ try {
             aparatYetkiKontrol('aparat_depo');
 
             $tur = $_POST['tur'] ?? '';
-            if (!in_array($tur, ['depo_giris', 'depo_cikis', 'depo_iade'], true)) {
+            if (!in_array($tur, ['depo_giris', 'depo_cikis', 'depo_iade', 'depo_iade_hurda'], true)) {
                 aparatYetkiKontrol('aparat_gelismis');
             }
             $Servis = new AparatStokService();

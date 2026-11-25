@@ -71,6 +71,83 @@ $uyeAdlari = implode(', ', array_column($ekipUyeleri, 'adi_soyadi'));
         background: #1e1e1f;
     }
 
+    .apf-yardim-btn { display: inline-grid; place-items: center; width: 36px; height: 36px; margin-left: 6px; border: 0; border-radius: 999px; background: rgba(255, 255, 255, .16); color: inherit; }
+    .apf-yardim-btn .material-symbols-outlined { font-size: 21px; }
+    .apf-tanitim { display: flex; align-items: center; gap: 12px; width: 100%; margin-bottom: 12px; padding: 12px 14px; border: 0; border-radius: 14px; background: #eef2ff; color: #1e293b; text-align: left; }
+    .dark .apf-tanitim { background: #252b3b; color: #e2e8f0; }
+    .apf-tanitim__ikon { display: grid; place-items: center; flex: 0 0 40px; width: 40px; height: 40px; border-radius: 12px; background: var(--primary); color: #fff; }
+    .apf-tanitim__metin { display: flex; flex: 1; min-width: 0; flex-direction: column; }
+    .apf-tanitim__metin strong { font-size: 14px; }
+    .apf-tanitim__metin small { font-size: 12px; color: #64748b; margin-top: 2px; }
+    .apf-tanitim__ok { color: #94a3b8; }
+
+    body > .aparat-sheet-katman { z-index: 2000; }
+    .apf-pencere { padding-left: .875rem; padding-right: .875rem; }
+    .apf-pencere__ust { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+    .apf-pencere__ust h2 { margin: 0; font-size: 17px; font-weight: 800; color: #0f172a; }
+    .apf-pencere__ust p { margin: 2px 0 0; font-size: 12px; color: #64748b; }
+    .dark .apf-pencere__ust h2 { color: #fff; }
+    .apf-kapat { display: grid; place-items: center; flex: 0 0 40px; width: 40px; height: 40px; border: 0; border-radius: 12px; background: #f1f5f9; color: #334155; }
+    .dark .apf-kapat { background: #2a2a2c; color: #e2e8f0; }
+
+    .apf { border: 1px solid #e2e8f0; border-radius: 16px; background: #f8fafc; overflow: hidden; }
+    .dark .apf { background: #161618; border-color: #2a2a2c; }
+    .apf-sahne { position: relative; height: 230px; margin: 4px 6px 0; }
+    .apf-yollar { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+    .apf-yollar line { stroke: #cbd5e1; stroke-width: 2; stroke-dasharray: 4 5; vector-effect: non-scaling-stroke; }
+    .dark .apf-yollar line { stroke: #3f3f46; }
+    .apf-yollar line.aktif { stroke: var(--apf-renk, #475569); stroke-width: 3; animation: apf-akis .6s linear infinite; }
+    @keyframes apf-akis { to { stroke-dashoffset: -18; } }
+    .apf-dugum { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 3px; width: 72px; text-align: center; z-index: 1; }
+    .apf-ikon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 13px; background: #fff; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, .08); transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease; }
+    .dark .apf-ikon { background: #232326; border-color: #34343a; }
+    .apf-ikon .material-symbols-outlined { font-size: 22px; }
+    .apf-ikon--tedarik { color: #64748b; }
+    .apf-ikon--depo { color: #2563eb; }
+    .apf-ikon--sen { color: #fff; background: var(--primary); border-color: var(--primary); }
+    .apf-ikon--ekip { color: #059669; }
+    .apf-ikon--abone { color: #d97706; }
+    .apf-dugum.vurgu .apf-ikon { transform: scale(1.1); border-color: var(--apf-renk, #475569); box-shadow: 0 0 0 4px rgba(100, 116, 139, .18); }
+    .apf-ad { font-size: 11.5px; font-weight: 800; line-height: 1.1; color: #1e293b; }
+    .dark .apf-ad { color: #e2e8f0; }
+    .apf-sayi { position: absolute; top: -7px; right: 6px; min-width: 21px; height: 21px; padding: 0 5px; border-radius: 999px; background: #1e293b; color: #fff; font-size: 11px; font-weight: 800; line-height: 21px; }
+    .apf-sayi.artti { animation: apf-art .5s ease; background: #059669; }
+    .apf-sayi.azaldi { animation: apf-art .5s ease; background: #d97706; }
+    @keyframes apf-art { 40% { transform: scale(1.4); } }
+    .apf-aparat { position: absolute; z-index: 2; display: grid; place-items: center; width: 28px; height: 28px; margin: -14px 0 0 -14px; border-radius: 9px; background: var(--apf-renk, #475569); color: #fff; box-shadow: 0 6px 14px rgba(15, 23, 42, .28); transition: left 1.2s cubic-bezier(.45, .05, .25, 1), top 1.2s cubic-bezier(.45, .05, .25, 1); }
+    .apf-aparat .material-symbols-outlined { font-size: 17px; }
+    .apf-anlatim { padding: 4px 14px 6px; text-align: center; min-height: 118px; }
+    .apf-kim { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; }
+    .apf-kim.sen, .apf-etiket--sen { background: #dbeafe; color: #1d4ed8; }
+    .apf-kim.depo, .apf-etiket--depo { background: #e2e8f0; color: #334155; }
+    .apf-kim.ekip { background: #d1fae5; color: #047857; }
+    .apf-baslik { margin: 6px 0 2px; font-size: 16px; font-weight: 800; color: #0f172a; }
+    .dark .apf-baslik { color: #fff; }
+    .apf-metin { margin: 0; font-size: 13px; line-height: 1.45; color: #475569; }
+    .dark .apf-metin { color: #a1a1aa; }
+    .apf-kontrol { display: flex; align-items: center; gap: 6px; padding: 10px 12px 12px; border-top: 1px solid #e2e8f0; background: #fff; }
+    .dark .apf-kontrol { background: #1e1e1f; border-color: #2a2a2c; }
+    .apf-btn { display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; color: #334155; }
+    .dark .apf-btn { background: #232326; border-color: #34343a; color: #e2e8f0; }
+    .apf-btn--ana { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .apf-adimlar { display: flex; flex: 1; gap: 4px; margin-left: 4px; }
+    .apf-adimlar button { flex: 1; height: 24px; border: 0; padding: 0; background: transparent; position: relative; }
+    .apf-adimlar button::before { content: ""; position: absolute; left: 0; right: 0; top: 9px; height: 6px; border-radius: 999px; background: #e2e8f0; }
+    .dark .apf-adimlar button::before { background: #34343a; }
+    .apf-adimlar button.bitti::before { background: #94a3b8; }
+    .apf-adimlar button.aktif::after { content: ""; position: absolute; left: 0; top: 9px; height: 6px; width: 0; border-radius: 999px; background: var(--apf-renk, #475569); animation: apf-dolum var(--apf-sure, 4200ms) linear forwards; }
+    .apf.durdu .apf-adimlar button.aktif::after { animation: none; width: 100%; }
+    @keyframes apf-dolum { to { width: 100%; } }
+    .apf-ozet { display: grid; gap: 8px; margin: 12px 2px; }
+    .apf-ozet__satir { display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; color: #334155; }
+    .dark .apf-ozet__satir { color: #d4d4d8; }
+    .apf-etiket { flex: 0 0 auto; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 800; }
+    .apf-tamam { width: 100%; min-height: 48px; border: 0; border-radius: 14px; background: var(--primary); color: #fff; font-size: 15px; font-weight: 800; }
+    @media (prefers-reduced-motion: reduce) {
+        .apf-aparat, .apf-ikon { transition: none; }
+        .apf-yollar line.aktif, .apf-sayi.artti, .apf-sayi.azaldi { animation: none; }
+    }
+
     .aparat-sheet-tutamak {
         width: 2.5rem;
         height: .25rem;
@@ -157,7 +234,8 @@ $uyeAdlari = implode(', ', array_column($ekipUyeleri, 'adi_soyadi'));
         'title' => 'Aparat Takip',
         'subtitle' => $uyeAdlari !== '' ? $uyeAdlari : 'Personel atanmamış',
         'subtitle_id' => 'aparat-uye-satiri',
-        'actions' => '<span class="pwa-topbar__chip">Bugün<strong id="aparat-bugun-sayi">0 işlem</strong></span>',
+        'actions' => '<span class="pwa-topbar__chip">Bugün<strong id="aparat-bugun-sayi">0 işlem</strong></span>'
+            . ($aktifEkip && !empty($aparatTipleri) ? '<button type="button" class="apf-yardim-btn" onclick="aparatAnlatimAc()" aria-label="Aparat nasıl takip edilir?"><span class="material-symbols-outlined">help</span></button>' : ''),
     ]); ?>
 
     <?php if (!$aktifEkip): ?>
@@ -205,6 +283,14 @@ $uyeAdlari = implode(', ', array_column($ekipUyeleri, 'adi_soyadi'));
 
         <!-- ============ EKİBİM ============ -->
         <section id="aparat-pane-ekibim" class="px-4 flex-1">
+            <button type="button" class="apf-tanitim" onclick="aparatAnlatimAc()">
+                <span class="apf-tanitim__ikon"><span class="material-symbols-outlined">play_circle</span></span>
+                <span class="apf-tanitim__metin">
+                    <strong>Aparat nasıl takip edilir?</strong>
+                    <small>Zimmetin ne zaman düşer, ne zaman artar? 30 saniyede izle.</small>
+                </span>
+                <span class="material-symbols-outlined apf-tanitim__ok">chevron_right</span>
+            </button>
             <div class="space-y-3" id="aparat-stok-listesi">
                 <div class="text-center py-10 text-sm text-slate-400">Yükleniyor...</div>
             </div>
@@ -232,6 +318,79 @@ $uyeAdlari = implode(', ', array_column($ekipUyeleri, 'adi_soyadi'));
         <button type="button" class="aparat-fab" onclick="aparatSheetAc()" aria-label="Yeni işlem">
             <span class="material-symbols-outlined text-3xl">add</span>
         </button>
+
+        <div id="apf-katman" class="aparat-sheet-katman" role="dialog" aria-modal="true" aria-labelledby="apf-pencere-baslik">
+            <div class="aparat-sheet apf-pencere">
+                <div class="aparat-sheet-tutamak"></div>
+                <div class="apf-pencere__ust">
+                    <div>
+                        <h2 id="apf-pencere-baslik">Aparat Nasıl Takip Edilir?</h2>
+                        <p>Aparatın depodan aboneye yolculuğu</p>
+                    </div>
+                    <button type="button" class="apf-kapat" onclick="aparatAnlatimKapat()" aria-label="Kapat">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+
+                <div class="apf" id="apf">
+                    <div class="apf-sahne" aria-hidden="true">
+                        <svg class="apf-yollar" viewBox="0 0 100 100" preserveAspectRatio="none">
+                            <line data-yol="tedarik-depo" x1="10" y1="50" x2="30" y2="50"></line>
+                            <line data-yol="depo-ekipA" x1="30" y1="50" x2="58" y2="22"></line>
+                            <line data-yol="ekipA-abone" x1="58" y1="22" x2="87" y2="22"></line>
+                            <line data-yol="abone-ekipB" x1="87" y1="22" x2="58" y2="80"></line>
+                            <line data-yol="ekipB-ekipA" x1="58" y1="80" x2="58" y2="22"></line>
+                            <line data-yol="ekipA-depo" x1="58" y1="22" x2="30" y2="50"></line>
+                        </svg>
+                        <div class="apf-dugum" data-dugum="tedarik" style="left:10%;top:50%">
+                            <span class="apf-ikon apf-ikon--tedarik"><span class="material-symbols-outlined">shopping_cart</span></span>
+                            <span class="apf-ad">Satın alma</span>
+                        </div>
+                        <div class="apf-dugum" data-dugum="depo" style="left:30%;top:50%">
+                            <span class="apf-ikon apf-ikon--depo"><span class="material-symbols-outlined">warehouse</span></span>
+                            <span class="apf-ad">Depo</span>
+                            <span class="apf-sayi" data-sayi="depo">3</span>
+                        </div>
+                        <div class="apf-dugum" data-dugum="ekipA" style="left:58%;top:22%">
+                            <span class="apf-ikon apf-ikon--sen"><span class="material-symbols-outlined">person</span></span>
+                            <span class="apf-ad">Sen</span>
+                            <span class="apf-sayi" data-sayi="ekipA">0</span>
+                        </div>
+                        <div class="apf-dugum" data-dugum="ekipB" style="left:58%;top:80%">
+                            <span class="apf-ikon apf-ikon--ekip"><span class="material-symbols-outlined">group</span></span>
+                            <span class="apf-ad">Diğer ekip</span>
+                            <span class="apf-sayi" data-sayi="ekipB">0</span>
+                        </div>
+                        <div class="apf-dugum" data-dugum="abone" style="left:87%;top:22%">
+                            <span class="apf-ikon apf-ikon--abone"><span class="material-symbols-outlined">home</span></span>
+                            <span class="apf-ad">Abone</span>
+                            <span class="apf-sayi" data-sayi="abone">0</span>
+                        </div>
+                        <div class="apf-aparat" id="apf-aparat" style="left:10%;top:50%"><span class="material-symbols-outlined">package_2</span></div>
+                    </div>
+
+                    <div class="apf-anlatim" aria-live="polite">
+                        <span class="apf-kim" id="apf-kim">Depo yapar</span>
+                        <p class="apf-baslik" id="apf-baslik">1. Depoya Giriş</p>
+                        <p class="apf-metin" id="apf-metin"></p>
+                    </div>
+
+                    <div class="apf-kontrol">
+                        <button type="button" class="apf-btn" id="apf-geri" aria-label="Önceki adım"><span class="material-symbols-outlined">chevron_left</span></button>
+                        <button type="button" class="apf-btn apf-btn--ana" id="apf-oynat" aria-label="Duraklat"><span class="material-symbols-outlined">pause</span></button>
+                        <button type="button" class="apf-btn" id="apf-ileri" aria-label="Sonraki adım"><span class="material-symbols-outlined">chevron_right</span></button>
+                        <div class="apf-adimlar" id="apf-adimlar" role="tablist" aria-label="Adımlar"></div>
+                    </div>
+                </div>
+
+                <div class="apf-ozet">
+                    <div class="apf-ozet__satir"><span class="apf-etiket apf-etiket--sen">Sen yaparsın</span><span>Kesme ve açma kaydı, aparat gönderme ve gelen aparatı onaylama</span></div>
+                    <div class="apf-ozet__satir"><span class="apf-etiket apf-etiket--depo">Depo yapar</span><span>Sana aparat verme, iade alma ve bozuk aparatı hurdaya ayırma</span></div>
+                </div>
+
+                <button type="button" class="apf-tamam" onclick="aparatAnlatimKapat()">Anladım</button>
+            </div>
+        </div>
 
         <!-- ============ YENİ İŞLEM (bottom sheet) ============ -->
         <div id="aparat-sheet-katman" class="aparat-sheet-katman">
@@ -966,7 +1125,171 @@ $uyeAdlari = implode(', ', array_column($ekipUyeleri, 'adi_soyadi'));
 
         // OfflineQueue ve Alert sayfa gövdesinden sonra yükleniyor; ilk çağrılar
         // DOM hazır olduğunda yapılır ki kuyruk şeridi ilk açılışta da dolsun.
+        document.querySelectorAll('.aparat-sheet-katman').forEach(function (katman) {
+            document.body.appendChild(katman);
+        });
+
+        const aparatAnlatim = (function () {
+            const kok = document.getElementById('apf');
+            if (!kok) return null;
+
+            const SURE = 4200;
+            const hareketAzalt = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            const BASLANGIC = { depo: 3, ekipA: 0, ekipB: 0, abone: 0 };
+            const ADIMLAR = [
+                { kim: 'depo', etiket: 'Depo yapar', baslik: 'Depoya Giriş', metin: 'Satın alınan aparat depoya girilir.', yol: 'tedarik-depo', kaynak: 'tedarik', hedef: 'depo', renk: '#2563eb' },
+                { kim: 'depo', etiket: 'Depo yapar', baslik: 'Sana Aparat Verilir', metin: 'Depo sana aparat verir, zimmetine geçer. Ekibim sekmesinde elindeki adedi görürsün.', yol: 'depo-ekipA', kaynak: 'depo', hedef: 'ekipA', renk: '#d97706' },
+                { kim: 'sen', etiket: 'Sen yaparsın · telefondan', baslik: 'Kesme', metin: 'Sayacı kesip aparatı takınca + butonundan Kesme kaydı gir. Aparat zimmetinden düşer, abonede takılı olur.', yol: 'ekipA-abone', kaynak: 'ekipA', hedef: 'abone', renk: '#dc2626' },
+                { kim: 'ekip', etiket: 'Açan ekip girer', baslik: 'Açma', metin: 'Aboneyi kim açarsa Açma kaydını o girer ve aparat onun zimmetine geçer. Aparat hasarlı çıksa bile zimmete geçer; bozuk aparatı depoya getir.', yol: 'abone-ekipB', kaynak: 'abone', hedef: 'ekipB', renk: '#059669' },
+                { kim: 'sen', etiket: 'Telefondan · onaylı', baslik: 'Ekipler Arası Değişim', metin: 'Diğer ekip Transfer sekmesinden sana aparat gönderir. Sen Onayla deyince zimmetine geçer. Kimse elinde olmayanı gönderemez.', yol: 'ekipB-ekipA', kaynak: 'ekipB', hedef: 'ekipA', renk: '#7c3aed' },
+                { kim: 'depo', etiket: 'Depo yapar', baslik: 'İade', metin: 'Kullanmadığın ya da bozulan aparatı depoya teslim edersin. Depo İade Al girince zimmetinden düşer; bozuksa hurdaya depo ayırır, sen ayıramazsın.', yol: 'ekipA-depo', kaynak: 'ekipA', hedef: 'depo', renk: '#0891b2' }
+            ];
+
+            const aparat = document.getElementById('apf-aparat');
+            const adimKutu = document.getElementById('apf-adimlar');
+            const oynatBtn = document.getElementById('apf-oynat');
+            let sira = 0;
+            let calisiyor = false;
+            let zamanlayici = null;
+            let sayilar = {};
+
+            ADIMLAR.forEach(function (adim, i) {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.setAttribute('role', 'tab');
+                b.setAttribute('aria-label', (i + 1) + '. adım: ' + adim.baslik);
+                b.addEventListener('click', function () { git(i); });
+                adimKutu.appendChild(b);
+            });
+
+            function konum(ad) {
+                const d = kok.querySelector('[data-dugum="' + ad + '"]');
+                return { left: d.style.left, top: d.style.top };
+            }
+
+            function sayilariYaz(degisen) {
+                Object.keys(sayilar).forEach(function (k) {
+                    const el = kok.querySelector('[data-sayi="' + k + '"]');
+                    if (!el) return;
+                    el.textContent = sayilar[k];
+                    el.classList.remove('artti', 'azaldi');
+                    if (degisen && degisen[k]) {
+                        void el.offsetWidth;
+                        el.classList.add(degisen[k]);
+                    }
+                });
+            }
+
+            function git(n) {
+                clearTimeout(zamanlayici);
+                sira = (n + ADIMLAR.length) % ADIMLAR.length;
+                const adim = ADIMLAR[sira];
+                kok.style.setProperty('--apf-renk', adim.renk);
+                kok.style.setProperty('--apf-sure', SURE + 'ms');
+
+                sayilar = Object.assign({}, BASLANGIC);
+                for (let i = 0; i < sira; i++) {
+                    if (ADIMLAR[i].kaynak in sayilar) sayilar[ADIMLAR[i].kaynak]--;
+                    if (ADIMLAR[i].hedef in sayilar) sayilar[ADIMLAR[i].hedef]++;
+                }
+                sayilariYaz();
+
+                const kim = document.getElementById('apf-kim');
+                kim.textContent = adim.etiket;
+                kim.className = 'apf-kim ' + adim.kim;
+                document.getElementById('apf-baslik').textContent = (sira + 1) + '. ' + adim.baslik;
+                document.getElementById('apf-metin').textContent = adim.metin;
+
+                kok.querySelectorAll('.apf-yollar line').forEach(function (l) {
+                    l.classList.toggle('aktif', l.getAttribute('data-yol') === adim.yol);
+                });
+                kok.querySelectorAll('.apf-dugum').forEach(function (d) {
+                    const ad = d.getAttribute('data-dugum');
+                    d.classList.toggle('vurgu', ad === adim.kaynak || ad === adim.hedef);
+                });
+                Array.prototype.forEach.call(adimKutu.children, function (b, i) {
+                    b.classList.remove('aktif', 'bitti');
+                    if (i < sira) b.classList.add('bitti');
+                    b.setAttribute('aria-selected', i === sira ? 'true' : 'false');
+                });
+                void adimKutu.children[sira].offsetWidth;
+                adimKutu.children[sira].classList.add('aktif');
+
+                const bas = konum(adim.kaynak);
+                const son = konum(adim.hedef);
+                aparat.style.transition = 'none';
+                aparat.style.left = bas.left;
+                aparat.style.top = bas.top;
+                void aparat.offsetWidth;
+                aparat.style.transition = '';
+
+                const vardi = function () {
+                    const degisen = {};
+                    if (adim.kaynak in sayilar) { sayilar[adim.kaynak]--; degisen[adim.kaynak] = 'azaldi'; }
+                    if (adim.hedef in sayilar) { sayilar[adim.hedef]++; degisen[adim.hedef] = 'artti'; }
+                    sayilariYaz(degisen);
+                };
+
+                if (hareketAzalt) {
+                    aparat.style.left = son.left;
+                    aparat.style.top = son.top;
+                    vardi();
+                    return;
+                }
+                zamanlayici = setTimeout(function () {
+                    aparat.style.left = son.left;
+                    aparat.style.top = son.top;
+                    zamanlayici = setTimeout(function () {
+                        vardi();
+                        if (calisiyor) zamanlayici = setTimeout(function () { git(sira + 1); }, SURE - 1550);
+                    }, 1250);
+                }, 300);
+            }
+
+            function oynatDurumu(acik) {
+                calisiyor = acik && !hareketAzalt;
+                kok.classList.toggle('durdu', !calisiyor);
+                oynatBtn.innerHTML = '<span class="material-symbols-outlined">' + (calisiyor ? 'pause' : 'play_arrow') + '</span>';
+                oynatBtn.setAttribute('aria-label', calisiyor ? 'Duraklat' : 'Oynat');
+            }
+
+            oynatBtn.addEventListener('click', function () {
+                oynatDurumu(!calisiyor);
+                git(calisiyor ? sira + 1 : sira);
+            });
+            document.getElementById('apf-ileri').addEventListener('click', function () { oynatDurumu(false); git(sira + 1); });
+            document.getElementById('apf-geri').addEventListener('click', function () { oynatDurumu(false); git(sira - 1); });
+
+            return {
+                baslat: function () { oynatDurumu(true); git(0); },
+                durdur: function () { clearTimeout(zamanlayici); oynatDurumu(false); }
+            };
+        })();
+
+        const ANLATIM_ANAHTAR = 'aparat_anlatim_izlendi';
+
+        window.aparatAnlatimAc = function () {
+            if (!aparatAnlatim) return;
+            document.getElementById('apf-katman').classList.add('acik');
+            document.body.style.overflow = 'hidden';
+            aparatAnlatim.baslat();
+            try { localStorage.setItem(ANLATIM_ANAHTAR, '1'); } catch (e) {}
+        };
+
+        window.aparatAnlatimKapat = function () {
+            document.getElementById('apf-katman').classList.remove('acik');
+            document.body.style.overflow = '';
+            if (aparatAnlatim) aparatAnlatim.durdur();
+        };
+
+        document.getElementById('apf-katman').addEventListener('click', function (e) {
+            if (e.target === this) aparatAnlatimKapat();
+        });
+
         document.addEventListener('DOMContentLoaded', function () {
+            let izlendi = true;
+            try { izlendi = localStorage.getItem(ANLATIM_ANAHTAR) === '1'; } catch (e) {}
+            if (!izlendi) aparatAnlatimAc();
             konumAl();
             aparatBilgiYukle().then(aparatStokYukle);
             aparatKuyrukDurumu();

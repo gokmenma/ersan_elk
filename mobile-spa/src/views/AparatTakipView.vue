@@ -1,9 +1,10 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { AlertTriangle, ArrowLeft, ArrowRight, Building2, Check, History, LoaderCircle, MapPin, Minus, Package, PackageMinus, PackagePlus, Plus, RefreshCw, Search, Send, Users, X } from '@lucide/vue'
+import { AlertTriangle, ArrowLeft, ArrowRight, Building2, Check, CircleHelp, CircleOff, History, LoaderCircle, Trash2, MapPin, Minus, Package, PackageMinus, PackagePlus, Plus, RefreshCw, Search, Send, Users, X } from '@lucide/vue'
 import { auth } from '../services/auth.js'
 import { aparatApi } from '../services/aparat-takip.js'
+import AparatAnlatim from '../components/AparatAnlatim.vue'
 
 const router = useRouter()
 const loading = ref(true)
@@ -17,6 +18,8 @@ const teamSearch = ref('')
 const teamPickerOpen = ref(false)
 const saving = ref(false)
 const toast = ref('')
+const guideOpen = ref(false)
+const GUIDE_KEY = 'aparat_anlatim_izlendi_yonetici'
 let toastTimer = null
 
 const MOVES = {
@@ -25,10 +28,16 @@ const MOVES = {
   depo_iade: { title: 'İade Al', hint: 'Ekibin zimmetinden düşer, depoya geri girer.', team: true, source: 'team', icon: PackageMinus },
 }
 
-const summary = computed(() => data.value?.summary || { depot: 0, teams: 0, field: 0, critical: 0 })
+const summary = computed(() => data.value?.summary || { depot: 0, teams: 0, field: 0, scrap: 0, lost: 0, critical: 0 })
 const types = computed(() => data.value?.types || [])
 const teams = computed(() => data.value?.teams || [])
 const depot = computed(() => data.value?.depot || { counts: {}, critical: {} })
+const pools = computed(() => data.value?.pools || { scrap: { counts: {} }, lost: { counts: {} } })
+const showPools = computed(() => summary.value.scrap !== 0 || summary.value.lost !== 0)
+const poolCards = computed(() => [
+  { key: 'scrap', label: 'Hurda', hint: 'Bozuk iade ve kırma kayıtları', icon: Trash2, total: summary.value.scrap, counts: pools.value.scrap.counts },
+  { key: 'lost', label: 'Kayıp', hint: 'Sayım farkı ve kayıp aparatlar', icon: CircleOff, total: summary.value.lost, counts: pools.value.lost.counts },
+].filter(pool => pool.total !== 0))
 const canMove = computed(() => Boolean(data.value?.can_move))
 
 const distribution = computed(() => {
@@ -101,6 +110,9 @@ const preview = computed(() => {
   if (sheet.value.type === 'depo_cikis') {
     return [{ label: 'Depo', before: depotNow, after: depotNow - q }, { ...teamRow, after: teamNow + q }]
   }
+  if (sheet.value.broken) {
+    return [{ ...teamRow, after: teamNow - q }, { label: 'Hurda', before: null, after: `+${q}`, scrap: true }]
+  }
   return [{ ...teamRow, after: teamNow - q }, { label: 'Depo', before: depotNow, after: depotNow + q }]
 })
 
@@ -153,7 +165,7 @@ function openSheet(type, team = null) {
   const typeId = team
     ? (types.value.find(item => Number(team.counts[item.id] || 0) > 0) || firstStocked || types.value[0])?.id
     : (firstStocked || types.value[0])?.id
-  sheet.value = { type, teamId: team?.id || '', typeId: typeId || '', quantity: 1, note: '' }
+  sheet.value = { type, teamId: team?.id || '', typeId: typeId || '', quantity: 1, note: '', broken: false }
   teamSearch.value = ''
   teamPickerOpen.value = !team && MOVES[type].team
 }
@@ -201,7 +213,7 @@ async function submit() {
   saving.value = true
   try {
     const res = await aparatApi.move({
-      type: form.type,
+      type: form.type === 'depo_iade' && form.broken ? 'depo_iade_hurda' : form.type,
       team_id: form.teamId,
       type_id: form.typeId,
       quantity,
@@ -217,7 +229,18 @@ async function submit() {
   }
 }
 
-onMounted(() => load())
+onMounted(async () => { await load(); maybeAutoGuide() })
+function openGuide() {
+  guideOpen.value = true
+  try { localStorage.setItem(GUIDE_KEY, '1') } catch { /* depolama kapalı */ }
+}
+
+function maybeAutoGuide() {
+  let seen = true
+  try { seen = localStorage.getItem(GUIDE_KEY) === '1' } catch { /* depolama kapalı */ }
+  if (!seen && canMove.value) openGuide()
+}
+
 onBeforeUnmount(() => clearTimeout(toastTimer))
 </script>
 
@@ -232,7 +255,10 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
           <p class="clay-topbar-subtitle">Depo, ekip zimmeti ve abonede takılı aparatlar</p>
         </div>
       </div>
-      <button class="clay-circle-btn" type="button" aria-label="Yenile" :disabled="refreshing" @click="load(true)"><RefreshCw :size="18" :class="{ spin: refreshing }" /></button>
+      <div class="at-topbar-actions">
+        <button class="clay-circle-btn" type="button" aria-label="Aparat nasıl takip edilir?" @click="openGuide"><CircleHelp :size="18" /></button>
+        <button class="clay-circle-btn" type="button" aria-label="Yenile" :disabled="refreshing" @click="load(true)"><RefreshCw :size="18" :class="{ spin: refreshing }" /></button>
+      </div>
     </header>
 
     <div v-if="loading" class="at-state"><LoaderCircle class="spin" :size="28" /><span>Aparat verileri yükleniyor…</span></div>
@@ -249,6 +275,10 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
           <div><Users :size="16" /><strong>{{ summary.teams }}</strong><span>Ekiplerde</span></div>
           <div><MapPin :size="16" /><strong>{{ summary.field }}</strong><span>Abonede</span></div>
           <div :class="{ 'is-alert': summary.critical > 0 }"><AlertTriangle :size="16" /><strong>{{ summary.critical }}</strong><span>Azalan</span></div>
+        </div>
+        <div v-if="showPools" class="at-hero__pools">
+          <span><Trash2 :size="14" /> Hurda <b>{{ summary.scrap }}</b></span>
+          <span :class="{ 'is-alert': summary.lost !== 0 }"><CircleOff :size="14" /> Kayıp <b>{{ summary.lost }}</b></span>
         </div>
       </article>
 
@@ -281,6 +311,17 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
       </div>
 
       <div class="at-list">
+        <article v-for="pool in poolCards" :key="pool.key" class="at-card" :class="`at-card--${pool.key}`">
+          <div class="at-card__head">
+            <span class="at-card__icon"><component :is="pool.icon" :size="18" /></span>
+            <span class="at-card__title"><strong>{{ pool.label }}</strong><small>{{ pool.hint }}</small></span>
+            <b>{{ pool.total }}</b>
+          </div>
+          <div class="at-chips">
+            <em v-for="type in types" :key="type.id" class="at-chip" :class="{ 'at-chip--zero': !pool.counts[type.id] }">{{ type.name }} <b>{{ pool.counts[type.id] || 0 }}</b></em>
+          </div>
+        </article>
+
         <article class="at-card at-card--depot">
           <div class="at-card__head">
             <span class="at-card__icon"><Building2 :size="18" /></span>
@@ -397,11 +438,21 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
               <p v-if="overLimit" class="at-hint at-hint--danger">{{ available > 0 ? `${sourceLabel === 'ekipte' ? 'Ekipte' : 'Depoda'} yalnız ${available} adet var.` : `${sourceLabel === 'ekipte' ? 'Ekipte' : 'Depoda'} bu aparattan hiç yok.` }}</p>
             </section>
 
+            <label v-if="sheet.type === 'depo_iade'" class="at-broken" :class="{ on: sheet.broken }">
+              <input v-model="sheet.broken" type="checkbox">
+              <span class="at-broken__box"><Check v-if="sheet.broken" :size="15" /></span>
+              <span class="at-broken__text">
+                <strong>Aparat bozuk / hasarlı</strong>
+                <small>Depoya girmez, hurdaya ayrılır.</small>
+              </span>
+            </label>
+
             <section v-if="preview.length" class="at-preview">
               <span class="at-preview__title">Kaydedince</span>
               <div v-for="row in preview" :key="row.label" class="at-preview__row">
                 <span class="at-preview__who">{{ row.label }}</span>
-                <span class="at-preview__nums">{{ row.before }} <ArrowRight :size="13" /> <b :class="{ up: row.after > row.before, down: row.after < row.before, neg: row.after < 0 }">{{ row.after }}</b></span>
+                <span v-if="row.scrap" class="at-preview__nums"><b class="neg">{{ row.after }}</b></span>
+                <span v-else class="at-preview__nums">{{ row.before }} <ArrowRight :size="13" /> <b :class="{ up: row.after > row.before, down: row.after < row.before, neg: row.after < 0 }">{{ row.after }}</b></span>
               </div>
             </section>
 
@@ -415,12 +466,14 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
             <button class="at-submit" type="submit" form="aparatHareketForm" :disabled="!canSubmit">
               <LoaderCircle v-if="saving" class="spin" :size="18" />
               <component :is="sheetMove.icon" v-else :size="18" />
-              <span>{{ saving ? 'Kaydediliyor…' : `${sheetMove.title}${quantity > 0 ? ' · ' + quantity + ' adet' : ''}` }}</span>
+              <span>{{ saving ? 'Kaydediliyor…' : `${sheet.type === 'depo_iade' && sheet.broken ? 'Bozuk İade · Hurdaya' : sheetMove.title}${quantity > 0 ? ' · ' + quantity + ' adet' : ''}` }}</span>
             </button>
           </footer>
         </div>
       </div>
     </Transition>
+
+    <AparatAnlatim :open="guideOpen" @close="guideOpen = false" />
 
     <Transition name="toast"><div v-if="toast" class="at-toast" role="status">{{ toast }}</div></Transition>
   </section>
@@ -444,6 +497,7 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
 .at-hero__grid .is-alert { color: var(--ds-amber); }
 .at-hero__grid .is-alert strong { color: var(--ds-amber); }
 
+.at-topbar-actions { display: flex; gap: 8px; }
 .at-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0; }
 .at-actions button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 64px; border: 1px solid var(--ds-border); border-radius: 18px; background: var(--ds-surface); color: var(--ds-ink); box-shadow: var(--ds-shadow-tile); font: 700 12px var(--ds-font-main); }
 .at-actions button.primary { background: var(--ds-primary); border-color: var(--ds-primary); color: #fff; }
@@ -463,6 +517,12 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
 
 .at-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 .at-card { display: block; box-sizing: border-box; width: 100%; min-width: 0; text-align: left; padding: 14px; border: 1px solid var(--ds-border); border-radius: 20px; background: var(--ds-surface); box-shadow: var(--ds-shadow-bento); color: var(--ds-ink); font-family: var(--ds-font-main); }
+.at-card--scrap, .at-card--lost { background: var(--ds-danger-soft); border-color: transparent; }
+.at-card--scrap .at-card__icon, .at-card--lost .at-card__icon { color: var(--ds-danger-ink); }
+.at-hero__pools { display: flex; gap: 18px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--ds-border-dark); font-size: 12px; font-weight: 600; color: var(--ds-on-dark-muted); }
+.at-hero__pools span { display: inline-flex; align-items: center; gap: 5px; }
+.at-hero__pools b { color: #fff; font-size: 14px; }
+.at-hero__pools .is-alert, .at-hero__pools .is-alert b { color: var(--ds-amber); }
 .at-card--depot { background: var(--ds-blue-soft); border-color: transparent; }
 .at-card__head { display: flex; align-items: center; gap: 10px; }
 .at-card__icon { display: grid; place-items: center; flex: 0 0 38px; width: 38px; height: 38px; border-radius: 13px; background: var(--ds-surface); color: var(--ds-blue-ink); }
@@ -486,6 +546,16 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
 .at-history__row em { flex: 0 0 auto; font-style: normal; font-size: 9px; font-weight: 800; text-transform: uppercase; padding: 4px 7px; border-radius: 999px; background: var(--ds-blue-soft); color: var(--ds-blue-ink); }
 .at-history__row em.type-depo_cikis { background: var(--ds-amber-soft); color: var(--ds-amber-ink); }
 .at-history__row em.type-depo_iade { background: var(--ds-emerald-soft); color: var(--ds-emerald-ink); }
+.at-history__row em.type-depo_iade_hurda { background: var(--ds-danger-soft); color: var(--ds-danger-ink); }
+.at-broken { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 10px 14px; border: 1.5px solid var(--ds-border); border-radius: 16px; background: var(--ds-surface); cursor: pointer; }
+.at-broken input { position: absolute; opacity: 0; pointer-events: none; }
+.at-broken__box { display: grid; place-items: center; flex: 0 0 24px; width: 24px; height: 24px; border: 2px solid var(--ds-border); border-radius: 8px; color: #fff; }
+.at-broken__text { display: flex; flex-direction: column; }
+.at-broken__text strong { font-size: 13px; color: var(--ds-ink); }
+.at-broken__text small { font-size: 11px; color: var(--ds-muted); }
+.at-broken.on { border-color: var(--ds-danger); background: var(--ds-danger-soft); }
+.at-broken.on .at-broken__box { background: var(--ds-danger); border-color: var(--ds-danger); }
+.at-broken.on strong { color: var(--ds-danger-ink); }
 .at-history__body { display: flex; min-width: 0; flex-direction: column; }
 .at-history__body strong { font-size: 13px; color: var(--ds-ink); }
 .at-history__body small { font-size: 11px; color: var(--ds-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

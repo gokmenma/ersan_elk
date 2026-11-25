@@ -469,6 +469,13 @@ function sorgulamaPuantaj($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
         $logMsg .= " UYARI: Aşağıdaki personellerin zimmetinde aparat olmadığı için iade/düşüm işlenemedi: " . implode(', ', $uniqueEksik);
     }
     $SystemLog->logAction(0, 'Cron - Online Kesme/Açma Sorgulama', $logMsg, SystemLogModel::LEVEL_IMPORTANT);
+
+    try {
+        $kirma = (new \App\Service\AparatStokService())->otomatikKirmaSenkronize((int) $firmaId);
+        cronLog('Aparat otomatik kırma: ' . json_encode($kirma, JSON_UNESCAPED_UNICODE));
+    } catch (Throwable $e) {
+        cronLog('Aparat otomatik kırma hatası: ' . $e->getMessage());
+    }
     return [
         'success' => $basarili,
         'yeni_kayit' => $yeniKayit,

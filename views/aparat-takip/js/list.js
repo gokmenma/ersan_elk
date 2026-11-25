@@ -127,7 +127,7 @@
             const ekipSatirlari = veri.satirlar.filter(function (s) { return s.sahip_tipi === 'ekip'; });
             const havuzSatirlari = veri.satirlar.filter(function (s) {
                 if (s.sahip_tipi === 'ekip') return false;
-                return yetki.gelismis || s.sahip_tipi === 'depo' || s.sahip_tipi === 'saha';
+                return true;
             });
 
             let sahaToplam = 0;
@@ -202,7 +202,7 @@
                     hucreler += `<td class="adet-hucre${sinif}">${adet}</td>`;
                 });
                 const baslik = s.sahip_tipi === 'saha' ? 'Abonede Takılı' : s.baslik;
-                const ikon = s.sahip_tipi === 'depo' ? 'bx-buildings' : (s.sahip_tipi === 'saha' ? 'bx-map-pin' : 'bx-box');
+                const ikon = { depo: 'bx-buildings', saha: 'bx-map-pin', hurda: 'bx-trash', kayip: 'bx-error' }[s.sahip_tipi] || 'bx-box';
                 altlik.append(`<tr class="havuz-satiri">
                     <td><i class="bx ${ikon} me-1 text-muted"></i><b>${kacir(baslik)}</b></td>
                     ${hucreler}
@@ -222,7 +222,20 @@
             $('#ozetEkip').text(ekipToplam);
             $('#ozetEkipAlt').text(ekipSatirlari.length + ' ekibin zimmetinde');
             $('#ozetSaha').text(sahaToplam);
+            const havuzToplam = function (tur) {
+                const satir = veri.satirlar.find(function (x) { return x.sahip_tipi === tur; });
+                return satir ? satir.toplam : 0;
+            };
+            $('#ozetHurda').text(havuzToplam('hurda'));
+            $('#ozetKayip').text(havuzToplam('kayip'));
             kritikGoster(kritik);
+
+            if (res.kirma_bekleyen > 0) {
+                $('#kirmaBekleyenSayi').text(res.kirma_bekleyen);
+                $('#aparatKirmaBekleyen').removeClass('d-none').addClass('d-flex');
+            } else {
+                $('#aparatKirmaBekleyen').addClass('d-none').removeClass('d-flex');
+            }
 
             if (res.tutarsiz_satir > 0) {
                 $('#tutarsizSayi').text(res.tutarsiz_satir);
@@ -268,7 +281,7 @@
                 govde.append('<tr><td colspan="7" class="text-center text-muted py-3">Henüz depo hareketi yok.</td></tr>');
                 return;
             }
-            const renk = { depo_giris: 'primary', depo_cikis: 'warning', depo_iade: 'success' };
+            const renk = { depo_giris: 'primary', depo_cikis: 'warning', depo_iade: 'success', depo_iade_hurda: 'danger' };
             res.data.forEach(function (h) {
                 const r = renk[h.hareket_tipi] || 'secondary';
                 govde.append(`<tr>
@@ -354,6 +367,8 @@
         $('#havuz_aparat').val('').trigger('change');
         $('#havuz_adet').val(1);
         $('#havuzEkipAlan').toggle(tur.ekip);
+        $('#havuz_bozuk').prop('checked', false);
+        $('#havuzBozukAlan').toggleClass('d-none', kod !== 'depo_iade');
         havuzBakiyeGoster();
         new bootstrap.Modal('#modalHavuz').show();
     });
@@ -365,7 +380,7 @@
 
         istek({
             action: 'havuz-hareketi',
-            tur: $('#havuz_tur').val(),
+            tur: $('#havuz_tur').val() === 'depo_iade' && $('#havuz_bozuk').is(':checked') ? 'depo_iade_hurda' : $('#havuz_tur').val(),
             ekip_id: $('#havuz_ekip').val() || 0,
             aparat_tip_id: $('#havuz_aparat').val() || 0,
             adet: $('#havuz_adet').val(),
@@ -1188,6 +1203,7 @@
                     renk: t.renk,
                     depo_kritik: parseInt(t.depo_kritik_stok, 10) || 0,
                     ekip_kritik: parseInt(t.ekip_kritik_stok, 10) || 0,
+                    varsayilan_kirma: parseInt(t.varsayilan_kirma, 10) === 1,
                     aciklama: t.aciklama || '',
                     durum: t.is_active == 1 ? 'Aktif' : 'Pasif'
                 };
@@ -1215,7 +1231,15 @@
                             return `<span class="badge bg-light text-muted p-2" title="Görsel yok"><i class="bx bx-image-alt fs-5"></i></span>`;
                         }
                     },
-                    { data: 'ad', render: bicim(function (deger) { return `<b>${kacir(deger)}</b>`; }) },
+                    {
+                        data: 'ad',
+                        render: bicim(function (deger, satir) {
+                            const rozet = satir.varsayilan_kirma
+                                ? ' <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold" title="Tipi bilinmeyen aparat kırmaları bu tipten hurdaya işlenir">Kırma varsayılanı</span>'
+                                : '';
+                            return `<b>${kacir(deger)}</b>${rozet}`;
+                        })
+                    },
                     {
                         data: 'kod',
                         render: bicim(function (deger, satir) {
@@ -1261,6 +1285,7 @@
         $('#tip_renk').val('primary').trigger('change');
         $('#tip_aktif').prop('checked', true);
         $('#tip_depo_kritik, #tip_ekip_kritik').val(0);
+        $('#tip_varsayilan_kirma').prop('checked', false);
         new bootstrap.Modal('#modalTip').show();
     });
 
@@ -1273,6 +1298,7 @@
         $('#tip_sira').val(t.sira);
         $('#tip_depo_kritik').val(parseInt(t.depo_kritik_stok, 10) || 0);
         $('#tip_ekip_kritik').val(parseInt(t.ekip_kritik_stok, 10) || 0);
+        $('#tip_varsayilan_kirma').prop('checked', parseInt(t.varsayilan_kirma, 10) === 1);
         $('#tip_aciklama').val(t.aciklama || '');
         $('#tip_renk').val(t.renk).trigger('change');
         $('#tip_aktif').prop('checked', t.is_active == 1);
@@ -1331,6 +1357,7 @@
         formData.append('sira', $('#tip_sira').val());
         formData.append('aciklama', $('#tip_aciklama').val());
         formData.append('depo_kritik_stok', $('#tip_depo_kritik').val() || 0);
+        formData.append('varsayilan_kirma', $('#tip_varsayilan_kirma').is(':checked') ? 1 : 0);
         formData.append('ekip_kritik_stok', $('#tip_ekip_kritik').val() || 0);
         formData.append('is_active', $('#tip_aktif').is(':checked') ? 1 : 0);
         formData.append('resim_sil', $('#tip_resim_sil').val());
@@ -1396,6 +1423,157 @@
             if ($(secici).is(':visible')) dtOrnekleri[secici].columns.adjust();
         });
     });
+
+    const aparatAkis = (function () {
+        const kok = document.getElementById('aparatAkis');
+        if (!kok) return null;
+
+        const SURE = 3600;
+        const hareketAzalt = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const BASLANGIC = { depo: 3, ekipA: 0, ekipB: 0, abone: 0 };
+        const ADIMLAR = [
+            { kim: 'siz', baslik: 'Depoya Giriş', metin: 'Aparat satın alınınca depoya eklenir. Depo artar.', yol: 'tedarik-depo', kaynak: 'tedarik', hedef: 'depo', renk: '#2563eb' },
+            { kim: 'siz', baslik: 'Ekibe Ver', metin: 'Depodan Ahmet\'in ekibine aparat verilir. Depo azalır, Ahmet\'in zimmeti artar.', yol: 'depo-ekipA', kaynak: 'depo', hedef: 'ekipA', renk: '#d97706' },
+            { kim: 'sistem', baslik: 'Kesme', metin: 'Ahmet sayacı kesip aparatı takar ve telefondan kesme kaydı girer. Aparat Ahmet\'in zimmetinden düşer, abonede takılı olur.', yol: 'ekipA-abone', kaynak: 'ekipA', hedef: 'abone', renk: '#dc2626' },
+            { kim: 'sistem', baslik: 'Açma', metin: 'Günler sonra Mehmet aynı aboneyi açar ve aparatı söker. Aparat kendiliğinden Mehmet\'in zimmetine geçer.', yol: 'abone-ekipB', kaynak: 'abone', hedef: 'ekipB', renk: '#059669' },
+            { kim: 'sistem', baslik: 'Ekipler Arası Değişim', metin: 'Mehmet aparatı telefondan Ahmet\'e gönderir. Ahmet onaylayınca Mehmet\'ten düşer, Ahmet\'e geçer. Elinde olmayanı gönderemez.', yol: 'ekipB-ekipA', kaynak: 'ekipB', hedef: 'ekipA', renk: '#7c3aed' },
+            { kim: 'siz', baslik: 'İade Al', metin: 'Ahmet kullanmadığı ya da bozulan aparatı depoya getirir. Ahmet\'in zimmeti azalır, depo artar. Aparat bozuksa İade Al\'da “bozuk” işaretlenir, depoya değil hurdaya geçer.', yol: 'ekipA-depo', kaynak: 'ekipA', hedef: 'depo', renk: '#0891b2' }
+        ];
+
+        const aparat = document.getElementById('apfAparat');
+        const adimKutu = document.getElementById('apfAdimlar');
+        const oynatBtn = document.getElementById('apfOynat');
+        let sira = 0;
+        let calisiyor = false;
+        let zamanlayici = null;
+        let sayilar = {};
+
+        ADIMLAR.forEach(function (adim, i) {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.setAttribute('role', 'tab');
+            b.setAttribute('aria-label', (i + 1) + '. adım: ' + adim.baslik);
+            b.title = adim.baslik;
+            b.addEventListener('click', function () { git(i); });
+            adimKutu.appendChild(b);
+        });
+
+        function konum(ad) {
+            const d = kok.querySelector('[data-dugum="' + ad + '"]');
+            return { left: d.style.left, top: d.style.top };
+        }
+
+        function sayilariYaz(degisen) {
+            Object.keys(sayilar).forEach(function (k) {
+                const el = kok.querySelector('[data-sayi="' + k + '"]');
+                if (!el) return;
+                el.textContent = sayilar[k];
+                el.classList.remove('artti', 'azaldi');
+                if (degisen && degisen[k]) {
+                    void el.offsetWidth;
+                    el.classList.add(degisen[k]);
+                }
+            });
+        }
+
+        function durumuHesapla(n) {
+            sayilar = Object.assign({}, BASLANGIC);
+            for (let i = 0; i < n; i++) {
+                const a = ADIMLAR[i];
+                if (a.kaynak in sayilar) sayilar[a.kaynak]--;
+                if (a.hedef in sayilar) sayilar[a.hedef]++;
+            }
+        }
+
+        function git(n) {
+            clearTimeout(zamanlayici);
+            sira = (n + ADIMLAR.length) % ADIMLAR.length;
+            const adim = ADIMLAR[sira];
+            kok.style.setProperty('--apf-renk', adim.renk);
+            kok.style.setProperty('--apf-sure', SURE + 'ms');
+
+            durumuHesapla(sira);
+            sayilariYaz();
+
+            const kim = document.getElementById('apfKim');
+            kim.textContent = adim.kim === 'siz' ? 'Siz yaparsınız · sayfadaki buton' : 'Sistem yapar · otomatik';
+            kim.className = 'apf-kim ' + adim.kim;
+            document.getElementById('apfBaslik').textContent = (sira + 1) + '. ' + adim.baslik;
+            document.getElementById('apfMetin').textContent = adim.metin;
+
+            kok.querySelectorAll('.apf-yollar line').forEach(function (l) {
+                l.classList.toggle('aktif', l.getAttribute('data-yol') === adim.yol);
+            });
+            kok.querySelectorAll('.apf-dugum').forEach(function (d) {
+                const ad = d.getAttribute('data-dugum');
+                d.classList.toggle('vurgu', ad === adim.kaynak || ad === adim.hedef);
+            });
+            Array.prototype.forEach.call(adimKutu.children, function (b, i) {
+                b.classList.remove('aktif', 'bitti');
+                if (i < sira) b.classList.add('bitti');
+                b.setAttribute('aria-selected', i === sira ? 'true' : 'false');
+            });
+            const aktifCubuk = adimKutu.children[sira];
+            void aktifCubuk.offsetWidth;
+            aktifCubuk.classList.add('aktif');
+
+            const baslangic = konum(adim.kaynak);
+            const bitis = konum(adim.hedef);
+            aparat.style.transition = 'none';
+            aparat.style.left = baslangic.left;
+            aparat.style.top = baslangic.top;
+            aparat.classList.remove('gizli');
+            void aparat.offsetWidth;
+            aparat.style.transition = '';
+
+            const hedefeVar = function () {
+                const degisen = {};
+                if (adim.kaynak in sayilar) { sayilar[adim.kaynak]--; degisen[adim.kaynak] = 'azaldi'; }
+                if (adim.hedef in sayilar) { sayilar[adim.hedef]++; degisen[adim.hedef] = 'artti'; }
+                sayilariYaz(degisen);
+            };
+
+            if (hareketAzalt) {
+                aparat.style.left = bitis.left;
+                aparat.style.top = bitis.top;
+                hedefeVar();
+            } else {
+                zamanlayici = setTimeout(function () {
+                    aparat.style.left = bitis.left;
+                    aparat.style.top = bitis.top;
+                    zamanlayici = setTimeout(function () {
+                        hedefeVar();
+                        if (calisiyor) zamanlayici = setTimeout(function () { git(sira + 1); }, SURE - 1550);
+                    }, 1250);
+                }, 300);
+            }
+
+        }
+
+        function oynatDurumu(acik) {
+            calisiyor = acik && !hareketAzalt;
+            kok.classList.toggle('durdu', !calisiyor);
+            oynatBtn.innerHTML = calisiyor ? '<i class="bx bx-pause"></i>' : '<i class="bx bx-play"></i>';
+            oynatBtn.setAttribute('aria-label', calisiyor ? 'Duraklat' : 'Oynat');
+            oynatBtn.title = calisiyor ? 'Duraklat' : 'Oynat';
+        }
+
+        oynatBtn.addEventListener('click', function () {
+            oynatDurumu(!calisiyor);
+            git(calisiyor ? sira + 1 : sira);
+        });
+        document.getElementById('apfIleri').addEventListener('click', function () { oynatDurumu(false); git(sira + 1); });
+        document.getElementById('apfGeri').addEventListener('click', function () { oynatDurumu(false); git(sira - 1); });
+
+        return {
+            baslat: function () { oynatDurumu(true); git(0); },
+            durdur: function () { clearTimeout(zamanlayici); oynatDurumu(false); }
+        };
+    })();
+
+    $('#modalNasilCalisir')
+        .on('shown.bs.modal', function () { if (aparatAkis) aparatAkis.baslat(); })
+        .on('hidden.bs.modal', function () { if (aparatAkis) aparatAkis.durdur(); });
 
     $(function () {
         $('.select2').select2({ width: '100%' });

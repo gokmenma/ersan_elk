@@ -325,17 +325,23 @@ class AparatHareketModel extends Model
 
     public function sonDepoHareketleri(int $limit = 10): array
     {
-        $sonuc = [];
-        foreach ($this->listele(['sahip_tipi' => 'depo', 'iptal_haric' => 1], $limit * 4) as $h) {
-            if (!in_array($h['hareket_tipi'], ['depo_giris', 'depo_cikis', 'depo_iade'], true)) {
-                continue;
-            }
-            $sonuc[] = $h;
-            if (count($sonuc) >= $limit) {
-                break;
-            }
-        }
-        return $sonuc;
+        $limit = max(1, min(50, $limit));
+        $stmt = $this->db->prepare("SELECT h.*, t.ad AS aparat_adi, t.kod AS aparat_kod,
+                   ek.tur_adi AS ekip_adi, u.adi_soyadi AS kullanici_adi,
+                   CASE WHEN h.referans_tipi = 'bozuk_iade' THEN 'depo_iade_hurda' ELSE h.hareket_tipi END AS gorunen_tip
+            FROM {$this->table} h
+            LEFT JOIN aparat_tipleri t ON t.id = h.aparat_tip_id
+            LEFT JOIN tanimlamalar ek ON ek.id = h.ekip_id
+            LEFT JOIN users u ON u.id = h.kaydeden_id
+            WHERE h.firma_id = ? AND h.iptal_mi = 0
+              AND (
+                    (h.sahip_tipi = 'depo' AND h.hareket_tipi IN ('depo_giris', 'depo_cikis', 'depo_iade'))
+                 OR (h.sahip_tipi = 'hurda' AND h.referans_tipi = 'bozuk_iade')
+              )
+            ORDER BY h.id DESC
+            LIMIT {$limit}");
+        $stmt->execute([$this->firmaId()]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function sayisi(array $filtre = []): int

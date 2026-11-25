@@ -2452,3 +2452,4 @@
 
 - Maliyet raporu kurumlar vergisi: gider = tüm gelen fatura KDV matrahı (kalemsiz dahil, haric hariç) + resmî maaş (bordro banka_odemesi) + SGK; Ekim 2026 vergi 1.712.131,65 ₺ (MaliyetRaporuModel::kurumlarVergisi/aylikKalem/kurumlarVergisiGiderDetay).
 - [x] Yönetici mobil (mobile-spa) Aparat Takip sayfası: `/aparat-takip`, özet + azalan aparatlar + ekip kartları + Depoya Giriş/Ekibe Ver/İade Al; `public/api/aparat-takip.php`, policy SQL `sql/2026_11_25_aparat_mobile_policies.sql` (yerelde uygulandı). dist yeniden derlendi.
+- [x] Aparat kırma otomatik hurda: iş türünde "aparat hurdaya ayrılır" kutucuğu, puantaj kırmaları abonedeki varsayılan tipten hurdaya (aparat_otomatik_kirma ile fark/ters kayıt), başlangıç 2026-11-25. Personel hurdaya ayıramaz: hasarlı açma zimmete; depo İade Al → Bozuk ile hurdaya. SQL `sql/2026_11_25_aparat_kirma_otomatik_hurda.sql`.

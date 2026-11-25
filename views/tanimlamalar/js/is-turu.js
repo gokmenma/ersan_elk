@@ -186,6 +186,7 @@ $(document).on("click", "#actionEkle", function () {
   setFlatpickrValue("#ucret_gecerlilik_baslangic", getTodayTr());
   $("#rapor_sekmesi").val("").trigger("change");
   $("#sonuc_tipi").val("olumlu").trigger("change");
+  $("#aparat_hurda").prop("checked", false);
   $("#actionModalLabel").text("Yeni İş Türü Ekle");
 });
 
@@ -458,6 +459,7 @@ $(document).on("click", ".duzenle", function (e) {
         setFlatpickrValue("#ucret_gecerlilik_baslangic", getTodayTr());
         $("#rapor_sekmesi").val(data.data.rapor_sekmesi).trigger("change");
         $("#sonuc_tipi").val(data.data.sonuc_tipi || "olumlu").trigger("change");
+        $("#aparat_hurda").prop("checked", parseInt(data.data.aparat_hurda, 10) === 1);
         $("#aciklama").val(data.data.aciklama);
         $("#actionModalLabel").text("İş Türü Düzenle");
         $("#actionModal").modal("show");

@@ -16,7 +16,7 @@ class KesmeAcmaIslemModel extends Model
 
     const APARAT_DURUMLARI = [
         'alindi' => 'Aparat alındı',
-        'hasarli' => 'Hasarlı geldi',
+        'hasarli' => 'Hasarlı geldi (depoya iade et)',
         'bulunamadi' => 'Bulunamadı / kayıp',
     ];
 
