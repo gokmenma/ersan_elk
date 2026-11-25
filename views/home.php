@@ -1274,8 +1274,14 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                 [data-bs-theme="dark"] .pa-divider { background:#3a4256; }
                 [data-bs-theme="dark"] .pa-total, [data-bs-theme="dark"] .pa-legend-item b { color:#f8fafc; }
                 [data-bs-theme="dark"] .pa-bar { background:#232838; }
-                .dash-size-row { display:flex; gap:6px; padding:0 8px 8px 34px; }
-                .dash-size-row select { flex:1; min-width:0; height:28px; padding:0 6px; font-size:11.5px; border:1px solid #e2e8f0; border-radius:6px; background:#fff; color:#334155; }
+                .dash-card-table-wrap { max-height:420px; overflow-y:auto; padding:0 12px 4px; }
+                .dash-card-table { width:100%; border-collapse:separate; border-spacing:0; }
+                .dash-card-table thead th { position:sticky; top:0; z-index:1; background:#f8fafc; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:#64748b; padding:8px 8px; border-bottom:2px solid #e2e8f0; }
+                .dash-card-table tbody td { padding:7px 8px; border-bottom:1px solid #e2e8f0; vertical-align:middle; }
+                .dash-card-table tbody tr:hover { background:#f8fafc; }
+                .dash-card-name { display:flex; align-items:center; gap:8px; margin:0; cursor:pointer; font-size:13px; font-weight:500; color:#1e293b; }
+                .dash-card-name .form-check-input { margin:0; flex-shrink:0; }
+                .dash-size-cell select { width:100%; min-width:0; height:28px; padding:0 6px; font-size:11.5px; border:1px solid #e2e8f0; border-radius:6px; background:#fff; color:#334155; }
                 #dashboard-widgets .widget-item .grid-resize-grip { display:none !important; }
                 .dash-slider { margin-bottom:12px; width:100%; flex:0 0 100%; max-width:100%; }
                 .dash-slider .carousel { width:100%; }
@@ -1941,7 +1947,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                                 <i class="bx bx-cog me-2 fs-5"></i> Dashboard Ayarları
                             </button>
                             <ul class="dropdown-menu dropdown-menu-start shadow-lg border-0 py-2"
-                                style="min-width: 400px; z-index: 1060; border-radius: 12px;">
+                                style="min-width: 560px; z-index: 1060; border-radius: 12px;">
                                 <li class="px-3 py-2">
                                     <div class="d-flex justify-content-between align-items-center">
                                         <h6 class="dropdown-header px-0 mb-0 fw-bold text-primary">YERLEŞİM AYARLARI</h6>
@@ -1958,70 +1964,29 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                                 <li class="px-3 py-1">
                                     <h6 class="dropdown-header px-0 mb-1 fw-bold text-primary">KARTLAR · GÖRÜNÜRLÜK, GENİŞLİK, YÜKSEKLİK</h6>
                                 </li>
-                                <div style="max-height: 420px; overflow-y: auto; padding: 0 8px;" id="dash-card-settings-list">
-                                    <li>
-                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
-                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-ana-slider" checked>
-                                            <strong style="font-size: 13px;">Haberler ve Duyurular</strong>
-                                        </label>
-                                    </li>
-                                    <li>
-                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
-                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-personel-arac-ozet" checked>
-                                            <span style="font-size: 13px;">Personel ve Araç Durumu</span>
-                                        </label>
-                                    </li>
-                                    
-                                    <li><hr class="dropdown-divider opacity-50"></li>
-                                    <li>
-                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
-                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-bildirimler" checked>
-                                            <span style="font-size: 13px;">Görev ve Bildirimler</span>
-                                        </label>
-                                    </li>
-                                    <li>
-                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
-                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-talepler" checked>
-                                            <span style="font-size: 13px;">Arıza/İzin/Avans Talepleri</span>
-                                        </label>
-                                    </li>
-                                    <?php if (Gate::allows("ana_sayfa_izinli_personel_karti") || $izinModel->getRestrictedDept() !== null): ?>
-                                        <li>
-                                            <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
-                                                <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-izindekiler" checked>
-                                                <span style="font-size: 13px;">İzinde Olan Personeller</span>
-                                            </label>
-                                        </li>
-                                    <?php endif; ?>
-                                    <li><hr class="dropdown-divider opacity-50"></li>
-                                    <li>
-                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
-                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-is-operasyonlari" checked>
-                                            <span style="font-size: 13px;">İş Operasyonları</span>
-                                        </label>
-                                    </li>
-                                    <?php if (Gate::allows("gorevler")): ?>
-                                        <li>
-                                            <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
-                                                <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-yaklasan-gorevler" checked>
-                                                <span style="font-size: 13px;">Yaklaşan Görevler</span>
-                                            </label>
-                                        </li>
-                                    <?php endif; ?>
-                                    <li><hr class="dropdown-divider opacity-50"></li>
-                                    <li>
-                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
-                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-endeks-karsilastirma" checked>
-                                            <strong style="font-size: 13px;">Endeks Karşılaştırma</strong>
-                                        </label>
-                                    </li>
-                                    <li>
-                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
-                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-kesme-karsilastirma" checked>
-                                            <strong style="font-size: 13px;">Kesme/Açma Karşılaştırma</strong>
-                                        </label>
-                                    </li>
-                                </div>
+                                <div class="dash-card-table-wrap" id="dash-card-settings-list">
+<table class="dash-card-table">
+<thead><tr><th>Kart Adı</th><th>Genişlik</th><th>Yükseklik</th></tr></thead>
+<tbody>
+<tr data-widget="widget-ana-slider"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-ana-slider" checked><span>Haberler ve Duyurular</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
+<tr data-widget="widget-personel-arac-ozet"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-personel-arac-ozet" checked><span>Personel ve Araç Durumu</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
+<?php if (Gate::allowsAny(["talepler", "personel-takip/list", "nobet/list"])): ?>
+<tr data-widget="widget-talep-nobet-ozet"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-talep-nobet-ozet" checked><span>Talep, Geç Kalan ve Nöbetçi Özeti</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
+<?php endif; ?>
+<tr data-widget="widget-bildirimler"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-bildirimler" checked><span>Görev ve Bildirimler</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
+<tr data-widget="widget-talepler"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-talepler" checked><span>Arıza/İzin/Avans Talepleri</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
+<?php if (Gate::allows("ana_sayfa_izinli_personel_karti") || $izinModel->getRestrictedDept() !== null): ?>
+<tr data-widget="widget-izindekiler"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-izindekiler" checked><span>İzinde Olan Personeller</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
+<?php endif; ?>
+<tr data-widget="widget-is-operasyonlari"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-is-operasyonlari" checked><span>İş Operasyonları</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
+<?php if (Gate::allows("gorevler")): ?>
+<tr data-widget="widget-yaklasan-gorevler"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-yaklasan-gorevler" checked><span>Yaklaşan Görevler</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
+<?php endif; ?>
+<tr data-widget="widget-endeks-karsilastirma"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-endeks-karsilastirma" checked><span>Endeks Karşılaştırma</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
+<tr data-widget="widget-kesme-karsilastirma"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-kesme-karsilastirma" checked><span>Kesme/Açma Karşılaştırma</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
+</tbody>
+</table>
+</div>
                             </ul>
                         </div>
                     </div>
@@ -5369,8 +5334,8 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                         });
                 });
 
-                const dashWidthOptions = [['', 'Genişlik: Varsayılan'], [3, '¼ · 3/12'], [4, '⅓ · 4/12'], [6, '½ · 6/12'], [8, '⅔ · 8/12'], [9, '¾ · 9/12'], [12, 'Tam · 12/12']];
-                const dashHeightOptions = [['', 'Yükseklik: Otomatik'], [120, '120 px'], [160, '160 px'], [200, '200 px'], [240, '240 px'], [280, '280 px'], [320, '320 px'], [360, '360 px'], [400, '400 px'], [480, '480 px'], [560, '560 px'], [640, '640 px']];
+                const dashWidthOptions = [['', 'Varsayılan'], [3, '¼ · 3/12'], [4, '⅓ · 4/12'], [6, '½ · 6/12'], [8, '⅔ · 8/12'], [9, '¾ · 9/12'], [12, 'Tam · 12/12']];
+                const dashHeightOptions = [['', 'Otomatik'], [120, '120 px'], [160, '160 px'], [200, '200 px'], [240, '240 px'], [280, '280 px'], [320, '320 px'], [360, '360 px'], [400, '400 px'], [480, '480 px'], [560, '560 px'], [640, '640 px']];
 
                 function dashSizeSelect(kind, options) {
                     const $sel = $('<select class="dash-size-select" aria-label="' + (kind === 'cols' ? 'Kart genişliği' : 'Kart yüksekliği') + '"></select>').attr('data-kind', kind);
@@ -5379,13 +5344,14 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                 }
 
                 function buildDashSizeControls() {
-                    $('#dash-card-settings-list > li').each(function () {
-                        const $li = $(this);
-                        const id = $li.find('.widget-toggle').first().attr('data-widget');
-                        if (!id || $li.find('.dash-size-row').length) return;
-                        const $row = $('<div class="dash-size-row"></div>').attr('data-widget', id);
-                        $row.append(dashSizeSelect('cols', dashWidthOptions), dashSizeSelect('height', dashHeightOptions));
-                        $li.append($row);
+                    $('#dash-card-settings-list tr[data-widget]').each(function () {
+                        const $tr = $(this);
+                        $tr.find('.dash-size-cell').each(function () {
+                            const $td = $(this);
+                            if ($td.find('select').length) return;
+                            const kind = $td.attr('data-kind');
+                            $td.append(dashSizeSelect(kind, kind === 'cols' ? dashWidthOptions : dashHeightOptions));
+                        });
                     });
                 }
 
@@ -5400,10 +5366,10 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                 }
 
                 function syncDashSizeControls() {
-                    $('#dash-card-settings-list .dash-size-row').each(function () {
+                    $('#dash-card-settings-list tr[data-widget]').each(function () {
                         const $row = $(this);
                         const widget = $('#' + $row.attr('data-widget'));
-                        $row.toggle(widget.length > 0 && widget.closest('#dashboard-widgets').length > 0);
+                        $row.find('select').prop('disabled', !(widget.length > 0 && widget.closest('#dashboard-widgets').length > 0));
                         setDashSizeValue($row.find('[data-kind="cols"]')[0], widget.attr('data-grid-cols') || '', '/12');
                         setDashSizeValue($row.find('[data-kind="height"]')[0], widget.attr('data-grid-height') || '', ' px');
                     });
@@ -5435,8 +5401,8 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                     buildDashSizeControls();
                     syncDashSizeControls();
                 });
-                $(document).on('change', '.dash-size-row .dash-size-select', function () {
-                    const $row = $(this).closest('.dash-size-row');
+                $(document).on('change', '#dash-card-settings-list .dash-size-select', function () {
+                    const $row = $(this).closest('tr');
                     const widget = $('#' + $row.attr('data-widget'));
                     if (!widget.length) return;
                     const cols = parseInt($row.find('[data-kind="cols"]').val(), 10) || 0;
