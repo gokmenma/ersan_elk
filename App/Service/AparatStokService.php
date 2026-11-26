@@ -656,37 +656,101 @@ class AparatStokService
 
     public function otomatikKirmaSenkronize(int $firmaId): array
     {
-        $sonuc = ['islenen' => 0, 'bekleyen' => 0];
+        return $this->otomatikOnlineSenkronize($firmaId);
+    }
+
+    public function otomatikOnlineSenkronize(int $firmaId): array
+    {
+        $sonuc = ['islenen' => 0, 'bekleyen' => 0, 'kesme' => 0, 'acma' => 0, 'hurda' => 0];
         if ($firmaId <= 0) {
             return $sonuc;
         }
 
         $Kirma = new AparatOtomatikKirmaModel();
-        $baslangic = $Kirma->baslangicTarihi($firmaId);
-        if ($baslangic === null || !$Kirma->kilitAl($firmaId)) {
+        $kirmaBas = $Kirma->baslangicTarihi($firmaId, 'hurda');
+        $kesmeAcmaBas = $Kirma->baslangicTarihi($firmaId, 'kesme');
+        if (($kirmaBas === null && $kesmeAcmaBas === null) || !$Kirma->kilitAl($firmaId)) {
             return $sonuc;
         }
 
         try {
             $varsayilanTip = $Kirma->varsayilanTipId($firmaId);
+            $telefon = $kesmeAcmaBas !== null ? $Kirma->telefonKayitlari($firmaId, $kesmeAcmaBas) : [];
 
-            foreach ($Kirma->karsilastirma($firmaId, $baslangic) as $satir) {
+            foreach ($Kirma->karsilastirma($firmaId, $kirmaBas, $kesmeAcmaBas) as $satir) {
+                $islem = $satir['islem'];
+                if (!in_array($islem, ['kesme', 'acma', 'hurda'], true)) {
+                    continue;
+                }
+
+                $hedef = $satir['hedef'];
+                if ($islem !== 'hurda') {
+                    $telefonAnahtar = $satir['personel_id'] . '|' . $satir['tarih'] . '|' . $islem;
+                    $dusulen = min($hedef, $telefon[$telefonAnahtar] ?? 0);
+                    $hedef -= $dusulen;
+                    if (isset($telefon[$telefonAnahtar])) {
+                        $telefon[$telefonAnahtar] -= $dusulen;
+                    }
+                }
+
                 $kayit = $satir['kayit'];
                 $islenen = $kayit ? (int) $kayit['islenen_adet'] : 0;
-                $fark = $satir['hedef'] - $islenen;
-                if ($fark === 0) {
+                $uygulanan = $kayit ? (int) $kayit['uygulanan_adet'] : 0;
+                if ($hedef === $islenen) {
                     continue;
                 }
 
                 $tipId = $kayit && (int) $kayit['aparat_tip_id'] > 0 ? (int) $kayit['aparat_tip_id'] : $varsayilanTip;
                 if ($tipId <= 0) {
-                    $sonuc['bekleyen'] += max(0, $fark);
+                    $sonuc['bekleyen'] += max(0, $hedef - $islenen);
                     continue;
                 }
 
                 $ekipId = $kayit && (int) $kayit['ekip_id'] > 0
                     ? (int) $kayit['ekip_id']
                     : $Kirma->ekipBul($firmaId, $satir['personel_id'], $satir['tarih']);
+                if ($islem !== 'hurda' && $ekipId <= 0) {
+                    continue;
+                }
+
+                if ($islem === 'acma') {
+                    if ($hedef > $islenen) {
+                        $sahada = max(0, $this->Stok->bakiyeFirma($firmaId, 'saha', 0, $tipId));
+                        $yeniUygulanan = min($hedef, $uygulanan + min($hedef - $islenen, $sahada));
+                    } else {
+                        $yeniUygulanan = min($uygulanan, $hedef);
+                    }
+                } else {
+                    $yeniUygulanan = $hedef;
+                }
+                $fark = $yeniUygulanan - $uygulanan;
+
+                $satirlar = match ($islem) {
+                    'kesme' => [
+                        ['sahip_tipi' => 'ekip', 'sahip_id' => $ekipId, 'aparat_tip_id' => $tipId, 'adet' => -$fark],
+                        ['sahip_tipi' => 'saha', 'sahip_id' => 0, 'aparat_tip_id' => $tipId, 'adet' => $fark],
+                    ],
+                    'acma' => [
+                        ['sahip_tipi' => 'saha', 'sahip_id' => 0, 'aparat_tip_id' => $tipId, 'adet' => -$fark],
+                        ['sahip_tipi' => 'ekip', 'sahip_id' => $ekipId, 'aparat_tip_id' => $tipId, 'adet' => $fark],
+                    ],
+                    default => [
+                        ['sahip_tipi' => 'saha', 'sahip_id' => 0, 'aparat_tip_id' => $tipId, 'adet' => -$fark],
+                        ['sahip_tipi' => 'hurda', 'sahip_id' => 0, 'aparat_tip_id' => $tipId, 'adet' => $fark],
+                    ],
+                };
+                $isTarihi = date('d.m.Y', strtotime($satir['tarih']));
+                $aciklama = match ($islem) {
+                    'kesme' => $fark >= 0
+                        ? "Online aparatlı kesim: zimmetten aboneye geçti (iş tarihi $isTarihi)."
+                        : "Online kesim kaydı azaldı/silindi, aparat zimmete geri alındı (iş tarihi $isTarihi).",
+                    'acma' => $fark >= 0
+                        ? "Online açma: aparat aboneden açan ekibe döndü (iş tarihi $isTarihi)."
+                        : "Online açma kaydı azaldı/silindi, aparat aboneye geri yazıldı (iş tarihi $isTarihi).",
+                    default => $fark >= 0
+                        ? "Aparat kırma: abonedeki aparat hurdaya ayrıldı (iş tarihi $isTarihi, puantajdan)."
+                        : "Aparat kırma kaydı puantajdan kaldırıldı, hurda geri alındı (iş tarihi $isTarihi).",
+                };
 
                 $this->db()->beginTransaction();
                 try {
@@ -694,49 +758,46 @@ class AparatStokService
                         'personel_id' => $satir['personel_id'],
                         'tarih' => $satir['tarih'],
                         'is_emri_sonucu_id' => $satir['is_emri_sonucu_id'],
+                        'islem' => $islem,
                         'ekip_id' => $ekipId,
                         'aparat_tip_id' => $tipId,
-                        'islenen_adet' => $satir['hedef'],
+                        'islenen_adet' => $hedef,
+                        'uygulanan_adet' => $yeniUygulanan,
                     ]);
 
-                    $this->Hareket->uygula([
-                        ['sahip_tipi' => 'saha', 'sahip_id' => 0, 'aparat_tip_id' => $tipId, 'adet' => -$fark],
-                        ['sahip_tipi' => 'hurda', 'sahip_id' => 0, 'aparat_tip_id' => $tipId, 'adet' => $fark],
-                    ], [
-                        'firma_id' => $firmaId,
-                        'hareket_tipi' => 'hurda',
-                        'ekip_id' => $ekipId ?: null,
-                        'personel_id' => $satir['personel_id'],
-                        'referans_tipi' => 'otomatik_kirma',
-                        'referans_id' => $kayitId,
-                        'aciklama' => sprintf(
-                            $fark > 0
-                                ? 'Aparat kırma: abonedeki aparat hurdaya ayrıldı (iş tarihi %s, puantajdan).'
-                                : 'Aparat kırma kaydı puantajdan kaldırıldı, hurda geri alındı (iş tarihi %s).',
-                            date('d.m.Y', strtotime($satir['tarih']))
-                        ),
-                        'tarih' => $fark > 0 && !empty($satir['kayit_zamani'])
-                            ? $satir['kayit_zamani']
-                            : date('Y-m-d H:i:s'),
-                    ]);
+                    if ($fark !== 0) {
+                        $this->Hareket->uygula($satirlar, [
+                            'firma_id' => $firmaId,
+                            'hareket_tipi' => $islem,
+                            'ekip_id' => $ekipId ?: null,
+                            'personel_id' => $satir['personel_id'],
+                            'referans_tipi' => $islem === 'hurda' ? 'otomatik_kirma' : 'online_' . $islem,
+                            'referans_id' => $kayitId,
+                            'aciklama' => $aciklama,
+                            'tarih' => $fark > 0 && !empty($satir['kayit_zamani'])
+                                ? $satir['kayit_zamani']
+                                : date('Y-m-d H:i:s'),
+                        ]);
+                    }
 
                     $this->db()->commit();
                     $sonuc['islenen'] += $fark;
+                    $sonuc[$islem] += $fark;
                 } catch (Exception $e) {
                     if ($this->db()->inTransaction()) {
                         $this->db()->rollBack();
                     }
-                    error_log('Aparat otomatik kırma işlenemedi: ' . $e->getMessage());
+                    error_log('Aparat online senkronu işlenemedi: ' . $e->getMessage());
                 }
             }
         } finally {
             $Kirma->kilitBirak($firmaId);
         }
 
-        if ($sonuc['islenen'] !== 0) {
-            $this->logla(0, 'Aparat Otomatik Kırma', sprintf(
-                'Puantajdaki aparat kırma kayıtlarından %d adet aparat hurdaya işlendi (net).',
-                $sonuc['islenen']
+        if ($sonuc['kesme'] !== 0 || $sonuc['acma'] !== 0 || $sonuc['hurda'] !== 0) {
+            $this->logla(0, 'Aparat Online Senkron', sprintf(
+                'Puantajdan aparat hareketi işlendi (net): kesme %d, açma %d, kırma/hurda %d.',
+                $sonuc['kesme'], $sonuc['acma'], $sonuc['hurda']
             ), SystemLogModel::LEVEL_IMPORTANT);
         }
 

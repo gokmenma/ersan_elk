@@ -4205,3 +4205,7 @@
 - Evrak satır menüsüne (`btn-evrak-gorev`) "Görev Oluştur" eklendi; yalnız `gorevler` yetkisi olana çizilir. Modal `uets-modals.php` içinde (`#modalEvrakGorev`), JS `evrak-takip.js`.
 - API: `evrak-takip/api` → `evrak-gorev-hazirla`, `evrak-gorev-olustur` (policy `gorevler` yetkisine bağlı). Atananlar `gorev_kullanicilari`'na yazılır; liste yoksa "Evrak Görevleri" listesi açılır.
 - Model: `GorevModel::duzenlenebilirListeler`, `atanabilirKullanicilar`, `evrakGorevi`. SQL: `sql/2026_11_26_evrak_takip_gorev_olustur.sql` (`gorevler.evrak_id` + policy). Canlıya SQL ayrıca uygulanmalı.
+
+## Ana sayfa GridStack düzeni (2026-11-26)
+- views/home.php ana sayfa kartları aydinogullariysc_trae gibi GridStack (12 sütun, hücre 40px) ile sürükle/boyutlandır; modül assets/js/dashboard-gridstack.js, stil assets/css/dashboard-gridstack.css, kütüphane assets/libs/gridstack/.
+- Yerleşim dashboard_settings JSON içinde widget başına gs {x,y,w,h,a}; DB değişikliği yok. Sürükleme tutamacı .drag-handle-indicator, boyutlandırma e/s/se.

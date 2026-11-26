@@ -438,8 +438,8 @@ foreach (AparatTipiModel::RENKLER as $renk) {
         <div id="aparatKirmaBekleyen" class="alert alert-warning d-none align-items-center gap-2" role="alert">
             <i class="bx bx-time-five fs-4"></i>
             <div class="flex-grow-1">
-                Puantajdaki <b id="kirmaBekleyenSayi">0</b> adet aparat kırması, aparat tipi belli olmadığı için hurdaya işlenmeyi bekliyor.
-                Tanımlar sekmesinde bir aparat tipini <b>“Tipi bilinmeyen aparat kırmalarında bu tipten düş”</b> olarak işaretleyin.
+                Puantajdan gelen <b id="kirmaBekleyenSayi">0</b> adet aparat hareketi (online kesme / açma / kırma), aparat tipi belli olmadığı için işlenmeyi bekliyor.
+                Tanımlar sekmesinde bir aparat tipini <b>“Tipi bilinmeyen online işlemlerde bu tip kullanılsın”</b> olarak işaretleyin.
             </div>
         </div>
 
@@ -1175,8 +1175,8 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                             <div class="col-12">
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="tip_varsayilan_kirma">
-                                    <label class="form-check-label" for="tip_varsayilan_kirma">Tipi bilinmeyen aparat kırmalarında bu tipten düş</label>
-                                    <div class="small text-muted">Puantajdaki "aparat kırma" kayıtları abonedeki bu tipten hurdaya işlenir. Yalnız bir tip işaretlenebilir.</div>
+                                    <label class="form-check-label" for="tip_varsayilan_kirma">Tipi bilinmeyen online işlemlerde bu tip kullanılsın</label>
+                                    <div class="small text-muted">Puantajdan gelen online kesme, açma ve aparat kırma kayıtları bu tipten işlenir. Yalnız bir tip işaretlenebilir.</div>
                                 </div>
                             </div>
                             <div class="col-12"><?= Form::FormFloatTextarea('tip_aciklama', '', 'Açıklama', 'Açıklama', 'bx bx-note') ?></div>

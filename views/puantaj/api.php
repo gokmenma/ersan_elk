@@ -390,6 +390,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $userId = $_SESSION['user_id'] ?? 0;
         $SystemLog->logAction($userId, 'Puantaj Yükleme', "Excel'den $insertedCount adet puantaj kaydı yüklendi, $updatedCount adet güncellendi.", SystemLogModel::LEVEL_IMPORTANT);
 
+        try {
+            (new \App\Service\AparatStokService())->otomatikOnlineSenkronize((int) ($_SESSION['firma_id'] ?? 0));
+        } catch (\Throwable $aparatHata) {
+            error_log('Aparat online senkronu: ' . $aparatHata->getMessage());
+        }
+
     } catch (Exception $e) {
         $response['message'] = $e->getMessage();
     }
@@ -2697,6 +2703,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $response['message'] = "Veriler zaten güncel.";
         invalidateDashboardOperationalStatsCache((int) $firmaId);
 
+        try {
+            (new \App\Service\AparatStokService())->otomatikOnlineSenkronize((int) ($_SESSION['firma_id'] ?? 0));
+        } catch (\Throwable $aparatHata) {
+            error_log('Aparat online senkronu: ' . $aparatHata->getMessage());
+        }
+
         // Belleği boşalt
         unset($apiData);
         unset($insertBatch);
@@ -3022,6 +3034,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         if ($yeniKayit == 0 && $silinenKayit == 0)
             $response['message'] = "Veriler zaten güncel.";
         invalidateDashboardOperationalStatsCache((int) $firmaId);
+
+        try {
+            (new \App\Service\AparatStokService())->otomatikOnlineSenkronize((int) ($_SESSION['firma_id'] ?? 0));
+        } catch (\Throwable $aparatHata) {
+            error_log('Aparat online senkronu: ' . $aparatHata->getMessage());
+        }
 
         // Belleği boşalt
         unset($apiData);

@@ -456,6 +456,8 @@ try {
             foreach ($Hareket->olaylar($filtre, 2000) as $o) {
                 $ozel = match ($o['referans_tipi']) {
                     'otomatik_kirma' => 'Aparat Kırma (otomatik)',
+                    'online_kesme' => 'Kesme (online)',
+                    'online_acma' => 'Açma (online)',
                     'bozuk_iade' => 'Bozuk İade → Hurda',
                     default => null,
                 };
@@ -469,7 +471,7 @@ try {
                 $kaydeden = (string) ($o['kullanici_adi'] ?? '');
                 if ($kaydeden === '') {
                     $kaydeden = match ($o['referans_tipi']) {
-                        'otomatik_kirma' => 'Sistem (puantaj)',
+                        'otomatik_kirma', 'online_kesme', 'online_acma' => 'Sistem (puantaj)',
                         'kesme_acma_islem' => 'Personel (telefon)',
                         'aparat_transfer' => 'Personel (telefon)',
                         default => '',

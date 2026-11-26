@@ -186,7 +186,7 @@ $(document).on("click", "#actionEkle", function () {
   setFlatpickrValue("#ucret_gecerlilik_baslangic", getTodayTr());
   $("#rapor_sekmesi").val("").trigger("change");
   $("#sonuc_tipi").val("olumlu").trigger("change");
-  $("#aparat_hurda").prop("checked", false);
+  $("#aparat_islemi").val("").trigger("change");
   $("#actionModalLabel").text("Yeni İş Türü Ekle");
 });
 
@@ -283,6 +283,11 @@ $(document).ready(function () {
     dropdownParent: $("#actionModal"),
     width: "100%",
     placeholder: "Sonuç Tipi Seçiniz",
+  });
+
+  $("#aparat_islemi").select2({
+    dropdownParent: $("#actionModal"),
+    width: "100%",
   });
 
   initUcretFlatpickr();
@@ -459,7 +464,7 @@ $(document).on("click", ".duzenle", function (e) {
         setFlatpickrValue("#ucret_gecerlilik_baslangic", getTodayTr());
         $("#rapor_sekmesi").val(data.data.rapor_sekmesi).trigger("change");
         $("#sonuc_tipi").val(data.data.sonuc_tipi || "olumlu").trigger("change");
-        $("#aparat_hurda").prop("checked", parseInt(data.data.aparat_hurda, 10) === 1);
+        $("#aparat_islemi").val(data.data.aparat_islemi || "").trigger("change");
         $("#aciklama").val(data.data.aciklama);
         $("#actionModalLabel").text("İş Türü Düzenle");
         $("#actionModal").modal("show");

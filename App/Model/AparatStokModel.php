@@ -31,6 +31,14 @@ class AparatStokModel extends Model
         return (int) $stmt->fetchColumn();
     }
 
+    public function bakiyeFirma(int $firmaId, string $sahipTipi, int $sahipId, int $aparatTipId): int
+    {
+        $stmt = $this->db->prepare("SELECT adet FROM {$this->table}
+            WHERE firma_id = ? AND sahip_tipi = ? AND sahip_id = ? AND aparat_tip_id = ?");
+        $stmt->execute([$firmaId, $sahipTipi, $sahipId, $aparatTipId]);
+        return (int) $stmt->fetchColumn();
+    }
+
     public function bakiyeKilitle(string $sahipTipi, int $sahipId, int $aparatTipId): int
     {
         $stmt = $this->db->prepare("SELECT adet FROM {$this->table}

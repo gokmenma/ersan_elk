@@ -384,7 +384,7 @@ $uyeAdlari = implode(', ', array_column($ekipUyeleri, 'adi_soyadi'));
                 </div>
 
                 <div class="apf-ozet">
-                    <div class="apf-ozet__satir"><span class="apf-etiket apf-etiket--sen">Sen yaparsın</span><span>Kesme ve açma kaydı, aparat gönderme ve gelen aparatı onaylama</span></div>
+                    <div class="apf-ozet__satir"><span class="apf-etiket apf-etiket--sen">Sen yaparsın</span><span>Aparat gönderme ve gelen aparatı onaylama; kesme ve açma online sorgulamadan otomatik işlenir</span></div>
                     <div class="apf-ozet__satir"><span class="apf-etiket apf-etiket--depo">Depo yapar</span><span>Sana aparat verme, iade alma ve bozuk aparatı hurdaya ayırma</span></div>
                 </div>
 
@@ -1139,8 +1139,8 @@ $uyeAdlari = implode(', ', array_column($ekipUyeleri, 'adi_soyadi'));
             const ADIMLAR = [
                 { kim: 'depo', etiket: 'Depo yapar', baslik: 'Depoya Giriş', metin: 'Satın alınan aparat depoya girilir.', yol: 'tedarik-depo', kaynak: 'tedarik', hedef: 'depo', renk: '#2563eb' },
                 { kim: 'depo', etiket: 'Depo yapar', baslik: 'Sana Aparat Verilir', metin: 'Depo sana aparat verir, zimmetine geçer. Ekibim sekmesinde elindeki adedi görürsün.', yol: 'depo-ekipA', kaynak: 'depo', hedef: 'ekipA', renk: '#d97706' },
-                { kim: 'sen', etiket: 'Sen yaparsın · telefondan', baslik: 'Kesme', metin: 'Sayacı kesip aparatı takınca + butonundan Kesme kaydı gir. Aparat zimmetinden düşer, abonede takılı olur.', yol: 'ekipA-abone', kaynak: 'ekipA', hedef: 'abone', renk: '#dc2626' },
-                { kim: 'ekip', etiket: 'Açan ekip girer', baslik: 'Açma', metin: 'Aboneyi kim açarsa Açma kaydını o girer ve aparat onun zimmetine geçer. Aparat hasarlı çıksa bile zimmete geçer; bozuk aparatı depoya getir.', yol: 'abone-ekipB', kaynak: 'abone', hedef: 'ekipB', renk: '#059669' },
+                { kim: 'ekip', etiket: 'Otomatik · online sorgulama', baslik: 'Kesme', metin: 'Aparatla kestiğin iş online sorgulamaya düşünce aparat zimmetinden kendiliğinden düşer, abonede takılı olur. Telefondan da kayıt girersen iki kez düşmez.', yol: 'ekipA-abone', kaynak: 'ekipA', hedef: 'abone', renk: '#dc2626' },
+                { kim: 'ekip', etiket: 'Otomatik · online sorgulama', baslik: 'Açma', metin: 'Abone açılınca aparat açan ekibin zimmetine kendiliğinden döner. Hasarlı çıksa bile zimmete geçer; bozuk aparatı depoya getir.', yol: 'abone-ekipB', kaynak: 'abone', hedef: 'ekipB', renk: '#059669' },
                 { kim: 'sen', etiket: 'Telefondan · onaylı', baslik: 'Ekipler Arası Değişim', metin: 'Diğer ekip Transfer sekmesinden sana aparat gönderir. Sen Onayla deyince zimmetine geçer. Kimse elinde olmayanı gönderemez.', yol: 'ekipB-ekipA', kaynak: 'ekipB', hedef: 'ekipA', renk: '#7c3aed' },
                 { kim: 'depo', etiket: 'Depo yapar', baslik: 'İade', metin: 'Kullanmadığın ya da bozulan aparatı depoya teslim edersin. Depo İade Al girince zimmetinden düşer; bozuksa hurdaya depo ayırır, sen ayıramazsın.', yol: 'ekipA-depo', kaynak: 'ekipA', hedef: 'depo', renk: '#0891b2' }
             ];

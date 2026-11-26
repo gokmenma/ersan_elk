@@ -410,7 +410,8 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-kaydet") {
             "tur_adi" => $_POST["is_turu"] ?? "",
             "rapor_sekmesi" => $_POST["rapor_sekmesi"] ?? "",
             "sonuc_tipi" => in_array($_POST["sonuc_tipi"] ?? '', ['olumlu', 'olumsuz']) ? $_POST["sonuc_tipi"] : 'olumlu',
-            "aparat_hurda" => !empty($_POST["aparat_hurda"]) ? 1 : 0,
+            "aparat_islemi" => in_array($_POST["aparat_islemi"] ?? '', ['kesme', 'acma', 'hurda'], true) ? $_POST["aparat_islemi"] : '',
+            "aparat_hurda" => ($_POST["aparat_islemi"] ?? '') === 'hurda' ? 1 : 0,
             "aciklama" => $_POST["aciklama"] ?? "",
         ];
 

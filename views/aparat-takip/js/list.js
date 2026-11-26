@@ -1243,7 +1243,7 @@
                         data: 'ad',
                         render: bicim(function (deger, satir) {
                             const rozet = satir.varsayilan_kirma
-                                ? ' <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold" title="Tipi bilinmeyen aparat kırmaları bu tipten hurdaya işlenir">Kırma varsayılanı</span>'
+                                ? ' <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold" title="Tipi bilinmeyen online kesme, açma ve kırmalar bu tipten işlenir">Online varsayılan tip</span>'
                                 : '';
                             return `<b>${kacir(deger)}</b>${rozet}`;
                         })
@@ -1442,8 +1442,8 @@
         const ADIMLAR = [
             { kim: 'siz', baslik: 'Depoya Giriş', metin: 'Aparat satın alınınca depoya eklenir. Depo artar.', yol: 'tedarik-depo', kaynak: 'tedarik', hedef: 'depo', renk: '#2563eb' },
             { kim: 'siz', baslik: 'Ekibe Ver', metin: 'Depodan Ahmet\'in ekibine aparat verilir. Depo azalır, Ahmet\'in zimmeti artar.', yol: 'depo-ekipA', kaynak: 'depo', hedef: 'ekipA', renk: '#d97706' },
-            { kim: 'sistem', baslik: 'Kesme', metin: 'Ahmet sayacı kesip aparatı takar ve telefondan kesme kaydı girer. Aparat Ahmet\'in zimmetinden düşer, abonede takılı olur.', yol: 'ekipA-abone', kaynak: 'ekipA', hedef: 'abone', renk: '#dc2626' },
-            { kim: 'sistem', baslik: 'Açma', metin: 'Günler sonra Mehmet aynı aboneyi açar ve aparatı söker. Aparat kendiliğinden Mehmet\'in zimmetine geçer.', yol: 'abone-ekipB', kaynak: 'abone', hedef: 'ekipB', renk: '#059669' },
+            { kim: 'sistem', baslik: 'Kesme', metin: 'Ahmet sayacı aparatla keser. İş online sorgulamaya düşünce aparat Ahmet\'in zimmetinden kendiliğinden düşer, abonede takılı olur.', yol: 'ekipA-abone', kaynak: 'ekipA', hedef: 'abone', renk: '#dc2626' },
+            { kim: 'sistem', baslik: 'Açma', metin: 'Günler sonra Mehmet aynı aboneyi açar ve aparatı söker. Açma online sorgulamaya düşünce aparat kendiliğinden Mehmet\'in zimmetine geçer.', yol: 'abone-ekipB', kaynak: 'abone', hedef: 'ekipB', renk: '#059669' },
             { kim: 'sistem', baslik: 'Ekipler Arası Değişim', metin: 'Mehmet aparatı telefondan Ahmet\'e gönderir. Ahmet onaylayınca Mehmet\'ten düşer, Ahmet\'e geçer. Elinde olmayanı gönderemez.', yol: 'ekipB-ekipA', kaynak: 'ekipB', hedef: 'ekipA', renk: '#7c3aed' },
             { kim: 'siz', baslik: 'İade Al', metin: 'Ahmet kullanmadığı ya da bozulan aparatı depoya getirir. Ahmet\'in zimmeti azalır, depo artar. Aparat bozuksa İade Al\'da “bozuk” işaretlenir, depoya değil hurdaya geçer.', yol: 'ekipA-depo', kaynak: 'ekipA', hedef: 'depo', renk: '#0891b2' }
         ];

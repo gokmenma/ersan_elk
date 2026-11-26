@@ -252,8 +252,14 @@ $title = "İş Türü Tanımlamaları";
                                 </td>
                                 <td class="font-size-12 fw-medium">
                                     <?php echo htmlspecialchars($isTuru->is_emri_sonucu ?: '-', ENT_QUOTES, 'UTF-8'); ?>
-                                    <?php if ((int) ($isTuru->aparat_hurda ?? 0) === 1): ?>
-                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold ms-1" title="Bu sonuçla gelen işte abonedeki aparat hurdaya ayrılır">Aparat → hurda</span>
+                                    <?php
+                                    $aparatRozet = [
+                                        'kesme' => ['warning', 'Aparat: kesme', 'Zimmetten düşer, abonede takılı olur'],
+                                        'acma' => ['success', 'Aparat: açma', 'Abonede takılı varsa açan ekibe döner'],
+                                        'hurda' => ['danger', 'Aparat → hurda', 'Abonedeki aparat hurdaya ayrılır'],
+                                    ][$isTuru->aparat_islemi ?? ''] ?? null;
+                                    if ($aparatRozet): ?>
+                                        <span class="badge bg-<?= $aparatRozet[0] ?>-subtle text-<?= $aparatRozet[0] ?> border border-<?= $aparatRozet[0] ?>-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold ms-1" title="<?= htmlspecialchars($aparatRozet[2], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($aparatRozet[1], ENT_QUOTES, 'UTF-8') ?></span>
                                     <?php endif; ?>
                                 </td>
                                 <td class="text-end font-size-13 fw-semibold">
@@ -777,12 +783,25 @@ html[data-theme-preset="macos-dark"] .top-icon-btn.bg-white:hover,
                     </div>
 
                     <div class="row mb-3">
-                        <div class="col-md-12">
-                            <div class="form-check form-switch p-2 ps-5 border rounded-3 mb-0">
-                                <input class="form-check-input" type="checkbox" name="aparat_hurda" id="aparat_hurda" value="1">
-                                <label class="form-check-label fw-semibold" for="aparat_hurda">Bu sonuçta aparat hurdaya ayrılır</label>
-                                <div class="small text-muted">Puantaja bu iş emri sonucu geldiğinde, adedi kadar aparat abonede takılıdan düşüp Aparat Takip'te hurdaya işlenir (ör. aparat kırma).</div>
-                            </div>
+                        <div class="col-md-6">
+                            <?php echo Form::FormSelect2(
+                                "aparat_islemi",
+                                [
+                                    '' => 'Aparat etkilenmez',
+                                    'kesme' => 'Kesme: zimmetten aboneye',
+                                    'acma' => 'Açma: aboneden açan ekibe',
+                                    'hurda' => 'Kırma: aboneden hurdaya',
+                                ],
+                                "",
+                                "Aparat Takip İşlemi",
+                                "package",
+                                "key",
+                                "",
+                                "form-control select2"
+                            ); ?>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-center">
+                            <div class="small text-muted">Puantaja (online sorgulama / Excel) bu iş emri sonucu geldiğinde, adedi kadar aparat Aparat Takip'te seçilen şekilde otomatik işlenir.</div>
                         </div>
                     </div>
 

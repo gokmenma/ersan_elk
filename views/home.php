@@ -810,8 +810,8 @@ if (Gate::allows("ana_sayfa")) {
                     transition: opacity .15s ease, color .15s ease;
                 }
                 [data-bs-theme="dark"] #dashboard-widgets .widget-item .grid-resize-grip { color: rgba(203, 213, 225, .6); }
-                #dashboard-widgets:not(.free-layout-active) > .widget-item { position: relative; }
-                #dashboard-widgets:not(.free-layout-active) {
+                #dashboard-widgets:not(.free-layout-active):not(.dash-gs) > .widget-item { position: relative; }
+                #dashboard-widgets:not(.free-layout-active):not(.dash-gs) {
                     overflow-anchor: none;
                     display: grid !important;
                     grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -819,10 +819,10 @@ if (Gate::allows("ana_sayfa")) {
                     grid-auto-flow: row dense;
                     align-items: stretch;
                 }
-                #dashboard-widgets:not(.free-layout-active) { --bs-gutter-x: 12px; --bs-gutter-y: 0; }
-                #dashboard-widgets:not(.free-layout-active) > .widget-item { margin-bottom: 12px !important; }
-                #dashboard-widgets:not(.free-layout-active) > .widget-item > .card, #dashboard-widgets:not(.free-layout-active) > .widget-item > .carousel { height: 100%; margin-bottom: 0; }
-                #dashboard-widgets:not(.free-layout-active) > .widget-item {
+                #dashboard-widgets:not(.free-layout-active):not(.dash-gs) { --bs-gutter-x: 12px; --bs-gutter-y: 0; }
+                #dashboard-widgets:not(.free-layout-active):not(.dash-gs) > .widget-item { margin-bottom: 12px !important; }
+                #dashboard-widgets:not(.free-layout-active):not(.dash-gs) > .widget-item > .card, #dashboard-widgets:not(.free-layout-active):not(.dash-gs) > .widget-item > .carousel { height: 100%; margin-bottom: 0; }
+                #dashboard-widgets:not(.free-layout-active):not(.dash-gs) > .widget-item {
                     width: auto;
                     max-width: none;
                     flex: none;
@@ -836,7 +836,7 @@ foreach ($gridBreakpoints as $bpName => $bpMin) {
         echo "                @media (min-width: {$bpMin}px) {\n";
     }
     for ($gi = 1; $gi <= 12; $gi++) {
-        echo "                #dashboard-widgets:not(.free-layout-active) > .widget-item.col-{$bpName}{$gi} { grid-column: span {$gi}; }\n";
+        echo "                #dashboard-widgets:not(.free-layout-active):not(.dash-gs) > .widget-item.col-{$bpName}{$gi} { grid-column: span {$gi}; }\n";
     }
     if ($bpMin > 0) {
         echo "                }\n";
@@ -847,7 +847,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
     echo "                @media (min-width: {$pinMin}px) {\n";
     foreach ($pinNames as $pinName) {
         for ($gi = 1; $gi <= 12; $gi++) {
-            echo "                #dashboard-widgets:not(.free-layout-active) > .widget-item.col-{$pinName}{$gi}[data-grid-x] { grid-column: var(--gx) / span {$gi}; grid-row-start: var(--gy); }\n";
+            echo "                #dashboard-widgets:not(.free-layout-active):not(.dash-gs) > .widget-item.col-{$pinName}{$gi}[data-grid-x] { grid-column: var(--gx) / span {$gi}; grid-row-start: var(--gy); }\n";
         }
     }
     echo "                }\n";
@@ -857,10 +857,10 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                 #dashboard-widgets .widget-item .grid-resize-grip:hover,
                 #dashboard-widgets .widget-item.grid-resizing .grid-resize-grip { opacity: 1; color: rgba(37, 99, 235, .95); }
                 @media (min-width: 768px) {
-                    #dashboard-widgets:not(.free-layout-active) .widget-item .grid-resize-grip { display: block; }
+                    #dashboard-widgets:not(.free-layout-active):not(.dash-gs) .widget-item .grid-resize-grip { display: block; }
                 }
                 body.grid-dragging-active { user-select: none; cursor: grabbing; }
-                #dashboard-widgets:not(.free-layout-active) > .widget-item { -webkit-user-drag: none; }
+                #dashboard-widgets:not(.free-layout-active):not(.dash-gs) > .widget-item { -webkit-user-drag: none; }
                 #dashboard-widgets .widget-item.grid-dragging {
                     z-index: 1050;
                     pointer-events: none;
@@ -1962,32 +1962,36 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                                 </li>
                                 <li class="px-3 mb-2">
                                     <input type="checkbox" id="switch-free-layout" class="d-none" tabindex="-1" aria-hidden="true">
-                                    <div class="small text-muted" style="font-size: 11px; line-height: 1.3;">Kart genişliği (12 sütunluk grid) ve yüksekliği aşağıdaki listeden seçilir.</div>
+                                    <div class="small text-muted" style="font-size: 11px; line-height: 1.3;">Kartların ana sayfadaki gerçek konumu küçük harita olarak gösterilir; sürükleyip bırakarak yer değiştirin. Boyutlandırma kartın köşesinden yapılır.</div>
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li class="px-3 py-1">
-                                    <h6 class="dropdown-header px-0 mb-1 fw-bold text-primary">KARTLAR · GÖRÜNÜRLÜK, GENİŞLİK, YÜKSEKLİK</h6>
+                                    <h6 class="dropdown-header px-0 mb-1 fw-bold text-primary">ANA SAYFA HARİTASI · KARTLARI SÜRÜKLEYEREK YER DEĞİŞTİRİN</h6>
+                                </li>
+                                <li class="px-3 pb-2"><div class="dash-mini-wrap" id="dash-mini-map"></div></li>
+                                <li class="px-3 py-1">
+                                    <h6 class="dropdown-header px-0 mb-1 fw-bold text-primary">KARTLAR · GÖRÜNÜRLÜK</h6>
                                 </li>
                                 <div class="dash-card-table-wrap" id="dash-card-settings-list">
 <table class="dash-card-table">
-<thead><tr><th>Kart Adı</th><th>Genişlik</th><th>Yükseklik</th></tr></thead>
+<thead><tr><th>Kart Görünürlüğü</th></tr></thead>
 <tbody>
-<tr data-widget="widget-ana-slider"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-ana-slider" checked><span>Haberler ve Duyurular</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
-<tr data-widget="widget-personel-arac-ozet"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-personel-arac-ozet" checked><span>Personel ve Araç Durumu</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
-<tr data-widget="widget-bildirimler"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-bildirimler" checked><span>Görev ve Bildirimler</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
-<tr data-widget="widget-talepler"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-talepler" checked><span>Talep Yönetimi</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
+<tr data-widget="widget-ana-slider"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-ana-slider" checked><span>Haberler ve Duyurular</span></label></td></tr>
+<tr data-widget="widget-personel-arac-ozet"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-personel-arac-ozet" checked><span>Personel ve Araç Durumu</span></label></td></tr>
+<tr data-widget="widget-bildirimler"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-bildirimler" checked><span>Görev ve Bildirimler</span></label></td></tr>
+<tr data-widget="widget-talepler"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-talepler" checked><span>Talep Yönetimi</span></label></td></tr>
 <?php if (Gate::allows("ana_sayfa_izinli_personel_karti") || $izinModel->getRestrictedDept() !== null): ?>
-<tr data-widget="widget-izindekiler"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-izindekiler" checked><span>İzinde Olan Personeller</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
+<tr data-widget="widget-izindekiler"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-izindekiler" checked><span>İzinde Olan Personeller</span></label></td></tr>
 <?php endif; ?>
 <?php if (Gate::allows('aparat_takip')): ?>
-<tr data-widget="widget-aparat-kritik"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-aparat-kritik" checked><span>Aparat Kritik Stok</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
+<tr data-widget="widget-aparat-kritik"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-aparat-kritik" checked><span>Aparat Kritik Stok</span></label></td></tr>
 <?php endif; ?>
-<tr data-widget="widget-is-operasyonlari"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-is-operasyonlari" checked><span>İş Operasyonları</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
+<tr data-widget="widget-is-operasyonlari"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-is-operasyonlari" checked><span>İş Operasyonları</span></label></td></tr>
 <?php if (Gate::allows("gorevler")): ?>
-<tr data-widget="widget-yaklasan-gorevler"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-yaklasan-gorevler" checked><span>Yaklaşan Görevler</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
+<tr data-widget="widget-yaklasan-gorevler"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-yaklasan-gorevler" checked><span>Yaklaşan Görevler</span></label></td></tr>
 <?php endif; ?>
-<tr data-widget="widget-endeks-karsilastirma"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-endeks-karsilastirma" checked><span>Endeks Karşılaştırma</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
-<tr data-widget="widget-kesme-karsilastirma"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-kesme-karsilastirma" checked><span>Kesme/Açma Karşılaştırma</span></label></td><td class="dash-size-cell" data-kind="cols"></td><td class="dash-size-cell" data-kind="height"></td></tr>
+<tr data-widget="widget-endeks-karsilastirma"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-endeks-karsilastirma" checked><span>Endeks Karşılaştırma</span></label></td></tr>
+<tr data-widget="widget-kesme-karsilastirma"><td><label class="dash-card-name"><input type="checkbox" class="form-check-input widget-toggle" data-widget="widget-kesme-karsilastirma" checked><span>Kesme/Açma Karşılaştırma</span></label></td></tr>
 </tbody>
 </table>
 </div>
@@ -3658,7 +3662,12 @@ foreach ($pinGroups as $pinMin => $pinNames) {
             }
         </style>
 
+        <link rel="stylesheet" href="assets/libs/gridstack/gridstack.min.css">
+        <link rel="stylesheet" href="assets/css/dashboard-gridstack.css?v=<?php echo (int) @filemtime(__DIR__ . '/../assets/css/dashboard-gridstack.css'); ?>">
         <script src="https://code.jquery.com/ui/1.14.1/jquery-ui.js"></script>
+        <script src="assets/libs/gridstack/gridstack-all.js"></script>
+        <script src="assets/js/dashboard-gridstack.js?v=<?php echo (int) @filemtime(__DIR__ . '/../assets/js/dashboard-gridstack.js'); ?>"></script>
+        <script>window.__DASH_SAVED_SETTINGS = <?php echo json_encode(is_array($saved_settings ?? null) ? $saved_settings : new \stdClass(), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE); ?>;</script>
         <script>            // Number Cou            nt                                 er F           unction
             function animateValue(obj, start, end, duration) {
                 let startTimestamp = null;
@@ -3903,6 +3912,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                     document.querySelectorAll('#dashboard-widgets .dashboard-phase2-hidden').forEach((widget) => {
                         widget.classList.remove('dashboard-phase2-hidden');
                     });
+                    if (window.DashGrid && window.DashGrid.active) window.DashGrid.refit(50);
                 };
 
                 const revealDashboardPage = () => {
@@ -3963,6 +3973,10 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                         widget.show();
                     } else {
                         widget.hide();
+                    }
+
+                    if (window.DashGrid && window.DashGrid.active) {
+                        window.DashGrid.setVisible(widget[0], isVisible);
                     }
 
                     if (syncCheckbox) {
@@ -4461,6 +4475,10 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                     gridForceNext = false;
                     const container = document.getElementById('dashboard-widgets');
                     if (!container || container.classList.contains('free-layout-active')) return;
+                    if (window.DashGrid && window.DashGrid.active) {
+                        window.DashGrid.refit(0);
+                        return;
+                    }
                     const pendingContent = document.getElementById('dashboard-page-content');
                     if (!force && pendingContent && pendingContent.classList.contains('dashboard-content-pending')) return;
                     if (!force && dashboardGridSignature(container) === gridLastSignature) return;
@@ -4634,6 +4652,11 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                             }
                         }
 
+                        if (window.DashGrid && window.DashGrid.active) {
+                            const gsSnapshot = window.DashGrid.snapshot(this);
+                            if (gsSnapshot) s.gs = gsSnapshot;
+                        }
+
                         // Only save absolute position data when truly in free-layout mode
                         const positionVal = $(this).css('position');
                         if (isFree && positionVal === 'absolute') {
@@ -4657,7 +4680,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                     });
 
                     const settingsStr = JSON.stringify(settings);
-                    const orderStr = JSON.stringify(order);
+                    const orderStr = JSON.stringify(window.DashGrid && window.DashGrid.active ? window.DashGrid.sortIds(order) : order);
                     const visibilityStr = JSON.stringify(visibility);
                     localStorage.setItem('dashboard_widget_settings', settingsStr);
                     localStorage.setItem('dashboard_order', orderStr);
@@ -4807,8 +4830,9 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                         });
                     }
                     const isFreeLayout = $('#switch-free-layout').is(':checked');
+                    const gridActive = !!(window.DashGrid && window.DashGrid.active);
 
-                    if (!isFreeLayout) {
+                    if (!isFreeLayout && !gridActive) {
                         $('#dashboard-widgets > .widget-item').each(function () {
                             if (this.hasAttribute('data-default-width')) return;
                             const own = (this.className || '').split(' ').filter(cls => /^col(-[a-z]+)?-\d+$/.test(cls));
@@ -4824,7 +4848,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                             const s = settings[id];
                             setWidgetVisibility(id, s.hidden !== 'true', { syncCheckbox: true });
 
-                            if (s.width && s.width.indexOf('col-') === 0) {
+                            if (!gridActive && s.width && s.width.indexOf('col-') === 0) {
                                 const classes = (widget.attr('class') || '').split(' ').filter(Boolean);
                                 const newClasses = classes.filter(cls => !/^col(-[a-z]+)?-\d+$/.test(cls));
                                 const savedWidthClasses = s.width.split(' ').filter(cls => /^col(-[a-z]+)?-\d+$/.test(cls));
@@ -4838,7 +4862,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                                 widget.attr('class', newClasses.join(' '));
                             }
 
-                            if (s.height && s.height !== 'auto' && s.height.indexOf('col-') === -1) {
+                            if (!gridActive && s.height && s.height !== 'auto' && s.height.indexOf('col-') === -1) {
                                 widget.find('.card-body').first().css('height', s.height);
                             }
                         }
@@ -4888,7 +4912,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                         
                         // Set container height based on maxBottom
                         $('#dashboard-widgets').css('min-height', (maxBottom + 100) + 'px');
-                    } else {
+                    } else if (!gridActive) {
                         // Clear manual styles if free layout is not active
                         $('#dashboard-widgets').css('min-height', '');
                         $('#dashboard-widgets .widget-item').each(function() {
@@ -4911,7 +4935,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                         });
                     }
                     
-                    if (!isFreeLayout) {
+                    if (!isFreeLayout && !gridActive) {
                         $('#dashboard-widgets > .widget-item').each(function () {
                             const widget = $(this);
                             const id = widget.attr('id');
@@ -4956,7 +4980,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                         });
                     }
 
-                    if (!isFreeLayout) layoutDashboardGrid();
+                    if (!isFreeLayout && !gridActive) layoutDashboardGrid();
 
                     // Always initialize Mac controls after applying settings
                     if (typeof initMacControls === 'function') {
@@ -5208,7 +5232,14 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                 applyWidgetSettings();
                 applySavedWidgetOrder();
 
-                if (typeof Sortable === 'undefined') {
+                const dashGridStarted = !!(window.DashGrid && window.DashGrid.init({
+                    saved: window.__DASH_SAVED_SETTINGS || {},
+                    onSave: function () { saveDashboardConfig(); }
+                }));
+
+                if (dashGridStarted) {
+                    window.DashGrid.refit(300);
+                } else if (typeof Sortable === 'undefined') {
                     const s = document.createElement('script');
                     s.src = 'https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js';
                     s.onload = function() {
@@ -5371,6 +5402,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                 }
 
                 function syncDashSizeControls() {
+                    if (!$('#dash-card-settings-list select').length) return;
                     $('#dash-card-settings-list tr[data-widget]').each(function () {
                         const $row = $(this);
                         const widget = $('#' + $row.attr('data-widget'));
@@ -5383,6 +5415,10 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                 }
 
                 function applyDashSize(widget, cols, height) {
+                    if (window.DashGrid && window.DashGrid.active) {
+                        window.DashGrid.setSize(widget[0], cols, height);
+                        return;
+                    }
                     const classes = (widget.attr('class') || '').split(' ').filter(cls => cls && !/^col(-[a-z]+)?-\d+$/.test(cls));
                     if (cols) {
                         classes.push('col-md-' + cols, 'col-xl-' + cols);
@@ -5404,6 +5440,9 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                 }
 
                 buildDashSizeControls();
+                $(document).on('shown.bs.dropdown', '#dashboard-settings-toolbar .dropdown', function () {
+                    if (window.DashGrid && window.DashGrid.active) window.DashGrid.renderMini(document.getElementById('dash-mini-map'));
+                });
                 $(document).on('show.bs.dropdown', '#dashboard-settings-toolbar .dropdown', function () {
                     buildDashSizeControls();
                     syncDashSizeControls();
@@ -5586,7 +5625,7 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                                 </div>
                                 <span class="mac-title-text" data-fallback="${titleText}">${titleText}</span>
                                 <div class="drag-handle-indicator">
-                                    <i class="bx bx-grid-vertical"></i>
+                                    <i class="bx bx-move"></i>
                                 </div>
                             </div>
                         `);
@@ -5607,6 +5646,10 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                         // Minimize (collapse card body)
                         $bar.find('.mac-minimize').on('click', function(e) {
                             e.preventDefault(); e.stopPropagation();
+                            if (window.DashGrid && window.DashGrid.active) {
+                                window.DashGrid.toggleCollapse(widgetItem[0]);
+                                return;
+                            }
                             const collapsed = widgetItem.toggleClass('widget-collapsed').hasClass('widget-collapsed');
                             if (collapsed) {
                                 widgetItem.data('restore-h', widgetItem.css('height'));
@@ -5620,6 +5663,12 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                         // Maximize (fullscreen overlay)
                         $bar.find('.mac-maximize').on('click', function(e) {
                             e.preventDefault(); e.stopPropagation();
+                            if (window.DashGrid && window.DashGrid.active) {
+                                const nowMax = widgetItem.toggleClass('widget-maximized').hasClass('widget-maximized');
+                                widgetItem.data('is-maximized', nowMax);
+                                setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+                                return;
+                            }
                             const isMax = widgetItem.data('is-maximized');
                             if (isMax) {
                                 widgetItem.css({
@@ -5687,6 +5736,13 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                     const newWidth = $(this).data('width');
                     const widget = $(this).closest('.widget-item');
 
+                    if (window.DashGrid && window.DashGrid.active) {
+                        const gridCols = parseInt(String(newWidth).replace(/\D+/g, ''), 10) || 0;
+                        const gridHeight = parseInt(widget.attr('data-grid-height'), 10) || 0;
+                        window.DashGrid.setSize(widget[0], gridCols, gridHeight);
+                        return;
+                    }
+
                     widget.removeAttr('data-resized');
                     widget.css('width', '');
 
@@ -5709,7 +5765,13 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                     e.preventDefault();
                     const newHeight = $(this).data('height');
                     const widget = $(this).closest('.widget-item');
-                    
+
+                    if (window.DashGrid && window.DashGrid.active) {
+                        const gridCols = parseInt(widget.attr('data-grid-cols'), 10) || 0;
+                        window.DashGrid.setSize(widget[0], gridCols, parseInt(newHeight, 10) || 0);
+                        return;
+                    }
+
                     widget.removeAttr('data-resized');
                     widget.css('height', '');
 
@@ -5938,8 +6000,9 @@ foreach ($pinGroups as $pinMin => $pinNames) {
                     initResizableWidgets();
                     setTimeout(initResizableWidgets, 300);
                 } else {
-                    initGridSortable();
-                    $('#dashboard-widgets').removeClass('free-layout-active').addClass('row').removeClass('d-block');
+                    const dashGridOn = !!(window.DashGrid && window.DashGrid.active);
+                    if (!dashGridOn) initGridSortable();
+                    $('#dashboard-widgets').removeClass('free-layout-active').toggleClass('row', !dashGridOn).removeClass('d-block');
                     applyWidgetSettings();
                     applySavedWidgetOrder();
                     // Mac controls are called inside applyWidgetSettings
