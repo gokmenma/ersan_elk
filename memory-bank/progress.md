@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-11-26 — Personel Listesi: Yeni Sayfa Standardına Geçiş
+- [x] `views/personel/list.php` üst başlık satırı, 4 özet KPI kartı (`Toplam`, `Aktif`, `Pasif`, `Bildirim Abonesi`), `#btnToggleSummaryCards` ve `#personelListCard` yapısına dönüştürüldü
+- [x] `App/Model/PersonelModel.php` ve `views/personel/api.php` `bildirim_acik` sayımını döndürecek şekilde güncellendi
+- [x] `views/personel/js/list.js` özet kartları toggle (`localStorage`), hızlı filtre senkronizasyonu ve `Tümü` filtre düzeltmesi yapıldı
+- [x] PHP sözdizimi kontrolleri (`/opt/lampp/bin/php -l`) hatasız geçti
+
 ## 2026-11-25 — Aparat Takip Dashboard (`aparat-takip/dashboard`)
 - [x] `sql/2026_11_25_add_aparat_dashboard_menu_and_permissions.sql` oluşturuldu, yerelde çalıştırıldı; Yetki Kataloğu (`explicit`) ve Yetki Grubu Düzenleme listesinde doğrulandı
 - [x] `App/Model/AparatDashboardModel.php` ve `views/aparat-takip/api.php` (`dashboard-data`) PDO parametrik sorgularla geliştirildi

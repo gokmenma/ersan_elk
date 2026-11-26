@@ -1403,7 +1403,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $result['counts'] = [
                 'aktif' => intval($sayilar->aktif_personel ?? 0),
                 'pasif' => intval($sayilar->pasif_personel ?? 0),
-                'toplam' => intval($sayilar->toplam_personel ?? 0)
+                'toplam' => intval($sayilar->toplam_personel ?? 0),
+                'bildirim_acik' => intval($sayilar->bildirim_acik ?? 0)
             ];
             
             echo json_encode($result);

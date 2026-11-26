@@ -20,7 +20,8 @@ $(document).ready(function () {
         type: "POST",
         data: function (d) {
           d.action = "personel-list";
-          d.status = $('input[name="status-filter"]:checked').val() || "Aktif";
+          var selectedStatus = $('input[name="status-filter"]:checked').val();
+          d.status = selectedStatus !== undefined ? selectedStatus : "Aktif";
         },
       },
       drawCallback: function () {
@@ -199,9 +200,22 @@ $(document).ready(function () {
     })
   ).on('xhr.dt', function (e, settings, json, xhr) {
       if (json && json.counts) {
-          $("#count-aktif").text(json.counts.aktif);
-          $("#count-pasif").text(json.counts.pasif);
-          $("#count-all").text(json.counts.toplam);
+          var aktif = parseInt(json.counts.aktif || 0, 10);
+          var pasif = parseInt(json.counts.pasif || 0, 10);
+          var toplam = parseInt(json.counts.toplam || 0, 10);
+          var bildirimAcik = parseInt(json.counts.bildirim_acik || 0, 10);
+          var oran = aktif > 0 ? Math.round((bildirimAcik / aktif) * 100) : 0;
+
+          $("#count-aktif").text(aktif);
+          $("#count-pasif").text(pasif);
+          $("#count-all").text(toplam);
+
+          $("#stat_toplam_personel").text(toplam + " Kişi");
+          $("#stat_aktif_personel").text(aktif + " Kişi");
+          $("#stat_pasif_personel").text(pasif + " Kişi");
+          $("#stat_sub_toplam").text("Aktif: " + aktif + " | Pasif: " + pasif);
+          $("#stat_bildirim_acik").text(bildirimAcik + " Kişi");
+          $("#stat_bildirim_oran").text("%" + oran + " Abone");
       }
   });
 
@@ -686,7 +700,55 @@ function initImageHover() {
     });
 }
 
+function syncSummaryQuickFilters(status) {
+    $("#summaryCardsContainer .status-quick-filter").removeClass("active");
+    $('#summaryCardsContainer .status-quick-filter[data-status="' + status + '"]').addClass("active");
+}
+
 $(document).on('change', 'input[name="status-filter"]', function() {
+    var val = $(this).val();
+    syncSummaryQuickFilters(val !== undefined ? val : "Aktif");
     let table = $("#membersTable").DataTable();
     table.draw();
 });
+
+$(document).on('click', '#summaryCardsContainer .status-quick-filter', function() {
+    var status = $(this).attr("data-status");
+    if (status === undefined) status = "";
+    syncSummaryQuickFilters(status);
+    updateActiveBadge(status);
+    let table = $("#membersTable").DataTable();
+    table.draw();
+});
+
+(function initPersonelSummaryToggle() {
+    var SUMMARY_STATE_KEY = "personel_summary_cards_state";
+
+    function setSummaryCardsVisibility(visible) {
+        document.documentElement.classList.toggle("personel-summary-hidden", !visible);
+        $("#btnToggleSummaryCards")
+            .attr("aria-expanded", visible ? "true" : "false")
+            .attr("title", visible ? "Özet Kartları Gizle" : "Özet Kartları Göster")
+            .attr("aria-label", visible ? "Özet kartlarını gizle" : "Özet kartlarını göster")
+            .find("i")
+            .attr("class", visible ? "bx bx-chevron-up" : "bx bx-chevron-down");
+    }
+
+    $(document).on("click", "#btnToggleSummaryCards", function (e) {
+        e.preventDefault();
+        var isCurrentlyHidden = document.documentElement.classList.contains("personel-summary-hidden");
+        var shouldShow = isCurrentlyHidden;
+        setSummaryCardsVisibility(shouldShow);
+        try {
+            localStorage.setItem(SUMMARY_STATE_KEY, shouldShow ? "visible" : "hidden");
+        } catch (err) {}
+    });
+
+    $(document).ready(function () {
+        var isHidden = false;
+        try {
+            isHidden = localStorage.getItem(SUMMARY_STATE_KEY) === "hidden";
+        } catch (err) {}
+        setSummaryCardsVisibility(!isHidden);
+    });
+})();

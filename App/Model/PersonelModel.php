@@ -694,7 +694,14 @@ class PersonelModel extends Model
                          AND isten_cikis_tarihi <> '0000-00-00'
                     THEN 1 ELSE 0 
                 END
-            ) AS pasif_personel
+            ) AS pasif_personel,
+            SUM(
+                CASE 
+                    WHEN (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '0000-00-00')
+                         AND EXISTS (SELECT 1 FROM push_subscriptions ps WHERE ps.personel_id = {$this->table}.id)
+                    THEN 1 ELSE 0 
+                END
+            ) AS bildirim_acik
         FROM $this->table
         $where
     ");
