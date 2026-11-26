@@ -637,11 +637,12 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                                 <tr>
                                     <th data-filter="date">Tarih</th>
                                     <th data-filter="select">Hareket</th>
-                                    <th data-filter="select">Havuz</th>
-                                    <th data-filter="select">Ekip</th>
+                                    <th data-filter="select">Nereden</th>
+                                    <th data-filter="select">Nereye</th>
                                     <th data-filter="select">Aparat</th>
                                     <th class="text-center" data-filter="number">Adet</th>
-                                    <th data-filter="string">Personel / Kullanıcı</th>
+                                    <th data-filter="string">İşi Yapan</th>
+                                    <th data-filter="select">Kaydeden</th>
                                     <th data-filter="string">Açıklama</th>
                                     <th class="text-center">İşlem</th>
                                 </tr>

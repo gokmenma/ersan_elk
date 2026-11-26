@@ -669,12 +669,14 @@
             const satirlar = res.data.map(function (h) {
                 return {
                     tarih: tarihGoster(h.tarih),
-                    hareket: HAREKET_ADI[h.hareket_tipi] || h.hareket_tipi,
-                    havuz: HAVUZ_ADI[h.sahip_tipi] || h.sahip_tipi,
-                    ekip: h.ekip_adi || '',
+                    hareket: h.hareket_adi,
+                    hareket_tipi: h.hareket_tipi,
+                    nereden: h.nereden,
+                    nereye: h.nereye,
                     aparat: h.aparat_adi || '',
                     adet: parseInt(h.adet, 10),
-                    personel: h.personel_adi || h.kullanici_adi || '',
+                    yapan: h.yapan || '',
+                    kaydeden: h.kaydeden || '',
                     aciklama: h.aciklama || '',
                     iptal_mi: h.iptal_mi,
                     id: h.id,
@@ -682,24 +684,30 @@
                 };
             });
 
+            const YER_RENK = { 'Depo': 'primary', 'Abonede takılı': 'warning', 'Hurda': 'danger', 'Kayıp': 'danger', 'Satın alma': 'secondary', 'Açılış stoğu': 'secondary' };
+            const yerRozeti = function (deger) {
+                const renk = YER_RENK[deger];
+                if (!renk) return `<span class="fw-medium">${kacir(deger)}</span>`;
+                return `<span class="badge bg-${renk}-subtle text-${renk} border border-${renk}-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">${kacir(deger)}</span>`;
+            };
+
             dtKur('#tabloHareketler', {
                 data: satirlar,
-                order: [[0, 'desc']],
+                order: [],
                 columns: [
-                    { data: 'tarih' },
-                    { data: 'hareket' },
-                    { data: 'havuz' },
-                    { data: 'ekip' },
-                    { data: 'aparat' },
+                    { data: 'tarih', className: 'text-nowrap' },
+                    { data: 'hareket', className: 'fw-semibold' },
+                    { data: 'nereden', render: bicim(yerRozeti) },
                     {
-                        data: 'adet',
-                        className: 'text-center fw-bold',
-                        render: bicim(function (adet) {
-                            const renk = adet < 0 ? 'text-danger' : 'text-success';
-                            return `<span class="${renk}">${adet > 0 ? '+' : ''}${adet}</span>`;
+                        data: 'nereye',
+                        render: bicim(function (deger) {
+                            return `<i class="bx bx-right-arrow-alt text-muted me-1"></i>${yerRozeti(deger)}`;
                         })
                     },
-                    { data: 'personel' },
+                    { data: 'aparat' },
+                    { data: 'adet', className: 'text-center fw-bold' },
+                    { data: 'yapan' },
+                    { data: 'kaydeden', className: 'text-secondary' },
                     {
                         data: 'aciklama',
                         render: bicim(function (deger, satir) {
@@ -717,7 +725,7 @@
                                 return '<span class="text-muted">-</span>';
                             }
                             // Bir işleme/transfere/sayıma bağlı hareketler kendi ekranından iptal edilir
-                            if (satir.referans_tipi !== 'manuel') {
+                            if (satir.referans_tipi !== 'manuel' && satir.referans_tipi !== 'bozuk_iade') {
                                 return `<span class="text-muted" title="Bu hareket bağlı olduğu kaydın ekranından iptal edilmelidir">
                                             <i class="bx bx-lock-alt"></i></span>`;
                             }

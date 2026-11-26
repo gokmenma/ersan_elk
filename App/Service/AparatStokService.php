@@ -541,7 +541,7 @@ class AparatStokService
             if ((int) $h['iptal_mi'] === 1) {
                 throw new Exception('Bu hareket zaten iptal edilmiş.');
             }
-            if (($h['referans_tipi'] ?? '') !== 'manuel') {
+            if (!in_array($h['referans_tipi'] ?? '', ['manuel', 'bozuk_iade'], true)) {
                 throw new Exception('Bu hareket bağlı olduğu kaydın (işlem, transfer veya sayım) kendi ekranından iptal edilmelidir.');
             }
         }
@@ -709,10 +709,15 @@ class AparatStokService
                         'personel_id' => $satir['personel_id'],
                         'referans_tipi' => 'otomatik_kirma',
                         'referans_id' => $kayitId,
-                        'aciklama' => $fark > 0
-                            ? 'Aparat kırma (puantaj): abonedeki aparat hurdaya ayrıldı.'
-                            : 'Aparat kırma kaydı puantajdan kaldırıldı, hurda geri alındı.',
-                        'tarih' => $satir['tarih'] . ' 12:00:00',
+                        'aciklama' => sprintf(
+                            $fark > 0
+                                ? 'Aparat kırma: abonedeki aparat hurdaya ayrıldı (iş tarihi %s, puantajdan).'
+                                : 'Aparat kırma kaydı puantajdan kaldırıldı, hurda geri alındı (iş tarihi %s).',
+                            date('d.m.Y', strtotime($satir['tarih']))
+                        ),
+                        'tarih' => $fark > 0 && !empty($satir['kayit_zamani'])
+                            ? $satir['kayit_zamani']
+                            : date('Y-m-d H:i:s'),
                     ]);
 
                     $this->db()->commit();

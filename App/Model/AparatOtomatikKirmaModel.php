@@ -34,7 +34,7 @@ class AparatOtomatikKirmaModel extends Model
     public function karsilastirma(int $firmaId, string $baslangic): array
     {
         $hedefStmt = $this->db->prepare("SELECT y.personel_id, y.tarih, y.is_emri_sonucu_id,
-                   SUM(COALESCE(y.sonuclanmis, 0)) AS hedef
+                   SUM(COALESCE(y.sonuclanmis, 0)) AS hedef, MAX(y.created_at) AS kayit_zamani
             FROM yapilan_isler y
             INNER JOIN tanimlamalar t ON t.id = y.is_emri_sonucu_id
                 AND t.grup = 'is_turu' AND t.aparat_hurda = 1
@@ -51,6 +51,7 @@ class AparatOtomatikKirmaModel extends Model
                 'tarih' => (string) $satir['tarih'],
                 'is_emri_sonucu_id' => (int) $satir['is_emri_sonucu_id'],
                 'hedef' => max(0, (int) $satir['hedef']),
+                'kayit_zamani' => $satir['kayit_zamani'] ?: null,
                 'kayit' => null,
             ];
         }
@@ -65,6 +66,7 @@ class AparatOtomatikKirmaModel extends Model
                     'tarih' => (string) $kayit['tarih'],
                     'is_emri_sonucu_id' => (int) $kayit['is_emri_sonucu_id'],
                     'hedef' => 0,
+                    'kayit_zamani' => null,
                     'kayit' => null,
                 ];
             }

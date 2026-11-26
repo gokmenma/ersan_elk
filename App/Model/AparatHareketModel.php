@@ -323,6 +323,77 @@ class AparatHareketModel extends Model
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    public function olaylar(array $filtre = [], int $limit = 2000): array
+    {
+        $satirlar = $this->listele($filtre, $limit);
+        if (empty($satirlar)) {
+            return [];
+        }
+
+        $mevcut = [];
+        $asil = [];
+        foreach ($satirlar as $s) {
+            $mevcut[(int) $s['id']] = $s;
+            $asil[(int) $s['id']] = true;
+        }
+        $komsu = [];
+        foreach (array_keys($mevcut) as $id) {
+            foreach ([$id - 1, $id + 1] as $k) {
+                if ($k > 0 && !isset($mevcut[$k])) {
+                    $komsu[$k] = true;
+                }
+            }
+        }
+        if ($komsu) {
+            $ids = array_keys($komsu);
+            $yer = implode(',', array_fill(0, count($ids), '?'));
+            $stmt = $this->db->prepare("SELECT h.*, t.ad AS aparat_adi, t.kod AS aparat_kod,
+                       ek.tur_adi AS ekip_adi, p.adi_soyadi AS personel_adi, u.adi_soyadi AS kullanici_adi
+                FROM {$this->table} h
+                LEFT JOIN aparat_tipleri t ON t.id = h.aparat_tip_id
+                LEFT JOIN tanimlamalar ek ON ek.id = h.ekip_id
+                LEFT JOIN personel p ON p.id = h.personel_id
+                LEFT JOIN users u ON u.id = h.kaydeden_id
+                WHERE h.firma_id = ? AND h.id IN ($yer)");
+            $stmt->execute(array_merge([$this->firmaId()], $ids));
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $s) {
+                $mevcut[(int) $s['id']] = $s;
+            }
+        }
+        ksort($mevcut);
+
+        $anahtar = static function (array $s): string {
+            return implode('|', [$s['hareket_tipi'], $s['referans_tipi'], $s['referans_id'], $s['tarih'],
+                $s['kaydeden_id'], $s['ekip_id'], $s['personel_id'], $s['aparat_tip_id'], $s['iptal_mi'], $s['aciklama']]);
+        };
+
+        $olaylar = [];
+        $onceki = null;
+        foreach ($mevcut as $id => $s) {
+            $adet = (int) $s['adet'];
+            $taraf = ['tip' => $s['sahip_tipi'], 'id' => (int) $s['sahip_id']];
+            $son = $onceki !== null ? count($olaylar) - 1 : -1;
+
+            if ($son >= 0 && $onceki['id'] === $id - 1 && $onceki['anahtar'] === $anahtar($s)
+                && (($adet > 0 && $olaylar[$son]['hedef'] === null) || ($adet < 0 && $olaylar[$son]['kaynak'] === null))) {
+                $olaylar[$son][$adet > 0 ? 'hedef' : 'kaynak'] = $taraf;
+                $olaylar[$son]['adet'] = max($olaylar[$son]['adet'], abs($adet));
+                $olaylar[$son]['asil'] = $olaylar[$son]['asil'] || isset($asil[$id]);
+            } else {
+                $olaylar[] = array_merge($s, [
+                    'id' => $id,
+                    'adet' => abs($adet),
+                    'kaynak' => $adet < 0 ? $taraf : null,
+                    'hedef' => $adet > 0 ? $taraf : null,
+                    'asil' => isset($asil[$id]),
+                ]);
+            }
+            $onceki = ['id' => $id, 'anahtar' => $anahtar($s)];
+        }
+
+        return array_values(array_reverse(array_filter($olaylar, static fn($o) => $o['asil'])));
+    }
+
     public function sonDepoHareketleri(int $limit = 10): array
     {
         $limit = max(1, min(50, $limit));

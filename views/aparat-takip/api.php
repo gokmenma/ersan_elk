@@ -420,10 +420,80 @@ try {
                 'sahip_tipi' => $_GET['sahip_tipi'] ?? '',
             ];
 
-            aparatYanit(true, '', [
-                'data' => $Hareket->listele($filtre, 2000),
-                'toplam' => $Hareket->sayisi($filtre),
-            ]);
+            $uyeHaritasi = $Stok->ekipUyeHaritasi();
+            $ekipKodlari = [];
+            foreach ($Stok->ekipler(false) as $e) {
+                $ekipKodlari[(int) $e['id']] = $e['tur_adi'];
+            }
+            $ekipEtiket = function (int $id) use ($uyeHaritasi, $ekipKodlari): string {
+                $kod = $ekipKodlari[$id] ?? ('Ekip #' . $id);
+                return ($uyeHaritasi[$id] ?? '') !== '' ? $uyeHaritasi[$id] . ' (' . $kod . ')' : $kod;
+            };
+            $tarafEtiket = function (?array $taraf, string $hareketTipi) use ($ekipEtiket): string {
+                if ($taraf === null) {
+                    return match ($hareketTipi) {
+                        'depo_giris' => 'Satın alma',
+                        'acilis' => 'Açılış stoğu',
+                        default => '—',
+                    };
+                }
+                return match ($taraf['tip']) {
+                    'ekip' => $ekipEtiket((int) $taraf['id']),
+                    'depo' => 'Depo',
+                    'saha' => 'Abonede takılı',
+                    'hurda' => 'Hurda',
+                    'kayip' => 'Kayıp',
+                    default => (string) $taraf['tip'],
+                };
+            };
+            $hareketAdi = [
+                'kesme' => 'Kesme', 'acma' => 'Açma', 'transfer' => 'Ekipler Arası Transfer',
+                'depo_giris' => 'Depoya Giriş', 'depo_cikis' => 'Ekibe Verildi', 'depo_iade' => 'İade Alındı',
+                'hurda' => 'Hurdaya Ayrıldı', 'kayip' => 'Kayıp', 'sayim_duzeltme' => 'Sayım Düzeltmesi', 'acilis' => 'Açılış Stoğu',
+            ];
+
+            $olaylar = [];
+            foreach ($Hareket->olaylar($filtre, 2000) as $o) {
+                $ozel = match ($o['referans_tipi']) {
+                    'otomatik_kirma' => 'Aparat Kırma (otomatik)',
+                    'bozuk_iade' => 'Bozuk İade → Hurda',
+                    default => null,
+                };
+                $ekipId = (int) ($o['ekip_id'] ?? 0);
+                $yapan = (string) ($o['personel_adi'] ?? '');
+                if ($yapan === '' && $ekipId > 0 && in_array($o['hareket_tipi'], ['kesme', 'acma', 'transfer'], true)) {
+                    $yapan = $ekipEtiket($ekipId);
+                } elseif ($yapan !== '' && $ekipId > 0) {
+                    $yapan .= ' (' . ($ekipKodlari[$ekipId] ?? '') . ')';
+                }
+                $kaydeden = (string) ($o['kullanici_adi'] ?? '');
+                if ($kaydeden === '') {
+                    $kaydeden = match ($o['referans_tipi']) {
+                        'otomatik_kirma' => 'Sistem (puantaj)',
+                        'kesme_acma_islem' => 'Personel (telefon)',
+                        'aparat_transfer' => 'Personel (telefon)',
+                        default => '',
+                    };
+                }
+
+                $olaylar[] = [
+                    'id' => (int) $o['id'],
+                    'tarih' => $o['tarih'],
+                    'hareket_tipi' => $o['hareket_tipi'],
+                    'hareket_adi' => $ozel ?? ($hareketAdi[$o['hareket_tipi']] ?? $o['hareket_tipi']),
+                    'nereden' => $tarafEtiket($o['kaynak'], $o['hareket_tipi']),
+                    'nereye' => $tarafEtiket($o['hedef'], $o['hareket_tipi']),
+                    'aparat_adi' => $o['aparat_adi'],
+                    'adet' => (int) $o['adet'],
+                    'yapan' => $yapan,
+                    'kaydeden' => $kaydeden,
+                    'aciklama' => (string) ($o['aciklama'] ?? ''),
+                    'iptal_mi' => (int) $o['iptal_mi'],
+                    'referans_tipi' => (string) ($o['referans_tipi'] ?? ''),
+                ];
+            }
+
+            aparatYanit(true, '', ['data' => $olaylar, 'toplam' => count($olaylar)]);
             break;
 
         case 'hareket-iptal':
