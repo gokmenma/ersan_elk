@@ -335,7 +335,8 @@ class PersonelEkOdemelerModel extends Model
         $turCondition = "";
 
         if (!empty($tur)) {
-            $turCondition = " AND peo.tur = ? ";
+            $turCondition = " AND (peo.tur = ? OR bp.kod = ?) ";
+            $params[] = $tur;
             $params[] = $tur;
         }
 

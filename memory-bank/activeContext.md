@@ -4209,3 +4209,21 @@
 ## Ana sayfa GridStack düzeni (2026-11-26)
 - views/home.php ana sayfa kartları aydinogullariysc_trae gibi GridStack (12 sütun, hücre 40px) ile sürükle/boyutlandır; modül assets/js/dashboard-gridstack.js, stil assets/css/dashboard-gridstack.css, kütüphane assets/libs/gridstack/.
 - Yerleşim dashboard_settings JSON içinde widget başına gs {x,y,w,h,a}; DB değişikliği yok. Sürükleme tutamacı .drag-handle-indicator, boyutlandırma e/s/se.
+
+## 2026-11-26 — SGK Bildirge Raporu yeni sayfa standardına geçti
+- `views/bordro/raporlar/sgk-bildirge.php`: Aydınoğulları standardı (başlık+ikon kutusu, 4 KPI kartı, açma/kapama butonu `sgkbildirge_summary_cards_state`, liste kartı, header filtreli DataTables, Excel/Yazdır). Hesaplama mantığı değişmedi; `?yil=` parametresi artık o yılın ilk dönemini seçiyor. Excel export dosyasına dokunulmadı.
+
+## 2026-11-26 — Banka Listesi raporu yeni sayfa standardına geçti
+- `views/bordro/raporlar/banka-listesi.php`: SGK Bildirge ile aynı yapı (KPI: personel, toplam banka ödemesi, ödemeye hazır, IBAN eksik; header filtreli DataTables; `bankalistesi_summary_cards_state`). Hesaplama ve Excel export değişmedi.
+
+## 2026-11-26 — Vergi ve Maliyet raporları yeni sayfa standardına geçti
+- `views/bordro/raporlar/vergi-raporu.php` (iki satırlı gruplu başlık tek satıra indirildi: GV/DV sütunları ayrı başlık + renkli hücre) ve `maliyet-raporu.php` (Excel export yok). Hesaplamalar değişmedi.
+
+## 2026-11-26 — Talep AI ön analizi
+Talep oluşunca (PWA createAvansTalebi/createIzinTalebi/createTalepBildirimi, api/mobile/v1/requests.php) erken yanıttan sonra `TalepAiOnAnalizService::sessizTetikle/yanitlaVeAnalizEt` çalışır. Sonuç `talep_ai_on_analiz` tablosunda (UNIQUE talep_tipi+talep_id). OpenAI anahtarı/modeli `openai_api_key`/`ai_agent_model` ayarlarından. Yeni yetki yok; uç `talepler/api` `get-ai-on-analiz` (authenticated_only politika) ve kodda tip bazlı Gate (avans_talepleri/izin_talepleri/ariza_talepleri). Prompt'a ad, TC, IBAN gönderilmez.
+
+## 2026-11-26 — Kesinti ve Ek Ödemeler raporları yeni sayfa standardına geçti
+- `views/bordro/raporlar/kesinti-raporu.php` ve `ek-odemeler-raporu.php`: KPI kartları, header filtreli DataTables, Excel/Yazdır. Hücre yapısı (td sırası, h6, code) korundu çünkü özel Excel dışa aktarma ve dekont/ödeme durumu JS`i bu yapıya bağlı. Tür/Yıl/Dönem filtreleri artık birbirini ezmiyor (yıl değişince dönem sıfırlanır).
+
+## 2026-11-26 — Ek Ödemeler Raporu gruplu liste
+- `views/bordro/raporlar/ek-odemeler-raporu.php`: kayıtlar personel + ödeme türü bazında gruplandı (PHP, `$gruplar`); satırın solundaki ok DataTables child row ile tek tek kayıtları açar (detay `data-detay` JSON). Excel dışa aktarma filtrelenmiş grupların detaylarını düz satır olarak yazar. Grup toplamı yalnız sabit tutarları toplar.

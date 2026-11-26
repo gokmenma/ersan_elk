@@ -140,11 +140,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             error_log('Mobile Talep Bildirim Hatasi: ' . $e->getMessage());
         }
 
-        mobile_ok([
+        \App\Service\TalepAiOnAnalizService::yanitlaVeAnalizEt([
+            'success' => true,
             'message' => 'Talebiniz başarıyla oluşturuldu.',
             'ref_no' => $refNo,
             'id' => $newId,
-        ]);
+        ], 'genel', $newId);
     }
 
     if ($action === 'cancel') {

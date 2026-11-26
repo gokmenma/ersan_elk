@@ -2462,3 +2462,9 @@
 - [x] Online kesme/açma Aparat Takip'e bağlandı: iş türünde "Aparat Takip İşlemi" (kesme/açma/kırma), açma abonede takılı ile sınırlı, telefondan girilen adet düşülür, başlangıç 2026-11-26. Tetik: cron, puantaj online/Excel, aparat sayfaları. SQL `sql/2026_11_26_aparat_online_kesme_acma.sql`.
 
 - [x] Ana sayfa kart sürükleme/boyutlandırma GridStack mantığına geçirildi (eski Sortable/CSS-grid motoru devre dışı).
+- [x] SGK Bildirge Raporu yeni sayfa tasarımına çevrildi (2026-11-26, yerelde tarayıcıda doğrulandı).
+- [x] Banka Listesi raporu yeni sayfa tasarımına çevrildi (2026-11-26, yerelde doğrulandı).
+- [x] Vergi Raporu ve Maliyet Raporu yeni sayfa tasarımına çevrildi (2026-11-26, yerelde doğrulandı).
+- [x] Personel taleplerinde (genel talep, avans, izin) yapay zekâ ön analizi (2026-11-26): talep PWA/mobil API ile oluşunca yanıt döndükten sonra otomatik analiz (`TalepAiOnAnalizService`, `TalepAiOnAnalizModel`, tablo `talep_ai_on_analiz`); talepler detay modalında "Yapay Zekâ Ön Değerlendirmesi" kutusu (`get-ai-on-analiz`, kaydı olmayan bekleyen talepte ilk açılışta üretilir). Yerelde servis üç türle denendi; arayüz tarayıcıda doğrulanmadı. Canlıda `sql/2026_11_26_talep_ai_on_analiz.sql` çalıştırılmalı.
+- [x] Kesinti Raporu ve Ek Ödemeler Raporu yeni sayfa tasarımına çevrildi (2026-11-26, yerelde doğrulandı; dekont yükleme/silme ve ödeme anahtarı denenmedi).
+- [x] Ek Ödemeler Raporu aynı personel + türde gruplandı (2026-11-26, yerelde doğrulandı; Excel indirme denenmedi).

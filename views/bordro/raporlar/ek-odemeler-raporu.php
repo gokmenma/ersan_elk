@@ -1,9 +1,4 @@
 <?php
-/**
- * Ek Ödemeler Raporu
- * Personel ek ödemelerini dönem bazlı listeler ve filtreler.
- */
-
 use App\Model\BordroDonemModel;
 use App\Model\PersonelEkOdemelerModel;
 use App\Model\BordroParametreModel;
@@ -13,13 +8,25 @@ $BordroDonem = new BordroDonemModel();
 $EkOdemelerModel = new PersonelEkOdemelerModel();
 $BordroParametreModel = new BordroParametreModel();
 
-// Filtre parametreleri
-$selectedDonemId = $_GET['donem'] ?? $_SESSION['selectedDonemId'] ?? null;
+$selectedDonemId = $_GET['donem'] ?? null;
+$requestedYil = isset($_GET['yil']) ? (int) $_GET['yil'] : 0;
 $selectedTur = $_GET['tur'] ?? '';
+
+if (!$selectedDonemId && $requestedYil > 0) {
+    $yilDonemleri = $BordroDonem->getAllDonems($requestedYil);
+    $selectedDonemId = $yilDonemleri[0]->id ?? null;
+}
+if (!$selectedDonemId) {
+    $selectedDonemId = $_SESSION['selectedDonemId'] ?? null;
+}
 
 $selectedDonem = null;
 $ekOdemeler = [];
 $toplamTutar = 0;
+$durumSayi = ['onaylandi' => 0, 'beklemede' => 0, 'reddedildi' => 0];
+$surekliSayi = 0;
+$oranliSayi = 0;
+$personelIdleri = [];
 
 if ($selectedDonemId) {
     $selectedDonem = $BordroDonem->getDonemById($selectedDonemId);
@@ -27,12 +34,22 @@ if ($selectedDonemId) {
         $ekOdemeler = $EkOdemelerModel->getDonemEkOdemelerRaporu($selectedDonemId, $selectedTur);
         foreach ($ekOdemeler as $k) {
             $toplamTutar += floatval($k->tutar ?? 0);
+            $durumKey = in_array($k->durum, ['onaylandi', 'reddedildi'], true) ? $k->durum : 'beklemede';
+            $durumSayi[$durumKey]++;
+            if (($k->tekrar_tipi ?? 'tek_sefer') === 'surekli') {
+                $surekliSayi++;
+            }
+            if (($k->hesaplama_tipi ?? 'sabit') !== 'sabit') {
+                $oranliSayi++;
+            }
+            $personelIdleri[$k->personel_id ?? $k->tc_kimlik_no ?? $k->id] = true;
         }
     }
 }
 
-// Yılları ve dönemleri getir (dönem seçimi için)
-$selectedYil = $selectedDonem ? date('Y', strtotime($selectedDonem->baslangic_tarihi)) : date('Y');
+$selectedYil = $selectedDonem
+    ? date('Y', strtotime($selectedDonem->baslangic_tarihi))
+    : ($requestedYil > 0 ? $requestedYil : date('Y'));
 $donemler = $BordroDonem->getAllDonems($selectedYil);
 $yil_option = $BordroDonem->getYearsByDonem();
 
@@ -49,319 +66,407 @@ foreach ($gelir_turleri as $tur) {
 }
 
 $kayitSayisi = count($ekOdemeler);
+$hesapEtiketleri = ['sabit' => 'Sabit', 'oran_net' => 'Net %', 'oran_brut' => 'Brüt %'];
+$durumEtiketleri = ['onaylandi' => 'Onaylandı', 'beklemede' => 'Beklemede', 'reddedildi' => 'Reddedildi'];
+$gruplar = [];
+foreach ($ekOdemeler as $k) {
+    $grupTur = $k->parametre_adi ?? ucfirst($k->tur ?? 'Diğer');
+    $grupKey = ($k->personel_id ?? $k->tc_kimlik_no ?? $k->id) . '|' . $grupTur;
+    if (!isset($gruplar[$grupKey])) {
+        $gruplar[$grupKey] = [
+            'adi_soyadi' => $k->adi_soyadi ?? '-',
+            'tc' => $k->tc_kimlik_no ?? '-',
+            'departman' => $k->departman ?? '-',
+            'tur' => $grupTur,
+            'toplam' => 0.0,
+            'oranli' => 0,
+            'durumlar' => ['onaylandi' => 0, 'beklemede' => 0, 'reddedildi' => 0],
+            'detay' => [],
+        ];
+    }
+    $hTip = $k->hesaplama_tipi ?? 'sabit';
+    $dKey = in_array($k->durum, ['onaylandi', 'reddedildi'], true) ? $k->durum : 'beklemede';
+    $gruplar[$grupKey]['durumlar'][$dKey]++;
+    if ($hTip === 'sabit') {
+        $gruplar[$grupKey]['toplam'] += floatval($k->tutar ?? 0);
+        $degerMetin = number_format(floatval($k->tutar ?? 0), 2, ',', '.') . ' ₺';
+    } else {
+        $gruplar[$grupKey]['oranli']++;
+        $degerMetin = '%' . number_format(floatval($k->oran ?? 0), 2, ',', '.');
+    }
+    $gruplar[$grupKey]['detay'][] = [
+        'aciklama' => (string) ($k->aciklama ?? '-'),
+        'surekli' => ($k->tekrar_tipi ?? 'tek_sefer') === 'surekli',
+        'hesaplama' => $hesapEtiketleri[$hTip] ?? 'Sabit',
+        'deger' => $degerMetin,
+        'durum' => $durumEtiketleri[$dKey],
+        'durum_key' => $dKey,
+    ];
+}
+$grupSayisi = count($gruplar);
+$personelSayisi = count($personelIdleri);
+$fmt = fn($v) => number_format((float) $v, 2, ',', '.');
+$e = fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+$donemAdi = $selectedDonem ? $selectedDonem->donem_adi : '';
+?>
+<script>try { document.documentElement.classList.toggle('ekodemeraporu-summary-hidden', localStorage.getItem('ekodemeraporu_summary_cards_state') === 'hidden'); } catch (e) {}</script>
+<style>
+#summaryCardsContainer { overflow: hidden; max-height: 1100px; opacity: 1; transition: max-height .3s ease, opacity .3s ease, margin .3s ease; }
+.ekodemeraporu-summary-hidden #summaryCardsContainer { max-height: 0 !important; opacity: 0; margin-top: 0 !important; margin-bottom: 0 !important; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { #summaryCardsContainer { transition: none; } }
+.rapor-period-select .form-floating { margin-bottom: 0; }
+#ekOdemelerRaporuTable tfoot th { background-color: #f8fafc !important; border-top: 2px solid #e2e8f0 !important; font-size: 13px; font-weight: 700; color: #1e293b; }
+.copyable:hover { background-color: rgba(71, 85, 105, 0.08); border-radius: 4px; padding: 0 2px; transition: all 0.2s; }
+@media print {
+    .personel-action-toolbar, #summaryCardsContainer, #btnHeaderPrint { display: none !important; }
+}
+</style>
+<?php
+$maintitle = "Bordro";
+$subtitle = "Raporlar";
+$title = "Ek Ödemeler Raporu";
+include 'layouts/breadcrumb.php';
 ?>
 
 <div class="container-fluid">
-    <?php
-    $maintitle = "Bordro";
-    $subtitle = "Raporlar";
-    $title = "Ek Ödemeler Raporu";
-    ?>
-    <?php include 'layouts/breadcrumb.php'; ?>
+    <div class="row align-items-center mb-3">
+        <div class="col-xl-4 col-12 d-flex align-items-center gap-3">
+            <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 44px; height: 44px;">
+                <i class="bx bx-money fs-4 text-primary"></i>
+            </div>
+            <div>
+                <h4 class="mb-0 fw-bold text-dark font-size-16">Ek Ödemeler Raporu</h4>
+                <p class="text-muted mb-0 font-size-12">Dönem bazlı personel ek ödemeleri, hesaplama tipi ve onay durumu</p>
+            </div>
+            <?php if ($selectedDonem): ?>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold"><?= $e($donemAdi) ?></span>
+            <?php endif; ?>
+        </div>
 
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header border-bottom bordro-sticky-header">
-                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-                        <!-- Left side: Filters -->
-                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-2">
-                            <div style="min-width: 160px;">
-                                <?php echo Form::FormSelect2(
-                                    name: 'turSelectEkOdeme',
-                                    options: $tur_option,
-                                    selectedValue: $selectedTur,
-                                    label: 'Ek Ödeme Türü',
-                                    icon: 'filter',
-                                    class: 'form-control select2'
-                                ); ?>
-                            </div>
-                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                            <div style="min-width: 100px;">
-                                <?php echo Form::FormSelect2(
-                                    name: 'yilSelectEkOdeme',
-                                    options: $yil_option,
-                                    selectedValue: $selectedYil,
-                                    label: 'Yıl',
-                                    icon: 'calendar',
-                                    class: 'form-control select2'
-                                ); ?>
-                            </div>
-                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                            <div style="min-width: 160px;">
-                                <?php echo Form::FormSelect2(
-                                    name: 'donemSelectEkOdeme',
-                                    options: $donem_option,
-                                    selectedValue: $selectedDonemId,
-                                    label: 'Dönem',
-                                    icon: 'calendar',
-                                    class: 'form-control select2'
-                                ); ?>
+        <div class="personel-action-toolbar col-xl-8 col-12 d-flex align-items-center justify-content-xl-end flex-wrap gap-2 mt-2 mt-xl-0">
+            <div class="rapor-period-select">
+                <?= Form::FormSelect2(
+                    name: 'turSelectEkOdeme',
+                    options: $tur_option,
+                    selectedValue: $selectedTur,
+                    label: 'Ek Ödeme Türü',
+                    icon: 'filter',
+                    style: 'min-width: 190px;'
+                ) ?>
+            </div>
+            <div class="rapor-period-select">
+                <?= Form::FormSelect2(
+                    name: 'yilSelectEkOdeme',
+                    options: $yil_option,
+                    selectedValue: $selectedYil,
+                    label: 'Yıl',
+                    icon: 'calendar',
+                    style: 'min-width: 120px;'
+                ) ?>
+            </div>
+            <div class="rapor-period-select">
+                <?= Form::FormSelect2(
+                    name: 'donemSelectEkOdeme',
+                    options: $donem_option,
+                    selectedValue: $selectedDonemId,
+                    label: 'Dönem',
+                    icon: 'calendar',
+                    style: 'min-width: 180px;'
+                ) ?>
+            </div>
+            <button type="button" class="btn btn-primary top-action-btn shadow-sm text-white" id="btnExportCustomExcelEkOdeme">
+                <i class="bx bx-file font-size-16"></i> Excel'e Aktar
+            </button>
+
+            <a href="index?p=bordro/raporlar&donem=<?= $e($selectedDonemId) ?>" class="btn btn-outline-secondary bg-white top-action-btn shadow-sm">
+                <i class="bx bx-arrow-back font-size-16 text-primary"></i> <span class="d-none d-sm-inline">Raporlara Dön</span>
+            </a>
+
+            <button type="button" class="btn btn-outline-secondary bg-white top-icon-btn shadow-sm" id="btnToggleSummaryCards" title="Özet Kartları Göster/Gizle" aria-label="Özet Kartları Göster/Gizle" aria-expanded="true">
+                <i class="bx bx-chevron-up"></i>
+            </button>
+        </div>
+    </div>
+
+<?php if ($selectedDonem && !empty($ekOdemeler)): ?>
+        <div class="row g-3 mb-3 summary-cards-group" id="summaryCardsContainer">
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card summary-kpi-card h-100 mb-0">
+                    <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div><span class="summary-kpi-label">TOPLAM EK ÖDEME (SABİT)</span><h3 class="summary-kpi-value my-1 text-success"><?= $fmt($toplamTutar) ?> ₺</h3></div>
+                            <div class="summary-kpi-icon bg-success-subtle text-success border border-success-subtle">
+                                <i class="bx bx-money"></i>
                             </div>
                         </div>
-
-                        <!-- Right side: Buttons -->
-                        <div class="d-flex align-items-center gap-2 ms-auto">
-                            <button type="button" class="btn btn-success shadow-sm text-nowrap" id="btnExportCustomExcelEkOdeme">
-                                <i class="bx bx-file me-1"></i> Excel'e Aktar
-                            </button>
-                            <a href="index?p=bordro/raporlar&donem=<?= $selectedDonemId ?>" class="btn btn-secondary shadow-sm text-nowrap">
-                                <i class="bx bx-arrow-back me-1"></i> Raporlara Dön
-                            </a>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="summary-kpi-subtext">Oranlı kayıt: <?= (int) $oranliSayi ?></span>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Tutar</span>
                         </div>
                     </div>
                 </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card summary-kpi-card h-100 mb-0">
+                    <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div><span class="summary-kpi-label">KAYIT SAYISI</span><h3 class="summary-kpi-value my-1 "><?= (int) $kayitSayisi ?></h3></div>
+                            <div class="summary-kpi-icon bg-primary-subtle text-primary border border-primary-subtle">
+                                <i class="bx bx-list-ul"></i>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="summary-kpi-subtext"><?= (int) $personelSayisi ?> personel</span>
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Kayıt</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card summary-kpi-card h-100 mb-0">
+                    <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div><span class="summary-kpi-label">ONAYLANAN</span><h3 class="summary-kpi-value my-1 text-info"><?= (int) $durumSayi['onaylandi'] ?></h3></div>
+                            <div class="summary-kpi-icon bg-info-subtle text-info border border-info-subtle">
+                                <i class="bx bx-check-circle"></i>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="summary-kpi-subtext">Beklemede <?= (int) $durumSayi['beklemede'] ?> | Reddedilen <?= (int) $durumSayi['reddedildi'] ?></span>
+                            <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Onay</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card summary-kpi-card h-100 mb-0">
+                    <div class="card-body p-2 px-3 d-flex flex-column justify-content-between">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div><span class="summary-kpi-label">SÜREKLİ ÖDEME</span><h3 class="summary-kpi-value my-1 text-warning"><?= (int) $surekliSayi ?></h3></div>
+                            <div class="summary-kpi-icon bg-warning-subtle text-warning border border-warning-subtle">
+                                <i class="bx bx-refresh"></i>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="summary-kpi-subtext">Tek sefer: <?= (int) ($kayitSayisi - $surekliSayi) ?></span>
+                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">Tekrar</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-                <div class="card-body">
-                    <?php if ($selectedDonem && !empty($ekOdemeler)): ?>
+        <div class="card summary-kpi-card mb-3" id="ekOdemeListCard">
+            <div class="card-header bg-transparent border-0 px-3 py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 38px; height: 38px;">
+                        <i class="bx bx-list-ul font-size-20"></i>
+                    </div>
+                    <div>
+                        <h5 class="card-title mb-0 font-size-14 fw-bold text-dark">Ek Ödeme Listesi</h5>
+                        <p class="text-muted mb-0 font-size-12" style="margin-top: 2px;"><?= $e($donemAdi) ?> dönemi personel ek ödemeleri (<?= (int) $grupSayisi ?> grup, <?= (int) $kayitSayisi ?> kayıt)</p>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+                    <button type="button" class="btn btn-sm btn-subtle-secondary px-2.5 py-1.5 d-flex align-items-center gap-1 rounded-3 fw-semibold shadow-xs" id="btnHeaderPrint" title="Tabloyu Yazdır">
+                        <i class="bx bx-printer font-size-15"></i> <span class="d-none d-sm-inline font-size-12">Yazdır</span>
+                    </button>
+                </div>
+            </div>
 
-                        <!-- Özet Kartları -->
-                        <!-- <div class="row g-3 mb-4 d-flex justify-content-end"> -->
-                            <!-- TOPLAM -->
-                            <!-- <div class="col-lg-3 col-md-4">
-                                <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                                    style="--card-color: #f59e0b; border-bottom: 3px solid var(--card-color) !important;">
-                                    <div class="card-body p-3">
-                                        <div class="icon-label-container">
-                                            <div class="icon-box" style="background: rgba(245, 158, 11, 0.1);">
-                                                <i class="bx bx-money fs-4 text-warning"></i>
-                                            </div>
-                                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">TUTAR</span>
-                                        </div>
-                                        <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM EK ÖDEME</p>
-                                        <h4 class="mb-0 fw-bold bordro-text-heading text-warning">
-                                            <?php //number_format($toplamTutar, 2, ',', '.') ?> <span style="font-size: 0.85rem; font-weight: 600;">₺</span>
-                                        </h4>
-                                    </div>
-                                </div>
-                            </div> -->
-                            
-                            <!-- ADET -->
-                            <!-- <div class="col-lg-2 col-md-3">
-                                <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                                    style="--card-color: #64748b; border-bottom: 3px solid var(--card-color) !important;">
-                                    <div class="card-body p-3">
-                                        <div class="icon-label-container">
-                                            <div class="icon-box" style="background: rgba(100, 116, 139, 0.1);">
-                                                <i class="bx bx-list-ul fs-4 text-secondary"></i>
-                                            </div>
-                                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">ADET</span>
-                                        </div>
-                                        <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">KAYIT SAYISI</p>
-                                        <h4 class="mb-0 fw-bold bordro-text-heading text-secondary">
-                                            <?php //number_format($kayitSayisi, 0, ',', '.') ;?> <span style="font-size: 0.85rem; font-weight: 600;">Kişi</span>
-                                        </h4>
-                                    </div>
-                                </div>
-                            </div> -->
-                        <!-- </div> -->
-
-                        <!-- Tablo -->
-                        <div class="table-responsive">
-                            <table id="ekOdemelerRaporuTable" class="table table-hover table-bordered nowrap w-100 align-middle datatable">
-                                <thead class="table-light">
+            <div class="card-body p-3 pt-0">
+                <div class="table-responsive" style="overflow-x: auto !important;">
+                            <table id="ekOdemelerRaporuTable" class="table table-bordered table-hover nowrap align-middle w-100 mb-0">
+                                <thead>
                                     <tr>
-                                        <th style="width: 50px;" class="text-center">#</th>
-                                        <th>Personel Bilgileri</th>
-                                        <th>Departman</th>
-                                        <th>Ödeme Türü</th>
-                                        <th>Açıklama / Detay</th>
-                                        <th>Hesaplama</th>
-                                        <th class="text-end">Tutar / Oran</th>
-                                        <th class="text-center">Durum</th>
+                                        <th data-filter="none" style="width: 70px;" class="text-center">#</th>
+                                        <th data-filter="string">PERSONEL BİLGİLERİ</th>
+                                        <th data-filter="string">DEPARTMAN</th>
+                                        <th data-filter="select">ÖDEME TÜRÜ</th>
+                                        <th data-filter="string" class="text-center">KAYIT</th>
+                                        <th data-filter="select">HESAPLAMA</th>
+                                        <th data-filter="string" class="text-end">TOPLAM TUTAR</th>
+                                        <th data-filter="select" class="text-center">DURUM</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php
-                                    $sira = 1;
-                                    foreach ($ekOdemeler as $k):
-                                        // Tür Rozeti Ayarı
-                                        $turAdi = $k->parametre_adi ?? ucfirst($k->tur ?? 'Diğer');
-                                        
-                                        // Durum Rozeti Ayarı
-                                        $durumBg = 'bg-secondary';
-                                        $durumIcon = 'bx-time';
-                                        $durumMetin = 'Beklemede';
-                                        if ($k->durum === 'onaylandi') {
-                                            $durumBg = 'bg-success';
-                                            $durumIcon = 'bx-check-circle';
-                                            $durumMetin = 'Onaylandı';
-                                        } elseif ($k->durum === 'reddedildi') {
-                                            $durumBg = 'bg-danger';
-                                            $durumIcon = 'bx-x-circle';
-                                            $durumMetin = 'Reddedildi';
-                                        }
+                                    <?php $sira = 1; foreach ($gruplar as $g):
+                                        $detayJson = json_encode($g['detay'], JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_HEX_TAG);
+                                        $kayitAdet = count($g['detay']);
                                         ?>
-                                        <tr class="<?= $k->durum === 'reddedildi' ? 'text-muted' : '' ?>">
-                                            <td class="text-center fw-medium"><?= $sira++ ?></td>
+                                        <tr class="ek-grup-row" data-detay="<?= $e($detayJson) ?>">
+                                            <td class="text-center text-nowrap">
+                                                <button type="button" class="btn btn-sm btn-subtle-primary table-action-btn ek-grup-toggle" title="Kayıtları göster/gizle" aria-expanded="false"><i class="bx bx-chevron-right"></i></button>
+                                                <span class="row-index-badge ms-1"><?= $sira++ ?></span>
+                                            </td>
                                             <td>
-                                                <div class="d-flex align-items-center">
-                                                    <div>
-                                                        <h6 class="mb-0 fw-bold"><?= htmlspecialchars($k->adi_soyadi ?? '-') ?></h6>
-                                                        <span class="text-muted small">TC: <code><?= htmlspecialchars($k->tc_kimlik_no ?? '-') ?></code></span>
-                                                    </div>
+                                                <div>
+                                                    <h6 class="mb-0 fw-medium text-dark font-size-13 text-nowrap"><?= $e($g['adi_soyadi']) ?></h6>
+                                                    <span class="text-secondary font-size-12 text-nowrap">TC: <code><?= $e($g['tc']) ?></code></span>
                                                 </div>
                                             </td>
-                                            <td>
-                                                <?= htmlspecialchars($k->departman ?? '-') ?>
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-soft-primary text-white fs-6 px-2 py-1 shadow-sm"><?= htmlspecialchars($turAdi) ?></span>
-                                            </td>
-                                            <td>
-                                                <div class="text-wrap" style="max-width:300px;">
-                                                    <span class="fw-medium text-dark d-block">
-                                                        <?= htmlspecialchars($k->aciklama ?? '-') ?>
-                                                    </span>
-                                                    <?php if (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli'): ?>
-                                                        <span class="text-muted small d-block mt-1">
-                                                            <i class="bx bx-refresh me-1"></i>Sürekli Ödeme
-                                                        </span>
-                                                    <?php endif; ?>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <?php
-                                                $hesaplama_labels = [
-                                                    'sabit' => '<i class="bx bx-money"></i> Sabit',
-                                                    'oran_net' => '<i class="bx bx-percent"></i> Net %',
-                                                    'oran_brut' => '<i class="bx bx-percent"></i> Brüt %'
-                                                ];
-                                                echo $hesaplama_labels[$k->hesaplama_tipi ?? 'sabit'] ?? 'Sabit Tutar';
-                                                ?>
-                                            </td>
-                                            <td class="text-end fw-bold text-success" style="font-size: 1.05rem;">
-                                                <span class="<?= $k->durum === 'reddedildi' ? 'text-decoration-line-through' : '' ?>">
-                                                    <?php if (($k->hesaplama_tipi ?? 'sabit') == 'sabit'): ?>
-                                                        <?= number_format(floatval($k->tutar ?? 0), 2, ',', '.') ?> ₺
-                                                    <?php else: ?>
-                                                        %<?= number_format(floatval($k->oran ?? 0), 2, ',', '.') ?>
-                                                    <?php endif; ?>
-                                                </span>
+                                            <td><?= $e($g['departman']) ?></td>
+                                            <td><span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold"><?= $e($g['tur']) ?></span></td>
+                                            <td class="text-center" data-order="<?= (int) $kayitAdet ?>"><span class="badge-stat-tag"><?= (int) $kayitAdet ?></span></td>
+                                            <td class="text-nowrap"><?= $g['oranli'] > 0 ? ($g['oranli'] === $kayitAdet ? 'Oranlı' : 'Sabit + Oranlı') : 'Sabit' ?></td>
+                                            <td class="text-end text-nowrap fw-bold text-success" data-order="<?= (float) $g['toplam'] ?>">
+                                                <?php if ($g['toplam'] > 0 || $g['oranli'] === 0): ?>
+                                                    <?= $fmt($g['toplam']) ?> ₺
+                                                <?php else: ?>
+                                                    <span class="text-muted">-</span>
+                                                <?php endif; ?>
                                             </td>
                                             <td class="text-center">
-                                                <span class="badge <?= $durumBg ?> px-2 py-1 fs-6">
-                                                    <i class="bx <?= $durumIcon ?> me-1 align-middle"></i><?= $durumMetin ?>
-                                                </span>
+                                                <?php foreach ($g['durumlar'] as $dKey => $dAdet): if ($dAdet < 1) continue;
+                                                    $dCls = $dKey === 'onaylandi' ? 'bg-success-subtle text-success border border-success-subtle' : ($dKey === 'reddedildi' ? 'bg-danger-subtle text-danger border border-danger-subtle' : 'bg-secondary-subtle text-secondary border border-secondary-subtle'); ?>
+                                                    <span class="badge <?= $dCls ?> rounded-pill px-2 py-1 font-size-11 fw-semibold text-nowrap"><?= $e($durumEtiketleri[$dKey]) ?><?= $kayitAdet > 1 ? ' · ' . (int) $dAdet : '' ?></span>
+                                                <?php endforeach; ?>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>
-                                <tfoot class="table-light">
+                                <tfoot>
                                     <tr>
-                                        <th colspan="6" class="text-end font-size-14 fw-bold">Toplam Ek Ödeme Tutarı (Yalnızca Sabit Tutarlar):</th>
-                                        <th class="text-end text-success font-size-16 fw-bold">
-                                            <?= number_format($toplamTutar, 2, ',', '.') ?> ₺
-                                        </th>
+                                        <th colspan="6" class="text-end">TOPLAM EK ÖDEME TUTARI (YALNIZCA SABİT TUTARLAR):</th>
+                                        <th class="text-end text-nowrap text-success"><?= $fmt($toplamTutar) ?> ₺</th>
                                         <th></th>
                                     </tr>
                                 </tfoot>
                             </table>
-                        </div>
-                    <?php elseif ($selectedDonem): ?>
-                        <div class="text-center py-5">
-                            <div class="avatar-lg mx-auto mb-3">
-                                <div class="avatar-title bg-light text-muted rounded-circle fs-2">
-                                    <i class="bx bx-pie-chart-alt-2"></i>
-                                </div>
-                            </div>
-                            <h5 class="mt-3 text-secondary">Personel Bulunamadı</h5>
-                            <p class="text-muted">Bu dönemde / kriterde henüz oluşturulmuş ek ödeme kaydı bulunmamaktadır.</p>
-                        </div>
-                    <?php else: ?>
-                        <div class="text-center py-5">
-                            <div class="avatar-lg mx-auto mb-3">
-                                <div class="avatar-title bg-light text-muted rounded-circle fs-2">
-                                    <i class="bx bx-calendar-x"></i>
-                                </div>
-                            </div>
-                            <h5 class="mt-3 text-secondary">Dönem Seçimi Bekleniyor</h5>
-                            <p class="text-muted">Ek ödemeler raporunu görüntülemek için yukarıdan bir dönem seçiniz.</p>
-                        </div>
-                    <?php endif; ?>
                 </div>
             </div>
         </div>
-    </div>
+    <?php elseif ($selectedDonem): ?>
+        <div class="card summary-kpi-card mb-3">
+            <div class="card-body text-center py-5">
+                <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-inline-flex align-items-center justify-content-center mb-3" style="width: 56px; height: 56px;">
+                    <i class="bx bx-pie-chart-alt-2 fs-2"></i>
+                </div>
+                <h5 class="fw-bold text-dark font-size-14">Kayıt Bulunamadı</h5>
+                <p class="text-muted font-size-12 mb-0">Bu dönemde / kriterde henüz oluşturulmuş ek ödeme kaydı bulunmamaktadır.</p>
+            </div>
+        </div>
+    <?php else: ?>
+        <div class="card summary-kpi-card mb-3">
+            <div class="card-body text-center py-5">
+                <div class="p-2 bg-primary-subtle text-primary rounded-3 border border-primary-subtle d-inline-flex align-items-center justify-content-center mb-3" style="width: 56px; height: 56px;">
+                    <i class="bx bx-calendar-x fs-2"></i>
+                </div>
+                <h5 class="fw-bold text-dark font-size-14">Dönem Seçimi Bekleniyor</h5>
+                <p class="text-muted font-size-12 mb-0">Ek ödemeler raporunu görüntülemek için yukarıdan bir dönem seçiniz.</p>
+            </div>
+        </div>
+    <?php endif; ?>
 </div>
 
 <script>
     $(document).ready(function() {
-        // Yeni bir Excel Aktar fonksiyonu
-        $('#btnExportCustomExcelEkOdeme').on('click', function() {
-            var table = $('#ekOdemelerRaporuTable').DataTable();
-            
-            // Eğer tabloda veri yoksa uyar
-            if (!table.data().any()) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Uyarı',
-                    text: 'Dışa aktarılacak veri bulunamadı.',
-                    confirmButtonText: 'Tamam'
-                });
+        const toggleBtn = document.getElementById('btnToggleSummaryCards');
+        const root = document.documentElement;
+        const updateToggleState = function () {
+            const isHidden = root.classList.contains('ekodemeraporu-summary-hidden');
+            if (toggleBtn) {
+                toggleBtn.setAttribute('aria-expanded', isHidden ? 'false' : 'true');
+                const icon = toggleBtn.querySelector('i');
+                if (icon) icon.className = isHidden ? 'bx bx-chevron-down' : 'bx bx-chevron-up';
+            }
+        };
+        updateToggleState();
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', function () {
+                const willHide = !root.classList.contains('ekodemeraporu-summary-hidden');
+                root.classList.toggle('ekodemeraporu-summary-hidden', willHide);
+                try { localStorage.setItem('ekodemeraporu_summary_cards_state', willHide ? 'hidden' : 'visible'); } catch (e) {}
+                updateToggleState();
+            });
+        }
+        const printBtn = document.getElementById('btnHeaderPrint');
+        if (printBtn) {
+            printBtn.addEventListener('click', function () { window.print(); });
+        }
+
+        const escHtml = function (v) {
+            return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        };
+        const detayOku = function (node) {
+            try { return JSON.parse(node.getAttribute('data-detay') || '[]'); } catch (e) { return []; }
+        };
+        const detayHtml = function (items) {
+            let html = '<div class="p-2 ps-5"><table class="table table-sm table-bordered align-middle mb-0 bg-white"><thead><tr class="text-secondary font-size-12"><th>AÇIKLAMA / DETAY</th><th style="width:130px;">HESAPLAMA</th><th class="text-end" style="width:150px;">TUTAR / ORAN</th><th class="text-center" style="width:130px;">DURUM</th></tr></thead><tbody>';
+            items.forEach(function (it) {
+                const cls = it.durum_key === 'onaylandi' ? 'bg-success-subtle text-success border border-success-subtle' : (it.durum_key === 'reddedildi' ? 'bg-danger-subtle text-danger border border-danger-subtle' : 'bg-secondary-subtle text-secondary border border-secondary-subtle');
+                html += '<tr' + (it.durum_key === 'reddedildi' ? ' class="text-muted"' : '') + '>'
+                    + '<td class="font-size-13">' + escHtml(it.aciklama) + (it.surekli ? ' <span class="text-secondary font-size-12"><i class="bx bx-refresh"></i> Sürekli</span>' : '') + '</td>'
+                    + '<td class="font-size-13">' + escHtml(it.hesaplama) + '</td>'
+                    + '<td class="text-end text-nowrap fw-bold text-success font-size-13">' + escHtml(it.deger) + '</td>'
+                    + '<td class="text-center"><span class="badge ' + cls + ' rounded-pill px-2 py-1 font-size-11 fw-semibold">' + escHtml(it.durum) + '</span></td>'
+                    + '</tr>';
+            });
+            return html + '</tbody></table></div>';
+        };
+
+        let dt = null;
+        if (document.getElementById('ekOdemelerRaporuTable')) {
+            dt = jQuery('#ekOdemelerRaporuTable').DataTable(applyLengthStateSave({
+                ...getDatatableOptions(),
+                order: [[1, 'asc']],
+                columnDefs: [
+                    { targets: 0, orderable: false, searchable: false }
+                ]
+            }));
+
+            $('#ekOdemelerRaporuTable tbody').on('click', '.ek-grup-toggle', function (ev) {
+                ev.stopPropagation();
+                const tr = $(this).closest('tr');
+                const row = dt.row(tr);
+                const icon = $(this).find('i');
+                if (row.child.isShown()) {
+                    row.child.hide();
+                    tr.removeClass('shown');
+                    icon.attr('class', 'bx bx-chevron-right');
+                    $(this).attr('aria-expanded', 'false');
+                } else {
+                    row.child(detayHtml(detayOku(tr[0]))).show();
+                    tr.addClass('shown');
+                    icon.attr('class', 'bx bx-chevron-down');
+                    $(this).attr('aria-expanded', 'true');
+                }
+            });
+        }
+
+        $('#btnExportCustomExcelEkOdeme').on('click', function () {
+            if (!dt || !dt.data().any()) {
+                Swal.fire({ icon: 'warning', title: 'Uyarı', text: 'Dışa aktarılacak veri bulunamadı.', confirmButtonText: 'Tamam' });
                 return;
             }
 
-            // Sadece filtrelenmiş ("search: applied") satırları alalım
-            var rowsData = table.rows({ filter: 'applied' }).data();
-            var rowsNodes = table.rows({ filter: 'applied' }).nodes();
-            
-            // 1) HTML stringi olarak bir tablo başlatalım
-            // <meta charset="utf-8"> ile Excel'de Türkçe karakterlerin düzgün görünmesini sağlıyoruz.
-            var html = '<html xmlns:x="urn:schemas-microsoft-com:office:excel">';
-            html += '<head><meta charset="utf-8"></head>';
-            html += '<body>';
-            html += '<table border="1">';
-            
-            // 2) Başlıkları Ekleyelim (Durum kısmı hariç isterseniz çıkarabilirsiniz)
-            html += '<tr>';
-            html += '<th>SNO</th>';
-            html += '<th>TC Kimlik No</th>';
-            html += '<th>Ad Soyad</th>';
-            html += '<th>Departman</th>';
-            html += '<th>Ödeme Türü</th>';
-            html += '<th>Açıklama Detay</th>';
-            html += '<th>Hesaplama</th>';
-            html += '<th>Tutar / Oran</th>';
-            html += '<th>Durum</th>';
-            html += '</tr>';
+            let html = '<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"></head><body><table border="1"><tr>'
+                + '<th>SNO</th><th>TC Kimlik No</th><th>Ad Soyad</th><th>Departman</th><th>Ödeme Türü</th><th>Açıklama Detay</th><th>Hesaplama</th><th>Tutar / Oran</th><th>Durum</th></tr>';
 
-            // 3) Satırları dönerek verileri HTML tablo formatına basalım
-            var sira = 1;
-            table.rows({ filter: 'applied' }).every(function(rowIdx, tableLoop, rowLoop) {
-                var node = this.node();
-                var tc = $(node).find('td:eq(1) code').text().trim();
-                var adSoyad = $(node).find('td:eq(1) h6').text().trim();
-                var departman = $(node).find('td:eq(2)').text().trim();
-                var tur = $(node).find('td:eq(3)').text().trim();
-                var aciklama = $(node).find('td:eq(4) .fw-medium').text().trim();
-                var hesaplama = $(node).find('td:eq(5)').text().trim();
-                var tutarStr = $(node).find('td:eq(6)').text().trim();
-                var durum = $(node).find('td:eq(7)').text().trim();
-                
-                html += '<tr>';
-                html += '<td>' + sira++ + '</td>';
-                // mso-number-format:"\@"; ile TC kimlik numaralarının Excel'de bilimsel (1E+10 gibi) görünmesini engelliyoruz
-                html += '<td style="mso-number-format:\'@\';">' + tc + '</td>';
-                html += '<td>' + adSoyad + '</td>';
-                html += '<td>' + departman + '</td>';
-                html += '<td>' + tur + '</td>';
-                html += '<td>' + aciklama + '</td>';
-                html += '<td>' + hesaplama + '</td>';
-                html += '<td>' + tutarStr + '</td>';
-                html += '<td>' + durum + '</td>';
-                html += '</tr>';
+            let sira = 1;
+            dt.rows({ filter: 'applied' }).every(function () {
+                const node = this.node();
+                const tc = $(node).find('td:eq(1) code').text().trim();
+                const adSoyad = $(node).find('td:eq(1) h6').text().trim();
+                const departman = $(node).find('td:eq(2)').text().trim();
+                const tur = $(node).find('td:eq(3)').text().trim();
+                detayOku(node).forEach(function (it) {
+                    html += '<tr><td>' + sira++ + '</td>'
+                        + '<td style="mso-number-format:\'@\';">' + escHtml(tc) + '</td>'
+                        + '<td>' + escHtml(adSoyad) + '</td>'
+                        + '<td>' + escHtml(departman) + '</td>'
+                        + '<td>' + escHtml(tur) + '</td>'
+                        + '<td>' + escHtml(it.aciklama) + '</td>'
+                        + '<td>' + escHtml(it.hesaplama) + '</td>'
+                        + '<td>' + escHtml(it.deger) + '</td>'
+                        + '<td>' + escHtml(it.durum) + '</td></tr>';
+                });
             });
-            
-            html += '</table>';
-            html += '</body>';
-            html += '</html>';
+            html += '</table></body></html>';
 
-            // 4) Blob ve ahref download işlemi
-            var blob = new Blob([html], { type: 'application/vnd.ms-excel' });
-            var url = window.URL.createObjectURL(blob);
-            
-            var a = document.createElement('a');
+            const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
             a.href = url;
             a.download = 'Ek_Odemeler_Raporu_<?= $selectedDonem ? htmlspecialchars($selectedDonem->donem_adi) : date("Y_m_d") ?>.xls';
             document.body.appendChild(a);
@@ -370,18 +475,13 @@ $kayitSayisi = count($ekOdemeler);
             window.URL.revokeObjectURL(url);
         });
 
-        // Event listener for filters
-        function applyFilters() {
-            var yil = $('[name="yilSelectEkOdeme"]').val();
-            var donem = $('[name="donemSelectEkOdeme"]').val();
-            var tur = $('[name="turSelectEkOdeme"]').val();
-
-            var url = 'index?p=bordro/raporlar/ek-odemeler-raporu&donem=' + donem + '&yil=' + yil + '&tur=' + tur;
-            window.location.href = url;
+        function goTo(params) {
+            const q = Object.entries(params).filter(function (kv) { return kv[1]; }).map(function (kv) { return kv[0] + '=' + encodeURIComponent(kv[1]); });
+            window.location.href = 'index?p=bordro/raporlar/ek-odemeler-raporu' + (q.length ? '&' + q.join('&') : '');
         }
 
-        $('[name="yilSelectEkOdeme"]').on('change', applyFilters);
-        $('[name="donemSelectEkOdeme"]').on('change', applyFilters);
-        $('[name="turSelectEkOdeme"]').on('change', applyFilters);
+        $('[name="yilSelectEkOdeme"]').on('change', function () { goTo({ yil: this.value, tur: $('[name="turSelectEkOdeme"]').val() }); });
+        $('[name="donemSelectEkOdeme"]').on('change', function () { goTo({ donem: this.value, tur: $('[name="turSelectEkOdeme"]').val() }); });
+        $('[name="turSelectEkOdeme"]').on('change', function () { goTo({ donem: $('[name="donemSelectEkOdeme"]').val(), tur: this.value }); });
     });
 </script>

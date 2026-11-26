@@ -1387,6 +1387,7 @@ try {
             }
 
             if ($erkenYanitGonderildi) {
+                \App\Service\TalepAiOnAnalizService::sessizTetikle('avans', (int) $newId);
                 exit;
             }
             response(true, null, 'Avans talebiniz başarıyla oluşturuldu');
@@ -1955,6 +1956,7 @@ try {
             }
 
             if ($erkenYanitGonderildi) {
+                \App\Service\TalepAiOnAnalizService::sessizTetikle('izin', (int) $newId);
                 exit;
             }
             response(true, null, 'İzin talebiniz başarıyla oluşturuldu');
@@ -2252,6 +2254,7 @@ try {
             }
 
             if ($erkenYanitGonderildi) {
+                \App\Service\TalepAiOnAnalizService::sessizTetikle('genel', (int) $newId);
                 exit;
             }
             response(true, ['id' => $newId, 'ref_no' => $ref_no], 'Talebiniz başarıyla oluşturuldu. Referans No: ' . $ref_no);

@@ -101,7 +101,7 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') { http_response_code(403
 
                     <div class="pwa-field">
                         <label>Geri Ödeme Seçeneği</label>
-                        <select name="odeme_sekli" class="pwa-input">
+                        <select name="odeme_sekli" id="avans-odeme-sekli" class="pwa-input" onchange="updateAvansOnayKutusu()">
                             <option value="tek">En Yakın Maaş (Tek Seferde)</option>
                             <option value="2">2 Taksit</option>
                             <option value="3">3 Taksit</option>
@@ -113,8 +113,8 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') { http_response_code(403
                         <textarea name="aciklama" class="pwa-input" placeholder="Lütfen avans talebinizin nedenini açıklayın..."></textarea>
                     </div>
 
-                    <label for="onay" class="pwa-check">
-                        <input type="checkbox" id="onay" name="onay" required>
+                    <label for="onay" id="avans-onay-label" class="pwa-check is-disabled">
+                        <input type="checkbox" id="onay" name="onay" disabled>
                         <span>Bu tutarın, seçilen geri ödeme seçeneğine göre gelecekteki bordrolarımdan otomatik olarak düşüleceğini anlıyorum.</span>
                     </label>
                 </section>
@@ -357,6 +357,21 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') { http_response_code(403
         if (uyari) uyari.classList.remove('hidden');
     }
 
+    function updateAvansOnayKutusu() {
+        const odemeSelect = document.getElementById('avans-odeme-sekli');
+        const onayInput = document.getElementById('onay');
+        const onayLabel = document.getElementById('avans-onay-label');
+        if (!odemeSelect || !onayInput || !onayLabel) return;
+
+        const isTaksitli = odemeSelect.value !== 'tek';
+        onayInput.disabled = !isTaksitli;
+        onayInput.required = isTaksitli;
+        if (!isTaksitli) {
+            onayInput.checked = false;
+        }
+        onayLabel.classList.toggle('is-disabled', !isTaksitli);
+    }
+
     function openNewAvansModal() {
         if (!avansTalepEdebilir) {
             Toast.show(avansKisitMesaji || 'Avans talebi oluşturamazsınız.', 'error');
@@ -367,6 +382,7 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') { http_response_code(403
         document.getElementById('avans-form').reset();
         document.getElementById('avans-id').value = '';
         document.getElementById('avans-submit-btn').textContent = 'Talebi Gönder';
+        updateAvansOnayKutusu();
         
         // Modal açıldığında limit bilgisini gösterelim
         document.getElementById('max-limit').textContent = Format.currency(currentAdvanceLimit);
@@ -389,7 +405,10 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') { http_response_code(403
         document.getElementById('avans-tutar').value = avans.tutar;
         form.querySelector('[name="odeme_sekli"]').value = avans.odeme_sekli || 'tek';
         form.querySelector('[name="aciklama"]').value = avans.aciklama || '';
-        form.querySelector('[name="onay"]').checked = true;
+        updateAvansOnayKutusu();
+        if ((avans.odeme_sekli || 'tek') !== 'tek') {
+            form.querySelector('[name="onay"]').checked = true;
+        }
 
         // Düzenlerken limit: (kalan limit + bu avansın eski tutarı)
         const limitForEdit = currentAdvanceLimit + parseFloat(avans.tutar || 0);
@@ -440,6 +459,12 @@ if (($personel->personel_tipi ?? '') === 'kaski_kacak') { http_response_code(403
 
         if (!Form.validate(form)) {
             Toast.show('Lütfen gerekli alanları doldurun', 'error');
+            return;
+        }
+
+        const onayInput = document.getElementById('onay');
+        if (formData.odeme_sekli !== 'tek' && onayInput && !onayInput.checked) {
+            Toast.show('Lütfen geri ödeme onay kutucuğunu işaretleyin', 'error');
             return;
         }
 

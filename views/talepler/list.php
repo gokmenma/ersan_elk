@@ -2279,7 +2279,10 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    if (detayContent) detayContent.innerHTML = renderDetay(tip, data.data);
+                    if (detayContent) {
+                        detayContent.innerHTML = renderDetay(tip, data.data);
+                        aiOnAnalizYukle(tip === 'talep' ? 'genel' : tip, id, detayContent);
+                    }
                 } else {
                     if (detayContent) detayContent.innerHTML = '<div class="alert alert-danger mb-0">' + data.message + '</div>';
                 }
@@ -2287,6 +2290,74 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(error => {
                 if (detayContent) detayContent.innerHTML = '<div class="alert alert-danger mb-0">Bir hata oluştu: ' + error.message + '</div>';
             });
+    }
+
+    function aiEscape(v) {
+        const d = document.createElement('div');
+        d.textContent = v == null ? '' : String(v);
+        return d.innerHTML;
+    }
+
+    function aiOnAnalizYukle(tip, id, hedef) {
+        const kutuId = 'aiOnAnalizKutusu';
+        hedef.insertAdjacentHTML('afterbegin',
+            '<div id="' + kutuId + '" class="border rounded-3 p-3 mb-3 bg-light-subtle d-flex align-items-center gap-2 text-muted font-size-12">' +
+            '<span class="spinner-border spinner-border-sm text-primary"></span>' +
+            '<span>Yapay zekâ ön değerlendirmesi hazırlanıyor...</span></div>');
+
+        const fd = new FormData();
+        fd.append('action', 'get-ai-on-analiz');
+        fd.append('tip', tip);
+        fd.append('id', id);
+
+        fetch(API_URL, { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(res => {
+                const kutu = hedef.querySelector('#' + kutuId);
+                if (!kutu) return;
+                if (res.status !== 'success' || !res.data) {
+                    kutu.remove();
+                    return;
+                }
+                kutu.outerHTML = aiOnAnalizRender(res.data, kutuId);
+            })
+            .catch(() => {
+                const kutu = hedef.querySelector('#' + kutuId);
+                if (kutu) kutu.remove();
+            });
+    }
+
+    function aiOnAnalizRender(a, kutuId) {
+        const oneriMap = {
+            onaylanabilir: { sinif: 'success', ikon: 'bx-check-circle', metin: 'Sorunsuz görünüyor' },
+            dikkat: { sinif: 'warning', ikon: 'bx-error', metin: 'Dikkat gerektiriyor' },
+            incelenmeli: { sinif: 'danger', ikon: 'bx-error-circle', metin: 'Ayrıntılı inceleme önerilir' }
+        };
+        const aciliyetMap = { dusuk: 'Düşük', orta: 'Orta', yuksek: 'Yüksek' };
+        const o = oneriMap[a.oneri] || oneriMap.dikkat;
+
+        const liste = (baslik, ogeler, sinif, ikon) => {
+            if (!ogeler || !ogeler.length) return '';
+            return '<div class="mt-2"><div class="fw-semibold font-size-12 text-' + sinif + ' mb-1"><i class="bx ' + ikon + ' me-1"></i>' + baslik + '</div>' +
+                '<ul class="mb-0 ps-3 font-size-12 text-secondary">' +
+                ogeler.map(x => '<li>' + aiEscape(x) + '</li>').join('') + '</ul></div>';
+        };
+
+        return '<div id="' + kutuId + '" class="border border-' + o.sinif + '-subtle rounded-3 p-3 mb-3 bg-' + o.sinif + '-subtle bg-opacity-25">' +
+            '<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">' +
+            '<div class="fw-bold font-size-13 text-dark"><i class="bx bx-bot me-1 text-primary"></i>Yapay Zekâ Ön Değerlendirmesi</div>' +
+            '<div class="d-flex align-items-center gap-1">' +
+            (a.kategori ? '<span class="badge bg-light text-secondary border rounded-pill font-size-11">' + aiEscape(a.kategori) + '</span>' : '') +
+            '<span class="badge bg-light text-secondary border rounded-pill font-size-11">Aciliyet: ' + aiEscape(aciliyetMap[a.aciliyet] || '-') + '</span>' +
+            '<span class="badge bg-' + o.sinif + '-subtle text-' + o.sinif + ' border border-' + o.sinif + '-subtle rounded-pill font-size-11"><i class="bx ' + o.ikon + ' me-1"></i>' + o.metin + '</span>' +
+            '</div></div>' +
+            '<p class="mb-0 font-size-13 text-dark">' + aiEscape(a.ozet) + '</p>' +
+            liste('Olumlu noktalar', a.olumlu, 'success', 'bx-check') +
+            liste('Dikkat edilecekler', a.dikkat, 'warning', 'bx-error') +
+            liste('Eksik bilgi', a.eksik, 'danger', 'bx-info-circle') +
+            liste('Personele sorulabilir', a.sorular, 'primary', 'bx-help-circle') +
+            '<div class="mt-2 text-muted font-size-11">Bu değerlendirme yapay zekâ tarafından üretilmiş ön bilgidir; karar yöneticiye aittir. ' + aiEscape(a.tarih || '') + '</div>' +
+            '</div>';
     }
 
     // Modern Kullanıcı Dostu Detay Modal Render Fonksiyonu

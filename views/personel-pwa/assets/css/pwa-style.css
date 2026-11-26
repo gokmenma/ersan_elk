@@ -4616,6 +4616,15 @@ input[type="date"].pwa-input { padding-left: 12px; padding-right: 8px; font-size
   accent-color: var(--primary);
 }
 
+.pwa-check.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pwa-check.is-disabled input {
+  cursor: not-allowed;
+}
+
 .dark .pwa-check {
   background: rgba(255, 255, 255, 0.06);
   color: #cbd5e1;
