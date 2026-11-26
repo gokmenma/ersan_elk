@@ -3442,6 +3442,120 @@ $(function () {
       });
   });
 
+  const gorevListe = $("#evrakGorevPersonelListesi");
+  const gorevListeSelect = $("#evrak_gorev_liste");
+
+  function gorevSecimGuncelle() {
+    $("#evrakGorevSecilenSayi").text(gorevListe.find(".uets-sevk-kisi.secili").length);
+  }
+
+  if (gorevListeSelect.length && $.fn.select2) {
+    gorevListeSelect.select2({ dropdownParent: $("#modalEvrakGorev"), width: "100%", minimumResultsForSearch: 8 });
+  }
+
+  $(document).on("click", "#evrakGorevPersonelListesi .uets-sevk-kisi", gorevSecimGuncelle);
+
+  $("#evrak_gorev_ara").on("input", function () {
+    const q = $(this).val().toLocaleLowerCase("tr-TR").trim();
+    let gorunen = 0;
+    gorevListe.find(".uets-sevk-kisi").each(function () {
+      const eslesme = !q || String($(this).data("arama")).indexOf(q) !== -1;
+      $(this).toggleClass("d-none", !eslesme);
+      if (eslesme) gorunen++;
+    });
+    gorevListe.find(".uets-sevk-bos").toggleClass("d-none", gorunen > 0);
+  });
+
+  $(document).on("click", ".btn-evrak-gorev", function () {
+    const id = $(this).data("id");
+    $("#evrakGorevEvrakId").val(id);
+    $("#evrak_gorev_baslik, #evrak_gorev_aciklama, #evrak_gorev_tarih, #evrak_gorev_saat, #evrak_gorev_ara").val("");
+    gorevListeSelect.empty().trigger("change");
+    gorevListe.html('<div class="text-center text-muted py-4"><i class="bx bx-loader-alt bx-spin font-size-20"></i></div>');
+    gorevSecimGuncelle();
+    $("#modalEvrakGorev").modal("show");
+    $.post(sevkApi, { action: "evrak-gorev-hazirla", id: id }, null, "json")
+      .done(function (res) {
+        if (res.status !== "success") {
+          gorevListe.empty();
+          Swal.fire("Hata", res.message || "Görev bilgileri alınamadı.", "error");
+          return;
+        }
+        const d = res.data || {};
+        $("#evrak_gorev_baslik").val(d.baslik || "");
+        $("#evrak_gorev_aciklama").val(d.aciklama || "");
+        const listeler = d.listeler || [];
+        gorevListeSelect.empty();
+        if (!listeler.length) {
+          gorevListeSelect.append(new Option("Evrak Görevleri (otomatik oluşturulur)", "", true, true));
+        }
+        listeler.forEach(function (l, i) {
+          gorevListeSelect.append(new Option(l.baslik, l.id, i === 0, i === 0));
+        });
+        gorevListeSelect.trigger("change");
+        const rows = d.kullanicilar || [];
+        if (!rows.length) {
+          gorevListe.html('<div class="text-center text-muted py-4 font-size-13">Atanabilecek personel bulunamadı.</div>');
+          return;
+        }
+        let html = "";
+        rows.forEach(function (u) {
+          const ad = u.adi + (u.ben ? " (Ben)" : "");
+          const arama = (ad + " " + (u.unvan || "")).toLocaleLowerCase("tr-TR");
+          html += '<div class="uets-sevk-kisi" data-arama="' + escapeHtml(arama) + '">' +
+            '<input type="checkbox" value="' + escapeHtml(u.id) + '">' +
+            '<span class="uets-sevk-avatar">' + escapeHtml(sevkBasHarf(u.adi)) + "</span>" +
+            '<span class="uets-sevk-bilgi"><span class="uets-sevk-ad">' + escapeHtml(ad) + "</span>" +
+            (u.unvan ? '<span class="uets-sevk-unvan">' + escapeHtml(u.unvan) + "</span>" : "") + "</span>" +
+            '<i class="bx bx-check-circle uets-sevk-tik"></i></div>';
+        });
+        gorevListe.html(html + '<div class="uets-sevk-bos d-none text-center text-muted py-3 font-size-13">Eşleşen personel yok.</div>');
+      })
+      .fail(function () {
+        gorevListe.empty();
+        Swal.fire("Hata", "Görev bilgileri alınamadı.", "error");
+      });
+  });
+
+  $("#btnEvrakGorevKaydet").on("click", function () {
+    const baslik = $.trim($("#evrak_gorev_baslik").val());
+    const atanan = gorevListe.find(".uets-sevk-kisi.secili input").map(function () { return this.value; }).get();
+    if (!baslik) {
+      Swal.fire("Uyarı", "Görev başlığı zorunludur.", "warning");
+      return;
+    }
+    if (!atanan.length) {
+      Swal.fire("Uyarı", "Lütfen görevin atanacağı en az bir personel seçiniz.", "warning");
+      return;
+    }
+    const btn = $(this);
+    const btnHtml = btn.html();
+    btn.prop("disabled", true).html('<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Oluşturuluyor...');
+    $.post(sevkApi, {
+      action: "evrak-gorev-olustur",
+      id: $("#evrakGorevEvrakId").val(),
+      baslik: baslik,
+      aciklama: $("#evrak_gorev_aciklama").val(),
+      tarih: $("#evrak_gorev_tarih").val(),
+      saat: $("#evrak_gorev_saat").val(),
+      liste_id: gorevListeSelect.val() || "",
+      atanan_user_ids: atanan,
+    }, null, "json")
+      .done(function (res) {
+        if (res.status === "success") {
+          $("#modalEvrakGorev").modal("hide");
+          Swal.fire({ icon: "success", title: "Görev oluşturuldu", text: res.message, timer: 1800, showConfirmButton: false });
+        } else {
+          Swal.fire("Hata", res.message || "Görev oluşturulamadı.", "error");
+        }
+      })
+      .fail(function () {
+        Swal.fire("Hata", "Görev oluşturulamadı.", "error");
+      })
+      .always(function () {
+        btn.prop("disabled", false).html(btnHtml);
+      });
+  });
   $("#btnUetsSevkKaydet").on("click", function () {
     const alan = sevkListe.find(".uets-sevk-kisi.secili input").map(function () { return this.value; }).get();
     if (!alan.length) {

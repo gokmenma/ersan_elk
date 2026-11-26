@@ -821,6 +821,47 @@ $(document).ready(function() {
     </div>
 </div>
 
+<div class="modal fade" id="modalEvrakGorev" tabindex="-1" aria-labelledby="modalEvrakGorevTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title font-size-15 fw-bold d-flex align-items-center" id="modalEvrakGorevTitle">
+                    <i class="bx bx-task me-2 fs-5 text-success"></i> Evraktan Görev Oluştur
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body p-4">
+                <input type="hidden" id="evrakGorevEvrakId" value="">
+                <div class="mb-3">
+                    <?php echo Form::FormFloatInput('text', 'evrak_gorev_baslik', '', 'Görev başlığı', 'Görev Başlığı', 'bx bx-task', 'form-control', true, 255, 'off'); ?>
+                </div>
+                <div class="mb-3">
+                    <?php echo Form::FormFloatTextarea('evrak_gorev_aciklama', '', 'Açıklama', 'Açıklama', 'bx bx-comment-detail', 'form-control', false, '90px', 3, 'maxlength="2000"'); ?>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-7">
+                        <?php echo Form::FormFloatInput('date', 'evrak_gorev_tarih', '', '', 'Son Tarih', 'bx bx-calendar', 'form-control', false, null, 'off'); ?>
+                    </div>
+                    <div class="col-5">
+                        <?php echo Form::FormFloatInput('time', 'evrak_gorev_saat', '', '', 'Saat', 'bx bx-time', 'form-control', false, null, 'off'); ?>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <?php echo Form::FormSelect2('evrak_gorev_liste', [], '', 'Görev Listesi', 'bx bx-list-ul', 'key', 'value', 'form-select select2'); ?>
+                </div>
+                <div class="mb-2">
+                    <?php echo Form::FormFloatInput('text', 'evrak_gorev_ara', '', 'Personel ara', 'Personel Ara', 'bx bx-search', 'form-control', false, 100, 'off'); ?>
+                </div>
+                <div class="font-size-12 text-muted mb-2"><span id="evrakGorevSecilenSayi" class="fw-bold text-primary">0</span> personel seçildi</div>
+                <div id="evrakGorevPersonelListesi" class="uets-sevk-liste"></div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="button" class="btn btn-success text-white" id="btnEvrakGorevKaydet"><i class="bx bx-check me-1"></i> Görevi Oluştur</button>
+            </div>
+        </div>
+    </div>
+</div>
 <div class="modal fade" id="modalUetsTarihce" tabindex="-1" aria-labelledby="modalUetsTarihceTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
         <div class="modal-content shadow-lg border-0">

@@ -226,6 +226,44 @@ class GorevModel extends Model
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
+    public function duzenlenebilirListeler($firma_id, $user_id): array
+    {
+        return array_values(array_filter(
+            $this->getListeler($firma_id, $user_id),
+            static fn($liste): bool => in_array($liste->erisim, ['sahip', 'duzenle'], true)
+        ));
+    }
+
+    public function atanabilirKullanicilar(int $firma_id, int $owner_id): array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT id, COALESCE(NULLIF(adi_soyadi, ''), user_name) AS adi, COALESCE(NULLIF(unvani, ''), gorevi, '') AS unvan
+             FROM users
+             WHERE silinme_tarihi IS NULL AND durum = 'Aktif' AND owner_id = :owner_id
+               AND (firma_ids IS NULL OR firma_ids = '' OR FIND_IN_SET(:firma_id, REPLACE(firma_ids, ' ', '')) > 0)
+             ORDER BY adi ASC"
+        );
+        $stmt->execute([':owner_id' => $owner_id, ':firma_id' => (string) $firma_id]);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    public function evrakGorevi(array $data, int $evrak_id): int
+    {
+        $this->db->beginTransaction();
+        try {
+            $id = (int) $this->addGorev($data);
+            $stmt = $this->db->prepare("UPDATE gorevler SET evrak_id = :evrak_id WHERE id = :id AND firma_id = :firma_id");
+            $stmt->execute([':evrak_id' => $evrak_id, ':id' => $id, ':firma_id' => $data['firma_id']]);
+            $this->db->commit();
+            return $id;
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        }
+    }
+
     public function addGorev($data)
     {
         // Yeni görevlerin en üstte olması için MIN(sira) - 1 kullanıyoruz

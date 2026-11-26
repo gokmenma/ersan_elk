@@ -1539,6 +1539,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $canSendKep = Gate::allows('evrak-takip/kep');
                 $canGidenEvrak = Gate::allows('evrak-takip/giden-evrak');
                 $canKarsiNo = Gate::allows('evrak-takip/karsi-evrak-no');
+                $canGorevOlustur = Gate::allows('gorevler');
                 $uetsFullAccess = (new \App\Model\EvrakSevkModel())->hasFullAccess();
                 $uetsReadIds = array_flip((new \App\Model\EvrakSevkModel())->readEvrakIds((int) $_SESSION['firma_id'], $currentUserId, $ids));
                 $esc = static fn($value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
@@ -1668,6 +1669,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 btn-uets-tarihce" data-id="' . $esc($encryptedId) . '" data-subject="' . $esc($evrak->konu) . '" data-full="1" data-tip="' . $esc($type) . '" title="Evrak Tarihçesi"><i class="bx bx-history text-secondary"></i><span>Evrak Tarihçesi</span></button>';
                     if ($type === 'gelen') {
                         $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 btn-uets-sevk" data-id="' . $esc($encryptedId) . '" data-subject="' . $esc($evrak->konu) . '" title="Personele Sevk Et"><i class="bx bx-share text-warning"></i><span>Personele Sevk Et</span></button>';
+                    }
+                    if ($canGorevOlustur) {
+                        $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 btn-evrak-gorev" data-id="' . $esc($encryptedId) . '" data-subject="' . $esc($evrak->konu) . '" title="Görev Oluştur"><i class="bx bx-task text-success"></i><span>Görev Oluştur</span></button>';
                     }
                     if (!empty($evrak->uets_mesaj_id)) $actionItems .= '<button type="button" class="dropdown-item d-flex align-items-center gap-2 btn-uets-deliller" data-uets-id="' . $esc($evrak->uets_mesaj_id) . '" title="UETS Delillerini Görüntüle"><i class="bx bx-shield-quarter text-info"></i><span>UETS Delillerini Görüntüle</span></button>';
                     $hasSigners = !in_array(trim((string) ($evrak->imza_kullanici_ids ?? '')), ['', '[]', 'null'], true);
@@ -2197,6 +2201,102 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 ]], JSON_UNESCAPED_UNICODE);
                 break;
 
+            case 'evrak-gorev-hazirla':
+                $evrak = $Model->getById($decryptId((string) ($_POST['id'] ?? '')));
+                if (!$evrak) {
+                    throw new Exception('Evrak bulunamadı.');
+                }
+                $gorevModel = new \App\Model\GorevModel();
+                $firmaIdG = (int) $_SESSION['firma_id'];
+                $listeler = $gorevModel->duzenlenebilirListeler($firmaIdG, $currentUserId);
+                $kullanicilar = $gorevModel->atanabilirKullanicilar($firmaIdG, (int) ($_SESSION['owner_id'] ?? 0));
+                $evrakNo = trim((string) ($evrak->evrak_no ?? ''));
+                $tipEtiket = ($evrak->evrak_tipi ?? '') === 'giden' ? 'Giden' : 'Gelen';
+                echo json_encode(['status' => 'success', 'data' => [
+                    'baslik' => trim((string) ($evrak->konu ?? '')),
+                    'aciklama' => $tipEtiket . ' evrak' . ($evrakNo !== '' ? ' No: ' . $evrakNo : '')
+                        . (!empty($evrak->kurum_adi) ? ' | Kurum: ' . $evrak->kurum_adi : '')
+                        . (!empty($evrak->tarih) ? ' | Tarih: ' . date('d.m.Y', strtotime((string) $evrak->tarih)) : ''),
+                    'listeler' => array_map(static fn(object $l): array => [
+                        'id' => Security::encrypt((int) $l->id),
+                        'baslik' => (string) $l->baslik,
+                    ], $listeler),
+                    'kullanicilar' => array_map(static fn(object $u): array => [
+                        'id' => Security::encrypt((int) $u->id),
+                        'adi' => (string) $u->adi,
+                        'unvan' => (string) $u->unvan,
+                        'ben' => (int) $u->id === $currentUserId,
+                    ], $kullanicilar),
+                ]], JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'evrak-gorev-olustur':
+                $evrak = $Model->getById($decryptId((string) ($_POST['id'] ?? '')));
+                if (!$evrak) {
+                    throw new Exception('Evrak bulunamadı.');
+                }
+                $gorevBaslik = trim((string) ($_POST['baslik'] ?? ''));
+                if ($gorevBaslik === '' || mb_strlen($gorevBaslik) > 255) {
+                    throw new Exception('Görev başlığı zorunludur ve 255 karakteri aşamaz.');
+                }
+                $tarih = trim((string) ($_POST['tarih'] ?? ''));
+                $saat = trim((string) ($_POST['saat'] ?? ''));
+                if ($tarih !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $tarih)) {
+                    throw new Exception('Son tarih geçersiz.');
+                }
+                if ($saat !== '' && !preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $saat)) {
+                    throw new Exception('Saat geçersiz.');
+                }
+                if ($tarih === '') {
+                    $saat = '';
+                }
+                $gorevModel = new \App\Model\GorevModel();
+                $firmaIdG = (int) $_SESSION['firma_id'];
+                $rawAtananlar = $_POST['atanan_user_ids'] ?? [];
+                if (!is_array($rawAtananlar) || !$rawAtananlar) {
+                    throw new Exception('Lütfen görevin atanacağı en az bir personel seçiniz.');
+                }
+                $gecerliKullanicilar = [];
+                foreach ($gorevModel->atanabilirKullanicilar($firmaIdG, (int) ($_SESSION['owner_id'] ?? 0)) as $u) {
+                    $gecerliKullanicilar[(int) $u->id] = (string) $u->adi;
+                }
+                $atananIds = [];
+                foreach (array_unique(array_map('strval', $rawAtananlar)) as $rawId) {
+                    $uid = $decryptId($rawId);
+                    if ($uid <= 0 || !isset($gecerliKullanicilar[$uid])) {
+                        throw new Exception('Seçilen personellerden biri göreve atanamaz.');
+                    }
+                    $atananIds[] = $uid;
+                }
+                $listeId = !empty($_POST['liste_id']) ? $decryptId((string) $_POST['liste_id']) : 0;
+                if ($listeId > 0) {
+                    if (!in_array($gorevModel->listeYetkisi($listeId, $currentUserId, $firmaIdG), ['sahip', 'duzenle'], true)) {
+                        throw new Exception('Seçilen listede görev oluşturma yetkiniz yok.');
+                    }
+                } else {
+                    $mevcutListeler = $gorevModel->duzenlenebilirListeler($firmaIdG, $currentUserId);
+                    $listeId = $mevcutListeler ? (int) $mevcutListeler[0]->id : (int) $gorevModel->addListe([
+                        'firma_id' => $firmaIdG, 'baslik' => 'Evrak Görevleri', 'renk' => null, 'olusturan_id' => $currentUserId,
+                    ]);
+                }
+                $gorevId = $gorevModel->evrakGorevi([
+                    'liste_id' => $listeId,
+                    'firma_id' => $firmaIdG,
+                    'baslik' => $gorevBaslik,
+                    'aciklama' => mb_substr(trim((string) ($_POST['aciklama'] ?? '')), 0, 2000) ?: null,
+                    'tarih' => $tarih !== '' ? $tarih : null,
+                    'saat' => $saat !== '' ? $saat : null,
+                    'olusturan_id' => $currentUserId,
+                    'gorev_kullanicilari' => implode(',', $atananIds),
+                ], (int) $evrak->id);
+                (new SystemLogModel())->logAction(
+                    $currentUserId,
+                    'Evrak Görevi Oluşturma',
+                    'Evrak #' . (int) $evrak->id . ' için görev #' . $gorevId . ' oluşturuldu; atananlar: ' . implode(', ', array_map(static fn(int $id): string => $gecerliKullanicilar[$id], $atananIds)),
+                    SystemLogModel::LEVEL_INFO
+                );
+                echo json_encode(['status' => 'success', 'message' => 'Görev oluşturuldu ve ' . count($atananIds) . ' personele atandı.'], JSON_UNESCAPED_UNICODE);
+                break;
             case 'evrak-tarihce':
                 $evrakId = $decryptId((string) ($_POST['id'] ?? ''));
                 $evrak = $Model->getById($evrakId);

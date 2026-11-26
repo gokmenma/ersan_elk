@@ -4200,3 +4200,8 @@
 - `views/personel-pwa/includes/km-modal.php`, `views/personel-pwa/api.php` (`read-km-photo`, `save-km-report`), `AracKmBildirimModel::getPersonelKm`.
 - Okunamazsa kullanıcı fotoğrafı yeniden çeker; AI servisi çalışmazsa bildirim yapılamaz.
 - Evrak listesi CEVAP sütunu: gelen evrakta `ceza_odendi=1` ise "ÖDENDİ · tarih" rozeti gösterilir; dekont varsa rozet dekontu yeni sekmede açar (`views/evrak-takip/api.php` liste satırı, `$replyHtml`).
+
+## 2026-11-26 — Evrak Takip: sağ tık "Görev Oluştur"
+- Evrak satır menüsüne (`btn-evrak-gorev`) "Görev Oluştur" eklendi; yalnız `gorevler` yetkisi olana çizilir. Modal `uets-modals.php` içinde (`#modalEvrakGorev`), JS `evrak-takip.js`.
+- API: `evrak-takip/api` → `evrak-gorev-hazirla`, `evrak-gorev-olustur` (policy `gorevler` yetkisine bağlı). Atananlar `gorev_kullanicilari`'na yazılır; liste yoksa "Evrak Görevleri" listesi açılır.
+- Model: `GorevModel::duzenlenebilirListeler`, `atanabilirKullanicilar`, `evrakGorevi`. SQL: `sql/2026_11_26_evrak_takip_gorev_olustur.sql` (`gorevler.evrak_id` + policy). Canlıya SQL ayrıca uygulanmalı.
