@@ -1611,6 +1611,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         }
                         $replyHtml = $replyItems !== '' ? '<div>' . $replyItems . '</div>' : '<span class="badge bg-success-subtle text-success btn-cevap-goster border rounded-pill px-2 py-1 font-size-11 fw-semibold" role="button" style="cursor:pointer" title="Verilen cevabı göster" data-id="' . $esc($encryptedId) . '">EVET</span>';
                     }
+                    if ($type === 'gelen' && !empty($evrak->ceza_odendi)) {
+                        $odemeTarih = !empty($evrak->ceza_odeme_tarihi) && strtotime((string) $evrak->ceza_odeme_tarihi) ? ' · ' . date('d.m.Y', strtotime((string) $evrak->ceza_odeme_tarihi)) : '';
+                        $odemeBadge = !empty($evrak->ceza_dekont_yolu)
+                            ? '<a href="' . $esc(EvrakTakipModel::fileUrl((string) $evrak->ceza_dekont_yolu, (string) ($evrak->ceza_dekont_adi ?: basename((string) $evrak->ceza_dekont_yolu)))) . '" target="_blank" class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold text-decoration-none" title="Ödeme dekontunu görüntüle"><i class="bx bx-receipt"></i> ÖDENDİ' . $esc($odemeTarih) . '</a>'
+                            : '<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold" title="Ceza ödendi; dekont yüklenmemiş"><i class="bx bx-check-circle"></i> ÖDENDİ' . $esc($odemeTarih) . '</span>';
+                        $replyHtml = $reply === '-' || $replyHtml === '<span class="text-muted small">-</span>'
+                            ? $odemeBadge
+                            : '<div class="d-flex flex-column align-items-start gap-1">' . $replyHtml . $odemeBadge . '</div>';
+                    }
                     $flowItems = '';
                     foreach ($approvalDetailMap[(int) $evrak->id] ?? [] as $signature) {
                         $flowItems .= '<li><strong>' . (int) $signature['sira'] . '. ' . $esc($signature['adi_soyadi']) . '</strong> — ' . ($signature['durum'] === 'onaylandi' ? 'İmzalandı' : 'Bekliyor') . '</li>';

@@ -4199,3 +4199,4 @@
 ## 2026-11-25 PWA KM manuel giriş kapatıldı
 - `views/personel-pwa/includes/km-modal.php`, `views/personel-pwa/api.php` (`read-km-photo`, `save-km-report`), `AracKmBildirimModel::getPersonelKm`.
 - Okunamazsa kullanıcı fotoğrafı yeniden çeker; AI servisi çalışmazsa bildirim yapılamaz.
+- Evrak listesi CEVAP sütunu: gelen evrakta `ceza_odendi=1` ise "ÖDENDİ · tarih" rozeti gösterilir; dekont varsa rozet dekontu yeni sekmede açar (`views/evrak-takip/api.php` liste satırı, `$replyHtml`).
