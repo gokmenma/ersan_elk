@@ -1800,3 +1800,130 @@ div[id$="-table_wrapper"] .dataTables_info {
 [data-bs-theme="dark"] .nobet-grid-table thead th, [data-bs-theme="dark"] .nobet-grid-table tfoot td, [data-bs-theme="dark"] .nobet-grid-table td.gtotal { background: #191e22; }
 [data-bs-theme="dark"] .nobet-grid-table .gname { color: #e2e8f0; }
 [data-bs-theme="dark"] .nobet-grid-scroll { border-color: #2c353d; }
+
+/* ============================================
+   KOYU TEMA — TEK PALET (bordro ile uyumlu)
+   ============================================ */
+html[data-bs-theme="dark"] {
+  --nb-surface: var(--mac-surface, #1e1f25);
+  --nb-raised: #26282f;
+  --nb-sunken: #191a1f;
+  --nb-line: rgba(255, 255, 255, 0.08);
+  --nb-text: #e2e8f0;
+  --nb-muted: #94a3b8;
+}
+
+html[data-bs-theme="dark"] .stat-card,
+html[data-bs-theme="dark"] .personel-pool-card,
+html[data-bs-theme="dark"] .calendar-card,
+html[data-bs-theme="dark"] .personel-list,
+html[data-bs-theme="dark"] #nobet-calendar,
+html[data-bs-theme="dark"] .fc,
+html[data-bs-theme="dark"] .pool-header,
+html[data-bs-theme="dark"] .pool-filters,
+html[data-bs-theme="dark"] .calendar-header {
+  background: var(--nb-surface) !important;
+  border-color: var(--nb-line) !important;
+  color: var(--nb-text) !important;
+}
+
+html[data-bs-theme="dark"] .personel-pool-card,
+html[data-bs-theme="dark"] .calendar-card,
+html[data-bs-theme="dark"] .stat-card {
+  border: 1px solid var(--nb-line) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28) !important;
+}
+
+html[data-bs-theme="dark"] .pool-header,
+html[data-bs-theme="dark"] .calendar-header,
+html[data-bs-theme="dark"] .pool-filters {
+  border-width: 0 0 1px 0 !important;
+  border-style: solid !important;
+  box-shadow: none !important;
+}
+
+html[data-bs-theme="dark"] .personel-item {
+  background: var(--nb-raised) !important;
+  border-color: var(--nb-line) !important;
+}
+
+html[data-bs-theme="dark"] .personel-item:hover {
+  background: #2d3038 !important;
+}
+
+html[data-bs-theme="dark"] .personel-dept,
+html[data-bs-theme="dark"] .pool-header .subtitle,
+html[data-bs-theme="dark"] .stat-card .stat-label-main,
+html[data-bs-theme="dark"] .stat-card .stat-sub {
+  color: var(--nb-muted) !important;
+}
+
+html[data-bs-theme="dark"] .personel-item .personel-name,
+html[data-bs-theme="dark"] .pool-header h5,
+html[data-bs-theme="dark"] .calendar-title,
+html[data-bs-theme="dark"] .stat-card .stat-value {
+  color: #f1f5f9 !important;
+}
+
+html[data-bs-theme="dark"] .view-buttons,
+html[data-bs-theme="dark"] .form-control,
+html[data-bs-theme="dark"] .form-select,
+html[data-bs-theme="dark"] .pool-filters .form-control {
+  background: var(--nb-sunken) !important;
+  border-color: var(--nb-line) !important;
+  color: var(--nb-text) !important;
+}
+
+html[data-bs-theme="dark"] .view-buttons .btn {
+  color: var(--nb-muted) !important;
+}
+
+html[data-bs-theme="dark"] .view-buttons .btn.active {
+  background: var(--nb-raised) !important;
+  color: #f1f5f9 !important;
+}
+
+html[data-bs-theme="dark"] .calendar-nav .btn,
+html[data-bs-theme="dark"] #calendar-today,
+html[data-bs-theme="dark"] #dept-filter-btn,
+html[data-bs-theme="dark"] #personel-sort-btn,
+html[data-bs-theme="dark"] #btn-departman-legend {
+  background: var(--nb-raised) !important;
+  border-color: var(--nb-line) !important;
+  color: var(--nb-text) !important;
+}
+
+html[data-bs-theme="dark"] .calendar-nav .btn:hover,
+html[data-bs-theme="dark"] #calendar-today:hover,
+html[data-bs-theme="dark"] #dept-filter-btn:hover,
+html[data-bs-theme="dark"] #personel-sort-btn:hover,
+html[data-bs-theme="dark"] #btn-departman-legend:hover {
+  background: #2d3038 !important;
+}
+
+html[data-bs-theme="dark"] .fc-theme-standard td,
+html[data-bs-theme="dark"] .fc-theme-standard th,
+html[data-bs-theme="dark"] .fc-theme-standard .fc-scrollgrid {
+  border-color: var(--nb-line) !important;
+}
+
+html[data-bs-theme="dark"] .fc-col-header-cell {
+  background: var(--nb-raised) !important;
+  color: var(--nb-text) !important;
+}
+
+html[data-bs-theme="dark"] .fc-daygrid-day {
+  background-color: var(--nb-surface) !important;
+}
+
+html[data-bs-theme="dark"] .fc-day-other {
+  background: var(--nb-sunken) !important;
+}
+
+html[data-bs-theme="dark"] .fc-daygrid-day-number {
+  color: var(--nb-text) !important;
+}
+
+html[data-bs-theme="dark"] .departman-isim-text {
+  color: var(--nb-muted) !important;
+}

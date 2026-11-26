@@ -373,6 +373,11 @@ use App\Service\Gate;
             border-radius: 14px !important;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 14px rgba(15, 23, 42, 0.03) !important;
             background: var(--pnt-surface-card);
+            margin-bottom: 0 !important;
+        }
+
+        .puantaj-grid-card > .card-body {
+            padding: 0 !important;
         }
 
         .puantaj-grid-summary {
@@ -457,15 +462,26 @@ use App\Service\Gate;
             visibility: hidden !important;
         }
 
+        .page-content:has(#puantaj-full-container) {
+            padding-bottom: 10px !important;
+        }
+
+        .main-content:has(#puantaj-full-container) > .footer,
+        body:has(#puantaj-full-container) .footer {
+            display: none !important;
+        }
+
         body.puantaj-focus-mode .puantaj-table-wrapper {
-            max-height: calc(100vh - 210px) !important;
+            max-height: calc(100dvh - 175px);
         }
 
         /* -------------------------------------------------------------
          * Modern Tablo & Grid Stilleri (Pixel-Perfect & Ergonomik)
          * ----------------------------------------------------------- */
         .puantaj-table-wrapper {
-            max-height: calc(100vh - 350px);
+            max-height: calc(100dvh - 290px);
+            margin-bottom: 0 !important;
+            border-radius: 0 !important;
             overflow: auto;
             background: #ffffff;
             scrollbar-color: #cbd5e1 transparent;
@@ -1182,8 +1198,17 @@ use App\Service\Gate;
         }
 
         [data-bs-theme="dark"] .table-puantaj .text-truncate-name,
-        [data-layout-mode="dark"] .table-puantaj .text-truncate-name {
-            color: #f1f5f9 !important;
+        [data-bs-theme="dark"] .table-puantaj a.text-truncate-name,
+        [data-layout-mode="dark"] .table-puantaj .text-truncate-name,
+        [data-layout-mode="dark"] .table-puantaj a.text-truncate-name {
+            color: #e2e8f0 !important;
+        }
+
+        [data-bs-theme="dark"] .table-puantaj .text-truncate-name:hover,
+        [data-bs-theme="dark"] .table-puantaj a.text-truncate-name:hover,
+        [data-layout-mode="dark"] .table-puantaj .text-truncate-name:hover,
+        [data-layout-mode="dark"] .table-puantaj a.text-truncate-name:hover {
+            color: #93c5fd !important;
         }
 
         [data-bs-theme="dark"] .table-puantaj .personel-avatar-mini,
@@ -1251,6 +1276,16 @@ use App\Service\Gate;
         }
 
         /* Dark Mode İzin Çipleri Renk Tanımları */
+        [data-bs-theme="dark"] .cell-content,
+        [data-layout-mode="dark"] .cell-content,
+        [data-bs-theme="dark"] .izin-item-container .izin-box,
+        [data-layout-mode="dark"] .izin-item-container .izin-box {
+            background-color: rgba(255, 255, 255, 0.08) !important;
+            color: #e2e8f0 !important;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+            box-shadow: none !important;
+        }
+
         [data-bs-theme="dark"] .cell-content[data-shortcode="X"],
         [data-bs-theme="dark"] .cell-content[data-shortcode="x"],
         [data-layout-mode="dark"] .cell-content[data-shortcode="X"],
@@ -1259,7 +1294,7 @@ use App\Service\Gate;
         [data-layout-mode="dark"] .izin-item-container[data-shortcode="X"] .izin-box {
             background-color: rgba(59, 130, 246, 0.22) !important;
             color: #93c5fd !important;
-            border: 1px solid rgba(59, 130, 246, 0.4) !important;
+            border: 1px solid rgba(59, 130, 246, 0.38) !important;
         }
 
         [data-bs-theme="dark"] .cell-content[data-shortcode="HT"],
@@ -1334,6 +1369,37 @@ use App\Service\Gate;
         [data-layout-mode="dark"] .custom-context-menu .menu-item:hover {
             background: #2b3542 !important;
             color: #ffffff !important;
+        }
+
+        [data-bs-theme="dark"] .puantaj-preloader,
+        [data-layout-mode="dark"] .puantaj-preloader,
+        html[data-theme-preset="macos-dark"] .puantaj-preloader {
+            background: rgba(15, 23, 42, 0.72) !important;
+        }
+
+        [data-bs-theme="dark"] .puantaj-preloader .loader-content,
+        [data-layout-mode="dark"] .puantaj-preloader .loader-content,
+        html[data-theme-preset="macos-dark"] .puantaj-preloader .loader-content {
+            background: #1f2733 !important;
+            border-color: #334155 !important;
+            color: #e2e8f0 !important;
+        }
+
+        [data-bs-theme="dark"] #sunday-htc-table thead th,
+        [data-layout-mode="dark"] #sunday-htc-table thead th,
+        html[data-theme-preset="macos-dark"] #sunday-htc-table thead th {
+            background: #161b22 !important;
+            box-shadow: inset 0 -1px 0 #334155 !important;
+            color: #cbd5e1 !important;
+        }
+
+        [data-bs-theme="dark"] body.puantaj-fullscreen #puantaj-full-container,
+        [data-layout-mode="dark"] body.puantaj-fullscreen #puantaj-full-container {
+            background: #0f172a !important;
+        }
+
+        html[data-theme-preset="macos-dark"] body.puantaj-fullscreen #puantaj-full-container {
+            background: #1b1c20 !important;
         }
 
         /* macOS Finder paleti: Puantaj sayfasındaki lacivert ve parlak beyazları nötrleştir */
@@ -1761,6 +1827,106 @@ use App\Service\Gate;
         body.fm-mode-active .table-puantaj .day-cell:not(.disabled):hover {
             box-shadow: inset 0 0 0 2px #7c3aed !important;
         }
+
+        /* Puantaj Türü Filtresi */
+        .cell-content.puantaj-type-hidden {
+            display: none !important;
+        }
+
+        .puantaj-type-filter-btn {
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .puantaj-type-filter-btn.is-active {
+            border-color: #6366f1 !important;
+            background: #eef2ff !important;
+            color: #4338ca !important;
+        }
+        .puantaj-type-filter-btn.is-active i {
+            color: #4338ca !important;
+        }
+        [data-bs-theme="dark"] .puantaj-type-filter-btn.is-active,
+        [data-layout-mode="dark"] .puantaj-type-filter-btn.is-active,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .puantaj-type-filter-btn.is-active {
+            border-color: rgba(129, 140, 248, 0.55) !important;
+            background: rgba(99, 102, 241, 0.22) !important;
+            color: #c7d2fe !important;
+        }
+        [data-bs-theme="dark"] .puantaj-type-filter-btn.is-active i,
+        [data-layout-mode="dark"] .puantaj-type-filter-btn.is-active i,
+        html[data-theme-preset="macos-dark"] #puantaj-full-container .puantaj-type-filter-btn.is-active i {
+            color: #a5b4fc !important;
+        }
+
+        .puantaj-type-filter-clear {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            margin-left: 4px;
+            border-radius: 50%;
+            background: rgba(99, 102, 241, 0.18);
+            font-size: 12px;
+            line-height: 1;
+            font-weight: 700;
+        }
+        .puantaj-type-filter-clear:hover {
+            background: rgba(239, 68, 68, 0.25);
+            color: #ef4444;
+        }
+
+        .puantaj-type-filter-menu {
+            width: 290px;
+            padding: 10px;
+            border-radius: 12px !important;
+            border: 1px solid var(--pnt-border-light) !important;
+            box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16) !important;
+            z-index: 1080 !important;
+        }
+        .puantaj-type-filter-list {
+            max-height: 250px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+        }
+        .puantaj-type-filter-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.12s ease;
+            user-select: none;
+        }
+        .puantaj-type-filter-item:hover {
+            background: #f1f5f9;
+        }
+        .puantaj-type-filter-badge {
+            min-width: 34px;
+            height: 22px;
+            padding: 0 5px;
+            border-radius: 5px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10.5px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        [data-bs-theme="dark"] .puantaj-type-filter-menu,
+        [data-layout-mode="dark"] .puantaj-type-filter-menu,
+        html[data-theme-preset="macos-dark"] .puantaj-type-filter-menu {
+            background: #1f2733 !important;
+            border-color: #334155 !important;
+            color: #e2e8f0 !important;
+        }
+        [data-bs-theme="dark"] .puantaj-type-filter-item:hover,
+        [data-layout-mode="dark"] .puantaj-type-filter-item:hover,
+        html[data-theme-preset="macos-dark"] .puantaj-type-filter-item:hover {
+            background: #2b3542 !important;
+        }
     </style>
 
     <div id="puantaj-full-container">
@@ -1946,6 +2112,28 @@ use App\Service\Gate;
                                 <div class="puantaj-grid-subtitle" id="puantaj-period-label">Dönem verileri hazırlanıyor</div>
                             </div>
                             <div class="puantaj-live-stats">
+                                <div class="dropdown" id="puantaj-type-filter-wrapper">
+                                    <button type="button" class="puantaj-stat-pill puantaj-type-filter-btn dropdown-toggle" id="btn-puantaj-type-filter" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="Puantaj türüne göre filtrele">
+                                        <i class="mdi mdi-filter-variant"></i>
+                                        <span id="puantaj-type-filter-label">Tür Filtresi</span>
+                                        <span class="puantaj-type-filter-clear d-none" id="btn-clear-type-filter" title="Filtreyi temizle">×</span>
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-end puantaj-type-filter-menu" aria-labelledby="btn-puantaj-type-filter">
+                                        <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                            <input type="text" class="form-control form-control-sm" id="puantaj-type-filter-search" placeholder="Tür veya kod ara...">
+                                            <button type="button" class="btn btn-sm btn-link text-danger text-decoration-none px-1 flex-shrink-0" id="btn-reset-type-filter" style="font-size: 11px;">Temizle</button>
+                                        </div>
+                                        <div class="puantaj-type-filter-list" id="puantaj-type-filter-list">
+                                            <!-- Türler dinamik gelecek -->
+                                        </div>
+                                        <div class="border-top mt-2 pt-2">
+                                            <div class="form-check form-switch mb-0">
+                                                <input class="form-check-input" type="checkbox" id="check-only-matching-rows">
+                                                <label class="form-check-label" for="check-only-matching-rows" style="font-size: 11.5px; cursor: pointer;">Sadece eşleşen personelleri göster</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                                 <span class="puantaj-stat-pill"><i class="mdi mdi-account-group-outline"></i><span id="puantaj-visible-count">0 personel</span></span>
                                 <span class="puantaj-stat-pill" id="puantaj-change-pill"><i class="mdi mdi-check-circle-outline"></i><span id="puantaj-change-count">Tüm değişiklikler kayıtlı</span></span>
                                 <button type="button" class="puantaj-focus-toggle" id="btn-puantaj-focus" title="Üst alanları gizle" aria-label="Üst alanları gizle" aria-expanded="true">

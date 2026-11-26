@@ -78,24 +78,136 @@ $(document).ready(function () {
     return text.replace(/İ/g, "i").replace(/I/g, "ı").toLowerCase();
   }
 
+  // Puantaj Türü Filtresi Durumu
+  const selectedTypeFilters = new Set();
+
+  function updateTypeFilterButtonUI() {
+    const $btn = $("#btn-puantaj-type-filter");
+    const $label = $("#puantaj-type-filter-label");
+    const $clear = $("#btn-clear-type-filter");
+
+    if (selectedTypeFilters.size === 0) {
+      $btn.removeClass("is-active");
+      $label.text("Tür Filtresi");
+      $clear.addClass("d-none");
+    } else {
+      const codes = Array.from(selectedTypeFilters);
+      const preview = codes.length <= 2 ? codes.join(", ") : `${codes.slice(0, 2).join(", ")} +${codes.length - 2}`;
+      $btn.addClass("is-active");
+      $label.text(`Tür: ${preview}`);
+      $clear.removeClass("d-none");
+    }
+  }
+
+  function applyTypeFilterToCells() {
+    const hasFilter = selectedTypeFilters.size > 0;
+    const cells = document.querySelectorAll("#table-body .cell-content");
+    for (let i = 0; i < cells.length; i++) {
+      const cellEl = cells[i];
+      if (!hasFilter) {
+        cellEl.classList.remove("puantaj-type-hidden");
+      } else {
+        const code = (cellEl.getAttribute("data-shortcode") || "").trim().toUpperCase();
+        if (selectedTypeFilters.has(code)) {
+          cellEl.classList.remove("puantaj-type-hidden");
+        } else {
+          cellEl.classList.add("puantaj-type-hidden");
+        }
+      }
+    }
+  }
+
+  function renderTypeFilterOptions() {
+    const allDefs = [...(ucretliDefinitions || []), ...(ucretsizDefinitions || [])];
+    const seenCodes = new Set();
+    let html = "";
+
+    allDefs.forEach((item) => {
+      const shortCode = getShortCode(item);
+      const codeKey = (shortCode || "").trim().toUpperCase();
+      if (!codeKey || seenCodes.has(codeKey)) return;
+      seenCodes.add(codeKey);
+
+      const style = getStyleFromTailwind(item.renk, shortCode);
+      const checked = selectedTypeFilters.has(codeKey) ? "checked" : "";
+      const searchAttr = turkceKucukHarf(`${shortCode} ${item.tur_adi}`);
+
+      html += `
+        <label class="puantaj-type-filter-item" data-search="${searchAttr}">
+          <input type="checkbox" class="form-check-input m-0 puantaj-type-filter-cb" value="${codeKey}" ${checked}>
+          <span class="puantaj-type-filter-badge" data-color="${item.renk || ""}" data-shortcode="${shortCode}"
+                style="background-color: ${style.bg} !important; color: ${style.color} !important; border: 1px solid ${style.border};">
+            ${shortCode}
+          </span>
+          <span class="text-truncate flex-grow-1">${item.tur_adi}</span>
+        </label>`;
+    });
+
+    $("#puantaj-type-filter-list").html(html || '<div class="text-muted small text-center py-2">Tür bulunamadı</div>');
+    updateTypeFilterButtonUI();
+  }
+
+  $(document).on("change", ".puantaj-type-filter-cb", function () {
+    const code = ($(this).val() || "").toUpperCase();
+    if ($(this).is(":checked")) {
+      selectedTypeFilters.add(code);
+    } else {
+      selectedTypeFilters.delete(code);
+    }
+    updateTypeFilterButtonUI();
+    applyFilter();
+  });
+
+  $(document).on("change", "#check-only-matching-rows", function () {
+    applyFilter();
+  });
+
+  $(document).on("input", "#puantaj-type-filter-search", function () {
+    const q = turkceKucukHarf($(this).val());
+    $("#puantaj-type-filter-list .puantaj-type-filter-item").each(function () {
+      const hay = $(this).attr("data-search") || "";
+      $(this).toggle(hay.indexOf(q) > -1);
+    });
+  });
+
+  $(document).on("click", "#btn-reset-type-filter, #btn-clear-type-filter", function (e) {
+    if (this.id === "btn-clear-type-filter") {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    selectedTypeFilters.clear();
+    $(".puantaj-type-filter-cb").prop("checked", false);
+    $("#puantaj-type-filter-search").val("").trigger("input");
+    updateTypeFilterButtonUI();
+    applyFilter();
+  });
+
   // Personel Filtreleme
   function applyFilter() {
     const filterValue = turkceKucukHarf($("#personel-filter").val());
     localStorage.setItem("puantaj_filter", filterValue);
 
+    applyTypeFilterToCells();
+
+    const hasTypeFilter = selectedTypeFilters.size > 0;
+    const onlyMatchingRows = hasTypeFilter && $("#check-only-matching-rows").is(":checked");
+
     const rows = tableRows;
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
       const name = turkceKucukHarf(row.getAttribute("data-personel-adi") || "");
-      if (name.indexOf(filterValue) > -1) {
-        row.style.display = "";
-      } else {
-        row.style.display = "none";
+      let visible = name.indexOf(filterValue) > -1;
+
+      if (visible && onlyMatchingRows) {
+        visible = row.querySelector(".cell-content:not(.puantaj-type-hidden)") !== null;
       }
+
+      row.style.display = visible ? "" : "none";
     }
 
     calculateTotals();
     updateWorkspaceMeta();
+    adjustPuantajTableHeight();
   }
 
   function updateWorkspaceMeta() {
@@ -129,6 +241,22 @@ $(document).ready(function () {
     }, 200);
   });
 
+  function adjustPuantajTableHeight() {
+    const wrapper = document.querySelector(".puantaj-table-wrapper");
+    if (!wrapper) return;
+    if (document.body.classList.contains("puantaj-fullscreen")) {
+      wrapper.style.maxHeight = "";
+      return;
+    }
+    const rect = wrapper.getBoundingClientRect();
+    if (rect.top <= 0) return;
+    const available = Math.max(220, Math.floor(window.innerHeight - rect.top - 12));
+    wrapper.style.maxHeight = `${available}px`;
+  }
+
+  $(window).on("resize", adjustPuantajTableHeight);
+  setTimeout(adjustPuantajTableHeight, 100);
+
   // Tam Ekran Modu
   $("#btn-fullscreen").on("click", function () {
     $("body").toggleClass("puantaj-fullscreen");
@@ -146,6 +274,7 @@ $(document).ready(function () {
     if (isFull) {
       $(".puantaj-table-wrapper").scrollLeft(0);
     }
+    setTimeout(adjustPuantajTableHeight, 50);
 
     $(document).trigger("puantaj:fullscreen", [isFull]);
 
@@ -190,9 +319,11 @@ $(document).ready(function () {
       .attr("class", isActive ? "mdi mdi-chevron-down" : "mdi mdi-chevron-up");
     localStorage.setItem("puantaj_focus_mode_v2", isActive ? "1" : "0");
     updateStickyHeights();
+    adjustPuantajTableHeight();
     if (animate) {
       focusTransitionTimer = setTimeout(() => {
         $body.removeClass("puantaj-focus-transition");
+        adjustPuantajTableHeight();
       }, 380);
     }
   }
@@ -253,18 +384,64 @@ $(document).ready(function () {
 
   // Helper: Get style from tailwind class (WITH CACHE & Soft Palette)
   const styleCache = {};
+
+  function isMacDarkTheme() {
+    return document.documentElement.getAttribute("data-theme-preset") === "macos-dark";
+  }
+
+  function isDarkModeActive() {
+    const html = document.documentElement;
+    const preset = html.getAttribute("data-theme-preset") || "";
+    const bsTheme = html.getAttribute("data-bs-theme") || "";
+    const layoutMode = html.getAttribute("data-layout-mode") || "";
+    return (
+      preset === "macos-dark" ||
+      bsTheme === "dark" ||
+      layoutMode === "dark" ||
+      document.body.classList.contains("dark")
+    );
+  }
+
+  function parseHexRgb(hex) {
+    if (!hex || typeof hex !== "string") return null;
+    let clean = hex.trim().replace(/^#/, "");
+    if (clean.length === 3) {
+      clean = clean.split("").map((c) => c + c).join("");
+    }
+    if (!/^[0-9a-fA-F]{6}$/.test(clean)) return null;
+    return {
+      r: parseInt(clean.slice(0, 2), 16),
+      g: parseInt(clean.slice(2, 4), 16),
+      b: parseInt(clean.slice(4, 6), 16),
+    };
+  }
+
+  function hexToRgba(hex, alpha) {
+    const rgb = parseHexRgb(hex);
+    if (!rgb) return null;
+    return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+  }
+
+  function lightenHex(hex, ratio) {
+    const rgb = parseHexRgb(hex);
+    if (!rgb) return hex;
+    const mix = (v) => Math.round(v + (255 - v) * ratio);
+    return `rgb(${mix(rgb.r)}, ${mix(rgb.g)}, ${mix(rgb.b)})`;
+  }
+
   function getStyleFromTailwind(tailwindClass, shortCode) {
     const code = (shortCode || "").toUpperCase();
-    const isMacTheme = document.documentElement.getAttribute("data-theme-preset") === "macos-dark";
-    const cacheKey = `${isMacTheme ? "mac" : "default"}_${tailwindClass || ""}_${code}`;
+    const isMacTheme = isMacDarkTheme();
+    const isDark = isDarkModeActive();
+    const themeKey = isMacTheme ? "mac" : isDark ? "dark" : "default";
+    const cacheKey = `${themeKey}_${tailwindClass || ""}_${code}`;
     if (styleCache[cacheKey]) return styleCache[cacheKey];
 
     let result;
+    const colorToken = (tailwindClass || "").toLowerCase();
 
-    // Finder benzeri koyu cam paleti. Renkler anlamı korur, yüzeyler parlak beyaz olmaz.
+    // Finder benzeri koyu cam paleti (macos-dark)
     if (isMacTheme) {
-      const colorToken = (tailwindClass || "").toLowerCase();
-
       if (code === "X" || colorToken.includes("blue") || colorToken.includes("primary")) {
         result = { bg: "rgba(67, 91, 123, .34)", color: "rgba(166, 195, 231, .9)", border: "rgba(112, 145, 185, .32)" };
       } else if (code === "HT" || colorToken.includes("amber") || colorToken.includes("orange") || colorToken.includes("warning")) {
@@ -277,14 +454,46 @@ $(document).ready(function () {
         result = { bg: "rgba(91, 67, 116, .34)", color: "rgba(198, 165, 226, .9)", border: "rgba(137, 101, 169, .32)" };
       } else if (colorToken.includes("cyan") || colorToken.includes("info")) {
         result = { bg: "rgba(47, 100, 108, .34)", color: "rgba(137, 205, 211, .9)", border: "rgba(72, 143, 151, .32)" };
+      } else if (colorToken.includes("gray") || colorToken.includes("slate") || colorToken.includes("secondary")) {
+        result = { bg: "rgba(255, 255, 255, .08)", color: "rgba(216, 219, 226, .85)", border: "rgba(255, 255, 255, .14)" };
       } else if (tailwindClass && tailwindClass.startsWith("#")) {
         result = {
-          bg: `color-mix(in srgb, ${tailwindClass} 22%, rgba(34, 35, 40, .96))`,
-          color: `color-mix(in srgb, ${tailwindClass} 58%, white)`,
-          border: `color-mix(in srgb, ${tailwindClass} 34%, transparent)`
+          bg: hexToRgba(tailwindClass, 0.24) || "rgba(255, 255, 255, .075)",
+          color: lightenHex(tailwindClass, 0.52),
+          border: hexToRgba(tailwindClass, 0.36) || "rgba(255, 255, 255, .14)"
         };
       } else {
         result = { bg: "rgba(255, 255, 255, .075)", color: "rgba(226, 227, 230, .78)", border: "rgba(255, 255, 255, .12)" };
+      }
+
+      styleCache[cacheKey] = result;
+      return result;
+    }
+
+    // Genel Koyu Mod (data-bs-theme="dark" / data-layout-mode="dark")
+    if (isDark) {
+      if (code === "X" || colorToken.includes("blue") || colorToken.includes("primary")) {
+        result = { bg: "rgba(59, 130, 246, 0.22)", color: "#93c5fd", border: "rgba(59, 130, 246, 0.38)" };
+      } else if (code === "HT" || colorToken.includes("amber") || colorToken.includes("orange") || colorToken.includes("warning")) {
+        result = { bg: "rgba(245, 158, 11, 0.22)", color: "#fcd34d", border: "rgba(245, 158, 11, 0.38)" };
+      } else if (colorToken.includes("red") || colorToken.includes("rose") || colorToken.includes("danger") || colorToken.includes("pink")) {
+        result = { bg: "rgba(244, 63, 94, 0.22)", color: "#fda4af", border: "rgba(244, 63, 94, 0.38)" };
+      } else if (colorToken.includes("green") || colorToken.includes("emerald") || colorToken.includes("success") || colorToken.includes("teal")) {
+        result = { bg: "rgba(16, 185, 129, 0.22)", color: "#6ee7b7", border: "rgba(16, 185, 129, 0.38)" };
+      } else if (colorToken.includes("purple") || colorToken.includes("violet") || colorToken.includes("indigo")) {
+        result = { bg: "rgba(168, 85, 247, 0.22)", color: "#d8b4fe", border: "rgba(168, 85, 247, 0.38)" };
+      } else if (colorToken.includes("cyan") || colorToken.includes("info")) {
+        result = { bg: "rgba(6, 182, 212, 0.22)", color: "#67e8f9", border: "rgba(6, 182, 212, 0.38)" };
+      } else if (colorToken.includes("gray") || colorToken.includes("slate") || colorToken.includes("secondary")) {
+        result = { bg: "rgba(148, 163, 184, 0.18)", color: "#cbd5e1", border: "rgba(148, 163, 184, 0.32)" };
+      } else if (tailwindClass && tailwindClass.startsWith("#")) {
+        result = {
+          bg: hexToRgba(tailwindClass, 0.22) || "rgba(255, 255, 255, 0.08)",
+          color: lightenHex(tailwindClass, 0.48),
+          border: hexToRgba(tailwindClass, 0.38) || "rgba(255, 255, 255, 0.16)"
+        };
+      } else {
+        result = { bg: "rgba(255, 255, 255, 0.08)", color: "#e2e8f0", border: "rgba(255, 255, 255, 0.15)" };
       }
 
       styleCache[cacheKey] = result;
@@ -330,6 +539,39 @@ $(document).ready(function () {
 
     styleCache[cacheKey] = result;
     return result;
+  }
+
+  function refreshPuantajBadgeColors() {
+    document.querySelectorAll("#puantaj-full-container .cell-content").forEach((el) => {
+      const styleObj = getStyleFromTailwind(el.dataset.color || "", el.dataset.shortcode || "");
+      el.style.setProperty("background-color", styleObj.bg, "important");
+      el.style.setProperty("color", styleObj.color, "important");
+      el.style.borderColor = styleObj.border;
+    });
+    document.querySelectorAll("#puantaj-full-container .izin-item-container").forEach((wrap) => {
+      const box = wrap.querySelector(".izin-box");
+      if (!box) return;
+      const styleObj = getStyleFromTailwind(wrap.dataset.color || "", wrap.dataset.shortcode || "");
+      box.style.setProperty("background-color", styleObj.bg, "important");
+      box.style.setProperty("color", styleObj.color, "important");
+      box.style.borderColor = styleObj.border;
+    });
+    document.querySelectorAll("#puantaj-full-container .puantaj-type-filter-badge").forEach((badge) => {
+      const styleObj = getStyleFromTailwind(badge.dataset.color || "", badge.dataset.shortcode || "");
+      badge.style.setProperty("background-color", styleObj.bg, "important");
+      badge.style.setProperty("color", styleObj.color, "important");
+      badge.style.borderColor = styleObj.border;
+    });
+  }
+
+  if (typeof MutationObserver !== "undefined") {
+    const themeObserver = new MutationObserver(() => {
+      refreshPuantajBadgeColors();
+    });
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-bs-theme", "data-layout-mode", "data-theme-preset"],
+    });
   }
 
   // Load Definitions
@@ -381,6 +623,7 @@ $(document).ready(function () {
           ucretsizDefinitions = res.data.ucretsiz;
           render(res.data.ucretsiz, "ucretsiz-list", true);
         }
+        renderTypeFilterOptions();
 
         // Departmanlar
         let depHtml = '<option value="">Tüm Departmanlar</option>';
@@ -497,7 +740,7 @@ $(document).ready(function () {
                                     <img src="${p.resim}" alt="" class="personel-avatar-mini-img" onerror="this.remove()">
                                     <span>${getPersonInitials(p.adi_soyadi)}</span>
                                 </span>
-                                <a href="?p=personel/manage&id=${p.encrypt_id}" class="text-truncate-name text-primary fw-bold" style="text-decoration: none;">${p.adi_soyadi}</a>
+                                <a href="?p=personel/manage&id=${p.encrypt_id}" class="text-truncate-name fw-bold" style="text-decoration: none;">${p.adi_soyadi}</a>
                             </div>
                         </td>`;
 
@@ -1110,6 +1353,7 @@ $(document).ready(function () {
           <span class="btn-delete-cell" onclick="removeUnsaved('${key}', event)">×</span>
       </div>${otBadgeOuterHtml}`;
 
+    applyTypeFilterToCells();
     updateRowTotals(row);
   }
 

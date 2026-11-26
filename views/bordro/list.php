@@ -844,79 +844,151 @@ if (!empty($dbGelirler)) {
             border-bottom: 1px solid var(--mac-line, rgba(255, 255, 255, 0.08)) !important;
         }
 
-        html[data-theme-preset="macos-dark"] .premium-summary-card {
+        html:is([data-theme-preset="macos-dark"], [data-bs-theme="dark"]) .premium-summary-card {
             background: var(--mac-surface, rgba(30, 31, 37, 0.94)) !important;
             border-color: var(--mac-line, rgba(255, 255, 255, 0.08)) !important;
             box-shadow: var(--content-shadow) !important;
             color: var(--mac-text) !important;
         }
 
-        html[data-theme-preset="macos-dark"] .year-calendar-month {
+        html:is([data-theme-preset="macos-dark"], [data-bs-theme="dark"]) .year-calendar-month {
             background: var(--mac-surface, rgba(30, 31, 37, 0.94)) !important;
             border-color: var(--mac-line, rgba(255, 255, 255, 0.08)) !important;
         }
 
-        html[data-theme-preset="macos-dark"] .year-calendar-header {
+        html:is([data-theme-preset="macos-dark"], [data-bs-theme="dark"]) .year-calendar-header {
             background: rgba(39, 40, 44, 0.96) !important;
             color: #ffffff !important;
             border-bottom-color: rgba(255, 255, 255, 0.08) !important;
         }
 
-        html[data-theme-preset="macos-dark"] .year-calendar-table td {
+        html:is([data-theme-preset="macos-dark"], [data-bs-theme="dark"]) .year-calendar-table td {
             background: rgba(25, 26, 31, 0.9) !important;
             border-color: rgba(255, 255, 255, 0.06) !important;
         }
 
-        html[data-theme-preset="macos-dark"] .year-calendar-table td:hover {
+        html:is([data-theme-preset="macos-dark"], [data-bs-theme="dark"]) .year-calendar-table td:hover {
             background-color: rgba(255, 255, 255, 0.08) !important;
             border-color: rgba(255, 255, 255, 0.15) !important;
         }
 
-        html[data-theme-preset="macos-dark"] .year-calendar-table td.today {
+        html:is([data-theme-preset="macos-dark"], [data-bs-theme="dark"]) .year-calendar-table td.today {
             background-color: rgba(59, 130, 246, 0.2) !important;
             border-color: #3b82f6 !important;
         }
 
-        html[data-theme-preset="macos-dark"] .year-calendar-table td.passive-date {
+        html:is([data-theme-preset="macos-dark"], [data-bs-theme="dark"]) .year-calendar-table td.passive-date {
             background: rgba(255, 255, 255, 0.02) !important;
             opacity: 0.2;
         }
 
-        html[data-theme-preset="macos-dark"] .year-calendar-day-number {
+        html:is([data-theme-preset="macos-dark"], [data-bs-theme="dark"]) .year-calendar-day-number {
             color: #e2e8f0 !important;
         }
 
-        html[data-theme-preset="macos-dark"] .takvim-legend-item {
+        html:is([data-theme-preset="macos-dark"], [data-bs-theme="dark"]) .takvim-legend-item {
             background: rgba(255, 255, 255, 0.05) !important;
             border-color: rgba(255, 255, 255, 0.08) !important;
             color: #cbd5e1 !important;
         }
 
-        html[data-theme-preset="macos-dark"] .takvim-legend-item:hover {
+        html:is([data-theme-preset="macos-dark"], [data-bs-theme="dark"]) .takvim-legend-item:hover {
             background: rgba(255, 255, 255, 0.1) !important;
             border-color: rgba(255, 255, 255, 0.15) !important;
         }
 
-        html[data-theme-preset="macos-dark"] #modalIzinTakvim .modal-header {
+        html:is([data-theme-preset="macos-dark"], [data-bs-theme="dark"]) #modalIzinTakvim .modal-header {
             background: rgba(35, 36, 42, 0.98) !important;
             color: #ffffff !important;
             border-bottom-color: rgba(255, 255, 255, 0.08) !important;
         }
 
-        html[data-theme-preset="macos-dark"] #modalIzinTakvim .modal-body {
+        html:is([data-theme-preset="macos-dark"], [data-bs-theme="dark"]) #modalIzinTakvim .modal-body {
             background: var(--mac-surface, rgba(30, 31, 37, 0.94)) !important;
             color: var(--mac-text) !important;
         }
 
-        html[data-theme-preset="macos-dark"] #modalIzinTakvim .modal-footer {
+        html:is([data-theme-preset="macos-dark"], [data-bs-theme="dark"]) #modalIzinTakvim .modal-footer {
             background: rgba(35, 36, 42, 0.98) !important;
             border-top-color: rgba(255, 255, 255, 0.08) !important;
         }
 
-        html[data-theme-preset="macos-dark"] #modalIzinTakvim .btn-close {
+        html:is([data-theme-preset="macos-dark"], [data-bs-theme="dark"]) #modalIzinTakvim .btn-close {
             background-color: rgba(255, 255, 255, 0.1) !important;
             border-color: rgba(255, 255, 255, 0.15) !important;
             filter: invert(1) grayscale(100%) brightness(200%);
+        }
+
+        html[data-bs-theme="dark"] #bordroTable tbody td {
+            color: #e2e8f0 !important;
+        }
+
+        html[data-bs-theme="dark"] #bordroTable tbody td a:not(.btn) {
+            color: #cbd5e1 !important;
+        }
+
+        html[data-bs-theme="dark"] #bordroTable tbody td a:not(.btn):hover {
+            color: #ffffff !important;
+        }
+
+        html[data-bs-theme="dark"] #bordroTable tbody .text-muted,
+        html[data-bs-theme="dark"] #bordroTable tbody .text-secondary {
+            color: #a8b3c4 !important;
+        }
+
+        html[data-bs-theme="dark"] #bordroTable tbody td.text-center.fw-bold:not(:first-child) {
+            color: #cbd5e1 !important;
+        }
+
+        html[data-bs-theme="dark"] #bordroTable tbody .text-dark {
+            color: #f1f5f9 !important;
+        }
+
+        html[data-bs-theme="dark"] #bordroTable tbody .text-primary {
+            color: #7aa7ff !important;
+        }
+
+        html[data-bs-theme="dark"] #bordroTable thead th {
+            color: #e2e8f0 !important;
+        }
+
+        html[data-bs-theme="dark"] #bordroTable thead input::placeholder,
+        html[data-bs-theme="dark"] #bordroTable thead .select2-selection__rendered,
+        html[data-bs-theme="dark"] #bordroTable thead .select2-selection__placeholder {
+            color: #94a3b8 !important;
+            opacity: 1 !important;
+        }
+
+        html[data-bs-theme="dark"] #modalIzinTakvim .modal-body,
+        html[data-bs-theme="dark"] #modalIzinTakvim .premium-summary-card {
+            color: #e2e8f0 !important;
+        }
+
+        html[data-bs-theme="dark"] #modalIzinTakvim .premium-summary-card .text-dark {
+            color: #f1f5f9 !important;
+        }
+
+        html[data-bs-theme="dark"] #modalIzinTakvim .premium-summary-card .text-muted {
+            color: #94a3b8 !important;
+        }
+
+        html[data-bs-theme="dark"] #modalIzinTakvim .premium-summary-card .icon-box {
+            filter: brightness(0.9);
+        }
+
+        html[data-bs-theme="dark"] #modalIzinTakvim .premium-summary-card .badge.bg-light {
+            background-color: rgba(255, 255, 255, 0.08) !important;
+            color: #e2e8f0 !important;
+            border-color: rgba(255, 255, 255, 0.15) !important;
+        }
+
+        html[data-bs-theme="dark"] #modalIzinTakvim .modal-title,
+        html[data-bs-theme="dark"] #modalIzinTakvim .modal-title strong {
+            color: #f1f5f9 !important;
+        }
+
+        html[data-bs-theme="dark"] #modalIzinTakvim .modal-subtitle {
+            color: #94a3b8 !important;
         }
 
         /* Bordro Footer Summary Kartları (Normal & macOS Dark) */
