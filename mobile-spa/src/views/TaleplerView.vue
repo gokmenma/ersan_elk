@@ -23,6 +23,7 @@ import {
   RotateCw,
   Search,
   SlidersHorizontal,
+  Sparkles,
   Trash2,
   User,
   Wallet,
@@ -357,9 +358,38 @@ function openSilModal(item) {
   modalType.value = 'sil'
 }
 
+const aiAnalysis = ref(null)
+const aiLoading = ref(false)
+let aiRequestSeq = 0
+
+const AI_ONERI = {
+  onaylanabilir: { label: 'Sorunsuz görünüyor', class: 'ai-card--ok' },
+  dikkat: { label: 'Dikkat gerektiriyor', class: 'ai-card--warn' },
+  incelenmeli: { label: 'Ayrıntılı inceleme önerilir', class: 'ai-card--risk' },
+}
+const AI_ACILIYET = { dusuk: 'Düşük', orta: 'Orta', yuksek: 'Yüksek' }
+
+async function loadAiAnalysis(item) {
+  aiAnalysis.value = null
+  aiLoading.value = false
+  const durum = String(item?.status || '').toLowerCase().trim()
+  if (!item || item.filter_mode !== 'pending' || !(durum === 'beklemede' || durum === 'islemde')) return
+  const seq = ++aiRequestSeq
+  aiLoading.value = true
+  try {
+    const res = await requestsApi.getAiOnAnaliz({ type: item.type, id: item.id })
+    if (seq === aiRequestSeq) aiAnalysis.value = res.analysis || null
+  } catch {
+    if (seq === aiRequestSeq) aiAnalysis.value = null
+  } finally {
+    if (seq === aiRequestSeq) aiLoading.value = false
+  }
+}
+
 function openDetailModal(item) {
   activeItem.value = item
   modalType.value = 'detail'
+  loadAiAnalysis(item)
 }
 
 function closeModal() {
@@ -1125,6 +1155,37 @@ async function submitSil() {
                 <span>İZİN ARALIĞI</span>
                 <strong>{{ activeItem?.start_date }} — {{ activeItem?.end_date }}</strong>
               </div>
+            </div>
+
+            <div v-if="aiLoading" class="ai-card ai-card--loading">
+              <RotateCw :size="14" class="spin-icon" />
+              <span>Yapay zekâ ön değerlendirmesi hazırlanıyor...</span>
+            </div>
+
+            <div v-else-if="aiAnalysis" class="ai-card" :class="(AI_ONERI[aiAnalysis.oneri] || AI_ONERI.dikkat).class">
+              <div class="ai-card__head">
+                <span class="ai-card__title"><Sparkles :size="14" /> YAPAY ZEKÂ ÖN DEĞERLENDİRMESİ</span>
+                <span class="ai-card__badge">{{ (AI_ONERI[aiAnalysis.oneri] || AI_ONERI.dikkat).label }}</span>
+              </div>
+              <div class="ai-card__meta">
+                <span v-if="aiAnalysis.kategori">{{ aiAnalysis.kategori }}</span>
+                <span>Aciliyet: {{ AI_ACILIYET[aiAnalysis.aciliyet] || '-' }}</span>
+              </div>
+              <p class="ai-card__summary">{{ aiAnalysis.ozet }}</p>
+              <template v-for="grup in [
+                { key: 'olumlu', label: 'Olumlu noktalar' },
+                { key: 'dikkat', label: 'Dikkat edilecekler' },
+                { key: 'eksik', label: 'Eksik bilgi' },
+                { key: 'sorular', label: 'Personele sorulabilir' },
+              ]" :key="grup.key">
+                <div v-if="aiAnalysis[grup.key]?.length" class="ai-card__group">
+                  <strong>{{ grup.label }}</strong>
+                  <ul>
+                    <li v-for="(madde, idx) in aiAnalysis[grup.key]" :key="idx">{{ madde }}</li>
+                  </ul>
+                </div>
+              </template>
+              <small class="ai-card__foot">Yapay zekâ tarafından üretilmiş ön bilgidir; karar yöneticiye aittir. {{ aiAnalysis.tarih }}</small>
             </div>
 
             <div v-if="activeItem?.description" class="sheet-box">
@@ -2188,6 +2249,92 @@ async function submitSil() {
   color: var(--ds-ink);
   font-size: 13px;
   font-weight: 700;
+}
+
+.ai-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--ds-border-subtle);
+  border-radius: 18px;
+  background: var(--ds-emerald-soft);
+  color: var(--ds-ink);
+  font-family: var(--ds-font-main);
+}
+
+.ai-card--ok { background: var(--ds-emerald-soft); }
+.ai-card--warn { background: var(--ds-amber-soft); }
+.ai-card--risk { background: var(--ds-danger-soft); }
+
+.ai-card--loading {
+  flex-direction: row;
+  align-items: center;
+  background: var(--ds-surface-subtle);
+  color: var(--ds-muted);
+  font-size: 12px;
+}
+
+.ai-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ai-card__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ds-muted);
+  font: 700 9px var(--ds-font-mono);
+  letter-spacing: 0.08em;
+}
+
+.ai-card__badge {
+  padding: 4px 10px;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-surface);
+  font: 700 10px var(--ds-font-main);
+}
+
+.ai-card--ok .ai-card__badge { color: var(--ds-emerald-ink); }
+.ai-card--warn .ai-card__badge { color: var(--ds-amber-ink); }
+.ai-card--risk .ai-card__badge { color: var(--ds-danger-ink); }
+
+.ai-card__meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: var(--ds-muted);
+  font: 600 10px var(--ds-font-mono);
+}
+
+.ai-card__summary {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.ai-card__group strong {
+  display: block;
+  color: var(--ds-muted);
+  font: 700 10px var(--ds-font-mono);
+  letter-spacing: 0.04em;
+}
+
+.ai-card__group ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ai-card__foot {
+  color: var(--ds-muted);
+  font-size: 10px;
 }
 
 .sheet-box.box-success {

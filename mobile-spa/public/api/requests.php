@@ -141,6 +141,21 @@ if ($method === 'GET') {
         }
     }
 
+    if (($_GET['action'] ?? '') === 'ai-on-analiz') {
+        $aiTip = (string) ($_GET['tip'] ?? '');
+        $aiId = (int) ($_GET['id'] ?? 0);
+        $aiYetki = ['avans' => $canAvans, 'izin' => $canIzin, 'genel' => $canAriza];
+        if (!isset($aiYetki[$aiTip]) || $aiId <= 0) {
+            taleplerResponse(['success' => false, 'message' => 'Geçersiz talep.'], 422);
+        }
+        if (!$aiYetki[$aiTip]) {
+            taleplerResponse(['success' => false, 'message' => 'Yetkisiz işlem.'], 403);
+        }
+        session_write_close();
+        $aiVeri = (new \App\Service\TalepAiOnAnalizService())->sunum($aiTip, $aiId);
+        taleplerResponse(['success' => true, 'analysis' => $aiVeri]);
+    }
+
     $tab = (string) ($_GET['tab'] ?? 'all'); // avans, izin, talep, all
     $filter = (string) ($_GET['filter'] ?? 'pending'); // pending, approved, deleted
 

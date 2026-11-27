@@ -55,6 +55,13 @@ export const requestsApi = {
     })
   },
 
+  async getAiOnAnaliz({ type, id }) {
+    const tip = type === 'talep' ? 'genel' : type
+    return await request('get', {
+      params: { action: 'ai-on-analiz', tip, id },
+    })
+  },
+
   async avansOnayla({ id, onay_tipi, farkli_tutar, aciklama, hesaba_isle }) {
     return await request('post', {
       method: 'POST',

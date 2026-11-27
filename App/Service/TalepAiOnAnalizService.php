@@ -19,7 +19,7 @@ Kurallar:
 - Yalnızca verilen kayıtlara dayan. Bilgi yoksa uydurma; "olumlu" ve "dikkat" maddelerinin her biri kayıtlardaki somut bir veriye dayanmalı, kayıtta olmayan hiçbir olguyu (aile durumu, sağlık, neden vb.) yazma. Eksikse "eksik" listesine yaz.
 - Yıllık izin bakiyesi yalnızca "Yıllık İzin" türünü ilgilendirir; mazeret, hastalık, ücretsiz, evlilik, doğum gibi türler yıllık bakiyeden düşmez ve bakiyenin sıfır olması bu türlerde engel değildir.
 - Avans için "kalan aylık limit" bu talep hariç, talepten önceki serbest limittir; tutar bu limiti aşıyorsa belirt.
-- Karar yöneticiye aittir. Onaylama ya da reddetme; yalnızca öneri ve gerekçe sun.
+- Karar yöneticiye aittir. Onaylama ya da reddetme; yalnızca öneri ve gerekçe sun. "Onaylanamaz", "reddedilmelidir" gibi kesin hüküm kurma; "bakiye yetersiz görünüyor", "incelenmeli" gibi gözlem diliyle yaz.
 - Cinsiyet, yaş, sağlık, din, medeni hal gibi özelliklere dayanarak değerlendirme yapma.
 - Tutar ve tarihleri kayıtlardaki gibi kullan; hesap yapıyorsan nasıl yaptığını gerekçede belirt.
 - Kısa, sade ve Türkçe yaz. Yönetici bunu birkaç saniyede okuyacak.
@@ -110,6 +110,34 @@ TXT;
         }
 
         return $this->model->bul($tip, $talepId);
+    }
+
+    public function sunum(string $tip, int $talepId): ?array
+    {
+        if (!in_array($tip, TalepAiOnAnalizModel::TIPLER, true) || $talepId <= 0) {
+            return null;
+        }
+        if (!$this->model->beklemedeMi($tip, $talepId)) {
+            return null;
+        }
+
+        $analiz = $this->model->bul($tip, $talepId) ?? $this->analizEt($tip, $talepId);
+        if (!$analiz || $analiz->durum !== 'tamamlandi') {
+            return null;
+        }
+
+        $bulgular = json_decode((string) $analiz->bulgular, true);
+        return [
+            'oneri' => $analiz->oneri,
+            'aciliyet' => $analiz->aciliyet,
+            'kategori' => $analiz->kategori,
+            'ozet' => $analiz->ozet,
+            'olumlu' => $bulgular['olumlu'] ?? [],
+            'dikkat' => $bulgular['dikkat'] ?? [],
+            'eksik' => $bulgular['eksik'] ?? [],
+            'sorular' => $bulgular['sorular'] ?? [],
+            'tarih' => date('d.m.Y H:i', strtotime((string) $analiz->updated_at)),
+        ];
     }
 
     public static function yanitlaVeAnalizEt(array $yanit, string $tip, int $talepId): void

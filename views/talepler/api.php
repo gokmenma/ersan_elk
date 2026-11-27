@@ -246,32 +246,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     throw new Exception('Bu işlem için gerekli yetkiye sahip değilsiniz.');
                 }
 
-                $aiModel = new \App\Model\TalepAiOnAnalizModel();
-                if (!$aiModel->beklemedeMi($tip, $id)) {
-                    echo json_encode(['status' => 'success', 'data' => null], JSON_UNESCAPED_UNICODE);
-                    break;
-                }
-
-                $analiz = $aiModel->bul($tip, $id);
-                if (!$analiz) {
-                    $analiz = (new \App\Service\TalepAiOnAnalizService())->analizEt($tip, $id);
-                }
-
-                $veri = null;
-                if ($analiz && $analiz->durum === 'tamamlandi') {
-                    $bulgular = json_decode((string) $analiz->bulgular, true);
-                    $veri = [
-                        'oneri' => $analiz->oneri,
-                        'aciliyet' => $analiz->aciliyet,
-                        'kategori' => $analiz->kategori,
-                        'ozet' => $analiz->ozet,
-                        'olumlu' => $bulgular['olumlu'] ?? [],
-                        'dikkat' => $bulgular['dikkat'] ?? [],
-                        'eksik' => $bulgular['eksik'] ?? [],
-                        'sorular' => $bulgular['sorular'] ?? [],
-                        'tarih' => date('d.m.Y H:i', strtotime((string) $analiz->updated_at)),
-                    ];
-                }
+                $veri = (new \App\Service\TalepAiOnAnalizService())->sunum($tip, $id);
 
                 echo json_encode(['status' => 'success', 'data' => $veri], JSON_UNESCAPED_UNICODE);
                 break;
