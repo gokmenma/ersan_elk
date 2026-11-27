@@ -12,6 +12,7 @@ require_once dirname(dirname(__DIR__)) . '/Autoloader.php';
 
 use App\Model\PersonelHareketleriModel;
 use App\Model\PersonelModel;
+use App\Model\PersonelCalismaSaatleriModel;
 use App\Model\AracModel;
 use App\Model\AracHareketleriModel;
 use App\Model\SettingsModel;
@@ -96,6 +97,7 @@ try {
             }
 
             $personeller = $HareketModel->getTumPersonelDurumu($firma_id, $tarih_sorgu, $departman);
+            $calismaSaatleri = (new PersonelCalismaSaatleriModel())->getAllMap();
 
             $data = [];
             foreach ($personeller as $p) {
@@ -121,6 +123,12 @@ try {
                     ? '<img src="' . htmlspecialchars($p->foto) . '" class="rounded-circle" width="32" height="32" style="object-fit:cover;">'
                     : '<div class="avatar-xs"><span class="avatar-title rounded-circle bg-soft-primary text-primary">' . mb_substr($p->adi_soyadi, 0, 1) . '</span></div>';
 
+                $cs = $calismaSaatleri[(int) $p->personel_id] ?? null;
+                $planBaslama = $cs && $cs->gorev_baslama ? substr($cs->gorev_baslama, 0, 5) : '-';
+                $planBitis = $cs && $cs->gorev_bitis ? substr($cs->gorev_bitis, 0, 5) : '-';
+                $yemekPlan = $cs && $cs->yemek_baslangic && $cs->yemek_bitis ? substr($cs->yemek_baslangic, 0, 5) . ' - ' . substr($cs->yemek_bitis, 0, 5) : '-';
+                $netPlan = $cs && $cs->net_calisma_dk !== null ? PersonelCalismaSaatleriModel::dkMetin((int) $cs->net_calisma_dk) : '-';
+
                 $baslama_saat = $p->son_baslama ? date('H:i', strtotime($p->son_baslama)) : '-';
                 $bitis_saat = $p->son_bitis ? date('H:i', strtotime($p->son_bitis)) : '-';
 
@@ -138,8 +146,12 @@ try {
                     'durum' => $durum_badge,
                     'baslama' => $baslama_saat,
                     'bitis' => $bitis_saat,
+                    'plan_baslama' => $planBaslama,
+                    'plan_bitis' => $planBitis,
+                    'yemek' => $yemekPlan,
+                    'net_sure' => $netPlan,
                     'konum' => $konum_link,
-                    'islemler' => '<button class="btn btn-sm btn-soft-primary btn-detay" data-id="' . Security::encrypt($p->personel_id) . '"><i class="bx bx-history"></i> Geçmiş</button>'
+                    'islemler' => '<button class="btn btn-sm btn-soft-primary btn-detay" data-id="' . Security::encrypt($p->personel_id) . '"><i class="bx bx-history"></i> Geçmiş</button>' . (\App\Service\Gate::allows('personel_takip_deparmana_gore_ise_baslama_belirleme') ? ' <button class="btn btn-sm btn-soft-warning btn-calisma-saati" data-id="' . Security::encrypt($p->personel_id) . '" title="Çalışma Saatleri"><i class="bx bx-time-five"></i></button>' : '')
                 ];
             }
 
@@ -1304,6 +1316,38 @@ try {
             } else {
                 response(false, null, 'Kaydedilirken bir hata oluştu');
             }
+            break;
+
+        case 'getPersonelCalismaSaatleri':
+            if (!\App\Service\Gate::allows("personel_takip_deparmana_gore_ise_baslama_belirleme")) {
+                response(false, null, 'Yetkiniz bulunmuyor');
+            }
+            $pid = (int) Security::decrypt($_POST['id'] ?? $_GET['id'] ?? '');
+            if ($pid <= 0) {
+                response(false, null, 'Geçersiz personel.');
+            }
+            $cm = new PersonelCalismaSaatleriModel();
+            $kayit = $cm->getByPersonel($pid);
+            $alanlar = ['gorev_baslama', 'gorev_bitis', 'yemek_baslangic', 'yemek_bitis', 'mola1_baslangic', 'mola1_bitis', 'mola2_baslangic', 'mola2_bitis'];
+            $out = ['diger_dusulecek_dk' => $kayit ? (int) $kayit->diger_dusulecek_dk : 0];
+            foreach ($alanlar as $a) {
+                $out[$a] = $kayit && $kayit->$a ? substr($kayit->$a, 0, 5) : '';
+            }
+            response(true, $out);
+            break;
+
+        case 'savePersonelCalismaSaatleri':
+            if (!\App\Service\Gate::allows("personel_takip_deparmana_gore_ise_baslama_belirleme")) {
+                response(false, null, 'Yetkiniz bulunmuyor');
+            }
+            $pid = (int) Security::decrypt($_POST['id'] ?? '');
+            if ($pid <= 0) {
+                response(false, null, 'Geçersiz personel.');
+            }
+            $hesap = (new PersonelCalismaSaatleriModel())->saveForPersonel($pid, $_POST);
+            response(true, [
+                'net' => PersonelCalismaSaatleriModel::dkMetin($hesap['net'])
+            ], 'Çalışma saatleri kaydedildi. Net çalışma: ' . PersonelCalismaSaatleriModel::dkMetin($hesap['net']));
             break;
 
         case 'exportCalismaRaporu':

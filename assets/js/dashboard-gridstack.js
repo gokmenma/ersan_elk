@@ -249,9 +249,14 @@
             stripColClasses(el);
             return;
         }
+        DashGrid.grid.engine.nodes.slice().forEach(function (n) {
+            if (n.el && n.el !== el && n.el.id === el.id) release(n.el);
+        });
         var layout = resolveLayout(el);
         prepare(el, layout);
         silent++;
+        var prevFloat = DashGrid.grid.float();
+        DashGrid.grid.float(true);
         try {
             var opts = { w: layout.w, h: layout.h, minW: MIN_W, minH: MIN_H, id: el.id };
             if (layout.placed) {
@@ -264,6 +269,7 @@
         } catch (e) {
             console.warn('Widget gride eklenemedi', el.id, e);
         } finally {
+            DashGrid.grid.float(prevFloat);
             silent--;
         }
         syncAttributes(el);
@@ -274,13 +280,17 @@
         if (!el || !el.gridstackNode) return;
         remember(el);
         silent++;
+        var prevFloat = DashGrid.grid.float();
+        DashGrid.grid.float(true);
         try {
             DashGrid.grid.removeWidget(el, false, false);
         } catch (e) {
             console.warn('Widget gridden çıkarılamadı', el.id, e);
         } finally {
+            DashGrid.grid.float(prevFloat);
             silent--;
         }
+        scheduleRefit(400);
     }
 
     function onMutations(mutations) {

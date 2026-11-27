@@ -4232,3 +4232,9 @@ Talep oluşunca (PWA createAvansTalebi/createIzinTalebi/createTalepBildirimi, ap
 
 ## 2026-11-26 — Ek Ödemeler Raporu gruplu liste
 - `views/bordro/raporlar/ek-odemeler-raporu.php`: kayıtlar personel + ödeme türü bazında gruplandı (PHP, `$gruplar`); satırın solundaki ok DataTables child row ile tek tek kayıtları açar (detay `data-detay` JSON). Excel dışa aktarma filtrelenmiş grupların detaylarını düz satır olarak yazar. Grup toplamı yalnız sabit tutarları toplar.
+
+## 2026-11-27 Personel Takip Çalışma Saatleri
+- Personel bazlı göreve başlama/bitiş, yemek, 2 mola, diğer düşülecek süre ve net çalışma süresi eklendi (tablo `personel_calisma_saatleri`, `PersonelCalismaSaatleriModel`, `views/personel-takip` API + modal). Yetki: `personel_takip_deparmana_gore_ise_baslama_belirleme`. SQL: `sql/2026_11_27_personel_calisma_saatleri.sql`.
+
+## 2026-11-27 Ana Sayfa Kart Sırası Sıfırlanma Düzeltmesi
+- `assets/js/dashboard-gridstack.js`: lazy widget `replaceWith` ile değişirken yeni eleman, eski düğüm gridde dururken kayıtlı koordinata yerleştiriliyor, çarpışma ve yukarı sıkıştırma yüzünden kartlar kayıyor, kayan düzen otomatik kaydedilerek varsayılana dönüyordu. `adopt` aynı id'li eski düğümü önce `release` ediyor; `adopt`/`release` sırasında `float(true)` kullanılıyor, `release` sonrası `scheduleRefit` çalışıyor.

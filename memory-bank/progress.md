@@ -2475,3 +2475,7 @@
 - [x] Kesinti Raporu ve Ek Ödemeler Raporu yeni sayfa tasarımına çevrildi (2026-11-26, yerelde doğrulandı; dekont yükleme/silme ve ödeme anahtarı denenmedi).
 - [x] Ek Ödemeler Raporu aynı personel + türde gruplandı (2026-11-26, yerelde doğrulandı; Excel indirme denenmedi).
 - [x] Yönetici mobil (mobile-spa) talepler detay sheet'inde yapay zekâ ön bilgi kartı (2026-11-27): `requests.php?action=ai-on-analiz`, `TalepAiOnAnalizService::sunum()` masaüstü ve mobil için ortak; yalnız bekleyen/işlemdeki taleplerde gösterilir. `mobile-spa/dist` yeniden derlendi, telefon boyutunda doğrulandı.
+
+## 2026-11-27 Personel Takip Çalışma Saatleri
+- Personel bazlı göreve başlama/bitiş, yemek, 2 mola, diğer düşülecek süre ve net çalışma süresi eklendi (tablo `personel_calisma_saatleri`, `PersonelCalismaSaatleriModel`, `views/personel-takip` API + modal). Yetki: `personel_takip_deparmana_gore_ise_baslama_belirleme`. SQL: `sql/2026_11_27_personel_calisma_saatleri.sql`.
+- [x] 2026-11-27 Ana sayfa gridstack kart sırası yenilemede korunuyor (adopt/release çift düğüm ve sıkıştırma düzeltmesi).

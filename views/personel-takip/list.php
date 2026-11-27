@@ -267,6 +267,10 @@ try {
                                             <th style="width: 120px;" class="text-center" data-filter="select">Durum</th>
                                             <th style="width: 100px;" class="text-center" data-filter="string">Başlama</th>
                                             <th style="width: 100px;" class="text-center" data-filter="string">Bitiş</th>
+                                            <th style="width: 90px;" class="text-center" data-filter="string">Plan Başlama</th>
+                                            <th style="width: 90px;" class="text-center" data-filter="string">Plan Bitiş</th>
+                                            <th style="width: 110px;" class="text-center" data-filter="string">Yemek</th>
+                                            <th style="width: 100px;" class="text-center" data-filter="string">Net Süre</th>
                                             <th style="width: 100px;" class="text-center" data-filter="none">Konum</th>
                                             <th style="width: 100px;" class="text-center" data-filter="none">İşlemler</th>
                                         </tr>
@@ -832,6 +836,56 @@ try {
 </div>
 
 <!-- Departman Mesai Ayarları Modalı -->
+<div class="modal fade" id="calismaSaatleriModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title"><i class="bx bx-time-five me-2"></i> Çalışma Saatleri</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="calismaSaatleriForm" autocomplete="off">
+                    <input type="hidden" name="id" id="csPersonelId">
+                    <div class="fw-bold mb-3 text-dark" id="csPersonelAd"></div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6"><?= Form::FormFloatInput('time', 'gorev_baslama', '', '', 'Göreve Başlama', 'bx bx-log-in', 'form-control cs-input') ?></div>
+                        <div class="col-6"><?= Form::FormFloatInput('time', 'gorev_bitis', '', '', 'Görev Bitiş', 'bx bx-log-out', 'form-control cs-input') ?></div>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6"><?= Form::FormFloatInput('time', 'yemek_baslangic', '', '', 'Yemek Başlangıç', 'bx bx-restaurant', 'form-control cs-input') ?></div>
+                        <div class="col-6"><?= Form::FormFloatInput('time', 'yemek_bitis', '', '', 'Yemek Bitiş', 'bx bx-restaurant', 'form-control cs-input') ?></div>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6"><?= Form::FormFloatInput('time', 'mola1_baslangic', '', '', '1. Mola Başlangıç', 'bx bx-coffee', 'form-control cs-input') ?></div>
+                        <div class="col-6"><?= Form::FormFloatInput('time', 'mola1_bitis', '', '', '1. Mola Bitiş', 'bx bx-coffee', 'form-control cs-input') ?></div>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6"><?= Form::FormFloatInput('time', 'mola2_baslangic', '', '', '2. Mola Başlangıç', 'bx bx-coffee', 'form-control cs-input') ?></div>
+                        <div class="col-6"><?= Form::FormFloatInput('time', 'mola2_bitis', '', '', '2. Mola Bitiş', 'bx bx-coffee', 'form-control cs-input') ?></div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-12"><?= Form::FormFloatInput('number', 'diger_dusulecek_dk', '0', '', 'Diğer Düşülecek Süre (dk)', 'bx bx-minus-circle', 'form-control cs-input', false, null, 'off', false, 'min="0" max="1440"') ?></div>
+                    </div>
+                    <div class="border rounded p-3 bg-light small">
+                        <div class="d-flex justify-content-between"><span>Brüt süre</span><b id="csBrut">-</b></div>
+                        <div class="d-flex justify-content-between"><span>Yemek</span><b id="csYemek">-</b></div>
+                        <div class="d-flex justify-content-between"><span>Molalar</span><b id="csMola">-</b></div>
+                        <div class="d-flex justify-content-between"><span>Diğer</span><b id="csDiger">-</b></div>
+                        <hr class="my-2">
+                        <div class="d-flex justify-content-between fs-6"><span class="fw-bold">Net çalışma süresi</span><b class="text-success" id="csNet">-</b></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-primary" id="btnCsKaydet" onclick="saveCalismaSaatleri()">
+                    <i class="bx bx-save me-1"></i> Kaydet
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="mesaiAyarlariModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -1247,13 +1301,17 @@ try {
                     html += '<td>' + p.durum + '</td>';
                     html += '<td class="text-center">' + p.baslama + '</td>';
                     html += '<td class="text-center">' + p.bitis + '</td>';
+                    html += '<td class="text-center">' + p.plan_baslama + '</td>';
+                    html += '<td class="text-center">' + p.plan_bitis + '</td>';
+                    html += '<td class="text-center">' + p.yemek + '</td>';
+                    html += '<td class="text-center fw-semibold">' + p.net_sure + '</td>';
                     html += '<td class="text-center">' + p.konum + '</td>';
                     html += '<td>' + p.islemler + '</td>';
                     html += '</tr>';
                 });
                 tbody.innerHTML = html;
             } else {
-                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Henüz kayıt bulunmuyor</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="12" class="text-center text-muted">Henüz kayıt bulunmuyor</td></tr>';
             }
 
             // DataTable'ı başlat (init fonksiyonunu kontrol et)
@@ -1265,6 +1323,11 @@ try {
                 btn.addEventListener('click', function () {
                     const personelId = this.getAttribute('data-id');
                     showGecmis(personelId);
+                });
+            });
+            document.querySelectorAll('.btn-calisma-saati').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    openCalismaSaatleri(this.getAttribute('data-id'));
                 });
             });
         } catch (error) {
@@ -1899,6 +1962,86 @@ try {
     }
 
 
+
+    function csDk(b, e) {
+        if (!b || !e) return 0;
+        const x = b.split(':'), y = e.split(':');
+        const bm = (+x[0]) * 60 + (+x[1]), em = (+y[0]) * 60 + (+y[1]);
+        return em >= bm ? em - bm : em + 1440 - bm;
+    }
+    function csMetin(dk) { return Math.floor(dk / 60) + ' sa ' + (dk % 60) + ' dk'; }
+    function csHesapla() {
+        const v = n => document.getElementById(n).value;
+        const brut = csDk(v('gorev_baslama'), v('gorev_bitis'));
+        const yemek = csDk(v('yemek_baslangic'), v('yemek_bitis'));
+        const mola = csDk(v('mola1_baslangic'), v('mola1_bitis')) + csDk(v('mola2_baslangic'), v('mola2_bitis'));
+        const diger = Math.max(0, parseInt(v('diger_dusulecek_dk'), 10) || 0);
+        document.getElementById('csBrut').textContent = brut ? csMetin(brut) : '-';
+        document.getElementById('csYemek').textContent = csMetin(yemek);
+        document.getElementById('csMola').textContent = csMetin(mola);
+        document.getElementById('csDiger').textContent = csMetin(diger);
+        document.getElementById('csNet').textContent = brut ? csMetin(Math.max(0, brut - yemek - mola - diger)) : '-';
+    }
+    document.querySelectorAll('.cs-input').forEach(function (el) {
+        el.addEventListener('input', csHesapla);
+        el.addEventListener('change', csHesapla);
+    });
+
+    async function openCalismaSaatleri(id) {
+        const idEl = document.getElementById('csPersonelId');
+        if (!idEl) { console.error('calismaSaatleriModal bulunamadı'); return; }
+        idEl.value = id;
+        document.getElementById('calismaSaatleriForm').reset();
+        const satir = document.querySelector('.btn-calisma-saati[data-id="' + id + '"]');
+        const ad = satir ? satir.closest('tr').querySelector('strong') : null;
+        const adEl = document.getElementById('csPersonelAd');
+        if (adEl) adEl.textContent = ad ? ad.textContent : '';
+        csHesapla();
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('calismaSaatleriModal')).show();
+        try {
+            const body = new URLSearchParams({ action: 'getPersonelCalismaSaatleri', id: id });
+            const response = await fetch('views/personel-takip/api.php', { method: 'POST', body: body });
+            const result = await response.json();
+            if (result.success && result.data) {
+                Object.keys(result.data).forEach(function (k) {
+                    const el = document.getElementById(k);
+                    if (el) el.value = result.data[k];
+                });
+                csHesapla();
+            } else {
+                Swal.fire('Hata', result.message || 'Veriler alınamadı', 'error');
+            }
+        } catch (error) {
+            console.error('Çalışma saatleri yüklenirken hata:', error);
+            Swal.fire('Hata', 'Bağlantı hatası oluştu', 'error');
+        }
+    }
+
+    async function saveCalismaSaatleri() {
+        const btn = document.getElementById('btnCsKaydet');
+        const oldHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Kaydediliyor...';
+        try {
+            const fd = new FormData(document.getElementById('calismaSaatleriForm'));
+            fd.append('action', 'savePersonelCalismaSaatleri');
+            const response = await fetch('views/personel-takip/api.php', { method: 'POST', body: fd });
+            const result = await response.json();
+            if (result.success) {
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('calismaSaatleriModal')).hide();
+                Swal.fire('Başarılı', result.message, 'success');
+                loadPersonelDurumlari();
+            } else {
+                Swal.fire('Hata', result.message, 'error');
+            }
+        } catch (error) {
+            console.error('Çalışma saatleri kaydedilirken hata:', error);
+            Swal.fire('Hata', 'Bağlantı hatası oluştu', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = oldHtml;
+        }
+    }
 
     async function openMesaiSettings() {
         const modalEl = document.getElementById('mesaiAyarlariModal');
