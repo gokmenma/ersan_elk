@@ -22,11 +22,22 @@ $yetkiDashboard = Gate::allows('aparat-takip/dashboard') || $superAdmin;
 $yetkiGelismis = Gate::allows('aparat_gelismis') || $superAdmin;
 $yetkiDepo = Gate::allows('aparat_depo') || $superAdmin;
 $yetkiIptal = $yetkiGelismis && (Gate::allows('aparat_iptal') || $superAdmin);
+$yetkiSil = $yetkiGelismis && (Gate::allows('aparat_sil') || $superAdmin);
 $yetkiSayim = $yetkiGelismis && (Gate::allows('aparat_sayim') || $superAdmin);
 $yetkiTanim = $yetkiGelismis && (Gate::allows('aparat_tanim') || $superAdmin);
 $yetkiTransfer = $yetkiGelismis && (Gate::allows('aparat_transfer_yonet') || $superAdmin);
 
 // Ekipler listelerde personel adıyla gösterilir; ekip kodu parantez içinde kalır.
+$izinliSekmeler = ['pane-stok', 'pane-islemler', 'pane-hareketler', 'pane-transferler', 'pane-sayim', 'pane-raporlar'];
+if ($yetkiTanim) {
+    $izinliSekmeler[] = 'pane-tanimlar';
+}
+$istenenSekme = (string) ($_GET['tab'] ?? '');
+if ($istenenSekme !== '' && strpos($istenenSekme, 'pane-') !== 0) {
+    $istenenSekme = 'pane-' . $istenenSekme;
+}
+$aktifSekme = in_array($istenenSekme, $izinliSekmeler, true) ? $istenenSekme : 'pane-stok';
+
 $ekipUyeleri = $Stok->ekipUyeHaritasi();
 
 $ekipEtiketi = function (array $ekip) use ($ekipUyeleri): string {
@@ -63,6 +74,157 @@ foreach (AparatTipiModel::RENKLER as $renk) {
 }
 ?>
 
+<style>
+    .sayim-ozet { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 8px; }
+    .sayim-ozet-kutu { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 6px 12px; }
+    .sayim-ozet-etiket { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; color: #64748b; }
+    .sayim-ozet-deger { font-size: 20px; font-weight: 700; color: #1e293b; line-height: 1.3; }
+    .sayim-ozet-deger small { font-size: 12px; font-weight: 500; color: #94a3b8; }
+    .sayim-tablo-kap { max-height: calc(100vh - 330px); min-height: 320px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 10px; position: relative; }
+    .sayim-tablo { border-collapse: separate; border-spacing: 0; }
+    .sayim-tablo thead th { position: sticky; top: 0; z-index: 3; background: #f8fafc; font-size: 12px; text-transform: uppercase; border-bottom: 2px solid #e2e8f0; }
+    .sayim-tablo tr.sayim-ekip-satir td { background: #eef2f6; padding: 7px 12px; border-top: 1px solid #e2e8f0; }
+    #sayimAksiyonlar:empty { display: none !important; }
+    .sayim-ekip-cikar { width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #94a3b8; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; opacity: 0; transition: opacity .15s ease, background-color .15s ease; }
+    .sayim-ekip-cikar:hover { background: #fee2e2; color: #dc2626; }
+    .sayim-ekip-satir:hover .sayim-ekip-cikar { opacity: 1; }
+    .sayim-uyeler { font-size: 12px; color: #64748b; }
+    .sayim-ekip-sayac { font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: #e2e8f0; color: #475569; }
+    .sayim-ekip-sayac.tamam { background: #dcfce7; color: #15803d; }
+    .sayim-ekip-sayac.farkli { background: #fef3c7; color: #b45309; }
+    .sayim-sayac { display: inline-flex; align-items: center; gap: 4px; }
+    .sayim-sayac button { width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%; background: #f1f5f9; color: #475569; font-size: 16px; line-height: 1; opacity: 0; transition: opacity .15s ease, background-color .15s ease; }
+    .sayim-sayac button:hover { background: #e2e8f0; color: #0f172a; }
+    .sayim-satir:hover .sayim-sayac button, .sayim-sayac:focus-within button { opacity: 1; }
+    input.sayim-giris { width: 72px; max-width: 72px; height: 34px; text-align: center; font-size: 15px; font-weight: 700; color: #0f172a; background: #fff; border: 1.5px solid #e2e8f0; border-radius: 10px; box-shadow: none; -moz-appearance: textfield; transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease; }
+    input.sayim-giris::-webkit-outer-spin-button, input.sayim-giris::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    input.sayim-giris::placeholder { color: #cbd5e1; font-weight: 400; }
+    input.sayim-giris:hover { border-color: #cbd5e1; }
+    input.sayim-giris:focus { border-color: #475569; box-shadow: 0 0 0 3px rgba(71, 85, 105, .15); }
+    .sayim-satir[data-girilmis="1"] input.sayim-giris { background: #f0fdf4; border-color: #86efac; }
+    .sayim-satir[data-farkli="1"] input.sayim-giris { background: #fffbeb; border-color: #fcd34d; }
+    input.sayim-aciklama { height: 34px; font-size: 12.5px; color: #334155; background: transparent; border: 1.5px solid transparent; border-radius: 10px; box-shadow: none; transition: border-color .15s ease, background-color .15s ease; }
+    input.sayim-aciklama::placeholder { color: #cbd5e1; }
+    .sayim-satir:hover input.sayim-aciklama { border-color: #e2e8f0; background: #fff; }
+    input.sayim-aciklama:focus { background: #fff; border-color: #475569; box-shadow: 0 0 0 3px rgba(71, 85, 105, .15); }
+    .sayim-satir[data-farkli="1"] input.sayim-aciklama:placeholder-shown { background: #fffbeb; border-color: #fde68a; }
+    .sayim-satir[data-farkli="1"] input.sayim-aciklama:placeholder-shown::placeholder { color: #b45309; }
+    .sayim-satir { transition: background-color .6s ease; }
+    .sayim-satir.sayim-kaydedildi { background-color: #dcfce7; }
+    .sayim-liste-arama { position: relative; }
+    .sayim-liste-arama i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #64748b; font-size: 18px; }
+    .sayim-liste-arama input { width: 100%; border: 0; background: #f1f5f9; border-radius: 999px; padding: 9px 14px 9px 42px; font-size: 13.5px; outline: none; color: #0f172a; }
+    .sayim-liste-arama input:focus { background: #fff; box-shadow: 0 0 0 2px #cbd5e1; }
+    .sayim-chip-grup { display: flex; flex-wrap: wrap; gap: 4px; }
+    .sayim-chip-grup button { border: 1px solid #e2e8f0; background: #fff; color: #475569; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; }
+    .sayim-chip-grup button:hover { background: #f8fafc; }
+    .sayim-chip-grup button.active { background: #dcfce7; border-color: #bbf7d0; color: #166534; }
+    .sayim-chip-say { margin-left: 3px; padding: 0 6px; border-radius: 999px; background: #e2e8f0; color: #475569; font-size: 11px; }
+    .sayim-chip-grup button.active .sayim-chip-say { background: #bbf7d0; color: #166534; }
+    .toplu-tablo-kap { max-height: calc(100vh - 330px); min-height: 240px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 10px; }
+    #topluTabloKap { display: flex; flex-direction: column; height: calc(100vh - 330px); }
+    #topluTabloKap .toplu-tablo { height: 100%; }
+    #topluTabloKap .toplu-tablo tbody tr:not(.toplu-dolgu) { height: 1px; }
+    #topluTabloKap .toplu-tablo tbody tr.toplu-dolgu { height: 100%; }
+    #topluTabloKap .toplu-tablo tbody tr.toplu-dolgu td { padding: 0 !important; border: 0 !important; height: 100%; }
+    .toplu-tablo { border-collapse: separate; border-spacing: 0; margin: 0; }
+    .toplu-tablo thead th { position: sticky; top: 0; z-index: 3; background: #f8fafc; font-size: 12px; text-transform: uppercase; border-bottom: 2px solid #e2e8f0; vertical-align: bottom; white-space: nowrap; }
+    .toplu-tablo thead th small { display: block; text-transform: none; font-weight: 500; color: #64748b; }
+    .toplu-tablo tfoot td { position: sticky; bottom: 0; z-index: 3; background: #f8fafc; border-top: 2px solid #e2e8f0; font-weight: 700; text-align: center; }
+    .toplu-tablo tfoot td.eksi { color: #dc2626; }
+    .toplu-tablo tbody td { border-bottom: 1px solid #f1f5f9; padding-top: 6px; padding-bottom: 6px; }
+    .toplu-grup td { background: #eef2f6; font-weight: 700; color: #334155; padding: 8px 12px; border-top: 1px solid #e2e8f0; }
+    .toplu-ekip-ad { font-weight: 600; color: #0f172a; white-space: nowrap; }
+    .toplu-ekip-uye { font-size: 12px; color: #64748b; white-space: nowrap; }
+    .toplu-mevcut { font-size: 10.5px; color: #94a3b8; margin-top: 2px; }
+    .toplu-sayac { display: inline-flex; align-items: center; gap: 4px; }
+    .toplu-sayac button { width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%; background: #f1f5f9; color: #475569; font-size: 16px; line-height: 1; opacity: 0; transition: opacity .15s ease; }
+    .toplu-sayac button:hover { background: #e2e8f0; color: #0f172a; }
+    .toplu-satir:hover .toplu-sayac button, .toplu-sayac:focus-within button { opacity: 1; }
+    .toplu-satir:hover { background: #f8fafc; }
+    input.toplu-giris { width: 64px; max-width: 64px; height: 34px; text-align: center; font-size: 15px; font-weight: 700; color: #0f172a; background: #fff; border: 1.5px solid #e2e8f0; border-radius: 10px; box-shadow: none; -moz-appearance: textfield; padding: 0 4px; }
+    input.toplu-giris::-webkit-outer-spin-button, input.toplu-giris::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    input.toplu-giris::placeholder { color: #cbd5e1; font-weight: 400; }
+    input.toplu-giris:hover { border-color: #cbd5e1; }
+    input.toplu-giris:focus { border-color: #475569; box-shadow: 0 0 0 3px rgba(71, 85, 105, .15); }
+    input.toplu-giris.dolu { background: #f0fdf4; border-color: #86efac; }
+    .swal2-popup.isle-pencere { width: 46rem !important; max-width: 95vw !important; }
+    .isle-ozet { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    .isle-kutu { border-radius: 12px; padding: 10px 14px; border: 1px solid; }
+    .isle-kutu.eksik { background: #fef2f2; border-color: #fecaca; }
+    .isle-kutu.fazla { background: #f0fdf4; border-color: #bbf7d0; }
+    .isle-sayi { font-size: 26px; font-weight: 700; line-height: 1.1; }
+    .isle-sayi small { font-size: 13px; font-weight: 500; }
+    .isle-kutu.eksik .isle-sayi { color: #dc2626; }
+    .isle-kutu.fazla .isle-sayi { color: #16a34a; }
+    .isle-etiket { font-size: 12.5px; font-weight: 600; color: #334155; margin-top: 2px; }
+    .isle-aciklama { font-size: 12px; color: #64748b; }
+    .isle-sifir { display: flex; gap: 10px; align-items: flex-start; border: 1px dashed #cbd5e1; background: #f8fafc; border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; cursor: pointer; font-size: 13px; }
+    .isle-sifir small { color: #64748b; font-size: 12px; }
+    .isle-sifir .form-check-input { margin-top: 3px; flex: 0 0 auto; }
+    .isle-liste { max-height: 260px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 12px; }
+    .isle-ekip { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; }
+    .isle-ekip:last-child { border-bottom: 0; }
+    .isle-ekip-ad { font-weight: 600; font-size: 13px; color: #0f172a; }
+    .isle-ekip-ad small { font-weight: 400; color: #64748b; margin-left: 6px; }
+    .isle-chipler { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .isle-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; border: 1px solid; }
+    .isle-chip.eksi { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+    .isle-chip.fazla { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+    .isle-chip.sifir { border-style: dashed; }
+    .isle-chip-adet { color: #64748b; }
+    .isle-not { display: flex; gap: 8px; margin-top: 10px; padding: 8px 12px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; color: #1e40af; font-size: 12.5px; }
+    .isle-not i { font-size: 18px; margin-top: 1px; flex: 0 0 auto; }
+    .dg-sayac { display: inline-flex; align-items: center; gap: 4px; }
+    .dg-sayac button { width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%; background: #f1f5f9; color: #475569; font-size: 16px; line-height: 1; opacity: 0; transition: opacity .15s ease; }
+    .dg-sayac button:hover { background: #e2e8f0; color: #0f172a; }
+    .dg-satir:hover .dg-sayac button, .dg-sayac:focus-within button { opacity: 1; }
+    input.dg-giris { width: 64px; max-width: 64px; height: 34px; text-align: center; font-size: 15px; font-weight: 700; color: #0f172a; background: #fff; border: 1.5px solid #e2e8f0; border-radius: 10px; box-shadow: none; -moz-appearance: textfield; padding: 0 4px; }
+    input.dg-giris::-webkit-outer-spin-button, input.dg-giris::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    input.dg-giris::placeholder { color: #cbd5e1; font-weight: 400; }
+    input.dg-giris:hover { border-color: #cbd5e1; }
+    input.dg-giris:focus { border-color: #475569; box-shadow: 0 0 0 3px rgba(71, 85, 105, .15); }
+    input.dg-giris.dolu { background: #f0fdf4; border-color: #86efac; }
+    .dg-tablo td, .dg-tablo th { vertical-align: middle; }
+    .dg-sonra { font-weight: 700; }
+    .dg-sonra.artti { color: #16a34a; }
+    .sy-liste { max-height: 320px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 12px; }
+    .sy-satir { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid #f1f5f9; cursor: pointer; margin: 0; }
+    .sy-satir:last-child { border-bottom: 0; }
+    .sy-satir:hover { background: #f8fafc; }
+    .sy-satir.secili { background: #f0fdf4; }
+    .sy-satir .form-check-input { margin: 0; flex: 0 0 auto; }
+    .sy-ad { font-weight: 600; font-size: 13.5px; color: #0f172a; }
+    .sy-alt { font-size: 12px; color: #64748b; }
+    .sy-rozet { margin-left: auto; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: #e2e8f0; color: #475569; white-space: nowrap; }
+    .sy-stok { font-size: 11.5px; color: #64748b; white-space: nowrap; min-width: 74px; text-align: right; }
+    .sayim-wa-kap { max-height: calc(100vh - 360px); min-height: 260px; overflow-y: auto; padding: 0 8px 8px !important; }
+    .sayim-wa-oge { display: flex; gap: 12px; align-items: center; padding: 10px 10px; border-radius: 12px; text-decoration: none; color: inherit; cursor: pointer; }
+    .sayim-wa-oge:hover { background: #f8fafc; color: inherit; }
+    .sayim-wa-oge.active { background: #eef2f6; }
+    .sayim-wa-avatar { --yuzde: 0; --renk: #22c55e; flex: 0 0 48px; width: 48px; height: 48px; border-radius: 50%; padding: 3px; background: conic-gradient(var(--renk) calc(var(--yuzde) * 1%), #e2e8f0 0); }
+    .sayim-wa-avatar span { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; border-radius: 50%; background: #f1f5f9; color: #475569; font-size: 20px; }
+    .sayim-wa-govde { flex: 1; min-width: 0; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; }
+    .sayim-wa-oge:last-child .sayim-wa-govde, .sayim-wa-oge.active .sayim-wa-govde, .sayim-wa-oge:hover .sayim-wa-govde { border-bottom-color: transparent; }
+    .sayim-wa-baslik { font-size: 14.5px; font-weight: 600; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sayim-wa-zaman { font-size: 11.5px; color: #64748b; white-space: nowrap; margin-left: 8px; }
+    .sayim-wa-oge.acik .sayim-wa-zaman { color: #16a34a; }
+    .sayim-wa-oge.iptal { opacity: .82; }
+    .sayim-wa-oge.iptal .sayim-wa-avatar { background: #fecaca !important; }
+    .sayim-wa-oge.iptal .sayim-wa-avatar span { background: #fef2f2; color: #dc2626; }
+    .sayim-wa-oge.iptal .sayim-wa-baslik { color: #64748b; text-decoration: line-through; text-decoration-color: rgba(220, 38, 38, .45); }
+    .sayim-wa-oge.iptal .sayim-wa-zaman { color: #dc2626; }
+    .sayim-wa-alt { font-size: 12.5px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sayim-wa-sag { position: relative; display: inline-flex; align-items: center; margin-left: 8px; min-width: 26px; justify-content: flex-end; }
+    .sayim-wa-sag .sayim-wa-rozet { margin-left: 0; }
+    .sayim-wa-iptal { position: absolute; right: 0; top: 50%; transform: translateY(-50%); width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%; background: #fee2e2; color: #dc2626; font-size: 16px; line-height: 1; display: none; align-items: center; justify-content: center; }
+    .sayim-wa-iptal:hover { background: #fecaca; }
+    .sayim-wa-oge:hover .sayim-wa-iptal, .sayim-wa-oge.active .sayim-wa-iptal { display: inline-flex; }
+    .sayim-wa-oge:hover .sayim-wa-sag .sayim-wa-rozet, .sayim-wa-oge.active .sayim-wa-sag .sayim-wa-rozet { visibility: hidden; }
+    .sayim-wa-rozet { min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px; background: #22c55e; color: #fff; font-size: 11.5px; font-weight: 700; line-height: 22px; text-align: center; margin-left: 8px; }
+    .sayim-wa-rozet.iptal { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; font-weight: 600; }
+    @media (max-width: 767px) { .sayim-ozet { grid-template-columns: repeat(2, 1fr); } }
+</style>
 <script>try { document.documentElement.classList.toggle('aparat-summary-hidden', localStorage.getItem('aparat_summary_cards_state') === 'hidden'); } catch (e) {}</script>
 
 <style>
@@ -72,18 +234,36 @@ foreach (AparatTipiModel::RENKLER as $renk) {
         white-space: nowrap;
     }
 
-    .aparat-matris tbody td.adet-hucre {
-        text-align: center;
+    .aparat-matris tbody td,
+    .aparat-matris tfoot td,
+    #tabloHareketler tbody td,
+    #tabloIslemler tbody td,
+    #tabloTransferler tbody td {
+        padding: 0.32rem 0.55rem !important;
+        font-size: 12.5px;
+        line-height: 1.25;
+    }
+
+    #tabloStokMatris tbody tr,
+    #tabloStokMatris tfoot tr.havuz-tiklanabilir {
+        cursor: pointer;
+    }
+
+    .aparat-matris tbody td.adet-hucre,
+    .aparat-matris tfoot td.adet-hucre {
+        text-align: center !important;
         font-weight: 600;
         font-variant-numeric: tabular-nums;
     }
 
-    .aparat-matris tbody td.adet-sifir {
+    .aparat-matris tbody td.adet-sifir,
+    .aparat-matris tfoot td.adet-sifir {
         color: #adb5bd;
         font-weight: 400;
     }
 
-    .aparat-matris tbody td.adet-negatif {
+    .aparat-matris tbody td.adet-negatif,
+    .aparat-matris tfoot td.adet-negatif {
         color: #f46a6a;
         background-color: rgba(244, 106, 106, .10);
     }
@@ -321,6 +501,7 @@ foreach (AparatTipiModel::RENKLER as $renk) {
         </div>
 
         <div class="personel-action-toolbar col-lg-7 col-12 d-flex flex-wrap align-items-center justify-content-lg-end gap-2 mt-2 mt-lg-0">
+            <div class="<?= $aktifSekme === 'pane-stok' ? 'd-flex' : 'd-none' ?> flex-wrap align-items-center gap-2 tab-aksiyon" data-tab="#pane-stok">
             <?php if ($yetkiDepo): ?>
                 <button type="button" class="btn btn-primary top-action-btn shadow-sm text-white btn-depo-hareket" data-tur="depo_giris">
                     <i class="bx bx-plus font-size-16"></i> Depoya Giriş
@@ -341,9 +522,6 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                         <button type="button" class="dropdown-item d-flex align-items-center btn-depo-hareket" data-tur="acilis">
                             <i class="bx bx-box me-2 font-size-16 text-primary"></i> Açılış Stoğu
                         </button>
-                        <button type="button" class="dropdown-item d-flex align-items-center" id="btnManuelIslem">
-                            <i class="bx bx-edit me-2 font-size-16 text-primary"></i> Manuel Saha Kaydı
-                        </button>
                         <div class="dropdown-divider"></div>
                         <button type="button" class="dropdown-item d-flex align-items-center btn-depo-hareket" data-tur="hurda">
                             <i class="bx bx-trash me-2 font-size-16 text-warning"></i> Hurdaya Ayır
@@ -352,6 +530,14 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                             <i class="bx bx-error me-2 font-size-16 text-danger"></i> Kayıp Kaydı
                         </button>
                     </div>
+                </div>
+            <?php endif; ?>
+            </div>
+            <?php if ($yetkiGelismis && $yetkiDepo): ?>
+                <div class="<?= $aktifSekme === 'pane-islemler' ? 'd-flex' : 'd-none' ?> flex-wrap align-items-center gap-2 tab-aksiyon" data-tab="#pane-islemler">
+                    <button type="button" class="btn btn-primary top-action-btn shadow-sm text-white" id="btnManuelIslem">
+                        <i class="bx bx-plus font-size-16"></i> Manuel Saha Kaydı
+                    </button>
                 </div>
             <?php endif; ?>
             <?php if ($yetkiDashboard): ?>
@@ -457,20 +643,20 @@ foreach (AparatTipiModel::RENKLER as $renk) {
         </div>
 
         <ul class="nav nav-tabs nav-tabs-custom mb-3" role="tablist">
-            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#pane-stok" role="tab">
+            <li class="nav-item"><a class="nav-link<?= $aktifSekme === 'pane-stok' ? ' active' : '' ?>" data-bs-toggle="tab" href="#pane-stok" role="tab">
                     <i class="bx bx-table me-1"></i> Stok Durumu</a></li>
-            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pane-islemler" role="tab">
+            <li class="nav-item"><a class="nav-link<?= $aktifSekme === 'pane-islemler' ? ' active' : '' ?>" data-bs-toggle="tab" href="#pane-islemler" role="tab">
                     <i class="bx bx-list-ul me-1"></i> Saha İşlemleri</a></li>
-            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pane-hareketler" role="tab">
+            <li class="nav-item"><a class="nav-link<?= $aktifSekme === 'pane-hareketler' ? ' active' : '' ?>" data-bs-toggle="tab" href="#pane-hareketler" role="tab">
                     <i class="bx bx-transfer-alt me-1"></i> Hareket Dökümü</a></li>
-            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pane-transferler" role="tab">
+            <li class="nav-item"><a class="nav-link<?= $aktifSekme === 'pane-transferler' ? ' active' : '' ?>" data-bs-toggle="tab" href="#pane-transferler" role="tab">
                     <i class="bx bx-git-compare me-1"></i> Transferler</a></li>
-            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pane-sayim" role="tab">
+            <li class="nav-item"><a class="nav-link<?= $aktifSekme === 'pane-sayim' ? ' active' : '' ?>" data-bs-toggle="tab" href="#pane-sayim" role="tab">
                     <i class="bx bx-check-square me-1"></i> Sayım</a></li>
-            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pane-raporlar" role="tab">
+            <li class="nav-item"><a class="nav-link<?= $aktifSekme === 'pane-raporlar' ? ' active' : '' ?>" data-bs-toggle="tab" href="#pane-raporlar" role="tab">
                     <i class="bx bx-bar-chart-alt-2 me-1"></i> Raporlar</a></li>
             <?php if ($yetkiTanim): ?>
-                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pane-tanimlar" role="tab">
+                <li class="nav-item"><a class="nav-link<?= $aktifSekme === 'pane-tanimlar' ? ' active' : '' ?>" data-bs-toggle="tab" href="#pane-tanimlar" role="tab">
                         <i class="bx bx-cog me-1"></i> Tanımlar</a></li>
             <?php endif; ?>
         </ul>
@@ -478,7 +664,7 @@ foreach (AparatTipiModel::RENKLER as $renk) {
 
     <div class="tab-content">
 
-        <div class="tab-pane fade show active" id="pane-stok">
+        <div class="tab-pane fade<?= $aktifSekme === 'pane-stok' ? ' show active' : '' ?>" id="pane-stok">
             <div class="card summary-kpi-card mb-3" id="aparatListCard">
                 <div class="card-header bg-transparent border-bottom py-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
                     <div class="d-flex align-items-center gap-2">
@@ -490,17 +676,23 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                             <p class="text-muted font-size-12 mb-0">Turuncu: azaldı · Kırmızı: bitti/eksi. Alt satırlarda depo ve abonede takılı olanlar.</p>
                         </div>
                     </div>
-                    <a class="btn btn-outline-success btn-sm" id="btnStokExcel"
-                        href="views/aparat-takip/export-excel.php?tip=stok" title="Excel İndir">
-                        <i class="bx bx-download"></i> Excel
-                    </a>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-primary btn-sm" id="btnStokSifirlariGizle" aria-pressed="true" title="Tüm aparatları 0 olan ekip/personel satırlarını gizle/göster">
+                            <i class="bx bx-show me-1"></i> Sıfırları Göster
+                        </button>
+                        <a class="btn btn-outline-success btn-sm" id="btnStokExcel"
+                            href="views/aparat-takip/export-excel.php?tip=stok" title="Excel İndir">
+                            <i class="bx bx-download"></i> Excel
+                        </a>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-sm table-hover align-middle aparat-matris mb-0 w-100" id="tabloStokMatris" style="width:100%">
                             <thead class="table-light">
                                 <tr>
-                                    <th data-filter="string">Ekip / Personel</th>
+                                    <th data-filter="string">Ekip</th>
+                                    <th data-filter="string">Personel</th>
                                     <?php foreach ($tipler as $t): ?>
                                         <th class="text-center<?= (int) $t['is_active'] === 0 ? ' text-muted' : '' ?>" data-filter="number">
                                             <?= htmlspecialchars($t['ad'], ENT_QUOTES, 'UTF-8') ?>
@@ -526,43 +718,11 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                     <?php endif; ?>
                 </div>
             </div>
-
-            <div class="card summary-kpi-card mb-0">
-                <div class="card-header bg-transparent border-bottom py-3 d-flex align-items-center gap-2">
-                    <div class="bg-primary-subtle text-primary rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;">
-                        <i class="bx bx-history fs-5"></i>
-                    </div>
-                    <div>
-                        <h5 class="mb-0 font-size-14 fw-bold">Son Depo Hareketleri</h5>
-                        <p class="text-muted font-size-12 mb-0">Depoya giren, ekibe verilen ve iade alınan son 10 kayıt.</p>
-                    </div>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-sm align-middle mb-0" id="tabloSonDepo">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Tarih</th>
-                                    <th>Hareket</th>
-                                    <th>Aparat</th>
-                                    <th class="text-center">Adet</th>
-                                    <th>Ekip / Personel</th>
-                                    <th>Kaydeden</th>
-                                    <th>Açıklama</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr><td colspan="7" class="text-center text-muted py-3">Yükleniyor...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <!-- ============ SAHA İŞLEMLERİ ============ -->
         <?php if ($yetkiGelismis): ?>
-        <div class="tab-pane fade" id="pane-islemler">
+        <div class="tab-pane fade<?= $aktifSekme === 'pane-islemler' ? ' show active' : '' ?>" id="pane-islemler">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-transparent border-bottom py-3">
                     <div class="row g-2 align-items-end">
@@ -615,7 +775,7 @@ foreach (AparatTipiModel::RENKLER as $renk) {
         </div>
 
         <!-- ============ HAREKET DÖKÜMÜ ============ -->
-        <div class="tab-pane fade" id="pane-hareketler">
+        <div class="tab-pane fade<?= $aktifSekme === 'pane-hareketler' ? ' show active' : '' ?>" id="pane-hareketler">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-transparent border-bottom py-3">
                     <div class="row g-2 align-items-end">
@@ -655,7 +815,7 @@ foreach (AparatTipiModel::RENKLER as $renk) {
         </div>
 
         <!-- ============ TRANSFERLER ============ -->
-        <div class="tab-pane fade" id="pane-transferler">
+        <div class="tab-pane fade<?= $aktifSekme === 'pane-transferler' ? ' show active' : '' ?>" id="pane-transferler">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-transparent border-bottom py-3 d-flex flex-wrap align-items-center gap-2">
                     <div class="status-filter-group shadow-sm" id="transferDurumFiltre">
@@ -699,32 +859,49 @@ foreach (AparatTipiModel::RENKLER as $renk) {
         </div>
 
         <!-- ============ SAYIM ============ -->
-        <div class="tab-pane fade" id="pane-sayim">
+        <div class="tab-pane fade<?= $aktifSekme === 'pane-sayim' ? ' show active' : '' ?>" id="pane-sayim">
             <div class="row g-3">
-                <div class="col-lg-4">
-                    <div class="card border-0 shadow-sm h-100">
-                        <div class="card-header bg-transparent border-bottom py-3 d-flex align-items-center justify-content-between">
-                            <h6 class="mb-0 fw-bold">Sayımlar</h6>
+                <div class="col-lg-3">
+                    <div class="card border-0 shadow-sm h-100 sayim-liste-kart">
+                        <div class="card-header bg-transparent border-0 pt-3 pb-2 d-flex align-items-center justify-content-between">
+                            <h5 class="mb-0 fw-bold">Sayımlar</h5>
                             <?php if ($yetkiSayim): ?>
-                                <button class="btn btn-sm btn-primary" id="btnSayimBaslat"><i class="bx bx-plus"></i> Başlat</button>
+                                <button class="btn btn-sm btn-primary rounded-pill px-3" id="btnSayimBaslat"><i class="bx bx-plus me-1"></i>Yeni Sayım</button>
                             <?php endif; ?>
                         </div>
-                        <div class="card-body p-0">
-                            <div class="list-group list-group-flush" id="sayimListesi">
-                                <div class="list-group-item text-muted small">Yükleniyor...</div>
+                        <div class="px-3 pb-2">
+                            <div class="sayim-liste-arama">
+                                <i class="bx bx-search"></i>
+                                <input type="search" id="sayimListeArama" placeholder="Sayım ara veya filtrele" autocomplete="off">
+                            </div>
+                            <div class="sayim-chip-grup mt-2" id="sayimListeFiltre">
+                                <button type="button" class="active" data-durum="">Tümü</button>
+                                <button type="button" data-durum="acik">Açık</button>
+                                <button type="button" data-durum="tamamlandi">Tamamlandı</button>
+                                <button type="button" data-durum="iptal">İptal</button>
+                            </div>
+                        </div>
+                        <div class="card-body p-0 sayim-wa-kap">
+                            <div id="sayimListesi">
+                                <div class="text-muted small p-3">Yükleniyor...</div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-lg-8">
+                <div class="col-lg-9">
                     <div class="card border-0 shadow-sm h-100">
                         <div class="card-header bg-transparent border-bottom py-3 d-flex flex-wrap align-items-center gap-2">
-                            <h6 class="mb-0 fw-bold" id="sayimBaslik">Sayım seçilmedi</h6>
-                            <div class="ms-auto d-flex gap-2" id="sayimAksiyonlar"></div>
+                            <div>
+                                <h6 class="mb-0 fw-bold" id="sayimBaslik">Sayım seçilmedi</h6>
+                                <div class="small text-muted" id="sayimAltBaslik"></div>
+                            </div>
+                            <div class="d-flex flex-wrap justify-content-end gap-2 ms-auto" id="sayimAksiyonlar"></div>
                         </div>
-                        <div class="card-body">
-                            <div id="sayimDetayIcerik" class="text-muted small">
-                                Soldaki listeden bir sayım seçin.
+                        <div class="card-body p-2">
+                            <div id="sayimDetayIcerik" class="text-muted text-center py-5">
+                                <i class="bx bx-list-check fs-1 d-block mb-2"></i>
+                                Soldaki listeden bir sayım seçin
+                                <?php if ($yetkiSayim): ?>veya yeni bir sayım başlatın<?php endif; ?>.
                             </div>
                         </div>
                     </div>
@@ -733,7 +910,7 @@ foreach (AparatTipiModel::RENKLER as $renk) {
         </div>
 
         <!-- ============ RAPORLAR ============ -->
-        <div class="tab-pane fade" id="pane-raporlar">
+        <div class="tab-pane fade<?= $aktifSekme === 'pane-raporlar' ? ' show active' : '' ?>" id="pane-raporlar">
             <div class="row g-3">
                 <div class="col-12">
                     <div class="card border-0 shadow-sm">
@@ -830,7 +1007,7 @@ foreach (AparatTipiModel::RENKLER as $renk) {
         <?php endif; ?>
         <!-- ============ TANIMLAR ============ -->
         <?php if ($yetkiTanim): ?>
-            <div class="tab-pane fade" id="pane-tanimlar">
+            <div class="tab-pane fade<?= $aktifSekme === 'pane-tanimlar' ? ' show active' : '' ?>" id="pane-tanimlar">
                 <div class="card summary-kpi-card mb-0">
                     <div class="card-header bg-transparent border-bottom py-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
                         <div class="d-flex align-items-center gap-2">
@@ -1088,6 +1265,109 @@ foreach (AparatTipiModel::RENKLER as $renk) {
     </div>
 </div>
 
+<!-- ============ MODAL: TOPLU HAVUZ HAREKETİ (ekip x aparat) ============ -->
+<div class="modal fade" id="modalHavuzToplu" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="topluBaslik">Ekibe Ver</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="toplu_tur" value="depo_cikis">
+                <p class="text-muted small mb-2" id="topluAciklama"></p>
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <div class="sayim-liste-arama flex-grow-1">
+                        <i class="bx bx-search"></i>
+                        <input type="search" id="topluArama" placeholder="Ekip veya personel ara" autocomplete="off">
+                    </div>
+                    <div class="sayim-chip-grup" id="topluFiltre">
+                        <button type="button" class="active" data-filtre="tum">Tümü</button>
+                        <button type="button" data-filtre="girilen">Girilenler <span class="sayim-chip-say" id="topluSayGirilen">0</span></button>
+                    </div>
+                </div>
+                <div class="toplu-tablo-kap" id="topluTabloKap"></div>
+                <div class="row g-2 mt-2 align-items-center">
+                    <div class="col-md" id="topluAciklamaAlan"><?= Form::FormFloatInput('text', 'toplu_aciklama', '', 'Açıklama / irsaliye no', 'Açıklama / irsaliye no (tüm kayıtlara yazılır)', 'bx bx-note') ?></div>
+                    <div class="col-md-auto d-none" id="topluBozukAlan">
+                        <div class="form-check form-switch p-2 ps-5 pe-3 border rounded-3 bg-danger-subtle border-danger-subtle mb-0">
+                            <input class="form-check-input" type="checkbox" id="toplu_bozuk">
+                            <label class="form-check-label fw-semibold text-danger small" for="toplu_bozuk">Bozuk / hasarlı — hurdaya ayır</label>
+                        </div>
+                    </div>
+                    <div class="col-md-3 d-none" id="topluCezaAlan">
+                        <div class="form-floating form-floating-custom">
+                            <input type="number" step="0.01" min="0" class="form-control border-danger-subtle" id="toplu_ceza_tutari" placeholder="Aparat Başına Ceza (₺)">
+                            <label for="toplu_ceza_tutari" class="text-danger">Aparat Başına Ceza (₺)</label>
+                            <div class="form-floating-icon"><i class="bx bx-lira text-danger"></i></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="me-auto small text-muted" id="topluOzetMetin">Henüz adet girilmedi.</div>
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="button" class="btn btn-primary" id="btnTopluKaydet" disabled>Kaydet</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============ MODAL: TOPLU DEPOYA GİRİŞ ============ -->
+<div class="modal fade" id="modalDepoGiris" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Depoya Giriş</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-2">Satın alınan veya depoya gelen aparatların adetlerini girin. Gelmeyen aparatları boş bırakın.</p>
+                <div class="toplu-tablo-kap" id="dgTabloKap" style="min-height:0"></div>
+                <div class="mt-2"><?= Form::FormFloatInput('text', 'dg_aciklama', '', 'Açıklama / irsaliye no', 'Açıklama / irsaliye no (tüm kayıtlara yazılır)', 'bx bx-note') ?></div>
+            </div>
+            <div class="modal-footer">
+                <div class="me-auto small text-muted" id="dgOzetMetin">Henüz adet girilmedi.</div>
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="button" class="btn btn-primary" id="btnDgKaydet" disabled>Kaydet</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============ MODAL: AÇIK SAYIMA EKİP / PERSONEL EKLE ============ -->
+<?php if ($yetkiSayim): ?>
+<div class="modal fade" id="modalSayimEkle" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Sayıma Ekip / Personel Ekle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body" id="seKap">
+                <p class="text-muted small mb-2">Sayımda henüz yer almayan ekip ve personel listelenir. Seçtikleriniz, o anki stokları sistem adedi olarak sayıma eklenir.</p>
+                <div class="alert alert-light border small d-none" id="seBosMesaj">Eklenecek ekip veya personel kalmadı, hepsi sayımda.</div>
+                <div class="sayim-liste-arama mb-2">
+                    <i class="bx bx-search"></i>
+                    <input type="search" id="seArama" placeholder="Ekip veya personel ara" autocomplete="off">
+                </div>
+                <div class="sayim-chip-grup mb-2" id="seGrupFiltre"></div>
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="seGorunenleriSec">Görünenleri seç</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="seGorunenleriKaldir">Görünenleri kaldır</button>
+                    <span class="ms-auto small text-muted" id="seSecimOzet"></span>
+                </div>
+                <div class="sy-liste" id="seListe"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="button" class="btn btn-primary" id="btnSayimEkleKaydet" disabled>Sayıma Ekle</button>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <!-- ============ MODAL: MANUEL SAHA KAYDI ============ -->
 <?php if ($yetkiGelismis): ?>
 <div class="modal fade" id="modalIslem" tabindex="-1">
@@ -1142,6 +1422,11 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                 <?php if ($yetkiIptal): ?>
                     <button type="button" class="btn btn-outline-danger me-auto" id="btnIslemIptal">
                         <i class="bx bx-x-circle me-1"></i> Kaydı İptal Et
+                    </button>
+                <?php endif; ?>
+                <?php if ($yetkiSil): ?>
+                    <button type="button" class="btn btn-danger me-auto" id="btnIslemSil">
+                        <i class="bx bx-trash me-1"></i> Kaydı Sil
                     </button>
                 <?php endif; ?>
                 <button type="button" class="btn btn-light" data-bs-dismiss="modal">Kapat</button>
@@ -1227,7 +1512,7 @@ foreach (AparatTipiModel::RENKLER as $renk) {
 <!-- ============ MODAL: SAYIM BAŞLAT ============ -->
 <?php if ($yetkiSayim): ?>
     <div class="modal fade" id="modalSayim" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
                 <form id="formSayim">
                     <div class="modal-header">
@@ -1237,13 +1522,19 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                     <div class="modal-body">
                         <div class="row g-3">
                             <div class="col-12"><?= Form::FormFloatInput('text', 'sayim_baslik', 'Aparat Sayımı ' . date('d.m.Y'), '', 'Sayım Başlığı', 'bx bx-clipboard', 'form-control', true, 100) ?></div>
-                            <div class="col-12">
-                                <label class="form-label small text-muted">Sayıma dahil ekipler (boş bırakılırsa tümü)</label>
-                                <select class="form-select select2" id="sayim_ekipler" multiple style="width:100%">
-                                    <?php foreach ($ekipler as $ekip): ?>
-                                        <option value="<?= (int) $ekip['id'] ?>"><?= htmlspecialchars($ekipEtiketi($ekip), ENT_QUOTES, 'UTF-8') ?></option>
-                                    <?php endforeach; ?>
-                                </select>
+                            <div class="col-12" id="syKap">
+                                <label class="form-label small text-muted mb-1">Sayıma dahil edilecek ekip ve personel</label>
+                                <div class="sayim-liste-arama mb-2">
+                                    <i class="bx bx-search"></i>
+                                    <input type="search" id="syArama" placeholder="Ekip veya personel ara" autocomplete="off">
+                                </div>
+                                <div class="sayim-chip-grup mb-2" id="syGrupFiltre"></div>
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="syGorunenleriSec">Görünenleri seç</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="syGorunenleriKaldir">Görünenleri kaldır</button>
+                                    <span class="ms-auto small text-muted" id="sySecimOzet"></span>
+                                </div>
+                                <div class="sy-liste" id="syListe"></div>
                             </div>
                             <div class="col-12"><?= Form::FormFloatTextarea('sayim_aciklama', '', 'Açıklama', 'Açıklama', 'bx bx-note') ?></div>
                         </div>
@@ -1258,15 +1549,114 @@ foreach (AparatTipiModel::RENKLER as $renk) {
     </div>
 <?php endif; ?>
 
+<div class="modal fade" id="modalSahipHareketGecmisi" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center" style="width:42px;height:42px;">
+                        <i class="bx bx-history fs-4"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title mb-0" id="sahipGecmisBaslik">Hareket Geçmişi</h5>
+                        <div class="small text-muted" id="sahipGecmisAltBaslik"></div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="sahipGecmisIcerik" class="p-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalSayimExcel" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-warning-subtle text-warning rounded-circle d-flex align-items-center justify-content-center" style="width:44px;height:44px;">
+                        <i class="bx bx-upload fs-4"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title mb-0">Excel ile Sayım</h5>
+                        <div class="small text-muted">Sayım formunu indirin, doldurup yükleyin.</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-success bg-success bg-opacity-10 border border-success border-opacity-25 mb-3">
+                    <div class="d-flex align-items-start">
+                        <i class="bx bx-download fs-4 me-2 text-success"></i>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1"><strong>Sayım Formunu İndirin</strong></h6>
+                            <p class="mb-2 small text-muted">
+                                Ekip ve personel ayrı sütunlarda, aparat tipleri ise yan yana sütunlarda yer alır. Hücrelerde şu ana kadar girilen sayılan adetler bulunur; "Sistem Stok" sayfasında sistemdeki adetleri görebilirsiniz.
+                            </p>
+                            <a href="#" id="btnSayimFormIndir" class="btn btn-sm btn-success">
+                                <i class="bx bx-download me-1"></i>Sayım Formunu İndir
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <?php if ($yetkiSayim): ?>
+                    <div id="sayimExcelYukleBlok">
+                        <label for="sayimExcelDosya" class="form-label">Excel Dosyası Seçin (.xlsx)</label>
+                        <input class="form-control" type="file" id="sayimExcelDosya" accept=".xlsx">
+                        <div class="form-text">
+                            Satırda en az bir adet girilmişse boş hücreler 0 kabul edilir. Tamamen boş ekip satırları ve TOPLAM satırı atlanır.
+                        </div>
+                    </div>
+                <?php endif; ?>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <?php if ($yetkiSayim): ?>
+                    <button type="button" class="btn btn-primary" id="btnSayimExcelGonder" disabled>Yükle</button>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     window.aparatYetki = {
         depo: <?= $yetkiDepo ? 'true' : 'false' ?>,
         iptal: <?= $yetkiIptal ? 'true' : 'false' ?>,
+        sil: <?= $yetkiSil ? 'true' : 'false' ?>,
         sayim: <?= $yetkiSayim ? 'true' : 'false' ?>,
         tanim: <?= $yetkiTanim ? 'true' : 'false' ?>,
         transfer: <?= $yetkiTransfer ? 'true' : 'false' ?>,
         gelismis: <?= $yetkiGelismis ? 'true' : 'false' ?>
     };
+    window.aparatSonKayipCeza = <?= json_encode((new AparatHareketModel())->sonKayipCezaTutari()) ?>;
+    window.aparatEkipler = <?php
+        $ayarModeli = new \App\Model\SettingsModel();
+        echo json_encode(array_map(function ($e) use ($ekipUyeleri, $ayarModeli) {
+            $grup = 'diger';
+            if (\App\Helper\EkipHelper::isTeamInTabRange($e['tur_adi'], 'kesme', $ayarModeli)) {
+                $grup = 'kesme';
+            } elseif (\App\Helper\EkipHelper::isTeamInTabRange($e['tur_adi'], 'kacakkontrol', $ayarModeli)) {
+                $grup = 'kacak';
+            }
+            return [
+                'id' => (int) $e['id'],
+                'adi' => $e['tur_adi'],
+                'uyeler' => $ekipUyeleri[(int) $e['id']] ?? '',
+                'grup' => $grup,
+            ];
+        }, $ekipler), JSON_UNESCAPED_UNICODE);
+    ?>;
+    window.aparatPersoneller = <?= json_encode(array_map(fn($p) => [
+        'id' => (int) $p['id'],
+        'adi' => $p['adi_soyadi'],
+        'gorev' => $p['gorev'],
+    ], $Stok->kacakPersoneller()), JSON_UNESCAPED_UNICODE) ?>;
     window.aparatTipleri = <?= json_encode(array_map(fn($t) => [
         'id' => (int) $t['id'],
         'ad' => $t['ad'],

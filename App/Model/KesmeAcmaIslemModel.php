@@ -212,6 +212,15 @@ class KesmeAcmaIslemModel extends Model
         return $stmt->rowCount() > 0;
     }
 
+    public function silEt(int $id): bool
+    {
+        $stmt = $this->db->prepare("UPDATE {$this->table}
+            SET silinme_tarihi = NOW()
+            WHERE id = ? AND firma_id = ? AND silinme_tarihi IS NULL");
+        $stmt->execute([$id, $this->firmaId()]);
+        return $stmt->rowCount() > 0;
+    }
+
     // ---------- Fotoğraflar ----------
 
     public function fotograflar(int $islemId): array

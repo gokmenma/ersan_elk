@@ -72,13 +72,14 @@ class AparatSayimModel extends Model
             $detay = $this->db->prepare("INSERT INTO aparat_sayim_detay
                 (firma_id, sayim_id, ekip_id, aparat_tip_id, sistem_adet)
                 SELECT ?, ?, ?, ?, COALESCE((SELECT adet FROM aparat_stok
-                    WHERE firma_id = ? AND sahip_tipi = 'ekip' AND sahip_id = ? AND aparat_tip_id = ?), 0)");
+                    WHERE firma_id = ? AND sahip_tipi = ? AND sahip_id = ? AND aparat_tip_id = ?), 0)");
 
             foreach ($ekipler as $ekipId) {
+                $ekipId = (int) $ekipId;
                 foreach ($tipler as $tipId) {
                     $detay->execute([
-                        $firmaId, $sayimId, (int) $ekipId, (int) $tipId,
-                        $firmaId, (int) $ekipId, (int) $tipId,
+                        $firmaId, $sayimId, $ekipId, (int) $tipId,
+                        $firmaId, $ekipId < 0 ? 'personel' : 'ekip', abs($ekipId), (int) $tipId,
                     ]);
                 }
             }
@@ -97,11 +98,14 @@ class AparatSayimModel extends Model
 
     public function detaylar(int $sayimId, ?int $ekipId = null): array
     {
-        $sql = "SELECT d.*, t.ad AS aparat_adi, t.kod AS aparat_kod, ek.tur_adi AS ekip_adi,
+        $sql = "SELECT d.*, t.ad AS aparat_adi, t.kod AS aparat_kod,
+                       CASE WHEN d.ekip_id < 0 THEN pk.adi_soyadi ELSE ek.tur_adi END AS ekip_adi,
+                       CASE WHEN d.ekip_id < 0 THEN 1 ELSE 0 END AS personel_mi,
                        p.adi_soyadi AS giren_adi
                 FROM aparat_sayim_detay d
                 LEFT JOIN aparat_tipleri t ON t.id = d.aparat_tip_id
-                LEFT JOIN tanimlamalar ek ON ek.id = d.ekip_id
+                LEFT JOIN tanimlamalar ek ON d.ekip_id > 0 AND ek.id = d.ekip_id
+                LEFT JOIN personel pk ON d.ekip_id < 0 AND pk.id = -d.ekip_id
                 LEFT JOIN personel p ON p.id = d.giren_personel_id
                 WHERE d.sayim_id = ? AND d.firma_id = ?";
         $parametreler = [$sayimId, $this->firmaId()];
@@ -111,11 +115,68 @@ class AparatSayimModel extends Model
             $parametreler[] = $ekipId;
         }
 
-        $sql .= " ORDER BY ek.tur_adi ASC, t.sira ASC";
+        $sql .= " ORDER BY (d.ekip_id < 0) ASC, ek.tur_adi ASC, pk.adi_soyadi ASC, t.sira ASC";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($parametreler);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Açık sayıma ekip (pozitif) veya personel (negatif = -personel_id) ekler.
+     * Sayımda zaten bulunanlara dokunmaz. Eklenen satır sayısını döndürür.
+     */
+    public function satirlariEkle(int $sayimId, array $sahipler, array $tipler): int
+    {
+        $eklenen = 0;
+        $firmaId = $this->firmaId();
+        $var = $this->db->prepare("SELECT COUNT(*) FROM aparat_sayim_detay WHERE sayim_id = ? AND ekip_id = ?");
+        $ekle = $this->db->prepare("INSERT INTO aparat_sayim_detay
+            (firma_id, sayim_id, ekip_id, aparat_tip_id, sistem_adet)
+            SELECT ?, ?, ?, ?, COALESCE((SELECT adet FROM aparat_stok
+                WHERE firma_id = ? AND sahip_tipi = ? AND sahip_id = ? AND aparat_tip_id = ?), 0)");
+
+        foreach ($sahipler as $sahip) {
+            $sahip = (int) $sahip;
+            if ($sahip === 0) {
+                continue;
+            }
+            $var->execute([$sayimId, $sahip]);
+            if ((int) $var->fetchColumn() > 0) {
+                continue;
+            }
+            foreach ($tipler as $tipId) {
+                $ekle->execute([$firmaId, $sayimId, $sahip, (int) $tipId, $firmaId, $sahip < 0 ? 'personel' : 'ekip', abs($sahip), (int) $tipId]);
+                $eklenen++;
+            }
+        }
+
+        return $eklenen;
+    }
+
+    public function sahipIslenmisSatirVarMi(int $sayimId, int $sahipId): bool
+    {
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM aparat_sayim_detay
+            WHERE sayim_id = ? AND ekip_id = ? AND firma_id = ? AND islendi = 1");
+        $stmt->execute([$sayimId, $sahipId, $this->firmaId()]);
+        return (int) $stmt->fetchColumn() > 0;
+    }
+
+    public function sahibiCikar(int $sayimId, int $sahipId): int
+    {
+        $stmt = $this->db->prepare("DELETE FROM aparat_sayim_detay
+            WHERE sayim_id = ? AND ekip_id = ? AND firma_id = ? AND islendi = 0");
+        $stmt->execute([$sayimId, $sahipId, $this->firmaId()]);
+        return $stmt->rowCount();
+    }
+
+    public function satirGetir(int $sayimId, int $ekipId, int $tipId): ?array
+    {
+        $stmt = $this->db->prepare("SELECT * FROM aparat_sayim_detay
+            WHERE sayim_id = ? AND ekip_id = ? AND aparat_tip_id = ? AND firma_id = ?");
+        $stmt->execute([$sayimId, $ekipId, $tipId, $this->firmaId()]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
     }
 
     public function detayGetir(int $detayId): ?array
@@ -135,12 +196,12 @@ class AparatSayimModel extends Model
     {
         $stmt = $this->db->prepare("UPDATE aparat_sayim_detay d
             SET d.sistem_adet = COALESCE((SELECT s.adet FROM aparat_stok s
-                    WHERE s.firma_id = d.firma_id AND s.sahip_tipi = 'ekip'
-                      AND s.sahip_id = d.ekip_id AND s.aparat_tip_id = d.aparat_tip_id), 0),
+                    WHERE s.firma_id = d.firma_id AND s.sahip_tipi = IF(d.ekip_id < 0, 'personel', 'ekip')
+                      AND s.sahip_id = ABS(d.ekip_id) AND s.aparat_tip_id = d.aparat_tip_id), 0),
                 d.sayilan_adet = ?,
                 d.fark = ? - COALESCE((SELECT s.adet FROM aparat_stok s
-                    WHERE s.firma_id = d.firma_id AND s.sahip_tipi = 'ekip'
-                      AND s.sahip_id = d.ekip_id AND s.aparat_tip_id = d.aparat_tip_id), 0),
+                    WHERE s.firma_id = d.firma_id AND s.sahip_tipi = IF(d.ekip_id < 0, 'personel', 'ekip')
+                      AND s.sahip_id = ABS(d.ekip_id) AND s.aparat_tip_id = d.aparat_tip_id), 0),
                 d.aciklama = ?,
                 d.giren_personel_id = ?,
                 d.giris_tarihi = NOW()
@@ -158,6 +219,44 @@ class AparatSayimModel extends Model
     public function islendiIsaretle(int $detayId): void
     {
         $stmt = $this->db->prepare("UPDATE aparat_sayim_detay SET islendi = 1
+            WHERE id = ? AND firma_id = ?");
+        $stmt->execute([$detayId, $this->firmaId()]);
+    }
+
+    const OTOMATIK_ACIKLAMALAR = ['Kullanıldı', 'Elinde mevcut'];
+
+    /**
+     * Fark varsa ve gerekçe boş ya da otomatik metinse gerekçeyi farkın yönüne göre yazar:
+     * eksik → "Kullanıldı", fazla → "Elinde mevcut". Elle yazılmış gerekçeye dokunmaz.
+     */
+    public function otomatikAciklamaUygula(int $sayimId, int $ekipId, int $tipId): string
+    {
+        $satir = $this->satirGetir($sayimId, $ekipId, $tipId);
+        if (!$satir || $satir['sayilan_adet'] === null || (int) $satir['islendi'] === 1) {
+            return (string) ($satir['aciklama'] ?? '');
+        }
+
+        $fark = (int) $satir['fark'];
+        $mevcut = trim((string) ($satir['aciklama'] ?? ''));
+        $otomatikMi = $mevcut === '' || in_array($mevcut, self::OTOMATIK_ACIKLAMALAR, true);
+
+        if (!$otomatikMi) {
+            return $mevcut;
+        }
+
+        $yeni = $fark < 0 ? 'Kullanıldı' : ($fark > 0 ? 'Elinde mevcut' : '');
+        if ($yeni !== $mevcut) {
+            $stmt = $this->db->prepare("UPDATE aparat_sayim_detay SET aciklama = ?
+                WHERE id = ? AND firma_id = ? AND islendi = 0");
+            $stmt->execute([$yeni !== '' ? $yeni : null, (int) $satir['id'], $this->firmaId()]);
+        }
+
+        return $yeni;
+    }
+
+    public function islendiSifirla(int $detayId): void
+    {
+        $stmt = $this->db->prepare("UPDATE aparat_sayim_detay SET islendi = 0
             WHERE id = ? AND firma_id = ?");
         $stmt->execute([$detayId, $this->firmaId()]);
     }

@@ -4616,6 +4616,12 @@ span.flatpickr-weekday {
   border-radius: 0.5rem !important;
 }
 
+.nav-tabs-custom .nav-item .nav-link::after,
+.nav-tabs-custom .nav-item .nav-link.active::after {
+  content: none !important;
+  display: none !important;
+}
+
 .active > .nav-link *,
 .nav-link.active *,
 .nav-pills .nav-link.active *,

@@ -18,10 +18,12 @@ class AparatHareketModel extends Model
     const HAVUZ_SAHA = 'saha';
     const HAVUZ_HURDA = 'hurda';
     const HAVUZ_KAYIP = 'kayip';
+    const HAVUZ_PERSONEL = 'personel';
 
     const HAVUZLAR = [
         self::HAVUZ_DEPO => 'Depo',
         self::HAVUZ_EKIP => 'Ekip',
+        self::HAVUZ_PERSONEL => 'Personel',
         self::HAVUZ_SAHA => 'Sahada Takılı',
         self::HAVUZ_HURDA => 'Hurda',
         self::HAVUZ_KAYIP => 'Kayıp',
@@ -44,7 +46,7 @@ class AparatHareketModel extends Model
      * Stoğun eksiye düşmesi engellenmez (saha kilitlenmesin), fakat düşen her
      * havuz bu listede raporlanır ve kayıt işaretlenir.
      */
-    const NEGATIF_IZLENEN_HAVUZLAR = [self::HAVUZ_EKIP, self::HAVUZ_DEPO, self::HAVUZ_SAHA];
+    const NEGATIF_IZLENEN_HAVUZLAR = [self::HAVUZ_EKIP, self::HAVUZ_PERSONEL, self::HAVUZ_DEPO, self::HAVUZ_SAHA];
 
     public function __construct()
     {
@@ -82,9 +84,9 @@ class AparatHareketModel extends Model
 
         try {
             $hareketStmt = $this->db->prepare("INSERT INTO {$this->table}
-                (firma_id, aparat_tip_id, hareket_tipi, sahip_tipi, sahip_id, adet, ekip_id,
-                 personel_id, referans_tipi, referans_id, aciklama, tarih, kaydeden_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                (firma_id, aparat_tip_id, hareket_tipi, sahip_tipi, sahip_id, adet, birim_ceza, ceza_tutari,
+                 ekip_id, personel_id, referans_tipi, referans_id, aciklama, tarih, kaydeden_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
             $stokStmt = $this->db->prepare("INSERT INTO aparat_stok
                 (firma_id, sahip_tipi, sahip_id, aparat_tip_id, adet)
@@ -120,6 +122,8 @@ class AparatHareketModel extends Model
                     $sahipTipi,
                     $sahipId,
                     $adet,
+                    $ortak['birim_ceza'] ?? null,
+                    $ortak['ceza_tutari'] ?? null,
                     $ortak['ekip_id'] ?? null,
                     $ortak['personel_id'] ?? null,
                     $ortak['referans_tipi'] ?? null,
@@ -206,6 +210,16 @@ class AparatHareketModel extends Model
             ORDER BY id ASC");
         $stmt->execute([$this->firmaId(), $hareket['referans_tipi'], (int) $hareket['referans_id']]);
 
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function referansHareketleri(string $referansTipi, int $referansId): array
+    {
+        $stmt = $this->db->prepare("SELECT * FROM {$this->table}
+            WHERE firma_id = ? AND referans_tipi = ? AND referans_id = ? AND iptal_mi = 0
+              AND (aciklama IS NULL OR aciklama NOT LIKE 'İptal: %')
+            ORDER BY id ASC");
+        $stmt->execute([$this->firmaId(), $referansTipi, $referansId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -452,6 +466,10 @@ class AparatHareketModel extends Model
             $kosul .= ' AND h.sahip_tipi = ?';
             $parametreler[] = $filtre['sahip_tipi'];
         }
+        if (!empty($filtre['sahip_id'])) {
+            $kosul .= ' AND h.sahip_id = ?';
+            $parametreler[] = (int) $filtre['sahip_id'];
+        }
         if (!empty($filtre['personel_id'])) {
             $kosul .= ' AND h.personel_id = ?';
             $parametreler[] = (int) $filtre['personel_id'];
@@ -529,5 +547,16 @@ class AparatHareketModel extends Model
             }
             throw $e;
         }
+    }
+
+    public function sonKayipCezaTutari(): float
+    {
+        $stmt = $this->db->prepare("SELECT birim_ceza FROM {$this->table}
+            WHERE firma_id = ? AND hareket_tipi = 'kayip' AND iptal_mi = 0
+              AND birim_ceza IS NOT NULL AND birim_ceza > 0
+            ORDER BY id DESC LIMIT 1");
+        $stmt->execute([$this->firmaId()]);
+        $deger = $stmt->fetchColumn();
+        return $deger !== false ? (float) $deger : 0.0;
     }
 }

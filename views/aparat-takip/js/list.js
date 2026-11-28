@@ -48,11 +48,53 @@
     }
 
     function hata(mesaj) {
-        Swal.fire('Hata', mesaj || 'İşlem tamamlanamadı.', 'error');
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'error',
+            title: mesaj || 'İşlem tamamlanamadı.',
+            showConfirmButton: false,
+            showCloseButton: true,
+            timer: 4500,
+            timerProgressBar: true
+        });
     }
 
     function basari(mesaj) {
-        Swal.fire('Başarılı', mesaj || 'İşlem tamamlandı.', 'success');
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: mesaj || 'İşlem tamamlandı.',
+            showConfirmButton: false,
+            showCloseButton: true,
+            timer: 3500,
+            timerProgressBar: true
+        });
+    }
+
+    function geriAlBildirimi(mesaj, grupIdleri) {
+        if (!grupIdleri || !grupIdleri.length) return basari(mesaj);
+
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: mesaj,
+            showConfirmButton: true,
+            confirmButtonText: 'Geri Al',
+            showCloseButton: true,
+            timer: 15000,
+            timerProgressBar: true
+        }).then(function (sonuc) {
+            if (!sonuc.isConfirmed) return;
+            istek({ action: 'havuz-geri-al', grup_idleri: JSON.stringify(grupIdleri) }, 'POST').done(function (res) {
+                if (res.status !== 'success') return hata(res.message);
+                basari(res.message);
+                stokYukle();
+                if (dtOrnekleri['#tabloHareketler']) hareketleriYukle();
+            }).fail(() => hata('Geri alınamadı.'));
+        });
     }
 
     function istek(veri, tip) {
@@ -108,27 +150,47 @@
 
     // ---------- Stok matrisi ----------
 
-    function stokYukle() {
-        istek({ action: 'stok-matris' }).done(function (res) {
-            if (res.status !== 'success') return hata(res.message);
+    let stokSifirlariGizle = true;
+    try {
+        const kayitliFiltre = localStorage.getItem('aparat_stok_sifir_gizle');
+        if (kayitliFiltre !== null) stokSifirlariGizle = kayitliFiltre === '1';
+    } catch (e) {}
+    let sonStokYaniti = null;
 
-            const veri = res.data;
-            sonMatris = veri;
-            const kritik = res.kritik || { depo: [], ekipler: [], toplam: 0 };
-            const kritikHarita = {};
-            kritik.depo.forEach(function (e) { kritikHarita['depo_' + e.aparat_tip_id] = e.seviye; });
-            kritik.ekipler.forEach(function (k) {
-                k.eksikler.forEach(function (e) { kritikHarita[k.ekip_id + '_' + e.aparat_tip_id] = e.seviye; });
-            });
-            const altlik = $('#tabloStokMatris tfoot').empty();
+    function stokFiltreButonGuncelle() {
+        const btn = $('#btnStokSifirlariGizle');
+        if (!btn.length) return;
+        btn.toggleClass('btn-primary', stokSifirlariGizle)
+            .toggleClass('btn-outline-secondary', !stokSifirlariGizle)
+            .attr('aria-pressed', stokSifirlariGizle ? 'true' : 'false')
+            .html(stokSifirlariGizle
+                ? '<i class="bx bx-show me-1"></i> Sıfırları Göster'
+                : '<i class="bx bx-hide me-1"></i> Sıfırları Gizle');
+    }
 
-            // Ekip satırları tabloda sıralanabilir kalsın; depo/saha/hurda/kayıp
-            // havuzları ile toplam satırı tfoot'ta sabitlenir.
-            const ekipSatirlari = veri.satirlar.filter(function (s) { return s.sahip_tipi === 'ekip'; });
-            const havuzSatirlari = veri.satirlar.filter(function (s) {
-                if (s.sahip_tipi === 'ekip') return false;
-                return true;
-            });
+    function stokMatrisCiz(res) {
+        const veri = res.data;
+        sonMatris = veri;
+        const kritik = res.kritik || { depo: [], ekipler: [], toplam: 0 };
+        const kritikHarita = {};
+        kritik.depo.forEach(function (e) { kritikHarita['depo_' + e.aparat_tip_id] = e.seviye; });
+        kritik.ekipler.forEach(function (k) {
+            k.eksikler.forEach(function (e) { kritikHarita[k.ekip_id + '_' + e.aparat_tip_id] = e.seviye; });
+        });
+        const altlik = $('#tabloStokMatris tfoot').empty();
+
+        // Ekip satırları tabloda sıralanabilir kalsın; depo/saha/hurda/kayıp
+        // havuzları ile toplam satırı tfoot'ta sabitlenir.
+        const ekipSatirlari = veri.satirlar.filter(function (s) { return s.sahip_tipi === 'ekip' || s.sahip_tipi === 'personel'; });
+        const gorunenEkipSatirlari = stokSifirlariGizle
+            ? ekipSatirlari.filter(function (s) {
+                return veri.tipler.some(function (tip) { return (s.adetler[tip.id] || 0) !== 0; }) || (s.toplam || 0) !== 0;
+            })
+            : ekipSatirlari;
+        const havuzSatirlari = veri.satirlar.filter(function (s) {
+            if (s.sahip_tipi === 'ekip' || s.sahip_tipi === 'personel') return false;
+            return true;
+        });
 
             let sahaToplam = 0;
             let depoToplam = 0;
@@ -136,14 +198,20 @@
             veri.satirlar.forEach(function (s) {
                 if (s.sahip_tipi === 'saha') sahaToplam = s.toplam;
                 if (s.sahip_tipi === 'depo') depoToplam = s.toplam;
-                if (s.sahip_tipi === 'ekip') ekipToplam += s.toplam;
+                if (s.sahip_tipi === 'ekip' || s.sahip_tipi === 'personel') ekipToplam += s.toplam;
             });
 
             const kolonlar = [{
-                data: 'baslik',
+                data: 'ekip',
                 render: bicim(function (deger, satir) {
-                    return `<div class="fw-semibold text-dark">${kacir(satir.uyeler || 'Personel atanmamış')}</div>
-                            <small class="text-muted">${kacir(satir.ekip_kodu)}${satir.bolge ? ' · ' + kacir(satir.bolge) : ''}</small>`;
+                    return `<span class="fw-medium text-dark">${kacir(satir.ekip_kodu)}</span>${satir.bolge ? ` <small class="text-muted">· ${kacir(satir.bolge)}</small>` : ''}`;
+                })
+            }, {
+                data: 'personel',
+                render: bicim(function (deger, satir) {
+                    return satir.uyeler
+                        ? `<span class="fw-semibold text-dark">${kacir(satir.uyeler)}</span>`
+                        : '<span class="text-muted">Personel atanmamış</span>';
                 })
             }];
 
@@ -161,10 +229,12 @@
 
             kolonlar.push({ data: 'toplam', className: 'adet-hucre' });
 
-            const satirlar = ekipSatirlari.map(function (s) {
+            const satirlar = gorunenEkipSatirlari.map(function (s) {
                 const satir = {
+                    sahip_tipi: s.sahip_tipi,
                     sahip_id: s.sahip_id,
-                    baslik: s.uyeler || s.ekip_kodu,
+                    ekip: (s.ekip_kodu || '') + (s.bolge ? ' · ' + s.bolge : ''),
+                    personel: s.uyeler || 'Personel atanmamış',
                     uyeler: s.uyeler,
                     ekip_kodu: s.ekip_kodu,
                     bolge: s.bolge,
@@ -183,10 +253,24 @@
                 createdRow: function (row, data) {
                     veri.tipler.forEach(function (tip, i) {
                         const sinif = esikSinifi(data['adet_' + tip.id], kritikHarita[data.sahip_id + '_' + tip.id]);
-                        if (sinif) $('td', row).eq(i + 1).addClass(sinif);
+                        if (sinif) $('td', row).eq(i + 2).addClass(sinif);
                     });
                 }
             });
+
+            let personelHucreleri = '';
+            veri.tipler.forEach(function (tip) {
+                const adet = ekipSatirlari.reduce(function (toplam, s) {
+                    return toplam + (s.adetler[tip.id] || 0);
+                }, 0);
+                const sinif = adet === 0 ? ' adet-sifir' : (adet < 0 ? ' adet-negatif' : '');
+                personelHucreleri += `<td class="adet-hucre${sinif}">${adet}</td>`;
+            });
+            altlik.append(`<tr class="havuz-satiri">
+                <td colspan="2"><i class="bx bx-group me-1 text-muted"></i><b>Personelde</b></td>
+                ${personelHucreleri}
+                <td class="adet-hucre">${ekipToplam}</td>
+            </tr>`);
 
             havuzSatirlari.forEach(function (s) {
                 let hucreler = '';
@@ -199,12 +283,12 @@
                     } else if (adet < 0 && s.sahip_tipi !== 'kayip') {
                         sinif = ' adet-negatif';
                     }
-                    hucreler += `<td class="adet-hucre${sinif}">${adet}</td>`;
+                    hucreler += `<td class="adet-hucre${sinif}" data-tip-id="${tip.id}">${adet}</td>`;
                 });
                 const baslik = s.sahip_tipi === 'saha' ? 'Abonede Takılı' : s.baslik;
                 const ikon = { depo: 'bx-buildings', saha: 'bx-map-pin', hurda: 'bx-trash', kayip: 'bx-error' }[s.sahip_tipi] || 'bx-box';
-                altlik.append(`<tr class="havuz-satiri">
-                    <td><i class="bx ${ikon} me-1 text-muted"></i><b>${kacir(baslik)}</b></td>
+                altlik.append(`<tr class="havuz-satiri havuz-tiklanabilir" data-sahip-tipi="${kacir(s.sahip_tipi)}">
+                    <td colspan="2"><i class="bx ${ikon} me-1 text-muted"></i><b>${kacir(baslik)}</b></td>
                     ${hucreler}
                     <td class="adet-hucre">${s.toplam}</td>
                 </tr>`);
@@ -215,12 +299,14 @@
                 toplamHucreleri += `<td class="adet-hucre">${veri.sutun_toplam[tip.id] || 0}</td>`;
             });
             if (yetki.gelismis) {
-                altlik.append(`<tr><td>TOPLAM</td>${toplamHucreleri}<td class="adet-hucre">${veri.genel_toplam}</td></tr>`);
+                altlik.append(`<tr><td colspan="2">TOPLAM</td>${toplamHucreleri}<td class="adet-hucre">${veri.genel_toplam}</td></tr>`);
             }
 
             $('#ozetDepo').text(depoToplam);
             $('#ozetEkip').text(ekipToplam);
-            $('#ozetEkipAlt').text(ekipSatirlari.length + ' ekibin zimmetinde');
+            const personelSayisi = ekipSatirlari.filter((x) => x.sahip_tipi === 'personel').length;
+            $('#ozetEkipAlt').text((ekipSatirlari.length - personelSayisi) + ' ekip'
+                + (personelSayisi ? ' + ' + personelSayisi + ' personel' : '') + ' zimmetinde');
             $('#ozetSaha').text(sahaToplam);
             const havuzToplam = function (tur) {
                 const satir = veri.satirlar.find(function (x) { return x.sahip_tipi === tur; });
@@ -243,8 +329,178 @@
             } else {
                 $('#aparatTutarsizlikUyari').addClass('d-none').removeClass('d-flex');
             }
+    }
+
+    function stokYukle() {
+        stokFiltreButonGuncelle();
+        istek({ action: 'stok-matris' }).done(function (res) {
+            if (res.status !== 'success') return hata(res.message);
+            sonStokYaniti = res;
+            stokMatrisCiz(res);
         }).fail(() => hata('Stok tablosu yüklenemedi.'));
     }
+
+    $(document).on('click', '#btnStokSifirlariGizle', function () {
+        stokSifirlariGizle = !stokSifirlariGizle;
+        try { localStorage.setItem('aparat_stok_sifir_gizle', stokSifirlariGizle ? '1' : '0'); } catch (e) {}
+        stokFiltreButonGuncelle();
+        if (sonStokYaniti) stokMatrisCiz(sonStokYaniti);
+    });
+
+    function sahipHareketGecmisiAc(satir, aparatTipId) {
+        if (!satir || (!satir.sahip_id && !satir.sahip_tipi)) return;
+        const tipId = parseInt(aparatTipId, 10) || 0;
+        const tipObj = tipId > 0 && sonMatris && Array.isArray(sonMatris.tipler)
+            ? sonMatris.tipler.find(function (t) { return parseInt(t.id, 10) === tipId; })
+            : null;
+        const baslikEk = tipObj ? tipObj.ad + ' Hareketleri' : 'Hareket Geçmişi';
+        const mevcutAdet = tipObj ? (satir['adet_' + tipObj.id] ?? 0) : (satir.toplam ?? 0);
+
+        $('#sahipGecmisBaslik').text((satir.personel || 'Personel atanmamış') + ' — ' + baslikEk);
+        $('#sahipGecmisAltBaslik').text((satir.ekip ? satir.ekip + ' · ' : '') + 'Mevcut: ' + mevcutAdet + ' adet');
+        $('#sahipGecmisIcerik').html('<div class="text-center text-muted py-5"><i class="bx bx-loader-alt bx-spin fs-3 d-block mb-2"></i>Hareket geçmişi yükleniyor...</div>');
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalSahipHareketGecmisi')).show();
+
+        istek({
+            action: 'hareket-listesi',
+            sahip_tipi: satir.sahip_tipi || 'ekip',
+            sahip_id: satir.sahip_id || 0,
+            aparat_tip_id: tipId,
+            tum_tarih: 1
+        }).done(function (res) {
+            if (res.status !== 'success') {
+                $('#sahipGecmisIcerik').html(`<div class="alert alert-danger m-3 mb-0">${kacir(res.message || 'Hareketler alınamadı.')}</div>`);
+                return;
+            }
+            const kayitlar = res.data || [];
+            if (!kayitlar.length) {
+                $('#sahipGecmisIcerik').html('<div class="text-center text-muted py-5">Bu kayıt için henüz aparat hareketi bulunmuyor.</div>');
+                return;
+            }
+            const hedefTip = satir.sahip_tipi || 'ekip';
+            const hedefId = parseInt(satir.sahip_id, 10) || 0;
+            const tarafEslesir = function (taraf) {
+                if (!taraf || taraf.tip !== hedefTip) return false;
+                return hedefId === 0 || parseInt(taraf.id, 10) === hedefId;
+            };
+
+            let giren = 0;
+            let cikan = 0;
+            const satirlarHtml = kayitlar.map(function (h) {
+                const adet = parseInt(h.adet, 10) || 0;
+                const iptal = h.iptal_mi == 1;
+                const girdiMi = tarafEslesir(h.hedef);
+                const ciktiMi = tarafEslesir(h.kaynak);
+                if (!iptal) {
+                    if (girdiMi) giren += adet;
+                    if (ciktiMi) cikan += adet;
+                }
+                const yonSinif = iptal ? 'text-muted' : (girdiMi && !ciktiMi ? 'text-success' : (ciktiMi && !girdiMi ? 'text-danger' : ''));
+                const yonIsaret = girdiMi && !ciktiMi ? '+' : (ciktiMi && !girdiMi ? '-' : '');
+                const aciklamaHtml = iptal
+                    ? `<span class="text-muted text-decoration-line-through">${kacir(h.aciklama || '')}</span> <span class="badge bg-danger-subtle text-danger ms-1">İptal</span>`
+                    : kacir(h.aciklama || '');
+                return `<tr class="${iptal ? 'opacity-75' : ''}">
+                    <td class="text-nowrap">${kacir(tarihGoster(h.tarih))}</td>
+                    <td class="fw-semibold">${kacir(h.hareket_adi || '')}</td>
+                    <td>${kacir(h.nereden || '—')} <i class="bx bx-right-arrow-alt text-muted mx-1"></i> ${kacir(h.nereye || '—')}</td>
+                    <td>${kacir(h.aparat_adi || '')}</td>
+                    <td class="text-center fw-bold ${yonSinif}">${yonIsaret}${adet}</td>
+                    <td>${kacir(h.yapan || h.kaydeden || '—')}</td>
+                    <td class="small">${aciklamaHtml}</td>
+                </tr>`;
+            }).join('');
+
+            const netSonuc = giren - cikan;
+            const sonucRenk = netSonuc > 0 ? 'primary' : (netSonuc < 0 ? 'warning' : 'secondary');
+            const kartlarHtml = `
+                <div class="row g-2 mb-3">
+                    <div class="col-4">
+                        <div class="p-2 px-3 rounded-3 border bg-success-subtle border-success-subtle d-flex align-items-center justify-content-between">
+                            <div>
+                                <div class="font-size-11 text-success fw-semibold text-uppercase">Giren</div>
+                                <div class="fs-5 fw-bold text-success">+${giren}</div>
+                            </div>
+                            <i class="bx bx-down-arrow-circle fs-3 text-success opacity-75"></i>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-2 px-3 rounded-3 border bg-danger-subtle border-danger-subtle d-flex align-items-center justify-content-between">
+                            <div>
+                                <div class="font-size-11 text-danger fw-semibold text-uppercase">Çıkan</div>
+                                <div class="fs-5 fw-bold text-danger">-${cikan}</div>
+                            </div>
+                            <i class="bx bx-up-arrow-circle fs-3 text-danger opacity-75"></i>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-2 px-3 rounded-3 border bg-${sonucRenk}-subtle border-${sonucRenk}-subtle d-flex align-items-center justify-content-between">
+                            <div>
+                                <div class="font-size-11 text-${sonucRenk} fw-semibold text-uppercase">Sonuç (Net)</div>
+                                <div class="fs-5 fw-bold text-${sonucRenk}">${netSonuc > 0 ? '+' + netSonuc : netSonuc}</div>
+                            </div>
+                            <i class="bx bx-calculator fs-3 text-${sonucRenk} opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            $('#sahipGecmisIcerik').html(`
+                ${kartlarHtml}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tarih</th>
+                                <th>Hareket</th>
+                                <th>Nereden → Nereye</th>
+                                <th>Aparat</th>
+                                <th class="text-center">Adet</th>
+                                <th>Yapan / Kaydeden</th>
+                                <th>Açıklama</th>
+                            </tr>
+                        </thead>
+                        <tbody>${satirlarHtml}</tbody>
+                    </table>
+                </div>
+            `);
+        }).fail(function () {
+            $('#sahipGecmisIcerik').html('<div class="alert alert-danger m-3 mb-0">Hareket geçmişi yüklenemedi.</div>');
+        });
+    }
+
+    $(document).on('click', '#tabloStokMatris tbody td', function (e) {
+        if ($(e.target).closest('a, button, input, select, label').length) return;
+        const dt = dtOrnekleri['#tabloStokMatris'];
+        if (!dt) return;
+        const cellIdx = dt.cell(this).index();
+        if (!cellIdx) return;
+        const data = dt.row(cellIdx.row).data();
+        if (!data) return;
+        const dataSrc = String(dt.column(cellIdx.column).dataSrc() || '');
+        const aparatTipId = dataSrc.indexOf('adet_') === 0 ? (parseInt(dataSrc.slice(5), 10) || 0) : 0;
+        sahipHareketGecmisiAc(data, aparatTipId);
+    });
+
+    $(document).on('click', '#tabloStokMatris tfoot tr.havuz-tiklanabilir td', function () {
+        const sahipTipi = String($(this).closest('tr').data('sahip-tipi') || '');
+        if (!sahipTipi || !sonMatris || !Array.isArray(sonMatris.satirlar)) return;
+        const havuz = sonMatris.satirlar.find(function (x) { return x.sahip_tipi === sahipTipi; });
+        if (!havuz) return;
+        const baslik = sahipTipi === 'saha' ? 'Abonede Takılı' : (havuz.baslik || sahipTipi);
+        const satir = {
+            sahip_tipi: sahipTipi,
+            sahip_id: 0,
+            personel: baslik,
+            ekip: 'Havuz Hesabı',
+            toplam: havuz.toplam
+        };
+        (sonMatris.tipler || []).forEach(function (tip) {
+            satir['adet_' + tip.id] = (havuz.adetler && havuz.adetler[tip.id]) || 0;
+        });
+        const tipId = parseInt($(this).data('tip-id'), 10) || 0;
+        sahipHareketGecmisiAc(satir, tipId);
+    });
 
     function kritikGoster(kritik) {
         $('#ozetKritik').text(kritik.toplam || 0);
@@ -272,29 +528,6 @@
                 <div class="fw-semibold text-dark mb-1"><i class="bx bx-user me-1"></i>${kacir(e.uyeler || 'Personel atanmamış')} <small class="text-muted">(${kacir(e.ekip_kodu)})</small></div>${rozetler(e.eksikler)}</div></div>`);
         });
         $('#aparatKritikUyari').removeClass('d-none');
-    }
-
-    function sonDepoHareketleriYukle() {
-        istek({ action: 'son-depo-hareketleri' }).done(function (res) {
-            const govde = $('#tabloSonDepo tbody').empty();
-            if (res.status !== 'success' || !res.data.length) {
-                govde.append('<tr><td colspan="7" class="text-center text-muted py-3">Henüz depo hareketi yok.</td></tr>');
-                return;
-            }
-            const renk = { depo_giris: 'primary', depo_cikis: 'warning', depo_iade: 'success', depo_iade_hurda: 'danger' };
-            res.data.forEach(function (h) {
-                const r = renk[h.hareket_tipi] || 'secondary';
-                govde.append(`<tr>
-                    <td class="text-nowrap">${kacir(tarihGoster(h.tarih))}</td>
-                    <td><span class="badge bg-${r}-subtle text-${r} border border-${r}-subtle rounded-pill px-2 py-1 font-size-11 fw-semibold">${kacir(h.hareket_adi)}</span></td>
-                    <td>${kacir(h.aparat_adi)}</td>
-                    <td class="text-center fw-semibold">${h.adet}</td>
-                    <td>${kacir(h.ekip || '-')}</td>
-                    <td class="text-secondary">${kacir(h.kullanici || '-')}</td>
-                    <td class="text-secondary small">${kacir(h.aciklama || '')}</td>
-                </tr>`);
-            });
-        });
     }
 
     (function () {
@@ -359,6 +592,15 @@
         const tur = HAVUZ_TURLERI[kod];
         if (!tur) return;
 
+        if (kod === 'depo_giris') {
+            depoGirisAc();
+            return;
+        }
+        if (['depo_cikis', 'depo_iade', 'kayip', 'acilis'].indexOf(kod) !== -1) {
+            topluAc(kod);
+            return;
+        }
+
         $('#formHavuz')[0].reset();
         $('#havuz_tur').val(kod);
         $('#havuzModalBaslik').text(tur.baslik);
@@ -388,10 +630,360 @@
         }, 'POST').done(function (res) {
             if (res.status !== 'success') return hata(res.message);
             bootstrap.Modal.getInstance(document.getElementById('modalHavuz')).hide();
-            basari(res.message);
+            geriAlBildirimi(res.message, res.grup_idleri);
             stokYukle();
-            sonDepoHareketleriYukle();
         }).fail(() => hata('Hareket kaydedilemedi.'));
+    });
+
+    // ---------- Toplu havuz hareketi (ekip x aparat) ----------
+
+    let topluDeger = {};
+
+    function topluSahipMevcut(tur, sahipId, tipId) {
+        if (!sonMatris) return 0;
+        const tip = tur === 'p' ? 'personel' : 'ekip';
+        const satir = sonMatris.satirlar.find((s) => s.sahip_tipi === tip && parseInt(s.sahip_id, 10) === sahipId);
+        return satir ? (satir.adetler[tipId] || 0) : 0;
+    }
+
+    function topluDepoMevcut(tipId) {
+        if (!sonMatris) return 0;
+        const satir = sonMatris.satirlar.find((s) => s.sahip_tipi === 'depo');
+        return satir ? (satir.adetler[tipId] || 0) : 0;
+    }
+
+    function topluAc(kod) {
+        const tur = HAVUZ_TURLERI[kod];
+        topluDeger = {};
+        $('#toplu_tur').val(kod);
+        $('#topluBaslik').text(tur.baslik);
+        $('#topluAciklama').text(kod === 'depo_cikis'
+            ? 'Her ekibin satırına verilecek adetleri girin. Depodan düşer, ekiplerin zimmetine geçer. Ekip ataması olmayan Kaçak Kontrol personeli tablonun altındaki ayrı bölümde yer alır.'
+            : (kod === 'depo_iade'
+                ? 'Her ekibin satırına iade alınacak adetleri girin. Zimmetinden düşer, depoya girer.'
+                : (kod === 'kayip'
+                    ? 'Her ekibin satırına kayıp adetlerini girin. Zimmetinden düşer, kayıp havuzuna yazılır. Gerekçe zorunludur.'
+                    : 'Her ekibin veya personelin elinde zaten bulunan adetleri ilk kurulum için girin.')));
+        $('#topluArama').val('');
+        $('#toplu_aciklama').val('');
+        $('#toplu_bozuk').prop('checked', false);
+        $('#topluBozukAlan').toggleClass('d-none', kod !== 'depo_iade');
+        $('#topluCezaAlan').toggleClass('d-none', kod !== 'kayip');
+        $('#toplu_ceza_tutari').val(kod === 'kayip' ? varsayilanKayipCezaGetir() : '');
+        $('#topluFiltre button').removeClass('active').first().addClass('active');
+        topluTabloCiz(kod);
+        topluOzetGuncelle();
+        new bootstrap.Modal('#modalHavuzToplu').show();
+    }
+
+    function topluSatirHtml(tur, sahip, tipler) {
+        const hucreler = tipler.map(function (t) {
+            return `<td class="text-center">
+                <div class="toplu-sayac">
+                    <button type="button" class="toplu-az" tabindex="-1" aria-label="Azalt">−</button>
+                    <input type="number" inputmode="numeric" min="0" class="form-control toplu-giris" placeholder="–"
+                           data-tur="${tur}" data-sahip="${sahip.id}" data-tip="${t.id}">
+                    <button type="button" class="toplu-art" tabindex="-1" aria-label="Artır">+</button>
+                </div>
+                <div class="toplu-mevcut">${tur === 'p' ? 'personelde' : 'ekipte'} ${topluSahipMevcut(tur, sahip.id, t.id)}</div>
+            </td>`;
+        }).join('');
+        const ara = (sahip.adi + ' ' + (sahip.uyeler || '')).toLocaleLowerCase('tr');
+        const alt = tur === 'p'
+            ? `<i class="bx bx-user me-1"></i>${kacir(sahip.gorev || 'Kaçak Kontrol')} · ekipsiz`
+            : (sahip.uyeler ? '<i class="bx bx-user me-1"></i>' + kacir(sahip.uyeler) : 'Personel atanmamış');
+        return `<tr class="toplu-satir" data-tur="${tur}" data-sahip="${sahip.id}" data-ara="${kacir(ara)}">
+            <td><div class="toplu-ekip-ad">${kacir(sahip.adi)}</div><div class="toplu-ekip-uye">${alt}</div></td>
+            ${hucreler}
+        </tr>`;
+    }
+
+    function topluTabloCiz(kod) {
+        const tipler = (window.aparatTipleri || []).filter((t) => t.aktif == 1);
+        const ekipler = window.aparatEkipler || [];
+        const personeller = (window.aparatPersoneller || []).map((p) => ({ id: p.id, adi: p.adi, gorev: p.gorev, uyeler: '' }));
+
+        const baslik = tipler.map(function (t) {
+            return `<th class="text-center">${kacir(t.ad)}${kod === 'depo_cikis' ? `<small>Depoda ${topluDepoMevcut(t.id)}</small>` : ''}</th>`;
+        }).join('');
+
+        let govde = ekipler.map((e) => topluSatirHtml('e', e, tipler)).join('');
+        if (personeller.length) {
+            govde += `<tr class="toplu-grup"><td colspan="${tipler.length + 1}"><i class="bx bx-user-pin me-1"></i>Ekipsiz Kaçak Kontrol Personeli</td></tr>`
+                + personeller.map((p) => topluSatirHtml('p', p, tipler)).join('');
+        }
+
+        const altlik = tipler.map((t) => `<td data-tip="${t.id}" class="toplu-toplam">0</td>`).join('');
+
+        $('#topluTabloKap').html(`<table class="table table-sm align-middle toplu-tablo">
+            <thead><tr><th>Ekip / Personel</th>${baslik}</tr></thead>
+            <tbody>${govde || `<tr><td colspan="${tipler.length + 1}" class="text-muted p-3">Ekip bulunamadı.</td></tr>`}<tr class="toplu-dolgu" aria-hidden="true"><td colspan="${tipler.length + 1}"></td></tr></tbody>
+            <tfoot><tr><td class="text-start">${kod === 'depo_cikis' ? 'Dağıtılan' : 'Toplam'}</td>${altlik}</tr></tfoot>
+        </table>`);
+    }
+
+    function topluOzetGuncelle() {
+        const kod = $('#toplu_tur').val();
+        const toplamlar = {};
+        let kayit = 0;
+        let adet = 0;
+        const dolular = {};
+
+        Object.keys(topluDeger).forEach(function (anahtar) {
+            const [tur, sahip, tip] = anahtar.split('_');
+            const n = topluDeger[anahtar];
+            toplamlar[tip] = (toplamlar[tip] || 0) + n;
+            dolular[tur + '_' + sahip] = true;
+            kayit++;
+            adet += n;
+        });
+
+        $('#topluTabloKap tfoot td.toplu-toplam').each(function () {
+            const tip = String($(this).data('tip'));
+            const t = toplamlar[tip] || 0;
+            let metin = String(t);
+            let eksi = false;
+            if (kod === 'depo_cikis') {
+                const kalan = topluDepoMevcut(parseInt(tip, 10)) - t;
+                metin = `${t} <small class="fw-normal text-muted">(kalan ${kalan})</small>`;
+                eksi = kalan < 0;
+            }
+            $(this).html(metin).toggleClass('eksi', eksi);
+        });
+
+        const kisi = Object.keys(dolular).length;
+        $('#topluSayGirilen').text(kisi);
+        const kayipModu = kod === 'kayip';
+        const birimCeza = kayipModu ? (parseFloat(String($('#toplu_ceza_tutari').val() || '0').replace(',', '.')) || 0) : 0;
+        const toplamCeza = birimCeza > 0 ? (adet * birimCeza) : 0;
+        $('#topluOzetMetin').text(kayit
+            ? `${kisi} ekip/personel · ${kayit} kayıt · toplam ${adet} adet`
+                + (toplamCeza > 0 ? ` · Toplam ceza: ${toplamCeza.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺` : '')
+            : 'Henüz adet girilmedi.');
+        $('#btnTopluKaydet').prop('disabled', kayit === 0);
+        topluFiltreUygula();
+    }
+
+    function varsayilanKayipCezaGetir() {
+        let kayitli = '';
+        try { kayitli = localStorage.getItem('aparat_kayip_ceza_tutari') || ''; } catch (e) {}
+        if (kayitli !== '' && parseFloat(kayitli) > 0) return kayitli;
+        if (window.aparatSonKayipCeza && parseFloat(window.aparatSonKayipCeza) > 0) {
+            return String(window.aparatSonKayipCeza);
+        }
+        return '';
+    }
+
+    $(document).on('input', '#toplu_ceza_tutari', topluOzetGuncelle);
+
+    function topluFiltreUygula() {
+        const aranan = ($('#topluArama').val() || '').toLocaleLowerCase('tr').trim();
+        const sadeceGirilen = $('#topluFiltre button.active').data('filtre') === 'girilen';
+
+        $('#topluTabloKap tbody tr.toplu-satir').each(function () {
+            const onek = $(this).data('tur') + '_' + $(this).data('sahip') + '_';
+            const doluMu = Object.keys(topluDeger).some((k) => k.indexOf(onek) === 0);
+            let goster = !sadeceGirilen || doluMu;
+            if (goster && aranan) goster = ($(this).attr('data-ara') || '').indexOf(aranan) !== -1;
+            $(this).toggleClass('d-none', !goster);
+        });
+
+        $('#topluTabloKap tr.toplu-grup').toggleClass('d-none', !$('#topluTabloKap tr.toplu-satir[data-tur="p"]:not(.d-none)').length);
+    }
+
+    function topluDegerYaz($giris, deger) {
+        const anahtar = $giris.data('tur') + '_' + $giris.data('sahip') + '_' + $giris.data('tip');
+        const n = parseInt(deger, 10);
+        if (isNaN(n) || n <= 0) {
+            delete topluDeger[anahtar];
+        } else {
+            topluDeger[anahtar] = n;
+        }
+        $giris.toggleClass('dolu', !!topluDeger[anahtar]);
+        topluOzetGuncelle();
+    }
+
+    $(document).on('input', '.toplu-giris', function () { topluDegerYaz($(this), $(this).val()); });
+    $(document).on('focus', '.toplu-giris', function () { this.select(); });
+
+    $(document).on('click', '.toplu-az, .toplu-art', function () {
+        const $giris = $(this).siblings('.toplu-giris');
+        const mevcut = parseInt($giris.val(), 10);
+        const artir = $(this).hasClass('toplu-art');
+        const yeni = artir ? (isNaN(mevcut) ? 1 : mevcut + 1) : Math.max(0, (isNaN(mevcut) ? 0 : mevcut) - 1);
+        $giris.val(yeni > 0 ? yeni : '');
+        topluDegerYaz($giris, yeni);
+    });
+
+    $(document).on('keydown', '.toplu-giris', function (e) {
+        if (['Enter', 'ArrowDown', 'ArrowUp'].indexOf(e.key) === -1) return;
+        e.preventDefault();
+        const tip = $(this).data('tip');
+        const sutun = $(`.toplu-giris[data-tip="${tip}"]:visible`);
+        const hedef = sutun.eq(sutun.index(this) + (e.key === 'ArrowUp' ? -1 : 1));
+        if (hedef.length) hedef.trigger('focus');
+    });
+
+    $(document).on('input', '#topluArama', topluFiltreUygula);
+
+    $(document).on('click', '#topluFiltre button', function () {
+        $('#topluFiltre button').removeClass('active');
+        $(this).addClass('active');
+        topluFiltreUygula();
+    });
+
+    function topluGonder() {
+        const kod = $('#toplu_tur').val() === 'depo_iade' && $('#toplu_bozuk').is(':checked') ? 'depo_iade_hurda' : $('#toplu_tur').val();
+        const satirlar = Object.keys(topluDeger).map(function (anahtar) {
+            const [tur, sahip, tip] = anahtar.split('_');
+            const satir = { aparat_tip_id: parseInt(tip, 10), adet: topluDeger[anahtar] };
+            if (tur === 'p') satir.personel_id = parseInt(sahip, 10);
+            else satir.ekip_id = parseInt(sahip, 10);
+            return satir;
+        });
+        if (!satirlar.length) return;
+
+        const kayipModu = kod === 'kayip';
+        const aciklamaMetni = String($('#toplu_aciklama').val() || '').trim();
+        if (kayipModu && aciklamaMetni === '') {
+            return hata('Kayıp kaydı için açıklama / gerekçe zorunludur.');
+        }
+        const cezaTutari = kayipModu ? (parseFloat(String($('#toplu_ceza_tutari').val() || '0').replace(',', '.')) || 0) : 0;
+
+        const $btn = $('#btnTopluKaydet').prop('disabled', true).text('Kaydediliyor...');
+        istek({
+            action: 'havuz-toplu',
+            tur: kod,
+            aciklama: aciklamaMetni,
+            ceza_tutari: cezaTutari,
+            satirlar: JSON.stringify(satirlar)
+        }, 'POST').done(function (res) {
+            if (res.status !== 'success') return hata(res.message);
+            if (kayipModu && cezaTutari > 0) {
+                window.aparatSonKayipCeza = cezaTutari;
+                try { localStorage.setItem('aparat_kayip_ceza_tutari', String(cezaTutari)); } catch (e) {}
+            }
+            bootstrap.Modal.getInstance(document.getElementById('modalHavuzToplu')).hide();
+            geriAlBildirimi(res.message, res.grup_idleri);
+            stokYukle();
+        }).fail(() => hata('Hareketler kaydedilemedi.'))
+            .always(() => $btn.prop('disabled', Object.keys(topluDeger).length === 0).text('Kaydet'));
+    }
+
+    $('#btnTopluKaydet').on('click', function () {
+        if ($('#toplu_tur').val() !== 'depo_cikis') return topluGonder();
+
+        const asilan = (window.aparatTipleri || []).filter(function (t) {
+            const toplam = Object.keys(topluDeger).filter((k) => k.split('_')[2] === String(t.id))
+                .reduce((n, k) => n + topluDeger[k], 0);
+            return toplam > topluDepoMevcut(t.id);
+        });
+
+        if (!asilan.length) return topluGonder();
+
+        Swal.fire({
+            icon: 'warning',
+            title: 'Depo stoğu yetmiyor',
+            html: `<b>${asilan.map((t) => kacir(t.ad)).join(', ')}</b> için girilen toplam adet depodaki miktarı aşıyor. Devam ederseniz depo bakiyesi eksiye düşer.`,
+            showCancelButton: true,
+            confirmButtonText: 'Yine de kaydet',
+            cancelButtonText: 'Vazgeç'
+        }).then(function (sonuc) {
+            if (sonuc.isConfirmed) topluGonder();
+        });
+    });
+
+    // ---------- Toplu depoya giriş ----------
+
+    let depoGirisDeger = {};
+
+    function depoGirisAc() {
+        depoGirisDeger = {};
+        $('#dg_aciklama').val('');
+        const tipler = (window.aparatTipleri || []).filter((t) => t.aktif == 1);
+
+        const govde = tipler.map(function (t) {
+            const simdi = topluDepoMevcut(t.id);
+            return `<tr class="dg-satir">
+                <td><div class="toplu-ekip-ad">${kacir(t.ad)}</div></td>
+                <td class="text-center text-muted">${simdi}</td>
+                <td class="text-center">
+                    <div class="dg-sayac">
+                        <button type="button" class="dg-az" tabindex="-1" aria-label="Azalt">−</button>
+                        <input type="number" inputmode="numeric" min="0" class="form-control dg-giris" placeholder="–" data-tip="${t.id}" data-simdi="${simdi}">
+                        <button type="button" class="dg-art" tabindex="-1" aria-label="Artır">+</button>
+                    </div>
+                </td>
+                <td class="text-center dg-sonra" data-tip="${t.id}">${simdi}</td>
+            </tr>`;
+        }).join('');
+
+        $('#dgTabloKap').html(`<table class="table table-sm align-middle toplu-tablo dg-tablo">
+            <thead><tr><th>Aparat</th><th class="text-center">Depoda şu an</th><th class="text-center">Gelen adet</th><th class="text-center">Giriş sonrası</th></tr></thead>
+            <tbody>${govde}</tbody>
+        </table>`);
+        depoGirisOzet();
+        new bootstrap.Modal('#modalDepoGiris').show();
+    }
+
+    function depoGirisOzet() {
+        let kayit = 0;
+        let adet = 0;
+        $('#dgTabloKap .dg-giris').each(function () {
+            const tip = $(this).data('tip');
+            const n = depoGirisDeger[tip] || 0;
+            const simdi = parseInt($(this).data('simdi'), 10) || 0;
+            $('#dgTabloKap .dg-sonra[data-tip="' + tip + '"]').text(simdi + n).toggleClass('artti', n > 0);
+            if (n > 0) { kayit++; adet += n; }
+        });
+        $('#dgOzetMetin').text(kayit ? `${kayit} aparat çeşidi · toplam ${adet} adet depoya girecek` : 'Henüz adet girilmedi.');
+        $('#btnDgKaydet').prop('disabled', kayit === 0);
+    }
+
+    function depoGirisYaz($giris, deger) {
+        const n = parseInt(deger, 10);
+        if (isNaN(n) || n <= 0) delete depoGirisDeger[$giris.data('tip')];
+        else depoGirisDeger[$giris.data('tip')] = n;
+        $giris.toggleClass('dolu', !!depoGirisDeger[$giris.data('tip')]);
+        depoGirisOzet();
+    }
+
+    $(document).on('input', '.dg-giris', function () { depoGirisYaz($(this), $(this).val()); });
+    $(document).on('focus', '.dg-giris', function () { this.select(); });
+
+    $(document).on('click', '.dg-az, .dg-art', function () {
+        const $giris = $(this).siblings('.dg-giris');
+        const mevcut = parseInt($giris.val(), 10);
+        const yeni = $(this).hasClass('dg-art') ? (isNaN(mevcut) ? 1 : mevcut + 1) : Math.max(0, (isNaN(mevcut) ? 0 : mevcut) - 1);
+        $giris.val(yeni > 0 ? yeni : '');
+        depoGirisYaz($giris, yeni);
+    });
+
+    $(document).on('keydown', '.dg-giris', function (e) {
+        if (['Enter', 'ArrowDown', 'ArrowUp'].indexOf(e.key) === -1) return;
+        e.preventDefault();
+        const hepsi = $('.dg-giris');
+        const hedef = hepsi.eq(hepsi.index(this) + (e.key === 'ArrowUp' ? -1 : 1));
+        if (hedef.length) hedef.trigger('focus');
+    });
+
+    $('#btnDgKaydet').on('click', function () {
+        const satirlar = Object.keys(depoGirisDeger).map((tip) => ({ aparat_tip_id: parseInt(tip, 10), adet: depoGirisDeger[tip] }));
+        if (!satirlar.length) return;
+
+        const $btn = $(this).prop('disabled', true).text('Kaydediliyor...');
+        istek({
+            action: 'havuz-toplu',
+            tur: 'depo_giris',
+            aciklama: $('#dg_aciklama').val(),
+            satirlar: JSON.stringify(satirlar)
+        }, 'POST').done(function (res) {
+            if (res.status !== 'success') return hata(res.message);
+            bootstrap.Modal.getInstance(document.getElementById('modalDepoGiris')).hide();
+            geriAlBildirimi(res.message, res.grup_idleri);
+            stokYukle();
+        }).fail(() => hata('Depoya giriş kaydedilemedi.'))
+            .always(() => $btn.prop('disabled', Object.keys(depoGirisDeger).length === 0).text('Kaydet'));
     });
 
     // ---------- Manuel saha kaydı ----------
@@ -474,6 +1066,7 @@
                     aparat: k.aparatsiz == 1 ? 'Aparatsız' : (k.aparat_adi || ''),
                     adet: parseInt(k.adet, 10),
                     durum: DURUM_ADI[k.durum] || k.durum,
+                    durum_kodu: k.durum,
                     foto_sayisi: parseInt(k.foto_sayisi, 10),
                     negatif_stok: k.negatif_stok,
                     mukerrer_uyari: k.mukerrer_uyari
@@ -521,10 +1114,11 @@
                         className: 'text-end',
                         orderable: false,
                         searchable: false,
-                        render: function (id) {
-                            return `<button class="btn btn-sm btn-outline-primary btn-islem-detay" data-id="${id}">
-                                        <i class="bx bx-show"></i>
-                                    </button>`;
+                        render: function (id, tip, satir) {
+                            return '<div class="d-flex justify-content-end flex-nowrap gap-1">'
+                                + `<button class="btn btn-sm btn-outline-primary btn-islem-detay" data-id="${id}"><i class="bx bx-show"></i></button>`
+                                + (yetki.sil && satir.durum_kodu === 'iptal' ? `<button class="btn btn-sm btn-outline-danger btn-islem-sil" data-id="${id}" title="Sil"><i class="bx bx-trash"></i></button>` : '')
+                                + '</div>';
                         }
                     }
                 ]
@@ -615,12 +1209,14 @@
                 </div>`);
 
             $('#btnIslemIptal').toggle(k.durum === 'aktif');
+            $('#btnIslemSil').toggle(k.durum === 'iptal');
             new bootstrap.Modal('#modalIslemDetay').show();
         }).fail(() => hata('Detay yüklenemedi.'));
     });
 
     $('#btnIslemIptal').on('click', function () {
         Swal.fire({
+            target: document.querySelector('.modal.show') || document.body,
             title: 'Kayıt iptal edilsin mi?',
             input: 'textarea',
             inputLabel: 'İptal gerekçesi (zorunlu)',
@@ -640,6 +1236,42 @@
                 stokYukle();
             }).fail(() => hata('Kayıt iptal edilemedi.'));
         });
+    });
+
+    function islemSil(id) {
+        Swal.fire({
+            target: document.querySelector('.modal.show') || document.body,
+            title: 'Kayıt silinsin mi?',
+            html: 'İptal edilmiş kayıt listelerden kalıcı olarak kaldırılır.',
+            input: 'textarea',
+            inputLabel: 'Silme gerekçesi (zorunlu)',
+            inputValidator: (v) => (!v || !v.trim()) && 'Gerekçe girmelisiniz.',
+            showCancelButton: true,
+            confirmButtonText: 'Sil',
+            cancelButtonText: 'Vazgeç',
+            confirmButtonColor: '#dc3545',
+            icon: 'warning'
+        }).then(function (sonuc) {
+            if (!sonuc.isConfirmed) return;
+
+            istek({ action: 'islem-sil', id: id, aciklama: sonuc.value }, 'POST').done(function (res) {
+                if (res.status !== 'success') return hata(res.message);
+                const modal = bootstrap.Modal.getInstance(document.getElementById('modalIslemDetay'));
+                if (modal) modal.hide();
+                basari(res.message);
+                islemleriYukle();
+                stokYukle();
+            }).fail(() => hata('Kayıt silinemedi.'));
+        });
+    }
+
+    $(document).on('click', '.btn-islem-sil', function (e) {
+        e.stopPropagation();
+        islemSil($(this).data('id'));
+    });
+
+    $('#btnIslemSil').on('click', function () {
+        islemSil(aktifIslemId);
     });
 
     // ---------- Hareket dökümü ----------
@@ -724,13 +1356,16 @@
                             if (satir.iptal_mi == 1) {
                                 return '<span class="text-muted">-</span>';
                             }
-                            // Bir işleme/transfere/sayıma bağlı hareketler kendi ekranından iptal edilir
-                            if (satir.referans_tipi !== 'manuel' && satir.referans_tipi !== 'bozuk_iade') {
-                                return `<span class="text-muted" title="Bu hareket bağlı olduğu kaydın ekranından iptal edilmelidir">
-                                            <i class="bx bx-lock-alt"></i></span>`;
+                            if (String(satir.aciklama || '').indexOf('İptal: ') === 0) {
+                                return '<span class="text-muted">-</span>';
                             }
-                            return `<button class="btn btn-sm btn-soft-danger btn-hareket-iptal" data-id="${id}"
-                                        title="Hareketi geri al"><i class="bx bx-undo"></i></button>`;
+                            const geriAlinabilir = ['manuel', 'bozuk_iade', 'aparat_sayim_detay'].indexOf(satir.referans_tipi) !== -1;
+                            if (!geriAlinabilir) {
+                                const nerede = satir.referans_tipi === 'aparat_transfer' ? 'Transferler' : 'Saha İşlemleri';
+                                return `<span class="text-muted" title="Bu kaydı ${nerede} sekmesinden geri alabilirsiniz"><i class="bx bx-lock-alt"></i></span>`;
+                            }
+                            return `<button class="btn btn-sm btn-soft-danger btn-hareket-iptal text-nowrap px-2 py-0" style="font-size:11.5px;line-height:1.55" data-id="${id}"
+                                        title="Geri al"><i class="bx bx-undo me-1"></i>Geri Al</button>`;
                         })
                     }
                 ]
@@ -738,34 +1373,35 @@
         }).fail(() => hata('Hareketler yüklenemedi.'));
     }
 
-    // Hatalı veya test amaçlı girilmiş havuz hareketini ters kayıtla geri alır
     $(document).on('click', '.btn-hareket-iptal', function () {
         const id = $(this).data('id');
+        const satir = $('#tabloHareketler').DataTable().row($(this).closest('tr')).data() || {};
+        const ozet = `<b>${kacir(satir.adet || '')} ${kacir(satir.aparat || '')}</b> (${kacir(satir.hareket || '')}): ${kacir(satir.nereden || '')} → ${kacir(satir.nereye || '')}`;
 
         Swal.fire({
-            title: 'Hareket geri alınsın mı?',
-            html: 'Kayıt defterden silinmez; <b>iptal</b> işareti alır ve stok bakiyesini '
-                + 'eski hâline getiren ters bir hareket yazılır.',
-            input: 'textarea',
-            inputLabel: 'İptal gerekçesi',
-            inputPlaceholder: 'Örn: test kaydı, hatalı adet girildi...',
-            icon: 'warning',
+            title: 'Bu işlem geri alınsın mı?',
+            html: `<div class="text-start">
+                <div class="border rounded p-2 mb-2 bg-light">${ozet}</div>
+                <p class="mb-2">Geri alırsanız depo ve ekibin elindeki stok <b>işlemden önceki haline</b> döner. Sonra doğrusunu yeniden girebilirsiniz.</p>
+                <input type="text" id="swGeriNeden" class="form-control" placeholder="Neden geri alıyorsunuz? (isteğe bağlı)">
+            </div>`,
+            icon: 'question',
             showCancelButton: true,
-            confirmButtonText: 'Geri Al',
+            confirmButtonText: 'Evet, geri al',
             cancelButtonText: 'Vazgeç',
-            confirmButtonColor: '#f46a6a',
-            inputValidator: v => (!v || !v.trim()) ? 'İptal gerekçesi zorunludur.' : undefined
+            preConfirm: () => $('#swGeriNeden').val()
         }).then(function (r) {
             if (!r.isConfirmed) return;
 
-            $.post(API, { action: 'hareket-iptal', id: id, aciklama: r.value }, null, 'json')
+            $.post(API, { action: 'hareket-iptal', id: id, aciklama: r.value || '' }, null, 'json')
                 .done(function (res) {
                     if (res.status !== 'success') return hata(res.message);
-                    Swal.fire('Geri Alındı', res.message, 'success');
+                    basari(res.message);
                     hareketleriYukle();
                     stokYukle();
+                    if (aktifSayimId) sayimDetayYukle();
                 })
-                .fail(() => hata('Hareket geri alınamadı.'));
+                .fail(() => hata('Geri alınamadı.'));
         });
     });
 
@@ -872,33 +1508,82 @@
 
     // ---------- Sayım ----------
 
+    let sayimListe = [];
+    let sayimListeDurum = '';
+
+    function sayimZamanMetni(deger) {
+        if (!deger) return '';
+        const d = new Date(String(deger).replace(' ', 'T'));
+        if (isNaN(d.getTime())) return tarihGoster(deger);
+        const gun = (t) => new Date(t.getFullYear(), t.getMonth(), t.getDate()).getTime();
+        const fark = Math.round((gun(new Date()) - gun(d)) / 86400000);
+        if (fark === 0) return d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+        if (fark === 1) return 'Dün';
+        return tarihGoster(deger);
+    }
+
+    function sayimListeCiz() {
+        const liste = $('#sayimListesi').empty();
+        const aranan = ($('#sayimListeArama').val() || '').toLocaleLowerCase('tr').trim();
+
+        const gorunen = sayimListe.filter(function (s) {
+            if (sayimListeDurum && s.durum !== sayimListeDurum) return false;
+            if (!aranan) return true;
+            return [s.baslik, tarihGoster(s.baslangic_tarihi), s.baslatan_adi || '', s.durum === 'acik' ? 'açık' : (s.durum === 'iptal' ? 'iptal' : 'tamamlandı')]
+                .join(' ').toLocaleLowerCase('tr').indexOf(aranan) !== -1;
+        });
+
+        if (!gorunen.length) {
+            liste.html(`<div class="text-center text-muted small py-5 px-3">${sayimListe.length ? 'Aramaya uyan sayım yok.' : 'Henüz sayım yapılmamış.'}</div>`);
+            return;
+        }
+
+        gorunen.forEach(function (s) {
+            const satir = parseInt(s.satir_sayisi, 10) || 0;
+            const girilen = parseInt(s.girilen_sayisi, 10) || 0;
+            const yuzde = s.durum === 'tamamlandi' ? 100 : (satir > 0 ? Math.round((girilen / satir) * 100) : 0);
+            const renk = s.durum === 'iptal' ? '#ef4444' : '#22c55e';
+            const avatarIkon = s.durum === 'iptal' ? 'bx-block' : 'bx-list-check';
+            const durumSimge = s.durum === 'acik'
+                ? '<i class="bx bx-time-five text-warning"></i> Açık'
+                : (s.durum === 'iptal' ? '<span class="text-danger fw-medium"><i class="bx bx-block"></i> İptal</span>'
+                    : '<i class="bx bx-check-double" style="color:#53bdeb"></i> Tamamlandı');
+            const rozet = s.durum === 'acik'
+                ? `<span class="sayim-wa-sag"><span class="sayim-wa-rozet">%${yuzde}</span>${yetki.sayim ? `<button type="button" class="sayim-wa-iptal" data-id="${s.id}" title="Sayımı iptal et" aria-label="Sayımı iptal et"><i class="bx bx-x"></i></button>` : ''}</span>`
+                : (s.durum === 'iptal' ? '<span class="sayim-wa-rozet iptal">İptal</span>' : '');
+
+            liste.append(`<a href="#" class="sayim-wa-oge sayim-secim ${s.durum}${s.id == aktifSayimId ? ' active' : ''}" data-id="${s.id}">
+                <div class="sayim-wa-avatar" style="--yuzde:${yuzde};--renk:${renk}"><span><i class="bx ${avatarIkon}"></i></span></div>
+                <div class="sayim-wa-govde">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="sayim-wa-baslik">${kacir(s.baslik)}</span>
+                        <span class="sayim-wa-zaman">${sayimZamanMetni(s.baslangic_tarihi)}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-1">
+                        <span class="sayim-wa-alt">${durumSimge} · ${s.ekip_sayisi} ekip · ${girilen}/${satir}</span>
+                        ${rozet}
+                    </div>
+                </div>
+            </a>`);
+        });
+    }
+
     function sayimlariYukle() {
         istek({ action: 'sayim-listesi' }).done(function (res) {
             if (res.status !== 'success') return hata(res.message);
-
-            const liste = $('#sayimListesi').empty();
-
-            if (!res.data.length) {
-                liste.html('<div class="list-group-item text-muted small">Henüz sayım yapılmamış.</div>');
-                return;
-            }
-
-            res.data.forEach(function (s) {
-                const ilerleme = s.satir_sayisi > 0 ? Math.round((s.girilen_sayisi / s.satir_sayisi) * 100) : 0;
-                liste.append(`<a href="#" class="list-group-item list-group-item-action sayim-secim" data-id="${s.id}">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <b>${kacir(s.baslik)}</b>
-                        ${s.durum === 'acik' ? '<span class="badge bg-warning-subtle text-warning">Açık</span>' : (s.durum === 'iptal' ? '<span class="badge bg-secondary-subtle text-secondary">İptal</span>' : '<span class="badge bg-success-subtle text-success">Tamamlandı</span>')}
-                    </div>
-                    <div class="small text-muted">${tarihGoster(s.baslangic_tarihi)} · ${s.ekip_sayisi} ekip</div>
-                    <div class="progress mt-2" style="height:4px">
-                        <div class="progress-bar" style="width:${ilerleme}%"></div>
-                    </div>
-                    <div class="small text-muted mt-1">${s.girilen_sayisi}/${s.satir_sayisi} satır girildi</div>
-                </a>`);
-            });
+            sayimListe = res.data;
+            sayimListeCiz();
         }).fail(() => hata('Sayımlar yüklenemedi.'));
     }
+
+    $(document).on('input', '#sayimListeArama', sayimListeCiz);
+
+    $(document).on('click', '#sayimListeFiltre button', function () {
+        sayimListeDurum = String($(this).data('durum') || '');
+        $('#sayimListeFiltre button').removeClass('active');
+        $(this).addClass('active');
+        sayimListeCiz();
+    });
 
     $(document).on('click', '.sayim-secim', function (e) {
         e.preventDefault();
@@ -908,6 +1593,218 @@
         sayimDetayYukle();
     });
 
+    let sayimVerisi = null;
+    let sayimFiltre = 'tum';
+
+    function sayimAciklamaAktif() {
+        return sayimVerisi && sayimVerisi.sayim.durum === 'acik' && yetki.sayim;
+    }
+
+    function sayimOzet() {
+        const d = sayimVerisi.detaylar;
+        const girilen = d.filter((x) => x.sayilan_adet !== null).length;
+        const farkli = d.filter((x) => x.sayilan_adet !== null && parseInt(x.fark, 10) !== 0);
+        const eksik = farkli.reduce((t, x) => t + Math.min(0, parseInt(x.fark, 10)), 0);
+        const fazla = farkli.reduce((t, x) => t + Math.max(0, parseInt(x.fark, 10)), 0);
+        return { toplam: d.length, girilen: girilen, farkliSayi: farkli.length, eksik: eksik, fazla: fazla };
+    }
+
+    function sayimOzetCiz() {
+        const o = sayimOzet();
+        $('#sayimSayGirilmemis').text(o.toplam - o.girilen);
+        $('#sayimSayFarkli').text(o.farkliSayi);
+        const yuzde = o.toplam > 0 ? Math.round((o.girilen / o.toplam) * 100) : 0;
+        $('#sayimOzet').html(`
+            <div class="sayim-ozet-kutu">
+                <div class="sayim-ozet-etiket">Girilen</div>
+                <div class="sayim-ozet-deger">${o.girilen}<small>/${o.toplam}</small></div>
+                <div class="progress mt-1" style="height:4px"><div class="progress-bar bg-success" style="width:${yuzde}%"></div></div>
+            </div>
+            <div class="sayim-ozet-kutu">
+                <div class="sayim-ozet-etiket">Farklı satır</div>
+                <div class="sayim-ozet-deger ${o.farkliSayi ? 'text-warning' : ''}">${o.farkliSayi}</div>
+            </div>
+            <div class="sayim-ozet-kutu">
+                <div class="sayim-ozet-etiket">Eksik</div>
+                <div class="sayim-ozet-deger ${o.eksik ? 'text-danger' : ''}">${o.eksik}</div>
+            </div>
+            <div class="sayim-ozet-kutu">
+                <div class="sayim-ozet-etiket">Fazla</div>
+                <div class="sayim-ozet-deger ${o.fazla ? 'text-success' : ''}">${o.fazla ? '+' + o.fazla : 0}</div>
+            </div>`);
+    }
+
+    function sayimFarkHtml(d) {
+        if (d.sayilan_adet === null) return '<span class="text-muted">-</span>';
+        const fark = parseInt(d.fark, 10);
+        if (fark === 0) return '<span class="badge bg-success-subtle text-success rounded-pill">✓</span>';
+        return `<span class="badge ${fark < 0 ? 'bg-danger-subtle text-danger' : 'bg-info-subtle text-info'} rounded-pill">${fark > 0 ? '+' : ''}${fark}</span>`;
+    }
+
+    function sayimFiltreUygula() {
+        const aranan = ($('#sayimArama').val() || '').toLocaleLowerCase('tr').trim();
+        const gruplar = {};
+
+        $('#sayimGovde tr.sayim-satir').each(function () {
+            const $tr = $(this);
+            const girilmis = $tr.attr('data-girilmis') === '1';
+            const farkli = $tr.attr('data-farkli') === '1';
+            let goster = true;
+            if (sayimFiltre === 'girilmemis') goster = !girilmis;
+            if (sayimFiltre === 'farkli') goster = farkli;
+            if (goster && aranan) goster = ($tr.attr('data-ara') || '').indexOf(aranan) !== -1;
+            $tr.toggleClass('d-none', !goster);
+            const ekip = $tr.attr('data-ekip');
+            gruplar[ekip] = gruplar[ekip] || goster;
+        });
+
+        $('#sayimGovde tr.sayim-ekip-satir').each(function () {
+            $(this).toggleClass('d-none', !gruplar[$(this).attr('data-ekip')]);
+        });
+
+        const gorunen = $('#sayimGovde tr.sayim-satir:not(.d-none)').length;
+        $('#sayimBosMesaj').toggleClass('d-none', gorunen > 0);
+    }
+
+    function sayimEkipSayaciGuncelle(ekipId) {
+        const d = sayimVerisi.detaylar.filter((x) => String(x.ekip_id) === String(ekipId));
+        const girilen = d.filter((x) => x.sayilan_adet !== null).length;
+        const farkli = d.some((x) => x.sayilan_adet !== null && parseInt(x.fark, 10) !== 0);
+        $(`.sayim-ekip-sayac[data-ekip="${ekipId}"]`)
+            .text(`${girilen}/${d.length}`)
+            .toggleClass('tamam', girilen === d.length)
+            .toggleClass('farkli', farkli);
+    }
+
+    function sayimTabloCiz() {
+        const duzenlenebilir = sayimAciklamaAktif();
+        const duzenlenebilirSayim = duzenlenebilir;
+        let govde = '';
+        let sonEkip = null;
+
+        sayimVerisi.detaylar.forEach(function (d) {
+            if (sonEkip !== d.ekip_id) {
+                sonEkip = d.ekip_id;
+                const uyeler = d.ekip_uyeleri
+                    ? `<span class="sayim-uyeler"><i class="bx bx-user me-1"></i>${kacir(d.ekip_uyeleri)}</span>`
+                    : '<span class="sayim-uyeler text-muted">Personel atanmamış</span>';
+                govde += `<tr class="sayim-ekip-satir" data-ekip="${d.ekip_id}"><td colspan="6">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <b>${kacir(d.ekip_adi)}</b>${uyeler}
+                        <span class="sayim-ekip-sayac ms-auto" data-ekip="${d.ekip_id}"></span>
+                        ${duzenlenebilir && !sayimVerisi.detaylar.some((x) => x.ekip_id == d.ekip_id && x.islendi == 1)
+                            ? `<button type="button" class="sayim-ekip-cikar" data-ekip="${d.ekip_id}" title="Bu ekibi sayımdan çıkar" aria-label="Sayımdan çıkar"><i class="bx bx-x"></i></button>`
+                            : ''}
+                    </div></td></tr>`;
+            }
+
+            const kilitli = !duzenlenebilir || d.islendi == 1;
+            const girisHtml = kilitli
+                ? (d.sayilan_adet === null ? '-' : d.sayilan_adet)
+                : `<div class="sayim-sayac">
+                        <button type="button" class="sayim-az" tabindex="-1" aria-label="Azalt">−</button>
+                        <input type="number" inputmode="numeric" class="form-control sayim-giris"
+                               data-ekip="${d.ekip_id}" data-tip="${d.aparat_tip_id}"
+                               value="${d.sayilan_adet === null ? '' : d.sayilan_adet}" min="0" placeholder="–">
+                        <button type="button" class="sayim-art" tabindex="-1" aria-label="Artır">+</button>
+                   </div>`;
+            const aciklamaHtml = kilitli
+                ? kacir(d.aciklama || '')
+                : `<input type="text" class="form-control sayim-aciklama"
+                         data-ekip="${d.ekip_id}" data-tip="${d.aparat_tip_id}"
+                         value="${kacir(d.aciklama || '')}"
+                         placeholder="${d.sayilan_adet !== null && parseInt(d.fark, 10) !== 0 ? (parseInt(d.fark, 10) < 0 ? 'Kullanıldı' : 'Elinde mevcut') : 'Not / fark gerekçesi'}">`;
+
+            const ara = [d.ekip_adi, d.ekip_uyeleri, d.aparat_adi].join(' ').toLocaleLowerCase('tr');
+            govde += `<tr class="sayim-satir" data-ekip="${d.ekip_id}" data-tip="${d.aparat_tip_id}" data-ara="${kacir(ara)}"
+                          data-girilmis="${d.sayilan_adet === null ? 0 : 1}"
+                          data-farkli="${d.sayilan_adet !== null && parseInt(d.fark, 10) !== 0 ? 1 : 0}">
+                <td class="ps-4">${kacir(d.aparat_adi)}</td>
+                <td class="text-center text-muted sayim-sistem">${d.sistem_adet}</td>
+                <td class="text-center">${girisHtml}</td>
+                <td class="text-center sayim-fark">${sayimFarkHtml(d)}</td>
+                <td>${aciklamaHtml}</td>
+                <td class="text-center">${d.islendi == 1
+                    ? '<i class="bx bx-check-double text-success fs-5"></i>'
+                        + (duzenlenebilirSayim && parseInt(d.fark, 10) !== 0
+                            ? ` <button type="button" class="btn btn-sm btn-soft-danger sayim-geri-al ms-1" data-id="${d.id}" title="Bu satırı geri al"><i class="bx bx-undo"></i></button>`
+                            : '')
+                    : ''}</td>
+            </tr>`;
+        });
+
+        $('#sayimDetayIcerik').attr('class', '').html(`
+            <div class="sayim-ozet" id="sayimOzet"></div>
+            <div class="sayim-arac d-flex flex-wrap align-items-center gap-2 mb-2">
+                <div class="sayim-liste-arama flex-grow-1">
+                    <i class="bx bx-search"></i>
+                    <input type="search" id="sayimArama" placeholder="Ekip, personel veya aparat ara" autocomplete="off">
+                </div>
+                <div class="sayim-chip-grup" id="sayimFiltreGrup">
+                    <button type="button" class="${sayimFiltre === 'tum' ? 'active' : ''}" data-filtre="tum">Tümü</button>
+                    <button type="button" class="${sayimFiltre === 'girilmemis' ? 'active' : ''}" data-filtre="girilmemis">Girilmemiş <span class="sayim-chip-say" id="sayimSayGirilmemis"></span></button>
+                    <button type="button" class="${sayimFiltre === 'farkli' ? 'active' : ''}" data-filtre="farkli">Farklı <span class="sayim-chip-say" id="sayimSayFarkli"></span></button>
+                </div>
+            </div>
+            <div class="sayim-tablo-kap">
+                <table class="table table-sm align-middle mb-0 sayim-tablo">
+                    <thead>
+                        <tr>
+                            <th>Aparat</th>
+                            <th class="text-center">Sistem</th>
+                            <th class="text-center">Sayılan</th>
+                            <th class="text-center">Fark</th>
+                            <th>Açıklama</th>
+                            <th class="text-center">İşlendi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sayimGovde">${govde || '<tr><td colspan="6" class="text-muted">Satır yok.</td></tr>'}</tbody>
+                </table>
+                <div class="text-center text-muted small py-4 d-none" id="sayimBosMesaj">Filtreye uyan satır yok.</div>
+            </div>`);
+
+        sayimVerisi.detaylar.map((d) => d.ekip_id)
+            .filter((v, i, a) => a.indexOf(v) === i)
+            .forEach(sayimEkipSayaciGuncelle);
+        sayimOzetCiz();
+        sayimFiltreUygula();
+        sayimEkipKaydirmaBagla($('.sayim-tablo-kap')[0]);
+        const baslikYuk = $('.sayim-tablo thead').outerHeight();
+        if (baslikYuk) $('.sayim-tablo-kap')[0].style.setProperty('--sayim-baslik-yuk', (baslikYuk - 1) + 'px');
+    }
+
+    function sayimEkipKaydirmaBagla(kap) {
+        if (!kap) return;
+        let kilit = false;
+
+        kap.addEventListener('wheel', function (e) {
+            if (e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+            e.preventDefault();
+            if (kilit) return;
+
+            const baslikYuk = kap.querySelector('thead').offsetHeight;
+            const konumlar = Array.prototype.slice.call(kap.querySelectorAll('tr.sayim-ekip-satir'))
+                .filter((tr) => tr.offsetParent !== null)
+                .map((tr) => Math.max(0, tr.offsetTop - baslikYuk));
+            const enAlt = kap.scrollHeight - kap.clientHeight;
+            const simdi = kap.scrollTop;
+            let hedef;
+
+            if (e.deltaY > 0) {
+                hedef = konumlar.find((k) => k > simdi + 2);
+                if (hedef === undefined || hedef > enAlt) hedef = enAlt;
+            } else {
+                hedef = konumlar.slice().reverse().find((k) => k < simdi - 2);
+                if (hedef === undefined) hedef = 0;
+            }
+
+            if (Math.abs(hedef - simdi) < 2) return;
+            kilit = true;
+            kap.scrollTo({ top: hedef, behavior: 'smooth' });
+            setTimeout(function () { kilit = false; }, 320);
+        }, { passive: false });
+    }
+
     function sayimDetayYukle() {
         if (!aktifSayimId) return;
 
@@ -916,77 +1813,75 @@
 
             const sayim = res.data;
             const acik = sayim.durum === 'acik';
+            sayimVerisi = { sayim: sayim, detaylar: res.detaylar };
+
             $('#sayimBaslik').text(sayim.baslik);
+            $('#sayimAltBaslik').html(
+                (acik ? '<span class="badge bg-warning-subtle text-warning rounded-pill me-1">Açık</span>'
+                    : (sayim.durum === 'iptal' ? '<span class="badge bg-danger-subtle text-danger rounded-pill me-1">İptal</span>'
+                        : '<span class="badge bg-success-subtle text-success rounded-pill me-1">Tamamlandı</span>'))
+                + tarihGoster(sayim.baslangic_tarihi));
 
             const aksiyonlar = $('#sayimAksiyonlar').empty();
+            aksiyonlar.append('<button class="btn btn-sm btn-outline-secondary" id="btnSayimExcel"><i class="bx bx-spreadsheet me-1"></i>Excel</button>');
             if (acik && yetki.sayim) {
+                aksiyonlar.append('<button class="btn btn-sm btn-outline-secondary" id="btnSayimEkipEkle" title="Sayıma ekip veya personel ekle"><i class="bx bx-user-plus me-1"></i>Ekip / Personel Ekle</button>');
                 aksiyonlar.append('<button class="btn btn-sm btn-outline-primary" id="btnFarklariIsle"><i class="bx bx-check-double me-1"></i>Farkları İşle</button>');
                 aksiyonlar.append('<button class="btn btn-sm btn-success" id="btnSayimKapat"><i class="bx bx-lock me-1"></i>Tamamla</button>');
-                aksiyonlar.append('<button class="btn btn-sm btn-outline-danger" id="btnSayimIptal"><i class="bx bx-x"></i></button>');
             }
 
-            let govde = '';
-            let sonEkip = null;
-
-            res.detaylar.forEach(function (d) {
-                if (sonEkip !== d.ekip_adi) {
-                    sonEkip = d.ekip_adi;
-                    govde += `<tr class="table-light"><td colspan="6"><b>${kacir(d.ekip_adi)}</b></td></tr>`;
-                }
-
-                const fark = d.sayilan_adet === null ? null : parseInt(d.fark, 10);
-                const farkHtml = fark === null ? '-' :
-                    `<span class="${fark === 0 ? 'text-muted' : (fark < 0 ? 'text-danger' : 'text-success')}">${fark > 0 ? '+' : ''}${fark}</span>`;
-
-                const girisHtml = (acik && yetki.sayim && d.islendi == 0)
-                    ? `<input type="number" class="form-control form-control-sm sayim-adet-input sayim-giris"
-                             data-ekip="${d.ekip_id}" data-tip="${d.aparat_tip_id}"
-                             value="${d.sayilan_adet === null ? '' : d.sayilan_adet}" min="0">`
-                    : (d.sayilan_adet === null ? '-' : d.sayilan_adet);
-
-                const aciklamaHtml = (acik && yetki.sayim && d.islendi == 0)
-                    ? `<input type="text" class="form-control form-control-sm sayim-aciklama"
-                             data-ekip="${d.ekip_id}" data-tip="${d.aparat_tip_id}"
-                             value="${kacir(d.aciklama || '')}" placeholder="Fark gerekçesi">`
-                    : kacir(d.aciklama || '');
-
-                govde += `<tr>
-                    <td class="ps-4">${kacir(d.aparat_adi)}</td>
-                    <td class="text-center">${d.sistem_adet}</td>
-                    <td class="text-center">${girisHtml}</td>
-                    <td class="text-center">${farkHtml}</td>
-                    <td>${aciklamaHtml}</td>
-                    <td class="text-center">${d.islendi == 1 ? '<i class="bx bx-check text-success"></i>' : ''}</td>
-                </tr>`;
-            });
-
-            $('#sayimDetayIcerik').html(`
-                <div class="table-responsive">
-                    <table class="table table-sm align-middle mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Aparat</th>
-                                <th class="text-center">Sistem</th>
-                                <th class="text-center">Sayılan</th>
-                                <th class="text-center">Fark</th>
-                                <th>Açıklama</th>
-                                <th class="text-center">İşlendi</th>
-                            </tr>
-                        </thead>
-                        <tbody>${govde || '<tr><td colspan="6" class="text-muted">Satır yok.</td></tr>'}</tbody>
-                    </table>
-                </div>`);
+            sayimTabloCiz();
         }).fail(() => hata('Sayım detayı yüklenemedi.'));
     }
 
-    $(document).on('change', '.sayim-giris', function () {
+    $(document).on('input', '#sayimArama', sayimFiltreUygula);
+
+    $(document).on('click', '#sayimFiltreGrup button', function () {
+        sayimFiltre = $(this).data('filtre');
+        $('#sayimFiltreGrup button').removeClass('active');
+        $(this).addClass('active');
+        sayimFiltreUygula();
+    });
+
+    $(document).on('keydown', '.sayim-giris', function (e) {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        const girisler = $('.sayim-giris:visible');
+        const sonraki = girisler.eq(girisler.index(this) + 1);
+        $(this).trigger('change');
+        if (sonraki.length) sonraki.trigger('focus').trigger('select');
+    });
+
+    $(document).on('focus', '.sayim-giris', function () { this.select(); });
+
+    $(document).on('keydown', '.sayim-giris', function (e) {
+        if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+        e.preventDefault();
+        const girisler = $('.sayim-giris:visible');
+        const hedef = girisler.eq(girisler.index(this) + (e.key === 'ArrowDown' ? 1 : -1));
+        $(this).trigger('change');
+        if (hedef.length) hedef.trigger('focus');
+    });
+
+    $(document).on('click', '.sayim-az, .sayim-art', function () {
+        const $giris = $(this).siblings('.sayim-giris');
+        const mevcut = parseInt($giris.val(), 10);
+        const artir = $(this).hasClass('sayim-art');
+        const yeni = artir ? (isNaN(mevcut) ? 1 : mevcut + 1) : Math.max(0, (isNaN(mevcut) ? 1 : mevcut) - 1);
+        $giris.val(yeni);
+        clearTimeout($giris.data('kayit'));
+        $giris.data('kayit', setTimeout(() => $giris.trigger('change'), 450));
+    });
+
+    $(document).on('change', '.sayim-giris, .sayim-aciklama', function () {
         const ekip = $(this).data('ekip');
         const tip = $(this).data('tip');
-        const deger = $(this).val();
+        const $tr = $(this).closest('tr');
+        const deger = $tr.find('.sayim-giris').val();
 
         if (deger === '') return;
 
-        const aciklama = $(`.sayim-aciklama[data-ekip="${ekip}"][data-tip="${tip}"]`).val() || '';
+        const aciklama = $tr.find('.sayim-aciklama').val() || '';
 
         istek({
             action: 'sayim-gir',
@@ -997,24 +1892,191 @@
             aciklama: aciklama
         }, 'POST').done(function (res) {
             if (res.status !== 'success') return hata(res.message);
-            sayimDetayYukle();
+
+            const d = sayimVerisi.detaylar.find((x) => String(x.ekip_id) === String(ekip) && String(x.aparat_tip_id) === String(tip));
+            if (d) {
+                d.sayilan_adet = parseInt(deger, 10);
+                d.sistem_adet = res.sistem_adet;
+                d.fark = res.fark;
+                d.aciklama = res.aciklama !== undefined ? res.aciklama : aciklama;
+                $tr.find('.sayim-aciklama').val(d.aciklama || '');
+                $tr.find('.sayim-sistem').text(d.sistem_adet);
+                $tr.find('.sayim-fark').html(sayimFarkHtml(d));
+                $tr.attr('data-girilmis', 1).attr('data-farkli', d.fark != 0 ? 1 : 0);
+                $tr.find('.sayim-aciklama').attr('placeholder', d.fark != 0 ? (d.fark < 0 ? 'Kullanıldı' : 'Elinde mevcut') : 'Not / fark gerekçesi');
+                sayimEkipSayaciGuncelle(ekip);
+                sayimOzetCiz();
+            }
+            $tr.addClass('sayim-kaydedildi');
+            setTimeout(() => $tr.removeClass('sayim-kaydedildi'), 900);
         }).fail(() => hata('Sayım kaydedilemedi.'));
     });
 
-    $(document).on('click', '#btnFarklariIsle', function () {
+    $(document).on('click', '.sayim-geri-al', function () {
+        const detayId = $(this).data('id');
+        const d = sayimVerisi.detaylar.find((x) => String(x.id) === String(detayId)) || {};
+
         Swal.fire({
-            title: 'Farklar stoğa işlensin mi?',
-            text: 'Eksik çıkan aparatlar kayıp havuzuna, fazla çıkanlar kayıp havuzundan düşülerek işlenir.',
+            title: 'Bu satır geri alınsın mı?',
+            html: `<div class="text-start">
+                <div class="border rounded p-2 mb-2 bg-light"><b>${kacir(d.ekip_adi || '')}</b> · ${kacir(d.aparat_adi || '')}<br>
+                    Sayımda <b>${d.sayilan_adet}</b> girilmişti, stok ${d.sistem_adet} → ${d.sayilan_adet} yapılmıştı.</div>
+                <p class="mb-0">Geri alırsanız stok <b>işlemden önceki haline</b> döner ve bu satırı yeniden düzenleyip tekrar işleyebilirsiniz.</p>
+            </div>`,
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: 'İşle',
+            confirmButtonText: 'Evet, geri al',
             cancelButtonText: 'Vazgeç'
-        }).then(function (sonuc) {
-            if (!sonuc.isConfirmed) return;
-            istek({ action: 'sayim-farklari-isle', sayim_id: aktifSayimId }, 'POST').done(function (res) {
+        }).then(function (r) {
+            if (!r.isConfirmed) return;
+            istek({ action: 'sayim-satir-geri-al', detay_id: detayId }, 'POST').done(function (res) {
                 if (res.status !== 'success') return hata(res.message);
                 basari(res.message);
                 sayimDetayYukle();
+                sayimlariYukle();
+                stokYukle();
+            }).fail(() => hata('Geri alınamadı.'));
+        });
+    });
+
+    $(document).on('click', '#btnSayimExcel', function () {
+        $('#btnSayimFormIndir').attr('href', 'views/aparat-takip/export-excel.php?tip=sayim&id=' + aktifSayimId);
+        $('#sayimExcelDosya').val('');
+        $('#btnSayimExcelGonder').prop('disabled', true);
+        $('#sayimExcelYukleBlok, #btnSayimExcelGonder').toggle(sayimAciklamaAktif());
+        new bootstrap.Modal('#modalSayimExcel').show();
+    });
+
+    $(document).on('change', '#sayimExcelDosya', function () {
+        $('#btnSayimExcelGonder').prop('disabled', !this.files.length);
+    });
+
+    $(document).on('click', '#btnSayimExcelGonder', function () {
+        const dosya = $('#sayimExcelDosya')[0].files[0];
+        if (!dosya) return;
+
+        const form = new FormData();
+        form.append('action', 'sayim-excel-yukle');
+        form.append('sayim_id', aktifSayimId);
+        form.append('dosya', dosya);
+
+        const $btn = $(this).prop('disabled', true).text('Yükleniyor...');
+
+        $.ajax({ url: API, type: 'POST', data: form, processData: false, contentType: false, dataType: 'json' })
+            .done(function (res) {
+                if (res.status !== 'success') return hata(res.message);
+                bootstrap.Modal.getInstance(document.getElementById('modalSayimExcel')).hide();
+                const hatalar = (res.hatalar || []).map((h) => `<li>${kacir(h)}</li>`).join('');
+                if (hatalar) {
+                    Swal.fire({ icon: 'warning', title: res.message, html: `<ul class="text-start small mb-0">${hatalar}</ul>` });
+                } else {
+                    basari(res.message);
+                }
+                sayimlariYukle();
+                sayimDetayYukle();
+            })
+            .fail(() => hata('Excel yüklenemedi.'))
+            .always(() => $btn.prop('disabled', false).text('Yükle'));
+    });
+
+    $(document).on('click', '#btnFarklariIsle', function () {
+        if (!sayimVerisi) return;
+
+        const detaylar = sayimVerisi.detaylar;
+        const bekleyen = detaylar.filter((d) =>
+            d.islendi == 0 && d.sayilan_adet !== null && parseInt(d.fark, 10) !== 0);
+
+        const sayilanEkipler = {};
+        detaylar.forEach(function (d) { if (d.sayilan_adet !== null) sayilanEkipler[d.ekip_id] = true; });
+        const sifirAdaylari = detaylar.filter((d) =>
+            d.islendi == 0 && d.sayilan_adet === null && sayilanEkipler[d.ekip_id] && parseInt(d.sistem_adet, 10) !== 0);
+
+        if (!bekleyen.length && !sifirAdaylari.length) {
+            Swal.fire({
+                icon: 'info',
+                title: 'İşlenecek fark yok',
+                text: 'Sayılan adedi sistemden farklı olan ve henüz işlenmemiş satır bulunmuyor. Hiç sayım girilmemiş ekiplerin satırlarına işlem yapılmaz.'
+            });
+            return;
+        }
+
+        const satirlar = bekleyen.map((d) => ({ d: d, sifir: false, sayilan: parseInt(d.sayilan_adet, 10), fark: parseInt(d.fark, 10) }))
+            .concat(sifirAdaylari.map((d) => ({ d: d, sifir: true, sayilan: 0, fark: -parseInt(d.sistem_adet, 10) })));
+
+        const ekipSirasi = [];
+        const ekipGruplari = {};
+        satirlar.forEach(function (x) {
+            if (!ekipGruplari[x.d.ekip_id]) { ekipGruplari[x.d.ekip_id] = []; ekipSirasi.push(x.d.ekip_id); }
+            ekipGruplari[x.d.ekip_id].push(x);
+        });
+
+        const listeHtml = ekipSirasi.map(function (ekipId) {
+            const grup = ekipGruplari[ekipId];
+            const ilk = grup[0].d;
+            const chipler = grup.map(function (x) {
+                const eksik = x.fark < 0;
+                return `<span class="isle-chip ${eksik ? 'eksi' : 'fazla'}${x.sifir ? ' sifir' : ''}">
+                    ${kacir(x.d.aparat_adi)} <span class="isle-chip-adet">${x.d.sistem_adet} → ${x.sayilan}</span>
+                    <b>${x.fark > 0 ? '+' : ''}${x.fark}</b>${x.sifir ? ' <i class="bx bx-question-mark" title="Sayılmadı, 0 kabul edilecek"></i>' : ''}</span>`;
+            }).join('');
+            return `<div class="isle-ekip" data-ekip="${ekipId}">
+                <div class="isle-ekip-ad">${kacir(ilk.ekip_adi)}${ilk.ekip_uyeleri ? ` <small><i class="bx bx-user"></i> ${kacir(ilk.ekip_uyeleri)}</small>` : ''}</div>
+                <div class="isle-chipler">${chipler}</div>
+            </div>`;
+        }).join('');
+
+        const sifirKutu = sifirAdaylari.length ? `
+            <label class="isle-sifir">
+                <input class="form-check-input" type="checkbox" id="swSifirla" checked>
+                <span><b>Sayılmayan satırlar da 0 olsun</b><br>
+                <small>Sayım yapılan ${new Set(sifirAdaylari.map((d) => d.ekip_id)).size} ekipte sayılmamış ${sifirAdaylari.length} satır var. İşaretliyse bunlar 0 sayılır, sistemdeki adet kadar eksik çıkar (listede "?" ile gösterilir). İşaretlemezseniz bu satırlara dokunulmaz.</small></span>
+            </label>` : '';
+
+        const ozetCiz = function () {
+            const sifirAktif = !$('#swSifirla').length || $('#swSifirla').is(':checked');
+            const aktif = satirlar.filter((x) => !x.sifir || sifirAktif);
+            const eksik = aktif.filter((x) => x.fark < 0);
+            const fazla = aktif.filter((x) => x.fark > 0);
+            const topla = (l) => l.reduce((t, x) => t + Math.abs(x.fark), 0);
+            $('#isleEksikAdet').text(topla(eksik)); $('#isleEksikSatir').text(eksik.length);
+            $('#isleFazlaAdet').text(topla(fazla)); $('#isleFazlaSatir').text(fazla.length);
+            $('.isle-chip.sifir').toggle(sifirAktif);
+            $('.isle-ekip').each(function () { $(this).toggle($(this).find('.isle-chip:visible').length > 0); });
+        };
+
+        Swal.fire({
+            title: 'Sayım farkları stoğa işlensin mi?',
+            width: '46rem',
+            customClass: { popup: 'isle-pencere' },
+            html: `<div class="text-start">
+                <div class="isle-ozet">
+                    <div class="isle-kutu eksik"><div class="isle-sayi"><span id="isleEksikAdet">0</span> <small>adet</small></div>
+                        <div class="isle-etiket">Eksik çıkan · <span id="isleEksikSatir">0</span> satır</div>
+                        <div class="isle-aciklama">Ekibin elinden düşer, kayıp sayılır.</div></div>
+                    <div class="isle-kutu fazla"><div class="isle-sayi"><span id="isleFazlaAdet">0</span> <small>adet</small></div>
+                        <div class="isle-etiket">Fazla çıkan · <span id="isleFazlaSatir">0</span> satır</div>
+                        <div class="isle-aciklama">Ekibin eline eklenir, kayıptan düşer.</div></div>
+                </div>
+                ${sifirKutu}
+                <div class="isle-liste">${listeHtml}</div>
+                <div class="isle-not"><i class="bx bx-info-circle"></i>
+                    <div>İşlenen her satır Hareket Dökümü'nde "Sayım Düzeltmesi" olarak görünür. Yanlış işlerseniz sayım açıkken satırın yanındaki <b>↶</b> butonuyla geri alabilirsiniz. Hiç sayım girilmemiş ekiplere dokunulmaz.</div></div>
+            </div>`,
+            showCancelButton: true,
+            confirmButtonText: 'Evet, stoğa işle',
+            cancelButtonText: 'Vazgeç',
+            didOpen: function () {
+                ozetCiz();
+                $('#swSifirla').on('change', ozetCiz);
+            },
+            preConfirm: () => ({ sifirla: $('#swSifirla').length ? $('#swSifirla').is(':checked') : false })
+        }).then(function (sonuc) {
+            if (!sonuc.isConfirmed) return;
+            istek({ action: 'sayim-farklari-isle', sayim_id: aktifSayimId, bos_sifir: sonuc.value.sifirla ? 1 : 0 }, 'POST').done(function (res) {
+                if (res.status !== 'success') return hata(res.message);
+                basari(res.message);
+                sayimDetayYukle();
+                sayimlariYukle();
                 stokYukle();
             }).fail(() => hata('Farklar işlenemedi.'));
         });
@@ -1029,37 +2091,138 @@
         }).fail(() => hata('Sayım kapatılamadı.'));
     });
 
-    $(document).on('click', '#btnSayimIptal', function () {
+    function sayimIptalEt(id) {
         Swal.fire({
             title: 'Sayım iptal edilsin mi?',
+            text: 'İptal edilen sayım düzenlenemez. Farkları stoğa işlenmiş sayımlar iptal edilemez.',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'İptal Et',
             cancelButtonText: 'Vazgeç'
         }).then(function (sonuc) {
             if (!sonuc.isConfirmed) return;
-            istek({ action: 'sayim-iptal', sayim_id: aktifSayimId }, 'POST').done(function (res) {
+            istek({ action: 'sayim-iptal', sayim_id: id }, 'POST').done(function (res) {
                 if (res.status !== 'success') return hata(res.message);
                 basari(res.message);
                 sayimlariYukle();
-                sayimDetayYukle();
+                if (parseInt(id, 10) === parseInt(aktifSayimId, 10)) sayimDetayYukle();
             }).fail(() => hata('Sayım iptal edilemedi.'));
         });
+    }
+
+    $(document).on('click', '.sayim-wa-iptal', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        sayimIptalEt($(this).data('id'));
     });
 
+    // ---------- Ekip / personel seçici (Sayım Başlat ve Sayıma Ekle) ----------
+
+    const SY_GRUPLAR = {
+        kesme: 'Kesme / Açma',
+        kacak: 'Kaçak Kontrol',
+        personel: 'Ekipsiz Personel',
+        diger: 'Diğer'
+    };
+
+    function syZimmet(tur, id) {
+        if (!sonMatris) return null;
+        const satir = sonMatris.satirlar.find((s) => s.sahip_tipi === tur && parseInt(s.sahip_id, 10) === id);
+        return satir ? satir.toplam : 0;
+    }
+
+    function syTumSatirlar() {
+        return (window.aparatEkipler || []).map(function (e) {
+            return { id: e.id, ad: e.adi, alt: e.uyeler || 'Personel atanmamış', grup: e.grup || 'diger', zimmet: syZimmet('ekip', e.id) };
+        }).concat((window.aparatPersoneller || []).map(function (p) {
+            return { id: -p.id, ad: p.adi, alt: (p.gorev || 'Kaçak Kontrol') + ' · ekipsiz', grup: 'personel', zimmet: syZimmet('personel', p.id) };
+        }));
+    }
+
+    function ekipSecici(onek) {
+        const durum = { secim: new Set(), grup: '', satirlar: [] };
+        const el = (ek) => $('#' + onek + ek);
+
+        function gorunenler() {
+            const aranan = (el('Arama').val() || '').toLocaleLowerCase('tr').trim();
+            return durum.satirlar.filter(function (x) {
+                if (durum.grup === 'secili' && !durum.secim.has(x.id)) return false;
+                if (durum.grup && durum.grup !== 'secili' && x.grup !== durum.grup) return false;
+                return !aranan || (x.ad + ' ' + x.alt).toLocaleLowerCase('tr').indexOf(aranan) !== -1;
+            });
+        }
+
+        function ozetCiz() {
+            const sayac = { '': durum.satirlar.length, secili: durum.secim.size };
+            durum.satirlar.forEach(function (x) { sayac[x.grup] = (sayac[x.grup] || 0) + 1; });
+
+            const cipler = [['', 'Tümü'], ['kesme', SY_GRUPLAR.kesme], ['kacak', SY_GRUPLAR.kacak], ['personel', SY_GRUPLAR.personel], ['diger', SY_GRUPLAR.diger], ['secili', 'Seçililer']]
+                .filter(([k]) => k === '' || k === 'secili' || sayac[k]);
+            el('GrupFiltre').html(cipler.map(([k, ad]) =>
+                `<button type="button" class="${durum.grup === k ? 'active' : ''}" data-grup="${k}">${ad} <span class="sayim-chip-say">${sayac[k] || 0}</span></button>`).join(''));
+
+            const ekipSayisi = durum.satirlar.filter((x) => x.id > 0 && durum.secim.has(x.id)).length;
+            const personelSayisi = durum.satirlar.filter((x) => x.id < 0 && durum.secim.has(x.id)).length;
+            el('SecimOzet').text(`${ekipSayisi} ekip` + (personelSayisi ? ` + ${personelSayisi} personel` : '') + ' seçili');
+            el('Kap').trigger('secim-degisti');
+        }
+
+        function listeCiz() {
+            const gorunen = gorunenler();
+            el('Liste').html(gorunen.length ? gorunen.map(function (x) {
+                const secili = durum.secim.has(x.id);
+                return `<label class="sy-satir${secili ? ' secili' : ''}">
+                    <input type="checkbox" class="form-check-input sy-cb" value="${x.id}"${secili ? ' checked' : ''}>
+                    <div><div class="sy-ad">${kacir(x.ad)}</div><div class="sy-alt">${kacir(x.alt)}</div></div>
+                    <span class="sy-rozet">${SY_GRUPLAR[x.grup]}</span>
+                    <span class="sy-stok">${x.zimmet === null ? '' : 'Zimmette ' + x.zimmet}</span>
+                </label>`;
+            }).join('') : '<div class="text-center text-muted small py-4">Eşleşen kayıt yok.</div>');
+            ozetCiz();
+        }
+
+        $(document).on('change', `#${onek}Liste .sy-cb`, function () {
+            const id = parseInt(this.value, 10);
+            if (this.checked) durum.secim.add(id); else durum.secim.delete(id);
+            $(this).closest('.sy-satir').toggleClass('secili', this.checked);
+            ozetCiz();
+        });
+        $(document).on('click', `#${onek}GrupFiltre button`, function () { durum.grup = String($(this).data('grup')); listeCiz(); });
+        $(document).on('input', `#${onek}Arama`, listeCiz);
+        $(document).on('click', `#${onek}GorunenleriSec`, function () { gorunenler().forEach((x) => durum.secim.add(x.id)); listeCiz(); });
+        $(document).on('click', `#${onek}GorunenleriKaldir`, function () { gorunenler().forEach((x) => durum.secim.delete(x.id)); listeCiz(); });
+
+        return {
+            ac: function (satirlar, varsayilanHepsi) {
+                durum.satirlar = satirlar;
+                durum.secim = new Set(varsayilanHepsi ? satirlar.map((x) => x.id) : []);
+                durum.grup = '';
+                el('Arama').val('');
+                listeCiz();
+            },
+            secim: () => Array.from(durum.secim)
+        };
+    }
+
+    const syBaslatSecici = ekipSecici('sy');
+    const syEkleSecici = ekipSecici('se');
+
     $('#btnSayimBaslat').on('click', function () {
-        $('#sayim_ekipler').val(null).trigger('change');
+        syBaslatSecici.ac(syTumSatirlar(), true);
         new bootstrap.Modal('#modalSayim').show();
     });
 
     $('#formSayim').on('submit', function (e) {
         e.preventDefault();
 
+        const secim = syBaslatSecici.secim();
+        if (!secim.length) return hata('Sayıma en az bir ekip veya personel seçmelisiniz.');
+
         istek({
             action: 'sayim-baslat',
             baslik: $('#sayim_baslik').val(),
             aciklama: $('#sayim_aciklama').val(),
-            ekipler: $('#sayim_ekipler').val() || []
+            ekipler: secim
         }, 'POST').done(function (res) {
             if (res.status !== 'success') return hata(res.message);
             bootstrap.Modal.getInstance(document.getElementById('modalSayim')).hide();
@@ -1068,6 +2231,67 @@
             sayimlariYukle();
             sayimDetayYukle();
         }).fail(() => hata('Sayım başlatılamadı.'));
+    });
+
+    // Açık sayıma ekip / personel ekle
+    $(document).on('click', '#btnSayimEkipEkle', function () {
+        const sayimdakiler = new Set(sayimVerisi.detaylar.map((d) => parseInt(d.ekip_id, 10)));
+        const adaylar = syTumSatirlar().filter((x) => !sayimdakiler.has(x.id));
+        syEkleSecici.ac(adaylar, false);
+        $('#seBosMesaj').toggleClass('d-none', adaylar.length > 0);
+        $('#btnSayimEkleKaydet').prop('disabled', true);
+        new bootstrap.Modal('#modalSayimEkle').show();
+    });
+
+    $('#seKap').on('secim-degisti', function () {
+        $('#btnSayimEkleKaydet').prop('disabled', syEkleSecici.secim().length === 0);
+    });
+
+    $('#btnSayimEkleKaydet').on('click', function () {
+        const secim = syEkleSecici.secim();
+        if (!secim.length) return;
+
+        const $btn = $(this).prop('disabled', true).text('Ekleniyor...');
+        istek({ action: 'sayim-ekip-ekle', sayim_id: aktifSayimId, ekipler: secim }, 'POST').done(function (res) {
+            if (res.status !== 'success') return hata(res.message);
+            bootstrap.Modal.getInstance(document.getElementById('modalSayimEkle')).hide();
+            basari(res.message);
+            sayimDetayYukle();
+            sayimlariYukle();
+        }).fail(() => hata('Sayıma eklenemedi.'))
+            .always(() => $btn.prop('disabled', false).text('Sayıma Ekle'));
+    });
+
+    // Sayımdan ekip / personel çıkar
+    $(document).on('click', '.sayim-ekip-cikar', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const ekipId = parseInt($(this).data('ekip'), 10);
+        const satirlar = sayimVerisi.detaylar.filter((d) => parseInt(d.ekip_id, 10) === ekipId);
+        const girilen = satirlar.filter((d) => d.sayilan_adet !== null).length;
+        const ilk = satirlar[0] || {};
+
+        Swal.fire({
+            title: 'Sayımdan çıkarılsın mı?',
+            html: `<div class="text-start">
+                <div class="border rounded p-2 mb-2 bg-light"><b>${kacir(ilk.ekip_adi || '')}</b>${ilk.ekip_uyeleri ? `<br><span class="text-muted">${kacir(ilk.ekip_uyeleri)}</span>` : ''}</div>
+                <p class="mb-2">Bu sayımda sayılmayacak ve listeden kalkacak. <b>Stoğa hiçbir etkisi olmaz.</b></p>
+                ${girilen ? `<p class="mb-2 text-danger">Girilmiş <b>${girilen}</b> satırlık sayım adedi de silinir.</p>` : ''}
+                <p class="mb-0 text-muted small">Sonradan fikrinizi değiştirirseniz "Ekip / Personel Ekle" ile geri ekleyebilirsiniz.</p>
+            </div>`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, çıkar',
+            cancelButtonText: 'Vazgeç'
+        }).then(function (r) {
+            if (!r.isConfirmed) return;
+            istek({ action: 'sayim-ekip-cikar', sayim_id: aktifSayimId, ekip_id: ekipId }, 'POST').done(function (res) {
+                if (res.status !== 'success') return hata(res.message);
+                basari(res.message);
+                sayimDetayYukle();
+                sayimlariYukle();
+            }).fail(() => hata('Sayımdan çıkarılamadı.'));
+        });
     });
 
     // ---------- Raporlar ----------
@@ -1417,8 +2641,17 @@
 
     // ---------- Sekme tetikleyicileri ----------
 
-    $('a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
-        const hedef = $(e.target).attr('href');
+    function sekmeAksiyonlari(hedef) {
+        $('.tab-aksiyon').each(function () {
+            const goster = $(this).data('tab') === hedef;
+            $(this).toggleClass('d-none', !goster).toggleClass('d-flex', goster);
+        });
+    }
+
+    sekmeAksiyonlari($('a[data-bs-toggle="tab"].active').attr('href') || '#pane-stok');
+
+    function sekmeAcildi(hedef) {
+        sekmeAksiyonlari(hedef);
 
         if (hedef === '#pane-islemler' && !dtOrnekleri['#tabloIslemler']) islemleriYukle();
         if (hedef === '#pane-hareketler' && !dtOrnekleri['#tabloHareketler']) hareketleriYukle();
@@ -1430,6 +2663,10 @@
         Object.keys(dtOrnekleri).forEach(function (secici) {
             if ($(secici).is(':visible')) dtOrnekleri[secici].columns.adjust();
         });
+    }
+
+    $('a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+        sekmeAcildi($(e.target).attr('href'));
     });
 
     const aparatAkis = (function () {
@@ -1590,7 +2827,28 @@
             $(modal).find('.select2').select2({ width: '100%', dropdownParent: $(modal) });
         });
         stokYukle();
-        sonDepoHareketleriYukle();
+
+        const aktifSekmeBul = function () {
+            return $('.nav-tabs-custom a[data-bs-toggle="tab"].active').attr('href')
+                || $('a[data-bs-toggle="tab"].active').attr('href')
+                || '#pane-stok';
+        };
+        const baslangicSekmesi = aktifSekmeBul();
+        if (baslangicSekmesi && baslangicSekmesi !== '#pane-stok') sekmeAcildi(baslangicSekmesi);
+
+        setTimeout(function () {
+            const guncelSekme = aktifSekmeBul();
+            if (guncelSekme && guncelSekme !== '#pane-stok') {
+                const tabloMap = {
+                    '#pane-islemler': '#tabloIslemler',
+                    '#pane-hareketler': '#tabloHareketler',
+                    '#pane-transferler': '#tabloTransferler',
+                    '#pane-tanimlar': '#tabloTipler'
+                };
+                const tablo = tabloMap[guncelSekme];
+                if (!tablo || !dtOrnekleri[tablo]) sekmeAcildi(guncelSekme);
+            }
+        }, 80);
     });
 
 })(jQuery);

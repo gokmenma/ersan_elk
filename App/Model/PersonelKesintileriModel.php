@@ -312,4 +312,63 @@ class PersonelKesintileriModel extends Model
         $pm = new PersonelModel();
         return array_map(fn($r) => $pm->decryptFields($r), $results);
     }
+
+    /**
+     * Bozuk/hasarlı aparat iadesi için personele Malzeme Zarar - Ziyan kesintisi ekler.
+     */
+    public function ekleAparatCezasi(array $veri): bool
+    {
+        $paramStmt = $this->db->prepare("SELECT id, kod FROM bordro_parametreleri
+            WHERE kategori = 'kesinti' AND (kod = 'Malzeme Zarar - Ziyan' OR kod = 'ceza')
+            ORDER BY CASE WHEN kod = 'Malzeme Zarar - Ziyan' THEN 0 ELSE 1 END, id ASC
+            LIMIT 1");
+        $paramStmt->execute();
+        $param = $paramStmt->fetch(PDO::FETCH_ASSOC);
+        $paramId = $param ? (int) $param['id'] : null;
+        $turAdi = $param ? (string) $param['kod'] : 'Malzeme Zarar - Ziyan';
+
+        $donemStmt = $this->db->prepare("SELECT id FROM bordro_donemi
+            WHERE baslangic_tarihi <= CURDATE() AND bitis_tarihi >= CURDATE()
+            ORDER BY id DESC LIMIT 1");
+        $donemStmt->execute();
+        $donemId = $donemStmt->fetchColumn();
+        if (!$donemId) {
+            $sonDonemStmt = $this->db->prepare("SELECT id FROM bordro_donemi ORDER BY bitis_tarihi DESC, id DESC LIMIT 1");
+            $sonDonemStmt->execute();
+            $donemId = $sonDonemStmt->fetchColumn() ?: null;
+        }
+
+        $stmt = $this->db->prepare("INSERT INTO {$this->table}
+            (personel_id, donem_id, tur, tekrar_tipi, hesaplama_tipi, banka_matrahina_ekle,
+             parametre_id, aparat_hareket_grup_id, aktif, durum, odeme_durumu, tutar, aciklama,
+             kayit_yapan, tarih, onaylayan_id, onay_tarihi)
+            VALUES (?, ?, ?, 'tek_sefer', 'sabit', 1, ?, ?, 1, 'onaylandi', 'odenmedi', ?, ?, ?, ?, ?, NOW())");
+
+        return $stmt->execute([
+            (int) $veri['personel_id'],
+            $donemId ? (int) $donemId : null,
+            $turAdi,
+            $paramId,
+            (int) $veri['aparat_hareket_grup_id'],
+            round((float) $veri['tutar'], 2),
+            (string) ($veri['aciklama'] ?? ''),
+            !empty($veri['kayit_yapan']) ? (int) $veri['kayit_yapan'] : null,
+            date('Y-m-d'),
+            !empty($veri['kayit_yapan']) ? (int) $veri['kayit_yapan'] : null,
+        ]);
+    }
+
+    /**
+     * Aparat hareketi geri alındığında ilgili bozuk aparat ceza kesintilerini pasife alır.
+     */
+    public function iptalByAparatGrup(int $grupId): bool
+    {
+        if ($grupId <= 0) {
+            return false;
+        }
+        $stmt = $this->db->prepare("UPDATE {$this->table}
+            SET silinme_tarihi = NOW(), aktif = 0, updated_at = NOW()
+            WHERE aparat_hareket_grup_id = ? AND silinme_tarihi IS NULL");
+        return $stmt->execute([$grupId]);
+    }
 }

@@ -7,6 +7,7 @@ require_once dirname(__DIR__, 2) . '/bootstrap.php';
 
 use App\Helper\Date;
 use App\Model\AparatHareketModel;
+use App\Model\AparatSayimModel;
 use App\Model\AparatStokModel;
 use App\Model\KesmeAcmaIslemModel;
 use App\Service\Gate;
@@ -132,6 +133,92 @@ if ($tip === 'hareket') {
     }
 
     $dosyaAdi = 'aparat_saha_islemleri_' . $baslangic . '_' . $bitis . '.xlsx';
+} elseif ($tip === 'sayim') {
+    $Sayim = new AparatSayimModel();
+    $sayimId = (int) ($_GET['id'] ?? 0);
+    $sayim = $Sayim->getir($sayimId);
+    if (!$sayim) {
+        http_response_code(404);
+        exit('Sayım bulunamadı.');
+    }
+
+    $uyeHaritasi = (new AparatStokModel())->ekipUyeHaritasi();
+
+    $tipler = [];
+    $ekipler = [];
+    $sayilan = [];
+    $sistem = [];
+    foreach ($Sayim->detaylar($sayimId) as $d) {
+        $ekipId = (int) $d['ekip_id'];
+        $tipId = (int) $d['aparat_tip_id'];
+        $tipler[$tipId] = $tipler[$tipId] ?? $d['aparat_adi'];
+        $ekipler[$ekipId] = $ekipler[$ekipId] ?? [
+            'id' => $ekipId,
+            'adi' => (string) $d['ekip_adi'],
+            'uyeler' => $ekipId < 0 ? 'Kaçak Kontrol (ekipsiz)' : (string) ($uyeHaritasi[$ekipId] ?? ''),
+        ];
+        $sayilan[$ekipId][$tipId] = $d['sayilan_adet'] === null ? null : (int) $d['sayilan_adet'];
+        $sistem[$ekipId][$tipId] = (int) $d['sistem_adet'];
+    }
+    uasort($ekipler, function ($x, $y) {
+        $px = $x['id'] < 0 ? 1 : 0;
+        $py = $y['id'] < 0 ? 1 : 0;
+        return [$px, $px ? $x['adi'] : \App\Helper\EkipHelper::extractTeamNo($x['adi'])] <=> [$py, $py ? $y['adi'] : \App\Helper\EkipHelper::extractTeamNo($y['adi'])];
+    });
+
+    $kenarlik = ['borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]];
+
+    $matrisYaz = function ($sayfa, string $baslik, array $deger, bool $anahtarKolonu) use ($tipler, $ekipler, $basligStili, $kenarlik): void {
+        $sayfa->setTitle($baslik);
+        $basliklar = array_merge(['EKİP', 'PERSONEL'], array_values($tipler));
+        if ($anahtarKolonu) {
+            $basliklar[] = 'Ekip No';
+        }
+        basliklariYaz($sayfa, $basliklar, $basligStili);
+
+        $tipSirasi = array_keys($tipler);
+        $satir = 2;
+        foreach ($ekipler as $ekip) {
+            $sayfa->setCellValueExplicit('A' . $satir, preg_replace('/^[\s\x{00A0}]+|[\s\x{00A0}]+$/u', '', $ekip['adi']), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            $sayfa->setCellValueExplicit('B' . $satir, preg_replace('/^[\s\x{00A0}]+|[\s\x{00A0}]+$/u', '', $ekip['uyeler']), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            foreach ($tipSirasi as $i => $tipId) {
+                $v = $deger[$ekip['id']][$tipId] ?? null;
+                if ($v !== null) {
+                    $sayfa->setCellValue(Coordinate::stringFromColumnIndex($i + 3) . $satir, $v);
+                }
+            }
+            if ($anahtarKolonu) {
+                $sayfa->setCellValue(Coordinate::stringFromColumnIndex(count($tipSirasi) + 3) . $satir, $ekip['id']);
+            }
+            $satir++;
+        }
+
+        $sonSatir = $satir - 1;
+        $sayfa->setCellValue('A' . $satir, 'TOPLAM=');
+        foreach ($tipSirasi as $i => $tipId) {
+            $kolon = Coordinate::stringFromColumnIndex($i + 3);
+            $sayfa->setCellValue($kolon . $satir, $sonSatir >= 2 ? "=SUM({$kolon}2:{$kolon}{$sonSatir})" : 0);
+        }
+
+        $sonKolon = Coordinate::stringFromColumnIndex(count($tipSirasi) + 2);
+        $sayfa->getStyle("A1:{$sonKolon}{$satir}")->applyFromArray($kenarlik);
+        $sayfa->getStyle("A2:B{$satir}")->getFont()->setBold(true);
+        $sayfa->getStyle("A{$satir}:{$sonKolon}{$satir}")->getFont()->setBold(true);
+        $sayfa->getStyle("C2:{$sonKolon}{$satir}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sayfa->freezePane('C2');
+
+        if ($anahtarKolonu) {
+            $sayfa->getColumnDimension(Coordinate::stringFromColumnIndex(count($tipSirasi) + 3))->setVisible(false);
+        }
+    };
+
+    $matrisYaz($sheet, 'Sayım', $sayilan, true);
+
+    $sistemSayfasi = $spreadsheet->createSheet();
+    $matrisYaz($sistemSayfasi, 'Sistem Stok', $sistem, false);
+    $spreadsheet->setActiveSheetIndex(0);
+
+    $dosyaAdi = 'aparat_sayim_formu_' . $sayimId . '_' . date('Y-m-d') . '.xlsx';
 } else {
     $Stok = new AparatStokModel();
     $matris = $Stok->matris();

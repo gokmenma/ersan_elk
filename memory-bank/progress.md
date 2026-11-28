@@ -2479,3 +2479,9 @@
 ## 2026-11-27 Personel Takip Çalışma Saatleri
 - Personel bazlı göreve başlama/bitiş, yemek, 2 mola, diğer düşülecek süre ve net çalışma süresi eklendi (tablo `personel_calisma_saatleri`, `PersonelCalismaSaatleriModel`, `views/personel-takip` API + modal). Yetki: `personel_takip_deparmana_gore_ise_baslama_belirleme`. SQL: `sql/2026_11_27_personel_calisma_saatleri.sql`.
 - [x] 2026-11-27 Ana sayfa gridstack kart sırası yenilemede korunuyor (adopt/release çift düğüm ve sıkıştırma düzeltmesi).
+
+## 2026-11-28 Aparat Takip
+- [x] Saha işlemi silme (yalnız iptalli, ayrı `aparat_sil` yetkisi), sayım sekmesi yenilemesi, sayım Excel indirme/yükleme, toplu Ekibe Ver/İade/Açılış, kaçak ekiplerin listeye alınması, ekipsiz kaçak personel stoğu (yerelde tarayıcı ve uçtan uca doğrulandı; deneme kayıtları silinip bakiye defterden yeniden kuruldu).
+- [ ] Canlıda iki SQL scripti çalıştırılmalı; Excel'den toplu Ekibe Ver yüklemesi ve personel stoğunda sayım/kritik stok henüz yok.
+
+- Aparat online senkron: ekibi bulunamayan "Kaçak Kontrol" departmanı personelinin online açma/kesme hareketi artık atlanmıyor; kişi bazlı stoğa (sahip_tipi=personel) yazılıyor (`AparatStokModel::kacakKontrolPersoneliMi`, `AparatStokService::otomatikOnlineSenkronize`).

@@ -98,11 +98,13 @@ class AparatStokModel extends Model
 
         $stokluEkipler = $this->stokHareketiOlanEkipler();
 
+        $ayarlar = new SettingsModel();
         $liste = [];
         foreach ($tumEkipler as $ekip) {
             $ekipId = (int) $ekip['id'];
             if (in_array($ekipId, $stokluEkipler, true)
-                || EkipHelper::isTeamInTabRange($ekip['tur_adi'], 'kesme')) {
+                || EkipHelper::isTeamInTabRange($ekip['tur_adi'], 'kesme', $ayarlar)
+                || EkipHelper::isTeamInTabRange($ekip['tur_adi'], 'kacakkontrol', $ayarlar)) {
                 $liste[] = $ekip;
             }
         }
@@ -199,6 +201,79 @@ class AparatStokModel extends Model
         return (string) $stmt->fetchColumn();
     }
 
+    public function ekipAktifPersonelIdleri(int $ekipId): array
+    {
+        $stmt = $this->db->prepare("SELECT DISTINCT pg.personel_id
+            FROM personel_ekip_gecmisi pg
+            INNER JOIN personel p ON p.id = pg.personel_id
+            WHERE pg.firma_id = ?
+              AND pg.ekip_kodu_id = ?
+              AND pg.baslangic_tarihi <= CURDATE()
+              AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= CURDATE())
+              AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '0000-00-00')
+            ORDER BY pg.ekip_sefi_mi DESC, pg.personel_id ASC");
+        $stmt->execute([$this->firmaId(), $ekipId]);
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    }
+
+    public function aparatTipAdi(int $tipId): string
+    {
+        $stmt = $this->db->prepare("SELECT ad FROM aparat_tipleri WHERE id = ? AND firma_id = ?");
+        $stmt->execute([$tipId, $this->firmaId()]);
+        return (string) $stmt->fetchColumn();
+    }
+
+    /**
+     * Ekip ataması olmadan çalışan Kaçak Kontrol personeli ile aparat stoğu
+     * bulunan (ekip ataması sonradan yapılmış olsa bile) personeller.
+     */
+    public function kacakPersoneller(bool $sadeceStoklu = false): array
+    {
+        $stmt = $this->db->prepare("SELECT p.id, p.adi_soyadi, p.gorev,
+                   CASE WHEN s.sahip_id IS NULL THEN 0 ELSE 1 END AS stoklu
+            FROM personel p
+            LEFT JOIN (SELECT DISTINCT sahip_id FROM {$this->table}
+                       WHERE firma_id = ? AND sahip_tipi = 'personel') s ON s.sahip_id = p.id
+            WHERE p.firma_id = ? AND p.silinme_tarihi IS NULL
+              AND (
+                    s.sahip_id IS NOT NULL
+                    OR (
+                        (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '0000-00-00')
+                        AND p.departman LIKE '%Kaçak Kontrol%'
+                        AND NOT EXISTS (
+                            SELECT 1 FROM personel_ekip_gecmisi pg
+                            WHERE pg.personel_id = p.id AND pg.firma_id = p.firma_id
+                              AND pg.baslangic_tarihi <= CURDATE()
+                              AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= CURDATE())
+                        )
+                    )
+                  )
+            ORDER BY p.adi_soyadi ASC");
+        $stmt->execute([$this->firmaId(), $this->firmaId()]);
+        $liste = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return $sadeceStoklu ? array_values(array_filter($liste, fn($p) => (int) $p['stoklu'] === 1)) : $liste;
+    }
+
+    public function kacakKontrolPersoneliMi(int $firmaId, int $personelId): bool
+    {
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM personel
+            WHERE id = ? AND firma_id = ? AND silinme_tarihi IS NULL
+              AND departman LIKE '%Kaçak Kontrol%'");
+        $stmt->execute([$personelId, $firmaId]);
+        return (int) $stmt->fetchColumn() > 0;
+    }
+
+    public function personelGecerliMi(int $personelId): bool
+    {
+        foreach ($this->kacakPersoneller() as $p) {
+            if ((int) $p['id'] === $personelId) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public function ekipGecerliMi(int $ekipId): bool
     {
         $stmt = $this->db->prepare("SELECT COUNT(*) FROM tanimlamalar
@@ -244,6 +319,35 @@ class AparatStokModel extends Model
             foreach ($tipler as $tip) {
                 $tipId = (int) $tip['id'];
                 $adet = (int) ($bakiyeler['ekip'][$ekipId][$tipId] ?? 0);
+                $satir['adetler'][$tipId] = $adet;
+                $satir['toplam'] += $adet;
+                $sutunToplam[$tipId] += $adet;
+                $genelToplam += $adet;
+                if ($adet < 0) {
+                    $satir['negatif'] = true;
+                }
+            }
+
+            $satirlar[] = $satir;
+        }
+
+        foreach ($this->kacakPersoneller(true) as $personel) {
+            $personelId = (int) $personel['id'];
+            $satir = [
+                'sahip_tipi' => 'personel',
+                'sahip_id' => $personelId,
+                'baslik' => $personel['adi_soyadi'],
+                'ekip_kodu' => 'Kaçak Kontrol (ekipsiz)',
+                'uyeler' => $personel['adi_soyadi'],
+                'bolge' => '',
+                'adetler' => [],
+                'toplam' => 0,
+                'negatif' => false,
+            ];
+
+            foreach ($tipler as $tip) {
+                $tipId = (int) $tip['id'];
+                $adet = (int) ($bakiyeler['personel'][$personelId][$tipId] ?? 0);
                 $satir['adetler'][$tipId] = $adet;
                 $satir['toplam'] += $adet;
                 $sutunToplam[$tipId] += $adet;
