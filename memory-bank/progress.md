@@ -2485,3 +2485,5 @@
 - [ ] Canlıda iki SQL scripti çalıştırılmalı; Excel'den toplu Ekibe Ver yüklemesi ve personel stoğunda sayım/kritik stok henüz yok.
 
 - Aparat online senkron: ekibi bulunamayan "Kaçak Kontrol" departmanı personelinin online açma/kesme hareketi artık atlanmıyor; kişi bazlı stoğa (sahip_tipi=personel) yazılıyor (`AparatStokModel::kacakKontrolPersoneliMi`, `AparatStokService::otomatikOnlineSenkronize`).
+
+- Eski Demirbaş otomatik zimmet/iade/düşüm akışı (`DemirbasZimmetModel::checkAndProcessAutomaticZimmet`) artık aparat kategorisindeki demirbaşları işlemiyor; aparat stoğu yalnızca Aparat Takip defterinde tutulur. Online sorgulamadaki "Aparat Zimmeti Eksik Personeller" uyarısı bu yüzden çıkmaz.

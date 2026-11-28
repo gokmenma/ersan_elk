@@ -1151,6 +1151,14 @@ class DemirbasZimmetModel extends Model
             }
         }
 
+        $aparatDisinda = fn(array $adaylar) => array_values(array_filter(
+            $adaylar,
+            fn($d) => !$this->isAparatKategorisi($d)
+        ));
+        $zimmetAdaylari = $aparatDisinda($zimmetAdaylari);
+        $iadeAdaylari = $aparatDisinda($iadeAdaylari);
+        $dusAdaylari = $aparatDisinda($dusAdaylari);
+
         if (empty($zimmetAdaylari) && empty($iadeAdaylari) && empty($dusAdaylari)) {
             return ['status' => 'no_trigger'];
         }

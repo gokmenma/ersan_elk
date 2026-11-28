@@ -760,6 +760,91 @@ class PersonelIzinleriModel extends Model
     }
 
     /**
+     * Yıllık izin hakedişinde baz alınacak efektif başlangıç tarihini belirler.
+     * Öncelik:
+     * 1) personel.izin_hakedis_baslangic_tarihi (özel tanımlı tarih)
+     * 2) personel_calisma_gecmisi dönemleri (dönemler arası çalışılmayan boşluk günleri ilk girişe eklenerek düşülür)
+     * 3) personel.ise_giris_tarihi
+     *
+     * @param array<int, array{ise_giris_tarihi: ?string, isten_cikis_tarihi: ?string}|object>|null $calismaDonemleri
+     */
+    public function resolveIzinHakedisBazTarihi(
+        int $personelId,
+        ?string $izinHakedisBaslangic,
+        ?string $iseGiris,
+        ?array $calismaDonemleri = null
+    ): ?\DateTime {
+        $ozel = $this->parseDate($izinHakedisBaslangic);
+        if ($ozel) {
+            return $ozel;
+        }
+
+        if ($calismaDonemleri === null && $personelId > 0) {
+            $stmt = $this->db->prepare(
+                "SELECT ise_giris_tarihi, isten_cikis_tarihi
+                 FROM personel_calisma_gecmisi
+                 WHERE personel_id = ?
+                   AND ise_giris_tarihi IS NOT NULL
+                   AND ise_giris_tarihi != '0000-00-00'
+                 ORDER BY ise_giris_tarihi ASC, id ASC"
+            );
+            $stmt->execute([$personelId]);
+            $calismaDonemleri = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        $araliklar = [];
+        foreach ($calismaDonemleri ?? [] as $donem) {
+            $girisRaw = is_array($donem) ? ($donem['ise_giris_tarihi'] ?? null) : ($donem->ise_giris_tarihi ?? null);
+            $cikisRaw = is_array($donem) ? ($donem['isten_cikis_tarihi'] ?? null) : ($donem->isten_cikis_tarihi ?? null);
+            $bas = $this->parseDate($girisRaw);
+            if (!$bas) {
+                continue;
+            }
+            $bit = $this->parseDate($cikisRaw);
+            $araliklar[] = ['bas' => $bas, 'bit' => $bit];
+        }
+
+        if (!$araliklar) {
+            return $this->parseDate($iseGiris);
+        }
+
+        usort($araliklar, static fn($a, $b) => $a['bas'] <=> $b['bas']);
+
+        $ilkGiris = clone $araliklar[0]['bas'];
+        $currentEnd = $araliklar[0]['bit'] ? clone $araliklar[0]['bit'] : null;
+        $boslukGun = 0;
+
+        for ($i = 1, $n = count($araliklar); $i < $n; $i++) {
+            if ($currentEnd === null) {
+                break;
+            }
+            $nextBas = $araliklar[$i]['bas'];
+            $nextBit = $araliklar[$i]['bit'];
+
+            if ($nextBas <= $currentEnd) {
+                if ($nextBit === null) {
+                    $currentEnd = null;
+                } elseif ($nextBit > $currentEnd) {
+                    $currentEnd = clone $nextBit;
+                }
+                continue;
+            }
+
+            $gapDays = (int) $currentEnd->diff($nextBas)->days;
+            if ($gapDays > 1) {
+                $boslukGun += ($gapDays - 1);
+            }
+            $currentEnd = $nextBit ? clone $nextBit : null;
+        }
+
+        if ($boslukGun > 0) {
+            $ilkGiris->modify("+{$boslukGun} days");
+        }
+
+        return $ilkGiris;
+    }
+
+    /**
      * Personelin izin hakedişlerini hesaplar
      * @param int $personel_id
      * @return array
@@ -767,7 +852,7 @@ class PersonelIzinleriModel extends Model
     public function calculateLeaveEntitlement($personel_id)
     {
         // 1. Personel bilgilerini çek
-        $sql = "SELECT ise_giris_tarihi, dogum_tarihi FROM personel WHERE id = ?";
+        $sql = "SELECT ise_giris_tarihi, izin_hakedis_baslangic_tarihi, dogum_tarihi, isten_cikis_tarihi FROM personel WHERE id = ?";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$personel_id]);
         $personel = $stmt->fetch(PDO::FETCH_OBJ);
@@ -776,11 +861,18 @@ class PersonelIzinleriModel extends Model
             return ['toplam_hakedis' => 0, 'kullanilan_izin' => 0, 'kalan_izin' => 0, 'detay' => []];
         }
 
-        // 2. Tarihleri parse et
-        $giris = $this->parseDate($personel->ise_giris_tarihi);
+        // 2. Tarihleri parse et (özel baz tarih -> ilk işe giriş -> güncel işe giriş)
+        $giris = $this->resolveIzinHakedisBazTarihi(
+            (int) $personel_id,
+            $personel->izin_hakedis_baslangic_tarihi ?? null,
+            $personel->ise_giris_tarihi ?? null
+        );
         $dogum = $this->parseDate($personel->dogum_tarihi);
+        $cikis = $this->parseDate($personel->isten_cikis_tarihi ?? null);
+        $bugun = new \DateTime('today');
+        $hesapTarihi = ($cikis && $cikis < $bugun) ? $cikis : $bugun;
 
-        $hesap = $this->hakedisDetayHesapla($giris, $dogum);
+        $hesap = $this->hakedisDetayHesapla($giris, $dogum, $hesapTarihi);
         $toplam_hakedis = $hesap['toplam_hakedis'];
         $detay = $hesap['detay'];
 

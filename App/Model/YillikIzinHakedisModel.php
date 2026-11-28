@@ -35,13 +35,36 @@ class YillikIzinHakedisModel extends Model
             ? ''
             : ' AND aktif_mi = 1 AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi > CURDATE())';
         $stmt = $this->db->prepare(
-            "SELECT id, adi_soyadi, departman, gorev, ise_giris_tarihi, dogum_tarihi, isten_cikis_tarihi,
+            "SELECT id, adi_soyadi, departman, gorev, ise_giris_tarihi,
+                    izin_hakedis_baslangic_tarihi, dogum_tarihi, isten_cikis_tarihi,
                     (aktif_mi = 0 OR (isten_cikis_tarihi IS NOT NULL AND isten_cikis_tarihi <= CURDATE())) AS pasif
              FROM personel
              WHERE firma_id = ? AND silinme_tarihi IS NULL AND personel_tipi = 'standart'{$aktifKosul}"
         );
         $stmt->execute([$firma_id]);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    private function calismaGecmisleri(array $personelIds): array
+    {
+        if (!$personelIds) {
+            return [];
+        }
+        $ph = implode(',', array_fill(0, count($personelIds), '?'));
+        $stmt = $this->db->prepare(
+            "SELECT personel_id, ise_giris_tarihi, isten_cikis_tarihi
+             FROM personel_calisma_gecmisi
+             WHERE personel_id IN ({$ph})
+               AND ise_giris_tarihi IS NOT NULL
+               AND ise_giris_tarihi != '0000-00-00'
+             ORDER BY ise_giris_tarihi ASC, id ASC"
+        );
+        $stmt->execute(array_values($personelIds));
+        $out = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $out[(int) $row['personel_id']][] = $row;
+        }
+        return $out;
     }
 
     private function kullanilanIzinler(array $personelIds): array
@@ -95,11 +118,18 @@ class YillikIzinHakedisModel extends Model
         $personelIds = array_map(fn($p) => (int) $p->id, $personeller);
         $kullanilan = $this->kullanilanIzinler($personelIds);
         $manuel = $this->manuelToplamlar($personelIds);
+        $donemler = $this->calismaGecmisleri($personelIds);
         $bugun = new \DateTime('today');
 
         $rows = [];
         foreach ($personeller as $p) {
-            $giris = $this->parseDate($p->ise_giris_tarihi);
+            $giris = $this->izinModel->resolveIzinHakedisBazTarihi(
+                (int) $p->id,
+                $p->izin_hakedis_baslangic_tarihi ?? null,
+                $p->ise_giris_tarihi ?? null,
+                $donemler[(int) $p->id] ?? []
+            );
+            $guncelGiris = $this->parseDate($p->ise_giris_tarihi);
             $dogum = $this->parseDate($p->dogum_tarihi);
             $cikis = $this->parseDate($p->isten_cikis_tarihi);
             $hesapTarihi = $cikis && $cikis < $bugun ? $cikis : $bugun;
@@ -128,6 +158,7 @@ class YillikIzinHakedisModel extends Model
                 'departman' => (string) $p->departman,
                 'gorev' => (string) $p->gorev,
                 'ise_giris_tarihi' => $giris ? $giris->format('Y-m-d') : null,
+                'guncel_giris_tarihi' => $guncelGiris ? $guncelGiris->format('Y-m-d') : null,
                 'kidem_yil' => $kidemYil,
                 'manuel' => $manuelGun,
                 'toplam' => $toplam,
@@ -309,7 +340,11 @@ class YillikIzinHakedisModel extends Model
                     . ($r->pasif ? ' <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill font-size-10">Pasif</span>' : ''),
                 'departman' => '<span class="font-size-12">' . $esc($r->departman) . '</span>',
                 'gorev' => '<span class="font-size-12">' . $esc($r->gorev) . '</span>',
-                'ise_giris_tarihi' => '<div class="text-center">' . $esc(self::tarihMetni($r->ise_giris_tarihi)) . '</div>',
+                'ise_giris_tarihi' => '<div class="text-center">' . $esc(self::tarihMetni($r->ise_giris_tarihi))
+                    . ($r->guncel_giris_tarihi && $r->guncel_giris_tarihi !== $r->ise_giris_tarihi
+                        ? '<div class="text-muted font-size-10" title="Son dönem işe giriş tarihi">Güncel: ' . $esc(self::tarihMetni($r->guncel_giris_tarihi)) . '</div>'
+                        : '')
+                    . '</div>',
                 'kidem_yil' => '<div class="text-center">' . (int) $r->kidem_yil . ' yıl</div>',
                 'toplam' => '<div class="text-center fw-semibold">' . $esc(self::gunMetni($r->toplam))
                     . ($r->manuel > 0 ? ' <i class="bx bx-edit-alt text-primary" title="Manuel hakediş dahil: ' . $esc(self::gunMetni($r->manuel)) . ' gün"></i>' : '') . '</div>',
@@ -335,7 +370,7 @@ class YillikIzinHakedisModel extends Model
     public function detay(int $personel_id, int $firma_id): ?array
     {
         $stmt = $this->db->prepare(
-            "SELECT id, adi_soyadi, ise_giris_tarihi, dogum_tarihi
+            "SELECT id, adi_soyadi, ise_giris_tarihi, izin_hakedis_baslangic_tarihi, dogum_tarihi, isten_cikis_tarihi
              FROM personel
              WHERE id = ? AND firma_id = ? AND silinme_tarihi IS NULL"
         );
@@ -345,10 +380,19 @@ class YillikIzinHakedisModel extends Model
             return null;
         }
 
+        $bazTarih = $this->izinModel->resolveIzinHakedisBazTarihi(
+            $personel_id,
+            $p->izin_hakedis_baslangic_tarihi ?? null,
+            $p->ise_giris_tarihi ?? null
+        );
+        $cikis = $this->parseDate($p->isten_cikis_tarihi ?? null);
+        $bugun = new \DateTime('today');
+        $hesapTarihi = $cikis && $cikis < $bugun ? $cikis : $bugun;
+
         $hesap = $this->izinModel->hakedisDetayHesapla(
-            $this->parseDate($p->ise_giris_tarihi),
+            $bazTarih,
             $this->parseDate($p->dogum_tarihi),
-            new \DateTime('today')
+            $hesapTarihi
         );
 
         $stmt = $this->db->prepare(
@@ -411,7 +455,7 @@ class YillikIzinHakedisModel extends Model
 
         return [
             'adi_soyadi' => (string) $p->adi_soyadi,
-            'ise_giris_tarihi' => self::tarihMetni($p->ise_giris_tarihi),
+            'ise_giris_tarihi' => self::tarihMetni($bazTarih ? $bazTarih->format('Y-m-d') : null),
             'toplam' => $toplamHakedis,
             'otomatik' => (float) $hesap['toplam_hakedis'],
             'manuel_toplam' => $manuelToplam,

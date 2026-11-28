@@ -156,6 +156,17 @@ if (!$aktifCalismaVar && empty($calismaGecmisi) && $id > 0 && !empty($personel->
                 </div>
             </div>
         </div>
+        <div class="row g-2 align-items-center mt-2 pt-2 border-top">
+            <div class="col-12 col-md-5 col-lg-4">
+                <?= Form::FormFloatInput("text", "izin_hakedis_baslangic_tarihi", Date::dmy($personel->izin_hakedis_baslangic_tarihi ?? null) ?? "", "İlk işe giriş baz alınır", "Yıllık İzin Hakediş Baz Tarihi", "calendar", "form-control flatpickr", '', '', "off") ?>
+            </div>
+            <div class="col-12 col-md-7 col-lg-8">
+                <div class="small text-muted">
+                    <i class="bx bx-info-circle me-1 text-primary"></i>
+                    Boş bırakılırsa çalışma geçmişindeki dönemler (aradaki çalışılmayan boşluk günleri hariç tutularak) birleştirilir; sözleşme yenileme ve yeniden işe girişlerde önceki izin hakedişleri kesintisiz devam eder.
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
